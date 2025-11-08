@@ -46,7 +46,7 @@ const FILES_CONFIG = [
   {
     type: 'sheet',
     fileId: process.env.CAMPAIGNS_SHEET_ID || 'YOUR_CAMPAIGNS_SHEET_ID',
-    sheetName: 'Coupon Campaign Registry', // Tab name in the sheet
+    sheetName: 'Campaign Registry', // Tab name in the sheet
     outputFile: 'campaigns.csv'
   }
 ];
