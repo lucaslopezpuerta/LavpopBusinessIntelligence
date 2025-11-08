@@ -40,14 +40,18 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          git diff --quiet data/ || echo "changes=true" >> $GITHUB_OUTPUT
+          git add data/
+          if git diff --cached --quiet; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+          fi
       
       - name: Commit and push changes
         if: steps.check_changes.outputs.changes == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add data/
           git commit -m "🔄 Daily data update - $(TZ='America/Sao_Paulo' date '+%Y-%m-%d %H:%M %Z')"
           git push
       
