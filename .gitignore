@@ -1,0 +1,31 @@
+# Google Cloud credentials - NEVER commit these!
+*.json
+!package.json
+!package-lock.json
+
+# Environment files
+.env
+.env.local
+
+# Node modules
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
