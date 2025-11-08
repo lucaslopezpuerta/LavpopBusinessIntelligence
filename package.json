@@ -1,0 +1,21 @@
+{
+  "name": "lavpop-business-intelligence",
+  "version": "1.0.0",
+  "description": "Lavpop Laundromat Business Intelligence Tool",
+  "private": true,
+  "scripts": {
+    "fetch-data": "node .github/scripts/fetch-sheets.js"
+  },
+  "dependencies": {
+    "googleapis": "^128.0.0",
+    "csv-writer": "^1.6.0",
+    "date-fns-tz": "^2.0.0"
+  },
+  "keywords": [
+    "business-intelligence",
+    "laundromat",
+    "analytics"
+  ],
+  "author": "Lucas Lopez Puerta",
+  "license": "MIT"
+}
