@@ -2,9 +2,12 @@ name: Fetch Google Sheets Data
 
 on:
   schedule:
-    # Runs daily at 9:00 AM UTC (6:00 AM Brazil time - America/Sao_Paulo UTC-3)
-    - cron: '0 9 * * *'
+    # Runs daily at 1:00 AM UTC (10:00 PM Brazil time - America/Sao_Paulo UTC-3)
+    - cron: '0 1 * * *'
   workflow_dispatch: # Allows manual triggering from GitHub UI
+
+permissions:
+  contents: write  # Required to commit and push changes
 
 jobs:
   fetch-data:
