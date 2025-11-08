@@ -28,6 +28,13 @@ jobs:
       - name: Fetch data from Google Sheets
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SALES_FILE_ID: ${{ secrets.SALES_FILE_ID }}
+          RFM_FILE_ID: ${{ secrets.RFM_FILE_ID }}
+          CUSTOMER_FILE_ID: ${{ secrets.CUSTOMER_FILE_ID }}
+          BLACKLIST_FILE_ID: ${{ secrets.BLACKLIST_FILE_ID }}
+          TWILIO_FILE_ID: ${{ secrets.TWILIO_FILE_ID }}
+          WEATHER_SHEET_ID: ${{ secrets.WEATHER_SHEET_ID }}
+          CAMPAIGNS_SHEET_ID: ${{ secrets.CAMPAIGNS_SHEET_ID }}
         run: node .github/scripts/fetch-sheets.js
       
       - name: Check for changes
