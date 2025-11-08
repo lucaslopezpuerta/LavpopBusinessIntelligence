@@ -1,0 +1,5 @@
+Campaign ID,Creation Date,Coupon Code,Discount Percentage,Target Segment,Campaign Objective,Start Date,End Date,Max Cycles per Customer,Total Cycles Available,Valid Days of Week,Valid Time Range,First-Time Only,Campaign Notes
+CAMP_001,23-05-2025,seca20,20,Loyal,retention,23-05-2025,30-05-2025,1,30,All,All Day,FALSE,Segment retention
+CAMP_002,13-05-2025,topdry20,20,Champion,retention,13-05-2025,20-05-2025,1,30,All,All Day,FALSE,Segment retention
+CAMP_003,02-06-2025,junhoseca30,30,Loyal,retention,03-06-2025,30-06-2025,2,50,All,All Day,FALSE,Revenue boost
+CAMP_004,02-06-2025,novoseca30,30,New,fidelization,03-06-2025,30-06-2025,1,40,All,All Day,FALSE,New Customer

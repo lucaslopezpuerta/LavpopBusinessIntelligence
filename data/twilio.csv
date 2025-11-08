@@ -1,0 +1,286 @@
+From,To,Body,Status,SentDate,ApiVersion,NumSegments,ErrorCode,AccountSid,Sid,Direction,Price,PriceUnit,ShortenedLinkEnabled,ShortenedLinkFirstClicked
+"whatsapp:+555123911414","whatsapp:+5554991538477","Olá Bruno Ranieli Silva Do E Santo, tudo bem?   
+Você tem R$ 23.15 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:16-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMfd92c6010490736a68ded47e0d20b1d8,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5551991899878","Olá Tatiane Garbin, tudo bem?   
+Você tem R$ 87.73 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",undelivered,2025-08-15T13:00:16-03:00,"2010-04-01",1,63024,ACc23915e42b3aa5e478bf7696ea0b79a9,MM3a44afd7770a8ae593a2da981c1396ac,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554984383557","Olá Jonathan Nogueira, tudo bem?   
+Você tem R$ 42.52 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:16-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMb07178dba6b1eb681f5b0c466d6ad7a6,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554992366172","Olá Leticia Gonçalves Godinho, tudo bem?   
+Você tem R$ 22.60 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:16-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM7ff53ff1e4501f5ad7a849c88efdb827,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991516201","Olá Miriane Christo, tudo bem?   
+Você tem R$ 26.51 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:16-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM28ea97cd7285d5d8050409293050d6ae,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991045997","Olá Andreine, tudo bem?   
+Você tem R$ 24.62 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:15-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMf77a804aed1e33e65d1df07f2912f23d,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991954489","Olá Paulo Boeira, tudo bem?   
+Você tem R$ 27.31 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:15-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMf6955e815049596745946649ea2b8482,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5551997598209","Olá Alex Sandro Lopes, tudo bem?   
+Você tem R$ 27.31 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:15-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMb3caa54e6163170be7d9e19147d4aefd,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554993900037","Olá Jessica, tudo bem?   
+Você tem R$ 24.62 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:15-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM77b77997197142eebf2dc19f3bc24bb5,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554992119273","Olá Kelvnsantos, tudo bem?   
+Você tem R$ 31.83 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:15-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMfa1c09258239d375bbfb40d7e6ecc1be,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554999629515","Olá Cíntia Hecher, tudo bem?   
+Você tem R$ 26.99 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:15-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM579defd9dd97333ee51384b69e9a4b21,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554992717044","Olá Anderson Vantuil De Oliveira, tudo bem?   
+Você tem R$ 23.80 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",undelivered,2025-08-15T13:00:15-03:00,"2010-04-01",1,63024,ACc23915e42b3aa5e478bf7696ea0b79a9,MMa078e74ecae40e0ff2fb9028d3731c48,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554981231384","Olá Viviane Fritsch, tudo bem?   
+Você tem R$ 27.85 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:13-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM8cea54f13ef224b69bcc159c6b724b4b,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991418616","Olá Amanda Simioni, tudo bem?   
+Você tem R$ 49.88 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",undelivered,2025-08-15T13:00:15-03:00,"2010-04-01",1,63032,ACc23915e42b3aa5e478bf7696ea0b79a9,MM2321d55135915274ab973983403e19c2,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5552991271416","Olá Helison, tudo bem?   
+Você tem R$ 22.87 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",undelivered,2025-08-15T13:00:14-03:00,"2010-04-01",1,63024,ACc23915e42b3aa5e478bf7696ea0b79a9,MMe9c523858286faee100fea56bd838e4c,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991377550","Olá Clodoaldo Fonseca, tudo bem?   
+Você tem R$ 29.22 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:14-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM57cf7368beac502d47851b85ee5976db,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5591989016563","Olá Jéssica Evylin Da Costa Siqueira, tudo bem?   
+Você tem R$ 51.21 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",undelivered,2025-08-15T13:00:14-03:00,"2010-04-01",1,63032,ACc23915e42b3aa5e478bf7696ea0b79a9,MM5682c1f42767d975669e76e7b425ec36,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554999619966","Olá Frannelyz Sanchez, tudo bem?   
+Você tem R$ 20.20 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:14-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMa087766c26ad291b97aca9826efd4704,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5553999771068","Olá Luciano Colares, tudo bem?   
+Você tem R$ 20.21 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:14-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM80ee2d6c35ab8d1a1411e1da732a3d2c,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554996259548","Olá Catiuce Maiara De Souza Morais, tudo bem?   
+Você tem R$ 29.42 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:14-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM35c0e805b7b1b8da443993cb94c9df57,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991134058","Olá Joao Altair Motta, tudo bem?   
+Você tem R$ 53.47 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",sent,2025-08-15T13:00:13-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMa2567dc2fa8c1f90bf942cb3cf6911ad,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554999684996","Olá Augusto Souza De Melo, tudo bem?   
+Você tem R$ 24.73 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",sent,2025-08-15T13:00:13-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM4f5a4ed204d43bf53d4330daaefd2eda,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991668636","Olá Gislaine Lamb, tudo bem?   
+Você tem R$ 90.40 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",sent,2025-08-15T13:00:13-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM632e80457c9619c172559f8df68c4e75,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991096133","Olá Ender Gomez, tudo bem?   
+Você tem R$ 20.67 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:14-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM81dd18ff9d9d6837446be6ec75ad204a,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554981128357","Olá Kimberly Silva De Moura Rosa, tudo bem?   
+Você tem R$ 22.74 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",undelivered,2025-08-15T13:00:14-03:00,"2010-04-01",1,63024,ACc23915e42b3aa5e478bf7696ea0b79a9,MMf47f2641c0e55d597341385f5ef31521,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554993530487","Olá Erica Morais Franco, tudo bem?   
+Você tem R$ 26.94 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:13-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM17291c2761e3b41907ebc38eb239bc11,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5547992718461","Olá Evelyn Passos Sanchotene, tudo bem?   
+Você tem R$ 29.63 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",undelivered,2025-08-15T13:00:13-03:00,"2010-04-01",1,63024,ACc23915e42b3aa5e478bf7696ea0b79a9,MMb283ea08445e9063a534242a1304bb7c,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554996947215","Olá Gabriel De Olverira Rodrigues, tudo bem?   
+Você tem R$ 60.01 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:12-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMeda59ef4322e66f467f79098fd4cdfb8,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554999421395","Olá Willian Cavalheiro, tudo bem?   
+Você tem R$ 77.62 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:12-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMd187eb1a395647f8e747dd01f9475a7a,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554999318927","Olá Lucas Gonçalves, tudo bem?   
+Você tem R$ 27.23 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",delivered,2025-08-15T13:00:13-03:00,"2010-04-01",1,63024,ACc23915e42b3aa5e478bf7696ea0b79a9,MM9f4272a1f8b8101d9b1140367ac70d95,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554999805556","Olá Edite Sebert, tudo bem?   
+Você tem R$ 98.74 de saldo disponível para lavar e/ou secar suas roupas!
+
+Aproveite esse benefício. É rápido, prático e você economiza tempo e dinheiro. ⏱️💸",read,2025-08-15T13:00:12-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM0dddef85d940844a9a760bd65be2f2b0,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555481038708","whatsapp:+555123911414","Já usamos 😍😍",received,2025-08-15T12:58:04-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,SM7da9be51d98ec01307307a36ed0fc81c,"inbound",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554981321440","Oi Nataniel Silva! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:20-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM74088e1621b1810854610e2db5cd99c2,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991567375","Oi Laura Radatz! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",delivered,2025-08-15T09:00:19-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM83c8f18e303b0b9dab10bfe377bf61a4,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5511964703804","Oi Eduardo Pereira! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:20-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMa479927f0278ab7ecb1315a633e57655,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554992214130","Oi Cyria Siqueira! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:19-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMe839a6c17a64466fcd6d413457716c84,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5555996892677","Oi Sonia De Fatima Guterres Rodrigues! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:19-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM7378596cfa74d58b7e35ab526de71830,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991577324","Oi Alessandro Da Rocha! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",undelivered,2025-08-15T09:00:19-03:00,"2010-04-01",1,63024,ACc23915e42b3aa5e478bf7696ea0b79a9,MM64d5a248fe8e74858b7a011eace9067a,"outbound-api",,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554981182115","Oi Paulo Eduardo Quell! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",delivered,2025-08-15T09:00:19-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM961ef606afd7d30755361017cd76779c,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554981038708","Oi Gabrieli Araujo Rodrigues! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:19-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMc1c41971a9e39a50530f7edef62f39eb,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554994211515","Oi Victoria Bellei Borges! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:19-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMe8fd989179b11321d9cb081e0257aa14,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991635149","Oi Guilherme Diogo Borges Da Silva! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:19-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMb0c390547a64700b612d9768bddcec8f,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554999008688","Oi Tiago Faccioni Bevilaqua! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:18-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM149a0daa7bfe044d7a2c757b49421042,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554993312141","Oi Gabrel Isoppo! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:18-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMa0bc1282c46d92784d0a71fca08608f7,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554981008618","Oi Jodackson! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",delivered,2025-08-15T09:00:18-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMf16ed6c08f672fabc7aea8a5852b4478,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554996767077","Oi Hannia Silva Dos Santos! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",delivered,2025-08-15T09:00:17-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMac9162365133eb087baeca30d43543e8,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554991613869","Oi Denis Ansolin! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:18-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM136225d10affe422a6c9d5c9860d9402,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554981373610","Oi Dorneles Provim Geittens! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:19-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMdd70d1612f2a0512890a810306c05e70,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554984340350","Oi Henrique Vaz! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",delivered,2025-08-15T09:00:18-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMcfea1053ca5d15f76f84184f5cba88da,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5555992176935","Oi Miguel Mendonca! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",read,2025-08-15T09:00:18-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM3daf2346dca62579dfab84e36cd6df2f,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5554996442466","Oi Natiele Oliveira! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",delivered,2025-08-15T09:00:18-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MM2861db07f3608f8894214b637f38ab8d,"outbound-api",-0.0625,USD,"FALSE",
+"whatsapp:+555123911414","whatsapp:+5521972237672","Oi Leanderson! Adoramos ter você na Lavpop 💙
+Para tornar sua próxima visita ainda melhor, aqui vai um presente especial:
+
+💸 30% de desconto para secar  
+🔐 Código: novoseca30  
+📆 Válido até 31/08/2025
+
+Volte logo — sua roupa e seu bolso agradecem",sent,2025-08-15T09:00:18-03:00,"2010-04-01",1,0,ACc23915e42b3aa5e478bf7696ea0b79a9,MMfaf91fafefd690271b27eedd9dd354cb,"outbound-api",,USD,"FALSE",
