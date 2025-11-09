@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from twocaptcha import TwoCaptcha
 from google.oauth2.credentials import Credentials
@@ -96,23 +97,58 @@ class LavapopAutomation:
             current_url = driver.current_url
             logging.info(f"Checking login status. Current URL: {current_url}")
             
+            # Primary check: Dashboard URL after successful login
+            if current_url.startswith(f"{self.base_url}/system"):
+                logging.info(f"✅ Logged in - on dashboard URL: {current_url}")
+                return True
+            
+            # Secondary check: If on login page
             if 'login' in current_url.lower():
                 logging.info("On login page - not logged in")
                 return False
             
-            # Check for dashboard elements
-            time.sleep(2)
+            # Tertiary check: Dashboard elements in page
+            time.sleep(1)
             body_text = driver.find_element(By.TAG_NAME, "body").text.lower()
             
-            if any(word in body_text for word in ['dashboard', 'venda', 'cliente', 'cupom', 'fatura']):
-                logging.info("✅ Already logged in")
+            dashboard_keywords = ['dashboard', 'venda', 'cliente', 'cupom', 'fatura', 'loja', 'configurações']
+            found_keywords = [kw for kw in dashboard_keywords if kw in body_text]
+            
+            if found_keywords:
+                logging.info(f"✅ Dashboard elements found: {', '.join(found_keywords)}")
                 return True
             
+            logging.info("Not logged in")
             return False
             
         except Exception as e:
             logging.warning(f"Could not determine login status: {e}")
             return False
+    
+    def check_for_errors(self, driver):
+        """Check if there are any error messages on the page"""
+        try:
+            # Common error selectors
+            error_selectors = [
+                '.error', '.alert-danger', '.alert-error',
+                '[class*="error"]', '[class*="alert"]',
+                '[role="alert"]'
+            ]
+            
+            for selector in error_selectors:
+                try:
+                    errors = driver.find_elements(By.CSS_SELECTOR, selector)
+                    for error in errors:
+                        if error.is_displayed() and error.text.strip():
+                            logging.error(f"Page error found: {error.text}")
+                            return error.text
+                except:
+                    continue
+            
+            return None
+        except Exception as e:
+            logging.warning(f"Error check failed: {e}")
+            return None
     
     def solve_recaptcha_v2(self, driver):
         """Solve reCAPTCHA v2 using 2Captcha"""
@@ -143,43 +179,63 @@ class LavapopAutomation:
                 return False
             
             logging.info(f"Found reCAPTCHA site key: {site_key}")
-            logging.info("Sending to 2Captcha...")
+            logging.info("Sending to 2Captcha (this may take 30-60 seconds)...")
             
             result = self.solver.recaptcha(sitekey=site_key, url=driver.current_url)
             captcha_response = result['code']
-            logging.info("✅ CAPTCHA solved!")
+            logging.info(f"✅ CAPTCHA solved! Token length: {len(captcha_response)}")
             
-            # Inject solution
+            # Inject solution into multiple places
             driver.execute_script(
                 f'''
+                // Set the response value
                 document.getElementById("g-recaptcha-response").innerHTML="{captcha_response}";
+                
+                // Set textarea value
                 var textarea = document.querySelector('textarea[name="g-recaptcha-response"]');
                 if (textarea) {{
                     textarea.innerHTML = "{captcha_response}";
                     textarea.value = "{captcha_response}";
+                    textarea.style.display = "block";
+                }}
+                
+                // Make the response visible (some forms check for this)
+                var responseDiv = document.getElementById("g-recaptcha-response");
+                if (responseDiv) {{
+                    responseDiv.style.display = "block";
                 }}
                 '''
             )
             
-            # Trigger callback
+            # Trigger all possible callbacks
             driver.execute_script(
                 f'''
+                // Trigger grecaptcha callback
                 if (typeof ___grecaptcha_cfg !== 'undefined') {{
                     var clients = ___grecaptcha_cfg.clients;
                     for (var client in clients) {{
                         var widgets = clients[client];
                         for (var widget in widgets) {{
                             if (widgets[widget] && widgets[widget].callback) {{
-                                widgets[widget].callback("{captcha_response}");
+                                try {{
+                                    widgets[widget].callback("{captcha_response}");
+                                }} catch(e) {{
+                                    console.log("Callback error:", e);
+                                }}
                             }}
                         }}
                     }}
                 }}
+                
+                // Try to find and trigger any reCAPTCHA callback function
+                if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.getResponse !== 'undefined') {{
+                    console.log("grecaptcha available");
+                }}
                 '''
             )
             
-            time.sleep(1)
-            logging.info("✅ Solution injected")
+            time.sleep(2)
+            logging.info("✅ CAPTCHA solution injected and callbacks triggered")
             return True
             
         except Exception as e:
@@ -188,7 +244,9 @@ class LavapopAutomation:
     
     def login(self, driver):
         """Login to Lavapop POS"""
-        logging.info("Starting login process...")
+        logging.info("="*60)
+        logging.info("STARTING LOGIN PROCESS")
+        logging.info("="*60)
         
         try:
             driver.get(self.pos_url)
@@ -202,15 +260,13 @@ class LavapopAutomation:
                 logging.info("✅ Already logged in, skipping login")
                 return True
             
-            # Find email field - try multiple selectors
+            # Find email field
             email_field = None
             selectors = [
+                'input[name="email"]',
                 'input[type="email"]',
                 'input[type="text"]',
-                'input[name="email"]',
                 'input[name="username"]',
-                'input[placeholder*="mail"]',
-                'input[placeholder*="usuário"]'
             ]
             
             for selector in selectors:
@@ -247,177 +303,209 @@ class LavapopAutomation:
             driver.save_screenshot(os.path.join(self.download_dir, "02_credentials_entered.png"))
             
             # Solve CAPTCHA
-            self.solve_recaptcha_v2(driver)
-            time.sleep(2)
+            if not self.solve_recaptcha_v2(driver):
+                logging.warning("CAPTCHA solving had issues, but continuing...")
             
+            time.sleep(3)
             driver.save_screenshot(os.path.join(self.download_dir, "03_before_submit.png"))
             
-            # Find login button
-            login_button = None
-            buttons = driver.find_elements(By.TAG_NAME, "button")
-            for btn in buttons:
-                if "entrar" in btn.text.lower() or "login" in btn.text.lower():
-                    login_button = btn
+            # Check for errors before submitting
+            error = self.check_for_errors(driver)
+            if error:
+                raise Exception(f"Error on page before login: {error}")
+            
+            # Method 1: Try submitting with Enter key (most reliable for CAPTCHA forms)
+            logging.info("Attempting form submission with Enter key...")
+            try:
+                password_field.send_keys(Keys.RETURN)
+                logging.info("✅ Submitted form with Enter key")
+                submitted = True
+            except Exception as e:
+                logging.warning(f"Enter key submission failed: {e}")
+                submitted = False
+            
+            # Method 2: Find and click login button (fallback)
+            if not submitted:
+                login_button = None
+                
+                methods = [
+                    ('text search', lambda: [btn for btn in driver.find_elements(By.TAG_NAME, "button") if "entrar" in btn.text.lower() or "login" in btn.text.lower()]),
+                    ('submit button', lambda: driver.find_elements(By.CSS_SELECTOR, 'button[type="submit"]')),
+                    ('submit input', lambda: driver.find_elements(By.CSS_SELECTOR, 'input[type="submit"]')),
+                ]
+                
+                for method_name, method in methods:
+                    try:
+                        buttons = method()
+                        if buttons:
+                            login_button = buttons[0]
+                            logging.info(f"Found login button using: {method_name}")
+                            break
+                    except:
+                        continue
+                
+                if not login_button:
+                    raise Exception("Login button not found and Enter key submission failed")
+                
+                # Click the button
+                try:
+                    login_button.click()
+                    logging.info("✅ Login button clicked")
+                except:
+                    # Try JavaScript click as fallback
+                    driver.execute_script("arguments[0].click();", login_button)
+                    logging.info("✅ Login button clicked (JavaScript)")
+            
+            # Wait longer for page to process and redirect
+            logging.info("Waiting for login to process...")
+            time.sleep(3)
+            
+            driver.save_screenshot(os.path.join(self.download_dir, "04_after_click.png"))
+            
+            # Check for errors after clicking
+            error = self.check_for_errors(driver)
+            if error:
+                logging.error(f"Login error detected: {error}")
+            
+            # Wait for URL change to dashboard (up to 15 seconds)
+            initial_url = driver.current_url
+            dashboard_url = f"{self.base_url}/system"
+            logging.info(f"Waiting for redirect from {initial_url} to {dashboard_url}")
+            
+            redirect_detected = False
+            for attempt in range(15):
+                time.sleep(1)
+                current_url = driver.current_url
+                
+                # Check if we reached the dashboard URL
+                if current_url.startswith(dashboard_url):
+                    logging.info(f"✅ Redirect successful! Now at: {current_url}")
+                    driver.save_screenshot(os.path.join(self.download_dir, f"05_redirect_success_{attempt}.png"))
+                    redirect_detected = True
                     break
+                
+                # Check if URL changed at all
+                if current_url != initial_url:
+                    logging.info(f"URL changed to: {current_url} (not dashboard yet)")
+                    driver.save_screenshot(os.path.join(self.download_dir, f"05_url_changed_{attempt}.png"))
+                
+                # Check if dashboard appeared without URL change (edge case)
+                if self.is_logged_in(driver):
+                    logging.info(f"Dashboard detected via content check")
+                    driver.save_screenshot(os.path.join(self.download_dir, f"05_dashboard_{attempt}.png"))
+                    redirect_detected = True
+                    break
+                
+                if attempt % 3 == 0 and attempt > 0:
+                    logging.info(f"Still waiting for redirect... ({attempt + 1}/15 seconds)")
             
-            if not login_button:
-                login_button = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
+            if not redirect_detected:
+                logging.warning(f"No redirect detected after 15 seconds. Current URL: {driver.current_url}")
             
-            login_button.click()
-            logging.info("✅ Login button clicked")
-            
-            time.sleep(5)
-            driver.save_screenshot(os.path.join(self.download_dir, "04_after_login.png"))
+            # Final verification
+            time.sleep(2)
+            driver.save_screenshot(os.path.join(self.download_dir, "06_final_state.png"))
             
             if self.is_logged_in(driver):
-                logging.info("✅ Login successful!")
+                final_url = driver.current_url
+                logging.info("="*60)
+                logging.info("✅ LOGIN SUCCESSFUL!")
+                logging.info(f"Dashboard URL: {final_url}")
+                logging.info("="*60)
                 return True
             else:
-                raise Exception("Login verification failed")
+                # Login failed - provide detailed debugging info
+                current_url = driver.current_url
+                page_title = driver.title
+                expected_url = f"{self.base_url}/system"
+                
+                logging.error("="*60)
+                logging.error("❌ LOGIN VERIFICATION FAILED")
+                logging.error(f"Expected URL: {expected_url}")
+                logging.error(f"Current URL:  {current_url}")
+                logging.error(f"Page title:   {page_title}")
+                logging.error("="*60)
+                
+                # Check for errors on page
+                error = self.check_for_errors(driver)
+                if error:
+                    raise Exception(f"Login failed with error: {error}")
+                else:
+                    raise Exception(f"Login failed: Expected redirect to {expected_url}, but stayed at {current_url}")
                 
         except Exception as e:
             logging.error(f"❌ Login failed: {e}")
             driver.save_screenshot(os.path.join(self.download_dir, "error_login.png"))
+            
+            # Save full page source for debugging
             with open(os.path.join(self.download_dir, "page_source.html"), "w", encoding="utf-8") as f:
                 f.write(driver.page_source)
+            
             raise
     
     def navigate_to_page(self, driver, direct_url, sidebar_text, page_name):
-        """
-        Robust navigation: Try direct URL first, fallback to sidebar
-        
-        Args:
-            direct_url: Direct URL to navigate to (e.g., /system/sale)
-            sidebar_text: Text to find in sidebar (e.g., "Venda")
-            page_name: Human-readable name for logging (e.g., "Sales")
-        """
+        """Robust navigation with triple fallback"""
         logging.info(f"="*60)
         logging.info(f"Navigating to {page_name} page")
         logging.info(f"="*60)
         
-        # METHOD 1: Direct URL navigation
-        logging.info(f"Method 1: Trying direct URL: {direct_url}")
+        # METHOD 1: Direct URL
+        logging.info(f"Method 1: Direct URL: {direct_url}")
         try:
             driver.get(direct_url)
             time.sleep(3)
             
-            current_url = driver.current_url
-            logging.info(f"Current URL: {current_url}")
-            
-            # Verify we're on the right page
             if sidebar_text.lower() in driver.page_source.lower():
-                logging.info(f"✅ Direct navigation successful to {page_name}")
+                logging.info(f"✅ Direct navigation successful")
                 return True
-            else:
-                logging.warning(f"Direct URL loaded but page content unexpected")
-                
         except Exception as e:
             logging.warning(f"Direct navigation failed: {e}")
         
-        # METHOD 2: Sidebar navigation
-        logging.info(f"Method 2: Trying sidebar navigation for '{sidebar_text}'")
+        # METHOD 2: Sidebar
+        logging.info(f"Method 2: Sidebar navigation")
         try:
-            # First, make sure we're on a page with sidebar
-            if 'login' in driver.current_url.lower():
-                logging.warning("Still on login page, cannot use sidebar")
-                return False
-            
-            # Try to find and click sidebar link
-            clicked = False
-            
-            # Try 1: Partial link text
-            try:
-                link = driver.find_element(By.PARTIAL_LINK_TEXT, sidebar_text)
-                if link.is_displayed():
-                    link.click()
-                    clicked = True
-                    logging.info(f"✅ Clicked sidebar link: {sidebar_text}")
-            except:
-                pass
-            
-            # Try 2: Search all clickable elements
-            if not clicked:
-                elements = driver.find_elements(By.CSS_SELECTOR, "a, button, div[onclick]")
-                for elem in elements:
-                    try:
-                        if sidebar_text.lower() in elem.text.lower() and elem.is_displayed():
-                            elem.click()
-                            clicked = True
-                            logging.info(f"✅ Clicked sidebar element: {elem.text}")
-                            break
-                    except:
-                        continue
-            
-            if clicked:
+            link = driver.find_element(By.PARTIAL_LINK_TEXT, sidebar_text)
+            if link.is_displayed():
+                link.click()
                 time.sleep(3)
-                logging.info(f"✅ Sidebar navigation successful to {page_name}")
+                logging.info(f"✅ Sidebar navigation successful")
                 return True
-            else:
-                logging.warning(f"Could not find sidebar element for '{sidebar_text}'")
-                
         except Exception as e:
             logging.warning(f"Sidebar navigation failed: {e}")
         
-        # METHOD 3: Try common URL patterns as last resort
-        logging.info(f"Method 3: Trying URL pattern variations")
-        url_variations = [
-            f"{self.base_url}/{sidebar_text.lower()}s",  # e.g., /vendas
-            f"{self.base_url}/{sidebar_text.lower()}",    # e.g., /venda
-            f"{self.base_url}/system/{sidebar_text.lower()}s",
-            f"{self.base_url}/system/{sidebar_text.lower()}",
+        # METHOD 3: URL variations
+        logging.info(f"Method 3: URL variations")
+        variations = [
+            f"{self.base_url}/{sidebar_text.lower()}s",
+            f"{self.base_url}/{sidebar_text.lower()}",
         ]
         
-        for url in url_variations:
+        for url in variations:
             try:
-                logging.info(f"Trying: {url}")
                 driver.get(url)
                 time.sleep(2)
-                
                 if sidebar_text.lower() in driver.page_source.lower():
                     logging.info(f"✅ URL variation successful: {url}")
                     return True
             except:
                 continue
         
-        logging.error(f"❌ All navigation methods failed for {page_name}")
+        logging.error(f"❌ All navigation methods failed")
         return False
     
     def find_and_click(self, driver, text_contains, screenshot_name=None):
-        """Find and click an element by text"""
+        """Find and click element"""
         logging.info(f"Looking for: '{text_contains}'")
         
         try:
-            # Try multiple XPath strategies
-            xpaths = [
-                f"//*[text()='{text_contains}']",
-                f"//*[contains(text(), '{text_contains}')]",
-                f"//button[contains(text(), '{text_contains}')]",
-                f"//a[contains(text(), '{text_contains}')]",
-                f"//div[contains(text(), '{text_contains}')]",
-            ]
-            
-            for xpath in xpaths:
+            elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{text_contains}')]")
+            for elem in elements:
                 try:
-                    elements = driver.find_elements(By.XPATH, xpath)
-                    for elem in elements:
-                        if elem.is_displayed() and elem.is_enabled():
-                            if screenshot_name:
-                                driver.save_screenshot(os.path.join(self.download_dir, screenshot_name))
-                            elem.click()
-                            logging.info(f"✅ Clicked: '{text_contains}'")
-                            return True
-                except:
-                    continue
-            
-            # Fallback: scan all elements
-            all_elements = driver.find_elements(By.CSS_SELECTOR, "a, button, div, span")
-            for elem in all_elements:
-                try:
-                    if text_contains.lower() in elem.text.lower() and elem.is_displayed():
+                    if elem.is_displayed() and elem.is_enabled():
                         if screenshot_name:
                             driver.save_screenshot(os.path.join(self.download_dir, screenshot_name))
                         elem.click()
-                        logging.info(f"✅ Clicked: '{text_contains}' (scan method)")
+                        logging.info(f"✅ Clicked: '{text_contains}'")
                         return True
                 except:
                     continue
@@ -430,101 +518,67 @@ class LavapopAutomation:
             return False
     
     def export_sales(self, driver):
-        """Export yesterday's sales data"""
+        """Export sales"""
         try:
-            # Navigate to sales page (tries both methods)
             if not self.navigate_to_page(driver, self.sales_url, "Venda", "Sales"):
-                raise Exception("Could not navigate to Sales page")
+                raise Exception("Could not navigate to Sales")
             
-            driver.save_screenshot(os.path.join(self.download_dir, "05_sales_page.png"))
+            driver.save_screenshot(os.path.join(self.download_dir, "10_sales_page.png"))
             
-            # Click period dropdown
-            logging.info("Step 1: Clicking period dropdown...")
-            if self.find_and_click(driver, "Ontem", "06_period_clicked.png"):
+            # Period selection workflow
+            if self.find_and_click(driver, "Ontem", "11_period.png"):
                 time.sleep(2)
-                
-                # Select "Ontem" from modal
-                logging.info("Step 2: Selecting 'Ontem' from date picker...")
                 ontem_buttons = driver.find_elements(By.XPATH, "//*[text()='Ontem']")
                 if len(ontem_buttons) > 1:
                     try:
                         ontem_buttons[1].click()
-                        logging.info("✅ Selected 'Ontem'")
                     except:
-                        logging.info("'Ontem' may already be selected")
-                time.sleep(1)
-                
-                driver.save_screenshot(os.path.join(self.download_dir, "07_ontem_selected.png"))
-                
-                # Click "Aplicar"
-                logging.info("Step 3: Clicking 'Aplicar'...")
-                if self.find_and_click(driver, "Aplicar", "08_aplicar_clicked.png"):
-                    time.sleep(2)
+                        pass
+                self.find_and_click(driver, "Aplicar", "12_aplicar.png")
+                time.sleep(2)
             
-            # Click "Buscar"
-            logging.info("Step 4: Clicking 'Buscar'...")
-            if self.find_and_click(driver, "Buscar", "09_buscar_clicked.png"):
-                time.sleep(4)
+            self.find_and_click(driver, "Buscar", "13_buscar.png")
+            time.sleep(4)
             
-            # Click "Exportar"
-            logging.info("Step 5: Clicking 'Exportar'...")
-            driver.save_screenshot(os.path.join(self.download_dir, "10_before_export.png"))
+            if not self.find_and_click(driver, "Exportar", "14_exportar.png"):
+                raise Exception("Export button not found")
             
-            if not self.find_and_click(driver, "Exportar", "11_export_clicked.png"):
-                raise Exception("Could not click 'Exportar' button")
-            
-            # Wait for download
-            logging.info("Waiting for download...")
             sales_file = self.wait_for_download(timeout=30)
-            
             if sales_file:
-                logging.info(f"✅ Sales file: {os.path.basename(sales_file)}")
+                logging.info(f"✅ Sales: {os.path.basename(sales_file)}")
                 return sales_file
-            else:
-                raise Exception("Sales download timeout")
-                
+            raise Exception("Sales download timeout")
+            
         except Exception as e:
-            logging.error(f"❌ Sales export failed: {e}")
+            logging.error(f"❌ Sales failed: {e}")
             driver.save_screenshot(os.path.join(self.download_dir, "error_sales.png"))
             raise
     
     def export_customers(self, driver):
-        """Export customer data"""
+        """Export customers"""
         try:
-            # Navigate to customer page (tries both methods)
             if not self.navigate_to_page(driver, self.customer_url, "Cliente", "Customer"):
-                raise Exception("Could not navigate to Customer page")
+                raise Exception("Could not navigate to Customers")
             
-            driver.save_screenshot(os.path.join(self.download_dir, "12_customer_page.png"))
+            driver.save_screenshot(os.path.join(self.download_dir, "20_customer_page.png"))
             
-            # Click "Exportar"
-            logging.info("Clicking 'Exportar'...")
-            driver.save_screenshot(os.path.join(self.download_dir, "13_before_export.png"))
+            if not self.find_and_click(driver, "Exportar", "21_exportar.png"):
+                raise Exception("Export button not found")
             
-            if not self.find_and_click(driver, "Exportar", "14_export_clicked.png"):
-                raise Exception("Could not click 'Exportar' button")
-            
-            # Wait for download
-            logging.info("Waiting for download...")
             customer_file = self.wait_for_download(timeout=30)
-            
             if customer_file:
-                logging.info(f"✅ Customer file: {os.path.basename(customer_file)}")
+                logging.info(f"✅ Customer: {os.path.basename(customer_file)}")
                 return customer_file
-            else:
-                raise Exception("Customer download timeout")
-                
+            raise Exception("Customer download timeout")
+            
         except Exception as e:
-            logging.error(f"❌ Customer export failed: {e}")
+            logging.error(f"❌ Customer failed: {e}")
             driver.save_screenshot(os.path.join(self.download_dir, "error_customer.png"))
             raise
     
     def wait_for_download(self, timeout=30):
-        """Wait for new CSV file"""
-        logging.info("Waiting for CSV download...")
-        
+        """Wait for CSV download"""
         initial_files = set(glob.glob(os.path.join(self.download_dir, "*.csv")))
-        logging.info(f"Initial CSV count: {len(initial_files)}")
         
         start_time = time.time()
         while time.time() - start_time < timeout:
@@ -532,34 +586,20 @@ class LavapopAutomation:
             new_files = current_files - initial_files
             
             for file in new_files:
-                if file.endswith('.crdownload') or file.endswith('.tmp'):
-                    continue
-                
-                try:
-                    if os.path.getsize(file) > 0:
-                        logging.info(f"New file: {os.path.basename(file)} ({os.path.getsize(file)} bytes)")
-                        time.sleep(1)
-                        return file
-                except:
-                    continue
-            
+                if not file.endswith('.crdownload') and not file.endswith('.tmp'):
+                    try:
+                        if os.path.getsize(file) > 0:
+                            time.sleep(1)
+                            return file
+                    except:
+                        continue
             time.sleep(1)
-        
-        # Timeout fallback
-        current_files = glob.glob(os.path.join(self.download_dir, "*.csv"))
-        logging.error(f"Download timeout. Total CSVs: {len(current_files)}")
-        
-        if current_files:
-            most_recent = max(current_files, key=os.path.getctime)
-            if most_recent not in initial_files:
-                logging.warning(f"Returning most recent: {os.path.basename(most_recent)}")
-                return most_recent
         
         return None
     
     def upload_to_google_drive(self, file_path, file_id, file_type):
         """Upload to Google Drive"""
-        logging.info(f"Uploading {file_type} to Google Drive...")
+        logging.info(f"Uploading {file_type}...")
         
         try:
             creds_dict = json.loads(self.google_creds_json)
@@ -580,7 +620,7 @@ class LavapopAutomation:
             ).execute()
             
             logging.info(f"✅ Uploaded: {updated_file.get('name')}")
-            logging.info(f"📎 Link: {updated_file.get('webViewLink')}")
+            logging.info(f"📎 {updated_file.get('webViewLink')}")
             
             return updated_file
             
@@ -592,41 +632,32 @@ class LavapopAutomation:
         """Main execution"""
         try:
             logging.info("="*60)
-            logging.info("LAVAPOP POS AUTOMATION - ROBUST VERSION")
+            logging.info("LAVAPOP POS AUTOMATION")
             logging.info("="*60)
             
             self.driver = self.setup_driver()
-            
-            # Login
             self.login(self.driver)
             
-            # Export sales
             sales_file = self.export_sales(self.driver)
-            
-            # Export customers
             customer_file = self.export_customers(self.driver)
             
-            # Upload to Google Drive
             if sales_file:
                 self.upload_to_google_drive(sales_file, self.sales_file_id, "sales")
-            
             if customer_file:
                 self.upload_to_google_drive(customer_file, self.customer_file_id, "customers")
             
             logging.info("="*60)
-            logging.info("✅ AUTOMATION COMPLETED SUCCESSFULLY!")
+            logging.info("✅ SUCCESS!")
             logging.info("="*60)
-            
             return True
             
         except Exception as e:
-            logging.error(f"❌ AUTOMATION FAILED: {e}", exc_info=True)
+            logging.error(f"❌ FAILED: {e}", exc_info=True)
             return False
             
         finally:
             if self.driver:
                 self.driver.quit()
-                logging.info("Browser closed")
 
 def main():
     automation = LavapopAutomation()
