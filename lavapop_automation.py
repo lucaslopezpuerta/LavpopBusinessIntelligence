@@ -1,10 +1,9 @@
 """
-Lavapop POS Automation - v1.1
-Changes:
-- Screenshots saved to root directory for GitHub Actions artifacts
-- Explicit submit button clicks (no Enter key fallback)
-- reCAPTCHA callback handling fixed
-- Multiple redirect detection strategies
+Lavapop POS Automation - v1.2
+Changes from v1.1:
+- Flexible login field detection (email, username, e-mail variations)
+- Better error messages showing which selectors failed
+- Logs field names found for debugging
 """
 
 from selenium import webdriver
@@ -24,7 +23,7 @@ import os
 import logging
 import glob
 
-VERSION = "1.1"
+VERSION = "1.2"
 
 # Setup logging
 logging.basicConfig(
@@ -99,6 +98,58 @@ class LavapopAutomation:
         driver.execute("send_command", params)
         
         return driver
+    
+    def find_login_field(self, driver, field_type):
+        """Find login field with flexible selectors"""
+        logging.info(f"🔍 Finding {field_type} field...")
+        
+        if field_type == "username":
+            # Try multiple selectors for email/username field
+            selectors = [
+                (By.NAME, "email"),
+                (By.NAME, "e-mail"),
+                (By.NAME, "username"),
+                (By.ID, "email"),
+                (By.ID, "username"),
+                (By.CSS_SELECTOR, "input[type='email']"),
+                (By.CSS_SELECTOR, "input[placeholder*='mail']"),
+                (By.CSS_SELECTOR, "input[placeholder*='Mail']"),
+                (By.XPATH, "//input[contains(@placeholder, 'mail') or contains(@placeholder, 'Mail')]"),
+            ]
+        else:  # password
+            selectors = [
+                (By.NAME, "password"),
+                (By.NAME, "senha"),
+                (By.ID, "password"),
+                (By.CSS_SELECTOR, "input[type='password']"),
+            ]
+        
+        # Try each selector
+        for selector_type, selector_value in selectors:
+            try:
+                field = WebDriverWait(driver, 2).until(
+                    EC.presence_of_element_located((selector_type, selector_value))
+                )
+                logging.info(f"✅ Found via {selector_type}={selector_value}")
+                # Log field details
+                field_name = field.get_attribute("name") or "no-name"
+                field_id = field.get_attribute("id") or "no-id"
+                logging.info(f"   Field details: name='{field_name}', id='{field_id}'")
+                return field
+            except TimeoutException:
+                continue
+        
+        # If all fail, log what's available
+        logging.error(f"❌ Could not find {field_type} field")
+        logging.error("Available input fields:")
+        inputs = driver.find_elements(By.TAG_NAME, "input")
+        for inp in inputs[:10]:  # Log first 10
+            try:
+                logging.error(f"  - type={inp.get_attribute('type')}, name={inp.get_attribute('name')}, id={inp.get_attribute('id')}")
+            except:
+                pass
+        
+        raise Exception(f"{field_type} field not found - check screenshot")
     
     def solve_recaptcha_v2(self, driver):
         """Solve reCAPTCHA v2 with callback execution"""
@@ -184,7 +235,7 @@ class LavapopAutomation:
             return False
     
     def login(self, driver):
-        """Login with explicit button clicking"""
+        """Login with flexible field detection"""
         try:
             logging.info(f"🌐 Opening: {self.pos_url}")
             driver.get(self.pos_url)
@@ -197,17 +248,18 @@ class LavapopAutomation:
             
             driver.save_screenshot("01_login_page.png")
             
-            # Fill credentials
+            # Fill credentials with flexible field detection
             logging.info("📝 Filling credentials...")
-            username_field = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.NAME, "username"))
-            )
+            
+            username_field = self.find_login_field(driver, "username")
             username_field.clear()
             username_field.send_keys(self.username)
+            logging.info("✅ Username/email filled")
             
-            password_field = driver.find_element(By.NAME, "password")
+            password_field = self.find_login_field(driver, "password")
             password_field.clear()
             password_field.send_keys(self.password)
+            logging.info("✅ Password filled")
             
             driver.save_screenshot("02_credentials_filled.png")
             
@@ -217,7 +269,7 @@ class LavapopAutomation:
             
             driver.save_screenshot("03_captcha_solved.png")
             
-            # EXPLICIT BUTTON CLICK - NO Enter key usage
+            # Find and click submit button
             logging.info("🔘 Finding submit button...")
             submit_button = None
             
@@ -238,7 +290,8 @@ class LavapopAutomation:
                     for btn in buttons:
                         if btn.is_displayed() and btn.is_enabled():
                             submit_button = btn
-                            logging.info(f"✅ Found: {btn.get_attribute('outerHTML')[:100]}")
+                            btn_text = btn.text or btn.get_attribute("value") or "no-text"
+                            logging.info(f"✅ Found button: '{btn_text}'")
                             break
                     if submit_button:
                         break
@@ -246,34 +299,32 @@ class LavapopAutomation:
                     continue
             
             if not submit_button:
-                raise Exception("Submit button not found - check screenshot 03_captcha_solved.png")
+                raise Exception("Submit button not found")
             
-            # Click submit button explicitly
-            logging.info("📤 Clicking submit button...")
+            # Click submit
+            logging.info("📤 Clicking submit...")
             try:
                 submit_button.click()
             except:
-                # If regular click fails, try JavaScript click
                 driver.execute_script("arguments[0].click();", submit_button)
             
             logging.info("✅ Button clicked")
             driver.save_screenshot("04_button_clicked.png")
             
-            # Wait for redirect with multiple strategies
+            # Wait for redirect
             logging.info("⏳ Waiting for redirect...")
             redirect_successful = False
             
-            # Strategy 1: Wait for URL change
             try:
                 WebDriverWait(driver, 30).until(
                     lambda d: d.current_url != self.pos_url and 'login' not in d.current_url.lower()
                 )
-                logging.info(f"✅ URL changed to: {driver.current_url}")
+                logging.info(f"✅ Redirected to: {driver.current_url}")
                 redirect_successful = True
             except TimeoutException:
-                logging.warning("⚠️ URL didn't change in 30s")
+                logging.warning("⚠️ URL didn't change")
             
-            # Strategy 2: Check for dashboard content
+            # Check dashboard content anyway
             time.sleep(3)
             if not redirect_successful:
                 if self.is_logged_in(driver):
@@ -286,7 +337,7 @@ class LavapopAutomation:
                 error = self.check_for_errors(driver)
                 if error:
                     raise Exception(f"Login error: {error}")
-                raise Exception("Redirect timeout - check screenshots")
+                raise Exception("Redirect timeout")
             
             # Final verification
             time.sleep(2)
@@ -320,7 +371,7 @@ class LavapopAutomation:
             
             # Check 3: No login form
             try:
-                driver.find_element(By.NAME, "username")
+                driver.find_element(By.CSS_SELECTOR, "input[type='password']")
                 return False
             except NoSuchElementException:
                 if found:
