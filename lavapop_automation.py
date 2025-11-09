@@ -1,6 +1,6 @@
 """
-Lavapop POS Automation - v1.5
-
+Lavapop POS Automation - v1.6
+Uses proven CAPTCHA callback from working version + direct URL navigation
 """
 
 from selenium import webdriver
@@ -13,21 +13,15 @@ from twocaptcha import TwoCaptcha
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-import json
-import time
+import json, time, os, logging, glob
 from datetime import datetime, timedelta
-import os
-import logging
-import glob
 
-# Setup logging
+VERSION = "1.6"
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('pos_automation.log'),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.FileHandler('pos_automation.log'), logging.StreamHandler()]
 )
 
 class LavapopAutomation:
@@ -35,66 +29,81 @@ class LavapopAutomation:
         self.download_dir = os.path.join(os.getcwd(), "downloads")
         os.makedirs(self.download_dir, exist_ok=True)
         
-        # Load environment variables
-        self.captcha_api_key = os.getenv('CAPTCHA_API_KEY')
-        self.solver = TwoCaptcha(self.captcha_api_key)
-        
+        self.solver = TwoCaptcha(os.getenv('CAPTCHA_API_KEY'))
         self.pos_url = os.getenv('POS_URL')
         self.username = os.getenv('POS_USERNAME')
         self.password = os.getenv('POS_PASSWORD')
         
-        # Google Drive settings
+        self.sales_url = "https://lavpop.maxpan.com.br/system/sale"
+        self.customer_url = "https://lavpop.maxpan.com.br/system/customer"
+        
         self.google_creds_json = os.getenv('GOOGLE_CREDENTIALS')
         self.sales_file_id = os.getenv('SALES_FILE_ID')
         self.customer_file_id = os.getenv('CUSTOMER_FILE_ID')
-        
         self.driver = None
         
+        logging.info("="*70)
+        logging.info(f"LAVAPOP POS AUTOMATION v{VERSION}")
+        logging.info("="*70)
+        
     def setup_driver(self):
-        """Configure Chrome for GitHub Actions"""
-        chrome_options = Options()
+        opts = Options()
+        opts.add_argument('--headless=new')
+        opts.add_argument('--no-sandbox')
+        opts.add_argument('--disable-dev-shm-usage')
+        opts.add_argument('--disable-gpu')
+        opts.add_argument('--window-size=1920,1080')
+        opts.add_argument('--disable-blink-features=AutomationControlled')
+        opts.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
         
-        # Required for GitHub Actions
-        chrome_options.add_argument('--headless=new')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--window-size=1920,1080')
-        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-        
-        # Download settings
         prefs = {
             "download.default_directory": self.download_dir,
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
             "safebrowsing.enabled": False
         }
-        chrome_options.add_experimental_option("prefs", prefs)
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
+        opts.add_experimental_option("prefs", prefs)
+        opts.add_experimental_option("excludeSwitches", ["enable-automation"])
+        opts.add_experimental_option('useAutomationExtension', False)
         
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = webdriver.Chrome(options=opts)
         driver.execute_cdp_cmd('Network.setUserAgentOverride', {
             "userAgent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
         
-        # Enable downloads in headless mode
         driver.command_executor._commands["send_command"] = ("POST", '/session/$sessionId/chromium/send_command')
         params = {'cmd': 'Page.setDownloadBehavior', 'params': {'behavior': 'allow', 'downloadPath': self.download_dir}}
         driver.execute("send_command", params)
         
         return driver
     
-    def solve_recaptcha_v2(self, driver):
-        """Solve reCAPTCHA v2 using 2Captcha"""
+    def find_clickable_element(self, text):
+        """Find clickable element by text with multiple strategies"""
+        strategies = [
+            (By.XPATH, f"//*[contains(text(), '{text}')]"),
+            (By.PARTIAL_LINK_TEXT, text),
+            (By.LINK_TEXT, text),
+        ]
+        
+        for by, selector in strategies:
+            try:
+                elements = self.driver.find_elements(by, selector)
+                for elem in elements:
+                    if elem.is_displayed() and elem.is_enabled():
+                        return elem
+            except:
+                continue
+        return None
+    
+    def solve_recaptcha_v2(self):
+        """Solve reCAPTCHA v2 using proven callback method"""
         logging.info("Detecting reCAPTCHA v2...")
         
         try:
             time.sleep(2)
             
-            # Find reCAPTCHA iframe and extract site key
-            iframes = driver.find_elements(By.TAG_NAME, "iframe")
+            # Find site key from iframe
+            iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
             site_key = None
             
             for iframe in iframes:
@@ -107,42 +116,36 @@ class LavapopAutomation:
             
             if not site_key:
                 try:
-                    recaptcha_div = driver.find_element(By.CLASS_NAME, "g-recaptcha")
+                    recaptcha_div = self.driver.find_element(By.CLASS_NAME, "g-recaptcha")
                     site_key = recaptcha_div.get_attribute("data-sitekey")
                 except:
                     pass
             
             if not site_key:
-                logging.error("Could not find reCAPTCHA site key")
-                return False
+                raise Exception("Could not find reCAPTCHA site key")
             
             logging.info(f"Found reCAPTCHA site key: {site_key}")
             logging.info("Sending CAPTCHA to 2Captcha for solving...")
             
             # Solve with 2Captcha
-            result = self.solver.recaptcha(
-                sitekey=site_key,
-                url=driver.current_url
-            )
-            
+            result = self.solver.recaptcha(sitekey=site_key, url=self.driver.current_url)
             captcha_response = result['code']
-            logging.info(f"✅ CAPTCHA solved! Token length: {len(captcha_response)}")
+            logging.info(f"✅ CAPTCHA solved! Response token: {captcha_response[:40]}...")
             
-            # Inject the solution
-            driver.execute_script(
-                f'''
+            # Inject solution into textarea
+            self.driver.execute_script(f'''
                 document.getElementById("g-recaptcha-response").innerHTML="{captcha_response}";
                 var textarea = document.querySelector('textarea[name="g-recaptcha-response"]');
                 if (textarea) {{
                     textarea.innerHTML = "{captcha_response}";
                     textarea.value = "{captcha_response}";
                 }}
-                '''
-            )
+            ''')
             
-            # Trigger callback
-            driver.execute_script(
-                f'''
+            logging.info("✅ reCAPTCHA solution injected")
+            
+            # CRITICAL: Trigger callback via ___grecaptcha_cfg (proven working method)
+            self.driver.execute_script(f'''
                 if (typeof ___grecaptcha_cfg !== 'undefined') {{
                     var clients = ___grecaptcha_cfg.clients;
                     for (var client in clients) {{
@@ -154,34 +157,34 @@ class LavapopAutomation:
                         }}
                     }}
                 }}
-                '''
-            )
+            ''')
             
             time.sleep(1)
-            logging.info("✅ reCAPTCHA solution injected")
+            logging.info("✅ reCAPTCHA callback executed")
             return True
             
         except Exception as e:
             logging.error(f"❌ reCAPTCHA solving failed: {e}")
             return False
     
-    def login(self, driver):
+    def login(self):
         """Login to Lavapop POS"""
         logging.info("Starting login process...")
         
         try:
-            driver.get(self.pos_url)
+            self.driver.get(self.pos_url)
             logging.info(f"Navigated to: {self.pos_url}")
             time.sleep(3)
             
-            driver.save_screenshot(os.path.join(self.download_dir, "01_login_page.png"))
+            self.driver.save_screenshot("01_login_page.png")
             
-            # Find email field
+            # Find and fill email field
             email_field = None
-            for selector in ['input[type="email"]', 'input[type="text"]']:
+            for selector in ['input[type="email"]', 'input[type="text"]', 'input[name="email"]']:
                 try:
-                    email_field = driver.find_element(By.CSS_SELECTOR, selector)
+                    email_field = self.driver.find_element(By.CSS_SELECTOR, selector)
                     if email_field.is_displayed():
+                        logging.info(f"✅ Found email field by attributes: {selector}")
                         break
                 except:
                     continue
@@ -194,349 +197,290 @@ class LavapopAutomation:
             logging.info("✅ Username entered")
             time.sleep(1)
             
-            # Find password field
-            password_field = driver.find_element(By.CSS_SELECTOR, 'input[type="password"]')
+            # Find and fill password field
+            password_field = self.driver.find_element(By.CSS_SELECTOR, 'input[type="password"]')
             password_field.clear()
             password_field.send_keys(self.password)
             logging.info("✅ Password entered")
             time.sleep(1)
             
-            driver.save_screenshot(os.path.join(self.download_dir, "02_before_captcha.png"))
+            self.driver.save_screenshot("02_credentials_filled.png")
             
             # Solve reCAPTCHA
-            if not self.solve_recaptcha_v2(driver):
+            if not self.solve_recaptcha_v2():
                 raise Exception("CAPTCHA solving failed")
             
             time.sleep(2)
-            driver.save_screenshot(os.path.join(self.download_dir, "03_after_captcha.png"))
+            self.driver.save_screenshot("03_captcha_solved.png")
             
-            # Find and click login button
-            login_button = None
-            buttons = driver.find_elements(By.TAG_NAME, "button")
-            for btn in buttons:
-                if "entrar" in btn.text.lower():
-                    login_button = btn
-                    break
+            # Find and click submit button with multiple methods
+            logging.info("Looking for 'Entrar' button...")
             
-            if not login_button:
-                login_button = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
+            submit_button = None
             
-            login_button.click()
-            logging.info("✅ Login button clicked")
+            # Method 1: By text content
+            submit_button = self.find_clickable_element("Entrar")
+            if submit_button:
+                logging.info("✅ Found 'Entrar' button by text")
             
-            # Wait longer for dashboard to load
-            time.sleep(8)
-            
-            driver.save_screenshot(os.path.join(self.download_dir, "04_after_login.png"))
-            
-            current_url = driver.current_url
-            logging.info(f"Current URL after login: {current_url}")
-            
-            # Check if login was successful by looking for dashboard elements
-            try:
-                # Look for any sidebar menu item
-                sidebar_items = driver.find_elements(By.CSS_SELECTOR, "a, button, div")
-                found_dashboard = False
-                
-                for item in sidebar_items:
-                    text = item.text.lower()
-                    if any(word in text for word in ["venda", "cliente", "dashboard", "cupom"]):
-                        found_dashboard = True
-                        logging.info(f"✅ Found dashboard element: {item.text}")
-                        break
-                
-                if found_dashboard:
-                    logging.info("✅ Login successful! Dashboard loaded")
-                    return True
-                else:
-                    logging.warning("Dashboard elements not found, but proceeding...")
-                    return True
-                    
-            except Exception as e:
-                logging.warning(f"Could not verify dashboard: {e}")
-                return True
-                
-        except Exception as e:
-            logging.error(f"❌ Login failed: {e}")
-            driver.save_screenshot(os.path.join(self.download_dir, "error_login.png"))
-            raise
-    
-    def find_clickable_element(self, driver, text_contains, timeout=10):
-        """Find a clickable element by text content"""
-        logging.info(f"Looking for element containing: '{text_contains}'")
-        
-        try:
-            # First try: direct text match
-            elements = driver.find_elements(By.XPATH, f"//*[contains(text(), '{text_contains}')]")
-            for elem in elements:
-                if elem.is_displayed():
-                    logging.info(f"Found element by text: {elem.tag_name}")
-                    return elem
-            
-            # Second try: case-insensitive
-            elements = driver.find_elements(By.XPATH, f"//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{text_contains.lower()}')]")
-            for elem in elements:
-                if elem.is_displayed():
-                    logging.info(f"Found element by case-insensitive text: {elem.tag_name}")
-                    return elem
-            
-            # Third try: search all elements
-            all_elements = driver.find_elements(By.CSS_SELECTOR, "a, button, div, span")
-            for elem in all_elements:
+            # Method 2: By type
+            if not submit_button:
                 try:
-                    if text_contains.lower() in elem.text.lower() and elem.is_displayed():
-                        logging.info(f"Found element by scanning: {elem.tag_name} - {elem.text}")
-                        return elem
+                    buttons = self.driver.find_elements(By.CSS_SELECTOR, "button[type='submit']")
+                    for btn in buttons:
+                        if btn.is_displayed():
+                            submit_button = btn
+                            logging.info("✅ Found submit button by type")
+                            break
                 except:
-                    continue
+                    pass
             
-            logging.error(f"Element not found: '{text_contains}'")
-            return None
+            # Method 3: Any button
+            if not submit_button:
+                try:
+                    buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                    for btn in buttons:
+                        if btn.is_displayed() and "entrar" in btn.text.lower():
+                            submit_button = btn
+                            logging.info("✅ Found button containing 'entrar'")
+                            break
+                except:
+                    pass
             
-        except Exception as e:
-            logging.error(f"Error finding element: {e}")
-            return None
-    
-    def export_sales(self, driver):
-        """Export yesterday's sales data"""
-        logging.info("="*60)
-        logging.info("Starting sales export...")
-        logging.info("="*60)
-        
-        try:
-            # Step 1: Navigate to Vendas page
-            logging.info("Step 1: Looking for 'Vendas' link...")
-            driver.save_screenshot(os.path.join(self.download_dir, "05_looking_for_vendas.png"))
+            if not submit_button:
+                raise Exception("Submit button not found")
             
-            # Try multiple ways to find and click Vendas
-            vendas_clicked = False
+            # Click with multiple methods
+            logging.info("Attempting to click login button...")
+            clicked = False
             
-            # Method 1: Direct link
+            # Try regular click
             try:
-                vendas_link = driver.find_element(By.PARTIAL_LINK_TEXT, "Venda")
-                vendas_link.click()
-                vendas_clicked = True
-                logging.info("✅ Clicked Vendas link (Method 1)")
+                submit_button.click()
+                clicked = True
+                logging.info("✅ Login button clicked (regular click)")
             except:
                 pass
             
-            # Method 2: Use our helper function
-            if not vendas_clicked:
-                vendas_elem = self.find_clickable_element(driver, "Venda")
-                if vendas_elem:
-                    vendas_elem.click()
-                    vendas_clicked = True
-                    logging.info("✅ Clicked Vendas link (Method 2)")
-            
-            # Method 3: Navigate directly to vendas URL
-            if not vendas_clicked:
-                base_url = self.pos_url.rsplit('/', 1)[0]
-                vendas_url = f"{base_url}/vendas"
-                logging.info(f"Navigating directly to: {vendas_url}")
-                driver.get(vendas_url)
-                vendas_clicked = True
-            
-            time.sleep(4)
-            driver.save_screenshot(os.path.join(self.download_dir, "06_vendas_page.png"))
-            logging.info("✅ On Vendas page")
-            
-            # Step 2: Click on Period dropdown
-            logging.info("Step 2: Looking for period dropdown...")
-            period_button = self.find_clickable_element(driver, "Ontem")
-            
-            if period_button:
-                period_button.click()
-                time.sleep(2)
-                driver.save_screenshot(os.path.join(self.download_dir, "07_period_dropdown.png"))
-                logging.info("✅ Clicked period dropdown")
-                
-                # Step 3: Select "Ontem" from modal
-                logging.info("Step 3: Selecting 'Ontem' from date picker...")
+            # Try JavaScript click
+            if not clicked:
                 try:
-                    # Look for "Ontem" button in the modal
-                    ontem_options = driver.find_elements(By.XPATH, "//*[text()='Ontem']")
-                    clicked_ontem = False
-                    
-                    for option in ontem_options:
-                        try:
-                            if option.is_displayed() and option.is_enabled():
-                                option.click()
-                                clicked_ontem = True
-                                logging.info("✅ Selected 'Ontem'")
-                                break
-                        except:
-                            continue
-                    
-                    if not clicked_ontem:
-                        logging.warning("Could not click Ontem, it might already be selected")
-                    
-                    time.sleep(1)
-                    driver.save_screenshot(os.path.join(self.download_dir, "08_ontem_selected.png"))
-                    
-                    # Step 4: Click "Aplicar" button
-                    logging.info("Step 4: Looking for 'Aplicar' button...")
-                    aplicar_button = self.find_clickable_element(driver, "Aplicar")
-                    
-                    if aplicar_button:
-                        aplicar_button.click()
-                        time.sleep(2)
-                        driver.save_screenshot(os.path.join(self.download_dir, "09_after_aplicar.png"))
-                        logging.info("✅ Clicked 'Aplicar'")
-                    else:
-                        logging.warning("'Aplicar' button not found, continuing...")
-                        
-                except Exception as e:
-                    logging.warning(f"Period selection issue: {e}, continuing...")
-            else:
-                logging.info("Period already set to 'Ontem' or dropdown not needed")
+                    self.driver.execute_script("arguments[0].click();", submit_button)
+                    clicked = True
+                    logging.info("✅ Login button clicked (JavaScript)")
+                except:
+                    pass
             
-            # Step 5: Click "Buscar" button
+            # Try action chains
+            if not clicked:
+                try:
+                    from selenium.webdriver.common.action_chains import ActionChains
+                    ActionChains(self.driver).move_to_element(submit_button).click().perform()
+                    clicked = True
+                    logging.info("✅ Login button clicked (ActionChains)")
+                except:
+                    pass
+            
+            if not clicked:
+                raise Exception("Could not click submit button")
+            
+            time.sleep(2)
+            self.driver.save_screenshot("04_after_click.png")
+            
+            # Wait for redirect
+            logging.info("Waiting for redirect...")
+            
+            initial_url = self.driver.current_url
+            redirect_timeout = 30
+            start_time = time.time()
+            
+            while time.time() - start_time < redirect_timeout:
+                current_url = self.driver.current_url
+                
+                # Check if URL changed
+                if current_url != initial_url and 'login' not in current_url.lower():
+                    logging.info(f"✅ Login appears successful (URL changed)")
+                    logging.info(f"Current URL after login: {current_url}")
+                    break
+                
+                time.sleep(1)
+            
+            time.sleep(3)
+            self.driver.save_screenshot("05_after_login.png")
+            
+            # Verify login success
+            current_url = self.driver.current_url
+            if 'login' in current_url.lower():
+                raise Exception("Still on login page after submit")
+            
+            logging.info("✅ Login successful!")
+            logging.info("="*70)
+            return True
+            
+        except Exception as e:
+            logging.error(f"❌ Login failed: {e}")
+            self.driver.save_screenshot("error_login.png")
+            raise
+    
+    def export_sales(self):
+        """Export sales data"""
+        logging.info("="*70)
+        logging.info("Starting sales export...")
+        logging.info("="*70)
+        
+        try:
+            # Navigate directly to sales page
+            logging.info(f"Step 1: Navigating to: {self.sales_url}")
+            self.driver.get(self.sales_url)
+            time.sleep(4)
+            self.driver.save_screenshot("06_sales_page.png")
+            logging.info("✅ On sales page")
+            
+            # Click period selector
+            logging.info("Step 2: Looking for period selector...")
+            period_btn = self.find_clickable_element("Ontem")
+            
+            if not period_btn:
+                raise Exception("Period selector 'Ontem' not found")
+            
+            period_btn.click()
+            logging.info("✅ Clicked period selector")
+            time.sleep(2)
+            self.driver.save_screenshot("07_period_menu_open.png")
+            
+            # Click "Ontem" option in dropdown
+            logging.info("Step 3: Selecting 'Ontem' from dropdown...")
+            ontem_options = self.driver.find_elements(By.XPATH, "//*[text()='Ontem']")
+            
+            if len(ontem_options) > 1:
+                ontem_options[1].click()
+                logging.info("✅ Selected 'Ontem' option")
+            else:
+                logging.warning("Only one 'Ontem' element found")
+            
+            time.sleep(1)
+            
+            # Click "Aplicar"
+            logging.info("Step 4: Looking for 'Aplicar' button...")
+            aplicar = self.find_clickable_element("Aplicar")
+            
+            if not aplicar:
+                raise Exception("'Aplicar' button not found")
+            
+            aplicar.click()
+            logging.info("✅ Clicked 'Aplicar'")
+            time.sleep(2)
+            self.driver.save_screenshot("08_period_applied.png")
+            
+            # Click "Buscar"
             logging.info("Step 5: Looking for 'Buscar' button...")
-            buscar_button = self.find_clickable_element(driver, "Buscar")
+            buscar = self.find_clickable_element("Buscar")
             
-            if buscar_button:
-                buscar_button.click()
-                time.sleep(4)
-                driver.save_screenshot(os.path.join(self.download_dir, "10_after_buscar.png"))
-                logging.info("✅ Clicked 'Buscar'")
-            else:
-                logging.info("'Buscar' button not found or not needed")
+            if not buscar:
+                raise Exception("'Buscar' button not found")
             
-            # Step 6: Click "Exportar" button
+            buscar.click()
+            logging.info("✅ Clicked 'Buscar'")
+            time.sleep(4)
+            self.driver.save_screenshot("09_search_complete.png")
+            
+            # Click "Exportar"
             logging.info("Step 6: Looking for 'Exportar' button...")
-            driver.save_screenshot(os.path.join(self.download_dir, "11_before_export.png"))
+            exportar = self.find_clickable_element("Exportar")
             
-            export_button = self.find_clickable_element(driver, "Exportar")
-            
-            if not export_button:
+            if not exportar:
                 raise Exception("'Exportar' button not found")
             
-            export_button.click()
-            logging.info("✅ Clicked 'Exportar' button")
+            exportar.click()
+            logging.info("✅ Clicked 'Exportar'")
             
             # Wait for download
-            sales_file = self.wait_for_download("venda", timeout=30)
+            sales_file = self.wait_for_download("", timeout=30)
             
-            if sales_file:
-                logging.info(f"✅ Sales file downloaded: {sales_file}")
-                return sales_file
-            else:
-                # Try looking for any CSV
-                sales_file = self.wait_for_download("", timeout=10)
-                if sales_file:
-                    logging.info(f"✅ CSV file downloaded: {sales_file}")
-                    return sales_file
+            if not sales_file:
                 raise Exception("Sales file download timeout")
+            
+            logging.info(f"✅ Sales file downloaded: {os.path.basename(sales_file)}")
+            self.driver.save_screenshot("10_sales_exported.png")
+            logging.info("="*70)
+            return sales_file
                 
         except Exception as e:
             logging.error(f"❌ Sales export failed: {e}")
-            driver.save_screenshot(os.path.join(self.download_dir, "error_sales.png"))
+            self.driver.save_screenshot("error_sales.png")
             raise
     
-    def export_customers(self, driver):
+    def export_customers(self):
         """Export customer data"""
-        logging.info("="*60)
+        logging.info("="*70)
         logging.info("Starting customer export...")
-        logging.info("="*60)
+        logging.info("="*70)
         
         try:
-            # Step 1: Navigate to Clientes page
-            logging.info("Step 1: Looking for 'Clientes' link...")
-            
-            clientes_clicked = False
-            
-            # Method 1: Direct link
-            try:
-                clientes_link = driver.find_element(By.PARTIAL_LINK_TEXT, "Cliente")
-                clientes_link.click()
-                clientes_clicked = True
-                logging.info("✅ Clicked Clientes link (Method 1)")
-            except:
-                pass
-            
-            # Method 2: Use helper function
-            if not clientes_clicked:
-                clientes_elem = self.find_clickable_element(driver, "Cliente")
-                if clientes_elem:
-                    clientes_elem.click()
-                    clientes_clicked = True
-                    logging.info("✅ Clicked Clientes link (Method 2)")
-            
-            # Method 3: Direct navigation
-            if not clientes_clicked:
-                base_url = self.pos_url.rsplit('/', 1)[0]
-                clientes_url = f"{base_url}/clientes"
-                logging.info(f"Navigating directly to: {clientes_url}")
-                driver.get(clientes_url)
-            
+            # Navigate directly to customers page
+            logging.info(f"Step 1: Navigating to: {self.customer_url}")
+            self.driver.get(self.customer_url)
             time.sleep(4)
-            driver.save_screenshot(os.path.join(self.download_dir, "12_clientes_page.png"))
-            logging.info("✅ On Clientes page")
+            self.driver.save_screenshot("11_customers_page.png")
+            logging.info("✅ On customers page")
             
-            # Step 2: Click "Exportar" button
+            # Click "Exportar"
             logging.info("Step 2: Looking for 'Exportar' button...")
+            exportar = self.find_clickable_element("Exportar")
             
-            export_button = self.find_clickable_element(driver, "Exportar")
-            
-            if not export_button:
+            if not exportar:
                 raise Exception("'Exportar' button not found")
             
-            export_button.click()
-            logging.info("✅ Clicked 'Exportar' button")
+            exportar.click()
+            logging.info("✅ Clicked 'Exportar'")
             
             # Wait for download
-            customer_file = self.wait_for_download("cliente", timeout=30)
+            customer_file = self.wait_for_download("", timeout=30)
             
-            if customer_file:
-                logging.info(f"✅ Customer file downloaded: {customer_file}")
-                return customer_file
-            else:
-                # Try looking for any CSV
-                customer_file = self.wait_for_download("", timeout=10)
-                if customer_file:
-                    logging.info(f"✅ CSV file downloaded: {customer_file}")
-                    return customer_file
+            if not customer_file:
                 raise Exception("Customer file download timeout")
+            
+            logging.info(f"✅ Customer file downloaded: {os.path.basename(customer_file)}")
+            self.driver.save_screenshot("12_customers_exported.png")
+            logging.info("="*70)
+            return customer_file
                 
         except Exception as e:
             logging.error(f"❌ Customer export failed: {e}")
-            driver.save_screenshot(os.path.join(self.download_dir, "error_customer.png"))
+            self.driver.save_screenshot("error_customers.png")
             raise
     
     def wait_for_download(self, filename_contains, timeout=30):
-        """Wait for a file to be downloaded"""
+        """Wait for file download"""
         logging.info(f"Waiting for download (filter: '{filename_contains}')...")
         
-        # Get initial files
         initial_files = set(glob.glob(os.path.join(self.download_dir, "*.csv")))
-        
         start_time = time.time()
+        
         while time.time() - start_time < timeout:
             current_files = set(glob.glob(os.path.join(self.download_dir, "*.csv")))
             new_files = current_files - initial_files
             
             for file in new_files:
-                # Skip incomplete downloads
                 if file.endswith('.crdownload') or file.endswith('.tmp'):
                     continue
                 
-                # Check if file has content
                 if os.path.getsize(file) > 0:
                     basename = os.path.basename(file).lower()
                     
-                    # If no filter, return first valid file
                     if not filename_contains:
                         logging.info(f"Found new file: {basename}")
+                        time.sleep(1)  # Extra wait for file completion
                         return file
                     
-                    # Check if filename matches filter
                     if filename_contains.lower() in basename:
                         logging.info(f"Found matching file: {basename}")
+                        time.sleep(1)
                         return file
             
             time.sleep(1)
         
-        # Timeout - return most recent file if filter is empty
+        # Timeout fallback
         if not filename_contains:
             all_files = glob.glob(os.path.join(self.download_dir, "*.csv"))
             if all_files:
@@ -548,22 +492,17 @@ class LavapopAutomation:
         return None
     
     def upload_to_google_drive(self, file_path, file_id, file_type):
-        """Upload or update file in Google Drive"""
+        """Upload file to Google Drive"""
         logging.info(f"Uploading {file_type} to Google Drive...")
         
         try:
-            # Parse credentials
             creds_dict = json.loads(self.google_creds_json)
             creds = Credentials.from_authorized_user_info(creds_dict)
-            
-            # Build Drive API
             service = build('drive', 'v3', credentials=creds)
             
-            # Create filename with date
             yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
             new_filename = f"{file_type}_{yesterday}.csv"
             
-            # Upload
             media = MediaFileUpload(file_path, mimetype='text/csv', resumable=True)
             file_metadata = {'name': new_filename}
             
@@ -586,20 +525,16 @@ class LavapopAutomation:
     def run(self):
         """Main execution"""
         try:
-            logging.info("="*60)
-            logging.info("LAVAPOP POS AUTOMATION")
-            logging.info("="*60)
-            
             self.driver = self.setup_driver()
             
             # Login
-            self.login(self.driver)
+            self.login()
             
             # Export sales
-            sales_file = self.export_sales(self.driver)
+            sales_file = self.export_sales()
             
             # Export customers
-            customer_file = self.export_customers(self.driver)
+            customer_file = self.export_customers()
             
             # Upload to Google Drive
             if sales_file:
@@ -608,9 +543,9 @@ class LavapopAutomation:
             if customer_file:
                 self.upload_to_google_drive(customer_file, self.customer_file_id, "customers")
             
-            logging.info("="*60)
+            logging.info("="*70)
             logging.info("✅ AUTOMATION COMPLETED SUCCESSFULLY!")
-            logging.info("="*60)
+            logging.info("="*70)
             
             return True
             
