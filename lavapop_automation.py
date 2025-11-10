@@ -16,7 +16,7 @@ import requests
 import json, time, os, logging, glob, re, random
 from datetime import datetime, timedelta
 
-VERSION = "2.8"
+VERSION = "2.9"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,10 +35,10 @@ class CapSolverAPI:
     
     def solve_recaptcha_v2_enterprise(self, sitekey, url, data_s=None, proxy=None):
         """
-        Solve Enterprise reCAPTCHA with proper configuration
+        Solve reCAPTCHA V2 (regular, not Enterprise)
         """
-        # Use proxy-based task for better success (recommended)
-        task_type = "ReCaptchaV2EnterpriseTask" if (self.use_proxy and proxy) else "ReCaptchaV2EnterpriseTaskProxyLess"
+        # Use regular V2 task (not Enterprise)
+        task_type = "ReCaptchaV2Task" if (self.use_proxy and proxy) else "ReCaptchaV2TaskProxyLess"
         
         task = {
             "type": task_type,
@@ -51,12 +51,11 @@ class CapSolverAPI:
             task["proxy"] = proxy
             logging.info(f"🔌 Using proxy: {proxy.split(':')[0]}:***")
         
-        # Add enterprise payload with data-s if found
+        # Note: Regular V2 doesn't use enterprisePayload
         if data_s:
-            task["enterprisePayload"] = {"s": data_s}
-            logging.info(f"📋 Including data-s: {data_s[:50]}...")
+            logging.info(f"📋 data-s found but not needed for regular V2: {data_s[:50]}...")
         else:
-            logging.warning("⚠️  No data-s - this will likely cause rejection")
+            logging.info("ℹ️  No data-s needed for regular reCAPTCHA V2")
         
         payload = {
             "clientKey": self.api_key,
