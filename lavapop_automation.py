@@ -1,9 +1,7 @@
 """
-Lavapop POS Automation v2.7
-- Advanced data-s extraction (Network monitoring + JS interception)
-- Optional proxy support for better token acceptance
-- Enhanced anti-detection measures
-- Fresh token generation immediately before submit
+Lavapop POS Automation v2.8
+- BFT (Block Frame Token) extraction from reCAPTCHA iframe
+- 6 data-s/bft extraction methods
 """
 
 from selenium import webdriver
@@ -18,7 +16,7 @@ import requests
 import json, time, os, logging, glob, re, random
 from datetime import datetime, timedelta
 
-VERSION = "2.7"
+VERSION = "2.8"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -208,8 +206,25 @@ class LavapopAutomation:
     def extract_data_s_advanced(self):
         """
         Advanced data-s extraction using multiple methods
+        Now includes BFT (Block Frame Token) extraction
         """
-        logging.info("🔍 Advanced data-s extraction...")
+        logging.info("🔍 Advanced data-s/bft extraction...")
+        
+        # Method 0: Extract BFT from reCAPTCHA bframe URL (CRITICAL)
+        try:
+            time.sleep(1)  # Wait for iframe to load
+            iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
+            for iframe in iframes:
+                src = iframe.get_attribute("src") or ""
+                if "recaptcha/api2/bframe" in src:
+                    # Extract bft parameter
+                    match = re.search(r'[\&?]bft=([^\&]+)', src)
+                    if match:
+                        bft = match.group(1)
+                        logging.info(f"✓ Method 0 (BFT): {bft[:50]}...")
+                        return bft
+        except Exception as e:
+            logging.debug(f"Method 0 (BFT) failed: {e}")
         
         # Method 1: JavaScript interception (inject before CAPTCHA loads)
         try:
