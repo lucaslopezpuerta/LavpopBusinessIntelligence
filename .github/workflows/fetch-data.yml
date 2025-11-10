@@ -17,7 +17,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use PERSONAL_ACCESS_TOKEN if available, fallback to GITHUB_TOKEN
+          # PAT is needed to trigger other workflows automatically
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -44,12 +46,6 @@ jobs:
           mkdir -p public/data
           cp data/*.csv public/data/
       
-      - name: Install React dependencies
-        run: npm ci
-      
-      - name: Build React app
-        run: npm run build
-      
       - name: Check for changes
         id: check_changes
         run: |
@@ -67,6 +63,15 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git commit -m "📄 Daily data update - $(TZ='America/Sao_Paulo' date '+%Y-%m-%d %H:%M %Z')"
           git push
+      
+      - name: Trigger deployment
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/dispatches \
+            -d '{"ref":"main"}'
       
       - name: Create issue on failure
         if: failure()
