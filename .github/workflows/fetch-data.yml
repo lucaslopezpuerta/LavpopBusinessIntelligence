@@ -37,7 +37,7 @@ jobs:
           TWILIO_FILE_ID: ${{ secrets.TWILIO_FILE_ID }}
           WEATHER_SHEET_ID: ${{ secrets.WEATHER_SHEET_ID }}
           CAMPAIGNS_SHEET_ID: ${{ secrets.CAMPAIGNS_SHEET_ID }}
-        run: node .github/scripts/fetch-sheets.js
+        run: node .github/scripts/fetch-sheets.cjs
       
       - name: Copy data for React app
         run: |
