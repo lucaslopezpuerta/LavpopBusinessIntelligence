@@ -1,5 +1,5 @@
 """
-v2.4 - Check Enterprise response structure
+v2.5 - Extract data-s parameter for Enterprise
 """
 
 from selenium import webdriver
@@ -14,7 +14,7 @@ from googleapiclient.http import MediaFileUpload
 import json, time, os, logging, glob
 from datetime import datetime, timedelta
 
-VERSION = "2.4"
+VERSION = "2.5"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s', handlers=[logging.FileHandler('pos_automation.log'), logging.StreamHandler()])
 
 class LavapopAutomation:
@@ -31,9 +31,7 @@ class LavapopAutomation:
         self.sales_file_id = os.getenv('SALES_FILE_ID')
         self.customer_file_id = os.getenv('CUSTOMER_FILE_ID')
         self.driver = None
-        logging.info(f"="*70)
-        logging.info(f"v{VERSION} - Debug Enterprise response")
-        logging.info("="*70)
+        logging.info(f"v{VERSION} - Extract data-s for Enterprise")
         
     def setup_driver(self):
         opts = Options()
@@ -60,32 +58,57 @@ class LavapopAutomation:
         
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'iframe[src*="recaptcha"]')))
         
-        sitekey = None
-        for iframe in self.driver.find_elements(By.TAG_NAME, "iframe"):
-            src = iframe.get_attribute("src") or ""
-            if "recaptcha" in src and "k=" in src:
-                sitekey = src.split("k=")[1].split("&")[0]
-                break
+        # Extract sitekey and data-s
+        params = self.driver.execute_script('''
+            var sitekey = null;
+            var dataS = null;
+            
+            // Get sitekey from div
+            var div = document.querySelector('.g-recaptcha');
+            if (div) {
+                sitekey = div.getAttribute('data-sitekey');
+                dataS = div.getAttribute('data-s');
+            }
+            
+            // Fallback to iframe
+            if (!sitekey) {
+                var iframes = document.querySelectorAll('iframe[src*="recaptcha"]');
+                for (var i = 0; i < iframes.length; i++) {
+                    var src = iframes[i].src;
+                    if (src.includes('k=')) {
+                        sitekey = src.split('k=')[1].split('&')[0];
+                        break;
+                    }
+                }
+            }
+            
+            return {sitekey: sitekey, dataS: dataS};
+        ''')
+        
+        sitekey = params['sitekey']
+        data_s = params['dataS']
         
         if not sitekey:
             raise Exception("No sitekey")
         
         logging.info(f"Sitekey: {sitekey}")
-        logging.info("Solving Enterprise...")
+        logging.info(f"data-s: {data_s if data_s else 'NOT FOUND'}")
         
-        result = self.solver.recaptcha(sitekey=sitekey, url=self.driver.current_url, enterprise=1)
+        # Solve with data-s if available
+        solve_params = {
+            'sitekey': sitekey,
+            'url': self.driver.current_url,
+            'enterprise': 1
+        }
         
-        # DEBUG: Log full response structure
-        logging.info(f"Response type: {type(result)}")
-        logging.info(f"Response keys: {result.keys() if isinstance(result, dict) else 'not a dict'}")
-        logging.info(f"Response: {result}")
-        
-        # Try to get token
-        if isinstance(result, dict):
-            token = result.get('code') or result.get('token') or result.get('gRecaptchaResponse')
+        if data_s:
+            solve_params['datas'] = data_s  # Note: 'datas' not 'data-s' per 2captcha docs
+            logging.info("✓ Sending with Enterprise payload")
         else:
-            token = result['code']  # fallback
+            logging.warning("⚠ No data-s found - may fail")
         
+        result = self.solver.recaptcha(**solve_params)
+        token = result['code']
         logging.info(f"✓ Token: {token[:40]}...")
         
         # Inject
@@ -109,7 +132,15 @@ class LavapopAutomation:
         time.sleep(5)
         
         if "preencha o captcha" in self.driver.find_element(By.TAG_NAME, "body").text.lower():
-            raise Exception("Token rejected")
+            logging.error("✗ FAILED - Token rejected even with data-s")
+            logging.error("   This site likely validates: risk score + project ID + IP")
+            logging.error("   2Captcha cannot bypass this level of Enterprise protection")
+            logging.error("")
+            logging.error("SOLUTION: Use cookie-based authentication:")
+            logging.error("   1. Log in manually once")
+            logging.error("   2. Export cookies")
+            logging.error("   3. Automation loads cookies (no CAPTCHA needed)")
+            raise Exception("Enterprise validation impossible with 2Captcha")
         
         if 'system' in self.driver.current_url:
             logging.info(f"✓ SUCCESS: {self.driver.current_url}")
