@@ -24,9 +24,8 @@ jobs:
         with:
           node-version: '20'
       
-      - name: Install dependencies
-        run: |
-          npm install googleapis csv-writer date-fns-tz
+      - name: Install dependencies for data fetch
+        run: npm install googleapis csv-writer date-fns-tz
       
       - name: Fetch data from Google Sheets
         env:
@@ -44,32 +43,31 @@ jobs:
         run: |
           mkdir -p public/data
           cp data/*.csv public/data/
-
+      
       - name: Install React dependencies
         run: npm ci
       
       - name: Build React app
         run: npm run build
       
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git add data/ dist/ public/data/
+          if git diff --cached --quiet; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Commit and push changes
         if: steps.check_changes.outputs.changes == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add data/ dist/ public/data/
           git commit -m "📄 Daily data update - $(TZ='America/Sao_Paulo' date '+%Y-%m-%d %H:%M %Z')"
           git push
-          
-      - name: Check for changes
-        id: check_changes
-        run: |
-           git add data/
-           if git diff --cached --quiet; then
-             echo "changes=false" >> $GITHUB_OUTPUT
-           else
-             echo "changes=true" >> $GITHUB_OUTPUT
-           fi
-                
+      
       - name: Create issue on failure
         if: failure()
         uses: actions/github-script@v7
