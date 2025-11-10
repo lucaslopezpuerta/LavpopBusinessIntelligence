@@ -1,6 +1,6 @@
 """
-Lavapop POS Automation - v2.1
-Fix: Wait for elements to load, use WebDriverWait
+Lavapop POS Automation - v2.2
+Fix: Add enterprise=1 parameter for reCAPTCHA v2 Enterprise
 """
 
 from selenium import webdriver
@@ -15,7 +15,7 @@ from googleapiclient.http import MediaFileUpload
 import json, time, os, logging, glob
 from datetime import datetime, timedelta
 
-VERSION = "2.1"
+VERSION = "2.2"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,7 +42,7 @@ class LavapopAutomation:
         self.driver = None
         
         logging.info("="*70)
-        logging.info(f"LAVAPOP v{VERSION}")
+        logging.info(f"LAVAPOP v{VERSION} - Enterprise mode")
         logging.info("="*70)
         
     def setup_driver(self):
@@ -66,27 +66,15 @@ class LavapopAutomation:
         logging.info("Login...")
         
         self.driver.get(self.pos_url)
-        
-        # Wait for page load
-        WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="email"]'))
-        )
+        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="email"]')))
         time.sleep(2)
-        self.driver.save_screenshot("01_page.png")
         
-        # Fill
         self.driver.find_element(By.CSS_SELECTOR, 'input[name="email"]').send_keys(self.username)
         self.driver.find_element(By.CSS_SELECTOR, 'input[type="password"]').send_keys(self.password)
-        
         logging.info("✓ Credentials")
-        self.driver.save_screenshot("02_creds.png")
         
-        # Wait for reCAPTCHA iframe
-        WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'iframe[src*="recaptcha"]'))
-        )
+        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'iframe[src*="recaptcha"]')))
         
-        # Get sitekey from iframe (most reliable method)
         sitekey = None
         for iframe in self.driver.find_elements(By.TAG_NAME, "iframe"):
             src = iframe.get_attribute("src") or ""
@@ -98,22 +86,27 @@ class LavapopAutomation:
             raise Exception("Sitekey not found")
         
         logging.info(f"Sitekey: {sitekey}")
+        logging.info("Solving as reCAPTCHA v2 Enterprise...")
         
-        # Solve
-        result = self.solver.recaptcha(sitekey=sitekey, url=self.driver.current_url)
+        # CRITICAL: enterprise=1 parameter for Enterprise version
+        result = self.solver.recaptcha(
+            sitekey=sitekey,
+            url=self.driver.current_url,
+            enterprise=1  # This is the key difference
+        )
+        
         token = result['code']
         logging.info(f"✓ Token: {token[:40]}...")
         
-        # Inject with PDF method (visible textarea + callback)
+        # Inject
         result = self.driver.execute_script(f'''
             var token = "{token}";
-            
             var textarea = document.getElementById("g-recaptcha-response");
             if (!textarea) return "no_textarea";
             
             textarea.value = token;
             textarea.innerHTML = token;
-            textarea.style.display = "block";  // Make visible per PDF
+            textarea.style.display = "block";
             
             var ran = false;
             if (typeof ___grecaptcha_cfg !== 'undefined') {{
@@ -128,34 +121,29 @@ class LavapopAutomation:
                 }}
             }}
             
-            return ran ? "visible+callback" : "visible_only";
+            return ran ? "callback_ran" : "no_callback";
         ''')
         
         logging.info(f"✓ Injection: {result}")
         time.sleep(3)
-        self.driver.save_screenshot("03_ready.png")
         
-        # Submit
         self.driver.find_element(By.XPATH, "//button[contains(text(), 'Entrar')]").click()
         logging.info("✓ Submitted")
         
         time.sleep(5)
-        self.driver.save_screenshot("04_after.png")
         
-        # Check
-        if "preencha o captcha" in self.driver.find_element(By.TAG_NAME, "body").text.lower():
-            raise Exception("Form rejected token - server-side validation")
+        body = self.driver.find_element(By.TAG_NAME, "body").text.lower()
+        if "preencha o captcha" in body:
+            raise Exception("Enterprise token rejected")
         
         if 'system' in self.driver.current_url:
-            logging.info(f"✓ Login: {self.driver.current_url}")
+            logging.info(f"✓ SUCCESS: {self.driver.current_url}")
             return True
         else:
             raise Exception(f"Failed: {self.driver.current_url}")
     
     def export_sales(self):
-        logging.info("="*70)
         logging.info("Sales...")
-        
         self.driver.get(self.sales_url)
         time.sleep(4)
         
@@ -176,14 +164,11 @@ class LavapopAutomation:
         
         f = self.wait_download()
         logging.info(f"✓ {os.path.basename(f)}")
-        
         self.upload_drive(f, self.sales_file_id, "sales")
         return f
     
     def export_customers(self):
-        logging.info("="*70)
         logging.info("Customers...")
-        
         self.driver.get(self.customer_url)
         time.sleep(4)
         
@@ -191,7 +176,6 @@ class LavapopAutomation:
         
         f = self.wait_download()
         logging.info(f"✓ {os.path.basename(f)}")
-        
         self.upload_drive(f, self.customer_file_id, "customers")
         return f
     
@@ -225,13 +209,12 @@ class LavapopAutomation:
     def run(self):
         try:
             self.driver = self.setup_driver()
-            
             self.login()
             self.export_sales()
             self.export_customers()
             
             logging.info("="*70)
-            logging.info("✓ SUCCESS")
+            logging.info("✓ COMPLETE")
             logging.info("="*70)
             return True
             
