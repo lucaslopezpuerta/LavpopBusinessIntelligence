@@ -1,10 +1,12 @@
 """
-Lavapop POS Automation - v2.0
-CRITICAL FIX: Make textarea visible as shown in 2Captcha PDF
+Lavapop POS Automation - v2.1
+Fix: Wait for elements to load, use WebDriverWait
 """
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from twocaptcha import TwoCaptcha
 from google.oauth2.credentials import Credentials
@@ -13,7 +15,7 @@ from googleapiclient.http import MediaFileUpload
 import json, time, os, logging, glob
 from datetime import datetime, timedelta
 
-VERSION = "2.0"
+VERSION = "2.1"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,7 +42,7 @@ class LavapopAutomation:
         self.driver = None
         
         logging.info("="*70)
-        logging.info(f"LAVAPOP v{VERSION} - PDF Method: Make textarea visible")
+        logging.info(f"LAVAPOP v{VERSION}")
         logging.info("="*70)
         
     def setup_driver(self):
@@ -64,24 +66,36 @@ class LavapopAutomation:
         logging.info("Login...")
         
         self.driver.get(self.pos_url)
-        time.sleep(3)
+        
+        # Wait for page load
+        WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="email"]'))
+        )
+        time.sleep(2)
         self.driver.save_screenshot("01_page.png")
         
-        # Credentials
+        # Fill
         self.driver.find_element(By.CSS_SELECTOR, 'input[name="email"]').send_keys(self.username)
         self.driver.find_element(By.CSS_SELECTOR, 'input[type="password"]').send_keys(self.password)
         
-        logging.info("✓ Credentials filled")
+        logging.info("✓ Credentials")
         self.driver.save_screenshot("02_creds.png")
         
-        # Get sitekey
-        sitekey = self.driver.execute_script('return document.querySelector(".g-recaptcha").getAttribute("data-sitekey");')
+        # Wait for reCAPTCHA iframe
+        WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'iframe[src*="recaptcha"]'))
+        )
+        
+        # Get sitekey from iframe (most reliable method)
+        sitekey = None
+        for iframe in self.driver.find_elements(By.TAG_NAME, "iframe"):
+            src = iframe.get_attribute("src") or ""
+            if "recaptcha" in src and "k=" in src:
+                sitekey = src.split("k=")[1].split("&")[0]
+                break
+        
         if not sitekey:
-            for iframe in self.driver.find_elements(By.TAG_NAME, "iframe"):
-                src = iframe.get_attribute("src") or ""
-                if "recaptcha" in src and "k=" in src:
-                    sitekey = src.split("k=")[1].split("&")[0]
-                    break
+            raise Exception("Sitekey not found")
         
         logging.info(f"Sitekey: {sitekey}")
         
@@ -90,51 +104,35 @@ class LavapopAutomation:
         token = result['code']
         logging.info(f"✓ Token: {token[:40]}...")
         
-        # PDF METHOD: Set value AND make visible
-        completion = self.driver.execute_script(f'''
+        # Inject with PDF method (visible textarea + callback)
+        result = self.driver.execute_script(f'''
             var token = "{token}";
             
-            // Find textarea
             var textarea = document.getElementById("g-recaptcha-response");
             if (!textarea) return "no_textarea";
             
-            // Set value
-            textarea.innerHTML = token;
             textarea.value = token;
+            textarea.innerHTML = token;
+            textarea.style.display = "block";  // Make visible per PDF
             
-            // CRITICAL: Remove display:none to make it VISIBLE (PDF Step 9)
-            textarea.style.display = "block";
-            
-            // Execute callback
-            var callbackRan = false;
+            var ran = false;
             if (typeof ___grecaptcha_cfg !== 'undefined') {{
                 var clients = ___grecaptcha_cfg.clients;
-                for (var client in clients) {{
-                    for (var widget in clients[client]) {{
-                        if (clients[client][widget] && clients[client][widget].callback) {{
-                            clients[client][widget].callback(token);
-                            callbackRan = true;
+                for (var c in clients) {{
+                    for (var w in clients[c]) {{
+                        if (clients[c][w] && clients[c][w].callback) {{
+                            clients[c][w].callback(token);
+                            ran = true;
                         }}
                     }}
                 }}
             }}
             
-            return callbackRan ? "visible_callback_ran" : "visible_no_callback";
+            return ran ? "visible+callback" : "visible_only";
         ''')
         
-        logging.info(f"✓ Injection: {completion}")
-        
+        logging.info(f"✓ Injection: {result}")
         time.sleep(3)
-        
-        # Verify visible
-        is_visible = self.driver.execute_script('''
-            var textarea = document.getElementById("g-recaptcha-response");
-            if (!textarea) return false;
-            var style = window.getComputedStyle(textarea);
-            return style.display !== "none" && textarea.value.length > 0;
-        ''')
-        
-        logging.info(f"Textarea visible with token: {is_visible}")
         self.driver.save_screenshot("03_ready.png")
         
         # Submit
@@ -145,16 +143,14 @@ class LavapopAutomation:
         self.driver.save_screenshot("04_after.png")
         
         # Check
-        body = self.driver.find_element(By.TAG_NAME, "body").text.lower()
-        if "preencha o captcha" in body:
-            logging.error("✗ Still rejected - server-side validation failed")
-            raise Exception("CAPTCHA validation failed")
+        if "preencha o captcha" in self.driver.find_element(By.TAG_NAME, "body").text.lower():
+            raise Exception("Form rejected token - server-side validation")
         
         if 'system' in self.driver.current_url:
-            logging.info(f"✓ SUCCESS: {self.driver.current_url}")
+            logging.info(f"✓ Login: {self.driver.current_url}")
             return True
         else:
-            raise Exception(f"URL: {self.driver.current_url}")
+            raise Exception(f"Failed: {self.driver.current_url}")
     
     def export_sales(self):
         logging.info("="*70)
@@ -166,9 +162,9 @@ class LavapopAutomation:
         self.driver.find_element(By.XPATH, "//*[contains(text(), 'Ontem')]").click()
         time.sleep(2)
         
-        options = self.driver.find_elements(By.XPATH, "//*[text()='Ontem']")
-        if len(options) > 1:
-            options[1].click()
+        opts = self.driver.find_elements(By.XPATH, "//*[text()='Ontem']")
+        if len(opts) > 1:
+            opts[1].click()
         
         self.driver.find_element(By.XPATH, "//*[contains(text(), 'Aplicar')]").click()
         time.sleep(2)
@@ -178,11 +174,11 @@ class LavapopAutomation:
         
         self.driver.find_element(By.XPATH, "//*[contains(text(), 'Exportar')]").click()
         
-        file = self.wait_download()
-        logging.info(f"✓ {os.path.basename(file)}")
+        f = self.wait_download()
+        logging.info(f"✓ {os.path.basename(f)}")
         
-        self.upload_drive(file, self.sales_file_id, "sales")
-        return file
+        self.upload_drive(f, self.sales_file_id, "sales")
+        return f
     
     def export_customers(self):
         logging.info("="*70)
@@ -193,11 +189,11 @@ class LavapopAutomation:
         
         self.driver.find_element(By.XPATH, "//*[contains(text(), 'Exportar')]").click()
         
-        file = self.wait_download()
-        logging.info(f"✓ {os.path.basename(file)}")
+        f = self.wait_download()
+        logging.info(f"✓ {os.path.basename(f)}")
         
-        self.upload_drive(file, self.customer_file_id, "customers")
-        return file
+        self.upload_drive(f, self.customer_file_id, "customers")
+        return f
     
     def wait_download(self, timeout=30):
         initial = set(glob.glob(os.path.join(self.download_dir, "*.csv")))
@@ -215,16 +211,16 @@ class LavapopAutomation:
         
         raise Exception("Download timeout")
     
-    def upload_drive(self, file_path, file_id, file_type):
+    def upload_drive(self, path, fid, ftype):
         creds = Credentials.from_authorized_user_info(json.loads(self.google_creds_json))
-        service = build('drive', 'v3', credentials=creds)
+        svc = build('drive', 'v3', credentials=creds)
         
         yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-        filename = f"{file_type}_{yesterday}.csv"
+        name = f"{ftype}_{yesterday}.csv"
         
-        media = MediaFileUpload(file_path, mimetype='text/csv')
-        service.files().update(fileId=file_id, body={'name': filename}, media_body=media).execute()
-        logging.info(f"✓ Uploaded: {filename}")
+        media = MediaFileUpload(path, mimetype='text/csv')
+        svc.files().update(fileId=fid, body={'name': name}, media_body=media).execute()
+        logging.info(f"✓ Drive: {name}")
     
     def run(self):
         try:
@@ -240,7 +236,7 @@ class LavapopAutomation:
             return True
             
         except Exception as e:
-            logging.error(f"✗ FAILED: {e}", exc_info=True)
+            logging.error(f"✗ {e}", exc_info=True)
             self.driver.save_screenshot("error.png")
             return False
         finally:
