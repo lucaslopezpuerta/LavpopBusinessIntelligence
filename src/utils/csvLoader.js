@@ -1,6 +1,7 @@
 /**
  * CSV Loader - Fetches and parses CSV files from /data folder
  * Uses PapaParse for robust CSV parsing
+ * Version 1.1 - Fixed base path and added detailed error messages
  */
 
 import Papa from 'papaparse';
@@ -10,12 +11,23 @@ import Papa from 'papaparse';
  */
 export const loadCSV = async (filename) => {
   try {
-    const response = await fetch(`/data/${filename}`);
+    // Use base path from Vite config (/LavpopBusinessIntelligence/)
+    const basePath = import.meta.env.BASE_URL;
+    const url = `${basePath}data/${filename}`;
+    
+    console.log(`Loading ${filename} from ${url}`);
+    
+    const response = await fetch(url);
+    
     if (!response.ok) {
-      throw new Error(`Failed to load ${filename}: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}: Não foi possível carregar ${filename}. URL: ${url}`);
     }
     
     const csvText = await response.text();
+    
+    if (!csvText || csvText.trim().length === 0) {
+      throw new Error(`${filename} está vazio`);
+    }
     
     return new Promise((resolve, reject) => {
       Papa.parse(csvText, {
@@ -24,17 +36,24 @@ export const loadCSV = async (filename) => {
         transformHeader: (header) => header.trim(),
         complete: (results) => {
           if (results.errors.length > 0) {
-            console.warn(`Warnings parsing ${filename}:`, results.errors);
+            console.warn(`Avisos ao processar ${filename}:`, results.errors);
           }
+          
+          if (!results.data || results.data.length === 0) {
+            reject(new Error(`${filename} não contém dados válidos`));
+            return;
+          }
+          
+          console.log(`✓ Loaded ${filename}: ${results.data.length} rows`);
           resolve(results.data);
         },
         error: (error) => {
-          reject(new Error(`Parse error in ${filename}: ${error.message}`));
+          reject(new Error(`Erro ao processar ${filename}: ${error.message}`));
         }
       });
     });
   } catch (error) {
-    console.error(`Error loading ${filename}:`, error);
+    console.error(`Erro ao carregar ${filename}:`, error);
     throw error;
   }
 };
@@ -70,11 +89,9 @@ export const loadAllData = async (onProgress) => {
           percent: Math.round((loaded / files.length) * 100)
         });
       }
-      
-      console.log(`✓ Loaded ${file}: ${data[key].length} rows`);
     } catch (error) {
-      console.error(`✗ Failed to load ${file}:`, error);
-      data[file.replace('.csv', '')] = [];
+      // Re-throw with more context
+      throw new Error(`Falha ao carregar ${file}: ${error.message}`);
     }
   }
   
