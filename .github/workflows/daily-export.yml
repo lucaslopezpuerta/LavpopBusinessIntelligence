@@ -2,11 +2,9 @@ name: Daily POS Export to Google Drive
 
 on:
   schedule:
-    # Run daily at 6 AM UTC (adjust for your timezone)
-    # For Brazil (UTC-3), 6 AM UTC = 3 AM Brazil time
-    # For 9 AM Brazil time, use: '0 12 * * *'
-    - cron: '0 6 * * *'
-  workflow_dispatch:  # Allows manual trigger
+    # Run daily at 1 AM Brazil time (4 AM UTC / 6 AM UTC-2 DST)
+    - cron: '0 4 * * *'
+  workflow_dispatch:  # Allows manual trigger for testing
 
 jobs:
   export-pos-data:
@@ -32,7 +30,7 @@ jobs:
         
     - name: Run POS export automation
       env:
-        CAPTCHA_API_KEY: ${{ secrets.CAPTCHA_API_KEY }}
+        CAPSOLVER_API_KEY: ${{ secrets.CAPSOLVER_API_KEY }}
         POS_URL: ${{ secrets.POS_URL }}
         POS_USERNAME: ${{ secrets.POS_USERNAME }}
         POS_PASSWORD: ${{ secrets.POS_PASSWORD }}
@@ -45,7 +43,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: error-logs-${{ github.run_number }}
+        name: automation-logs-${{ github.run_number }}
         path: |
           *.log
           *.png
