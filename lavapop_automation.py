@@ -1,6 +1,6 @@
 """
-Lavapop POS Automation - v1.9
-Following 2Captcha documented approach exactly
+Lavapop POS Automation - v2.0
+CRITICAL FIX: Make textarea visible as shown in 2Captcha PDF
 """
 
 from selenium import webdriver
@@ -13,7 +13,7 @@ from googleapiclient.http import MediaFileUpload
 import json, time, os, logging, glob
 from datetime import datetime, timedelta
 
-VERSION = "1.9"
+VERSION = "2.0"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,7 +40,7 @@ class LavapopAutomation:
         self.driver = None
         
         logging.info("="*70)
-        logging.info(f"LAVAPOP v{VERSION} - 2Captcha documented method")
+        logging.info(f"LAVAPOP v{VERSION} - PDF Method: Make textarea visible")
         logging.info("="*70)
         
     def setup_driver(self):
@@ -61,27 +61,22 @@ class LavapopAutomation:
         return driver
     
     def login(self):
-        logging.info("Login process...")
+        logging.info("Login...")
         
         self.driver.get(self.pos_url)
         time.sleep(3)
         self.driver.save_screenshot("01_page.png")
         
-        # Fill credentials
+        # Credentials
         self.driver.find_element(By.CSS_SELECTOR, 'input[name="email"]').send_keys(self.username)
         self.driver.find_element(By.CSS_SELECTOR, 'input[type="password"]').send_keys(self.password)
         
         logging.info("✓ Credentials filled")
         self.driver.save_screenshot("02_creds.png")
         
-        # Get sitekey from div (2Captcha documented way)
-        sitekey = self.driver.execute_script('''
-            var div = document.querySelector('.g-recaptcha');
-            return div ? div.getAttribute('data-sitekey') : null;
-        ''')
-        
+        # Get sitekey
+        sitekey = self.driver.execute_script('return document.querySelector(".g-recaptcha").getAttribute("data-sitekey");')
         if not sitekey:
-            # Fallback to iframe
             for iframe in self.driver.find_elements(By.TAG_NAME, "iframe"):
                 src = iframe.get_attribute("src") or ""
                 if "recaptcha" in src and "k=" in src:
@@ -89,100 +84,84 @@ class LavapopAutomation:
                     break
         
         logging.info(f"Sitekey: {sitekey}")
-        logging.info("Solving with 2Captcha...")
         
         # Solve
         result = self.solver.recaptcha(sitekey=sitekey, url=self.driver.current_url)
         token = result['code']
         logging.info(f"✓ Token: {token[:40]}...")
         
-        # 2CAPTCHA DOCUMENTED METHOD: Set textarea then trigger callback
-        inject_result = self.driver.execute_script(f'''
+        # PDF METHOD: Set value AND make visible
+        completion = self.driver.execute_script(f'''
             var token = "{token}";
             
-            // Step 1: Find and set textarea (documented method)
+            // Find textarea
             var textarea = document.getElementById("g-recaptcha-response");
             if (!textarea) return "no_textarea";
             
+            // Set value
             textarea.innerHTML = token;
             textarea.value = token;
-            textarea.style.display = "block";  // Make visible for debugging
             
-            // Step 2: Trigger callback via ___grecaptcha_cfg (proven working)
-            var callbackExecuted = false;
+            // CRITICAL: Remove display:none to make it VISIBLE (PDF Step 9)
+            textarea.style.display = "block";
+            
+            // Execute callback
+            var callbackRan = false;
             if (typeof ___grecaptcha_cfg !== 'undefined') {{
                 var clients = ___grecaptcha_cfg.clients;
                 for (var client in clients) {{
                     for (var widget in clients[client]) {{
-                        var widgetObj = clients[client][widget];
-                        if (widgetObj && widgetObj.callback) {{
-                            widgetObj.callback(token);
-                            callbackExecuted = true;
+                        if (clients[client][widget] && clients[client][widget].callback) {{
+                            clients[client][widget].callback(token);
+                            callbackRan = true;
                         }}
                     }}
                 }}
             }}
             
-            // Step 3: Mark reCAPTCHA as complete in internal state
-            if (typeof grecaptcha !== 'undefined') {{
-                // Override getResponse to return our token
-                var originalGetResponse = grecaptcha.getResponse;
-                grecaptcha.getResponse = function() {{ return token; }};
-            }}
-            
-            // Step 4: Find the g-recaptcha div and mark it as complete
-            var recaptchaDiv = document.querySelector('.g-recaptcha');
-            if (recaptchaDiv) {{
-                recaptchaDiv.setAttribute('data-response', token);
-            }}
-            
-            return callbackExecuted ? "success_with_callback" : "success_no_callback";
+            return callbackRan ? "visible_callback_ran" : "visible_no_callback";
         ''')
         
-        logging.info(f"✓ Injection: {inject_result}")
+        logging.info(f"✓ Injection: {completion}")
         
-        # Wait for any async processing
         time.sleep(3)
         
-        # Verify textarea has value
-        has_value = self.driver.execute_script('''
+        # Verify visible
+        is_visible = self.driver.execute_script('''
             var textarea = document.getElementById("g-recaptcha-response");
-            return textarea && textarea.value.length > 0;
+            if (!textarea) return false;
+            var style = window.getComputedStyle(textarea);
+            return style.display !== "none" && textarea.value.length > 0;
         ''')
         
-        logging.info(f"Textarea has token: {has_value}")
+        logging.info(f"Textarea visible with token: {is_visible}")
         self.driver.save_screenshot("03_ready.png")
         
-        # Submit form
+        # Submit
         self.driver.find_element(By.XPATH, "//button[contains(text(), 'Entrar')]").click()
         logging.info("✓ Submitted")
         
         time.sleep(5)
         self.driver.save_screenshot("04_after.png")
         
-        # Check for error
+        # Check
         body = self.driver.find_element(By.TAG_NAME, "body").text.lower()
         if "preencha o captcha" in body:
-            logging.error("✗ Form validation rejected our token")
-            logging.error("Possible causes:")
-            logging.error("  1. Form validates token server-side with Google")
-            logging.error("  2. Browser fingerprint mismatch")
-            logging.error("  3. This site has additional anti-bot protection")
+            logging.error("✗ Still rejected - server-side validation failed")
             raise Exception("CAPTCHA validation failed")
         
         if 'system' in self.driver.current_url:
-            logging.info(f"✓ Login success: {self.driver.current_url}")
+            logging.info(f"✓ SUCCESS: {self.driver.current_url}")
             return True
         else:
-            raise Exception(f"URL didn't change: {self.driver.current_url}")
+            raise Exception(f"URL: {self.driver.current_url}")
     
     def export_sales(self):
         logging.info("="*70)
-        logging.info("Sales export...")
+        logging.info("Sales...")
         
         self.driver.get(self.sales_url)
         time.sleep(4)
-        self.driver.save_screenshot("05_sales.png")
         
         self.driver.find_element(By.XPATH, "//*[contains(text(), 'Ontem')]").click()
         time.sleep(2)
@@ -207,7 +186,7 @@ class LavapopAutomation:
     
     def export_customers(self):
         logging.info("="*70)
-        logging.info("Customer export...")
+        logging.info("Customers...")
         
         self.driver.get(self.customer_url)
         time.sleep(4)
