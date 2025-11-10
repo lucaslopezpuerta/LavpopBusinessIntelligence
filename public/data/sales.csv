@@ -1,0 +1,3 @@
+"Data_Hora","Valor_Venda","Valor_Pago","Meio_de_Pagamento","Comprovante_cartao","Bandeira_Cartao","Loja","Nome_Cliente","Doc_Cliente","Total_Compras_Cliente","Telefone","Maquinas","Usou_Cupom","Codigo_Cupom"
+"01/11/2024 10:30:00","17,90","0","Cartão de débito","123456","MASTERCARD","NOVA LOPEZ LAVANDERIA LTDA","Test Customer","12345678901","","51999999999","Lavadora: 1","Não","n/d"
+"01/11/2024 11:45:00","17,90","0","Cartão de débito","123457","VISA","NOVA LOPEZ LAVANDERIA LTDA","Test Customer 2","12345678902","","51999999998","Secadora: 1","Não","n/d"

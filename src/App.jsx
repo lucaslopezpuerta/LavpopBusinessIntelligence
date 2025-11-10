@@ -1,0 +1,140 @@
+import React, { useState, useEffect } from 'react';
+import { BarChart3, Users, TrendingUp, Settings } from 'lucide-react';
+import { loadAllData } from './utils/csvLoader';
+import './App.css';
+
+// Placeholder components - we'll build these next
+const Dashboard = ({ data }) => (
+  <div className="view-container">
+    <h2>Dashboard</h2>
+    <p>Loaded {data?.sales?.length || 0} sales records</p>
+  </div>
+);
+
+const Customers = ({ data }) => (
+  <div className="view-container">
+    <h2>Customers</h2>
+    <p>Loaded {data?.rfm?.length || 0} customer segments</p>
+  </div>
+);
+
+const Analytics = ({ data }) => (
+  <div className="view-container">
+    <h2>Analytics</h2>
+    <p>Deep dive analytics coming soon...</p>
+  </div>
+);
+
+const Operations = ({ data }) => (
+  <div className="view-container">
+    <h2>Operations</h2>
+    <p>Machine efficiency analysis coming soon...</p>
+  </div>
+);
+
+function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 7, percent: 0 });
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const loadedData = await loadAllData((progress) => {
+          setLoadProgress(progress);
+        });
+        setData(loadedData);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
+    { id: 'customers', label: 'Clientes', icon: Users, component: Customers },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp, component: Analytics },
+    { id: 'operations', label: 'Operações', icon: Settings, component: Operations }
+  ];
+
+  const activeTabData = tabs.find(t => t.id === activeTab);
+  const ActiveComponent = activeTabData?.component || Dashboard;
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-content">
+          <div className="lavpop-logo">
+            <div className="logo-circle" style={{ background: '#1a5a8e' }}>L</div>
+          </div>
+          <h2>Carregando Lavpop BI</h2>
+          <div className="progress-bar">
+            <div 
+              className="progress-fill" 
+              style={{ width: `${loadProgress.percent}%` }}
+            />
+          </div>
+          <p>{loadProgress.loaded} de {loadProgress.total} arquivos carregados ({loadProgress.percent}%)</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="error-screen">
+        <div className="error-content">
+          <h2>Erro ao carregar dados</h2>
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()}>
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app">
+      <header className="app-header">
+        <div className="header-content">
+          <div className="logo-section">
+            <div className="logo-circle">L</div>
+            <div className="logo-text">
+              <h1>Lavpop</h1>
+              <span>Business Intelligence</span>
+            </div>
+          </div>
+          
+          <nav className="tabs">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <tab.icon size={20} />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      <main className="app-main">
+        <ActiveComponent data={data} />
+      </main>
+    </div>
+  );
+}
+
+export default App;
