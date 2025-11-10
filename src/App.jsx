@@ -94,8 +94,66 @@ function App() {
       <div className="error-screen">
         <div className="error-content">
           <h2>Erro ao carregar dados</h2>
-          <p>{error}</p>
-          <button onClick={() => window.location.reload()}>
+          <div className="error-details">
+            <p><strong>Detalhes do erro:</strong></p>
+            <pre style={{ 
+              background: '#f5f5f5', 
+              padding: '1rem', 
+              borderRadius: '8px',
+              textAlign: 'left',
+              fontSize: '12px',
+              overflow: 'auto',
+              maxWidth: '600px',
+              margin: '1rem auto',
+              color: '#dc2626'
+            }}>
+              {error}
+            </pre>
+            <div style={{ 
+              marginTop: '1.5rem', 
+              color: '#6b7280', 
+              fontSize: '14px',
+              textAlign: 'left',
+              maxWidth: '600px',
+              margin: '1rem auto',
+              background: '#fef3c7',
+              padding: '1rem',
+              borderRadius: '8px',
+              borderLeft: '4px solid #f59e0b'
+            }}>
+              <p style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '0.5rem' }}>
+                Possíveis causas:
+              </p>
+              <ul style={{ marginLeft: '1.5rem', lineHeight: '1.8' }}>
+                <li>Arquivos CSV ausentes em <code>/public/data/</code></li>
+                <li>Workflow de fetch não executou corretamente</li>
+                <li>Formato de arquivo CSV incorreto</li>
+                <li>Caminho base do GitHub Pages não configurado</li>
+              </ul>
+              <p style={{ marginTop: '1rem', fontWeight: 'bold', color: '#92400e' }}>
+                Como resolver:
+              </p>
+              <ul style={{ marginLeft: '1.5rem', lineHeight: '1.8' }}>
+                <li>Verifique se os arquivos existem no repositório</li>
+                <li>Execute manualmente o workflow "Fetch Google Sheets Data"</li>
+                <li>Verifique o console do navegador (F12) para mais detalhes</li>
+              </ul>
+            </div>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '1.5rem',
+              padding: '0.75rem 2rem',
+              background: '#1a5a8e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
             Tentar Novamente
           </button>
         </div>
