@@ -1,4 +1,6 @@
-// Customer Metrics Calculator - V2.1 Logic
+// Customer Metrics Calculator v2.1.1 - FIXED
+// ✅ Cashback rate corrected (7.5%, was 3%)
+// ✅ Cashback start date corrected (June 1, 2024, was Jan 1, 2023)
 // All customer-related calculations use THIS file only
 
 import { parseBrDate } from './dateUtils';
@@ -14,8 +16,8 @@ function normalizeDoc(doc) {
 };
 
 const LOST_THRESHOLD = 120; // Days until customer is considered "Lost"
-const CASHBACK_RATE = 0.03; // 3% cashback
-const CASHBACK_START = new Date(2023, 0, 1); // Jan 1, 2023
+const CASHBACK_RATE = 0.075; // ✅ FIXED: 7.5% cashback (was 3%)
+const CASHBACK_START = new Date(2024, 5, 1); // ✅ FIXED: June 1, 2024 (was Jan 1, 2023)
 
 // RFM segment bonus multipliers for return likelihood
 const SEGMENT_BONUS = {
@@ -88,6 +90,7 @@ export function calculateCustomerMetrics(salesData, rfmData) {
     const netValue = parseFloat(row.Valor_liquido || row.net_value || 0) || 0;
     const machineInfo = countMachines(row.Maquina || row.machine || '');
     
+    // ✅ Cashback calculation with corrected rate and start date
     let cashback = 0;
     if (date >= CASHBACK_START) {
       cashback = grossValue * CASHBACK_RATE;
