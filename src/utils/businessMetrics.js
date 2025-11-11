@@ -1,7 +1,14 @@
-// Business Metrics Calculator - Ported from Calculate_Metrics.js
+// Business Metrics Calculator v2.0 - FIXED
+// ✅ Cashback calculation added (7.5% from June 1, 2024)
+// ✅ Operating hours corrected (8 AM - 11 PM = 15 hours)
+// ✅ Active days calculation fixed (always 7 for weekly window)
 // Revenue, utilization, services - NO customer calculations
 
 import { parseBrDate } from './dateUtils';
+
+// CASHBACK CONFIGURATION - Matches Make.com Calculate_Metrics.js
+const CASHBACK_RATE = 0.075; // 7.5%
+const CASHBACK_START_DATE = new Date(2024, 5, 1); // June 1, 2024 (month is 0-indexed)
 
 /**
  * Get date windows for current week, previous week, and 4-week period
@@ -62,7 +69,7 @@ function getDateWindows() {
 const BUSINESS_PARAMS = {
   TOTAL_WASHERS: 3,
   TOTAL_DRYERS: 5,
-  OPERATING_HOURS: { start: 8, end: 22 }, // 8 AM to 10 PM
+  OPERATING_HOURS: { start: 8, end: 23 }, // ✅ FIXED: 8 AM to 11 PM (was 10 PM)
   WASHER_CYCLE_MINUTES: 30,
   DRYER_CYCLE_MINUTES: 45
 };
@@ -85,7 +92,8 @@ function countMachines(str) {
 }
 
 /**
- * Parse sales data into records
+ * Parse sales data into records with cashback calculation
+ * ✅ NEW: Applies 7.5% cashback to net revenue from June 1, 2024
  */
 function parseSalesRecords(salesData) {
   const records = [];
@@ -94,9 +102,17 @@ function parseSalesRecords(salesData) {
     const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
     if (!date) return;
 
-    const grossValue = parseFloat(row.Valor_Venda || row.gross_value || 0) || 0;
-    const netValue = parseFloat(row.Valor_Pago || row.net_value || 0) || 0;
-    const discountAmount = grossValue - netValue;
+    let grossValue = parseFloat(row.Valor_Venda || row.gross_value || 0) || 0;
+    let netValue = parseFloat(row.Valor_Pago || row.net_value || 0) || 0;
+    let discountAmount = grossValue - netValue;
+    let cashbackAmount = 0;
+    
+    // ✅ CASHBACK CALCULATION - Matches Calculate_Metrics.js line 564-569
+    if (date >= CASHBACK_START_DATE) {
+      cashbackAmount = Math.round(grossValue * CASHBACK_RATE * 100) / 100;
+      netValue = Math.round((netValue - cashbackAmount) * 100) / 100;
+      discountAmount = Math.round((discountAmount + cashbackAmount) * 100) / 100;
+    }
     
     const machineInfo = countMachines(row.Maquinas || row.machine || '');
     
@@ -107,6 +123,7 @@ function parseSalesRecords(salesData) {
       grossValue,
       netValue,
       discountAmount,
+      cashbackAmount, // Track cashback separately for debugging
       washCount: machineInfo.wash,
       dryCount: machineInfo.dry,
       totalServices: machineInfo.total
@@ -125,26 +142,40 @@ function filterByWindow(records, window) {
 
 /**
  * Calculate totals from records
+ * ✅ FIXED: Active days calculation now uses window boundaries for weekly metrics
  */
-function calculateTotals(records) {
+function calculateTotals(records, window = null) {
   const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+  
+  // ✅ FIX: If window provided (for weekly), calculate exactly 7 days
+  let activeDays;
+  if (window && window.start && window.end) {
+    // Calculate days between start and end (inclusive)
+    const diffTime = Math.abs(window.end - window.start);
+    activeDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  } else {
+    // For fourWeek window, count unique dates in data
+    activeDays = new Set(records.map(r => r.dateStr)).size;
+  }
   
   return {
     transactions: records.length,
     grossRevenue: Math.round(sum(records, r => r.grossValue) * 100) / 100,
     netRevenue: Math.round(sum(records, r => r.netValue) * 100) / 100,
     discountAmount: Math.round(sum(records, r => r.discountAmount) * 100) / 100,
+    cashbackAmount: Math.round(sum(records, r => r.cashbackAmount || 0) * 100) / 100,
     washServices: sum(records, r => r.washCount),
     dryServices: sum(records, r => r.dryCount),
     totalServices: sum(records, r => r.totalServices),
-    activeDays: new Set(records.map(r => r.dateStr)).size
+    activeDays: activeDays
   };
 }
 
 /**
  * Calculate machine utilization
+ * ✅ FIXED: Now uses 15 operating hours per day (8 AM - 11 PM)
  */
-function calculateUtilization(records) {
+function calculateUtilization(records, window = null) {
   const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
   
   const operatingRecords = records.filter(r =>
@@ -154,9 +185,18 @@ function calculateUtilization(records) {
 
   const operatingWashCount = sum(operatingRecords, r => r.washCount);
   const operatingDryCount = sum(operatingRecords, r => r.dryCount);
-  const activeDays = new Set(records.map(r => r.dateStr)).size;
+  
+  // ✅ FIX: Use exact day count from window for weekly calculations
+  let activeDays;
+  if (window && window.start && window.end) {
+    const diffTime = Math.abs(window.end - window.start);
+    activeDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  } else {
+    activeDays = new Set(records.map(r => r.dateStr)).size;
+  }
 
-  // Capacity = machines * hours/day * days * cycles/hour
+  // Capacity = machines × hours/day × days × cycles/hour
+  // ✅ Now uses 15 hours (was 14)
   const maxWashServices = BUSINESS_PARAMS.TOTAL_WASHERS * OPERATING_HOURS_PER_DAY * activeDays * 2;
   const maxDryServices = BUSINESS_PARAMS.TOTAL_DRYERS * OPERATING_HOURS_PER_DAY * activeDays * 1.33;
 
@@ -204,9 +244,10 @@ function calculateWeekOverWeek(currentTotals, prevTotals, currentUtil, prevUtil)
 
 /**
  * Main function - Calculate all business metrics
+ * ✅ v2.0: Now includes cashback, correct hours, and fixed active days
  */
 export function calculateBusinessMetrics(salesData) {
-  console.log('=== BUSINESS METRICS DEBUG ===');
+  console.log('=== BUSINESS METRICS v2.0 DEBUG ===');
   console.log('Input sales rows:', salesData.length);
   
   const records = parseSalesRecords(salesData);
@@ -230,16 +271,18 @@ export function calculateBusinessMetrics(salesData) {
     fourWeek: fourWeekRecords.length
   });
 
-  const weeklyTotals = calculateTotals(weekRecords);
+  // ✅ Pass window to calculateTotals for accurate day count
+  const weeklyTotals = calculateTotals(weekRecords, windows.weekly);
   console.log('Weekly totals:', weeklyTotals);
-  const prevWeekTotals = calculateTotals(prevWeekRecords);
-   console.log('Prev. Weekly totals:', prevWeekTotals);
+  const prevWeekTotals = calculateTotals(prevWeekRecords, windows.previousWeek);
+  console.log('Prev. Weekly totals:', prevWeekTotals);
   const fourWeekTotals = calculateTotals(fourWeekRecords);
-   console.log('Four Weekly totals:', fourWeekTotals);
+  console.log('Four Weekly totals:', fourWeekTotals);
 
-  const weeklyUtil = calculateUtilization(weekRecords);
+  // ✅ Pass window to calculateUtilization for accurate day count
+  const weeklyUtil = calculateUtilization(weekRecords, windows.weekly);
   console.log('Weekly Util:', weeklyUtil);
-  const prevWeekUtil = calculateUtilization(prevWeekRecords);
+  const prevWeekUtil = calculateUtilization(prevWeekRecords, windows.previousWeek);
   console.log('Prev Weekly Util:', prevWeekUtil);
   const fourWeekUtil = calculateUtilization(fourWeekRecords);
   console.log('Four Weekly Util:', fourWeekUtil);
@@ -274,6 +317,7 @@ export function calculateBusinessMetrics(salesData) {
 
 /**
  * Get daily revenue for charts
+ * ✅ Now includes cashback deduction in revenue calculations
  */
 export function getDailyRevenue(salesData, days = 30) {
   const records = parseSalesRecords(salesData);
