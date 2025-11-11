@@ -98,7 +98,7 @@ function parseSalesRecords(salesData) {
     const netValue = parseFloat(row.Valor_Pago || row.net_value || 0) || 0;
     const discountAmount = grossValue - netValue;
     
-    const machineInfo = countMachines(row.Maquina || row.machine || '');
+    const machineInfo = countMachines(row.Maquinas || row.machine || '');
     
     records.push({
       date,
