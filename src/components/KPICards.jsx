@@ -10,6 +10,19 @@ const COLORS = {
 };
 
 const KPICards = ({ businessMetrics, customerMetrics }) => {
+    // Safety check - don't render if no data
+  if (!businessMetrics || !customerMetrics) {
+    return (
+      <div className="text-gray-500 p-4">
+        Loading KPIs...
+      </div>
+    );
+  }
+
+  // Business metrics from businessMetrics.js
+  const weekly = businessMetrics?.weekly || {};
+  const weekOverWeek = businessMetrics?.weekOverWeek || {};
+  
   // Customer metrics from customerMetrics.js (V2.1 logic)
   const activeCount = customerMetrics?.activeCount || 0;
   const atRiskCount = customerMetrics?.atRiskCount || 0;
