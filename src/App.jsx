@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart3, Users, TrendingUp, Settings } from 'lucide-react';
 import { loadAllData } from './utils/csvLoader';
 import './App.css';
