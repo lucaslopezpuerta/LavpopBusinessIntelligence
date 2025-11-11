@@ -4,12 +4,31 @@ import { loadAllData } from './utils/csvLoader';
 import './App.css';
 
 // Placeholder components - we'll build these next
-const Dashboard = ({ data }) => (
-  <div className="view-container">
-    <h2>Dashboard</h2>
-    <p>Loaded {data?.sales?.length || 0} sales records</p>
-  </div>
-);
+import KPICards from './components/KPICards';
+import { calculateBusinessMetrics } from './utils/businessMetrics';
+import { calculateCustomerMetrics } from './utils/customerMetrics';
+
+const Dashboard = ({ data }) => {
+  const businessMetrics = useMemo(() => {
+    if (!data?.sales) return null;
+    return calculateBusinessMetrics(data.sales);
+  }, [data?.sales]);
+
+  const customerMetrics = useMemo(() => {
+    if (!data?.sales || !data?.rfm) return null;
+    return calculateCustomerMetrics(data.sales, data.rfm);
+  }, [data?.sales, data?.rfm]);
+
+  return (
+    <div className="p-6">
+      <h1>Dashboard</h1>
+      <KPICards 
+        businessMetrics={businessMetrics}
+        customerMetrics={customerMetrics}
+      />
+    </div>
+  );
+};
 
 const Customers = ({ data }) => (
   <div className="view-container">
