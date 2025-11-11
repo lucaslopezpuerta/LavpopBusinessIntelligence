@@ -206,22 +206,43 @@ function calculateWeekOverWeek(currentTotals, prevTotals, currentUtil, prevUtil)
  * Main function - Calculate all business metrics
  */
 export function calculateBusinessMetrics(salesData) {
+  console.log('=== BUSINESS METRICS DEBUG ===');
+  console.log('Input sales rows:', salesData.length);
+  
   const records = parseSalesRecords(salesData);
+  console.log('Parsed records:', records.length);
+  console.log('Sample record:', records[0]);
+  
   const windows = getDateWindows();
+  console.log('Date windows:', {
+    weekly: `${windows.weekly.startDate} - ${windows.weekly.endDate}`,
+    prevWeek: `${windows.previousWeek.start.toISOString()} - ${windows.previousWeek.end.toISOString()}`,
+    fourWeek: `${windows.fourWeek.start.toISOString()} - ${windows.fourWeek.end.toISOString()}`
+  });
 
-  // Filter by windows
   const weekRecords = filterByWindow(records, windows.weekly);
   const prevWeekRecords = filterByWindow(records, windows.previousWeek);
   const fourWeekRecords = filterByWindow(records, windows.fourWeek);
+  
+  console.log('Filtered records:', {
+    week: weekRecords.length,
+    prevWeek: prevWeekRecords.length,
+    fourWeek: fourWeekRecords.length
+  });
 
-  // Calculate metrics
   const weeklyTotals = calculateTotals(weekRecords);
+  console.log('Weekly totals:', weeklyTotals);
   const prevWeekTotals = calculateTotals(prevWeekRecords);
+   console.log('Prev. Weekly totals:', prevWeekTotals);
   const fourWeekTotals = calculateTotals(fourWeekRecords);
+   console.log('Four Weekly totals:', fourWeekTotals);
 
   const weeklyUtil = calculateUtilization(weekRecords);
+  console.log('Weekly Util:', weeklyUtil);
   const prevWeekUtil = calculateUtilization(prevWeekRecords);
+  console.log('Prev Weekly Util:', prevWeekUtil);
   const fourWeekUtil = calculateUtilization(fourWeekRecords);
+  console.log('Four Weekly Util:', fourWeekUtil);
 
   const weekOverWeek = calculateWeekOverWeek(
     weeklyTotals, prevWeekTotals, weeklyUtil, prevWeekUtil
