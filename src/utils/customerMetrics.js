@@ -1,7 +1,17 @@
 // Customer Metrics Calculator - V2.1 Logic
 // All customer-related calculations use THIS file only
 
-import { parseBrDate, normalizeDoc } from './dateUtils';
+import { parseBrDate } from './dateUtils';
+
+// Normalize document number (CPF) - pad to 11 digits
+function normalizeDoc(doc) {
+  if (!doc) return '';
+  const cleaned = String(doc).replace(/\D/g, '');
+  if (cleaned.length > 0 && cleaned.length <= 11) {
+    return cleaned.padStart(11, '0');
+  }
+  return cleaned;
+};
 
 const LOST_THRESHOLD = 120; // Days until customer is considered "Lost"
 const CASHBACK_RATE = 0.03; // 3% cashback
