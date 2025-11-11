@@ -6,9 +6,20 @@ import { calculateCustomerMetrics } from '../utils/customerMetrics';
 const Dashboard = ({ data }) => {
   // Calculate business metrics (revenue, utilization, services)
   const businessMetrics = useMemo(() => {
-    if (!data?.sales) return null;
-    return calculateBusinessMetrics(data.sales);
-  }, [data?.sales]);
+  if (!data?.sales) {
+    console.log('No sales data');
+    return null;
+  }
+  console.log('Calculating business metrics, sales rows:', data.sales.length);
+  try {
+    const result = calculateBusinessMetrics(data.sales);
+    console.log('Business metrics result:', result);
+    return result;
+  } catch (err) {
+    console.error('Business metrics error:', err);
+    return null;
+  }
+}, [data?.sales]);
 
   // Calculate customer metrics (V2.1 risk logic)
   const customerMetrics = useMemo(() => {
