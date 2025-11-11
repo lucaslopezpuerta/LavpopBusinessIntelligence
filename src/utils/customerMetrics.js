@@ -1,9 +1,32 @@
-// Customer Metrics Calculator v2.1.1 - FIXED
-// ✅ Cashback rate corrected (7.5%, was 3%)
-// ✅ Cashback start date corrected (June 1, 2024, was Jan 1, 2023)
-// All customer-related calculations use THIS file only
+// Customer Metrics Calculator v2.1.2 - PROPERLY FIXED
+// ✅ Brazilian number parsing added (handles comma decimals)
+// ✅ Cashback rate corrected (7.5%)
+// ✅ Cashback start date corrected (June 1, 2024)
 
 import { parseBrDate } from './dateUtils';
+
+/**
+ * Parse Brazilian number format (handles comma as decimal separator)
+ * Examples: "17,90" → 17.90, "2.378,85" → 2378.85, "17.90" → 17.90
+ */
+function parseBrNumber(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  
+  const str = String(value).trim();
+  
+  // If it has both period and comma, it's format: 1.234,56 → 1234.56
+  if (str.includes('.') && str.includes(',')) {
+    return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  
+  // If it only has comma, it's decimal: 17,90 → 17.90
+  if (str.includes(',')) {
+    return parseFloat(str.replace(',', '.')) || 0;
+  }
+  
+  // Otherwise parse as-is (handles: "17.90", "17", "0")
+  return parseFloat(str) || 0;
+}
 
 // Normalize document number (CPF) - pad to 11 digits
 function normalizeDoc(doc) {
@@ -16,8 +39,8 @@ function normalizeDoc(doc) {
 };
 
 const LOST_THRESHOLD = 120; // Days until customer is considered "Lost"
-const CASHBACK_RATE = 0.075; // ✅ FIXED: 7.5% cashback (was 3%)
-const CASHBACK_START = new Date(2024, 5, 1); // ✅ FIXED: June 1, 2024 (was Jan 1, 2023)
+const CASHBACK_RATE = 0.075; // 7.5% cashback
+const CASHBACK_START = new Date(2024, 5, 1); // June 1, 2024
 
 // RFM segment bonus multipliers for return likelihood
 const SEGMENT_BONUS = {
@@ -56,6 +79,7 @@ function countMachines(str) {
 
 /**
  * Calculate all customer metrics using V2.1 algorithm
+ * ✅ Now uses parseBrNumber() for proper Brazilian number format
  * @param {Array} salesData - Sales CSV rows
  * @param {Array} rfmData - RFM segmentation rows
  * @returns {Object} Customer metrics and lists
@@ -86,11 +110,12 @@ export function calculateCustomerMetrics(salesData, rfmData) {
     const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
     if (!date) return;
 
-    const grossValue = parseFloat(row.Valor_Venda || row.gross_value || 0) || 0;
-    const netValue = parseFloat(row.Valor_liquido || row.net_value || 0) || 0;
-    const machineInfo = countMachines(row.Maquina || row.machine || '');
+    // ✅ USE parseBrNumber instead of parseFloat
+    const grossValue = parseBrNumber(row.Valor_Venda || row.gross_value || 0);
+    const netValue = parseBrNumber(row.Valor_Pago || row.net_value || 0);
+    const machineInfo = countMachines(row.Maquina || row.machine || row.Maquinas || '');
     
-    // ✅ Cashback calculation with corrected rate and start date
+    // Cashback calculation with corrected rate and start date
     let cashback = 0;
     if (date >= CASHBACK_START) {
       cashback = grossValue * CASHBACK_RATE;
