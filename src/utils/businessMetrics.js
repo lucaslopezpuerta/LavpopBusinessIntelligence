@@ -1,7 +1,63 @@
 // Business Metrics Calculator - Ported from Calculate_Metrics.js
 // Revenue, utilization, services - NO customer calculations
 
-import { parseBrDate, getDateWindows } from './dateUtils';
+import { parseBrDate } from './dateUtils';
+
+/**
+ * Get date windows for current week, previous week, and 4-week period
+ * Sunday-Saturday business weeks
+ */
+function getDateWindows() {
+  const currentDate = new Date();
+  
+  // Find most recent Saturday (end of current week)
+  let lastSaturday = new Date(currentDate);
+  const daysFromSaturday = (currentDate.getDay() + 1) % 7;
+  lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
+  lastSaturday.setHours(23, 59, 59, 999);
+  
+  // Sunday that starts this week
+  let startSunday = new Date(lastSaturday);
+  startSunday.setDate(startSunday.getDate() - 6);
+  startSunday.setHours(0, 0, 0, 0);
+  
+  // Previous week
+  let prevWeekEnd = new Date(startSunday);
+  prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
+  prevWeekEnd.setHours(23, 59, 59, 999);
+  
+  let prevWeekStart = new Date(prevWeekEnd);
+  prevWeekStart.setDate(prevWeekStart.getDate() - 6);
+  prevWeekStart.setHours(0, 0, 0, 0);
+  
+  // Four week window
+  let fourWeekStart = new Date(startSunday);
+  fourWeekStart.setDate(fourWeekStart.getDate() - 21);
+  
+  const formatDate = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+  
+  return {
+    weekly: { 
+      start: startSunday, 
+      end: lastSaturday,
+      startDate: formatDate(startSunday),
+      endDate: formatDate(lastSaturday)
+    },
+    previousWeek: { 
+      start: prevWeekStart, 
+      end: prevWeekEnd 
+    },
+    fourWeek: { 
+      start: fourWeekStart, 
+      end: lastSaturday 
+    }
+  };
+};
 
 const BUSINESS_PARAMS = {
   TOTAL_WASHERS: 3,
