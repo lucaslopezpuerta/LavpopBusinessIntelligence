@@ -5,6 +5,12 @@ import { calculateCustomerMetrics } from '../utils/customerMetrics';
 
 const Dashboard = ({ data }) => {
   // Calculate business metrics (revenue, utilization, services)
+  console.log('Dashboard data:', {
+    hasSales: !!data?.sales,
+    salesCount: data?.sales?.length,
+    hasRfm: !!data?.rfm,
+    rfmCount: data?.rfm?.length
+  });
   const businessMetrics = useMemo(() => {
   if (!data?.sales) {
     console.log('No sales data');
