@@ -95,7 +95,7 @@ function parseSalesRecords(salesData) {
     if (!date) return;
 
     const grossValue = parseFloat(row.Valor_Venda || row.gross_value || 0) || 0;
-    const netValue = parseFloat(row.Valor_liquido || row.net_value || 0) || 0;
+    const netValue = parseFloat(row.Valor_pago || row.net_value || 0) || 0;
     const discountAmount = grossValue - netValue;
     
     const machineInfo = countMachines(row.Maquina || row.machine || '');
