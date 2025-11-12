@@ -95,13 +95,16 @@ export function calculateCustomerMetrics(salesData, rfmData) {
     if (doc) {
       rfmMap[doc] = {
         segment: row.segment || row.col1 || row.Segment || 'Unclassified',
-        name: row.col3 || row.client_name || row.name || null,
-        phone: row.col4 || row.phone || null,
+        name: row['client name'] || row.name || row.Name || row.cliente || null,
+        phone: row['phone number'] || row.phone || row.Phone || null,
         lastContactDate: row.col5 || row.lastContactDate || null
       };
     }
   });
-
+    
+  console.log('RFM map built with', Object.keys(rfmMap).length, 'entries');
+  console.log('Sample RFM entry:', Object.values(rfmMap)[0]);
+  
   // Process sales data
   salesData.forEach(row => {
     const doc = normalizeDoc(row.Doc_Cliente || row.document || row.doc || '');
