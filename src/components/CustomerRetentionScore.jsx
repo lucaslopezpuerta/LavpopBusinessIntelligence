@@ -1,3 +1,8 @@
+// CustomerRetentionScore_v2.0.jsx
+// ✅ Using Actual Recent Returns methodology
+// Shows: Of customers who visited X days ago, what % came back within 30 days?
+// More actionable than average frequency, shows actual retention performance
+
 import React, { useMemo } from 'react';
 import { Users, TrendingUp } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
@@ -20,11 +25,36 @@ function normalizeDoc(doc) {
   return cleaned;
 }
 
+/**
+ * OPTION C: ACTUAL RECENT RETURNS
+ * 
+ * WHAT IT CALCULATES:
+ * For customers who visited X days ago (30/60/90), what percentage returned within the next 30 days?
+ * 
+ * EXAMPLE (30-day retention):
+ * - Look at all customers who visited 30 days ago (e.g., Oct 13)
+ * - Count how many of them came back between Oct 13 and Nov 12 (30-day window)
+ * - Rate = (returned customers / eligible customers) * 100
+ * 
+ * WHY THIS IS BETTER:
+ * - Shows actual retention behavior, not just average frequency
+ * - Measures recent performance (last 30/60/90 days)
+ * - Actionable: "We're keeping 85% of customers" is clear and measurable
+ * - Can track improvement over time
+ * 
+ * DIFFERENCES FROM OLD METHOD:
+ * - Old: Average days between visits across all time
+ * - New: Actual return rate in recent time windows
+ * - Old: "89.8% of customers return within 30 days on average"
+ * - New: "85% of customers who visited 30 days ago came back"
+ */
 const CustomerRetentionScore = ({ salesData }) => {
   const retentionData = useMemo(() => {
     if (!salesData || salesData.length === 0) return null;
 
-    // Group visits by customer
+    const now = new Date();
+    
+    // Group all visits by customer
     const customerVisits = {};
     
     salesData.forEach(row => {
@@ -40,51 +70,66 @@ const CustomerRetentionScore = ({ salesData }) => {
       customerVisits[doc].push(date);
     });
 
-    // Sort visits for each customer
+    // Sort visits for each customer chronologically
     Object.values(customerVisits).forEach(visits => {
       visits.sort((a, b) => a - b);
     });
 
-    // Calculate return rates
-    let totalCustomersWithMultipleVisits = 0;
-    let returnedWithin30 = 0;
-    let returnedWithin60 = 0;
-    let returnedWithin90 = 0;
-
-    Object.values(customerVisits).forEach(visits => {
-      if (visits.length < 2) return;
+    /**
+     * Calculate retention for a specific lookback period
+     * @param {number} lookbackDays - How many days ago to look (30, 60, or 90)
+     * @returns {number} Percentage of customers who returned within 30 days
+     */
+    const calculateRetentionRate = (lookbackDays) => {
+      // Define the target date (X days ago)
+      const targetDate = new Date(now);
+      targetDate.setDate(targetDate.getDate() - lookbackDays);
+      targetDate.setHours(0, 0, 0, 0);
       
-      totalCustomersWithMultipleVisits++;
-
-      // Calculate time between visits
-      const intervals = [];
-      for (let i = 1; i < visits.length; i++) {
-        const days = Math.round((visits[i] - visits[i-1]) / (1000*60*60*24));
-        intervals.push(days);
-      }
-
-      const avgInterval = intervals.reduce((a,b) => a+b, 0) / intervals.length;
-
-      if (avgInterval <= 30) returnedWithin30++;
-      if (avgInterval <= 60) returnedWithin60++;
-      if (avgInterval <= 90) returnedWithin90++;
-    });
-
-    const rate30 = totalCustomersWithMultipleVisits > 0 
-      ? (returnedWithin30 / totalCustomersWithMultipleVisits) * 100 
-      : 0;
-    const rate60 = totalCustomersWithMultipleVisits > 0 
-      ? (returnedWithin60 / totalCustomersWithMultipleVisits) * 100 
-      : 0;
-    const rate90 = totalCustomersWithMultipleVisits > 0 
-      ? (returnedWithin90 / totalCustomersWithMultipleVisits) * 100 
-      : 0;
+      // Define the window end (target date + 30 days)
+      const windowEnd = new Date(targetDate);
+      windowEnd.setDate(windowEnd.getDate() + 30);
+      windowEnd.setHours(23, 59, 59, 999);
+      
+      // Allow some tolerance (±3 days) for "visited around target date"
+      const targetStart = new Date(targetDate);
+      targetStart.setDate(targetStart.getDate() - 3);
+      const targetEnd = new Date(targetDate);
+      targetEnd.setDate(targetEnd.getDate() + 3);
+      
+      let eligibleCustomers = 0;
+      let returnedCustomers = 0;
+      
+      Object.entries(customerVisits).forEach(([doc, visits]) => {
+        // Find if customer visited around target date
+        const visitedAroundTarget = visits.some(visit => 
+          visit >= targetStart && visit <= targetEnd
+        );
+        
+        if (!visitedAroundTarget) return; // Customer wasn't active at target date
+        
+        eligibleCustomers++;
+        
+        // Check if they came back within 30 days after target
+        const returnedInWindow = visits.some(visit => 
+          visit > targetDate && visit <= windowEnd
+        );
+        
+        if (returnedInWindow) {
+          returnedCustomers++;
+        }
+      });
+      
+      return eligibleCustomers > 0 
+        ? (returnedCustomers / eligibleCustomers) * 100 
+        : 0;
+    };
 
     return {
-      rate30: Math.round(rate30 * 10) / 10,
-      rate60: Math.round(rate60 * 10) / 10,
-      rate90: Math.round(rate90 * 10) / 10,
-      totalCustomersAnalyzed: totalCustomersWithMultipleVisits
+      rate30: Math.round(calculateRetentionRate(30) * 10) / 10,
+      rate60: Math.round(calculateRetentionRate(60) * 10) / 10,
+      rate90: Math.round(calculateRetentionRate(90) * 10) / 10,
+      totalCustomers: Object.keys(customerVisits).length
     };
   }, [salesData]);
 
@@ -103,21 +148,46 @@ const CustomerRetentionScore = ({ salesData }) => {
     );
   }
 
+  /**
+   * INTERPRETATION GUIDE:
+   * 
+   * 30-Day Rate: Short-term loyalty
+   * - >80%: Excellent - Customers highly engaged
+   * - 60-80%: Good - Strong retention
+   * - 40-60%: Fair - Room for improvement
+   * - <40%: Poor - Need retention campaigns
+   * 
+   * 60-Day Rate: Medium-term retention
+   * - Usually 5-10% higher than 30-day
+   * - Shows if customers return eventually
+   * 
+   * 90-Day Rate: Long-term loyalty
+   * - Usually 8-15% higher than 30-day
+   * - High rate = loyal customer base
+   * 
+   * TREND TO WATCH:
+   * If 90-day rate is much higher than 30-day (e.g., 30-day: 60%, 90-day: 85%)
+   * → Customers are returning, but taking longer than ideal
+   * → Consider reminder campaigns at 20-25 days
+   */
   const periods = [
     {
       label: '30 Days',
       rate: retentionData.rate30,
-      description: 'Return within 1 month'
+      description: 'Returned within 1 month',
+      meaning: 'Short-term loyalty'
     },
     {
       label: '60 Days',
       rate: retentionData.rate60,
-      description: 'Return within 2 months'
+      description: 'Returned within 2 months',
+      meaning: 'Medium-term retention'
     },
     {
       label: '90 Days',
       rate: retentionData.rate90,
-      description: 'Return within 3 months'
+      description: 'Returned within 3 months',
+      meaning: 'Long-term loyalty'
     }
   ];
 
@@ -126,6 +196,13 @@ const CustomerRetentionScore = ({ salesData }) => {
     if (rate >= 60) return '#22c55e';
     if (rate >= 40) return '#f59e0b';
     return '#dc2626';
+  };
+
+  const getPerformanceLabel = (rate) => {
+    if (rate >= 80) return 'Excellent';
+    if (rate >= 60) return 'Good';
+    if (rate >= 40) return 'Fair';
+    return 'Needs Improvement';
   };
 
   return (
@@ -154,7 +231,7 @@ const CustomerRetentionScore = ({ salesData }) => {
           color: COLORS.gray,
           margin: 0
         }}>
-          Based on {retentionData.totalCustomersAnalyzed} repeat customers
+          Of customers active X days ago, % who returned within 30 days
         </p>
       </div>
 
@@ -164,69 +241,94 @@ const CustomerRetentionScore = ({ salesData }) => {
         flexDirection: 'column',
         gap: '1rem'
       }}>
-        {periods.map((period, index) => (
-          <div key={index}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '0.5rem'
-            }}>
-              <div>
-                <div style={{
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: COLORS.primary
-                }}>
-                  {period.label}
-                </div>
-                <div style={{
-                  fontSize: '11px',
-                  color: COLORS.gray
-                }}>
-                  {period.description}
-                </div>
-              </div>
+        {periods.map((period, index) => {
+          const performance = getPerformanceLabel(period.rate);
+          const color = getColorForRate(period.rate);
+          
+          return (
+            <div key={index}>
               <div style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: getColorForRate(period.rate)
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.5rem'
               }}>
-                {period.rate}%
+                <div>
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: COLORS.primary
+                  }}>
+                    {period.label}
+                  </div>
+                  <div style={{
+                    fontSize: '11px',
+                    color: COLORS.gray
+                  }}>
+                    {period.description}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '700',
+                    color: color
+                  }}>
+                    {period.rate}%
+                  </div>
+                  <div style={{
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    color: color,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {performance}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div style={{
+                width: '100%',
+                height: '8px',
+                background: '#f3f4f6',
+                borderRadius: '4px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${period.rate}%`,
+                  height: '100%',
+                  background: color,
+                  borderRadius: '4px',
+                  transition: 'width 0.5s ease'
+                }} />
               </div>
             </div>
-            
-            {/* Progress Bar */}
-            <div style={{
-              width: '100%',
-              height: '8px',
-              background: '#f3f4f6',
-              borderRadius: '4px',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${period.rate}%`,
-                height: '100%',
-                background: getColorForRate(period.rate),
-                borderRadius: '4px',
-                transition: 'width 0.5s ease'
-              }} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Info Footer */}
+      {/* Interpretation Guide */}
       <div style={{
         marginTop: '1rem',
         padding: '0.75rem',
         background: '#f9fafb',
         borderRadius: '8px',
         fontSize: '11px',
-        color: COLORS.gray,
-        textAlign: 'center'
+        color: COLORS.gray
       }}>
-        💡 Higher rates indicate stronger customer loyalty
+        <div style={{ fontWeight: '600', marginBottom: '4px', color: COLORS.primary }}>
+          💡 How to Read This
+        </div>
+        <div style={{ lineHeight: '1.5' }}>
+          <strong>30-day rate</strong>: Of customers active 30 days ago, {retentionData.rate30}% came back within a month.
+          {retentionData.rate90 - retentionData.rate30 > 15 && (
+            <div style={{ marginTop: '4px', color: '#f59e0b' }}>
+              ⚠️ Large gap between 30 and 90-day suggests customers return, but slowly. Consider reminder campaigns at 20-25 days.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
