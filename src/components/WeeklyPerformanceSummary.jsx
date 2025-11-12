@@ -1,3 +1,7 @@
+// WeeklyPerformanceSummary_v2.0.jsx
+// ✅ Now shows PREVIOUS week's KPIs instead of current week
+// ✅ Calculates metrics for 7-13 days ago
+
 import React from 'react';
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -13,7 +17,26 @@ const WeeklyPerformanceSummary = ({ businessMetrics }) => {
     return null;
   }
 
-  const { weekly, weekOverWeek, windows } = businessMetrics;
+  // Access PREVIOUS week's data instead of current week
+  const { previousWeekly, previousWeekOverWeek, windows } = businessMetrics;
+
+  // If previous week data doesn't exist, show message
+  if (!previousWeekly) {
+    return (
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        textAlign: 'center'
+      }}>
+        <div style={{ color: COLORS.gray, fontSize: '14px' }}>
+          Previous week data not available
+        </div>
+      </div>
+    );
+  }
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -33,27 +56,27 @@ const WeeklyPerformanceSummary = ({ businessMetrics }) => {
   const metrics = [
     {
       label: 'Net Revenue',
-      value: formatCurrency(weekly.netRevenue),
-      change: weekOverWeek.netRevenue,
-      changeLabel: formatPercent(weekOverWeek.netRevenue)
+      value: formatCurrency(previousWeekly.netRevenue),
+      change: previousWeekOverWeek.netRevenue,
+      changeLabel: formatPercent(previousWeekOverWeek.netRevenue)
     },
     {
       label: 'Transactions',
-      value: weekly.transactions,
-      change: weekOverWeek.transactions,
-      changeLabel: formatPercent(weekOverWeek.transactions)
+      value: previousWeekly.transactions,
+      change: previousWeekOverWeek.transactions,
+      changeLabel: formatPercent(previousWeekOverWeek.transactions)
     },
     {
       label: 'Services',
-      value: weekly.totalServices,
-      change: weekOverWeek.totalServices,
-      changeLabel: formatPercent(weekOverWeek.totalServices)
+      value: previousWeekly.totalServices,
+      change: previousWeekOverWeek.totalServices,
+      changeLabel: formatPercent(previousWeekOverWeek.totalServices)
     },
     {
       label: 'Utilization',
-      value: `${Math.round(weekly.totalUtilization)}%`,
-      change: weekOverWeek.utilization,
-      changeLabel: weekOverWeek.utilization !== null ? formatPercent(weekOverWeek.utilization) : 'N/A'
+      value: `${Math.round(previousWeekly.totalUtilization)}%`,
+      change: previousWeekOverWeek.utilization,
+      changeLabel: previousWeekOverWeek.utilization !== null ? formatPercent(previousWeekOverWeek.utilization) : 'N/A'
     }
   ];
 
@@ -75,7 +98,7 @@ const WeeklyPerformanceSummary = ({ businessMetrics }) => {
             color: COLORS.primary,
             margin: 0
           }}>
-            Weekly Performance
+            Previous Week Performance
           </h3>
         </div>
         <p style={{
@@ -83,7 +106,7 @@ const WeeklyPerformanceSummary = ({ businessMetrics }) => {
           color: COLORS.gray,
           margin: 0
         }}>
-          {windows.weekly.startDate} - {windows.weekly.endDate}
+          {windows.previousWeekly?.startDate} - {windows.previousWeekly?.endDate}
         </p>
       </div>
 
