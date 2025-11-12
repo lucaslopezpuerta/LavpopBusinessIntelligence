@@ -1,12 +1,14 @@
+// ServiceMixIndicator_v2.0.jsx
+// ✅ Now uses Lavpop brand colors (#10306B blue, #53be33 green)
+// ✅ Service Balance calculation verified: |washPercent - 50| = deviation from 50/50
+
 import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Activity } from 'lucide-react';
 
 const COLORS = {
-  primary: '#10306B',
-  accent: '#53be33',
-  wash: '#3b82f6',
-  dry: '#f59e0b',
+  primary: '#10306B',    // Lavpop Blue (for Wash)
+  accent: '#53be33',     // Lavpop Green (for Dry)
   gray: '#6b7280'
 };
 
@@ -96,7 +98,8 @@ const ServiceMixIndicator = ({ businessMetrics }) => {
     return null;
   };
 
-  const pieColors = [COLORS.wash, COLORS.dry];
+  // Use brand colors for pie chart
+  const pieColors = [COLORS.primary, COLORS.accent];
 
   return (
     <div style={{
@@ -128,18 +131,19 @@ const ServiceMixIndicator = ({ businessMetrics }) => {
         </p>
       </div>
 
-      {/* Stats Row */}
+      {/* Stats Row - Using Brand Colors */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '0.75rem',
         marginBottom: '1rem'
       }}>
+        {/* Wash Services - Primary Blue */}
         <div style={{
           padding: '0.75rem',
-          background: '#eff6ff',
+          background: `${COLORS.primary}10`,  // 10% opacity of primary
           borderRadius: '8px',
-          border: '1px solid #dbeafe'
+          border: `1px solid ${COLORS.primary}30`  // 30% opacity of primary
         }}>
           <div style={{ fontSize: '11px', color: COLORS.gray, marginBottom: '0.25rem', fontWeight: '500' }}>
             WASH SERVICES
@@ -149,19 +153,21 @@ const ServiceMixIndicator = ({ businessMetrics }) => {
             alignItems: 'baseline',
             gap: '0.5rem'
           }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.wash }}>
+            <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.primary }}>
               {serviceMixData.washServices}
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: COLORS.wash }}>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: COLORS.primary }}>
               ({serviceMixData.washPercent.toFixed(1)}%)
             </div>
           </div>
         </div>
+        
+        {/* Dry Services - Accent Green */}
         <div style={{
           padding: '0.75rem',
-          background: '#fffbeb',
+          background: `${COLORS.accent}10`,  // 10% opacity of accent
           borderRadius: '8px',
-          border: '1px solid #fef3c7'
+          border: `1px solid ${COLORS.accent}30`  // 30% opacity of accent
         }}>
           <div style={{ fontSize: '11px', color: COLORS.gray, marginBottom: '0.25rem', fontWeight: '500' }}>
             DRY SERVICES
@@ -171,10 +177,10 @@ const ServiceMixIndicator = ({ businessMetrics }) => {
             alignItems: 'baseline',
             gap: '0.5rem'
           }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.dry }}>
+            <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.accent }}>
               {serviceMixData.dryServices}
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: COLORS.dry }}>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: COLORS.accent }}>
               ({serviceMixData.dryPercent.toFixed(1)}%)
             </div>
           </div>
@@ -202,6 +208,8 @@ const ServiceMixIndicator = ({ businessMetrics }) => {
       </ResponsiveContainer>
 
       {/* Balance Indicator */}
+      {/* Math: |washPercent - 50| shows deviation from perfect 50/50 balance */}
+      {/* Example: 55.8% wash → |55.8 - 50| = 5.8% wash-heavy ✅ */}
       <div style={{
         marginTop: '1rem',
         padding: '0.75rem',
@@ -222,7 +230,7 @@ const ServiceMixIndicator = ({ businessMetrics }) => {
         <div style={{
           fontSize: '16px',
           fontWeight: '600',
-          color: COLORS.primary
+          color: serviceMixData.washPercent > 50 ? COLORS.primary : COLORS.accent
         }}>
           {Math.abs(serviceMixData.washPercent - 50).toFixed(1)}% {serviceMixData.washPercent > 50 ? 'wash-heavy' : 'dry-heavy'}
         </div>
