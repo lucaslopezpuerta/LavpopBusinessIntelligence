@@ -1,14 +1,14 @@
 import React, { useMemo } from 'react';
-import KPICards from '../components/KPICards_v2.0';
-import RevenueTrendChart from '../components/RevenueTrendChart_v1.0';
-import AtRiskCustomersTable from '../components/AtRiskCustomersTable_v1.0';
-import TopPerformersSegment from '../components/TopPerformersSegment_v1.0';
-import NewClientsChart from '../components/NewClientsChart_v1.0';
-import WeeklyPerformanceSummary from '../components/WeeklyPerformanceSummary_v1.0';
-import UtilizationHeatmap from '../components/UtilizationHeatmap_v1.0';
-import CustomerRetentionScore from '../components/CustomerRetentionScore_v1.0';
-import ServiceMixIndicator from '../components/ServiceMixIndicator_v1.0';
-import QuickActionsPanel from '../components/QuickActionsPanel_v1.0';
+import KPICards from '../components/KPICards';
+import RevenueTrendChart from '../components/RevenueTrendChart';
+import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
+import TopPerformersSegment from '../components/TopPerformersSegment';
+import NewClientsChart from '../components/NewClientsChart';
+import WeeklyPerformanceSummary from '../components/WeeklyPerformanceSummary';
+import UtilizationHeatmap from '../components/UtilizationHeatmap';
+import CustomerRetentionScore from '../components/CustomerRetentionScore';
+import ServiceMixIndicator from '../components/ServiceMixIndicator';
+import QuickActionsPanel from '../components/QuickActionsPanel';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 
