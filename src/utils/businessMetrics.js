@@ -1,8 +1,9 @@
-// Business Metrics Calculator v2.3 - MATHEMATICALLY CORRECT
+// Business Metrics Calculator v2.4 - WITH PREVIOUS WEEK DISPLAY
 // ✅ No per-transaction rounding (matches Make.com exactly)
 // ✅ Proper active days calculation from window boundaries
 // ✅ Brazilian number parsing
 // ✅ Local timezone dateStr for debugging
+// ✅ NEW: Previous week metrics for WeeklyPerformanceSummary component
 
 import { parseBrDate } from './dateUtils';
 
@@ -33,24 +34,51 @@ function parseBrNumber(value) {
 }
 
 /**
- * Get date windows for current week, previous week, and 4-week period
- * Sunday-Saturday business weeks
+ * Get date windows for calculations
+ * 
+ * WINDOW DEFINITIONS:
+ * 
+ * 1. CURRENT WEEK (weekly)
+ *    Purpose: Show this week's performance in KPI cards
+ *    Range: Most recent Sunday 00:00:00 → Most recent Saturday 23:59:59
+ *    Example: If today is Wed Nov 13, then Sun Nov 10 → Sat Nov 16
+ * 
+ * 2. PREVIOUS WEEK (previousWeekly)
+ *    Purpose: Show last week's completed performance in WeeklyPerformanceSummary
+ *    Range: 7-13 days ago (previous Sunday → previous Saturday)
+ *    Example: If current week is Nov 10-16, then Sun Nov 3 → Sat Nov 9
+ * 
+ * 3. TWO WEEKS AGO (twoWeeksAgo)
+ *    Purpose: Calculate week-over-week change for previous week
+ *    Range: 14-20 days ago (Sunday → Saturday, 2 weeks before current)
+ *    Example: If current week is Nov 10-16, then Sun Oct 27 → Sat Nov 2
+ * 
+ * 4. FOUR WEEK WINDOW (fourWeek)
+ *    Purpose: Monthly/rolling 4-week metrics
+ *    Range: 21 days before current week start → current Saturday
+ * 
+ * WHY THESE WINDOWS?
+ * - Current Week: Live, up-to-date metrics for decision making
+ * - Previous Week: Completed week review (no partial data)
+ * - Two Weeks Ago: Baseline for measuring previous week improvement
+ * - Week-over-Week Comparisons: Shows momentum and trends
+ * 
+ * Sunday-Saturday business weeks align with Brazilian weekend patterns
  */
 function getDateWindows() {
   const currentDate = new Date();
   
-  // Find most recent Saturday (end of current week)
+  // CURRENT WEEK: Most recent Sunday → Most recent Saturday
   let lastSaturday = new Date(currentDate);
   const daysFromSaturday = (currentDate.getDay() + 1) % 7;
   lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
   lastSaturday.setHours(23, 59, 59, 999);
   
-  // Sunday that starts this week
   let startSunday = new Date(lastSaturday);
   startSunday.setDate(startSunday.getDate() - 6);
   startSunday.setHours(0, 0, 0, 0);
   
-  // Previous week
+  // PREVIOUS WEEK: Previous Sunday → Previous Saturday (7-13 days ago)
   let prevWeekEnd = new Date(startSunday);
   prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
   prevWeekEnd.setHours(23, 59, 59, 999);
@@ -59,7 +87,16 @@ function getDateWindows() {
   prevWeekStart.setDate(prevWeekStart.getDate() - 6);
   prevWeekStart.setHours(0, 0, 0, 0);
   
-  // Four week window
+  // TWO WEEKS AGO: 2 weeks before current week (14-20 days ago)
+  let twoWeeksAgoEnd = new Date(prevWeekStart);
+  twoWeeksAgoEnd.setDate(twoWeeksAgoEnd.getDate() - 1);
+  twoWeeksAgoEnd.setHours(23, 59, 59, 999);
+  
+  let twoWeeksAgoStart = new Date(twoWeeksAgoEnd);
+  twoWeeksAgoStart.setDate(twoWeeksAgoStart.getDate() - 6);
+  twoWeeksAgoStart.setHours(0, 0, 0, 0);
+  
+  // FOUR WEEK WINDOW: 4 weeks before current week start → current Saturday
   let fourWeekStart = new Date(startSunday);
   fourWeekStart.setDate(fourWeekStart.getDate() - 21);
   
@@ -71,16 +108,26 @@ function getDateWindows() {
   };
   
   return {
+    // Current week (for KPI cards)
     weekly: { 
       start: startSunday, 
       end: lastSaturday,
       startDate: formatDate(startSunday),
       endDate: formatDate(lastSaturday)
     },
-    previousWeek: { 
+    // Previous week (for WeeklyPerformanceSummary component)
+    previousWeekly: { 
       start: prevWeekStart, 
-      end: prevWeekEnd 
+      end: prevWeekEnd,
+      startDate: formatDate(prevWeekStart),
+      endDate: formatDate(prevWeekEnd)
     },
+    // Two weeks ago (for comparison baseline)
+    twoWeeksAgo: { 
+      start: twoWeeksAgoStart, 
+      end: twoWeeksAgoEnd 
+    },
+    // Four week rolling window
     fourWeek: { 
       start: fourWeekStart, 
       end: lastSaturday 
@@ -263,6 +310,19 @@ function calculateUtilization(records, window = null) {
 
 /**
  * Calculate week-over-week changes
+ * 
+ * WHAT IT CALCULATES:
+ * Percent change from one time period to another
+ * Formula: ((current / previous) - 1) * 100
+ * 
+ * EXAMPLES:
+ * - Current: R$ 1,000, Previous: R$ 800 → +25% (grew by 25%)
+ * - Current: 50 txns, Previous: 60 txns → -16.7% (dropped by 16.7%)
+ * - Current: 0, Previous: 100 → null (can't calculate from zero)
+ * 
+ * FOR UTILIZATION:
+ * We show absolute difference, not percentage
+ * Example: Current: 15%, Previous: 12% → +3.0 percentage points
  */
 function calculateWeekOverWeek(currentTotals, prevTotals, currentUtil, prevUtil) {
   const percentChange = (current, previous) =>
@@ -290,71 +350,127 @@ function calculateWeekOverWeek(currentTotals, prevTotals, currentUtil, prevUtil)
 
 /**
  * Main function - Calculate all business metrics
+ * 
+ * RETURNS STRUCTURE:
+ * {
+ *   weekly: { metrics for current week - used by KPI cards },
+ *   previousWeekly: { metrics for last completed week - used by WeeklyPerformanceSummary },
+ *   fourWeek: { metrics for rolling 4-week period },
+ *   weekOverWeek: { % changes: current week vs previous week - used by KPI cards },
+ *   previousWeekOverWeek: { % changes: previous week vs 2 weeks ago - used by WeeklyPerformanceSummary },
+ *   windows: { date ranges for all periods }
+ * }
+ * 
+ * METRIC DEFINITIONS:
+ * - transactions: Total number of sales/visits
+ * - grossRevenue: Total before discounts (Valor_Venda)
+ * - netRevenue: After coupons AND cashback (what you actually keep)
+ * - discountAmount: Sum of coupon discounts + cashback given
+ * - washServices: Total wash machine uses
+ * - dryServices: Total dry machine uses
+ * - totalServices: Total machine uses (wash + dry)
+ * - activeDays: Number of days in the period (always 7 for weeks)
+ * - servicesPerTransaction: Avg machines used per customer visit
+ * - washUtilization: % of wash capacity used during operating hours
+ * - dryUtilization: % of dry capacity used during operating hours
+ * - totalUtilization: Weighted average utilization
  */
 export function calculateBusinessMetrics(salesData) {
-  console.log('=== BUSINESS METRICS v2.3 DEBUG ===');
+  console.log('=== BUSINESS METRICS v2.4 DEBUG ===');
   console.log('Input sales rows:', salesData.length);
   
   const records = parseSalesRecords(salesData);
   console.log('Parsed records:', records.length);
-  console.log('Sample record:', records[0]);
   
   const windows = getDateWindows();
   console.log('Date windows:', {
     weekly: `${windows.weekly.startDate} - ${windows.weekly.endDate}`,
-    prevWeek: `${windows.previousWeek.start.toISOString()} - ${windows.previousWeek.end.toISOString()}`,
-    fourWeek: `${windows.fourWeek.start.toISOString()} - ${windows.fourWeek.end.toISOString()}`
+    previousWeekly: `${windows.previousWeekly.startDate} - ${windows.previousWeekly.endDate}`,
+    twoWeeksAgo: `${windows.twoWeeksAgo.start.toLocaleDateString('pt-BR')} - ${windows.twoWeeksAgo.end.toLocaleDateString('pt-BR')}`,
+    fourWeek: `${windows.fourWeek.start.toLocaleDateString('pt-BR')} - ${windows.fourWeek.end.toLocaleDateString('pt-BR')}`
   });
 
+  // Filter records for each time window
   const weekRecords = filterByWindow(records, windows.weekly);
-  const prevWeekRecords = filterByWindow(records, windows.previousWeek);
+  const prevWeekRecords = filterByWindow(records, windows.previousWeekly);
+  const twoWeeksAgoRecords = filterByWindow(records, windows.twoWeeksAgo);
   const fourWeekRecords = filterByWindow(records, windows.fourWeek);
   
   console.log('Filtered records:', {
-    week: weekRecords.length,
-    prevWeek: prevWeekRecords.length,
+    currentWeek: weekRecords.length,
+    previousWeek: prevWeekRecords.length,
+    twoWeeksAgo: twoWeeksAgoRecords.length,
     fourWeek: fourWeekRecords.length
   });
 
+  // Calculate totals for each period
   const weeklyTotals = calculateTotals(weekRecords, windows.weekly);
-  console.log('Weekly totals:', weeklyTotals);
-  const prevWeekTotals = calculateTotals(prevWeekRecords, windows.previousWeek);
-  console.log('Prev. Weekly totals:', prevWeekTotals);
+  const prevWeeklyTotals = calculateTotals(prevWeekRecords, windows.previousWeekly);
+  const twoWeeksAgoTotals = calculateTotals(twoWeeksAgoRecords, windows.twoWeeksAgo);
   const fourWeekTotals = calculateTotals(fourWeekRecords, windows.fourWeek);
-  console.log('Four Weekly totals:', fourWeekTotals);
 
+  // Calculate utilization for each period
   const weeklyUtil = calculateUtilization(weekRecords, windows.weekly);
-  console.log('Weekly Util:', weeklyUtil);
-  const prevWeekUtil = calculateUtilization(prevWeekRecords, windows.previousWeek);
-  console.log('Prev Weekly Util:', prevWeekUtil);
+  const prevWeeklyUtil = calculateUtilization(prevWeekRecords, windows.previousWeekly);
+  const twoWeeksAgoUtil = calculateUtilization(twoWeeksAgoRecords, windows.twoWeeksAgo);
   const fourWeekUtil = calculateUtilization(fourWeekRecords, windows.fourWeek);
-  console.log('Four Weekly Util:', fourWeekUtil);
 
+  // Calculate week-over-week changes
+  // 1. Current week vs Previous week (for KPI cards)
   const weekOverWeek = calculateWeekOverWeek(
-    weeklyTotals, prevWeekTotals, weeklyUtil, prevWeekUtil
+    weeklyTotals, prevWeeklyTotals, weeklyUtil, prevWeeklyUtil
+  );
+  
+  // 2. Previous week vs Two weeks ago (for WeeklyPerformanceSummary)
+  const previousWeekOverWeek = calculateWeekOverWeek(
+    prevWeeklyTotals, twoWeeksAgoTotals, prevWeeklyUtil, twoWeeksAgoUtil
   );
 
+  console.log('Week-over-week changes:', weekOverWeek);
+  console.log('Previous week changes:', previousWeekOverWeek);
+
   return {
+    // CURRENT WEEK METRICS (used by KPI cards)
     weekly: {
       ...weeklyTotals,
       ...weeklyUtil,
       servicesPerTransaction: weeklyTotals.transactions > 0
         ? weeklyTotals.totalServices / weeklyTotals.transactions : 0
     },
-    previousWeek: {
-      ...prevWeekTotals,
-      ...prevWeekUtil,
-      servicesPerTransaction: prevWeekTotals.transactions > 0
-        ? prevWeekTotals.totalServices / prevWeekTotals.transactions : 0
+    
+    // PREVIOUS WEEK METRICS (used by WeeklyPerformanceSummary)
+    previousWeekly: {
+      ...prevWeeklyTotals,
+      ...prevWeeklyUtil,
+      servicesPerTransaction: prevWeeklyTotals.transactions > 0
+        ? prevWeeklyTotals.totalServices / prevWeeklyTotals.transactions : 0
     },
+    
+    // FOUR WEEK ROLLING METRICS
     fourWeek: {
       ...fourWeekTotals,
       ...fourWeekUtil,
       servicesPerTransaction: fourWeekTotals.transactions > 0
         ? fourWeekTotals.totalServices / fourWeekTotals.transactions : 0
     },
+    
+    // CHANGES: Current week vs Previous week (for KPI cards)
     weekOverWeek,
-    windows
+    
+    // CHANGES: Previous week vs Two weeks ago (for WeeklyPerformanceSummary)
+    previousWeekOverWeek,
+    
+    // DATE RANGES (for display in UI)
+    windows: {
+      weekly: {
+        startDate: windows.weekly.startDate,
+        endDate: windows.weekly.endDate
+      },
+      previousWeekly: {
+        startDate: windows.previousWeekly.startDate,
+        endDate: windows.previousWeekly.endDate
+      }
+    }
   };
 }
 
