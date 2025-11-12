@@ -1,5 +1,11 @@
-import React from 'react';
+// TopPerformersSegment_v2.0.jsx
+// ✅ Integrated CustomerDetailModal
+// ✅ Verified RFM data merge (names already in customerMetrics.activeCustomers)
+// ✅ Added click-to-view-details functionality
+
+import React, { useState } from 'react';
 import { Crown, Heart, TrendingUp, Award } from 'lucide-react';
+import CustomerDetailModal from './CustomerDetailModal';
 
 const COLORS = {
   primary: '#10306B',
@@ -8,7 +14,9 @@ const COLORS = {
   gray: '#6b7280'
 };
 
-const TopPerformersSegment = ({ customerMetrics }) => {
+const TopPerformersSegment = ({ customerMetrics, salesData }) => {
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+
   if (!customerMetrics || !customerMetrics.activeCustomers) {
     return (
       <div style={{
@@ -63,213 +71,229 @@ const TopPerformersSegment = ({ customerMetrics }) => {
   };
 
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      padding: '1.5rem',
-      border: '1px solid #e5e7eb',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }}>
-      {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-          <Award style={{ width: '20px', height: '20px', color: COLORS.primary }} />
-          <h3 style={{ 
-            fontSize: '16px',
-            fontWeight: '600',
-            color: COLORS.primary,
+    <>
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+      }}>
+        {/* Header */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <Award style={{ width: '20px', height: '20px', color: COLORS.primary }} />
+            <h3 style={{ 
+              fontSize: '16px',
+              fontWeight: '600',
+              color: COLORS.primary,
+              margin: 0
+            }}>
+              Top Performers by Segment
+            </h3>
+          </div>
+          <p style={{
+            fontSize: '13px',
+            color: COLORS.gray,
             margin: 0
           }}>
-            Top Performers by Segment
-          </h3>
+            Top 5 customers in each key segment • Click for details
+          </p>
         </div>
-        <p style={{
-          fontSize: '13px',
-          color: COLORS.gray,
-          margin: 0
-        }}>
-          Top 5 customers in each key segment
-        </p>
-      </div>
 
-      {/* Segments Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '1rem'
-      }}>
-        {segments.map((segment) => {
-          const Icon = segment.icon;
-          const topCustomers = getTopCustomersBySegment(segment.name);
-          
-          return (
-            <div 
-              key={segment.name}
-              style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: '10px',
-                padding: '1rem',
-                background: '#fafafa'
-              }}
-            >
-              {/* Segment Header */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '1rem',
-                paddingBottom: '0.75rem',
-                borderBottom: '2px solid #e5e7eb'
-              }}>
+        {/* Segments Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '1rem'
+        }}>
+          {segments.map((segment) => {
+            const Icon = segment.icon;
+            const topCustomers = getTopCustomersBySegment(segment.name);
+            
+            return (
+              <div 
+                key={segment.name}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  background: '#fafafa'
+                }}
+              >
+                {/* Segment Header */}
                 <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  background: segment.bgColor,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  gap: '0.5rem',
+                  marginBottom: '1rem',
+                  paddingBottom: '0.75rem',
+                  borderBottom: '2px solid #e5e7eb'
                 }}>
-                  <Icon style={{ width: '18px', height: '18px', color: segment.color }} />
-                </div>
-                <div>
                   <div style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: COLORS.primary
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: segment.bgColor,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}>
-                    {segment.name}
+                    <Icon style={{ width: '18px', height: '18px', color: segment.color }} />
                   </div>
-                  <div style={{
-                    fontSize: '11px',
-                    color: COLORS.gray
-                  }}>
-                    {segment.description}
+                  <div>
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: COLORS.primary
+                    }}>
+                      {segment.name}
+                    </div>
+                    <div style={{
+                      fontSize: '11px',
+                      color: COLORS.gray
+                    }}>
+                      {segment.description}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Customer List */}
-              {topCustomers.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {topCustomers.map((customer, index) => (
-                    <div 
-                      key={customer.doc || index}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '0.75rem',
-                        background: 'white',
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-                        e.currentTarget.style.transform = 'translateX(2px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.boxShadow = 'none';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
+                {/* Customer List */}
+                {topCustomers.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {topCustomers.map((customer, index) => (
+                      <div 
+                        key={customer.doc || index}
+                        onClick={() => setSelectedCustomer(customer)}
+                        style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '0.5rem',
-                          marginBottom: '0.25rem'
-                        }}>
-                          <span style={{
-                            display: 'inline-flex',
+                          justifyContent: 'space-between',
+                          padding: '0.75rem',
+                          background: 'white',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb',
+                          transition: 'all 0.2s',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                          e.currentTarget.style.transform = 'translateX(2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = 'none';
+                          e.currentTarget.style.transform = 'translateX(0)';
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '50%',
-                            background: index === 0 ? segment.bgColor : '#f3f4f6',
-                            color: index === 0 ? segment.color : COLORS.gray,
+                            gap: '0.5rem',
+                            marginBottom: '0.25rem'
+                          }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              background: index === 0 ? segment.bgColor : '#f3f4f6',
+                              color: index === 0 ? segment.color : COLORS.gray,
+                              fontSize: '11px',
+                              fontWeight: '700'
+                            }}>
+                              {index + 1}
+                            </span>
+                            <span style={{
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              color: COLORS.primary,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {customer.name}
+                            </span>
+                          </div>
+                          <div style={{
                             fontSize: '11px',
-                            fontWeight: '700'
+                            color: COLORS.gray,
+                            marginLeft: '28px'
                           }}>
-                            {index + 1}
-                          </span>
-                          <span style={{
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            color: COLORS.primary,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {customer.name}
-                          </span>
+                            {customer.transactions} visits • {customer.totalServices} services
+                            {customer.phone && (
+                              <span style={{ marginLeft: '0.5rem' }}>• 📞</span>
+                            )}
+                          </div>
                         </div>
                         <div style={{
-                          fontSize: '11px',
-                          color: COLORS.gray,
-                          marginLeft: '28px'
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: segment.color,
+                          marginLeft: '1rem',
+                          flexShrink: 0
                         }}>
-                          {customer.transactions} visits • {customer.totalServices} services
+                          {formatCurrency(customer.netTotal)}
                         </div>
                       </div>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: segment.color,
-                        marginLeft: '1rem',
-                        flexShrink: 0
-                      }}>
-                        {formatCurrency(customer.netTotal)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '2rem 1rem',
-                  color: COLORS.gray,
-                  fontSize: '13px'
-                }}>
-                  No customers in this segment
-                </div>
-              )}
-
-              {/* Segment Total */}
-              {topCustomers.length > 0 && (
-                <div style={{
-                  marginTop: '1rem',
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid #e5e7eb',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <span style={{
-                    fontSize: '12px',
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '2rem 1rem',
                     color: COLORS.gray,
-                    fontWeight: '500'
+                    fontSize: '13px'
                   }}>
-                    Top 5 Total:
-                  </span>
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: '700',
-                    color: COLORS.primary
+                    No customers in this segment
+                  </div>
+                )}
+
+                {/* Segment Total */}
+                {topCustomers.length > 0 && (
+                  <div style={{
+                    marginTop: '1rem',
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #e5e7eb',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}>
-                    {formatCurrency(
-                      topCustomers.reduce((sum, c) => sum + c.netTotal, 0)
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                    <span style={{
+                      fontSize: '12px',
+                      color: COLORS.gray,
+                      fontWeight: '500'
+                    }}>
+                      Top 5 Total:
+                    </span>
+                    <span style={{
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      color: COLORS.primary
+                    }}>
+                      {formatCurrency(
+                        topCustomers.reduce((sum, c) => sum + c.netTotal, 0)
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* Customer Detail Modal */}
+      {selectedCustomer && (
+        <CustomerDetailModal
+          customer={selectedCustomer}
+          onClose={() => setSelectedCustomer(null)}
+          salesData={salesData}
+        />
+      )}
+    </>
   );
 };
 
