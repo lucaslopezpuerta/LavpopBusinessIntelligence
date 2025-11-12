@@ -1,34 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart3, Users, TrendingUp, Settings } from 'lucide-react';
 import { loadAllData } from './utils/csvLoader';
-import './App.css';
-
-// Placeholder components - we'll build these next
-import KPICards from './components/KPICards';
 import { calculateBusinessMetrics } from './utils/businessMetrics';
 import { calculateCustomerMetrics } from './utils/customerMetrics';
+import KPICards from './components/KPICards_v2.0';
+import './App_v2.0.css';
 
-const Dashboard = ({ data }) => {
-  const businessMetrics = useMemo(() => {
-    if (!data?.sales) return null;
-    return calculateBusinessMetrics(data.sales);
-  }, [data?.sales]);
-
-  const customerMetrics = useMemo(() => {
-    if (!data?.sales || !data?.rfm) return null;
-    return calculateCustomerMetrics(data.sales, data.rfm);
-  }, [data?.sales, data?.rfm]);
-
-  return (
-    <div className="p-6">
-      <h1>Dashboard</h1>
-      <KPICards 
-        businessMetrics={businessMetrics}
-        customerMetrics={customerMetrics}
-      />
-    </div>
-  );
-};
+// Import the new Dashboard v2.0
+import DashboardV2 from './views/Dashboard_v2.0';
 
 const Customers = ({ data }) => (
   <div className="view-container">
@@ -79,21 +58,21 @@ function App() {
   }, []);
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: DashboardV2 },
     { id: 'customers', label: 'Clientes', icon: Users, component: Customers },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp, component: Analytics },
     { id: 'operations', label: 'Operações', icon: Settings, component: Operations }
   ];
 
   const activeTabData = tabs.find(t => t.id === activeTab);
-  const ActiveComponent = activeTabData?.component || Dashboard;
+  const ActiveComponent = activeTabData?.component || DashboardV2;
 
   if (loading) {
     return (
       <div className="loading-screen">
         <div className="loading-content">
           <div className="lavpop-logo">
-            <div className="logo-circle" style={{ background: '#1a5a8e' }}>L</div>
+            <div className="logo-circle" style={{ background: '#10306B' }}>L</div>
           </div>
           <h2>Carregando Lavpop BI</h2>
           <div className="progress-bar">
@@ -164,7 +143,7 @@ function App() {
             style={{
               marginTop: '1.5rem',
               padding: '0.75rem 2rem',
-              background: '#1a5a8e',
+              background: '#10306B',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -185,7 +164,17 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="logo-section">
-            <div className="logo-circle">L</div>
+            {/* Use Logo 1 from assets */}
+            <img 
+              src="/assets/Logo 1.jpg" 
+              alt="Lavpop Logo" 
+              className="logo-image"
+              onError={(e) => {
+                // Fallback if logo doesn't load
+                e.target.style.display = 'none';
+                console.error('Logo failed to load');
+              }}
+            />
             <div className="logo-text">
               <h1>Lavpop</h1>
               <span>Business Intelligence</span>
@@ -208,7 +197,7 @@ function App() {
       </header>
 
       <main className="app-main">
-        <ActiveComponent data={data} />
+        <ActiveComponent data={data} onNavigate={setActiveTab} />
       </main>
     </div>
   );
