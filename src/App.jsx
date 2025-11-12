@@ -3,11 +3,11 @@ import { BarChart3, Users, TrendingUp, Settings } from 'lucide-react';
 import { loadAllData } from './utils/csvLoader';
 import { calculateBusinessMetrics } from './utils/businessMetrics';
 import { calculateCustomerMetrics } from './utils/customerMetrics';
-import KPICards from './components/KPICards_v2.0';
-import './App_v2.0.css';
+import KPICards from './components/KPICards';
+import './App.css';
 
 // Import the new Dashboard v2.0
-import DashboardV2 from './views/Dashboard_v2.0';
+import DashboardV2 from './views/Dashboard';
 
 const Customers = ({ data }) => (
   <div className="view-container">
