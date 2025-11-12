@@ -1,3 +1,7 @@
+// RevenueTrendChart_v2.0.jsx
+// ✅ Replaced "Previous Period" and "Last Year" with daily wash/dry cycle counts
+// Shows: Gross Revenue, Net Revenue, Wash Cycles, Dry Cycles
+
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp } from 'lucide-react';
@@ -7,7 +11,8 @@ const COLORS = {
   primary: '#10306B',
   accent: '#53be33',
   gray: '#6b7280',
-  lightGray: '#d1d5db'
+  lightGray: '#d1d5db',
+  amber: '#f59f0bff'
 };
 
 /**
@@ -25,6 +30,20 @@ function parseBrNumber(value) {
   return parseFloat(str) || 0;
 }
 
+/**
+ * Count machines from string like "Lavadora 1, Secadora 2"
+ */
+function countMachines(str) {
+  if (!str) return { wash: 0, dry: 0 };
+  const machines = String(str).toLowerCase().split(',').map(m => m.trim());
+  let wash = 0, dry = 0;
+  machines.forEach(m => {
+    if (m.includes('lavadora')) wash++;
+    else if (m.includes('secadora')) dry++;
+  });
+  return { wash, dry };
+}
+
 const RevenueTrendChart = ({ salesData }) => {
   const chartData = useMemo(() => {
     if (!salesData || salesData.length === 0) return [];
@@ -32,17 +51,9 @@ const RevenueTrendChart = ({ salesData }) => {
     const CASHBACK_RATE = 0.075;
     const CASHBACK_START = new Date(2024, 5, 1); // June 1, 2024
 
-    // Get date ranges
     const now = new Date();
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const oneYearAgo = new Date(now);
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    oneYearAgo.setDate(oneYearAgo.getDate() - 30);
-
-    const sixtyDaysAgo = new Date(now);
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
     // Parse all sales data
     const records = salesData.map(row => {
@@ -58,6 +69,9 @@ const RevenueTrendChart = ({ salesData }) => {
         netValue = netValue - cashback;
       }
 
+      // Count machines
+      const machineInfo = countMachines(row.Maquina || row.machine || row.Maquinas || '');
+
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
@@ -67,62 +81,31 @@ const RevenueTrendChart = ({ salesData }) => {
         date,
         dateStr,
         grossValue,
-        netValue
+        netValue,
+        washCycles: machineInfo.wash,
+        dryCycles: machineInfo.dry
       };
     }).filter(r => r !== null);
 
-    // Group by date for current period (last 30 days)
-    const dailyMapCurrent = {};
+    // Group by date for last 30 days
+    const dailyMap = {};
     records.forEach(r => {
       if (r.date >= thirtyDaysAgo && r.date <= now) {
-        if (!dailyMapCurrent[r.dateStr]) {
-          dailyMapCurrent[r.dateStr] = {
+        if (!dailyMap[r.dateStr]) {
+          dailyMap[r.dateStr] = {
             date: r.dateStr,
             grossRevenue: 0,
             netRevenue: 0,
+            washCycles: 0,
+            dryCycles: 0,
             count: 0
           };
         }
-        dailyMapCurrent[r.dateStr].grossRevenue += r.grossValue;
-        dailyMapCurrent[r.dateStr].netRevenue += r.netValue;
-        dailyMapCurrent[r.dateStr].count++;
-      }
-    });
-
-    // Group for previous period (31-60 days ago)
-    const dailyMapPrevious = {};
-    records.forEach(r => {
-      if (r.date >= sixtyDaysAgo && r.date < thirtyDaysAgo) {
-        if (!dailyMapPrevious[r.dateStr]) {
-          dailyMapPrevious[r.dateStr] = {
-            netRevenue: 0
-          };
-        }
-        dailyMapPrevious[r.dateStr].netRevenue += r.netValue;
-      }
-    });
-
-    // Group for same period last year
-    const dailyMapLastYear = {};
-    records.forEach(r => {
-      if (r.date >= oneYearAgo) {
-        // Calculate the equivalent date this year
-        const thisYearDate = new Date(r.date);
-        thisYearDate.setFullYear(now.getFullYear());
-        
-        if (thisYearDate >= thirtyDaysAgo && thisYearDate <= now) {
-          const year = thisYearDate.getFullYear();
-          const month = String(thisYearDate.getMonth() + 1).padStart(2, '0');
-          const day = String(thisYearDate.getDate()).padStart(2, '0');
-          const mappedDateStr = `${year}-${month}-${day}`;
-
-          if (!dailyMapLastYear[mappedDateStr]) {
-            dailyMapLastYear[mappedDateStr] = {
-              netRevenue: 0
-            };
-          }
-          dailyMapLastYear[mappedDateStr].netRevenue += r.netValue;
-        }
+        dailyMap[r.dateStr].grossRevenue += r.grossValue;
+        dailyMap[r.dateStr].netRevenue += r.netValue;
+        dailyMap[r.dateStr].washCycles += r.washCycles;
+        dailyMap[r.dateStr].dryCycles += r.dryCycles;
+        dailyMap[r.dateStr].count++;
       }
     });
 
@@ -139,20 +122,19 @@ const RevenueTrendChart = ({ salesData }) => {
       // Format for display (DD/MM)
       const displayDate = `${day}/${month}`;
 
-      // Get previous period equivalent (30 days earlier)
-      const prevDate = new Date(date);
-      prevDate.setDate(prevDate.getDate() - 30);
-      const prevYear = prevDate.getFullYear();
-      const prevMonth = String(prevDate.getMonth() + 1).padStart(2, '0');
-      const prevDay = String(prevDate.getDate()).padStart(2, '0');
-      const prevDateStr = `${prevYear}-${prevMonth}-${prevDay}`;
+      const dayData = dailyMap[dateStr] || {
+        grossRevenue: 0,
+        netRevenue: 0,
+        washCycles: 0,
+        dryCycles: 0
+      };
 
       dailyData.push({
         date: displayDate,
-        grossRevenue: Math.round((dailyMapCurrent[dateStr]?.grossRevenue || 0) * 100) / 100,
-        netRevenue: Math.round((dailyMapCurrent[dateStr]?.netRevenue || 0) * 100) / 100,
-        previousPeriod: Math.round((dailyMapPrevious[prevDateStr]?.netRevenue || 0) * 100) / 100,
-        lastYear: Math.round((dailyMapLastYear[dateStr]?.netRevenue || 0) * 100) / 100
+        grossRevenue: Math.round(dayData.grossRevenue * 100) / 100,
+        netRevenue: Math.round(dayData.netRevenue * 100) / 100,
+        washCycles: dayData.washCycles,
+        dryCycles: dayData.dryCycles
       });
     }
 
@@ -181,39 +163,36 @@ const RevenueTrendChart = ({ salesData }) => {
           <p style={{ 
             margin: '0 0 8px 0',
             fontWeight: '600',
-            color: COLORS.primary
+            color: COLORS.primary,
+            fontSize: '13px'
           }}>
             {label}
           </p>
-          {payload.map((entry, index) => (
-            <p key={index} style={{ 
-              margin: '4px 0',
-              fontSize: '13px',
-              color: entry.color
-            }}>
-              <span style={{ fontWeight: '600' }}>{entry.name}:</span> {formatCurrency(entry.value)}
-            </p>
-          ))}
+          {payload.map((entry, index) => {
+            const isRevenue = entry.dataKey.includes('Revenue');
+            const formattedValue = isRevenue 
+              ? formatCurrency(entry.value)
+              : `${entry.value} cycles`;
+            
+            return (
+              <p key={index} style={{ 
+                margin: '4px 0',
+                fontSize: '12px',
+                color: entry.color,
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: '1rem'
+              }}>
+                <span style={{ fontWeight: '600' }}>{entry.name}:</span>
+                <span>{formattedValue}</span>
+              </p>
+            );
+          })}
         </div>
       );
     }
     return null;
   };
-
-  if (!chartData || chartData.length === 0) {
-    return (
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        border: '1px solid #e5e7eb',
-        textAlign: 'center',
-        color: '#6b7280'
-      }}>
-        No revenue data available
-      </div>
-    );
-  }
 
   return (
     <div style={{
@@ -224,13 +203,8 @@ const RevenueTrendChart = ({ salesData }) => {
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
     }}>
       {/* Header */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
           <TrendingUp style={{ width: '20px', height: '20px', color: COLORS.primary }} />
           <h3 style={{ 
             fontSize: '16px',
@@ -241,69 +215,104 @@ const RevenueTrendChart = ({ salesData }) => {
             Revenue Trend (Last 30 Days)
           </h3>
         </div>
+        <p style={{
+          fontSize: '12px',
+          color: COLORS.gray,
+          margin: 0
+        }}>
+          Daily revenue and machine utilization
+        </p>
       </div>
 
       {/* Chart */}
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-          <XAxis 
-            dataKey="date" 
-            tick={{ fontSize: 12, fill: COLORS.gray }}
-            tickLine={{ stroke: COLORS.lightGray }}
-          />
-          <YAxis 
-            tick={{ fontSize: 12, fill: COLORS.gray }}
-            tickLine={{ stroke: COLORS.lightGray }}
-            tickFormatter={formatCurrency}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            wrapperStyle={{ paddingTop: '20px' }}
-            iconType="line"
-          />
-          
-          {/* Current Period Lines (Solid) */}
-          <Line 
-            type="monotone" 
-            dataKey="grossRevenue" 
-            stroke={COLORS.primary}
-            strokeWidth={2.5}
-            name="Gross Revenue"
-            dot={false}
-            activeDot={{ r: 6 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="netRevenue" 
-            stroke={COLORS.accent}
-            strokeWidth={2.5}
-            name="Net Revenue"
-            dot={false}
-            activeDot={{ r: 6 }}
-          />
-          
-          {/* Comparison Lines (Dashed) */}
-          <Line 
-            type="monotone" 
-            dataKey="previousPeriod" 
-            stroke={COLORS.gray}
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            name="Previous Period"
-            dot={false}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="lastYear" 
-            stroke="#f59e0b"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            name="Same Period Last Year"
-            dot={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {chartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <XAxis 
+              dataKey="date" 
+              tick={{ fontSize: 11, fill: COLORS.gray }}
+              tickLine={{ stroke: '#e5e7eb' }}
+              axisLine={{ stroke: '#e5e7eb' }}
+            />
+            <YAxis 
+              yAxisId="left"
+              tick={{ fontSize: 11, fill: COLORS.gray }}
+              tickLine={{ stroke: '#e5e7eb' }}
+              axisLine={{ stroke: '#e5e7eb' }}
+              tickFormatter={(value) => formatCurrency(value)}
+            />
+            <YAxis 
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 11, fill: COLORS.gray }}
+              tickLine={{ stroke: '#e5e7eb' }}
+              axisLine={{ stroke: '#e5e7eb' }}
+              label={{ value: 'Cycles', angle: -90, position: 'insideRight', style: { fontSize: 11, fill: COLORS.gray } }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend 
+              wrapperStyle={{ 
+                fontSize: '12px',
+                paddingTop: '10px'
+              }}
+            />
+            
+            {/* Revenue Lines */}
+            <Line 
+              yAxisId="left"
+              type="monotone" 
+              dataKey="grossRevenue" 
+              stroke={COLORS.lightGray}
+              strokeWidth={2}
+              name="Gross Revenue"
+              dot={false}
+            />
+            <Line 
+              yAxisId="left"
+              type="monotone" 
+              dataKey="netRevenue" 
+              stroke={COLORS.accent}
+              strokeWidth={2}
+              name="Net Revenue"
+              dot={false}
+            />
+            
+            {/* Machine Cycle Lines */}
+            <Line 
+              yAxisId="right"
+              type="monotone" 
+              dataKey="washCycles" 
+              stroke={COLORS.primary}
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              name="Wash Cycles"
+              dot={false}
+            />
+            <Line 
+              yAxisId="right"
+              type="monotone" 
+              dataKey="dryCycles" 
+              stroke={COLORS.amber}
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              name="Dry Cycles"
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <div style={{
+          height: '300px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: COLORS.gray,
+          fontSize: '14px'
+        }}>
+          No data available for the last 30 days
+        </div>
+      )}
     </div>
   );
 };
