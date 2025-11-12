@@ -113,7 +113,10 @@ const Dashboard = ({ data, onNavigate }) => {
 
         {/* Row 3: At-Risk Customers + New Clients */}
         <div style={{ gridColumn: 'span 7' }}>
-          <AtRiskCustomersTable customerMetrics={customerMetrics} />
+          <AtRiskCustomersTable 
+            customerMetrics={customerMetrics}
+            salesData={data.sales} 
+            />
         </div>
         <div style={{ gridColumn: 'span 5' }}>
           <NewClientsChart salesData={data.sales} />
@@ -121,7 +124,10 @@ const Dashboard = ({ data, onNavigate }) => {
 
         {/* Row 4: Top Performers by Segment (Full Width) */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <TopPerformersSegment customerMetrics={customerMetrics} />
+          <TopPerformersSegment 
+            customerMetrics={customerMetrics}
+            salesData={data.sales}
+            />
         </div>
 
         {/* Row 5: Utilization Heatmap (Full Width) */}
