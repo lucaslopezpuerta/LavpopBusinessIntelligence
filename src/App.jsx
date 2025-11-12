@@ -166,7 +166,7 @@ function App() {
           <div className="logo-section">
             {/* Use Logo 1 from assets */}
             <img 
-              src=".src/assets/Logo 1.png" 
+              src="./src/assets/Logo 1.png" 
               alt="Lavpop Logo" 
               className="logo-image"
               onError={(e) => {
