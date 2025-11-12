@@ -1,15 +1,22 @@
-/* Lavpop BI - Brand Colors */
+/* Lavpop BI v2.0 - Updated Brand Colors */
 :root {
-  --primary: #1a5a8e;
-  --accent: #55b03b;
+  --primary: #10306B;
+  --accent: #53be33;
   --light-blue: #e3f2fd;
   --light-green: #e8f5e9;
-  --dark-blue: #0d3a5c;
+  --dark-blue: #0a1f47;
   --bg-gray: #f5f7fa;
   --text-dark: #1f2937;
   --text-gray: #6b7280;
   --border-gray: #e5e7eb;
   --white: #ffffff;
+  
+  /* Risk level colors */
+  --risk-churning: #dc2626;
+  --risk-at-risk: #f59e0b;
+  --risk-monitor: #10306B;
+  --risk-healthy: #53be33;
+  --risk-new: #9333ea;
 }
 
 * {
@@ -45,7 +52,7 @@ body {
 }
 
 .header-content {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0 2rem;
   display: flex;
@@ -54,32 +61,25 @@ body {
   gap: 2rem;
 }
 
-/* Logo Section */
+/* Logo Section - Updated for actual logo image */
 .logo-section {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 1rem 0;
+  padding: 0.75rem 0;
 }
 
-.logo-circle {
-  width: 48px;
+.logo-image {
   height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 24px;
-  font-weight: bold;
-  box-shadow: 0 4px 6px rgba(26, 90, 142, 0.3);
+  width: auto;
+  object-fit: contain;
 }
 
 .logo-text h1 {
   font-size: 24px;
   color: var(--primary);
   margin-bottom: 2px;
+  font-weight: 600;
 }
 
 .logo-text span {
@@ -87,6 +87,26 @@ body {
   color: var(--text-gray);
   text-transform: uppercase;
   letter-spacing: 1px;
+  font-weight: 500;
+}
+
+/* Header Info */
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 14px;
+  color: var(--text-gray);
+}
+
+.week-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--light-blue);
+  border-radius: 6px;
+  font-weight: 500;
 }
 
 /* Tabs Navigation */
@@ -134,7 +154,7 @@ body {
 /* Main Content */
 .app-main {
   flex: 1;
-  max-width: 1400px;
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
   padding: 2rem;
@@ -145,6 +165,75 @@ body {
   border-radius: 12px;
   padding: 2rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Dashboard Grid Layout */
+.dashboard-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.grid-full {
+  grid-column: 1 / -1;
+}
+
+.grid-half {
+  grid-column: span 6;
+}
+
+.grid-third {
+  grid-column: span 4;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(12, 1fr);
+  }
+}
+
+@media (max-width: 1023px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid-half,
+  .grid-third {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Card Styles */
+.card {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-gray);
+  transition: all 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-body {
+  margin-top: 1rem;
 }
 
 /* Loading Screen */
@@ -173,6 +262,10 @@ body {
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   animation: pulse 2s ease-in-out infinite;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @keyframes pulse {
@@ -251,7 +344,64 @@ body {
 .error-content button:hover {
   background: var(--dark-blue);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(26, 90, 142, 0.3);
+  box-shadow: 0 4px 8px rgba(16, 48, 107, 0.3);
+}
+
+/* Utility Classes */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.text-sm {
+  font-size: 14px;
+}
+
+.text-xs {
+  font-size: 12px;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.text-gray-500 {
+  color: var(--text-gray);
+}
+
+.text-gray-600 {
+  color: #4b5563;
+}
+
+.text-gray-900 {
+  color: var(--text-dark);
 }
 
 /* Responsive */
@@ -277,5 +427,15 @@ body {
   
   .app-main {
     padding: 1rem;
+  }
+  
+  .header-info {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .week-indicator {
+    width: 100%;
+    justify-content: center;
   }
 }
