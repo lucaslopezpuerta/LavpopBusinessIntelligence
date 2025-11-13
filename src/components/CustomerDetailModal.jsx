@@ -1,9 +1,12 @@
-// CustomerDetailModal_v1.3.jsx
-// ✅ Uses existing dateUtils from the utils folder
-// ✅ All requested features: Last Visit, proper dates, transaction columns
+// CustomerDetailModal_v1.4.jsx
+// ✅ FIXED: Amount decimals preserved (R$ 17,90 not R$ 17,00)
+// ✅ FIXED: Services → Cycles with correct machine count
+// ✅ FIXED: Machines column shows codes with brand colors (L=blue, S=green)
+// ✅ FIXED: Coupon visual badge design
+// ✅ ENHANCED: Professional table design
 
 import React, { useMemo } from 'react';
-import { X, Phone, MessageCircle, Calendar, Activity } from 'lucide-react';
+import { X, Phone, MessageCircle, Calendar, Activity, Tag } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 const COLORS = {
@@ -39,6 +42,85 @@ const getRiskIcon = (riskLevel) => {
   }
 };
 
+// Parse and render machine codes with brand colors
+const MachineDisplay = ({ machineStr }) => {
+  if (!machineStr || machineStr === 'N/A') {
+    return <span style={{ color: COLORS.gray, fontSize: '11px' }}>-</span>;
+  }
+
+  // Extract all machine codes (L1, L2, S3, etc.)
+  const machines = machineStr.match(/[LS]\d+/g) || [];
+  
+  if (machines.length === 0) {
+    return <span style={{ color: COLORS.gray, fontSize: '11px' }}>-</span>;
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+      {machines.map((code, idx) => {
+        const isWash = code.startsWith('L');
+        return (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-block',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontSize: '10px',
+              fontWeight: '600',
+              background: isWash ? '#e3f2fd' : '#e8f5e9',
+              color: isWash ? COLORS.primary : COLORS.accent,
+              border: `1px solid ${isWash ? '#90caf9' : '#a5d6a7'}`
+            }}
+          >
+            {code}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+// Coupon badge component
+const CouponBadge = ({ couponCode }) => {
+  if (!couponCode || couponCode === '') {
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '4px 8px',
+        borderRadius: '6px',
+        fontSize: '11px',
+        fontWeight: '500',
+        background: '#f3f4f6',
+        color: '#9ca3af',
+        border: '1px solid #e5e7eb'
+      }}>
+        n/d
+      </span>
+    );
+  }
+
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      padding: '4px 8px',
+      borderRadius: '6px',
+      fontSize: '11px',
+      fontWeight: '600',
+      background: '#dcfce7',
+      color: '#166534',
+      border: '1px solid #86efac'
+    }}>
+      <Tag style={{ width: '12px', height: '12px' }} />
+      {couponCode}
+    </span>
+  );
+};
+
 const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   const transactionHistory = useMemo(() => {
     if (!salesData || salesData.length === 0) return [];
@@ -51,12 +133,17 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
       .map(row => {
         const dateStr = row.Data_Hora || row.Data || '';
         const date = parseBrDate(dateStr);
-        const amount = parseFloat(row.Valor_Pago || row.net_value || 0);
+        
+        // CRITICAL FIX: Get raw string value first to preserve decimals
+        const amountStr = String(row.Valor_Pago || row.net_value || '0');
+        // Replace comma with dot for Brazilian decimal format
+        const amount = parseFloat(amountStr.replace(',', '.'));
         
         const machineStr = row.Maquina || row.machine || '';
-        const washCount = (machineStr.match(/L\d+/g) || []).length;
-        const dryCount = (machineStr.match(/S\d+/g) || []).length;
-        const totalServices = washCount + dryCount;
+        
+        // Count machines (cycles)
+        const machines = machineStr.match(/[LS]\d+/g) || [];
+        const totalCycles = machines.length;
         
         const paymentMethod = row.Meio_de_Pagamento || row.payment_method || 'N/A';
         const couponCode = row.Codigo_Cupom || row.coupon_code || '';
@@ -65,8 +152,8 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           date,
           dateValid: date !== null && !isNaN(date.getTime()),
           amount,
-          services: totalServices,
-          machineStr: machineStr || 'N/A',
+          cycles: totalCycles,
+          machineStr,
           paymentMethod,
           couponCode
         };
@@ -79,9 +166,12 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   }, [salesData, customer.doc]);
 
   const formatCurrency = (value) => {
+    if (isNaN(value)) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
-      currency: 'BRL'
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(value);
   };
 
@@ -128,7 +218,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         style={{
           background: 'white',
           borderRadius: '16px',
-          maxWidth: '900px',
+          maxWidth: '950px',
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
@@ -337,7 +427,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </div>
         </div>
 
-        {/* Transaction History */}
+        {/* Transaction History - ENHANCED DESIGN */}
         <div style={{ padding: '1.5rem' }}>
           <h3 style={{
             fontSize: '16px',
@@ -353,50 +443,130 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </h3>
           
           {transactionHistory.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <div style={{ 
+              overflowX: 'auto',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              background: 'white'
+            }}>
+              <table style={{ 
+                width: '100%', 
+                borderCollapse: 'collapse', 
+                fontSize: '13px'
+              }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600', color: COLORS.gray }}>
+                  <tr style={{ 
+                    background: '#f9fafb',
+                    borderBottom: '2px solid #e5e7eb'
+                  }}>
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      fontWeight: '600', 
+                      color: COLORS.gray,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
                       Date
                     </th>
-                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: COLORS.gray }}>
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'right', 
+                      fontWeight: '600', 
+                      color: COLORS.gray,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
                       Amount
                     </th>
-                    <th style={{ padding: '8px', textAlign: 'center', fontWeight: '600', color: COLORS.gray }}>
-                      Services
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'center', 
+                      fontWeight: '600', 
+                      color: COLORS.gray,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Cycles
                     </th>
-                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600', color: COLORS.gray }}>
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      fontWeight: '600', 
+                      color: COLORS.gray,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
                       Machines
                     </th>
-                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600', color: COLORS.gray }}>
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      fontWeight: '600', 
+                      color: COLORS.gray,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
                       Payment
                     </th>
-                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600', color: COLORS.gray }}>
+                    <th style={{ 
+                      padding: '12px 16px', 
+                      textAlign: 'left', 
+                      fontWeight: '600', 
+                      color: COLORS.gray,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
                       Coupon
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactionHistory.map((txn, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '8px', color: COLORS.gray }}>
+                    <tr 
+                      key={idx} 
+                      style={{ 
+                        borderBottom: idx === transactionHistory.length - 1 ? 'none' : '1px solid #f3f4f6',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <td style={{ padding: '12px 16px', color: COLORS.gray, fontWeight: '500' }}>
                         {formatDate(txn.date)}
                       </td>
-                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: COLORS.primary }}>
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        textAlign: 'right', 
+                        fontWeight: '700', 
+                        color: COLORS.primary,
+                        fontSize: '14px'
+                      }}>
                         {formatCurrency(txn.amount)}
                       </td>
-                      <td style={{ padding: '8px', textAlign: 'center', fontWeight: '600', color: COLORS.primary }}>
-                        {txn.services}
+                      <td style={{ 
+                        padding: '12px 16px', 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        color: COLORS.primary,
+                        fontSize: '16px'
+                      }}>
+                        {txn.cycles}
                       </td>
-                      <td style={{ padding: '8px', color: COLORS.gray, fontSize: '11px' }}>
-                        {txn.machineStr}
+                      <td style={{ padding: '12px 16px' }}>
+                        <MachineDisplay machineStr={txn.machineStr} />
                       </td>
-                      <td style={{ padding: '8px', color: COLORS.gray }}>
+                      <td style={{ padding: '12px 16px', color: COLORS.gray, fontSize: '13px' }}>
                         {txn.paymentMethod}
                       </td>
-                      <td style={{ padding: '8px', color: txn.couponCode ? COLORS.accent : COLORS.gray, fontWeight: txn.couponCode ? '600' : 'normal' }}>
-                        {txn.couponCode || '-'}
+                      <td style={{ padding: '12px 16px' }}>
+                        <CouponBadge couponCode={txn.couponCode} />
                       </td>
                     </tr>
                   ))}
@@ -404,7 +574,14 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               </table>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '2rem', color: COLORS.gray }}>
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '3rem', 
+              color: COLORS.gray,
+              background: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
               No transaction history available
             </div>
           )}
