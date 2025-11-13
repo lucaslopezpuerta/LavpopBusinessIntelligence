@@ -93,8 +93,8 @@ const MachineDisplay = ({ machineStr }) => {
               borderRadius: '6px',
               fontSize: '11px',
               fontWeight: '700',
-              background: isWash ? '#dbeafe' : '#33BF40',
-              color: isWash ? COLORS.primary : COLORS.accent,
+              background: isWash ? '#dbeafe' : '#AAF7A6',
+              color: isWash ? COLORS.primary : '#2E4510',
               border: `1.5px solid ${isWash ? '#93c5fd' : '#86efac'}`
             }}
           >
