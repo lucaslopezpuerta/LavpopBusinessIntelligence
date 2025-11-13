@@ -1,12 +1,11 @@
-// CustomerDetailModal_v1.4.jsx
-// ✅ FIXED: Amount decimals preserved (R$ 17,90 not R$ 17,00)
-// ✅ FIXED: Services → Cycles with correct machine count
-// ✅ FIXED: Machines column shows codes with brand colors (L=blue, S=green)
-// ✅ FIXED: Coupon visual badge design
-// ✅ ENHANCED: Professional table design
+// CustomerDetailModal_v1.5.jsx
+// ✅ FIXED: Parses "Lavadora: 1" → L1 (GREEN), "Secadora: 5" → S5 (BLUE)
+// ✅ FIXED: Cycles count from actual machines in transaction
+// ✅ FIXED: Coupon "n/d" shows gray "No" badge
+// ✅ FIXED: All columns centered
 
 import React, { useMemo } from 'react';
-import { X, Phone, MessageCircle, Calendar, Activity, Tag } from 'lucide-react';
+import { X, Phone, MessageCircle, Calendar, Activity, Tag, XCircle } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 const COLORS = {
@@ -42,38 +41,64 @@ const getRiskIcon = (riskLevel) => {
   }
 };
 
-// Parse and render machine codes with brand colors
-const MachineDisplay = ({ machineStr }) => {
-  if (!machineStr || machineStr === 'N/A') {
-    return <span style={{ color: COLORS.gray, fontSize: '11px' }}>-</span>;
-  }
+/**
+ * Parse machine string from Sales CSV
+ * Format: "Lavadora: 1" or "Lavadora:1,Secadora:3" etc.
+ * Returns array of machine objects with code and type
+ */
+const parseMachines = (machineStr) => {
+  if (!machineStr || machineStr === 'N/A') return [];
+  
+  // Split by comma to get individual machines
+  const parts = machineStr.split(',').map(s => s.trim());
+  const machines = [];
+  
+  parts.forEach(part => {
+    // Match "Lavadora: 1" or "Lavadora:1"
+    const washMatch = part.match(/Lavadora:\s*(\d+)/i);
+    if (washMatch) {
+      machines.push({ code: `L${washMatch[1]}`, type: 'wash' });
+      return;
+    }
+    
+    // Match "Secadora: 1" or "Secadora:1"
+    const dryMatch = part.match(/Secadora:\s*(\d+)/i);
+    if (dryMatch) {
+      machines.push({ code: `S${dryMatch[1]}`, type: 'dry' });
+      return;
+    }
+  });
+  
+  return machines;
+};
 
-  // Extract all machine codes (L1, L2, S3, etc.)
-  const machines = machineStr.match(/[LS]\d+/g) || [];
+// Machine badges component
+const MachineDisplay = ({ machineStr }) => {
+  const machines = parseMachines(machineStr);
   
   if (machines.length === 0) {
-    return <span style={{ color: COLORS.gray, fontSize: '11px' }}>-</span>;
+    return <span style={{ color: COLORS.gray, fontSize: '12px' }}>-</span>;
   }
 
   return (
-    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-      {machines.map((code, idx) => {
-        const isWash = code.startsWith('L');
+    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'center' }}>
+      {machines.map((machine, idx) => {
+        const isWash = machine.type === 'wash';
         return (
           <span
             key={idx}
             style={{
               display: 'inline-block',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontSize: '10px',
-              fontWeight: '600',
-              background: isWash ? '#e3f2fd' : '#e8f5e9',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: '700',
+              background: isWash ? '#dbeafe' : '#dcfce7',
               color: isWash ? COLORS.primary : COLORS.accent,
-              border: `1px solid ${isWash ? '#90caf9' : '#a5d6a7'}`
+              border: `1.5px solid ${isWash ? '#86efac' : '#93c5fd'}`
             }}
           >
-            {code}
+            {machine.code}
           </span>
         );
       })}
@@ -83,37 +108,40 @@ const MachineDisplay = ({ machineStr }) => {
 
 // Coupon badge component
 const CouponBadge = ({ couponCode }) => {
-  if (!couponCode || couponCode === '') {
+  // Check if no coupon was used (empty string or "n/d")
+  if (!couponCode || couponCode === '' || couponCode.toLowerCase() === 'n/d') {
     return (
       <span style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: '4px',
-        padding: '4px 8px',
+        padding: '4px 10px',
         borderRadius: '6px',
         fontSize: '11px',
-        fontWeight: '500',
+        fontWeight: '600',
         background: '#f3f4f6',
-        color: '#9ca3af',
-        border: '1px solid #e5e7eb'
+        color: '#6b7280',
+        border: '1px solid #d1d5db'
       }}>
-        n/d
+        <XCircle style={{ width: '12px', height: '12px' }} />
+        No
       </span>
     );
   }
 
+  // Coupon was used
   return (
     <span style={{
       display: 'inline-flex',
       alignItems: 'center',
       gap: '4px',
-      padding: '4px 8px',
+      padding: '4px 10px',
       borderRadius: '6px',
       fontSize: '11px',
-      fontWeight: '600',
+      fontWeight: '700',
       background: '#dcfce7',
       color: '#166534',
-      border: '1px solid #86efac'
+      border: '1.5px solid #86efac'
     }}>
       <Tag style={{ width: '12px', height: '12px' }} />
       {couponCode}
@@ -134,15 +162,15 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         const dateStr = row.Data_Hora || row.Data || '';
         const date = parseBrDate(dateStr);
         
-        // CRITICAL FIX: Get raw string value first to preserve decimals
+        // Get amount with decimals preserved
         const amountStr = String(row.Valor_Pago || row.net_value || '0');
-        // Replace comma with dot for Brazilian decimal format
         const amount = parseFloat(amountStr.replace(',', '.'));
         
-        const machineStr = row.Maquina || row.machine || '';
+        // Get machines string
+        const machineStr = row.Maquinas || row.Maquina || row.machine || '';
         
-        // Count machines (cycles)
-        const machines = machineStr.match(/[LS]\d+/g) || [];
+        // Parse machines and count cycles
+        const machines = parseMachines(machineStr);
         const totalCycles = machines.length;
         
         const paymentMethod = row.Meio_de_Pagamento || row.payment_method || 'N/A';
@@ -427,7 +455,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </div>
         </div>
 
-        {/* Transaction History - ENHANCED DESIGN */}
+        {/* Transaction History */}
         <div style={{ padding: '1.5rem' }}>
           <h3 style={{
             fontSize: '16px',
@@ -461,7 +489,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                   }}>
                     <th style={{ 
                       padding: '12px 16px', 
-                      textAlign: 'left', 
+                      textAlign: 'center', 
                       fontWeight: '600', 
                       color: COLORS.gray,
                       fontSize: '11px',
@@ -472,7 +500,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                     </th>
                     <th style={{ 
                       padding: '12px 16px', 
-                      textAlign: 'right', 
+                      textAlign: 'center', 
                       fontWeight: '600', 
                       color: COLORS.gray,
                       fontSize: '11px',
@@ -494,7 +522,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                     </th>
                     <th style={{ 
                       padding: '12px 16px', 
-                      textAlign: 'left', 
+                      textAlign: 'center', 
                       fontWeight: '600', 
                       color: COLORS.gray,
                       fontSize: '11px',
@@ -505,7 +533,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                     </th>
                     <th style={{ 
                       padding: '12px 16px', 
-                      textAlign: 'left', 
+                      textAlign: 'center', 
                       fontWeight: '600', 
                       color: COLORS.gray,
                       fontSize: '11px',
@@ -516,7 +544,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                     </th>
                     <th style={{ 
                       padding: '12px 16px', 
-                      textAlign: 'left', 
+                      textAlign: 'center', 
                       fontWeight: '600', 
                       color: COLORS.gray,
                       fontSize: '11px',
@@ -538,12 +566,12 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                       onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                     >
-                      <td style={{ padding: '12px 16px', color: COLORS.gray, fontWeight: '500' }}>
+                      <td style={{ padding: '12px 16px', color: COLORS.gray, fontWeight: '500', textAlign: 'center' }}>
                         {formatDate(txn.date)}
                       </td>
                       <td style={{ 
                         padding: '12px 16px', 
-                        textAlign: 'right', 
+                        textAlign: 'center', 
                         fontWeight: '700', 
                         color: COLORS.primary,
                         fontSize: '14px'
@@ -559,13 +587,13 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                       }}>
                         {txn.cycles}
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                         <MachineDisplay machineStr={txn.machineStr} />
                       </td>
-                      <td style={{ padding: '12px 16px', color: COLORS.gray, fontSize: '13px' }}>
+                      <td style={{ padding: '12px 16px', color: COLORS.gray, fontSize: '13px', textAlign: 'center' }}>
                         {txn.paymentMethod}
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                         <CouponBadge couponCode={txn.couponCode} />
                       </td>
                     </tr>
