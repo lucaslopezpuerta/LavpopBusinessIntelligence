@@ -6,15 +6,9 @@ import { calculateCustomerMetrics } from './utils/customerMetrics';
 import KPICards from './components/KPICards';
 import './App.css';
 
-// Import the new Dashboard v2.0
+// Import views
 import DashboardV2 from './views/Dashboard';
-
-const Customers = ({ data }) => (
-  <div className="view-container">
-    <h2>Customers</h2>
-    <p>Loaded {data?.rfm?.length || 0} customer segments</p>
-  </div>
-);
+import Customers from './views/Customers';
 
 const Analytics = ({ data }) => (
   <div className="view-container">
