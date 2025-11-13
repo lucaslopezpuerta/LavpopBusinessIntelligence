@@ -6,6 +6,7 @@ import {
   Filter, X, ChevronDown, Award
 } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
+import { calculateCustomerMetrics } from '../utils/customerMetrics';
 
 const BRAND_COLORS = {
   primary: '#10306B',
@@ -635,9 +636,6 @@ const Customers = ({ data }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [activeView, setActiveView] = useState('all'); // 'all' or 'urgent'
 
-  // Import customer metrics calculation
-  const { calculateCustomerMetrics } = require('../utils/customerMetrics');
-  
   const customerMetrics = useMemo(() => {
     if (!data?.sales || !data?.rfm) return null;
     return calculateCustomerMetrics(data.sales, data.rfm);
