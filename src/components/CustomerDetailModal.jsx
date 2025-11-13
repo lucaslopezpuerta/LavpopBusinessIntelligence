@@ -1,11 +1,12 @@
-// CustomerDetailModal_v1.0.jsx
-// ✅ Reusable modal for customer details across all dashboard components
-// ✅ Shows full transaction history, risk timeline, service preferences
-// ✅ Integrated Call/WhatsApp buttons
+// CustomerDetailModal_v1.1.jsx
+// ✅ FIXED: Date parsing using parseBrDate for Brazilian format
+// ✅ FIXED: Transaction amounts using correct Valor_Pago
+// ✅ NEW: Added Last Visit Date to metrics row
+// ✅ NEW: Added Payment Method, Services, and Coupon Code columns
 
 import React, { useMemo } from 'react';
-import { X, Phone, MessageCircle, TrendingUp, Calendar, DollarSign, Activity } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { X, Phone, MessageCircle, Calendar, Activity } from 'lucide-react';
+import { parseBrDate } from '../utils/brazilianUtils';
 
 const COLORS = {
   primary: '#10306B',
@@ -56,11 +57,37 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         const doc = String(row.Doc_Cliente || row.document || '').replace(/\D/g, '').padStart(11, '0');
         return doc === customer.doc;
       })
-      .map(row => ({
-        date: new Date(row.Data || row.Data_Hora || ''),
-        amount: parseFloat(row.Valor_Pago || row.net_value || 0),
-        services: String(row.Maquina || row.machine || '').split(',').length
-      }))
+      .map(row => {
+        // Use parseBrDate for proper Brazilian date parsing
+        const dateStr = row.Data_Hora || row.Data || '';
+        const date = parseBrDate(dateStr);
+        
+        // Get payment amount (Valor_Pago)
+        const amount = parseFloat(row.Valor_Pago || row.net_value || 0);
+        
+        // Get machine/services info
+        const machineStr = row.Maquina || row.machine || '';
+        const washCount = (machineStr.match(/L\d+/g) || []).length;
+        const dryCount = (machineStr.match(/S\d+/g) || []).length;
+        const totalServices = washCount + dryCount;
+        
+        // Get payment method
+        const paymentMethod = row.Meio_de_Pagamento || row.payment_method || 'N/A';
+        
+        // Get coupon code
+        const couponCode = row.Codigo_Cupom || row.coupon_code || '';
+        
+        return {
+          date: date,
+          dateValid: date !== null,
+          amount: amount,
+          services: totalServices,
+          machineStr: machineStr || 'N/A',
+          paymentMethod: paymentMethod,
+          couponCode: couponCode
+        };
+      })
+      .filter(txn => txn.dateValid) // Only include transactions with valid dates
       .sort((a, b) => b.date - a.date)
       .slice(0, 10); // Last 10 transactions
     
@@ -75,6 +102,9 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   };
 
   const formatDate = (date) => {
+    if (!date || !(date instanceof Date) || isNaN(date)) {
+      return 'Invalid Date';
+    }
     return date.toLocaleDateString('pt-BR', { 
       day: '2-digit', 
       month: '2-digit', 
@@ -118,7 +148,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         style={{
           background: 'white',
           borderRadius: '16px',
-          maxWidth: '800px',
+          maxWidth: '900px',
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
@@ -239,11 +269,11 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </button>
         </div>
 
-        {/* Key Metrics Row */}
+        {/* Key Metrics Row - UPDATED with Last Visit */}
         <div style={{
           padding: '1.5rem',
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(5, 1fr)',
           gap: '1rem',
           background: COLORS.lightGray
         }}>
@@ -261,6 +291,14 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             </div>
             <div style={{ fontSize: '20px', fontWeight: '700', color: COLORS.primary }}>
               {customer.transactions}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '11px', color: COLORS.gray, marginBottom: '4px', fontWeight: '500' }}>
+              LAST VISIT
+            </div>
+            <div style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
+              {formatDate(customer.lastVisit)}
             </div>
           </div>
           <div>
@@ -323,7 +361,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </div>
         </div>
 
-        {/* Transaction History */}
+        {/* Transaction History - UPDATED with new columns */}
         <div style={{ padding: '1.5rem' }}>
           <h3 style={{
             fontSize: '16px',
@@ -340,7 +378,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           
           {transactionHistory.length > 0 ? (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                     <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600', color: COLORS.gray }}>
@@ -349,8 +387,17 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                     <th style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: COLORS.gray }}>
                       Amount
                     </th>
-                    <th style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: COLORS.gray }}>
+                    <th style={{ padding: '8px', textAlign: 'center', fontWeight: '600', color: COLORS.gray }}>
                       Services
+                    </th>
+                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600', color: COLORS.gray }}>
+                      Machines
+                    </th>
+                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600', color: COLORS.gray }}>
+                      Payment
+                    </th>
+                    <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600', color: COLORS.gray }}>
+                      Coupon
                     </th>
                   </tr>
                 </thead>
@@ -363,8 +410,17 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                       <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600', color: COLORS.primary }}>
                         {formatCurrency(txn.amount)}
                       </td>
-                      <td style={{ padding: '8px', textAlign: 'right', color: COLORS.gray }}>
+                      <td style={{ padding: '8px', textAlign: 'center', fontWeight: '600', color: COLORS.primary }}>
                         {txn.services}
+                      </td>
+                      <td style={{ padding: '8px', color: COLORS.gray, fontSize: '11px' }}>
+                        {txn.machineStr}
+                      </td>
+                      <td style={{ padding: '8px', color: COLORS.gray }}>
+                        {txn.paymentMethod}
+                      </td>
+                      <td style={{ padding: '8px', color: txn.couponCode ? COLORS.accent : COLORS.gray, fontWeight: txn.couponCode ? '600' : 'normal' }}>
+                        {txn.couponCode || '-'}
                       </td>
                     </tr>
                   ))}
