@@ -1,12 +1,10 @@
-// CustomerDetailModal_v1.1.jsx
-// ✅ FIXED: Date parsing using parseBrDate for Brazilian format
-// ✅ FIXED: Transaction amounts using correct Valor_Pago
-// ✅ NEW: Added Last Visit Date to metrics row
-// ✅ NEW: Added Payment Method, Services, and Coupon Code columns
+// CustomerDetailModal_v1.3.jsx
+// ✅ Uses existing dateUtils from the utils folder
+// ✅ All requested features: Last Visit, proper dates, transaction columns
 
 import React, { useMemo } from 'react';
 import { X, Phone, MessageCircle, Calendar, Activity } from 'lucide-react';
-import { parseBrDate } from '../utils/brazilianUtils';
+import { parseBrDate } from '../utils/dateUtils';
 
 const COLORS = {
   primary: '#10306B',
@@ -17,9 +15,6 @@ const COLORS = {
   lightGray: '#f3f4f6'
 };
 
-/**
- * Risk badge colors matching V2.1
- */
 const getRiskColor = (riskLevel) => {
   switch(riskLevel) {
     case 'Healthy': return { bg: '#f0fdf4', text: COLORS.accent, border: COLORS.accent };
@@ -32,9 +27,6 @@ const getRiskColor = (riskLevel) => {
   }
 };
 
-/**
- * Risk level icons matching V2.1
- */
 const getRiskIcon = (riskLevel) => {
   switch(riskLevel) {
     case 'Healthy': return '🟢';
@@ -48,7 +40,6 @@ const getRiskIcon = (riskLevel) => {
 };
 
 const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
-  // Calculate transaction history for this customer
   const transactionHistory = useMemo(() => {
     if (!salesData || salesData.length === 0) return [];
     
@@ -58,38 +49,31 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         return doc === customer.doc;
       })
       .map(row => {
-        // Use parseBrDate for proper Brazilian date parsing
         const dateStr = row.Data_Hora || row.Data || '';
         const date = parseBrDate(dateStr);
-        
-        // Get payment amount (Valor_Pago)
         const amount = parseFloat(row.Valor_Pago || row.net_value || 0);
         
-        // Get machine/services info
         const machineStr = row.Maquina || row.machine || '';
         const washCount = (machineStr.match(/L\d+/g) || []).length;
         const dryCount = (machineStr.match(/S\d+/g) || []).length;
         const totalServices = washCount + dryCount;
         
-        // Get payment method
         const paymentMethod = row.Meio_de_Pagamento || row.payment_method || 'N/A';
-        
-        // Get coupon code
         const couponCode = row.Codigo_Cupom || row.coupon_code || '';
         
         return {
-          date: date,
-          dateValid: date !== null,
-          amount: amount,
+          date,
+          dateValid: date !== null && !isNaN(date.getTime()),
+          amount,
           services: totalServices,
           machineStr: machineStr || 'N/A',
-          paymentMethod: paymentMethod,
-          couponCode: couponCode
+          paymentMethod,
+          couponCode
         };
       })
-      .filter(txn => txn.dateValid) // Only include transactions with valid dates
+      .filter(txn => txn.dateValid)
       .sort((a, b) => b.date - a.date)
-      .slice(0, 10); // Last 10 transactions
+      .slice(0, 10);
     
     return customerTxns;
   }, [salesData, customer.doc]);
@@ -102,9 +86,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   };
 
   const formatDate = (date) => {
-    if (!date || !(date instanceof Date) || isNaN(date)) {
-      return 'Invalid Date';
-    }
+    if (!date || !(date instanceof Date) || isNaN(date)) return 'Invalid Date';
     return date.toLocaleDateString('pt-BR', { 
       day: '2-digit', 
       month: '2-digit', 
@@ -113,9 +95,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   };
 
   const handleCall = () => {
-    if (customer.phone) {
-      window.location.href = `tel:${customer.phone}`;
-    }
+    if (customer.phone) window.location.href = `tel:${customer.phone}`;
   };
 
   const handleWhatsApp = () => {
@@ -175,7 +155,6 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 {customer.name}
               </h2>
               
-              {/* Risk Badge */}
               <span 
                 style={{
                   padding: '6px 12px',
@@ -195,12 +174,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               </span>
             </div>
 
-            {/* Segment */}
             <div style={{ fontSize: '14px', color: COLORS.gray, marginBottom: '0.5rem' }}>
               Segment: <span style={{ fontWeight: '600', color: COLORS.primary }}>{customer.segment}</span>
             </div>
 
-            {/* Phone with action buttons */}
             {customer.phone && (
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                 <button
@@ -251,7 +228,6 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             )}
           </div>
 
-          {/* Close Button */}
           <button
             onClick={onClose}
             style={{
@@ -269,7 +245,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </button>
         </div>
 
-        {/* Key Metrics Row - UPDATED with Last Visit */}
+        {/* Key Metrics */}
         <div style={{
           padding: '1.5rem',
           display: 'grid',
@@ -361,7 +337,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </div>
         </div>
 
-        {/* Transaction History - UPDATED with new columns */}
+        {/* Transaction History */}
         <div style={{ padding: '1.5rem' }}>
           <h3 style={{
             fontSize: '16px',
@@ -434,7 +410,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           )}
         </div>
 
-        {/* Risk Alert for At-Risk/Churning Customers */}
+        {/* Risk Alert */}
         {(customer.riskLevel === 'At Risk' || customer.riskLevel === 'Churning') && customer.daysOverdue > 0 && (
           <div style={{
             margin: '0 1.5rem 1.5rem 1.5rem',
