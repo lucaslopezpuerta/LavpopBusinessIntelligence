@@ -112,7 +112,11 @@ const Operations = ({ data }) => {
           <WashVsDryChart washVsDry={operationsMetrics.washVsDry} />
         </div>
         <div style={{ gridColumn: 'span 6' }}>
-          <DayOfWeekChart dayPatterns={operationsMetrics.dayPatterns} />
+          <DayOfWeekChart 
+            dayPatterns={operationsMetrics.dayPatterns}
+            period={machinePeriod}
+            onPeriodChange={handlePeriodChange}
+          />
         </div>
 
         {/* Row 4: Machine Performance Table (Full Width) */}
