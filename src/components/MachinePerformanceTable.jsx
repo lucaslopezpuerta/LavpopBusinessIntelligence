@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Droplet, Activity, TrendingUp, Info } from 'lucide-react';
 
 const COLORS = {
@@ -12,6 +12,11 @@ const COLORS = {
 };
 
 const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', onPeriodChange }) => {
+  // Debug: Log when period prop changes
+  useEffect(() => {
+    console.log('🎯 MachinePerformanceTable received new period prop:', period);
+    console.log('🎯 MachinePerformanceTable received machines:', machinePerformance?.length);
+  }, [period, machinePerformance]);
   if (!machinePerformance || machinePerformance.length === 0) {
     return (
       <div style={{
@@ -210,8 +215,14 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
           <select
             value={period}
             onChange={(e) => {
-              console.log('Period changed to:', e.target.value);
-              onPeriodChange && onPeriodChange(e.target.value);
+              const newPeriod = e.target.value;
+              console.log('🔄 MachinePerformanceTable: Period dropdown changed:', period, '→', newPeriod);
+              if (onPeriodChange) {
+                console.log('✅ Calling onPeriodChange with:', newPeriod);
+                onPeriodChange(newPeriod);
+              } else {
+                console.log('❌ onPeriodChange is not defined!');
+              }
             }}
             style={{
               padding: '0.5rem 0.75rem',
