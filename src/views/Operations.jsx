@@ -35,16 +35,24 @@ const Operations = ({ data }) => {
       console.log('No sales data for operations metrics');
       return null;
     }
-    console.log('Calculating operations metrics, sales rows:', data.sales.length, 'period:', machinePeriod);
+    console.log('🔄 RECALCULATING operations metrics, sales rows:', data.sales.length, 'period:', machinePeriod);
     try {
       const result = calculateOperationsMetrics(data.sales, machinePeriod);
-      console.log('Operations metrics result:', result);
+      console.log('✅ Operations metrics calculated:', {
+        period: result.period,
+        machineCount: result.machinePerformance?.length
+      });
       return result;
     } catch (err) {
-      console.error('Operations metrics error:', err);
+      console.error('❌ Operations metrics error:', err);
       return null;
     }
   }, [data?.sales, machinePeriod]); // Re-calculate when period changes
+
+  const handlePeriodChange = (newPeriod) => {
+    console.log('📅 Period change requested:', machinePeriod, '→', newPeriod);
+    setMachinePeriod(newPeriod);
+  };
 
   if (!businessMetrics || !operationsMetrics) {
     return (
@@ -112,7 +120,7 @@ const Operations = ({ data }) => {
           <MachinePerformanceTable 
             machinePerformance={operationsMetrics.machinePerformance}
             period={machinePeriod}
-            onPeriodChange={setMachinePeriod}
+            onPeriodChange={handlePeriodChange}
           />
         </div>
       </div>
