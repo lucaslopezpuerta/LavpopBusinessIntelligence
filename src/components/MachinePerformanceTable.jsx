@@ -7,7 +7,8 @@ const COLORS = {
   wash: '#3b82f6',
   dry: '#f59e0b',
   gray: '#6b7280',
-  info: '#3b82f6'
+  info: '#3b82f6',
+  red: '#dc2626'
 };
 
 const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', onPeriodChange }) => {
@@ -39,9 +40,22 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
     allTime: 'Todo Período'
   };
 
+  // CLIENT-SIDE FILTERING: Exclude "Recarga" as backup
+  const filteredMachines = machinePerformance.filter(m => {
+    const nameLower = (m.name || '').toLowerCase();
+    return !nameLower.includes('recarga');
+  });
+
+  console.log('MachinePerformanceTable Debug:', {
+    receivedMachines: machinePerformance.length,
+    afterFiltering: filteredMachines.length,
+    recargasRemoved: machinePerformance.length - filteredMachines.length,
+    period
+  });
+
   // Separate washers and dryers
-  const washers = machinePerformance.filter(m => m.type === 'wash');
-  const dryers = machinePerformance.filter(m => m.type === 'dry');
+  const washers = filteredMachines.filter(m => m.type === 'wash');
+  const dryers = filteredMachines.filter(m => m.type === 'dry');
 
   // Calculate totals
   const totalWashUses = washers.reduce((sum, m) => sum + m.uses, 0);
@@ -133,8 +147,8 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
             borderRadius: '12px',
             fontSize: '11px',
             fontWeight: '600',
-            background: isAboveAverage ? '#f0fdf4' : '#fef2f2',
-            color: isAboveAverage ? COLORS.accent : COLORS.red
+            background: percentDiff >= 0 ? '#f0fdf4' : '#fef2f2',
+            color: percentDiff >= 0 ? COLORS.accent : COLORS.red
           }}>
             {percentDiff > 0 ? '+' : ''}{percentDiff.toFixed(0)}%
           </div>
@@ -195,7 +209,10 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
           </label>
           <select
             value={period}
-            onChange={(e) => onPeriodChange && onPeriodChange(e.target.value)}
+            onChange={(e) => {
+              console.log('Period changed to:', e.target.value);
+              onPeriodChange && onPeriodChange(e.target.value);
+            }}
             style={{
               padding: '0.5rem 0.75rem',
               borderRadius: '8px',
