@@ -1,4 +1,4 @@
-// Operations Metrics Calculator v1.0
+// Operations Metrics Calculator v3.0
 // Focused on machine efficiency, utilization, and resource optimization
 
 import { parseBrDate } from './dateUtils';
@@ -164,9 +164,11 @@ export function identifyPeakHours(hourlyPatterns) {
 
 /**
  * Calculate day-of-week utilization patterns
+ * @param {Array} salesData - Sales CSV data
+ * @param {string} period - 'currentWeek', 'fourWeeks', or 'allTime'
  */
-export function calculateDayOfWeekPatterns(salesData) {
-  const window = getCurrentWeekWindow();
+export function calculateDayOfWeekPatterns(salesData, period = 'currentWeek') {
+  const window = getDateWindow(period);
   const dayData = {};
   const dayCounts = {};
   
@@ -180,8 +182,13 @@ export function calculateDayOfWeekPatterns(salesData) {
     const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
     if (!date || date < window.start || date > window.end) return;
     
+    const machineStr = row.Maquinas || row.machine || '';
+    
+    // Exclude "Recarga" transactions
+    if (String(machineStr).toLowerCase().includes('recarga')) return;
+    
     const dayOfWeek = date.getDay();
-    const machines = countMachines(row.Maquinas || row.machine || '');
+    const machines = countMachines(machineStr);
     const netValue = parseBrNumber(row.Valor_Pago || row.net_value || 0);
     
     dayData[dayOfWeek].wash += machines.wash;
@@ -420,7 +427,7 @@ export function calculateMachinePerformance(salesData, period = 'currentWeek') {
 export function calculateOperationsMetrics(salesData, period = 'currentWeek') {
   const hourlyPatterns = calculateHourlyPatterns(salesData);
   const peakHours = identifyPeakHours(hourlyPatterns);
-  const dayPatterns = calculateDayOfWeekPatterns(salesData);
+  const dayPatterns = calculateDayOfWeekPatterns(salesData, period); // Pass period
   const washVsDry = calculateWashVsDry(salesData);
   const machinePerformance = calculateMachinePerformance(salesData, period); // Pass period
   
