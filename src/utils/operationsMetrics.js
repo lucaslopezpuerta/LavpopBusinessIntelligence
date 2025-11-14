@@ -1,4 +1,4 @@
-// Operations Metrics Calculator v1.0
+// Operations Metrics Calculator v3.0
 // Focused on machine efficiency, utilization, and resource optimization
 
 import { parseBrDate } from './dateUtils';
@@ -231,12 +231,24 @@ export function calculateDayOfWeekPatterns(salesData, period = 'currentWeek') {
     const avgDry = dayData[day].dry / uniqueDays;
     const avgTotal = dayData[day].total / uniqueDays;
     
-    // Daily capacity = machines * hours * cycles per hour
-    const washCapacityPerDay = BUSINESS_PARAMS.TOTAL_WASHERS * operatingHoursPerDay * 2;
-    const dryCapacityPerDay = BUSINESS_PARAMS.TOTAL_DRYERS * operatingHoursPerDay * (60 / 45);
+    // CORRECT UTILIZATION: Based on machine-minutes used
+    // Wash: services × 30 min, Dry: services × 45 min
+    const washMinutesUsed = avgWash * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES;
+    const dryMinutesUsed = avgDry * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES;
+    const totalMinutesUsed = washMinutesUsed + dryMinutesUsed;
     
-    const washUtil = (avgWash / washCapacityPerDay) * 100;
-    const dryUtil = (avgDry / dryCapacityPerDay) * 100;
+    // Total available machine-minutes per day
+    const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+    const totalMinutesAvailable = totalMachines * operatingHoursPerDay * 60;
+    
+    // Utilization = minutes used / minutes available × 100
+    const totalUtilization = (totalMinutesUsed / totalMinutesAvailable) * 100;
+    
+    // Individual utilization for reference
+    const washMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * operatingHoursPerDay * 60;
+    const dryMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * operatingHoursPerDay * 60;
+    const washUtil = (washMinutesUsed / washMinutesAvailable) * 100;
+    const dryUtil = (dryMinutesUsed / dryMinutesAvailable) * 100;
     
     daysArray.push({
       day,
@@ -249,7 +261,7 @@ export function calculateDayOfWeekPatterns(salesData, period = 'currentWeek') {
       avgTransactions: dayData[day].transactions / uniqueDays,
       washUtilization: Math.round(washUtil * 10) / 10,
       dryUtilization: Math.round(dryUtil * 10) / 10,
-      totalUtilization: Math.round(((washUtil + dryUtil) / 2) * 10) / 10,
+      totalUtilization: Math.round(totalUtilization * 10) / 10,
       daysInSample: uniqueDays
     });
   }
@@ -273,7 +285,12 @@ export function calculateWashVsDry(salesData) {
     const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
     if (!date || date < window.start || date > window.end) return;
     
-    const machines = countMachines(row.Maquinas || row.machine || '');
+    const machineStr = row.Maquinas || row.machine || '';
+    
+    // Exclude "Recarga" transactions
+    if (String(machineStr).toLowerCase().includes('recarga')) return;
+    
+    const machines = countMachines(machineStr);
     const netValue = parseBrNumber(row.Valor_Pago || row.net_value || 0);
     
     washServices += machines.wash;
