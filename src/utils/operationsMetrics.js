@@ -45,24 +45,36 @@ function parseBrNumber(value) {
 
 /**
  * Get current week boundaries (Sunday to Saturday)
- * FIXED: Now returns the actual CURRENT week, not previous week
+ * Returns the LAST COMPLETE WEEK (ending last Saturday)
+ * This ensures we always show complete data, not partial weeks
  */
 function getCurrentWeekWindow() {
   const currentDate = new Date();
+  const dayOfWeek = currentDate.getDay(); // 0=Sunday, 6=Saturday
   
-  // Find the most recent Sunday (start of current week)
-  // If today is Sunday, daysSinceSunday = 0, so we get today
-  const daysSinceSunday = currentDate.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-  const lastSunday = new Date(currentDate);
-  lastSunday.setDate(lastSunday.getDate() - daysSinceSunday);
-  lastSunday.setHours(0, 0, 0, 0);
+  // Calculate last Saturday (end of last complete week)
+  let lastSaturday = new Date(currentDate);
+  if (dayOfWeek === 6) {
+    // Today is Saturday - use last week's Saturday
+    lastSaturday.setDate(lastSaturday.getDate() - 7);
+  } else {
+    // Go back to last Saturday
+    const daysToLastSaturday = dayOfWeek === 0 ? 1 : (dayOfWeek + 1);
+    lastSaturday.setDate(lastSaturday.getDate() - daysToLastSaturday);
+  }
+  lastSaturday.setHours(23, 59, 59, 999);
   
-  // Find the upcoming Saturday (end of current week)
-  const nextSaturday = new Date(lastSunday);
-  nextSaturday.setDate(nextSaturday.getDate() + 6);
-  nextSaturday.setHours(23, 59, 59, 999);
+  // Calculate Sunday (start of last complete week)
+  const startSunday = new Date(lastSaturday);
+  startSunday.setDate(startSunday.getDate() - 6);
+  startSunday.setHours(0, 0, 0, 0);
   
-  return { start: lastSunday, end: nextSaturday };
+  console.log('📅 Current Week Window:', {
+    start: startSunday.toLocaleDateString('pt-BR'),
+    end: lastSaturday.toLocaleDateString('pt-BR')
+  });
+  
+  return { start: startSunday, end: lastSaturday };
 }
 
 /**
