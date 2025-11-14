@@ -1,15 +1,16 @@
 import React from 'react';
-import { Droplet, Activity, TrendingUp } from 'lucide-react';
+import { Droplet, Activity, TrendingUp, Info } from 'lucide-react';
 
 const COLORS = {
   primary: '#10306B',
   accent: '#53be33',
   wash: '#3b82f6',
   dry: '#f59e0b',
-  gray: '#6b7280'
+  gray: '#6b7280',
+  info: '#3b82f6'
 };
 
-const MachinePerformanceTable = ({ machinePerformance }) => {
+const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', onPeriodChange }) => {
   if (!machinePerformance || machinePerformance.length === 0) {
     return (
       <div style={{
@@ -32,6 +33,12 @@ const MachinePerformanceTable = ({ machinePerformance }) => {
     }).format(value);
   };
 
+  const periodLabels = {
+    currentWeek: 'Semana Atual',
+    fourWeeks: 'Últimas 4 Semanas',
+    allTime: 'Todo Período'
+  };
+
   // Separate washers and dryers
   const washers = machinePerformance.filter(m => m.type === 'wash');
   const dryers = machinePerformance.filter(m => m.type === 'dry');
@@ -47,6 +54,7 @@ const MachinePerformanceTable = ({ machinePerformance }) => {
 
   const MachineRow = ({ machine, avgUses }) => {
     const isAboveAverage = machine.uses >= avgUses;
+    const percentDiff = avgUses > 0 ? ((machine.uses / avgUses - 1) * 100) : 0;
     
     return (
       <tr style={{
@@ -128,7 +136,7 @@ const MachinePerformanceTable = ({ machinePerformance }) => {
             background: isAboveAverage ? '#f0fdf4' : '#fef2f2',
             color: isAboveAverage ? COLORS.accent : COLORS.red
           }}>
-            {((machine.uses / avgUses - 1) * 100).toFixed(0) > 0 ? '+' : ''}{((machine.uses / avgUses - 1) * 100).toFixed(0)}%
+            {percentDiff > 0 ? '+' : ''}{percentDiff.toFixed(0)}%
           </div>
         </td>
       </tr>
@@ -143,26 +151,124 @@ const MachinePerformanceTable = ({ machinePerformance }) => {
       border: '1px solid #e5e7eb',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
     }}>
-      {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-          <Activity style={{ width: '20px', height: '20px', color: COLORS.primary }} />
-          <h3 style={{ 
-            fontSize: '16px',
-            fontWeight: '600',
-            color: COLORS.primary,
+      {/* Header with Date Filter */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start',
+        marginBottom: '1.5rem',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <Activity style={{ width: '20px', height: '20px', color: COLORS.primary }} />
+            <h3 style={{ 
+              fontSize: '16px',
+              fontWeight: '600',
+              color: COLORS.primary,
+              margin: 0
+            }}>
+              Performance por Máquina
+            </h3>
+          </div>
+          <p style={{
+            fontSize: '12px',
+            color: COLORS.gray,
             margin: 0
           }}>
-            Performance por Máquina
-          </h3>
+            Uso e receita individual - {periodLabels[period]}
+          </p>
         </div>
-        <p style={{
-          fontSize: '12px',
-          color: COLORS.gray,
-          margin: 0
+        
+        {/* Date Filter Dropdown */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+          <label style={{
+            fontSize: '11px',
+            fontWeight: '600',
+            color: COLORS.gray,
+            marginBottom: '0.25rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Período
+          </label>
+          <select
+            value={period}
+            onChange={(e) => onPeriodChange && onPeriodChange(e.target.value)}
+            style={{
+              padding: '0.5rem 0.75rem',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+              background: 'white',
+              fontSize: '13px',
+              fontWeight: '500',
+              color: COLORS.primary,
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="currentWeek">Semana Atual</option>
+            <option value="fourWeeks">Últimas 4 Semanas</option>
+            <option value="allTime">Todo Período</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Column Explanation Panel */}
+      <div style={{
+        background: '#f0f9ff',
+        border: '1px solid #bfdbfe',
+        borderRadius: '8px',
+        padding: '1rem',
+        marginBottom: '1.5rem'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.5rem',
+          marginBottom: '0.75rem'
         }}>
-          Uso e receita individual (Semana Atual)
-        </p>
+          <Info style={{ width: '16px', height: '16px', color: COLORS.info }} />
+          <h4 style={{ 
+            fontSize: '13px',
+            fontWeight: '600',
+            color: COLORS.info,
+            margin: 0
+          }}>
+            Como Interpretar as Colunas
+          </h4>
+        </div>
+        <div style={{ 
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '0.75rem',
+          fontSize: '12px',
+          color: COLORS.gray
+        }}>
+          <div>
+            <strong style={{ color: COLORS.primary }}>USOS:</strong> Quantas vezes a máquina foi usada. Inclui compras com crédito (R$0).
+          </div>
+          <div>
+            <strong style={{ color: COLORS.primary }}>RECEITA:</strong> Total arrecadado pela máquina. Em transações múltiplas, a receita é dividida proporcionalmente.
+          </div>
+          <div>
+            <strong style={{ color: COLORS.primary }}>R$/USO:</strong> Receita média por uso (Receita ÷ Usos). Identifica máquinas que geram mais valor.
+          </div>
+          <div>
+            <strong style={{ color: COLORS.primary }}>VS MÉDIA:</strong> Quanto cada máquina está acima/abaixo da média do seu tipo. Verde = acima, Vermelho = abaixo.
+          </div>
+        </div>
+        <div style={{ 
+          marginTop: '0.75rem',
+          paddingTop: '0.75rem',
+          borderTop: '1px solid #bfdbfe',
+          fontSize: '11px',
+          color: COLORS.gray
+        }}>
+          <strong>⚠️ Importante:</strong> Transações "Recarga" (crédito) são excluídas automaticamente. 
+          Compras com crédito (R$0) contam como uso mas não contribuem para receita.
+        </div>
       </div>
 
       {/* Summary Stats */}
