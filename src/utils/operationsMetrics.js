@@ -1,4 +1,4 @@
-// Operations Metrics Calculator v3.0
+// Operations Metrics Calculator v1.0
 // Focused on machine efficiency, utilization, and resource optimization
 
 import { parseBrDate } from './dateUtils';
@@ -45,20 +45,24 @@ function parseBrNumber(value) {
 
 /**
  * Get current week boundaries (Sunday to Saturday)
+ * FIXED: Now returns the actual CURRENT week, not previous week
  */
 function getCurrentWeekWindow() {
   const currentDate = new Date();
   
-  let lastSaturday = new Date(currentDate);
-  const daysFromSaturday = (currentDate.getDay() + 1) % 7;
-  lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
-  lastSaturday.setHours(23, 59, 59, 999);
+  // Find the most recent Sunday (start of current week)
+  // If today is Sunday, daysSinceSunday = 0, so we get today
+  const daysSinceSunday = currentDate.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+  const lastSunday = new Date(currentDate);
+  lastSunday.setDate(lastSunday.getDate() - daysSinceSunday);
+  lastSunday.setHours(0, 0, 0, 0);
   
-  let startSunday = new Date(lastSaturday);
-  startSunday.setDate(startSunday.getDate() - 6);
-  startSunday.setHours(0, 0, 0, 0);
+  // Find the upcoming Saturday (end of current week)
+  const nextSaturday = new Date(lastSunday);
+  nextSaturday.setDate(nextSaturday.getDate() + 6);
+  nextSaturday.setHours(23, 59, 59, 999);
   
-  return { start: startSunday, end: lastSaturday };
+  return { start: lastSunday, end: nextSaturday };
 }
 
 /**
@@ -205,8 +209,12 @@ export function calculateDayOfWeekPatterns(salesData, period = 'currentWeek') {
   const daysArray = [];
   const operatingHoursPerDay = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
   
+  // For currentWeek, don't average - use raw totals (each day appears once)
+  // For longer periods, average across weeks
+  const shouldAverage = period !== 'currentWeek';
+  
   for (let day = 0; day < 7; day++) {
-    const uniqueDays = dayCounts[day].size || 1;
+    const uniqueDays = shouldAverage ? (dayCounts[day].size || 1) : 1;
     const avgWash = dayData[day].wash / uniqueDays;
     const avgDry = dayData[day].dry / uniqueDays;
     const avgTotal = dayData[day].total / uniqueDays;
