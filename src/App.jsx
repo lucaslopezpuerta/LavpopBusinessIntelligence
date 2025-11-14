@@ -9,18 +9,12 @@ import './App.css';
 // Import views
 import DashboardV2 from './views/Dashboard';
 import Customers from './views/Customers';
+import Operations from './views/Operations';
 
 const Analytics = ({ data }) => (
   <div className="view-container">
     <h2>Analytics</h2>
     <p>Deep dive analytics coming soon...</p>
-  </div>
-);
-
-const Operations = ({ data }) => (
-  <div className="view-container">
-    <h2>Operations</h2>
-    <p>Machine efficiency analysis coming soon...</p>
   </div>
 );
 
