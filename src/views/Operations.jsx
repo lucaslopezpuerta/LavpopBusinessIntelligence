@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import OperationsKPICards from '../components/OperationsKPICards';
 import UtilizationHeatmap from '../components/UtilizationHeatmap';
 import PeakHoursSummary from '../components/PeakHoursSummary';
@@ -9,6 +9,9 @@ import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 
 const Operations = ({ data }) => {
+  // Date filter state for machine performance table
+  const [machinePeriod, setMachinePeriod] = useState('currentWeek');
+
   // Calculate business metrics for utilization KPIs
   const businessMetrics = useMemo(() => {
     if (!data?.sales) {
@@ -26,22 +29,22 @@ const Operations = ({ data }) => {
     }
   }, [data?.sales]);
 
-  // Calculate operations-specific metrics
+  // Calculate operations-specific metrics with date filtering
   const operationsMetrics = useMemo(() => {
     if (!data?.sales) {
       console.log('No sales data for operations metrics');
       return null;
     }
-    console.log('Calculating operations metrics, sales rows:', data.sales.length);
+    console.log('Calculating operations metrics, sales rows:', data.sales.length, 'period:', machinePeriod);
     try {
-      const result = calculateOperationsMetrics(data.sales);
+      const result = calculateOperationsMetrics(data.sales, machinePeriod);
       console.log('Operations metrics result:', result);
       return result;
     } catch (err) {
       console.error('Operations metrics error:', err);
       return null;
     }
-  }, [data?.sales]);
+  }, [data?.sales, machinePeriod]); // Re-calculate when period changes
 
   if (!businessMetrics || !operationsMetrics) {
     return (
@@ -106,7 +109,11 @@ const Operations = ({ data }) => {
 
         {/* Row 4: Machine Performance Table (Full Width) */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <MachinePerformanceTable machinePerformance={operationsMetrics.machinePerformance} />
+          <MachinePerformanceTable 
+            machinePerformance={operationsMetrics.machinePerformance}
+            period={machinePeriod}
+            onPeriodChange={setMachinePeriod}
+          />
         </div>
       </div>
 
