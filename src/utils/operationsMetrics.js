@@ -1,4 +1,4 @@
-// Operations Metrics Calculator v3.1
+// Operations Metrics Calculator v3.2
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ Includes Recarga in total revenue (Day of Week, Hourly)
 // ✅ Excludes Recarga from machine-specific metrics (Wash vs Dry, Machine Performance)
@@ -317,16 +317,9 @@ export function calculateMachinePerformance(salesData, period = 'currentWeek') {
   );
   
   const machines = {};
-  let recargaCount = 0;
   
   windowRecords.forEach(r => {
-    const machineStr = r.isRecarga ? '' : 
-      String(salesData.find(row => 
-        parseBrNumber(row.Valor_Venda || 0) === r.grossValue &&
-        String(row.Data || row.Data_Hora || '').includes(r.dateStr)
-      )?.Maquinas || '');
-    
-    const machineList = String(machineStr)
+    const machineList = String(r.machineStr)
       .split(',')
       .map(m => m.trim())
       .filter(m => m);
@@ -352,9 +345,10 @@ export function calculateMachinePerformance(salesData, period = 'currentWeek') {
     });
   });
   
-  console.log('Machine Performance (v3.1):', {
+  console.log('Machine Performance (v3.1 FIXED):', {
     period,
-    totalMachines: Object.keys(machines).length
+    totalMachines: Object.keys(machines).length,
+    windowRecords: windowRecords.length
   });
   
   return Object.values(machines).map(m => ({
