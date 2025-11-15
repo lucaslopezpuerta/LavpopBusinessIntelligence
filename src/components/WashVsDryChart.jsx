@@ -1,3 +1,13 @@
+// WashVsDryChart Component v1.1
+// Comparison of wash vs dry services and revenue
+//
+// CHANGELOG:
+// v1.1 (2025-11-15): Added date window display
+//   - Now receives dateWindow prop from parent
+//   - Displays explicit date range in subtitle
+//   - Synchronized with Operations tab DateRangeSelector
+// v1.0 (Previous): Initial implementation
+
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { Droplet, Activity } from 'lucide-react';
@@ -294,7 +304,7 @@ const WashVsDryChart = ({ washVsDry, dateWindow }) => {
       }}>
         💡 <strong>Análise:</strong> {wash.avgPerService > dry.avgPerService 
           ? 'Lavagens geram mais receita por serviço'
-          : 'Secagens geram mais receita por serviço'}. Considere ajustar estratégia de pricing.
+          : 'Secagens geram mais receita por serviço'}. Considere ajustar a estratégia de preços.
       </div>
     </div>
   );
