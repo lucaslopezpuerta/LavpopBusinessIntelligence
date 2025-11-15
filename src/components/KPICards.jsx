@@ -1,132 +1,145 @@
+// KPICards.jsx v2.0 - ENHANCED VERSION
+// Portuguese labels, prominent WoW indicators, brand colors
+// Reuses businessMetrics and customerMetrics calculations
+
 import React from 'react';
-import { TrendingUp, TrendingDown, Activity, Users, AlertCircle, Heart } from 'lucide-react';
+import { Activity, Users, AlertCircle, Heart, Droplet, Flame } from 'lucide-react';
 
 const COLORS = {
-  primary: '#10306B',
-  accent: '#53be33',
+  primary: '#1a5a8e',     // Lavpop blue
+  accent: '#55b03b',      // Lavpop green
   red: '#dc2626',
   amber: '#f59e0b',
-  gray: '#6b7280',
-  // Risk colors
-  churning: '#dc2626',
-  atRisk: '#f59e0b',
-  monitor: '#10306B',
-  healthy: '#53be33',
-  new: '#9333ea'
+  gray: '#6b7280'
 };
 
 const KPICards = ({ businessMetrics, customerMetrics }) => {
-  // Safety check - don't render if no data
   if (!businessMetrics || !customerMetrics) {
     return (
-      <div className="text-gray-500 p-4">
-        Loading KPIs...
+      <div style={{ color: '#6b7280', padding: '1rem' }}>
+        Carregando KPIs...
       </div>
     );
   }
 
-  // Business metrics from businessMetrics.js
-  const weekly = businessMetrics?.weekly || {};
-  const weekOverWeek = businessMetrics?.weekOverWeek || {};
+  const weekly = businessMetrics.weekly || {};
+  const wow = businessMetrics.weekOverWeek || {};
   
-  // Customer metrics from customerMetrics.js (V2.1 logic)
-  const activeCount = customerMetrics?.activeCount || 0;
-  const atRiskCount = customerMetrics?.atRiskCount || 0;
-  const healthRate = customerMetrics?.healthRate || 0;
-
-  const formatPercent = (value) => {
-    if (value === null || value === undefined || isNaN(value)) return 'N/A';
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}%`;
-  };
+  const activeCount = customerMetrics.activeCount || 0;
+  const atRiskCount = customerMetrics.atRiskCount || 0;
+  const healthRate = customerMetrics.healthRate || 0;
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
-      currency: 'BRL'
+      currency: 'BRL',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(value);
   };
 
-  const getTrendIndicator = (value) => {
-    if (value === null || value === undefined || isNaN(value)) return null;
-    if (value > 0) return { icon: TrendingUp, color: COLORS.accent, label: 'vs Last Week' };
-    if (value < 0) return { icon: TrendingDown, color: COLORS.red, label: 'vs Last Week' };
-    return { icon: null, color: COLORS.gray, label: 'vs Last Week' };
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat('pt-BR').format(value);
+  };
+
+  const getTrendData = (value) => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return { show: false };
+    }
+    
+    const absValue = Math.abs(value);
+    if (absValue < 0.5) {
+      return { 
+        show: true,
+        text: '→', 
+        color: COLORS.gray,
+        label: 'estável'
+      };
+    }
+    
+    if (value > 0) {
+      return { 
+        show: true,
+        text: `↑${value.toFixed(1)}%`, 
+        color: COLORS.accent,
+        label: 'vs semana passada'
+      };
+    }
+    
+    return { 
+      show: true,
+      text: `↓${absValue.toFixed(1)}%`, 
+      color: COLORS.red,
+      label: 'vs semana passada'
+    };
   };
 
   const kpis = [
     {
       id: 'revenue',
-      title: 'TOTAL NET REVENUE',
+      title: 'Receita Líquida',
       value: formatCurrency(weekly.netRevenue || 0),
-      change: weekOverWeek.netRevenue,
-      changeLabel: formatPercent(weekOverWeek.netRevenue),
-      trend: getTrendIndicator(weekOverWeek.netRevenue),
+      trend: getTrendData(wow.netRevenue),
       icon: Activity,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
     },
     {
       id: 'services',
-      title: 'TOTAL CYCLES',
-      value: (weekly.totalServices || 0).toLocaleString('pt-BR'),
-      change: weekOverWeek.totalServices,
-      changeLabel: formatPercent(weekOverWeek.totalServices),
-      trend: getTrendIndicator(weekOverWeek.totalServices),
+      title: 'Total de Ciclos',
+      value: formatNumber(weekly.totalServices || 0),
+      trend: getTrendData(wow.totalServices),
       icon: Activity,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
     },
     {
       id: 'utilization',
-      title: 'OVERALL UTILIZATION',
+      title: 'Utilização Geral',
       value: `${Math.round(weekly.totalUtilization || 0)}%`,
-      change: weekOverWeek.utilization,
-      changeLabel: formatPercent(weekOverWeek.utilization),
-      trend: getTrendIndicator(weekOverWeek.utilization),
-      icon: Activity,
-      color: COLORS.primary,
-      iconBg: '#e3f2fd'
+      trend: getTrendData(wow.utilization),
+      icon: Flame,
+      color: COLORS.amber,
+      iconBg: '#fef3c7'
     },
     {
       id: 'active',
-      title: 'ACTIVE CUSTOMERS',
-      value: activeCount.toLocaleString('pt-BR'),
-      subtitle: 'Not "Lost"',
+      title: 'Clientes Ativos',
+      value: formatNumber(activeCount),
+      subtitle: 'Não perdidos',
       icon: Users,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
     },
     {
       id: 'atrisk',
-      title: 'AT-RISK CUSTOMERS',
-      value: atRiskCount.toLocaleString('pt-BR'),
-      subtitle: 'Need attention',
+      title: 'Clientes em Risco',
+      value: formatNumber(atRiskCount),
+      subtitle: 'Precisam atenção',
       icon: AlertCircle,
-      color: COLORS.amber,
-      iconBg: '#fef3c7'
+      color: COLORS.red,
+      iconBg: '#fee2e2'
     },
     {
       id: 'health',
-      title: 'CUSTOMER HEALTH RATE',
+      title: 'Taxa de Saúde',
       value: `${Math.round(healthRate)}%`,
-      subtitle: '"Healthy" customers',
+      subtitle: 'Clientes saudáveis',
       icon: Heart,
       color: COLORS.accent,
-      iconBg: '#e8f5e9'
+      iconBg: '#dcfce7'
     }
   ];
 
   return (
     <div style={{ 
       display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
       gap: '1rem',
       marginBottom: '1.5rem'
     }}>
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
-        const TrendIcon = kpi.trend?.icon;
         
         return (
           <div
@@ -135,94 +148,92 @@ const KPICards = ({ businessMetrics, customerMetrics }) => {
               background: 'white',
               borderRadius: '12px',
               border: '1px solid #e5e7eb',
-              padding: '1.5rem',
+              padding: '1.25rem',
               transition: 'all 0.2s',
-              cursor: 'default'
+              cursor: 'default',
+              position: 'relative',
+              overflow: 'hidden'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
+              e.currentTarget.style.transform = 'translateY(-4px)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
+            {/* Trend Badge (Top Right) */}
+            {kpi.trend?.show && (
+              <div style={{
+                position: 'absolute',
+                top: '0.75rem',
+                right: '0.75rem',
+                fontSize: '16px',
+                fontWeight: '700',
+                color: kpi.trend.color,
+                background: `${kpi.trend.color}15`,
+                padding: '4px 10px',
+                borderRadius: '6px',
+                letterSpacing: '0.5px'
+              }}>
+                {kpi.trend.text}
+              </div>
+            )}
+
             {/* Header */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
+            <div style={{ marginBottom: '1rem' }}>
               <h3 style={{ 
                 fontSize: '11px',
-                fontWeight: '600',
+                fontWeight: '700',
                 color: '#6b7280',
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                margin: 0
+                letterSpacing: '0.8px',
+                margin: 0,
+                marginBottom: '0.75rem'
               }}>
                 {kpi.title}
               </h3>
+              
               <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
                 background: kpi.iconBg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <Icon style={{ width: '20px', height: '20px', color: kpi.color }} />
+                <Icon style={{ width: '24px', height: '24px', color: kpi.color }} />
               </div>
             </div>
 
             {/* Value */}
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ 
-                fontSize: '28px',
+                fontSize: '32px',
                 fontWeight: '700',
                 color: kpi.color,
-                lineHeight: '1.2'
+                lineHeight: '1.1'
               }}>
                 {kpi.value}
               </div>
             </div>
 
-            {/* Change or Subtitle */}
-            {kpi.trend && kpi.change !== null && (
+            {/* Trend Label or Subtitle */}
+            {kpi.trend?.show ? (
               <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.25rem',
-                fontSize: '13px'
+                fontSize: '12px',
+                color: '#9ca3af',
+                fontWeight: '500'
               }}>
-                {TrendIcon && (
-                  <TrendIcon 
-                    style={{ 
-                      width: '16px', 
-                      height: '16px',
-                      color: kpi.trend.color
-                    }}
-                  />
-                )}
-                <span style={{ 
-                  color: kpi.trend.color,
-                  fontWeight: '600'
-                }}>
-                  {kpi.changeLabel}
-                </span>
-                <span style={{ color: '#9ca3af', marginLeft: '0.25rem' }}>
-                  {kpi.trend.label}
-                </span>
+                {kpi.trend.label}
               </div>
-            )}
-
-            {kpi.subtitle && (
+            ) : kpi.subtitle && (
               <div style={{ 
                 fontSize: '13px',
-                color: '#6b7280'
+                color: '#6b7280',
+                fontWeight: '500'
               }}>
                 {kpi.subtitle}
               </div>
@@ -230,6 +241,25 @@ const KPICards = ({ businessMetrics, customerMetrics }) => {
           </div>
         );
       })}
+
+      {/* Responsive Override */}
+      <style jsx>{`
+        @media (max-width: 1200px) {
+          div[style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(3, 1fr) !important;
+          }
+        }
+        @media (max-width: 768px) {
+          div[style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 480px) {
+          div[style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
