@@ -24,15 +24,14 @@ function countMachines(str) {
 
 const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow }) => {
   const heatmapData = useMemo(() => {
-    if (!salesData || salesData.length === 0) return null;
+    if (!salesData || salesData.length === 0 || !dateWindow) return null;
 
     const OPERATING_HOURS = { start: 8, end: 23 };
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     
-    // Get last 4 weeks
-    const now = new Date();
-    const fourWeeksAgo = new Date(now);
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+    // Use dateWindow from centralized filter
+    const startDate = dateWindow.start;
+    const endDate = dateWindow.end;
 
     // Initialize grid: [hour][day]
     const grid = {};
@@ -55,7 +54,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
     // Process sales data
     salesData.forEach(row => {
       const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
-      if (!date || date < fourWeeksAgo || date > now) return;
+      if (!date || date < startDate || date > endDate) return;
 
       const hour = date.getHours();
       const dayOfWeek = date.getDay();
@@ -92,7 +91,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
         (_, i) => OPERATING_HOURS.start + i),
       days
     };
-  }, [salesData]);
+  }, [salesData, dateWindow]);
 
   if (!heatmapData) {
     return (
@@ -140,7 +139,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
             color: COLORS.primary,
             margin: 0
           }}>
-            Utilization Heatmap (Last 4 Weeks)
+            Mapa de Calor de Utilização
           </h3>
         </div>
         <p style={{
@@ -148,7 +147,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
           color: COLORS.gray,
           margin: 0
         }}>
-          Período: {dateWindow?.dateRange || 'Últimas 4 semanas'}
+          Período: {dateWindow?.dateRange || 'Carregando...'}
         </p>
       </div>
 
