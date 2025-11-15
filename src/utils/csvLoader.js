@@ -1,7 +1,16 @@
 /**
  * CSV Loader - Fetches and parses CSV files from /data folder
  * Uses PapaParse for robust CSV parsing
- * Version 1.2 - Fixed base path and added detailed error messages
+ * 
+ * VERSION: 1.2
+ * 
+ * CHANGELOG:
+ * v1.2 (2025-11-15): Added auto-delimiter detection
+ *   - Auto-detects comma, semicolon, tab, and pipe delimiters
+ *   - Fixes customer.csv loading (semicolon-delimited)
+ *   - Supports Brazilian/European Excel exports
+ * v1.1 (Previous): Fixed base path and added detailed error messages
+ * v1.0 (Previous): Initial implementation
  */
 
 import Papa from 'papaparse';
