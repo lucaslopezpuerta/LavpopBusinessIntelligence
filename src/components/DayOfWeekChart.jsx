@@ -116,14 +116,9 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
       border: '1px solid #e5e7eb',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
     }}>
-      {/* Header with Date Filter */}
+      {/* Header with Date Range Display */}
       <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'flex-start',
-        marginBottom: '1.5rem',
-        flexWrap: 'wrap',
-        gap: '1rem'
+        marginBottom: '1.5rem'
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -308,8 +303,8 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
         fontSize: '12px',
         color: COLORS.gray
       }}>
-        💡 <strong>Recomendação:</strong> Em {bestDay.dayName}, verifique máquinas antes do pico. 
-        Em {worstDay.dayName}, agende manutenção preventiva ou oferece promoções para aumentar fluxo.
+        💡 <strong>Recomendação:</strong> Em {bestDay.dayName}, verifique máquinas antes do pico.
+        Em {worstDay.dayName}, agende manutenção preventiva ou ofereça promoções para aumentar fluxo.
       </div>
     </div>
   );
