@@ -2,6 +2,16 @@
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
+//
+// CHANGELOG:
+// v3.0 (2025-11-15): Unified date filtering system
+//   - Added DateRangeSelector component as single control
+//   - Replaced machinePeriod with dateFilter state
+//   - Pass dateFilter and dateWindow to all child components
+//   - Removed individual period handlers
+//   - All charts synchronized to single filter
+// v2.0 (Previous): Added machine performance tracking
+// v1.0 (Previous): Initial Operations tab
 
 import React, { useMemo, useState } from 'react';
 import OperationsKPICards from '../components/OperationsKPICards';
