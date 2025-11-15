@@ -1,3 +1,5 @@
+// OPERATIONS TAB V2.0
+
 import React, { useMemo, useState } from 'react';
 import OperationsKPICards from '../components/OperationsKPICards';
 import UtilizationHeatmap from '../components/UtilizationHeatmap';
@@ -9,10 +11,8 @@ import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 
 const Operations = ({ data }) => {
-  // Date filter state for machine performance table
   const [machinePeriod, setMachinePeriod] = useState('currentWeek');
 
-  // Calculate business metrics for utilization KPIs
   const businessMetrics = useMemo(() => {
     if (!data?.sales) {
       console.log('No sales data for operations');
@@ -21,7 +21,7 @@ const Operations = ({ data }) => {
     console.log('Calculating business metrics for operations, sales rows:', data.sales.length);
     try {
       const result = calculateBusinessMetrics(data.sales);
-      console.log('Business metrics result:', result);
+      console.log('✅ Business metrics (TIME-BASED UTIL):', result);
       return result;
     } catch (err) {
       console.error('Business metrics error:', err);
@@ -29,7 +29,6 @@ const Operations = ({ data }) => {
     }
   }, [data?.sales]);
 
-  // Calculate operations-specific metrics with date filtering
   const operationsMetrics = useMemo(() => {
     if (!data?.sales) {
       console.log('No sales data for operations metrics');
@@ -38,16 +37,17 @@ const Operations = ({ data }) => {
     console.log('🔄 RECALCULATING operations metrics, sales rows:', data.sales.length, 'period:', machinePeriod);
     try {
       const result = calculateOperationsMetrics(data.sales, machinePeriod);
-      console.log('✅ Operations metrics calculated:', {
+      console.log('✅ Operations metrics (v3.1):', {
         period: result.period,
-        machineCount: result.machinePerformance?.length
+        machineCount: result.machinePerformance?.length,
+        revenueBreakdown: result.revenueBreakdown
       });
       return result;
     } catch (err) {
       console.error('❌ Operations metrics error:', err);
       return null;
     }
-  }, [data?.sales, machinePeriod]); // Re-calculate when period changes
+  }, [data?.sales, machinePeriod]);
 
   const handlePeriodChange = (newPeriod) => {
     console.log('📅 Period change requested:', machinePeriod, '→', newPeriod);
@@ -86,10 +86,11 @@ const Operations = ({ data }) => {
         </p>
       </div>
 
-      {/* Utilization KPI Cards */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <OperationsKPICards businessMetrics={businessMetrics} />
-      </div>
+      {/* Utilization KPI Cards + Revenue Breakdown */}
+      <OperationsKPICards 
+        businessMetrics={businessMetrics} 
+        operationsMetrics={operationsMetrics}
+      />
 
       {/* Main Grid Layout */}
       <div style={{
@@ -125,6 +126,7 @@ const Operations = ({ data }) => {
             machinePerformance={operationsMetrics.machinePerformance}
             period={machinePeriod}
             onPeriodChange={handlePeriodChange}
+            revenueBreakdown={operationsMetrics.revenueBreakdown}
           />
         </div>
       </div>
