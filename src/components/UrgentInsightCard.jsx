@@ -60,25 +60,37 @@ const UrgentInsightCard = ({ businessMetrics, customerMetrics }) => {
       });
     }
 
-    // Rule 4: Utilization <50% (low)
-    if (weekly.totalUtilization !== null && weekly.totalUtilization < 50) {
+    // Rule 4: Utilization <15% (low - aligned with Operations THRESHOLDS.good)
+    if (weekly.totalUtilization !== null && weekly.totalUtilization < 15) {
+      insights.push({
+        severity: 'critical',
+        icon: Activity,
+        message: `Utilização crítica: ${Math.round(weekly.totalUtilization)}% esta semana`,
+        action: 'Considere promoção urgente ou marketing',
+        color: '#dc2626',
+        bgColor: '#fee2e2'
+      });
+    }
+
+    // Rule 4b: Utilization 15-25% (fair - aligned with Operations THRESHOLDS)
+    if (weekly.totalUtilization !== null && weekly.totalUtilization >= 15 && weekly.totalUtilization < 25) {
       insights.push({
         severity: 'warning',
         icon: Activity,
-        message: `Utilização baixa: ${Math.round(weekly.totalUtilization)}% esta semana`,
-        action: 'Considere promoção ou marketing',
+        message: `Utilização razoável: ${Math.round(weekly.totalUtilization)}% esta semana`,
+        action: 'Considere aumentar divulgação',
         color: '#f59e0b',
         bgColor: '#fef3c7'
       });
     }
 
-    // Rule 5: Utilization >80% (great!)
-    if (weekly.totalUtilization !== null && weekly.totalUtilization > 80) {
+    // Rule 5: Utilization >25% (excellent - aligned with Operations THRESHOLDS.excellent)
+    if (weekly.totalUtilization !== null && weekly.totalUtilization > 25) {
       insights.push({
         severity: 'positive',
         icon: CheckCircle,
-        message: `Ótima utilização: ${Math.round(weekly.totalUtilization)}% esta semana`,
-        action: 'Considere expandir capacidade',
+        message: `Excelente utilização: ${Math.round(weekly.totalUtilization)}% esta semana`,
+        action: 'Continue o bom trabalho!',
         color: '#16a34a',
         bgColor: '#dcfce7'
       });

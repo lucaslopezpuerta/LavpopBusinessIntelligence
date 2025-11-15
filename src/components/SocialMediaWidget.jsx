@@ -22,7 +22,7 @@ const SocialMediaWidget = ({ instagramFollowers = 0, facebookFollowers = 0 }) =>
       followers: instagramFollowers,
       color: '#E4405F',
       bgColor: '#fce7f3',
-      link: 'https://instagram.com/lavpop' // Update with actual handle
+      link: 'https://www.instagram.com/lavpopcaxiasdosul/'
     },
     {
       id: 'facebook',
@@ -31,7 +31,7 @@ const SocialMediaWidget = ({ instagramFollowers = 0, facebookFollowers = 0 }) =>
       followers: facebookFollowers,
       color: '#1877F2',
       bgColor: '#dbeafe',
-      link: 'https://facebook.com/lavpop' // Update with actual page
+      link: 'https://www.facebook.com/profile.php?id=61556557355037'
     }
   ];
 
