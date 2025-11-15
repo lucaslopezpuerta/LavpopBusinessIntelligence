@@ -1,7 +1,7 @@
 /**
  * CSV Loader - Fetches and parses CSV files from /data folder
  * Uses PapaParse for robust CSV parsing
- * Version 1.1 - Fixed base path and added detailed error messages
+ * Version 1.2 - Fixed base path and added detailed error messages
  */
 
 import Papa from 'papaparse';
@@ -33,6 +33,8 @@ export const loadCSV = async (filename) => {
       Papa.parse(csvText, {
         header: true,
         skipEmptyLines: true,
+        delimiter: "", // Auto-detect delimiter (works with both , and ;)
+        delimitersToGuess: [',', ';', '\t', '|'], // Support multiple delimiters
         transformHeader: (header) => header.trim(),
         complete: (results) => {
           if (results.errors.length > 0) {
