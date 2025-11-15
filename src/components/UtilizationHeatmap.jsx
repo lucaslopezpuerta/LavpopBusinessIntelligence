@@ -1,7 +1,11 @@
-// UtilizationHeatmap Component v2.0
+// UtilizationHeatmap Component v2.1
 // Hour x Day heatmap showing average service utilization patterns
 //
 // CHANGELOG:
+// v2.1 (2025-11-15): Portuguese labels
+//   - Changed "Low activity" to "Baixa atividade"
+//   - Changed "High activity" to "Alta atividade"
+//   - Confirmed displays average services per hour/day
 // v2.0 (2025-11-15): Dynamic date filtering
 //   - Removed hardcoded "last 4 weeks" logic
 //   - Now receives dateFilter and dateWindow props from parent
@@ -115,7 +119,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
         textAlign: 'center',
         color: '#6b7280'
       }}>
-        Loading utilization heatmap...
+        Carregando mapa de calor de utilização...
       </div>
     );
   }
@@ -160,6 +164,14 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
           margin: 0
         }}>
           Período: {dateWindow?.dateRange || 'Carregando...'}
+        </p>
+        <p style={{
+          fontSize: '11px',
+          color: '#9ca3af',
+          margin: '0.25rem 0 0 0',
+          fontStyle: 'italic'
+        }}>
+          Valores = média de serviços por hora em cada dia da semana
         </p>
       </div>
 
@@ -218,7 +230,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
                       cursor: 'default',
                       transition: 'transform 0.1s'
                     }}
-                    title={`${days[dayIndex]} ${hour}:00 - ${value.toFixed(1)} avg services`}
+                    title={`${days[dayIndex]} ${hour}:00 - ${value.toFixed(1)} serviços em média`}
                     onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
                     onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                   >
@@ -240,7 +252,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
         fontSize: '11px',
         color: COLORS.gray
       }}>
-        <span>Low activity</span>
+        <span>Baixa atividade</span>
         <div style={{ display: 'flex', gap: '2px' }}>
           {[0.1, 0.3, 0.5, 0.7, 0.9].map((intensity, idx) => (
             <div
@@ -254,7 +266,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
             />
           ))}
         </div>
-        <span>High activity</span>
+        <span>Alta atividade</span>
       </div>
     </div>
   );
