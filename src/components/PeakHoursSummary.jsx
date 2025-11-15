@@ -11,7 +11,7 @@ const COLORS = {
   amber: '#f59e0b'
 };
 
-const PeakHoursSummary = ({ peakHours }) => {
+const PeakHoursSummary = ({ peakHours, dateWindow }) => {
   if (!peakHours || !peakHours.peak || !peakHours.offPeak) {
     return (
       <div style={{
@@ -154,7 +154,7 @@ const PeakHoursSummary = ({ peakHours }) => {
           color: COLORS.gray,
           margin: 0
         }}>
-          Análise de utilização por hora (Semana Atual)
+          Período: {dateWindow?.dateRange || 'Carregando...'}
         </p>
       </div>
 

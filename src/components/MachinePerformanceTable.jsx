@@ -14,14 +14,14 @@ const COLORS = {
   amber: '#f59e0b'
 };
 
-const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', onPeriodChange, revenueBreakdown }) => {
+const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek', dateWindow, revenueBreakdown }) => {
   useEffect(() => {
     console.log('🎯 MachinePerformanceTable received:', { 
-      period, 
+      dateFilter, 
       machines: machinePerformance?.length,
       revenueBreakdown 
     });
-  }, [period, machinePerformance, revenueBreakdown]);
+  }, [dateFilter, machinePerformance, revenueBreakdown]);
 
   if (!machinePerformance || machinePerformance.length === 0) {
     return (
@@ -43,12 +43,6 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
       style: 'currency',
       currency: 'BRL'
     }).format(value);
-  };
-
-  const periodLabels = {
-    currentWeek: 'Semana Atual',
-    fourWeeks: 'Últimas 4 Semanas',
-    allTime: 'Todo Período'
   };
 
   // CLIENT-SIDE FILTERING: Exclude "Recarga" as backup
@@ -196,45 +190,8 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
             color: COLORS.gray,
             margin: 0
           }}>
-            Uso e receita individual - {periodLabels[period]}
+            Período: {dateWindow?.dateRange || 'Carregando...'}
           </p>
-        </div>
-        
-        {/* Date Filter Dropdown */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-          <label style={{
-            fontSize: '11px',
-            fontWeight: '600',
-            color: COLORS.gray,
-            marginBottom: '0.25rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Período
-          </label>
-          <select
-            value={period}
-            onChange={(e) => {
-              const newPeriod = e.target.value;
-              console.log('🔄 MachinePerformanceTable: Period changed:', period, '→', newPeriod);
-              onPeriodChange && onPeriodChange(newPeriod);
-            }}
-            style={{
-              padding: '0.5rem 0.75rem',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb',
-              background: 'white',
-              fontSize: '13px',
-              fontWeight: '500',
-              color: COLORS.primary,
-              cursor: 'pointer',
-              outline: 'none'
-            }}
-          >
-            <option value="currentWeek">Semana Atual</option>
-            <option value="fourWeeks">Últimas 4 Semanas</option>
-            <option value="allTime">Todo Período</option>
-          </select>
         </div>
       </div>
 

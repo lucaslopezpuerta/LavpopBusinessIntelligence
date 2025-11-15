@@ -12,10 +12,10 @@ const COLORS = {
   dry: '#f59e0b'
 };
 
-const DayOfWeekChart = ({ dayPatterns, period = 'currentWeek', onPeriodChange }) => {
+const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow }) => {
   useEffect(() => {
-    console.log('📊 DayOfWeekChart received period:', period, 'days:', dayPatterns?.length);
-  }, [period, dayPatterns]);
+    console.log('📊 DayOfWeekChart received dateFilter:', dateFilter, 'days:', dayPatterns?.length);
+  }, [dateFilter, dayPatterns]);
 
   if (!dayPatterns || dayPatterns.length === 0) {
     return (
@@ -31,12 +31,6 @@ const DayOfWeekChart = ({ dayPatterns, period = 'currentWeek', onPeriodChange })
       </div>
     );
   }
-
-  const periodLabels = {
-    currentWeek: 'Semana Atual',
-    fourWeeks: 'Últimas 4 Semanas',
-    allTime: 'Todo Período'
-  };
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -148,45 +142,8 @@ const DayOfWeekChart = ({ dayPatterns, period = 'currentWeek', onPeriodChange })
             color: COLORS.gray,
             margin: 0
           }}>
-            Padrão de utilização semanal - {periodLabels[period]}
+            Período: {dateWindow?.dateRange || 'Carregando...'}
           </p>
-        </div>
-
-        {/* Date Filter Dropdown */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-          <label style={{
-            fontSize: '11px',
-            fontWeight: '600',
-            color: COLORS.gray,
-            marginBottom: '0.25rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Período
-          </label>
-          <select
-            value={period}
-            onChange={(e) => {
-              const newPeriod = e.target.value;
-              console.log('📅 DayOfWeekChart: Period changed to:', newPeriod);
-              onPeriodChange && onPeriodChange(newPeriod);
-            }}
-            style={{
-              padding: '0.5rem 0.75rem',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb',
-              background: 'white',
-              fontSize: '13px',
-              fontWeight: '500',
-              color: COLORS.primary,
-              cursor: 'pointer',
-              outline: 'none'
-            }}
-          >
-            <option value="currentWeek">Semana Atual</option>
-            <option value="fourWeeks">Últimas 4 Semanas</option>
-            <option value="allTime">Todo Período</option>
-          </select>
         </div>
       </div>
 

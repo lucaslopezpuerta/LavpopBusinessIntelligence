@@ -10,7 +10,7 @@ const COLORS = {
   gray: '#6b7280'
 };
 
-const WashVsDryChart = ({ washVsDry }) => {
+const WashVsDryChart = ({ washVsDry, dateWindow }) => {
   if (!washVsDry) {
     return (
       <div style={{
@@ -96,7 +96,7 @@ const WashVsDryChart = ({ washVsDry }) => {
           color: COLORS.gray,
           margin: 0
         }}>
-          Comparação de serviços e receita (Semana Atual)
+          Período: {dateWindow?.dateRange || 'Carregando...'}
         </p>
       </div>
 

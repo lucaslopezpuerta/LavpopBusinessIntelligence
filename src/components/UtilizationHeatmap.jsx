@@ -22,7 +22,7 @@ function countMachines(str) {
   return { wash, dry, total: wash + dry };
 }
 
-const UtilizationHeatmap = ({ salesData }) => {
+const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow }) => {
   const heatmapData = useMemo(() => {
     if (!salesData || salesData.length === 0) return null;
 
@@ -148,7 +148,7 @@ const UtilizationHeatmap = ({ salesData }) => {
           color: COLORS.gray,
           margin: 0
         }}>
-          Average services per hour by day of week
+          Período: {dateWindow?.dateRange || 'Últimas 4 semanas'}
         </p>
       </div>
 
