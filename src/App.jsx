@@ -7,7 +7,7 @@ import KPICards from './components/KPICards';
 import './App.css';
 
 // Import views
-import DashboardV2 from './views/Dashboard';
+import Dashboard from './views/Dashboard';
 import Customers from './views/Customers';
 import Operations from './views/Operations';
 
@@ -46,14 +46,14 @@ function App() {
   }, []);
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: DashboardV2 },
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
     { id: 'customers', label: 'Clientes', icon: Users, component: Customers },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp, component: Analytics },
     { id: 'operations', label: 'Operações', icon: Settings, component: Operations }
   ];
 
   const activeTabData = tabs.find(t => t.id === activeTab);
-  const ActiveComponent = activeTabData?.component || DashboardV2;
+  const ActiveComponent = activeTabData?.component || Dashboard;
 
   if (loading) {
     return (
