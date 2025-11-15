@@ -1,9 +1,16 @@
-// Operations Metrics Calculator v3.3
+// Operations Metrics Calculator v3.4
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ Uses centralized dateWindows.js for date calculations
 // ✅ Includes Recarga in total revenue (Day of Week, Hourly)
 // ✅ Excludes Recarga from machine-specific metrics (Wash vs Dry, Machine Performance)
 // ✅ TIME-BASED utilization formula (machine-minutes)
+//
+// CHANGELOG:
+// v3.4 (2025-11-15): Fixed ReferenceError - changed 'period' to 'dateFilter' in console.log
+// v3.3 (2025-11-15): Integrated centralized dateWindows.js, all functions use dateFilter param
+// v3.2 (Previous): Added Recarga handling and revenue breakdown
+// v3.1 (Previous): TIME-BASED utilization calculations
+// v3.0 (Previous): Shared transactionParser integration
 
 import { parseSalesRecords, filterWithServices, parseBrNumber } from './transactionParser';
 import { getDateWindows } from './dateWindows';
@@ -302,8 +309,8 @@ export function calculateMachinePerformance(salesData, dateFilter = 'currentWeek
     });
   });
   
-  console.log('Machine Performance (v3.1 FIXED):', {
-    period,
+  console.log('Machine Performance (v3.3 FIXED):', {
+    dateFilter,
     totalMachines: Object.keys(machines).length,
     windowRecords: windowRecords.length
   });
