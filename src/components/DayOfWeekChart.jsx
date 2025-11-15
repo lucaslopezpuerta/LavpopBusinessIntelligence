@@ -1,3 +1,14 @@
+// DayOfWeekChart Component v2.0
+// Day-of-week utilization patterns with dual-axis chart
+//
+// CHANGELOG:
+// v2.0 (2025-11-15): Unified date filtering
+//   - Removed individual period dropdown
+//   - Now receives dateFilter and dateWindow props from parent
+//   - Displays explicit date range in subtitle
+//   - Synchronized with Operations tab DateRangeSelector
+// v1.0 (Previous): Initial implementation with local period control
+
 import React, { useEffect } from 'react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Calendar, Droplet, Activity } from 'lucide-react';
@@ -303,8 +314,8 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
         fontSize: '12px',
         color: COLORS.gray
       }}>
-        💡 <strong>Recomendação:</strong> Em {bestDay.dayName}, verifique máquinas antes do pico.
-        Em {worstDay.dayName}, agende manutenção preventiva ou ofereça promoções para aumentar fluxo.
+        💡 <strong>Recomendação:</strong> Em {bestDay.dayName}, verifique máquinas antes do pico. 
+        Em {worstDay.dayName}, agende manutenção preventiva ou oferece promoções para aumentar fluxo.
       </div>
     </div>
   );
