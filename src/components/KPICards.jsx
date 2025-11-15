@@ -1,4 +1,4 @@
-// KPICards.jsx v2.0 - ENHANCED VERSION
+// KPICards.jsx .0 - ENHANCED VERSION
 // Portuguese labels, prominent WoW indicators, brand colors
 // Reuses businessMetrics and customerMetrics calculations
 
