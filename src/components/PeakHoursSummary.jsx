@@ -1,4 +1,13 @@
-// PEAK HOURS SUMMARY V2.0
+// PEAK HOURS SUMMARY V2.1
+// Peak and off-peak hours analysis with self-service recommendations
+//
+// CHANGELOG:
+// v2.1 (2025-11-15): Added date window display
+//   - Now receives dateWindow prop from parent
+//   - Displays explicit date range in subtitle
+//   - Synchronized with Operations tab DateRangeSelector
+// v2.0 (Previous): Added self-service recommendations
+// v1.0 (Previous): Initial implementation
 
 import React from 'react';
 import { Clock, TrendingUp, TrendingDown } from 'lucide-react';
@@ -252,11 +261,11 @@ const PeakHoursSummary = ({ peakHours, dateWindow }) => {
         color: COLORS.gray
       }}>
         <div style={{ fontWeight: '600', color: COLORS.primary, marginBottom: '0.5rem' }}>
-          💡 Estratégias para Self-Service:
+          💡 Estratégias para Autosserviço:
         </div>
         <div style={{ lineHeight: '1.6' }}>
           <div><strong>Horários de Pico:</strong> Configure alertas remotos para monitorar filas e problemas de máquinas</div>
-          <div><strong>Horários de Vale:</strong> Execute manutenção preventiva, limpeza profunda, ou lance promoções via WhatsApp</div>
+          <div><strong>Horários de Vale:</strong> Execute manutenção preventiva, limpeza profunda ou lance promoções via WhatsApp</div>
           <div style={{ marginTop: '0.5rem', fontSize: '11px', fontStyle: 'italic' }}>
             ⓘ Receita inclui vendas de crédito (Recarga)
           </div>
