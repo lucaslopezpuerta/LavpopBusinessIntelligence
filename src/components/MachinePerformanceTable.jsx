@@ -1,5 +1,7 @@
+//MACHINE PERFORMANCE TABLE V2.0
+
 import React, { useEffect } from 'react';
-import { Droplet, Activity, TrendingUp, Info } from 'lucide-react';
+import { Droplet, Activity, TrendingUp, Info, DollarSign } from 'lucide-react';
 
 const COLORS = {
   primary: '#10306B',
@@ -8,15 +10,19 @@ const COLORS = {
   dry: '#f59e0b',
   gray: '#6b7280',
   info: '#3b82f6',
-  red: '#dc2626'
+  red: '#dc2626',
+  amber: '#f59e0b'
 };
 
-const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', onPeriodChange }) => {
-  // Debug: Log when period prop changes
+const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', onPeriodChange, revenueBreakdown }) => {
   useEffect(() => {
-    console.log('🎯 MachinePerformanceTable received new period prop:', period);
-    console.log('🎯 MachinePerformanceTable received machines:', machinePerformance?.length);
-  }, [period, machinePerformance]);
+    console.log('🎯 MachinePerformanceTable received:', { 
+      period, 
+      machines: machinePerformance?.length,
+      revenueBreakdown 
+    });
+  }, [period, machinePerformance, revenueBreakdown]);
+
   if (!machinePerformance || machinePerformance.length === 0) {
     return (
       <div style={{
@@ -51,13 +57,6 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
     return !nameLower.includes('recarga');
   });
 
-  console.log('MachinePerformanceTable Debug:', {
-    receivedMachines: machinePerformance.length,
-    afterFiltering: filteredMachines.length,
-    recargasRemoved: machinePerformance.length - filteredMachines.length,
-    period
-  });
-
   // Separate washers and dryers
   const washers = filteredMachines.filter(m => m.type === 'wash');
   const dryers = filteredMachines.filter(m => m.type === 'dry');
@@ -67,6 +66,7 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
   const totalDryUses = dryers.reduce((sum, m) => sum + m.uses, 0);
   const totalWashRevenue = washers.reduce((sum, m) => sum + m.revenue, 0);
   const totalDryRevenue = dryers.reduce((sum, m) => sum + m.revenue, 0);
+  const totalMachineRevenue = totalWashRevenue + totalDryRevenue;
 
   const avgWashUses = washers.length > 0 ? totalWashUses / washers.length : 0;
   const avgDryUses = dryers.length > 0 ? totalDryUses / dryers.length : 0;
@@ -216,13 +216,8 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
             value={period}
             onChange={(e) => {
               const newPeriod = e.target.value;
-              console.log('🔄 MachinePerformanceTable: Period dropdown changed:', period, '→', newPeriod);
-              if (onPeriodChange) {
-                console.log('✅ Calling onPeriodChange with:', newPeriod);
-                onPeriodChange(newPeriod);
-              } else {
-                console.log('❌ onPeriodChange is not defined!');
-              }
+              console.log('🔄 MachinePerformanceTable: Period changed:', period, '→', newPeriod);
+              onPeriodChange && onPeriodChange(newPeriod);
             }}
             style={{
               padding: '0.5rem 0.75rem',
@@ -261,10 +256,10 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
           <h4 style={{ 
             fontSize: '13px',
             fontWeight: '600',
-            color: COLORS.info,
+            color: COLORS.primary,
             margin: 0
           }}>
-            Como Interpretar as Colunas
+            Como Interpretar
           </h4>
         </div>
         <div style={{ 
@@ -275,34 +270,24 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
           color: COLORS.gray
         }}>
           <div>
-            <strong style={{ color: COLORS.primary }}>USOS:</strong> Quantas vezes a máquina foi usada. Inclui compras com crédito (R$0).
+            <strong style={{ color: COLORS.primary }}>USOS:</strong> Quantas vezes a máquina foi usada (inclui uso com crédito).
           </div>
           <div>
-            <strong style={{ color: COLORS.primary }}>RECEITA:</strong> Total arrecadado pela máquina. Em transações múltiplas, a receita é dividida proporcionalmente.
+            <strong style={{ color: COLORS.primary }}>RECEITA:</strong> Total arrecadado por esta máquina (R$).
           </div>
           <div>
             <strong style={{ color: COLORS.primary }}>R$/USO:</strong> Receita média por uso (Receita ÷ Usos). Identifica máquinas que geram mais valor.
           </div>
           <div>
-            <strong style={{ color: COLORS.primary }}>VS MÉDIA:</strong> Quanto cada máquina está acima/abaixo da média do seu tipo. Verde = acima, Vermelho = abaixo.
+            <strong style={{ color: COLORS.primary }}>VS MÉDIA:</strong> Comparação com a média de usos do seu tipo (lavadora ou secadora).
           </div>
-        </div>
-        <div style={{ 
-          marginTop: '0.75rem',
-          paddingTop: '0.75rem',
-          borderTop: '1px solid #bfdbfe',
-          fontSize: '11px',
-          color: COLORS.gray
-        }}>
-          <strong>⚠️ Importante:</strong> Transações "Recarga" (crédito) são excluídas automaticamente. 
-          Compras com crédito (R$0) contam como uso mas não contribuem para receita.
         </div>
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '1rem',
         marginBottom: '1.5rem'
       }}>
@@ -553,7 +538,79 @@ const MachinePerformanceTable = ({ machinePerformance, period = 'currentWeek', o
         </div>
       )}
 
-      {/* Insight */}
+      {/* Revenue Reconciliation Summary */}
+      {revenueBreakdown && (
+        <div style={{
+          marginTop: '1.5rem',
+          padding: '1rem',
+          background: '#f0fdf4',
+          borderRadius: '8px',
+          border: '1px solid #dcfce7'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            marginBottom: '0.75rem'
+          }}>
+            <DollarSign style={{ width: '16px', height: '16px', color: COLORS.accent }} />
+            <h4 style={{ 
+              fontSize: '13px',
+              fontWeight: '600',
+              color: COLORS.primary,
+              margin: 0
+            }}>
+              Reconciliação de Receita - {periodLabels[period]}
+            </h4>
+          </div>
+          
+          <div style={{ 
+            fontSize: '13px', 
+            color: COLORS.gray,
+            lineHeight: '1.8'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <span>Receita de Máquinas (atribuída na tabela acima):</span>
+              <strong style={{ color: COLORS.primary }}>{formatCurrency(totalMachineRevenue)}</strong>
+            </div>
+            
+            {revenueBreakdown.recargaRevenue > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span>Venda de Créditos (Recarga - não atribuída):</span>
+                <strong style={{ color: COLORS.amber }}>+ {formatCurrency(revenueBreakdown.recargaRevenue)}</strong>
+              </div>
+            )}
+            
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              paddingTop: '0.5rem',
+              borderTop: '2px solid #dcfce7',
+              marginTop: '0.5rem'
+            }}>
+              <span style={{ fontWeight: '600' }}>Receita Total do Período:</span>
+              <strong style={{ color: COLORS.accent, fontSize: '16px' }}>
+                {formatCurrency(revenueBreakdown.totalRevenue)}
+              </strong>
+            </div>
+          </div>
+          
+          {revenueBreakdown.recargaRevenue > 0 && (
+            <div style={{
+              marginTop: '0.75rem',
+              padding: '0.5rem',
+              background: '#fefce8',
+              borderRadius: '6px',
+              fontSize: '11px',
+              color: COLORS.gray
+            }}>
+              💡 <strong>Nota:</strong> Receita de créditos não aparece na tabela por máquina pois representa prepagamento para uso futuro.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Maintenance Insight */}
       <div style={{
         marginTop: '1.5rem',
         padding: '0.75rem',
