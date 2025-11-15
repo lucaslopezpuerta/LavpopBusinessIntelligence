@@ -1,11 +1,16 @@
-// Operations Metrics Calculator v3.4
+// Operations Metrics Calculator v3.5
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ Uses centralized dateWindows.js for date calculations
 // ✅ Includes Recarga in total revenue (Day of Week, Hourly)
 // ✅ Excludes Recarga from machine-specific metrics (Wash vs Dry, Machine Performance)
 // ✅ TIME-BASED utilization formula (machine-minutes)
+// ✅ NEW v3.5: Adds overall utilization calculations for filtered period
 //
 // CHANGELOG:
+// v3.5 (2025-11-15): Added calculateOverallUtilization function
+//   - Returns wash/dry/total utilization for the filtered date range
+//   - Fixes KPI cards not updating with filter changes
+//   - Integrated into main calculateOperationsMetrics return
 // v3.4 (2025-11-15): Fixed ReferenceError - changed 'period' to 'dateFilter' in console.log
 // v3.3 (2025-11-15): Integrated centralized dateWindows.js, all functions use dateFilter param
 // v3.2 (Previous): Added Recarga handling and revenue breakdown
@@ -25,6 +30,77 @@ const BUSINESS_PARAMS = {
 
 const DAYS_OF_WEEK = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+/**
+ * Calculate overall utilization for the filtered period
+ * ✅ TIME-BASED calculation using operating hours
+ * ✅ Accounts for actual days with data
+ * @param {Array} salesData - Sales data array
+ * @param {string} dateFilter - Date filter option
+ */
+export function calculateOverallUtilization(salesData, dateFilter = 'currentWeek') {
+  const records = parseSalesRecords(salesData);
+  const window = getDateWindows(dateFilter);
+  const windowRecords = records.filter(r => 
+    r.date >= window.start && 
+    r.date <= window.end &&
+    !r.isRecarga // Exclude Recarga from service counts
+  );
+  
+  // Count total services and unique days
+  let totalWash = 0;
+  let totalDry = 0;
+  const uniqueDates = new Set();
+  
+  windowRecords.forEach(r => {
+    totalWash += r.washCount;
+    totalDry += r.dryCount;
+    uniqueDates.add(r.dateStr);
+  });
+  
+  const activeDays = uniqueDates.size || 1;
+  const operatingHoursPerDay = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
+  const totalOperatingMinutes = activeDays * operatingHoursPerDay * 60;
+  
+  // Calculate maximum possible cycles
+  const maxWashCycles = (totalOperatingMinutes / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_WASHERS;
+  const maxDryCycles = (totalOperatingMinutes / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_DRYERS;
+  
+  // Calculate utilization percentages
+  const washUtilization = (totalWash / maxWashCycles) * 100;
+  const dryUtilization = (totalDry / maxDryCycles) * 100;
+  
+  // Weighted total utilization (proportional to machine count)
+  const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+  const washWeight = BUSINESS_PARAMS.TOTAL_WASHERS / totalMachines;
+  const dryWeight = BUSINESS_PARAMS.TOTAL_DRYERS / totalMachines;
+  const totalUtilization = (washUtilization * washWeight) + (dryUtilization * dryWeight);
+  
+  console.log('✅ Overall Utilization (v3.5):', {
+    dateFilter,
+    dateRange: window.dateRange,
+    activeDays,
+    totalWash,
+    totalDry,
+    maxWashCycles: Math.round(maxWashCycles),
+    maxDryCycles: Math.round(maxDryCycles),
+    washUtilization: `${Math.round(washUtilization)}%`,
+    dryUtilization: `${Math.round(dryUtilization)}%`,
+    totalUtilization: `${Math.round(totalUtilization)}%`
+  });
+  
+  return {
+    washUtilization: Math.round(washUtilization * 10) / 10,
+    dryUtilization: Math.round(dryUtilization * 10) / 10,
+    totalUtilization: Math.round(totalUtilization * 10) / 10,
+    totalWashServices: totalWash,
+    totalDryServices: totalDry,
+    totalServices: totalWash + totalDry,
+    activeDays,
+    maxWashCycles: Math.round(maxWashCycles),
+    maxDryCycles: Math.round(maxDryCycles)
+  };
+}
 
 /**
  * Calculate hourly utilization patterns
@@ -154,7 +230,7 @@ export function calculateDayOfWeekPatterns(salesData, dateFilter = 'currentWeek'
       dayData[dayOfWeek].total += r.totalServices;
     }
     
-    // Revenue (include ALL - Type 1 + Type 3)
+    // Revenue (include ALL)
     dayData[dayOfWeek].revenue += r.netValue;
     dayData[dayOfWeek].transactions += 1;
     
@@ -163,26 +239,19 @@ export function calculateDayOfWeekPatterns(salesData, dateFilter = 'currentWeek'
   
   const daysArray = [];
   const operatingHoursPerDay = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
-  const shouldAverage = dateFilter !== 'currentWeek';
   
   for (let day = 0; day < 7; day++) {
-    const uniqueDays = shouldAverage ? (dayCounts[day].size || 1) : 1;
+    const uniqueDays = dayCounts[day].size || 1;
     const avgWash = dayData[day].wash / uniqueDays;
     const avgDry = dayData[day].dry / uniqueDays;
     const avgTotal = dayData[day].total / uniqueDays;
     
-    // TIME-BASED UTILIZATION
-    const washMinutesUsed = avgWash * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES;
-    const dryMinutesUsed = avgDry * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES;
-    const totalMinutesUsed = washMinutesUsed + dryMinutesUsed;
+    const washCapacityPerDay = BUSINESS_PARAMS.TOTAL_WASHERS * 2 * operatingHoursPerDay;
+    const dryCapacityPerDay = BUSINESS_PARAMS.TOTAL_DRYERS * (60 / 45) * operatingHoursPerDay;
     
-    const washMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * operatingHoursPerDay * 60;
-    const dryMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * operatingHoursPerDay * 60;
-    const totalMinutesAvailable = washMinutesAvailable + dryMinutesAvailable;
-    
-    const totalUtilization = (totalMinutesUsed / totalMinutesAvailable) * 100;
-    const washUtil = (washMinutesUsed / washMinutesAvailable) * 100;
-    const dryUtil = (dryMinutesUsed / dryMinutesAvailable) * 100;
+    const washUtil = (avgWash / washCapacityPerDay) * 100;
+    const dryUtil = (avgDry / dryCapacityPerDay) * 100;
+    const totalUtilization = (washUtil + dryUtil) / 2;
     
     daysArray.push({
       day,
@@ -266,8 +335,7 @@ export function calculateWashVsDry(salesData, dateFilter = 'currentWeek') {
 
 /**
  * Calculate machine-by-machine performance
- * ✅ EXCLUDES Recarga (machine-attributed revenue only)
- * ✅ Uses NET revenue (after cashback)
+ * ✅ EXCLUDES Recarga (only machine-attributed services and revenue)
  * @param {Array} salesData - Sales data array
  * @param {string} dateFilter - Date filter option
  */
@@ -283,18 +351,15 @@ export function calculateMachinePerformance(salesData, dateFilter = 'currentWeek
   const machines = {};
   
   windowRecords.forEach(r => {
-    const machineList = String(r.machineStr)
-      .split(',')
-      .map(m => m.trim())
-      .filter(m => m);
+    const machinesList = String(r.machines || '').split(',').map(m => m.trim()).filter(m => m);
+    const totalMachines = machinesList.length;
     
-    if (machineList.length === 0) return;
+    if (totalMachines === 0) return;
     
-    const revenuePerMachine = r.netValue / machineList.length;
+    const revenuePerMachine = r.netValue / totalMachines;
     
-    machineList.forEach(machine => {
+    machinesList.forEach(machine => {
       const machineLower = machine.toLowerCase();
-      
       if (!machines[machine]) {
         machines[machine] = {
           name: machine,
@@ -309,7 +374,7 @@ export function calculateMachinePerformance(salesData, dateFilter = 'currentWeek
     });
   });
   
-  console.log('Machine Performance (v3.3 FIXED):', {
+  console.log('Machine Performance (v3.5):', {
     dateFilter,
     totalMachines: Object.keys(machines).length,
     windowRecords: windowRecords.length
@@ -327,6 +392,8 @@ export function calculateMachinePerformance(salesData, dateFilter = 'currentWeek
  * @param {string} dateFilter - Date filter option (currentWeek, lastWeek, last4Weeks, allTime)
  */
 export function calculateOperationsMetrics(salesData, dateFilter = 'currentWeek') {
+  const window = getDateWindows(dateFilter);
+  const overallUtilization = calculateOverallUtilization(salesData, dateFilter);
   const hourlyPatterns = calculateHourlyPatterns(salesData, dateFilter);
   const peakHours = identifyPeakHours(hourlyPatterns);
   const dayPatterns = calculateDayOfWeekPatterns(salesData, dateFilter);
@@ -335,7 +402,6 @@ export function calculateOperationsMetrics(salesData, dateFilter = 'currentWeek'
   
   // Calculate revenue breakdown
   const records = parseSalesRecords(salesData);
-  const window = getDateWindows(dateFilter);
   const windowRecords = records.filter(r => r.date >= window.start && r.date <= window.end);
   
   const machineRevenue = windowRecords.filter(r => !r.isRecarga).reduce((sum, r) => sum + r.netValue, 0);
@@ -343,6 +409,9 @@ export function calculateOperationsMetrics(salesData, dateFilter = 'currentWeek'
   const totalRevenue = machineRevenue + recargaRevenue;
   
   return {
+    // NEW v3.5: Overall utilization for the filtered period
+    utilization: overallUtilization,
+    
     hourlyPatterns,
     peakHours,
     dayPatterns,
@@ -350,6 +419,7 @@ export function calculateOperationsMetrics(salesData, dateFilter = 'currentWeek'
     machinePerformance,
     period: dateFilter, // Keep 'period' key for backward compatibility
     dateFilter,
+    dateRange: window.dateRange,
     revenueBreakdown: {
       machineRevenue: Math.round(machineRevenue * 100) / 100,
       recargaRevenue: Math.round(recargaRevenue * 100) / 100,
