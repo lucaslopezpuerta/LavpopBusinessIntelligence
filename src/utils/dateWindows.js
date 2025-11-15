@@ -1,4 +1,4 @@
-// Date Windows Utility v1.0
+// Date Windows Utility v1.1
 // Centralized date calculations for all tabs
 // Week-based system: Sunday-Saturday (Brazilian business standard)
 //
@@ -117,6 +117,48 @@ function getAllTime() {
 }
 
 /**
+ * Get the week before last week (for comparison when viewing lastWeek)
+ */
+function getTwoWeeksAgo() {
+  const lastWeek = getLastWeek();
+  
+  // Go back 7 more days from last week's start
+  const startSunday = new Date(lastWeek.start);
+  startSunday.setDate(startSunday.getDate() - 7);
+  startSunday.setHours(0, 0, 0, 0);
+  
+  const endSaturday = new Date(lastWeek.end);
+  endSaturday.setDate(endSaturday.getDate() - 7);
+  endSaturday.setHours(23, 59, 59, 999);
+  
+  return {
+    start: startSunday,
+    end: endSaturday
+  };
+}
+
+/**
+ * Get the 4 weeks before last 4 weeks (for comparison)
+ */
+function getPrevious4Weeks() {
+  const last4 = getLast4Weeks();
+  
+  // Go back 28 more days from last4Weeks start
+  const startDate = new Date(last4.start);
+  startDate.setDate(startDate.getDate() - 28);
+  startDate.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(last4.end);
+  endDate.setDate(endDate.getDate() - 28);
+  endDate.setHours(23, 59, 59, 999);
+  
+  return {
+    start: startDate,
+    end: endDate
+  };
+}
+
+/**
  * Format date as DD/MM/YYYY
  */
 function formatDate(date) {
@@ -148,7 +190,7 @@ export function formatDateRange(start, end) {
 
 /**
  * Get date window and metadata for a given option
- * @param {string} option - One of: 'currentWeek', 'lastWeek', 'last4Weeks', 'allTime'
+ * @param {string} option - One of: 'currentWeek', 'lastWeek', 'last4Weeks', 'allTime', 'twoWeeksAgo', 'previous4Weeks'
  * @returns {Object} - { start, end, label, dateRange, fullLabel, option }
  */
 export function getDateWindows(option = 'currentWeek') {
@@ -171,6 +213,14 @@ export function getDateWindows(option = 'currentWeek') {
     case 'allTime':
       window = getAllTime();
       label = 'Todo Período';
+      break;
+    case 'twoWeeksAgo':
+      window = getTwoWeeksAgo();
+      label = 'Semana Anterior';
+      break;
+    case 'previous4Weeks':
+      window = getPrevious4Weeks();
+      label = '4 Semanas Anteriores';
       break;
     default:
       window = getCurrentWeek(true);
