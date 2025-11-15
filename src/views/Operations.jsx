@@ -1,4 +1,4 @@
-// OPERATIONS TAB V2.0
+// OPERATIONS TAB V3.0 - WEEK-BASED DATE FILTERING
 
 import React, { useMemo, useState } from 'react';
 import OperationsKPICards from '../components/OperationsKPICards';
@@ -7,11 +7,19 @@ import PeakHoursSummary from '../components/PeakHoursSummary';
 import WashVsDryChart from '../components/WashVsDryChart';
 import DayOfWeekChart from '../components/DayOfWeekChart';
 import MachinePerformanceTable from '../components/MachinePerformanceTable';
+import DateRangeSelector from '../components/DateRangeSelector';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
+import { getDateWindows } from '../utils/dateWindows';
 
 const Operations = ({ data }) => {
-  const [machinePeriod, setMachinePeriod] = useState('currentWeek');
+  // Centralized date filter state
+  const [dateFilter, setDateFilter] = useState('currentWeek');
+  
+  // Calculate date window based on filter
+  const dateWindow = useMemo(() => 
+    getDateWindows(dateFilter), [dateFilter]
+  );
 
   const businessMetrics = useMemo(() => {
     if (!data?.sales) {
@@ -34,10 +42,10 @@ const Operations = ({ data }) => {
       console.log('No sales data for operations metrics');
       return null;
     }
-    console.log('🔄 RECALCULATING operations metrics, sales rows:', data.sales.length, 'period:', machinePeriod);
+    console.log('🔄 RECALCULATING operations metrics, sales rows:', data.sales.length, 'period:', dateFilter);
     try {
-      const result = calculateOperationsMetrics(data.sales, machinePeriod);
-      console.log('✅ Operations metrics (v3.1):', {
+      const result = calculateOperationsMetrics(data.sales, dateFilter);
+      console.log('✅ Operations metrics (v3.2):', {
         period: result.period,
         machineCount: result.machinePerformance?.length,
         revenueBreakdown: result.revenueBreakdown
@@ -47,12 +55,7 @@ const Operations = ({ data }) => {
       console.error('❌ Operations metrics error:', err);
       return null;
     }
-  }, [data?.sales, machinePeriod]);
-
-  const handlePeriodChange = (newPeriod) => {
-    console.log('📅 Period change requested:', machinePeriod, '→', newPeriod);
-    setMachinePeriod(newPeriod);
-  };
+  }, [data?.sales, dateFilter]);
 
   if (!businessMetrics || !operationsMetrics) {
     return (
@@ -82,8 +85,17 @@ const Operations = ({ data }) => {
           Operações
         </h1>
         <p style={{ fontSize: '15px', color: '#6b7280' }}>
-          Eficiência das Máquinas - Semana de {businessMetrics.windows.weekly.startDate} a {businessMetrics.windows.weekly.endDate}
+          Eficiência das Máquinas e Utilização
         </p>
+      </div>
+
+      {/* Date Filter Selector - Single Source of Truth */}
+      <div style={{ marginBottom: '2rem' }}>
+        <DateRangeSelector 
+          value={dateFilter}
+          onChange={setDateFilter}
+          dateWindow={dateWindow}
+        />
       </div>
 
       {/* Utilization KPI Cards + Revenue Breakdown */}
@@ -100,23 +112,33 @@ const Operations = ({ data }) => {
       }}>
         {/* Full Width: Utilization Heatmap */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <UtilizationHeatmap salesData={data.sales} />
+          <UtilizationHeatmap 
+            salesData={data.sales} 
+            dateFilter={dateFilter}
+            dateWindow={dateWindow}
+          />
         </div>
 
         {/* Row 2: Peak Hours Summary (Full Width) */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <PeakHoursSummary peakHours={operationsMetrics.peakHours} />
+          <PeakHoursSummary 
+            peakHours={operationsMetrics.peakHours}
+            dateWindow={dateWindow}
+          />
         </div>
 
         {/* Row 3: Wash vs Dry Chart + Day of Week Chart */}
         <div style={{ gridColumn: 'span 6' }}>
-          <WashVsDryChart washVsDry={operationsMetrics.washVsDry} />
+          <WashVsDryChart 
+            washVsDry={operationsMetrics.washVsDry}
+            dateWindow={dateWindow}
+          />
         </div>
         <div style={{ gridColumn: 'span 6' }}>
           <DayOfWeekChart 
             dayPatterns={operationsMetrics.dayPatterns}
-            period={machinePeriod}
-            onPeriodChange={handlePeriodChange}
+            dateFilter={dateFilter}
+            dateWindow={dateWindow}
           />
         </div>
 
@@ -124,8 +146,8 @@ const Operations = ({ data }) => {
         <div style={{ gridColumn: '1 / -1' }}>
           <MachinePerformanceTable 
             machinePerformance={operationsMetrics.machinePerformance}
-            period={machinePeriod}
-            onPeriodChange={handlePeriodChange}
+            dateFilter={dateFilter}
+            dateWindow={dateWindow}
             revenueBreakdown={operationsMetrics.revenueBreakdown}
           />
         </div>
