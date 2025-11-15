@@ -1,4 +1,4 @@
-// Transaction Parser v1.0 - Shared Utility
+// Transaction Parser v1.1 - Shared Utility
 // Handles all transaction types with proper cashback calculation
 // Used by: businessMetrics.js, operationsMetrics.js, customerMetrics.js
 
@@ -124,6 +124,7 @@ export function parseSalesRecords(salesData) {
       hour: date.getHours(),
       type,
       isRecarga,
+      machineStr,         // Store original machine string
       grossValue,
       netValue,           // TRUE net after cashback
       discountAmount,     // Includes coupon + cashback
