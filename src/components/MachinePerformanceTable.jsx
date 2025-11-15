@@ -1,5 +1,15 @@
 //MACHINE PERFORMANCE TABLE V3.0
 // ✅ Uses centralized date filtering (no individual dropdown)
+//
+// CHANGELOG:
+// v3.0 (2025-11-15): Unified date filtering
+//   - Removed individual period dropdown
+//   - Now receives dateFilter and dateWindow props from parent
+//   - Displays explicit date range in subtitle
+//   - Removed periodLabels object (no longer needed)
+//   - Synchronized with Operations tab DateRangeSelector
+// v2.0 (Previous): Added revenue breakdown display
+// v1.0 (Previous): Initial implementation with local period control
 
 import React, { useEffect } from 'react';
 import { Droplet, Activity, TrendingUp, Info, DollarSign } from 'lucide-react';
