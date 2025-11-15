@@ -4,7 +4,7 @@
 // Reuses all existing calculation logic
 
 import React, { useMemo } from 'react';
-import KPICards from '../components/KPICards_v2';
+import KPICards from '../components/KPICards';
 import WeatherWidget from '../components/WeatherWidget_API';
 import SocialMediaWidget from '../components/SocialMediaWidget';
 import UrgentInsightCard from '../components/UrgentInsightCard';
@@ -14,7 +14,7 @@ import NewClientsChart from '../components/NewClientsChart';
 import WeeklyPerformanceSummary from '../components/WeeklyPerformanceSummary';
 import CustomerRetentionScore from '../components/CustomerRetentionScore';
 import ServiceMixIndicator from '../components/ServiceMixIndicator';
-import QuickActionsPanel from '../components/QuickActionsPanel_v2';
+import QuickActionsPanel from '../components/QuickActionsPanel';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { ExternalLink, Calendar } from 'lucide-react';
