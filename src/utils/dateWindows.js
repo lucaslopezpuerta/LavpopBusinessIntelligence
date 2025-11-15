@@ -1,6 +1,13 @@
 // Date Windows Utility v1.0
 // Centralized date calculations for all tabs
 // Week-based system: Sunday-Saturday (Brazilian business standard)
+//
+// CHANGELOG:
+// v1.0 (2025-11-15): Initial implementation
+//   - Created centralized date window calculations
+//   - Support for 4 date options: currentWeek, lastWeek, last4Weeks, allTime
+//   - Brazilian date format (DD/MM/YYYY)
+//   - Sunday-Saturday business weeks
 
 /**
  * Get current week boundaries (Sunday to Saturday)
