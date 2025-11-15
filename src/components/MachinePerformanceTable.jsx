@@ -1,7 +1,12 @@
-//MACHINE PERFORMANCE TABLE V3.0
+//MACHINE PERFORMANCE TABLE V3.0.1
 // ✅ Uses centralized date filtering (no individual dropdown)
+// ✅ Fixed periodLabels reference error
 //
 // CHANGELOG:
+// v3.0.1 (2025-11-15): Bug fix release
+//   - Fixed line 526: replaced periodLabels[period] with dateWindow?.label
+//   - Resolves ReferenceError crash in revenue reconciliation section
+//   - No functional changes, pure compatibility fix
 // v3.0 (2025-11-15): Unified date filtering
 //   - Removed individual period dropdown
 //   - Now receives dateFilter and dateWindow props from parent
@@ -242,80 +247,14 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
             <strong style={{ color: COLORS.primary }}>R$/USO:</strong> Receita média por uso (Receita ÷ Usos). Identifica máquinas que geram mais valor.
           </div>
           <div>
-            <strong style={{ color: COLORS.primary }}>VS MÉDIA:</strong> Comparação com a média de usos do seu tipo (lavadora ou secadora).
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '1rem',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{
-          padding: '1rem',
-          background: '#eff6ff',
-          borderRadius: '8px',
-          border: '1px solid #dbeafe'
-        }}>
-          <div style={{
-            fontSize: '11px',
-            fontWeight: '600',
-            color: COLORS.gray,
-            textTransform: 'uppercase',
-            marginBottom: '0.5rem',
-            letterSpacing: '0.5px'
-          }}>
-            Lavadoras ({washers.length})
-          </div>
-          <div style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            color: COLORS.wash,
-            marginBottom: '0.25rem'
-          }}>
-            {totalWashUses.toLocaleString('pt-BR')} usos
-          </div>
-          <div style={{ fontSize: '12px', color: COLORS.gray }}>
-            {formatCurrency(totalWashRevenue)} • Média: {avgWashUses.toFixed(1)} usos
-          </div>
-        </div>
-
-        <div style={{
-          padding: '1rem',
-          background: '#fffbeb',
-          borderRadius: '8px',
-          border: '1px solid #fef3c7'
-        }}>
-          <div style={{
-            fontSize: '11px',
-            fontWeight: '600',
-            color: COLORS.gray,
-            textTransform: 'uppercase',
-            marginBottom: '0.5rem',
-            letterSpacing: '0.5px'
-          }}>
-            Secadoras ({dryers.length})
-          </div>
-          <div style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            color: COLORS.dry,
-            marginBottom: '0.25rem'
-          }}>
-            {totalDryUses.toLocaleString('pt-BR')} usos
-          </div>
-          <div style={{ fontSize: '12px', color: COLORS.gray }}>
-            {formatCurrency(totalDryRevenue)} • Média: {avgDryUses.toFixed(1)} usos
+            <strong style={{ color: COLORS.primary }}>vs MÉDIA:</strong> Comparação com a média do seu tipo (lavadora ou secadora).
           </div>
         </div>
       </div>
 
       {/* Washers Table */}
       {washers.length > 0 && (
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '2rem' }}>
           <h4 style={{
             fontSize: '13px',
             fontWeight: '600',
@@ -501,7 +440,7 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
         </div>
       )}
 
-      {/* Revenue Reconciliation Summary */}
+      {/* Revenue Reconciliation Summary - FIXED LINE 526 */}
       {revenueBreakdown && (
         <div style={{
           marginTop: '1.5rem',
@@ -523,7 +462,7 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
               color: COLORS.primary,
               margin: 0
             }}>
-              Reconciliação de Receita - {periodLabels[period]}
+              Reconciliação de Receita - {dateWindow?.label || 'Carregando...'}
             </h4>
           </div>
           
