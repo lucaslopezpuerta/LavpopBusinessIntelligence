@@ -523,7 +523,7 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
               color: COLORS.primary,
               margin: 0
             }}>
-              Reconciliação de Receita - {dateWindow?.label || 'Carregando...'}
+              Reconciliação de Receita - {periodLabels[period]}
             </h4>
           </div>
           
@@ -567,7 +567,7 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
               fontSize: '11px',
               color: COLORS.gray
             }}>
-              💡 <strong>Nota:</strong> A receita de créditos não aparece na tabela por máquina, pois representa prepagamento para uso futuro.
+              💡 <strong>Nota:</strong> Receita de Recargas não aparece na tabela por máquina, pois representa prepagamento para uso futuro.
             </div>
           )}
         </div>
@@ -582,8 +582,8 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
         fontSize: '12px',
         color: COLORS.gray
       }}>
-        💡 <strong>Manutenção:</strong> Máquinas acima da média podem precisar de revisões mais frequentes. 
-        Máquinas abaixo da média podem apresentar problemas técnicos ou um posicionamento inadequado.
+        💡 <strong>Manutenção:</strong> Máquinas acima da média podem precisar de revisões mais frequentes.
+        Máquinas abaixo da média podem ter problemas técnicos, um posicionamento ruim ou uma utilização baixa.
       </div>
     </div>
   );
