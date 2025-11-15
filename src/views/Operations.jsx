@@ -1,9 +1,10 @@
-// OPERATIONS TAB V3.0
+// OPERATIONS TAB V3.1
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
 //
 // CHANGELOG:
+// v3.1 (2025-11-15): Icons Change, New useMemo Added, Component Call Changed
 // v3.0 (2025-11-15): Unified date filtering system
 //   - Added DateRangeSelector component as single control
 //   - Replaced machinePeriod with dateFilter state
@@ -75,6 +76,30 @@ const Operations = ({ data }) => {
     }
   }, [data?.sales, dateFilter, dateWindow]);
 
+  // Calculate previous period metrics for comparison
+  const previousWeekMetrics = useMemo(() => {
+    if (!data?.sales || dateFilter === 'allTime') {
+      return null; // No previous period for all-time view
+    }
+    
+    // Get previous period filter
+    const previousPeriodFilter = dateFilter === 'currentWeek' ? 'lastWeek' : 
+                                 dateFilter === 'lastWeek' ? 'twoWeeksAgo' :
+                                 dateFilter === 'last4Weeks' ? 'previous4Weeks' : null;
+    
+    if (!previousPeriodFilter) return null;
+    
+    try {
+      // For now, calculate "lastWeek" as the standard previous period
+      // This can be enhanced later to properly handle each case
+      const result = calculateOperationsMetrics(data.sales, 'lastWeek');
+      return result;
+    } catch (err) {
+      console.error('❌ Previous period metrics error:', err);
+      return null;
+    }
+  }, [data?.sales, dateFilter]);
+
   if (!businessMetrics || !operationsMetrics) {
     return (
       <div style={{
@@ -120,6 +145,8 @@ const Operations = ({ data }) => {
       <OperationsKPICards 
         businessMetrics={businessMetrics} 
         operationsMetrics={operationsMetrics}
+        previousWeekMetrics={previousWeekMetrics}
+        dateWindow={dateFilter}
       />
 
       {/* Main Grid Layout */}
