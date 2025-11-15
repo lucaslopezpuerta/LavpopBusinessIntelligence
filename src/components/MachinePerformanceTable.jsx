@@ -1,4 +1,5 @@
-//MACHINE PERFORMANCE TABLE V2.0
+//MACHINE PERFORMANCE TABLE V3.0
+// ✅ Uses centralized date filtering (no individual dropdown)
 
 import React, { useEffect } from 'react';
 import { Droplet, Activity, TrendingUp, Info, DollarSign } from 'lucide-react';
@@ -164,14 +165,9 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
       border: '1px solid #e5e7eb',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
     }}>
-      {/* Header with Date Filter */}
+      {/* Header with Date Range Display */}
       <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'flex-start',
-        marginBottom: '1.5rem',
-        flexWrap: 'wrap',
-        gap: '1rem'
+        marginBottom: '1.5rem'
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -561,7 +557,7 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
               fontSize: '11px',
               color: COLORS.gray
             }}>
-              💡 <strong>Nota:</strong> Receita de créditos não aparece na tabela por máquina pois representa prepagamento para uso futuro.
+              💡 <strong>Nota:</strong> A receita de Recargas não aparece na tabela por máquina, pois representa prepagamento para uso futuro.
             </div>
           )}
         </div>
@@ -576,8 +572,8 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
         fontSize: '12px',
         color: COLORS.gray
       }}>
-        💡 <strong>Manutenção:</strong> Máquinas acima da média podem precisar de revisão mais frequente. 
-        Máquinas abaixo da média podem ter problemas técnicos ou posicionamento ruim.
+        💡 <strong>Manutenção:</strong> Máquinas acima da média podem precisar de revisões mais frequentes. 
+        Máquinas abaixo da média podem ter problemas técnicos ou um posicionamento ruim.
       </div>
     </div>
   );
