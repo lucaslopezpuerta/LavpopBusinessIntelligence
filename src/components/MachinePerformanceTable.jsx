@@ -567,7 +567,7 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
               fontSize: '11px',
               color: COLORS.gray
             }}>
-              💡 <strong>Nota:</strong> Receita de créditos não aparece na tabela por máquina, pois representa prepagamento para uso futuro.
+              💡 <strong>Nota:</strong> A receita de créditos não aparece na tabela por máquina, pois representa prepagamento para uso futuro.
             </div>
           )}
         </div>
@@ -583,7 +583,7 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
         color: COLORS.gray
       }}>
         💡 <strong>Manutenção:</strong> Máquinas acima da média podem precisar de revisões mais frequentes. 
-        Máquinas abaixo da média podem ter problemas técnicos ou um posicionamento ruim.
+        Máquinas abaixo da média podem apresentar problemas técnicos ou um posicionamento inadequado.
       </div>
     </div>
   );
