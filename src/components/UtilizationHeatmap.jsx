@@ -1,3 +1,15 @@
+// UtilizationHeatmap Component v2.0
+// Hour x Day heatmap showing average service utilization patterns
+//
+// CHANGELOG:
+// v2.0 (2025-11-15): Dynamic date filtering
+//   - Removed hardcoded "last 4 weeks" logic
+//   - Now receives dateFilter and dateWindow props from parent
+//   - Uses dateWindow.start and dateWindow.end for filtering
+//   - Displays explicit date range in subtitle
+//   - Synchronized with Operations tab DateRangeSelector
+// v1.0 (Previous): Initial implementation with fixed 4-week window
+
 import React, { useMemo } from 'react';
 import { Activity } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
