@@ -1,7 +1,6 @@
 // Date Windows Utility v1.0
 // Centralized date calculations for all tabs
-// Brazil timezone: America/Sao_Paulo
-// Business weeks: Sunday to Saturday
+// Week-based system: Sunday-Saturday (Brazilian business standard)
 
 /**
  * Get current week boundaries (Sunday to Saturday)
@@ -32,7 +31,10 @@ function getCurrentWeek(includePartial = true) {
     };
   }
   
-  return { start: startSunday, end: endSaturday };
+  return {
+    start: startSunday,
+    end: endSaturday
+  };
 }
 
 /**
@@ -42,10 +44,10 @@ function getLastWeek() {
   const today = new Date();
   const dayOfWeek = today.getDay();
   
-  // Find last Saturday
-  const lastSaturday = new Date(today);
+  // Get last Saturday
+  let lastSaturday = new Date(today);
   if (dayOfWeek === 6) {
-    // Today is Saturday - go back to previous Saturday
+    // If today is Saturday, go back 7 days
     lastSaturday.setDate(lastSaturday.getDate() - 7);
   } else {
     // Go back to most recent Saturday
@@ -54,12 +56,15 @@ function getLastWeek() {
   }
   lastSaturday.setHours(23, 59, 59, 999);
   
-  // Get the Sunday before that Saturday
+  // Get Sunday of that week
   const startSunday = new Date(lastSaturday);
   startSunday.setDate(lastSaturday.getDate() - 6);
   startSunday.setHours(0, 0, 0, 0);
   
-  return { start: startSunday, end: lastSaturday };
+  return {
+    start: startSunday,
+    end: lastSaturday
+  };
 }
 
 /**
@@ -69,8 +74,8 @@ function getLast4Weeks() {
   const today = new Date();
   const dayOfWeek = today.getDay();
   
-  // Find last Saturday
-  const lastSaturday = new Date(today);
+  // Get last Saturday
+  let lastSaturday = new Date(today);
   if (dayOfWeek === 6) {
     lastSaturday.setDate(lastSaturday.getDate() - 7);
   } else {
@@ -79,30 +84,33 @@ function getLast4Weeks() {
   }
   lastSaturday.setHours(23, 59, 59, 999);
   
-  // Go back 28 days to get 4 weeks
-  const start28DaysAgo = new Date(lastSaturday);
-  start28DaysAgo.setDate(lastSaturday.getDate() - 27); // 28 days total including end day
-  start28DaysAgo.setHours(0, 0, 0, 0);
+  // Go back 28 days (4 weeks) from last Saturday
+  const startDate = new Date(lastSaturday);
+  startDate.setDate(lastSaturday.getDate() - 27); // 27 days back + 1 (lastSaturday) = 28 days
+  startDate.setHours(0, 0, 0, 0);
   
-  return { start: start28DaysAgo, end: lastSaturday };
+  return {
+    start: startDate,
+    end: lastSaturday
+  };
 }
 
 /**
  * Get all-time window (from business start to today)
  */
 function getAllTime() {
-  const businessStart = new Date(2024, 5, 1); // June 1, 2024
-  businessStart.setHours(0, 0, 0, 0);
-  
+  const startDate = new Date(2024, 5, 1, 0, 0, 0, 0); // June 1, 2024
   const today = new Date();
   today.setHours(23, 59, 59, 999);
   
-  return { start: businessStart, end: today };
+  return {
+    start: startDate,
+    end: today
+  };
 }
 
 /**
- * Format date for display (DD/MM/YYYY)
- * @param {Date} date 
+ * Format date as DD/MM/YYYY
  */
 function formatDate(date) {
   const day = String(date.getDate()).padStart(2, '0');
@@ -112,56 +120,29 @@ function formatDate(date) {
 }
 
 /**
- * Format date range for display (DD/MM/YYYY - DD/MM/YYYY)
- * @param {Date} start 
- * @param {Date} end 
+ * Format date range as "DD/MM/YYYY - DD/MM/YYYY"
  */
 export function formatDateRange(start, end) {
-  return `${formatDate(start)} - ${formatDate(end)}`;
-}
-
-/**
- * Format date range for display (shortened for dropdown)
- * @param {Date} start 
- * @param {Date} end 
- */
-export function formatDateRangeShort(start, end) {
   const startDay = String(start.getDate()).padStart(2, '0');
   const startMonth = String(start.getMonth() + 1).padStart(2, '0');
+  const startYear = start.getFullYear();
+  
   const endDay = String(end.getDate()).padStart(2, '0');
   const endMonth = String(end.getMonth() + 1).padStart(2, '0');
+  const endYear = end.getFullYear();
   
-  // If same month, show DD/MM - DD/MM
-  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-    return `${startDay}/${startMonth} - ${endDay}/${endMonth}`;
+  // If same year, show year only once
+  if (startYear === endYear) {
+    return `${startDay}/${startMonth} - ${endDay}/${endMonth}/${endYear}`;
   }
   
-  // Different months, show DD/MM - DD/MM
-  return `${startDay}/${startMonth} - ${endDay}/${endMonth}`;
+  return `${startDay}/${startMonth}/${startYear} - ${endDay}/${endMonth}/${endYear}`;
 }
 
 /**
- * Get readable label with dates
- * @param {string} option - currentWeek, lastWeek, last4Weeks, allTime
- * @param {Date} start 
- * @param {Date} end 
- */
-export function getDateLabel(option, start, end) {
-  const labels = {
-    currentWeek: 'Semana Atual',
-    lastWeek: 'Semana Passada',
-    last4Weeks: 'Últimas 4 Semanas',
-    allTime: 'Todo Período'
-  };
-  
-  const shortRange = formatDateRangeShort(start, end);
-  return `${labels[option]} (${shortRange})`;
-}
-
-/**
- * Main function: Get date windows for any option
- * @param {string} option - currentWeek, lastWeek, last4Weeks, allTime
- * @returns {Object} { start, end, label, dateRange, fullLabel, option }
+ * Get date window and metadata for a given option
+ * @param {string} option - One of: 'currentWeek', 'lastWeek', 'last4Weeks', 'allTime'
+ * @returns {Object} - { start, end, label, dateRange, fullLabel, option }
  */
 export function getDateWindows(option = 'currentWeek') {
   let window;
@@ -190,14 +171,12 @@ export function getDateWindows(option = 'currentWeek') {
   }
   
   const dateRange = formatDateRange(window.start, window.end);
-  const shortDateRange = formatDateRangeShort(window.start, window.end);
   
   return {
     ...window,
     label,
     dateRange,
-    shortDateRange,
-    fullLabel: `${label} (${shortDateRange})`,
+    fullLabel: `${label} (${dateRange})`,
     option
   };
 }
@@ -229,6 +208,6 @@ export function getDateOptions() {
     }
   ].map(opt => ({
     ...opt,
-    displayLabel: `${opt.label} (${formatDateRangeShort(opt.start, opt.end)})`
+    displayLabel: `${opt.label} (${formatDateRange(opt.start, opt.end)})`
   }));
 }
