@@ -1,19 +1,25 @@
-// OPERATIONS KPI CARDS V4.0.2 - WORKING VERSION
-// ✅ Correctly reads from operationsMetrics.utilization
-// ✅ Dynamic peak/off-peak from operationsMetrics
-// ✅ Realistic thresholds (25/15/10)
+// OPERATIONS KPI CARDS V4.1.0 - ENHANCED VERSION
+// ✅ Better icons for washers/dryers
+// ✅ Larger titles with metric names
+// ✅ Adaptive service count labels based on date filter
+// ✅ Fixed capacity calculation for total
 //
 // CHANGELOG:
+// v4.1.0 (2025-11-15): UI/UX Enhancements + Math Fix
+//   - Changed: Better icons (Droplet, Activity, Gauge)
+//   - Enhanced: Larger card titles (16px) with metric name
+//   - Fixed: Service count labels adapt to dateWindow selection
+//   - Fixed: Total capacity calculation (sum of washer + dryer, not average)
+//   - Added: dateWindow prop for context-aware labels
 // v4.0.2 (2025-11-15): CRITICAL FIX - Correct data access
 //   - Fixed: Now reads from operationsMetrics.utilization (not businessMetrics.windows)
 //   - Fixed: Service counts from operationsMetrics.utilization
 //   - Fixed: Peak/off-peak from operationsMetrics.utilization.peak/offPeak
-//   - Simplified: Uses existing data structure correctly
 // v4.0.1: Attempted dynamic peak hours (wrong data structure)
 // v4.0: Initial enhanced version (wrong data access)
 
 import React, { useMemo } from 'react';
-import { Flame, Activity, Gauge } from 'lucide-react';
+import { Droplet, Activity, Gauge } from 'lucide-react';
 
 const COLORS = {
   primary: '#10306B',
@@ -34,13 +40,87 @@ const THRESHOLDS = {
   fair: 10
 };
 
-const OperationsKPICards = ({ businessMetrics, operationsMetrics, previousWeekMetrics }) => {
+// MACHINE CONFIGURATION
+// Adjust these values based on actual operating hours and cycle times
+const MACHINE_CONFIG = {
+  washers: {
+    count: 3,
+    cyclesPerHour: 2,        // 30-minute wash cycle
+    hoursPerDay: 15,         // Operating hours (adjust if needed)
+    daysPerWeek: 7
+  },
+  dryers: {
+    count: 5,
+    cyclesPerHour: 1.33,     // 45-minute dry cycle
+    hoursPerDay: 15,         // Operating hours (adjust if needed)
+    daysPerWeek: 7
+  }
+};
+
+// Calculate max capacity per week
+const MAX_CAPACITY = {
+  washers: MACHINE_CONFIG.washers.count * 
+           MACHINE_CONFIG.washers.cyclesPerHour * 
+           MACHINE_CONFIG.washers.hoursPerDay * 
+           MACHINE_CONFIG.washers.daysPerWeek, // 630 cycles/week
+  dryers: MACHINE_CONFIG.dryers.count * 
+          MACHINE_CONFIG.dryers.cyclesPerHour * 
+          MACHINE_CONFIG.dryers.hoursPerDay * 
+          MACHINE_CONFIG.dryers.daysPerWeek,   // 698 cycles/week
+  get total() { return this.washers + this.dryers; } // 1,328 cycles/week
+};
+
+const OperationsKPICards = ({ 
+  businessMetrics, 
+  operationsMetrics, 
+  previousWeekMetrics,
+  dateWindow = 'currentWeek' // NEW: for adaptive labels
+}) => {
   console.log('🎯 KPI Cards received:', {
     hasBusinessMetrics: !!businessMetrics,
     hasOperationsMetrics: !!operationsMetrics,
     hasPreviousWeek: !!previousWeekMetrics,
-    currentUtil: operationsMetrics?.utilization
+    currentUtil: operationsMetrics?.utilization,
+    dateWindow
   });
+
+  // Get adaptive labels for service counts based on date filter
+  const getServiceLabels = (dateWindow) => {
+    switch(dateWindow) {
+      case 'currentWeek':
+        return {
+          current: 'Semana Atual',
+          previous: 'Semana Passada',
+          showComparison: true
+        };
+      case 'lastWeek':
+        return {
+          current: 'Semana Passada',
+          previous: 'Semana Anterior',
+          showComparison: true
+        };
+      case 'last4Weeks':
+        return {
+          current: 'Últimas 4 Semanas',
+          previous: '4 Semanas Anteriores',
+          showComparison: true
+        };
+      case 'allTime':
+        return {
+          current: 'Todo Período',
+          previous: null,
+          showComparison: false
+        };
+      default:
+        return {
+          current: 'Período Atual',
+          previous: 'Período Anterior',
+          showComparison: true
+        };
+    }
+  };
+
+  const serviceLabels = getServiceLabels(dateWindow);
 
   // Get current week data from operationsMetrics
   const currentData = useMemo(() => {
@@ -188,7 +268,8 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics, previousWeekMe
   );
 
   const KPICard = ({ 
-    title, 
+    title,
+    metricName, // NEW: e.g., "Utilização"
     icon: Icon, 
     utilization, 
     status, 
@@ -196,11 +277,9 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics, previousWeekMe
     services,
     trend,
     peakOffPeakData,
-    machineCount
+    maxCyclesPerWeek // NEW: use precalculated capacity
   }) => {
     const progressWidth = Math.min(utilization, 100);
-    const capacityPerHour = machineCount === 3 ? 2 : 1.33;
-    const maxCyclesPerWeek = machineCount * 15 * 7 * capacityPerHour;
 
     return (
       <div style={{
@@ -224,26 +303,38 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics, previousWeekMe
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{
-              width: '32px',
-              height: '32px',
+              width: '36px',
+              height: '36px',
               borderRadius: '8px',
               background: `${status.color}20`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <Icon style={{ width: '18px', height: '18px', color: status.color }} />
+              <Icon style={{ width: '20px', height: '20px', color: status.color }} />
             </div>
-            <h3 style={{
-              fontSize: '13px',
-              fontWeight: '600',
-              color: COLORS.gray,
-              margin: 0,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              {title}
-            </h3>
+            <div>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: COLORS.primary,
+                margin: 0,
+                letterSpacing: '0.3px',
+                lineHeight: '1.2'
+              }}>
+                {title}
+              </h3>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: '600',
+                color: COLORS.gray,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginTop: '2px'
+              }}>
+                {metricName}
+              </div>
+            </div>
           </div>
           <span style={{ fontSize: '24px' }}>{status.emoji}</span>
         </div>
@@ -327,23 +418,25 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics, previousWeekMe
         }}>
           <div style={{ fontSize: '12px', color: COLORS.gray, lineHeight: '1.6' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-              <span>Semana Atual:</span>
+              <span>{serviceLabels.current}:</span>
               <strong style={{ color: COLORS.primary }}>{services.current} serviços</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Semana Passada:</span>
-              <strong style={{ color: COLORS.gray }}>
-                {services.previous} serviços
-                {services.diff !== 0 && (
-                  <span style={{ 
-                    color: services.diff > 0 ? COLORS.accent : COLORS.low,
-                    marginLeft: '0.25rem'
-                  }}>
-                    ({services.text})
-                  </span>
-                )}
-              </strong>
-            </div>
+            {serviceLabels.showComparison && serviceLabels.previous && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{serviceLabels.previous}:</span>
+                <strong style={{ color: COLORS.gray }}>
+                  {services.previous} serviços
+                  {services.diff !== 0 && (
+                    <span style={{ 
+                      color: services.diff > 0 ? COLORS.accent : COLORS.low,
+                      marginLeft: '0.25rem'
+                    }}>
+                      ({services.text})
+                    </span>
+                  )}
+                </strong>
+              </div>
+            )}
           </div>
         </div>
 
@@ -420,42 +513,45 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics, previousWeekMe
       {/* Washers KPI */}
       <KPICard
         title="LAVADORAS"
-        icon={Flame}
+        metricName="Utilização"
+        icon={Droplet}
         utilization={currentData.wash.utilization}
         status={washStatus}
-        capacity="3 máquinas"
+        capacity={`${MACHINE_CONFIG.washers.count} máquinas`}
         services={washServices}
         trend={washTrend}
         peakOffPeakData={{
           peak: currentData.wash.peak,
           offPeak: currentData.wash.offPeak
         }}
-        machineCount={3}
+        maxCyclesPerWeek={MAX_CAPACITY.washers}
       />
 
       {/* Dryers KPI */}
       <KPICard
         title="SECADORAS"
+        metricName="Utilização"
         icon={Activity}
         utilization={currentData.dry.utilization}
         status={dryStatus}
-        capacity="5 máquinas"
+        capacity={`${MACHINE_CONFIG.dryers.count} máquinas`}
         services={dryServices}
         trend={dryTrend}
         peakOffPeakData={{
           peak: currentData.dry.peak,
           offPeak: currentData.dry.offPeak
         }}
-        machineCount={5}
+        maxCyclesPerWeek={MAX_CAPACITY.dryers}
       />
 
       {/* Total Utilization KPI */}
       <KPICard
         title="UTILIZAÇÃO TOTAL"
+        metricName="Combinada"
         icon={Gauge}
         utilization={currentData.total.utilization}
         status={totalStatus}
-        capacity="8 máquinas"
+        capacity={`${MACHINE_CONFIG.washers.count + MACHINE_CONFIG.dryers.count} máquinas`}
         services={{
           current: washServices.current + dryServices.current,
           previous: washServices.previous + dryServices.previous,
@@ -467,7 +563,7 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics, previousWeekMe
           peak: currentData.total.peak,
           offPeak: currentData.total.offPeak
         }}
-        machineCount={8}
+        maxCyclesPerWeek={MAX_CAPACITY.total}
       />
     </div>
   );
