@@ -1,4 +1,7 @@
-// OPERATIONS TAB V3.0 - WEEK-BASED DATE FILTERING
+// OPERATIONS TAB V3.0
+// ✅ Centralized week-based date filtering
+// ✅ Explicit date ranges in UI
+// ✅ Single source of truth for all components
 
 import React, { useMemo, useState } from 'react';
 import OperationsKPICards from '../components/OperationsKPICards';
@@ -13,10 +16,10 @@ import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { getDateWindows } from '../utils/dateWindows';
 
 const Operations = ({ data }) => {
-  // Centralized date filter state
+  // Centralized date filter - single source of truth
   const [dateFilter, setDateFilter] = useState('currentWeek');
   
-  // Calculate date window based on filter
+  // Calculate date window once
   const dateWindow = useMemo(() => 
     getDateWindows(dateFilter), [dateFilter]
   );
@@ -42,7 +45,12 @@ const Operations = ({ data }) => {
       console.log('No sales data for operations metrics');
       return null;
     }
-    console.log('🔄 RECALCULATING operations metrics, sales rows:', data.sales.length, 'period:', dateFilter);
+    console.log('🔄 RECALCULATING operations metrics, sales rows:', data.sales.length, 'filter:', dateFilter);
+    console.log('📅 Date window:', {
+      start: dateWindow.start.toLocaleDateString('pt-BR'),
+      end: dateWindow.end.toLocaleDateString('pt-BR'),
+      label: dateWindow.label
+    });
     try {
       const result = calculateOperationsMetrics(data.sales, dateFilter);
       console.log('✅ Operations metrics (v3.2):', {
@@ -55,7 +63,7 @@ const Operations = ({ data }) => {
       console.error('❌ Operations metrics error:', err);
       return null;
     }
-  }, [data?.sales, dateFilter]);
+  }, [data?.sales, dateFilter, dateWindow]);
 
   if (!businessMetrics || !operationsMetrics) {
     return (
@@ -85,11 +93,11 @@ const Operations = ({ data }) => {
           Operações
         </h1>
         <p style={{ fontSize: '15px', color: '#6b7280' }}>
-          Eficiência das Máquinas e Utilização
+          Eficiência das Máquinas e Análise Operacional
         </p>
       </div>
 
-      {/* Date Filter Selector - Single Source of Truth */}
+      {/* Centralized Date Filter - Single Source of Truth */}
       <div style={{ marginBottom: '2rem' }}>
         <DateRangeSelector 
           value={dateFilter}
