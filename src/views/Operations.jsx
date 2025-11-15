@@ -1,4 +1,4 @@
-// OPERATIONS TAB V3.1
+// OPERATIONS TAB V3.1.1
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
@@ -82,17 +82,25 @@ const Operations = ({ data }) => {
       return null; // No previous period for all-time view
     }
     
-    // Get previous period filter
-    const previousPeriodFilter = dateFilter === 'currentWeek' ? 'lastWeek' : 
-                                 dateFilter === 'lastWeek' ? 'twoWeeksAgo' :
-                                 dateFilter === 'last4Weeks' ? 'previous4Weeks' : null;
-    
-    if (!previousPeriodFilter) return null;
+    // Determine which previous period to compare against
+    let comparisonFilter;
+    switch(dateFilter) {
+      case 'currentWeek':
+        comparisonFilter = 'lastWeek'; // Compare current week to last week
+        break;
+      case 'lastWeek':
+        comparisonFilter = 'twoWeeksAgo'; // Compare last week to week before
+        break;
+      case 'last4Weeks':
+        comparisonFilter = 'previous4Weeks'; // Compare last 4 weeks to previous 4 weeks
+        break;
+      default:
+        return null;
+    }
     
     try {
-      // For now, calculate "lastWeek" as the standard previous period
-      // This can be enhanced later to properly handle each case
-      const result = calculateOperationsMetrics(data.sales, 'lastWeek');
+      console.log(`📊 Calculating comparison period: ${comparisonFilter} for dateFilter: ${dateFilter}`);
+      const result = calculateOperationsMetrics(data.sales, comparisonFilter);
       return result;
     } catch (err) {
       console.error('❌ Previous period metrics error:', err);
