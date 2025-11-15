@@ -1,10 +1,12 @@
-// Operations Metrics Calculator v3.2
+// Operations Metrics Calculator v3.3
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ Includes Recarga in total revenue (Day of Week, Hourly)
 // ✅ Excludes Recarga from machine-specific metrics (Wash vs Dry, Machine Performance)
 // ✅ TIME-BASED utilization formula (machine-minutes)
+// ✅ Uses centralized dateWindows.js for all date calculations
 
 import { parseSalesRecords, filterWithServices, parseBrNumber } from './transactionParser';
+import { getDateWindows } from './dateWindows';
 
 const BUSINESS_PARAMS = {
   TOTAL_WASHERS: 3,
@@ -18,66 +20,13 @@ const DAYS_OF_WEEK = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta
 const DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 /**
- * Get current week window (last complete week)
- */
-function getCurrentWeekWindow() {
-  const currentDate = new Date();
-  const dayOfWeek = currentDate.getDay();
-  
-  let lastSaturday = new Date(currentDate);
-  if (dayOfWeek === 6) {
-    lastSaturday.setDate(lastSaturday.getDate() - 7);
-  } else {
-    const daysToLastSaturday = dayOfWeek === 0 ? 1 : (dayOfWeek + 1);
-    lastSaturday.setDate(lastSaturday.getDate() - daysToLastSaturday);
-  }
-  lastSaturday.setHours(23, 59, 59, 999);
-  
-  const startSunday = new Date(lastSaturday);
-  startSunday.setDate(startSunday.getDate() - 6);
-  startSunday.setHours(0, 0, 0, 0);
-  
-  console.log('📅 Current Week Window:', {
-    start: startSunday.toLocaleDateString('pt-BR'),
-    end: lastSaturday.toLocaleDateString('pt-BR')
-  });
-  
-  return { start: startSunday, end: lastSaturday };
-}
-
-/**
- * Get date window based on time period selection
- */
-function getDateWindow(period = 'currentWeek') {
-  const currentDate = new Date();
-  
-  if (period === 'allTime') {
-    return {
-      start: new Date(2020, 0, 1),
-      end: currentDate
-    };
-  }
-  
-  if (period === 'fourWeeks') {
-    const fourWeeksAgo = new Date(currentDate);
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
-    return {
-      start: fourWeeksAgo,
-      end: currentDate
-    };
-  }
-  
-  return getCurrentWeekWindow();
-}
-
-/**
  * Calculate hourly utilization patterns
  * ✅ INCLUDES all revenue (Type 1 + Type 3 Recarga)
  * ✅ Service counts exclude Recarga
  */
-export function calculateHourlyPatterns(salesData) {
+export function calculateHourlyPatterns(salesData, dateFilter = 'currentWeek') {
   const records = parseSalesRecords(salesData);
-  const window = getCurrentWeekWindow();
+  const window = getDateWindows(dateFilter);
   const windowRecords = records.filter(r => r.date >= window.start && r.date <= window.end);
   
   const hourlyData = {};
@@ -173,7 +122,7 @@ export function identifyPeakHours(hourlyPatterns) {
  */
 export function calculateDayOfWeekPatterns(salesData, period = 'currentWeek') {
   const records = parseSalesRecords(salesData);
-  const window = getDateWindow(period);
+  const window = getDateWindows(period);
   const windowRecords = records.filter(r => r.date >= window.start && r.date <= window.end);
   
   const dayData = {};
@@ -247,9 +196,9 @@ export function calculateDayOfWeekPatterns(salesData, period = 'currentWeek') {
  * Calculate wash vs dry service comparison
  * ✅ EXCLUDES Recarga (machine-attributed revenue only)
  */
-export function calculateWashVsDry(salesData) {
+export function calculateWashVsDry(salesData, dateFilter = 'currentWeek') {
   const records = parseSalesRecords(salesData);
-  const window = getCurrentWeekWindow();
+  const window = getDateWindows(dateFilter);
   const windowRecords = records.filter(r => 
     r.date >= window.start && 
     r.date <= window.end &&
@@ -309,7 +258,7 @@ export function calculateWashVsDry(salesData) {
  */
 export function calculateMachinePerformance(salesData, period = 'currentWeek') {
   const records = parseSalesRecords(salesData);
-  const window = getDateWindow(period);
+  const window = getDateWindows(period);
   const windowRecords = records.filter(r => 
     r.date >= window.start && 
     r.date <= window.end &&
@@ -361,15 +310,15 @@ export function calculateMachinePerformance(salesData, period = 'currentWeek') {
  * Main function: Calculate all operations metrics
  */
 export function calculateOperationsMetrics(salesData, period = 'currentWeek') {
-  const hourlyPatterns = calculateHourlyPatterns(salesData);
+  const hourlyPatterns = calculateHourlyPatterns(salesData, period);
   const peakHours = identifyPeakHours(hourlyPatterns);
   const dayPatterns = calculateDayOfWeekPatterns(salesData, period);
-  const washVsDry = calculateWashVsDry(salesData);
+  const washVsDry = calculateWashVsDry(salesData, period);
   const machinePerformance = calculateMachinePerformance(salesData, period);
   
   // Calculate revenue breakdown
   const records = parseSalesRecords(salesData);
-  const window = getDateWindow(period);
+  const window = getDateWindows(period);
   const windowRecords = records.filter(r => r.date >= window.start && r.date <= window.end);
   
   const machineRevenue = windowRecords.filter(r => !r.isRecarga).reduce((sum, r) => sum + r.netValue, 0);
