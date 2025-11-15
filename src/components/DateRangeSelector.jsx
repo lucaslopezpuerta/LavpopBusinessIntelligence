@@ -1,5 +1,5 @@
-// DateRangeSelector.jsx v1.0
-// Unified date picker for Operations tab
+// DateRangeSelector Component v1.0
+// Unified date filter for Operations tab
 
 import React, { useMemo } from 'react';
 import { Calendar } from 'lucide-react';
@@ -8,9 +8,7 @@ import { getDateOptions } from '../utils/dateWindows';
 const COLORS = {
   primary: '#10306B',
   accent: '#53be33',
-  gray: '#6b7280',
-  lightGray: '#f9fafb',
-  border: '#e5e7eb'
+  gray: '#6b7280'
 };
 
 const DateRangeSelector = ({ value, onChange, dateWindow }) => {
@@ -24,7 +22,7 @@ const DateRangeSelector = ({ value, onChange, dateWindow }) => {
       padding: '1rem 1.5rem',
       background: 'white',
       borderRadius: '12px',
-      border: `1px solid ${COLORS.border}`,
+      border: '1px solid #e5e7eb',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
       flexWrap: 'wrap',
       gap: '1rem'
@@ -68,7 +66,7 @@ const DateRangeSelector = ({ value, onChange, dateWindow }) => {
           style={{
             padding: '0.625rem 1rem',
             borderRadius: '8px',
-            border: `1px solid ${COLORS.border}`,
+            border: '1px solid #e5e7eb',
             background: 'white',
             fontSize: '14px',
             fontWeight: '500',
