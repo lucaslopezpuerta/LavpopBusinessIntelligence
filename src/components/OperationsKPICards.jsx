@@ -1,7 +1,18 @@
-// OPERATIONS KPI CARDS V2.0
+// OPERATIONS KPI CARDS V3.0
+// ✅ Uses operationsMetrics.utilization (respects date filter)
+// ✅ Enhanced descriptions and context
+//
+// CHANGELOG:
+// v3.0 (2025-11-15): Major update for filter responsiveness
+//   - Now uses operationsMetrics.utilization instead of businessMetrics.weekly
+//   - KPI cards update correctly when date filter changes
+//   - Added more descriptive capacity information
+//   - Enhanced tooltips with explanation of what each metric means
+// v2.0 (Previous): Added revenue breakdown card
+// v1.0 (Previous): Initial KPI cards implementation
 
 import React from 'react';
-import { Gauge, Droplet, Activity, DollarSign } from 'lucide-react';
+import { Gauge, Droplet, Activity, DollarSign, Info } from 'lucide-react';
 
 const COLORS = {
   primary: '#10306B',
@@ -12,16 +23,16 @@ const COLORS = {
 };
 
 const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
-  if (!businessMetrics) {
-    return <div className="text-gray-500 p-4">Loading operations metrics...</div>;
+  if (!operationsMetrics?.utilization) {
+    return <div className="text-gray-500 p-4">Carregando métricas operacionais...</div>;
   }
 
-  const weekly = businessMetrics.weekly || {};
+  // Use filtered utilization data from operationsMetrics
+  const util = operationsMetrics.utilization;
   
-  // Get utilization percentages (now TIME-BASED)
-  const washUtil = weekly.washUtilization || 0;
-  const dryUtil = weekly.dryUtilization || 0;
-  const totalUtil = weekly.totalUtilization || 0;
+  const washUtil = util.washUtilization || 0;
+  const dryUtil = util.dryUtilization || 0;
+  const totalUtil = util.totalUtilization || 0;
 
   // Get revenue breakdown from operationsMetrics
   const revenueBreakdown = operationsMetrics?.revenueBreakdown || {
@@ -44,6 +55,30 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
     return 'Baixo';
   };
 
+  const getUtilDescription = (util, type) => {
+    const status = getUtilLabel(util);
+    
+    if (type === 'wash') {
+      if (util >= 70) return 'Lavadoras muito utilizadas - considere horários de pico';
+      if (util >= 50) return 'Uso equilibrado das lavadoras';
+      if (util >= 30) return 'Lavadoras subutilizadas - potencial para mais clientes';
+      return 'Baixa utilização - revisar estratégia';
+    }
+    
+    if (type === 'dry') {
+      if (util >= 70) return 'Secadoras muito utilizadas - boa demanda';
+      if (util >= 50) return 'Uso equilibrado das secadoras';
+      if (util >= 30) return 'Secadoras subutilizadas - potencial para crescimento';
+      return 'Baixa utilização - revisar estratégia';
+    }
+    
+    // total
+    if (util >= 70) return 'Operação eficiente - capacidade bem aproveitada';
+    if (util >= 50) return 'Operação saudável - espaço para crescimento';
+    if (util >= 30) return 'Capacidade ociosa - oportunidade de expansão';
+    return 'Revisar horários e estratégia de marketing';
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -59,30 +94,39 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
       title: 'LAVADORAS',
       value: `${Math.round(washUtil)}%`,
       subtitle: getUtilLabel(washUtil),
+      description: getUtilDescription(washUtil, 'wash'),
       icon: Droplet,
       color: getUtilColor(washUtil),
       iconBg: washUtil >= 50 ? '#e8f5e9' : '#fef3c7',
-      capacity: '3 máquinas'
+      capacity: '3 máquinas',
+      details: `${util.totalWashServices} serviços / ${util.maxWashCycles} ciclos possíveis`,
+      tooltip: 'Mede quantos ciclos de lavagem foram usados em relação à capacidade máxima disponível no período'
     },
     {
       id: 'dry',
       title: 'SECADORAS',
       value: `${Math.round(dryUtil)}%`,
       subtitle: getUtilLabel(dryUtil),
+      description: getUtilDescription(dryUtil, 'dry'),
       icon: Activity,
       color: getUtilColor(dryUtil),
       iconBg: dryUtil >= 50 ? '#e8f5e9' : '#fef3c7',
-      capacity: '5 máquinas'
+      capacity: '5 máquinas',
+      details: `${util.totalDryServices} serviços / ${util.maxDryCycles} ciclos possíveis`,
+      tooltip: 'Mede quantos ciclos de secagem foram usados em relação à capacidade máxima disponível no período'
     },
     {
       id: 'total',
       title: 'UTILIZAÇÃO TOTAL',
       value: `${Math.round(totalUtil)}%`,
       subtitle: getUtilLabel(totalUtil),
+      description: getUtilDescription(totalUtil, 'total'),
       icon: Gauge,
       color: getUtilColor(totalUtil),
       iconBg: totalUtil >= 50 ? '#e8f5e9' : '#fef3c7',
-      capacity: '8 máquinas'
+      capacity: '8 máquinas',
+      details: `${util.totalServices} serviços totais em ${util.activeDays} dias`,
+      tooltip: 'Média ponderada da utilização de lavadoras e secadoras (baseada na proporção de máquinas)'
     }
   ];
 
@@ -91,7 +135,7 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
       {/* Utilization KPI Cards */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '1rem',
         marginBottom: '1.5rem'
       }}>
@@ -137,16 +181,24 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
                 justifyContent: 'space-between',
                 marginBottom: '1rem'
               }}>
-                <h3 style={{ 
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  margin: 0
-                }}>
-                  {kpi.title}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h3 style={{ 
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    margin: 0
+                  }}>
+                    {kpi.title}
+                  </h3>
+                  <div 
+                    style={{ cursor: 'help' }}
+                    title={kpi.tooltip}
+                  >
+                    <Info style={{ width: '14px', height: '14px', color: '#9ca3af' }} />
+                  </div>
+                </div>
                 <div style={{
                   width: '40px',
                   height: '40px',
@@ -172,7 +224,7 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
                 </div>
               </div>
 
-              {/* Subtitle and Capacity */}
+              {/* Subtitle and Description */}
               <div style={{ 
                 fontSize: '13px',
                 color: kpi.color,
@@ -182,10 +234,28 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
                 {kpi.subtitle}
               </div>
               <div style={{ 
+                fontSize: '11px',
+                color: '#6b7280',
+                marginBottom: '0.5rem',
+                lineHeight: '1.4'
+              }}>
+                {kpi.description}
+              </div>
+
+              {/* Capacity and Details */}
+              <div style={{ 
                 fontSize: '12px',
-                color: '#9ca3af'
+                color: '#9ca3af',
+                marginBottom: '0.25rem'
               }}>
                 {kpi.capacity}
+              </div>
+              <div style={{ 
+                fontSize: '11px',
+                color: '#9ca3af',
+                fontStyle: 'italic'
+              }}>
+                {kpi.details}
               </div>
 
               {/* Progress bar */}
@@ -323,7 +393,7 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
                 {formatCurrency(revenueBreakdown.totalRevenue)}
               </div>
               <div style={{ fontSize: '12px', color: COLORS.gray }}>
-                Período atual
+                Período: {operationsMetrics.dateRange}
               </div>
             </div>
           </div>
@@ -337,7 +407,7 @@ const OperationsKPICards = ({ businessMetrics, operationsMetrics }) => {
             fontSize: '12px',
             color: COLORS.gray
           }}>
-            💡 <strong>Nota:</strong> Receita de máquinas = uso direto. Venda de créditos = prepagamento para uso futuro.
+            💡 <strong>Nota:</strong> Receita de máquinas = uso direto com pagamento. Venda de Recargas = prepagamento para uso futuro.
           </div>
         </div>
       )}
