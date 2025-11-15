@@ -1,5 +1,12 @@
 // DateRangeSelector Component v1.0
 // Unified date filter for Operations tab
+//
+// CHANGELOG:
+// v1.0 (2025-11-15): Initial implementation
+//   - Created unified date selector component
+//   - Displays current date range prominently
+//   - Dropdown with 4 date options (each showing date ranges)
+//   - Single source of truth for Operations tab filtering
 
 import React, { useMemo } from 'react';
 import { Calendar } from 'lucide-react';
