@@ -1,4 +1,13 @@
-// QuickActionsCards.jsx v1.0
+// QuickActionsCards.jsx v1.1 - COMPACT VERSION
+// ✅ Maintained original colorful design
+// ✅ Reduced padding for compactness
+// ✅ Smaller icons and text
+// ✅ All 6 action cards preserved
+//
+// CHANGELOG:
+// v1.1 (2025-11-15): Compact version - smaller padding, icons, text
+// v1.0 (2025-11-14): Initial version with 6 action cards
+
 import React from 'react';
 import { Users, TrendingUp, Gauge, Calendar, MessageSquare, Settings } from 'lucide-react';
 
@@ -63,8 +72,8 @@ const QuickActionsCards = ({ onAction }) => {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-      gap: '1rem'
+      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: '0.75rem'
     }}>
       {actions.map((action) => {
         const Icon = action.icon;
@@ -75,22 +84,22 @@ const QuickActionsCards = ({ onAction }) => {
             onClick={() => onAction?.(action.id)}
             style={{
               background: 'white',
-              borderRadius: '12px',
+              borderRadius: '10px',
               border: '1px solid #e5e7eb',
-              padding: '1.25rem',
+              padding: '0.875rem',
               cursor: 'pointer',
               transition: 'all 0.2s',
               textAlign: 'center',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '0.75rem'
+              gap: '0.5rem'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = action.bgColor;
               e.currentTarget.style.borderColor = action.color;
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
+              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'white';
@@ -100,28 +109,28 @@ const QuickActionsCards = ({ onAction }) => {
             }}
           >
             <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
               background: action.bgColor,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <Icon style={{ width: '24px', height: '24px', color: action.color }} />
+              <Icon style={{ width: '20px', height: '20px', color: action.color }} />
             </div>
 
             <div>
               <div style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '700',
                 color: '#111827',
-                marginBottom: '0.25rem'
+                marginBottom: '0.15rem'
               }}>
                 {action.label}
               </div>
               <div style={{
-                fontSize: '12px',
+                fontSize: '10px',
                 color: COLORS.gray,
                 fontWeight: '500'
               }}>
