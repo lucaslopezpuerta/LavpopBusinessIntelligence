@@ -227,7 +227,11 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   const handleWhatsApp = () => {
     if (customer.phone) {
       const cleanPhone = customer.phone.replace(/\D/g, '');
-      window.open(`https://web.whatsapp.com/send?phone=55${cleanPhone}`, '_blank');
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const url = isMobile 
+        ? `https://api.whatsapp.com/send?phone=55${cleanPhone}` // Mobile: opens app
+        : `https://web.whatsapp.com/send?phone=55${cleanPhone}`; // Desktop: opens web
+      window.open(url, '_blank');
     }
   };
 
@@ -294,13 +298,13 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             gap: '0.75rem'
           }}>
             <div style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              backdropFilter: 'blur(10px)',
+              background: riskColors.bg,
               padding: '0.5rem 1rem',
               borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
+              border: `2px solid ${riskColors.border}`,
               fontSize: '13px',
-              fontWeight: '700'
+              fontWeight: '700',
+              color: riskColors.text
             }}>
               {getRiskIcon(customer.riskLevel)} {translateRiskLevel(customer.riskLevel)}
             </div>
@@ -434,19 +438,19 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: COLORS.gray }}>Total Gasto</span>
                 <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
-                  {formatCurrency(customer.netTotal || 0)}
+                  {formatCurrency(customer.totalSpent || customer.netTotal || 0)}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: COLORS.gray }}>Total de Visitas</span>
                 <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
-                  {customer.frequency || 0}
+                  {customer.totalVisits || customer.frequency || 0}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: COLORS.gray }}>Gasto/Visita</span>
                 <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.accent }}>
-                  {formatCurrency(customer.avgSpend || 0)}
+                  {formatCurrency(customer.avgTicket || customer.avgSpend || 0)}
                 </span>
               </div>
             </div>
@@ -656,22 +660,21 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         {(customer.riskLevel === 'At Risk' || customer.riskLevel === 'Churning') && customer.daysOverdue > 0 && (
           <div style={{
             margin: '0 1.25rem 1.25rem 1.25rem',
-            padding: '0.875rem',
+            padding: '0.75rem 1rem',
             background: customer.riskLevel === 'Churning' ? '#fee2e2' : '#fef3c7',
             borderRadius: '8px',
             border: `2px solid ${customer.riskLevel === 'Churning' ? COLORS.red : COLORS.amber}`,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: '0.75rem'
           }}>
-            <div style={{ fontSize: '24px' }}>⚠️</div>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: COLORS.primary, marginBottom: '2px' }}>
+            <div style={{ fontSize: '20px', flexShrink: 0 }}>⚠️</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: COLORS.primary, marginBottom: '4px' }}>
                 Atenção Necessária
               </div>
-              <div style={{ fontSize: '12px', color: COLORS.gray }}>
-                Cliente está <strong>{customer.daysOverdue} dias atrasado</strong> baseado na frequência média de {customer.avgDaysBetween} dias. 
-                Considere enviar promoção ou fazer contato.
+              <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.4' }}>
+                Cliente está <strong>{customer.daysOverdue} dias atrasado</strong> (frequência média: {customer.avgDaysBetween} dias).
               </div>
             </div>
           </div>
