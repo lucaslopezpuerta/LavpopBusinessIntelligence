@@ -1,12 +1,12 @@
-// AtRiskCustomersTable.jsx v2.1 - PORTUGUESE & MAX ROWS
-// ✅ Full Portuguese translation
-// ✅ Support for maxRows prop (default 10)
-// ✅ Integrated CustomerDetailModal
+// AtRiskCustomersTable.jsx v2.2 - FIXED RISK % DISPLAY & CENTERED ALIGNMENT
+// ✅ Fixed risk percentage display (now uses returnLikelihood)
+// ✅ All columns center-aligned
+// ✅ Portuguese labels
 // ✅ Click-to-view-details functionality
 //
 // CHANGELOG:
+// v2.2 (2025-11-15): Fixed risk % display, center-aligned all columns
 // v2.1 (2025-11-15): Added Portuguese labels, maxRows prop support
-// v2.0 (2025-11-14): Integrated CustomerDetailModal with click functionality
 
 import React, { useState } from 'react';
 import { Phone, MessageCircle, AlertTriangle } from 'lucide-react';
@@ -14,6 +14,7 @@ import CustomerDetailModal from './CustomerDetailModal';
 
 const COLORS = {
   primary: '#1a5a8e',
+  accent: '#55b03b',
   amber: '#f59e0b',
   red: '#dc2626',
   gray: '#6b7280'
@@ -91,9 +92,15 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
     }
   };
 
-  const getRiskBadge = (riskLevel, likelihood) => {
+  // ✅ FIXED: Now uses returnLikelihood instead of churnLikelihood
+  const getRiskBadge = (riskLevel, returnLikelihood) => {
     const color = getRiskColor(riskLevel);
     const translatedLevel = translateRiskLevel(riskLevel);
+    
+    // Calculate churn likelihood as inverse of return likelihood
+    const churnPercent = returnLikelihood !== undefined && returnLikelihood !== null 
+      ? Math.round(100 - returnLikelihood) 
+      : 0;
     
     return (
       <div style={{
@@ -110,7 +117,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
         letterSpacing: '0.5px'
       }}>
         <AlertTriangle style={{ width: '12px', height: '12px' }} />
-        {translatedLevel} ({likelihood}%)
+        {translatedLevel} ({churnPercent}%)
       </div>
     );
   };
@@ -179,22 +186,51 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
           }}>
             <thead>
               <tr style={{ 
-                borderBottom: '2px solid #e5e7eb',
-                textAlign: 'left'
+                borderBottom: '2px solid #e5e7eb'
               }}>
-                <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px' }}>
+                <th style={{ 
+                  padding: '12px 8px', 
+                  fontWeight: '600', 
+                  color: COLORS.gray, 
+                  fontSize: '12px',
+                  textAlign: 'center'
+                }}>
                   CLIENTE
                 </th>
-                <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px' }}>
+                <th style={{ 
+                  padding: '12px 8px', 
+                  fontWeight: '600', 
+                  color: COLORS.gray, 
+                  fontSize: '12px',
+                  textAlign: 'center'
+                }}>
                   STATUS DE RISCO
                 </th>
-                <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px', textAlign: 'right' }}>
+                <th style={{ 
+                  padding: '12px 8px', 
+                  fontWeight: '600', 
+                  color: COLORS.gray, 
+                  fontSize: '12px',
+                  textAlign: 'center'
+                }}>
                   TOTAL GASTO
                 </th>
-                <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px', textAlign: 'center' }}>
+                <th style={{ 
+                  padding: '12px 8px', 
+                  fontWeight: '600', 
+                  color: COLORS.gray, 
+                  fontSize: '12px', 
+                  textAlign: 'center'
+                }}>
                   DIAS INATIVO
                 </th>
-                <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px', textAlign: 'right' }}>
+                <th style={{ 
+                  padding: '12px 8px', 
+                  fontWeight: '600', 
+                  color: COLORS.gray, 
+                  fontSize: '12px', 
+                  textAlign: 'center'
+                }}>
                   AÇÕES
                 </th>
               </tr>
@@ -212,7 +248,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                   onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                   onClick={() => setSelectedCustomer(customer)}
                 >
-                  <td style={{ padding: '12px 8px' }}>
+                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
                     <div style={{ fontWeight: '600', color: '#111827', marginBottom: '2px' }}>
                       {customer.name || 'Cliente sem nome'}
                     </div>
@@ -222,10 +258,15 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '12px 8px' }}>
-                    {getRiskBadge(customer.riskLevel, customer.churnLikelihood)}
+                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                    {getRiskBadge(customer.riskLevel, customer.returnLikelihood)}
                   </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '600', color: COLORS.primary }}>
+                  <td style={{ 
+                    padding: '12px 8px', 
+                    textAlign: 'center', 
+                    fontWeight: '600', 
+                    color: COLORS.primary 
+                  }}>
                     {formatCurrency(customer.netTotal || 0)}
                   </td>
                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>
@@ -237,11 +278,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                       fontWeight: '600',
                       color: COLORS.gray
                     }}>
-                      {customer.daysSinceLastPurchase || 0}
+                      {customer.daysSinceLastVisit || 0}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                       {customer.phone && formatPhone(customer.phone) && (
                         <>
                           <button
