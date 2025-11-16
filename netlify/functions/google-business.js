@@ -1,8 +1,7 @@
 // netlify/functions/google-business.js
-// Google Places API Proxy - Handles CORS restrictions
+// NEW PLACES API VERSION
 
 exports.handler = async (event, context) => {
-  // CORS headers for all responses
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
@@ -10,12 +9,10 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Methods': 'GET, OPTIONS'
   };
 
-  // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  // Only allow GET requests
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
@@ -24,8 +21,8 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const PLACE_ID = 'ChIJW0SI_ryjHpUR_YAfB0aLu8I'; // ← UPDATE with your Place ID
-  const API_KEY = process.env.GOOGLE_API_KEY; // From Netlify env vars
+  const PLACE_ID = 'ChIJW0SI_ryjHpUR_YAfB0aLu8I'; // Your Place ID
+  const API_KEY = process.env.GOOGLE_API_KEY;
 
   if (!API_KEY) {
     return {
@@ -36,34 +33,42 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${PLACE_ID}&fields=rating,user_ratings_total,opening_hours&key=${API_KEY}`;
+    // NEW API endpoint
+    const url = `https://places.googleapis.com/v1/places/${PLACE_ID}`;
     
-    const response = await fetch(url);
-    const data = await response.json();
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': API_KEY,
+        'X-Goog-FieldMask': 'rating,userRatingCount,regularOpeningHours'
+      }
+    });
 
-    if (data.status !== 'OK') {
+    if (!response.ok) {
+      const error = await response.json();
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: data.status, message: data.error_message })
+        body: JSON.stringify({ error: error.error?.message || 'API error' })
       };
     }
 
-    // Return only needed data
+    const data = await response.json();
+
     return {
       statusCode: 200,
       headers: {
         ...headers,
-        'Cache-Control': 'public, max-age=86400' // Cache 24 hours
+        'Cache-Control': 'public, max-age=86400'
       },
       body: JSON.stringify({
-        rating: data.result.rating,
-        totalReviews: data.result.user_ratings_total,
-        isOpen: data.result.opening_hours?.open_now ?? null
+        rating: data.rating,
+        totalReviews: data.userRatingCount,
+        isOpen: data.regularOpeningHours?.openNow ?? null
       })
     };
   } catch (error) {
-    console.error('Error fetching Google Business data:', error);
+    console.error('Error:', error);
     return {
       statusCode: 500,
       headers,
