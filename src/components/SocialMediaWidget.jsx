@@ -1,12 +1,17 @@
-// SocialMediaWidget.jsx v1.0
-// Displays social media metrics for Instagram and Facebook
-// Static values for v1.0, ready for API integration in future versions
+// SocialMediaWidget.jsx v2.0 - STANDARDIZED HEADER DESIGN
+// ✅ Consistent with all other header widgets
+// ✅ Transparent blur background matching header style
+// ✅ Combined Instagram + Facebook in single widget
+// ✅ Compact 36px height
+//
+// CHANGELOG:
+// v2.0 (2025-11-16): Standardized design for header consistency
+// v1.0 (previous): Separate cards with white background
 
 import React from 'react';
-import { Instagram, Facebook, TrendingUp } from 'lucide-react';
+import { Instagram, Users } from 'lucide-react';
 
 const SocialMediaWidget = ({ instagramFollowers = 0, facebookFollowers = 0 }) => {
-  // Format numbers with K suffix
   const formatFollowers = (count) => {
     if (count >= 1000) {
       return `${(count / 1000).toFixed(1)}K`;
@@ -14,113 +19,73 @@ const SocialMediaWidget = ({ instagramFollowers = 0, facebookFollowers = 0 }) =>
     return count.toString();
   };
 
-  const platforms = [
-    {
-      id: 'instagram',
-      name: 'Instagram',
-      icon: Instagram,
-      followers: instagramFollowers,
-      color: '#E4405F',
-      bgColor: '#fce7f3',
-      link: 'https://www.instagram.com/lavpopcaxiasdosul/'
-    },
-    {
-      id: 'facebook',
-      name: 'Facebook',
-      icon: Facebook,
-      followers: facebookFollowers,
-      color: '#1877F2',
-      bgColor: '#dbeafe',
-      link: 'https://www.facebook.com/profile.php?id=61556557355037'
-    }
-  ];
+  const totalFollowers = instagramFollowers + facebookFollowers;
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: '0.75rem'
-    }}>
-      {platforms.map((platform) => {
-        const Icon = platform.icon;
-        return (
-          <a
-            key={platform.id}
-            href={platform.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              background: 'white',
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              padding: '0.75rem 1rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-              textDecoration: 'none',
-              transition: 'all 0.2s',
-              minWidth: '140px',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            {/* Platform Icon */}
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '8px',
-              background: platform.bgColor,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}>
-              <Icon style={{ width: '24px', height: '24px', color: platform.color }} />
-            </div>
+    <a
+      href="https://www.instagram.com/lavpopcaxiasdosul/"
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        background: 'rgba(255, 255, 255, 0.15)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '8px',
+        padding: '0.5rem 0.75rem',
+        border: '1px solid rgba(255, 255, 255, 0.25)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.625rem',
+        textDecoration: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        height: '36px'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+        e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+      title="Ver no Instagram"
+    >
+      {/* Icon Container */}
+      <div style={{
+        width: '28px',
+        height: '28px',
+        borderRadius: '6px',
+        background: 'rgba(255, 255, 255, 0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}>
+        <Instagram style={{ width: '15px', height: '15px', color: 'white' }} />
+      </div>
 
-            {/* Platform Info */}
-            <div style={{ flex: 1 }}>
-              <div style={{
-                fontSize: '11px',
-                fontWeight: '600',
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '2px'
-              }}>
-                {platform.name}
-              </div>
-              <div style={{
-                fontSize: '20px',
-                fontWeight: '700',
-                color: '#10306B',
-                lineHeight: '1'
-              }}>
-                {formatFollowers(platform.followers)}
-              </div>
-              <div style={{
-                fontSize: '11px',
-                color: '#53be33',
-                marginTop: '2px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px'
-              }}>
-                <TrendingUp style={{ width: '12px', height: '12px' }} />
-                Seguidores
-              </div>
-            </div>
-          </a>
-        );
-      })}
-    </div>
+      {/* Social Info */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+        <div style={{
+          fontSize: '12px',
+          fontWeight: '700',
+          color: 'white',
+          lineHeight: 1
+        }}>
+          INSTAGRAM
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <Users style={{ width: '10px', height: '10px', color: 'rgba(255, 255, 255, 0.9)' }} />
+          <span style={{
+            fontSize: '11px',
+            fontWeight: '600',
+            color: 'rgba(255, 255, 255, 0.9)'
+          }}>
+            {formatFollowers(instagramFollowers)} {/* +Seguidores */}
+          </span>
+        </div>
+      </div>
+    </a>
   );
 };
 
