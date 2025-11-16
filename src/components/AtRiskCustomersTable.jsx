@@ -32,11 +32,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     );
   }
 
-  // Get top 10 at-risk and churning customers, sorted by total spending
+  // Get top 5 at-risk and churning customers, sorted by total spending
   const atRiskCustomers = customerMetrics.activeCustomers
     .filter(c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning')
     .sort((a, b) => b.netTotal - a.netTotal)
-    .slice(0, 10);
+    .slice(0, 5);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -143,7 +143,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
               color: COLORS.primary,
               margin: 0
             }}>
-              Top 10 At-Risk Customers
+              Top 5 At-Risk Customers
             </h3>
           </div>
           <p style={{
