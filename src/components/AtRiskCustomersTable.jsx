@@ -1,20 +1,25 @@
-// AtRiskCustomersTable_v2.0.jsx
+// AtRiskCustomersTable.jsx v2.1 - PORTUGUESE & MAX ROWS
+// ✅ Full Portuguese translation
+// ✅ Support for maxRows prop (default 10)
 // ✅ Integrated CustomerDetailModal
-// ✅ Verified RFM data merge (phone, name already in customerMetrics.activeCustomers)
-// ✅ Added click-to-view-details functionality
+// ✅ Click-to-view-details functionality
+//
+// CHANGELOG:
+// v2.1 (2025-11-15): Added Portuguese labels, maxRows prop support
+// v2.0 (2025-11-14): Integrated CustomerDetailModal with click functionality
 
 import React, { useState } from 'react';
 import { Phone, MessageCircle, AlertTriangle } from 'lucide-react';
 import CustomerDetailModal from './CustomerDetailModal';
 
 const COLORS = {
-  primary: '#10306B',
+  primary: '#1a5a8e',
   amber: '#f59e0b',
   red: '#dc2626',
   gray: '#6b7280'
 };
 
-const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
+const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   if (!customerMetrics || !customerMetrics.activeCustomers) {
@@ -27,16 +32,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
         textAlign: 'center',
         color: '#6b7280'
       }}>
-        Loading at-risk customers...
+        Carregando clientes em risco...
       </div>
     );
   }
 
-  // Get top 5 at-risk and churning customers, sorted by total spending
+  // Get top N at-risk and churning customers, sorted by total spending
   const atRiskCustomers = customerMetrics.activeCustomers
     .filter(c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning')
     .sort((a, b) => b.netTotal - a.netTotal)
-    .slice(0, 5);
+    .slice(0, maxRows);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -78,8 +83,18 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     }
   };
 
+  const translateRiskLevel = (riskLevel) => {
+    switch (riskLevel) {
+      case 'Churning': return 'Perdendo';
+      case 'At Risk': return 'Em Risco';
+      default: return riskLevel;
+    }
+  };
+
   const getRiskBadge = (riskLevel, likelihood) => {
     const color = getRiskColor(riskLevel);
+    const translatedLevel = translateRiskLevel(riskLevel);
+    
     return (
       <div style={{
         display: 'inline-flex',
@@ -95,7 +110,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
         letterSpacing: '0.5px'
       }}>
         <AlertTriangle style={{ width: '12px', height: '12px' }} />
-        {riskLevel} ({likelihood}%)
+        {translatedLevel} ({likelihood}%)
       </div>
     );
   };
@@ -115,10 +130,10 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
           fontWeight: '600',
           marginBottom: '0.5rem'
         }}>
-          🎉 Great news!
+          🎉 Ótimas notícias!
         </div>
         <div style={{ color: COLORS.gray, fontSize: '14px' }}>
-          No at-risk customers detected
+          Nenhum cliente em risco detectado
         </div>
       </div>
     );
@@ -139,11 +154,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
             <AlertTriangle style={{ width: '20px', height: '20px', color: COLORS.amber }} />
             <h3 style={{ 
               fontSize: '16px',
-              fontWeight: '600',
+              fontWeight: '700',
               color: COLORS.primary,
               margin: 0
             }}>
-              Top 5 At-Risk Customers
+              Top {maxRows} Clientes em Risco
             </h3>
           </div>
           <p style={{
@@ -151,7 +166,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
             color: COLORS.gray,
             margin: 0
           }}>
-            High-value customers who need immediate attention • Click row for details
+            Clientes de alto valor que precisam de atenção imediata • Clique para detalhes
           </p>
         </div>
 
@@ -168,19 +183,19 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                 textAlign: 'left'
               }}>
                 <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px' }}>
-                  Customer
+                  CLIENTE
                 </th>
                 <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px' }}>
-                  Risk Status
+                  STATUS DE RISCO
                 </th>
                 <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px', textAlign: 'right' }}>
-                  Total Spent
+                  TOTAL GASTO
                 </th>
                 <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px', textAlign: 'center' }}>
-                  Days Overdue
+                  DIAS INATIVO
                 </th>
                 <th style={{ padding: '12px 8px', fontWeight: '600', color: COLORS.gray, fontSize: '12px', textAlign: 'right' }}>
-                  Actions
+                  AÇÕES
                 </th>
               </tr>
             </thead>
@@ -198,106 +213,98 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                   onClick={() => setSelectedCustomer(customer)}
                 >
                   <td style={{ padding: '12px 8px' }}>
-                    <div style={{ fontWeight: '500', color: COLORS.primary }}>
-                      {customer.name}
+                    <div style={{ fontWeight: '600', color: '#111827', marginBottom: '2px' }}>
+                      {customer.name || 'Cliente sem nome'}
                     </div>
-                    <div style={{ fontSize: '12px', color: COLORS.gray }}>
-                      {customer.transactions} visits
-                      {customer.phone && (
-                        <span style={{ marginLeft: '0.5rem' }}>• 📞 {customer.phone}</span>
-                      )}
-                    </div>
+                    {customer.phone && (
+                      <div style={{ fontSize: '12px', color: COLORS.gray }}>
+                        {customer.phone}
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding: '12px 8px' }}>
-                    {getRiskBadge(customer.riskLevel, customer.returnLikelihood)}
+                    {getRiskBadge(customer.riskLevel, customer.churnLikelihood)}
                   </td>
                   <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '600', color: COLORS.primary }}>
-                    {formatCurrency(customer.netTotal)}
+                    {formatCurrency(customer.netTotal || 0)}
                   </td>
                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>
                     <span style={{
-                      display: 'inline-block',
                       padding: '4px 8px',
                       borderRadius: '6px',
-                      background: '#fef3c7',
-                      color: '#92400e',
+                      background: '#f3f4f6',
                       fontSize: '13px',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      color: COLORS.gray
                     }}>
-                      {customer.daysOverdue} days
+                      {customer.daysSinceLastPurchase || 0}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 8px' }}>
+                  <td style={{ padding: '12px 8px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      {customer.phone && formatPhone(customer.phone) ? (
+                      {customer.phone && formatPhone(customer.phone) && (
                         <>
                           <button
                             onClick={(e) => handleCall(e, customer.phone)}
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '36px',
-                              height: '36px',
-                              padding: 0,
+                              padding: '6px 10px',
+                              borderRadius: '6px',
                               border: '1px solid #e5e7eb',
-                              borderRadius: '8px',
                               background: 'white',
                               cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              color: COLORS.primary,
                               transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.background = COLORS.primary;
+                              e.currentTarget.style.color = 'white';
                               e.currentTarget.style.borderColor = COLORS.primary;
-                              e.currentTarget.querySelector('svg').style.color = 'white';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.background = 'white';
+                              e.currentTarget.style.color = COLORS.primary;
                               e.currentTarget.style.borderColor = '#e5e7eb';
-                              e.currentTarget.querySelector('svg').style.color = COLORS.primary;
                             }}
-                            title="Call"
                           >
-                            <Phone style={{ width: '16px', height: '16px', color: COLORS.primary }} />
+                            <Phone style={{ width: '14px', height: '14px' }} />
+                            Ligar
                           </button>
                           <button
                             onClick={(e) => handleWhatsApp(e, customer.phone)}
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '36px',
-                              height: '36px',
-                              padding: 0,
+                              padding: '6px 10px',
+                              borderRadius: '6px',
                               border: '1px solid #e5e7eb',
-                              borderRadius: '8px',
                               background: 'white',
                               cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              color: '#25D366',
                               transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.background = '#25D366';
+                              e.currentTarget.style.color = 'white';
                               e.currentTarget.style.borderColor = '#25D366';
-                              e.currentTarget.querySelector('svg').style.color = 'white';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.background = 'white';
+                              e.currentTarget.style.color = '#25D366';
                               e.currentTarget.style.borderColor = '#e5e7eb';
-                              e.currentTarget.querySelector('svg').style.color = '#25D366';
                             }}
-                            title="WhatsApp"
                           >
-                            <MessageCircle style={{ width: '16px', height: '16px', color: '#25D366' }} />
+                            <MessageCircle style={{ width: '14px', height: '14px' }} />
+                            WhatsApp
                           </button>
                         </>
-                      ) : (
-                        <span style={{ 
-                          fontSize: '12px', 
-                          color: COLORS.gray,
-                          fontStyle: 'italic'
-                        }}>
-                          No phone
-                        </span>
                       )}
                     </div>
                   </td>
@@ -306,14 +313,26 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
             </tbody>
           </table>
         </div>
+
+        {/* Footer Info */}
+        <div style={{
+          marginTop: '1rem',
+          padding: '0.75rem',
+          background: '#f9fafb',
+          borderRadius: '8px',
+          fontSize: '12px',
+          color: COLORS.gray
+        }}>
+          💡 <strong>Dica:</strong> Clique em qualquer cliente para ver histórico completo e sugestões de reativação
+        </div>
       </div>
 
       {/* Customer Detail Modal */}
       {selectedCustomer && (
         <CustomerDetailModal
           customer={selectedCustomer}
-          onClose={() => setSelectedCustomer(null)}
           salesData={salesData}
+          onClose={() => setSelectedCustomer(null)}
         />
       )}
     </>
