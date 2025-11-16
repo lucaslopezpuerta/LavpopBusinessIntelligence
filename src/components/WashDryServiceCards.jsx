@@ -1,6 +1,6 @@
-// WashDryServiceCards.jsx v1.0
+// WashDryServiceCards.jsx v1.1 - FIXED
+// ✅ Fixed field names: washServices, dryServices (not washerServices, dryerServices)
 // Shows wash and dry service counts as separate cards
-// Replaces the Service Mix pie chart
 
 import React from 'react';
 import { Droplet, Flame } from 'lucide-react';
@@ -20,8 +20,9 @@ const WashDryServiceCards = ({ businessMetrics }) => {
     return new Intl.NumberFormat('pt-BR').format(value || 0);
   };
 
-  const washCount = weekly.washerServices || 0;
-  const dryCount = weekly.dryerServices || 0;
+  // ✅ FIXED: Using correct field names from businessMetrics
+  const washCount = weekly.washServices || 0;  // was: washerServices
+  const dryCount = weekly.dryServices || 0;     // was: dryerServices
   const total = washCount + dryCount;
   
   const washPercent = total > 0 ? ((washCount / total) * 100).toFixed(0) : 0;

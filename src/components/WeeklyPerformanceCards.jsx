@@ -1,6 +1,8 @@
-// WeeklyPerformanceCards.jsx v1.0
+// WeeklyPerformanceCards.jsx v1.1 - FIXED
+// ✅ Fixed: Using previousWeekly (not previousWeek)
+// ✅ Fixed: Using correct field names (transactions, not totalTransactions)
+// ✅ Fixed: Using windows.previousWeekly for dates
 // Replaces WeeklyPerformanceSummary with card-style layout
-// Shows previous week metrics in Quick Actions style
 
 import React from 'react';
 import { DollarSign, Activity, TrendingUp, Gauge } from 'lucide-react';
@@ -14,7 +16,8 @@ const COLORS = {
 const WeeklyPerformanceCards = ({ businessMetrics }) => {
   if (!businessMetrics) return null;
 
-  const { previousWeek = {}, weekOverWeek = {} } = businessMetrics;
+  // ✅ FIXED: Using previousWeekly (not previousWeek)
+  const { previousWeekly = {}, weekOverWeek = {}, windows = {} } = businessMetrics;
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -46,7 +49,7 @@ const WeeklyPerformanceCards = ({ businessMetrics }) => {
     {
       id: 'revenue',
       label: 'Receita',
-      value: formatCurrency(previousWeek.netRevenue),
+      value: formatCurrency(previousWeekly.netRevenue),
       change: weekOverWeek.netRevenue,
       icon: DollarSign,
       color: COLORS.primary,
@@ -55,7 +58,7 @@ const WeeklyPerformanceCards = ({ businessMetrics }) => {
     {
       id: 'transactions',
       label: 'Transações',
-      value: formatNumber(previousWeek.totalTransactions),
+      value: formatNumber(previousWeekly.transactions),  // ✅ FIXED: was totalTransactions
       change: weekOverWeek.transactions,
       icon: Activity,
       color: COLORS.primary,
@@ -64,7 +67,7 @@ const WeeklyPerformanceCards = ({ businessMetrics }) => {
     {
       id: 'services',
       label: 'Serviços',
-      value: formatNumber(previousWeek.totalServices),
+      value: formatNumber(previousWeekly.totalServices),
       change: weekOverWeek.totalServices,
       icon: TrendingUp,
       color: COLORS.accent,
@@ -73,7 +76,7 @@ const WeeklyPerformanceCards = ({ businessMetrics }) => {
     {
       id: 'utilization',
       label: 'Utilização',
-      value: `${Math.round(previousWeek.totalUtilization || 0)}%`,
+      value: `${Math.round(previousWeekly.totalUtilization || 0)}%`,
       change: weekOverWeek.utilization,
       icon: Gauge,
       color: '#f59e0b',
@@ -105,8 +108,9 @@ const WeeklyPerformanceCards = ({ businessMetrics }) => {
           color: COLORS.gray,
           margin: 0
         }}>
-          {previousWeek.startDate && previousWeek.endDate && 
-            `${previousWeek.startDate} - ${previousWeek.endDate}`}
+          {/* ✅ FIXED: Using windows.previousWeekly for dates */}
+          {windows.previousWeekly && 
+            `${windows.previousWeekly.startDate} - ${windows.previousWeekly.endDate}`}
         </p>
       </div>
 

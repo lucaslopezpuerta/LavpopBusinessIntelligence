@@ -1,9 +1,10 @@
-// NewClientsWeekCard.jsx v1.0
+// NewClientsWeekCard.jsx v1.1 - FIXED
+// ✅ Now using dateWindows.js utility for consistent date handling
 // Shows new clients count for the current week
-// Simple card format
 
 import React, { useMemo } from 'react';
 import { UserPlus, TrendingUp, TrendingDown } from 'lucide-react';
+import { getDateWindows } from '../utils/dateWindows';
 
 const COLORS = {
   primary: '#1a5a8e',
@@ -15,25 +16,9 @@ const NewClientsWeekCard = ({ salesData }) => {
   const newClientsData = useMemo(() => {
     if (!salesData || salesData.length === 0) return null;
 
-    // Get current week boundaries (Sunday to Saturday)
-    const now = new Date();
-    let lastSaturday = new Date(now);
-    const daysFromSaturday = (now.getDay() + 1) % 7;
-    lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
-    lastSaturday.setHours(23, 59, 59, 999);
-    
-    let startSunday = new Date(lastSaturday);
-    startSunday.setDate(startSunday.getDate() - 6);
-    startSunday.setHours(0, 0, 0, 0);
-
-    // Get previous week for comparison
-    let prevWeekEnd = new Date(startSunday);
-    prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
-    prevWeekEnd.setHours(23, 59, 59, 999);
-    
-    let prevWeekStart = new Date(prevWeekEnd);
-    prevWeekStart.setDate(prevWeekStart.getDate() - 6);
-    prevWeekStart.setHours(0, 0, 0, 0);
+    // ✅ FIXED: Using shared dateWindows utility
+    const currentWeekWindow = getDateWindows('currentWeek');
+    const lastWeekWindow = getDateWindows('lastWeek');
 
     // Track first purchase per customer
     const customerFirstPurchase = {};
@@ -42,6 +27,7 @@ const NewClientsWeekCard = ({ salesData }) => {
       const dateStr = row.Data || row.data || row.date;
       if (!dateStr) return;
       
+      // Parse DD/MM/YYYY format
       const [day, month, year] = dateStr.split('/');
       const saleDate = new Date(year, month - 1, day);
       
@@ -53,27 +39,27 @@ const NewClientsWeekCard = ({ salesData }) => {
       }
     });
 
-    // Count new clients this week
+    // Count new clients in each window
     let currentWeekNew = 0;
-    let previousWeekNew = 0;
+    let lastWeekNew = 0;
     
     Object.values(customerFirstPurchase).forEach(firstDate => {
-      if (firstDate >= startSunday && firstDate <= lastSaturday) {
+      if (firstDate >= currentWeekWindow.start && firstDate <= currentWeekWindow.end) {
         currentWeekNew++;
-      } else if (firstDate >= prevWeekStart && firstDate <= prevWeekEnd) {
-        previousWeekNew++;
+      } else if (firstDate >= lastWeekWindow.start && firstDate <= lastWeekWindow.end) {
+        lastWeekNew++;
       }
     });
 
     // Calculate week-over-week change
     let weekOverWeekChange = null;
-    if (previousWeekNew > 0) {
-      weekOverWeekChange = ((currentWeekNew - previousWeekNew) / previousWeekNew) * 100;
+    if (lastWeekNew > 0) {
+      weekOverWeekChange = ((currentWeekNew - lastWeekNew) / lastWeekNew) * 100;
     }
 
     return {
       count: currentWeekNew,
-      previousCount: previousWeekNew,
+      previousCount: lastWeekNew,
       weekOverWeek: weekOverWeekChange
     };
   }, [salesData]);
