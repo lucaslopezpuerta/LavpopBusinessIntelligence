@@ -4,6 +4,7 @@ import { loadAllData } from './utils/csvLoader';
 import { calculateBusinessMetrics } from './utils/businessMetrics';
 import { calculateCustomerMetrics } from './utils/customerMetrics';
 import KPICards from './components/KPICards';
+import Logo from './assets/Logo1.png'; // Import logo
 import './App.css';
 
 // Import views
@@ -154,7 +155,7 @@ function App() {
           <div className="logo-section">
             {/* Use Logo 1 from assets */}
             <img 
-              src="src/assets/Logo1.png" 
+              src={Logo} 
               alt="Lavpop Logo" 
               className="logo-image"
               onError={(e) => {
