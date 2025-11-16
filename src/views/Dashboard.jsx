@@ -9,11 +9,12 @@
 // v4.0 (2025-11-14): Streamlined version with new components
 // v3.0 (2025-11-13): Enhanced with customer lifecycle tool
 
+// Dashboard.jsx v5.0
 import React, { useMemo } from 'react';
 import KPICards from '../components/KPICards';
 import WeatherWidget from '../components/WeatherWidget_API';
 import SocialMediaWidget from '../components/SocialMediaWidget';
-import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
+// import GoogleBusinessWidget from '../components/GoogleBusinessWidget'; // DISABLED - uncomment when API configured
 import UrgentInsightCard from '../components/UrgentInsightCard';
 import QuickActionsCards from '../components/QuickActionsCards';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
@@ -22,7 +23,6 @@ import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { ExternalLink, Calendar } from 'lucide-react';
 
 const Dashboard = ({ data, onNavigate }) => {
-  // Calculate business metrics
   const businessMetrics = useMemo(() => {
     if (!data?.sales) return null;
     try {
@@ -33,7 +33,6 @@ const Dashboard = ({ data, onNavigate }) => {
     }
   }, [data?.sales]);
 
-  // Calculate customer metrics
   const customerMetrics = useMemo(() => {
     if (!data?.sales || !data?.rfm) return null;
     return calculateCustomerMetrics(data.sales, data.rfm);
@@ -83,7 +82,7 @@ const Dashboard = ({ data, onNavigate }) => {
       background: '#f9fafb',
       minHeight: '100vh'
     }}>
-      {/* HEADER SECTION */}
+      {/* HEADER */}
       <div style={{
         background: 'white',
         borderRadius: '16px',
@@ -99,7 +98,6 @@ const Dashboard = ({ data, onNavigate }) => {
           flexWrap: 'wrap',
           gap: '1rem'
         }}>
-          {/* Left: Title & Date */}
           <div>
             <h1 style={{
               fontSize: '32px',
@@ -123,7 +121,6 @@ const Dashboard = ({ data, onNavigate }) => {
             </div>
           </div>
 
-          {/* Right: Weather, Social Media & Google Business */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -135,69 +132,60 @@ const Dashboard = ({ data, onNavigate }) => {
               instagramFollowers={1200} 
               facebookFollowers={850}
             />
-            <GoogleBusinessWidget />
+            {/* <GoogleBusinessWidget /> */}
+            {/* Google Widget disabled - uncomment when API configured */}
           </div>
         </div>
       </div>
 
-      {/* URGENT INSIGHT CARD */}
+      {/* URGENT INSIGHT */}
       <UrgentInsightCard 
         businessMetrics={businessMetrics}
         customerMetrics={customerMetrics}
       />
 
-      {/* KPI CARDS - ALL 9 METRICS */}
+      {/* 9 KPI CARDS */}
       <KPICards 
         businessMetrics={businessMetrics}
         customerMetrics={customerMetrics}
         salesData={data.sales}
       />
 
-      {/* MAIN CONTENT GRID */}
+      {/* QUICK ACTIONS */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(12, 1fr)',
-        gap: '1.5rem',
-        marginBottom: '1.5rem'
+        background: 'white',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        marginBottom: '1.5rem',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
       }}>
-        {/* Row 1: Quick Actions (Full Width) */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '1.5rem',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-          }}>
-            <h3 style={{ 
-              fontSize: '16px',
-              fontWeight: '700',
-              color: '#1a5a8e',
-              margin: 0,
-              marginBottom: '1rem'
-            }}>
-              Ações Rápidas
-            </h3>
-            <QuickActionsCards onAction={handleQuickAction} />
-          </div>
-        </div>
-
-        {/* Row 2: At-Risk Customers (Full Width) */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <AtRiskCustomersTable 
-            customerMetrics={customerMetrics}
-            salesData={data.sales}
-            maxRows={5}
-          />
-        </div>
+        <h3 style={{ 
+          fontSize: '16px',
+          fontWeight: '700',
+          color: '#1a5a8e',
+          margin: 0,
+          marginBottom: '1rem'
+        }}>
+          Ações Rápidas
+        </h3>
+        <QuickActionsCards onAction={handleQuickAction} />
       </div>
 
-      {/* FOOTER - Quick Links */}
+      {/* AT-RISK CUSTOMERS */}
+      <AtRiskCustomersTable 
+        customerMetrics={customerMetrics}
+        salesData={data.sales}
+        maxRows={5}
+      />
+
+      {/* FOOTER */}
       <div style={{
         background: 'white',
         borderRadius: '12px',
         border: '1px solid #e5e7eb',
         padding: '1rem 1.5rem',
+        marginTop: '1.5rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -319,15 +307,6 @@ const Dashboard = ({ data, onNavigate }) => {
           </a>
         </div>
       </div>
-
-      {/* Mobile Responsive Override */}
-      <style jsx>{`
-        @media (max-width: 1023px) {
-          div[style*="gridColumn"] {
-            grid-column: 1 / -1 !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
