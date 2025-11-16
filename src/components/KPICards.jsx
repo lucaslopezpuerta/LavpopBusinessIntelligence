@@ -1,15 +1,16 @@
-// KPICards.jsx v2.2 - ENHANCED DEBUGGING FOR NEW CLIENTS
-// ✅ Added comprehensive debugging for new clients calculation
-// ✅ Fixed date parsing to handle various formats
-// ✅ Enhanced brand colors
+// KPICards.jsx v2.3 - FIXED DATE FIELD NAMES
+// ✅ Now uses correct field names: Data, Data_Hora, date
+// ✅ Matches transactionParser.js logic exactly
+// ✅ Enhanced debugging kept for verification
 // ✅ 9 cards total with WoW indicators
 //
 // CHANGELOG:
-// v2.2 (2025-11-15): Enhanced debugging and date parsing for new clients
-// v2.1 (2025-11-15): Fixed new clients calculation with CPF normalization
+// v2.3 (2025-11-15): Fixed date field to include Data_Hora
+// v2.2 (2025-11-15): Enhanced debugging for new clients
 
 import React, { useMemo } from 'react';
 import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
+import { parseBrDate } from '../utils/dateUtils';
 
 const COLORS = {
   primary: '#1a5a8e',     // Lavpop blue
@@ -32,39 +33,8 @@ function normalizeDoc(doc) {
   return cleaned;
 }
 
-/**
- * Parse Brazilian date format DD/MM/YYYY
- */
-function parseBrDate(dateStr) {
-  if (!dateStr) return null;
-  
-  const str = String(dateStr).trim();
-  
-  // Try DD/MM/YYYY format
-  if (str.includes('/')) {
-    const parts = str.split('/');
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
-      const year = parseInt(parts[2], 10);
-      
-      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        return new Date(year, month, day);
-      }
-    }
-  }
-  
-  // Try ISO format
-  const isoDate = new Date(str);
-  if (!isNaN(isoDate.getTime())) {
-    return isoDate;
-  }
-  
-  return null;
-}
-
 const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
-  // Calculate new clients for current week with ENHANCED DEBUGGING
+  // Calculate new clients for current week with FIXED date fields
   const newClientsData = useMemo(() => {
     if (!salesData || salesData.length === 0) {
       console.log('❌ No sales data available');
@@ -73,6 +43,11 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
 
     console.log('🔍 NEW CLIENTS CALCULATION STARTED');
     console.log('Total sales records:', salesData.length);
+    
+    // Debug: Show first row field names
+    if (salesData.length > 0) {
+      console.log('📋 Available fields in first row:', Object.keys(salesData[0]));
+    }
 
     // Get current week boundaries (using same logic as businessMetrics)
     const currentDate = new Date();
@@ -104,13 +79,14 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     let skippedNoDate = 0;
     
     salesData.forEach(row => {
-      const dateStr = row.Data || row.data || row.date;
+      // ✅ FIXED: Use same field names as transactionParser.js
+      const dateStr = row.Data || row.Data_Hora || row.date;
       if (!dateStr) {
         skippedNoDate++;
         return;
       }
       
-      // Parse date
+      // Parse date using utility function
       const saleDate = parseBrDate(dateStr);
       if (!saleDate) {
         console.log('⚠️ Failed to parse date:', dateStr);
@@ -118,8 +94,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       }
       parsedDates++;
       
-      // Normalize CPF
-      const cpf = normalizeDoc(row.Doc_Cliente || row.doc || row.cpf);
+      // Normalize CPF (matches customerMetrics.js logic)
+      const cpf = normalizeDoc(row.Doc_Cliente || row.document || row.doc);
       if (!cpf) {
         skippedNoCPF++;
         return;
