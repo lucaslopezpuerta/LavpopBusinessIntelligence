@@ -1,20 +1,19 @@
-// Dashboard.jsx v3.0 - COMPLETE REDESIGN
-// Modern, professional, single-screen layout
-// Portuguese labels, brand colors, impactful insights
-// Reuses all existing calculation logic
+// Dashboard.jsx v4.0 - STREAMLINED & COMPACT
+// No scrolling required - fits single screen
+// Components moved to Customers tab: Retention, TopPerformers, NewClientsChart
+// New components: WeeklyPerformanceCards, WashDryServiceCards, NewClientsWeekCard, GoogleBusinessWidget
 
 import React, { useMemo } from 'react';
 import KPICards from '../components/KPICards';
 import WeatherWidget from '../components/WeatherWidget_API';
 import SocialMediaWidget from '../components/SocialMediaWidget';
+import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import UrgentInsightCard from '../components/UrgentInsightCard';
-import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
-import TopPerformersSegment from '../components/TopPerformersSegment';
-import NewClientsChart from '../components/NewClientsChart';
-import WeeklyPerformanceSummary from '../components/WeeklyPerformanceSummary';
-import CustomerRetentionScore from '../components/CustomerRetentionScore';
-import ServiceMixIndicator from '../components/ServiceMixIndicator';
+import WeeklyPerformanceCards from '../components/WeeklyPerformanceCards';
 import QuickActionsPanel from '../components/QuickActionsPanel';
+import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
+import WashDryServiceCards from '../components/WashDryServiceCards';
+import NewClientsWeekCard from '../components/NewClientsWeekCard';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { ExternalLink, Calendar } from 'lucide-react';
@@ -121,7 +120,7 @@ const Dashboard = ({ data, onNavigate }) => {
             </div>
           </div>
 
-          {/* Right: Weather & Social Media */}
+          {/* Right: Weather, Social Media & Google Business */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -133,6 +132,7 @@ const Dashboard = ({ data, onNavigate }) => {
               instagramFollowers={1200} 
               facebookFollowers={850}
             />
+            <GoogleBusinessWidget />
           </div>
         </div>
       </div>
@@ -156,40 +156,29 @@ const Dashboard = ({ data, onNavigate }) => {
         gap: '1.5rem',
         marginBottom: '1.5rem'
       }}>
-        {/* Row 1: Weekly Summary + Quick Actions */}
-        <div style={{ gridColumn: 'span 7' }}>
-          <WeeklyPerformanceSummary businessMetrics={businessMetrics} />
+        {/* Row 1: Weekly Performance + Quick Actions */}
+        <div style={{ gridColumn: 'span 6' }}>
+          <WeeklyPerformanceCards businessMetrics={businessMetrics} />
         </div>
-        <div style={{ gridColumn: 'span 5' }}>
+        <div style={{ gridColumn: 'span 6' }}>
           <QuickActionsPanel onAction={handleQuickAction} />
         </div>
 
-        {/* Row 2: At-Risk Customers + New Clients */}
-        <div style={{ gridColumn: 'span 7' }}>
+        {/* Row 2: At-Risk Customers (Full Width) */}
+        <div style={{ gridColumn: '1 / -1' }}>
           <AtRiskCustomersTable 
             customerMetrics={customerMetrics}
             salesData={data.sales}
             maxRows={5}
           />
         </div>
-        <div style={{ gridColumn: 'span 5' }}>
-          <NewClientsChart salesData={data.sales} />
-        </div>
 
-        {/* Row 3: Top Performers (Full Width) */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <TopPerformersSegment 
-            customerMetrics={customerMetrics}
-            salesData={data.sales}
-          />
-        </div>
-
-        {/* Row 4: Retention Score + Service Mix */}
+        {/* Row 3: Wash/Dry Cards + New Clients */}
         <div style={{ gridColumn: 'span 6' }}>
-          <CustomerRetentionScore salesData={data.sales} />
+          <WashDryServiceCards businessMetrics={businessMetrics} />
         </div>
         <div style={{ gridColumn: 'span 6' }}>
-          <ServiceMixIndicator businessMetrics={businessMetrics} />
+          <NewClientsWeekCard salesData={data.sales} />
         </div>
       </div>
 
