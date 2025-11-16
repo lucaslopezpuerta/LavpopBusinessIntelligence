@@ -1,16 +1,16 @@
-// KPICards.jsx v2.4 - PERFECT FONT CONSISTENCY
-// ✅ All titles exactly 11px
-// ✅ All values exactly 28px (reduced from 32px)
-// ✅ WoW badges reduced to 14px (from 16px)
-// ✅ All subtitles exactly 12px
-// ✅ Consistent spacing throughout
+// KPICards.jsx v3.0 - RESPONSIVE GRID + BOTTOM-RIGHT BADGES
+// ✅ WoW badges moved to bottom-right (no title overlap)
+// ✅ Responsive grid: 9 cols (ultra-wide), 3x3 (1080p), 1 col (mobile)
+// ✅ All font sizes consistent and optimized
+// ✅ Perfect spacing for compact layout
 //
 // CHANGELOG:
+// v3.0 (2025-11-16): Responsive grid + bottom-right badges, no overlap
 // v2.4 (2025-11-15): Perfect font consistency, reduced sizes
 // v2.3 (2025-11-15): Fixed date field to include Data_Hora
 
 import React, { useMemo } from 'react';
-import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
+import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, DollarSign, WashingMachine, RefreshCw, Percent } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 const COLORS = {
@@ -48,7 +48,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     startSunday.setHours(0, 0, 0, 0);
 
     let prevWeekEnd = new Date(startSunday);
-    prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
+    prevWeekEnd.setDate(prevWeekEnd.setDate() - 1);
     prevWeekEnd.setHours(23, 59, 59, 999);
     
     let prevWeekStart = new Date(prevWeekEnd);
@@ -168,8 +168,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       title: 'Receita Líquida',
       value: formatCurrency(weekly.netRevenue || 0),
       trend: getTrendData(wow.netRevenue),
-      subtitle: 'vs semana passada',
-      icon: Activity,
+      subtitle: 'Esta semana',
+      icon: DollarSign,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
     },
@@ -178,8 +178,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       title: 'Total de Ciclos',
       value: formatNumber(weekly.totalServices || 0),
       trend: getTrendData(wow.totalServices),
-      subtitle: 'vs semana passada',
-      icon: Activity,
+      subtitle: 'Esta semana',
+      icon: RefreshCw,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
     },
@@ -188,8 +188,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       title: 'Utilização Geral',
       value: `${Math.round(weekly.totalUtilization || 0)}%`,
       trend: getTrendData(wow.utilization),
-      subtitle: 'vs semana passada',
-      icon: Flame,
+      subtitle: 'Esta semana',
+      icon: Percent,
       color: COLORS.amber,
       iconBg: '#fef3c7'
     },
@@ -199,7 +199,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       value: formatNumber(washCount),
       subtitle: `${washPercent}% do total`,
       trend: getTrendData(wow.washServices),
-      icon: Droplet,
+      icon: WashingMachine,
       color: COLORS.blue,
       iconBg: '#dbeafe'
     },
@@ -254,10 +254,11 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
 
   return (
     <div style={{ 
-      display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-      gap: '0.875rem',
-      marginBottom: '1rem'
+      display: 'grid',
+      // Responsive grid: 9 cols on ultra-wide (>1400px), 3x3 on desktop (>768px), 1 col on mobile
+      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+      gap: '0.75rem',
+      marginBottom: '0.75rem'
     }}>
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
@@ -269,11 +270,13 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
               background: 'white',
               borderRadius: '10px',
               border: '1px solid #e5e7eb',
-              padding: '1rem',
+              padding: '0.875rem',
               transition: 'all 0.2s',
               cursor: 'default',
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.08)';
@@ -284,56 +287,37 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            {/* ✅ WoW Badge - Consistent 14px */}
-            {kpi.trend?.show && (
-              <div style={{
-                position: 'absolute',
-                top: '0.65rem',
-                right: '0.65rem',
-                fontSize: '14px',
-                fontWeight: '700',
-                color: kpi.trend.color,
-                background: `${kpi.trend.color}15`,
-                padding: '3px 8px',
-                borderRadius: '5px',
-                letterSpacing: '0.3px'
-              }}>
-                {kpi.trend.text}
-              </div>
-            )}
-
-            {/* Header */}
-            <div style={{ marginBottom: '0.75rem' }}>
-              {/* ✅ Title - Consistent 11px */}
+            {/* Header with Title and Icon */}
+            <div style={{ marginBottom: '0.625rem' }}>
               <h3 style={{ 
-                fontSize: '11px',
+                fontSize: '10px',
                 fontWeight: '700',
                 color: COLORS.gray,
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 margin: 0,
-                marginBottom: '0.65rem'
+                marginBottom: '0.5rem'
               }}>
                 {kpi.title}
               </h3>
               
               <div style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '9px',
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
                 background: kpi.iconBg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <Icon style={{ width: '20px', height: '20px', color: kpi.color }} />
+                <Icon style={{ width: '19px', height: '19px', color: kpi.color }} />
               </div>
             </div>
 
-            {/* ✅ Value - Consistent 28px */}
-            <div style={{ marginBottom: '0.4rem' }}>
+            {/* Value - No overlap with badge now */}
+            <div style={{ marginBottom: '0.375rem', flex: 1 }}>
               <div style={{ 
-                fontSize: '28px',
+                fontSize: '26px',
                 fontWeight: '700',
                 color: kpi.color,
                 lineHeight: '1.1'
@@ -342,17 +326,71 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
               </div>
             </div>
 
-            {/* ✅ Subtitle - Consistent 12px */}
-            <div style={{ 
-              fontSize: '12px',
-              color: '#9ca3af',
-              fontWeight: '500'
+            {/* Footer: Subtitle + WoW Badge */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem'
             }}>
-              {kpi.subtitle}
+              <div style={{ 
+                fontSize: '11px',
+                color: '#9ca3af',
+                fontWeight: '500'
+              }}>
+                {kpi.subtitle}
+              </div>
+
+              {/* ✅ WoW Badge - Bottom Right (no overlap) */}
+              {kpi.trend?.show && (
+                <div style={{
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: kpi.trend.color,
+                  background: `${kpi.trend.color}15`,
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  letterSpacing: '0.3px',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {kpi.trend.text}
+                </div>
+              )}
             </div>
           </div>
         );
       })}
+      
+      {/* Responsive Grid Styles */}
+      <style>{`
+        /* Ultra-wide screens: 9 columns */
+        @media (min-width: 1600px) {
+          div[style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(9, 1fr) !important;
+          }
+        }
+        
+        /* Desktop (1080p): 3x3 grid */
+        @media (min-width: 992px) and (max-width: 1599px) {
+          div[style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(3, 1fr) !important;
+          }
+        }
+        
+        /* Tablet: 2 columns */
+        @media (min-width: 768px) and (max-width: 991px) {
+          div[style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        
+        /* Mobile: 1 column */
+        @media (max-width: 767px) {
+          div[style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
