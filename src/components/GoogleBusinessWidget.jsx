@@ -1,20 +1,32 @@
-// GoogleBusinessWidget.jsx v1.0
-// ✅ Google My Business API integration
-// ✅ Shows rating, total reviews, and status
-// ✅ Compact header widget design
-// ✅ Auto-refresh every 24 hours
+// GoogleBusinessWidget.jsx v2.0 - STANDARDIZED WITH REAL API
+// ✅ Consistent with all other header widgets
+// ✅ Google Places API integration (updates once daily)
+// ✅ Shows rating, reviews, and open/closed status
+// ✅ Automatic caching (24-hour refresh)
+// ✅ Compact 36px height matching other widgets
 //
 // CHANGELOG:
-// v1.0 (2025-11-16): Initial implementation with Google My Business API
+// v2.0 (2025-11-16): Standardized design + real API + daily updates
+// v1.0 (2025-11-16): Initial mock data version
 
 import React, { useState, useEffect } from 'react';
-import { Star, Users, MapPin } from 'lucide-react';
+import { Star, MapPin, Loader, AlertCircle } from 'lucide-react';
 
-const COLORS = {
-  primary: '#1a5a8e',
-  accent: '#55b03b',
-  amber: '#f59e0b',
-  gray: '#6b7280'
+// ⚙️ CONFIGURATION
+const GOOGLE_BUSINESS_CONFIG = {
+  // STEP 1: Get your Place ID from: https://developers.google.com/maps/documentation/places/web-service/place-id
+  // Search for "Lavpop Caxias do Sul" and copy the Place ID
+  PLACE_ID: 'ChIJW0SI_ryjHpUR_YAfB0aLu8I', // ← Place ID
+  
+  // STEP 2: Your Google API Key (already in GitHub secrets)
+  // This will be loaded from environment variable
+  API_KEY: import.meta.env.VITE_GOOGLE_API_KEY || '',
+  
+  // STEP 3: Cache duration (24 hours = 86400000 ms)
+  CACHE_DURATION: 6 * 60 * 60 * 1000,
+  
+  // Google Maps link (fallback)
+  MAPS_URL: 'https://maps.app.goo.gl/VwNojjvheJrXZeRd8'
 };
 
 const GoogleBusinessWidget = () => {
@@ -29,42 +41,105 @@ const GoogleBusinessWidget = () => {
   useEffect(() => {
     fetchBusinessData();
     
-    // Refresh every 24 hours
-    const interval = setInterval(fetchBusinessData, 24 * 60 * 60 * 1000);
+    // Check for updates every hour, but only refetch if cache expired
+    const interval = setInterval(checkAndRefresh, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
+  const checkAndRefresh = () => {
+    const cached = localStorage.getItem('googleBusinessCache');
+    if (cached) {
+      const { timestamp } = JSON.parse(cached);
+      const now = Date.now();
+      
+      // Only refresh if cache is older than 24 hours
+      if (now - timestamp > GOOGLE_BUSINESS_CONFIG.CACHE_DURATION) {
+        console.log('Google Business cache expired, refreshing...');
+        fetchBusinessData();
+      }
+    } else {
+      fetchBusinessData();
+    }
+  };
+
   const fetchBusinessData = async () => {
     try {
-      // Note: This requires the Google My Business API
-      // Place ID for Lavpop (you'll need to get this from Google Maps)
-      // For now, we'll use mock data until API is fully configured
+      // Check cache first
+      const cached = localStorage.getItem('googleBusinessCache');
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const now = Date.now();
+        
+        // Use cache if less than 24 hours old
+        if (now - timestamp < GOOGLE_BUSINESS_CONFIG.CACHE_DURATION) {
+          console.log('Using cached Google Business data');
+          setBusinessData({
+            ...data,
+            loading: false,
+            error: null
+          });
+          return;
+        }
+      }
+
+      setLoading(true);
+      console.log('Fetching fresh Google Business data...');
+
+      // API Endpoint: Google Places API - Place Details
+      // https://developers.google.com/maps/documentation/places/web-service/details
+      const apiUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${GOOGLE_BUSINESS_CONFIG.PLACE_ID}&fields=rating,user_ratings_total,opening_hours&key=${GOOGLE_BUSINESS_CONFIG.API_KEY}`;
       
-      // TODO: Replace with actual API call once Place ID is configured
-      // const placeId = 'YOUR_PLACE_ID';
-      // const apiKey = process.env.GOOGLE_API_KEY;
-      // const response = await fetch(
-      //   `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total,opening_hours&key=${apiKey}`
-      // );
+      const response = await fetch(apiUrl);
       
-      // Mock data for demonstration (remove when API is ready)
-      setTimeout(() => {
-        setBusinessData({
-          rating: 4.8,
-          totalReviews: 127,
-          isOpen: true,
-          loading: false,
-          error: null
-        });
-      }, 500);
+      if (!response.ok) {
+        throw new Error('Failed to fetch Google Business data');
+      }
+      
+      const result = await response.json();
+      
+      if (result.status !== 'OK') {
+        throw new Error(`Google API Error: ${result.status}`);
+      }
+      
+      const place = result.result;
+      const newData = {
+        rating: place.rating,
+        totalReviews: place.user_ratings_total,
+        isOpen: place.opening_hours?.open_now ?? null
+      };
+      
+      // Cache the result for 24 hours
+      localStorage.setItem('googleBusinessCache', JSON.stringify({
+        data: newData,
+        timestamp: Date.now()
+      }));
+      
+      setBusinessData({
+        ...newData,
+        loading: false,
+        error: null
+      });
       
     } catch (error) {
       console.error('Error fetching Google Business data:', error);
-      setBusinessData(prev => ({
-        ...prev,
-        loading: false,
-        error: 'Erro ao carregar dados'
-      }));
+      
+      // If API fails, try to use old cache as fallback
+      const cached = localStorage.getItem('googleBusinessCache');
+      if (cached) {
+        const { data } = JSON.parse(cached);
+        console.log('API failed, using old cache as fallback');
+        setBusinessData({
+          ...data,
+          loading: false,
+          error: 'Using cached data'
+        });
+      } else {
+        setBusinessData(prev => ({
+          ...prev,
+          loading: false,
+          error: error.message
+        }));
+      }
     }
   };
 
@@ -79,9 +154,10 @@ const GoogleBusinessWidget = () => {
         display: 'flex',
         alignItems: 'center',
         gap: '0.5rem',
-        minWidth: '140px'
+        minWidth: '140px',
+        height: '36px'
       }}>
-        <MapPin style={{ width: '14px', height: '14px', color: 'white' }} />
+        <Loader style={{ width: '14px', height: '14px', color: 'white' }} className="animate-spin" />
         <div style={{
           fontSize: '11px',
           color: 'rgba(255, 255, 255, 0.9)',
@@ -93,8 +169,9 @@ const GoogleBusinessWidget = () => {
     );
   }
 
-  if (businessData.error) {
-    return null; // Hide widget on error
+  if (businessData.error && !businessData.rating) {
+    // Only hide if we have no data at all
+    return null;
   }
 
   return (
@@ -108,7 +185,8 @@ const GoogleBusinessWidget = () => {
       alignItems: 'center',
       gap: '0.625rem',
       cursor: 'pointer',
-      transition: 'all 0.2s'
+      transition: 'all 0.2s',
+      height: '36px'
     }}
     onMouseEnter={(e) => {
       e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
@@ -118,10 +196,10 @@ const GoogleBusinessWidget = () => {
       e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
       e.currentTarget.style.transform = 'translateY(0)';
     }}
-    onClick={() => window.open('https://maps.app.goo.gl/VwNojjvheJrXZeRd8', '_blank')}
+    onClick={() => window.open(GOOGLE_BUSINESS_CONFIG.MAPS_URL, '_blank')}
     title="Ver no Google Maps"
     >
-      {/* Icon */}
+      {/* Icon Container */}
       <div style={{
         width: '28px',
         height: '28px',
@@ -129,19 +207,20 @@ const GoogleBusinessWidget = () => {
         background: 'rgba(255, 255, 255, 0.2)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        flexShrink: 0
       }}>
         <MapPin style={{ width: '15px', height: '15px', color: 'white' }} />
       </div>
 
-      {/* Content */}
+      {/* Business Info */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
         {/* Rating */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <Star 
             style={{ 
-              width: '12px', 
-              height: '12px', 
+              width: '11px', 
+              height: '11px', 
               color: '#fbbf24',
               fill: '#fbbf24'
             }} 
@@ -149,7 +228,8 @@ const GoogleBusinessWidget = () => {
           <span style={{
             fontSize: '12px',
             fontWeight: '700',
-            color: 'white'
+            color: 'white',
+            lineHeight: 1
           }}>
             {businessData.rating?.toFixed(1) || '—'}
           </span>
@@ -177,7 +257,7 @@ const GoogleBusinessWidget = () => {
             textTransform: 'uppercase',
             letterSpacing: '0.3px'
           }}>
-            {businessData.isOpen ? 'Aberto' : 'Fechado'}
+            {businessData.isOpen === null ? 'Status desconhecido' : businessData.isOpen ? 'ABERTO' : 'FECHADO'}
           </span>
         </div>
       </div>
