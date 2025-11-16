@@ -1,29 +1,27 @@
-// KPICards.jsx v2.3 - FIXED DATE FIELD NAMES
-// ✅ Now uses correct field names: Data, Data_Hora, date
-// ✅ Matches transactionParser.js logic exactly
-// ✅ Enhanced debugging kept for verification
-// ✅ 9 cards total with WoW indicators
+// KPICards.jsx v2.4 - PERFECT FONT CONSISTENCY
+// ✅ All titles exactly 11px
+// ✅ All values exactly 28px (reduced from 32px)
+// ✅ WoW badges reduced to 14px (from 16px)
+// ✅ All subtitles exactly 12px
+// ✅ Consistent spacing throughout
 //
 // CHANGELOG:
+// v2.4 (2025-11-15): Perfect font consistency, reduced sizes
 // v2.3 (2025-11-15): Fixed date field to include Data_Hora
-// v2.2 (2025-11-15): Enhanced debugging for new clients
 
 import React, { useMemo } from 'react';
 import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 const COLORS = {
-  primary: '#1a5a8e',     // Lavpop blue
-  accent: '#55b03b',      // Lavpop green
+  primary: '#1a5a8e',
+  accent: '#55b03b',
   red: '#dc2626',
   amber: '#f59e0b',
   blue: '#3b82f6',
   gray: '#6b7280'
 };
 
-/**
- * Normalize document number (CPF) - pad to 11 digits
- */
 function normalizeDoc(doc) {
   if (!doc) return '';
   const cleaned = String(doc).replace(/\D/g, '');
@@ -34,22 +32,11 @@ function normalizeDoc(doc) {
 }
 
 const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
-  // Calculate new clients for current week with FIXED date fields
   const newClientsData = useMemo(() => {
     if (!salesData || salesData.length === 0) {
-      console.log('❌ No sales data available');
       return { count: 0, weekOverWeek: null };
     }
 
-    console.log('🔍 NEW CLIENTS CALCULATION STARTED');
-    console.log('Total sales records:', salesData.length);
-    
-    // Debug: Show first row field names
-    if (salesData.length > 0) {
-      console.log('📋 Available fields in first row:', Object.keys(salesData[0]));
-    }
-
-    // Get current week boundaries (using same logic as businessMetrics)
     const currentDate = new Date();
     let lastSaturday = new Date(currentDate);
     const daysFromSaturday = (currentDate.getDay() + 1) % 7;
@@ -60,7 +47,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     startSunday.setDate(startSunday.getDate() - 6);
     startSunday.setHours(0, 0, 0, 0);
 
-    // Previous week
     let prevWeekEnd = new Date(startSunday);
     prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
     prevWeekEnd.setHours(23, 59, 59, 999);
@@ -69,76 +55,40 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     prevWeekStart.setDate(prevWeekStart.getDate() - 6);
     prevWeekStart.setHours(0, 0, 0, 0);
 
-    console.log('📅 Current week:', startSunday.toLocaleDateString('pt-BR'), '-', lastSaturday.toLocaleDateString('pt-BR'));
-    console.log('📅 Previous week:', prevWeekStart.toLocaleDateString('pt-BR'), '-', prevWeekEnd.toLocaleDateString('pt-BR'));
-
-    // Track first purchase per customer with NORMALIZED CPF
     const customerFirstPurchase = {};
-    let parsedDates = 0;
-    let skippedNoCPF = 0;
-    let skippedNoDate = 0;
     
     salesData.forEach(row => {
-      // ✅ FIXED: Use same field names as transactionParser.js
       const dateStr = row.Data || row.Data_Hora || row.date;
-      if (!dateStr) {
-        skippedNoDate++;
-        return;
-      }
+      if (!dateStr) return;
       
-      // Parse date using utility function
       const saleDate = parseBrDate(dateStr);
-      if (!saleDate) {
-        console.log('⚠️ Failed to parse date:', dateStr);
-        return;
-      }
-      parsedDates++;
+      if (!saleDate) return;
       
-      // Normalize CPF (matches customerMetrics.js logic)
       const cpf = normalizeDoc(row.Doc_Cliente || row.document || row.doc);
-      if (!cpf) {
-        skippedNoCPF++;
-        return;
-      }
+      if (!cpf) return;
       
       if (!customerFirstPurchase[cpf] || saleDate < customerFirstPurchase[cpf]) {
         customerFirstPurchase[cpf] = saleDate;
       }
     });
 
-    console.log('📊 Parsing stats:');
-    console.log('  - Dates parsed:', parsedDates);
-    console.log('  - Skipped (no CPF):', skippedNoCPF);
-    console.log('  - Skipped (no date):', skippedNoDate);
-    console.log('  - Total unique customers:', Object.keys(customerFirstPurchase).length);
-
-    // Count new clients in each window
     let currentWeekNew = 0;
     let lastWeekNew = 0;
     
-    Object.entries(customerFirstPurchase).forEach(([cpf, firstDate]) => {
+    Object.values(customerFirstPurchase).forEach(firstDate => {
       if (firstDate >= startSunday && firstDate <= lastSaturday) {
         currentWeekNew++;
-        console.log('✅ New client this week:', cpf.slice(-4), 'on', firstDate.toLocaleDateString('pt-BR'));
       } else if (firstDate >= prevWeekStart && firstDate <= prevWeekEnd) {
         lastWeekNew++;
       }
     });
 
-    console.log('🎯 RESULTS:');
-    console.log('  - New clients this week:', currentWeekNew);
-    console.log('  - New clients last week:', lastWeekNew);
-
-    // Calculate week-over-week change
     let weekOverWeekChange = null;
     if (lastWeekNew > 0) {
       weekOverWeekChange = ((currentWeekNew - lastWeekNew) / lastWeekNew) * 100;
     } else if (currentWeekNew > 0) {
-      weekOverWeekChange = 100; // If we have new clients this week but none last week
+      weekOverWeekChange = 100;
     }
-
-    console.log('  - Week-over-week change:', weekOverWeekChange ? weekOverWeekChange.toFixed(1) + '%' : 'N/A');
-    console.log('🔍 NEW CLIENTS CALCULATION COMPLETED\n');
 
     return {
       count: currentWeekNew,
@@ -185,7 +135,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
         show: true,
         text: '→', 
         color: COLORS.gray,
-        label: 'estável'
+        label: 'vs semana passada'
       };
     }
     
@@ -206,7 +156,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     };
   };
 
-  // Calculate wash/dry percentages
   const washCount = weekly.washServices || 0;
   const dryCount = weekly.dryServices || 0;
   const totalServices = washCount + dryCount;
@@ -219,6 +168,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       title: 'Receita Líquida',
       value: formatCurrency(weekly.netRevenue || 0),
       trend: getTrendData(wow.netRevenue),
+      subtitle: 'vs semana passada',
       icon: Activity,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
@@ -228,6 +178,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       title: 'Total de Ciclos',
       value: formatNumber(weekly.totalServices || 0),
       trend: getTrendData(wow.totalServices),
+      subtitle: 'vs semana passada',
       icon: Activity,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
@@ -237,6 +188,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       title: 'Utilização Geral',
       value: `${Math.round(weekly.totalUtilization || 0)}%`,
       trend: getTrendData(wow.utilization),
+      subtitle: 'vs semana passada',
       icon: Flame,
       color: COLORS.amber,
       iconBg: '#fef3c7'
@@ -303,9 +255,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
   return (
     <div style={{ 
       display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '1rem',
-      marginBottom: '1.5rem'
+      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+      gap: '0.875rem',
+      marginBottom: '1rem'
     }}>
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
@@ -315,72 +267,73 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
             key={kpi.id}
             style={{
               background: 'white',
-              borderRadius: '12px',
+              borderRadius: '10px',
               border: '1px solid #e5e7eb',
-              padding: '1.25rem',
+              padding: '1rem',
               transition: 'all 0.2s',
               cursor: 'default',
               position: 'relative',
               overflow: 'hidden'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
-              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.08)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            {/* Trend Badge (Top Right) */}
+            {/* ✅ WoW Badge - Consistent 14px */}
             {kpi.trend?.show && (
               <div style={{
                 position: 'absolute',
-                top: '0.75rem',
-                right: '0.75rem',
-                fontSize: '16px',
+                top: '0.65rem',
+                right: '0.65rem',
+                fontSize: '14px',
                 fontWeight: '700',
                 color: kpi.trend.color,
                 background: `${kpi.trend.color}15`,
-                padding: '4px 10px',
-                borderRadius: '6px',
-                letterSpacing: '0.5px'
+                padding: '3px 8px',
+                borderRadius: '5px',
+                letterSpacing: '0.3px'
               }}>
                 {kpi.trend.text}
               </div>
             )}
 
             {/* Header */}
-            <div style={{ marginBottom: '1rem' }}>
+            <div style={{ marginBottom: '0.75rem' }}>
+              {/* ✅ Title - Consistent 11px */}
               <h3 style={{ 
                 fontSize: '11px',
                 fontWeight: '700',
-                color: '#6b7280',
+                color: COLORS.gray,
                 textTransform: 'uppercase',
-                letterSpacing: '0.8px',
+                letterSpacing: '0.5px',
                 margin: 0,
-                marginBottom: '0.75rem'
+                marginBottom: '0.65rem'
               }}>
                 {kpi.title}
               </h3>
               
               <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
+                width: '38px',
+                height: '38px',
+                borderRadius: '9px',
                 background: kpi.iconBg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <Icon style={{ width: '24px', height: '24px', color: kpi.color }} />
+                <Icon style={{ width: '20px', height: '20px', color: kpi.color }} />
               </div>
             </div>
 
-            {/* Value */}
-            <div style={{ marginBottom: '0.5rem' }}>
+            {/* ✅ Value - Consistent 28px */}
+            <div style={{ marginBottom: '0.4rem' }}>
               <div style={{ 
-                fontSize: '32px',
+                fontSize: '28px',
                 fontWeight: '700',
                 color: kpi.color,
                 lineHeight: '1.1'
@@ -389,46 +342,17 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
               </div>
             </div>
 
-            {/* Trend Label or Subtitle */}
-            {kpi.trend?.show ? (
-              <div style={{ 
-                fontSize: '12px',
-                color: '#9ca3af',
-                fontWeight: '500'
-              }}>
-                {kpi.trend.label}
-              </div>
-            ) : kpi.subtitle && (
-              <div style={{ 
-                fontSize: '13px',
-                color: '#6b7280',
-                fontWeight: '500'
-              }}>
-                {kpi.subtitle}
-              </div>
-            )}
+            {/* ✅ Subtitle - Consistent 12px */}
+            <div style={{ 
+              fontSize: '12px',
+              color: '#9ca3af',
+              fontWeight: '500'
+            }}>
+              {kpi.subtitle}
+            </div>
           </div>
         );
       })}
-
-      {/* Responsive Override */}
-      <style jsx>{`
-        @media (max-width: 1200px) {
-          div[style*="gridTemplateColumns"] {
-            grid-template-columns: repeat(3, 1fr) !important;
-          }
-        }
-        @media (max-width: 768px) {
-          div[style*="gridTemplateColumns"] {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
-        @media (max-width: 480px) {
-          div[style*="gridTemplateColumns"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
