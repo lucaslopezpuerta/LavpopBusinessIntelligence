@@ -1,29 +1,19 @@
-// GoogleBusinessWidget.jsx v2.0 - STANDARDIZED WITH REAL API
-// ✅ Consistent with all other header widgets
-// ✅ Google Places API integration (updates once daily)
-// ✅ Shows rating, reviews, and open/closed status
-// ✅ Automatic caching (24-hour refresh)
-// ✅ Compact 36px height matching other widgets
-//
-// CHANGELOG:
-// v2.0 (2025-11-16): Standardized design + real API + daily updates
-// v1.0 (2025-11-16): Initial mock data version
+// GoogleBusinessWidget.jsx v3.0 - SERVERLESS FUNCTION VERSION
+// ✅ Uses Netlify/Vercel serverless function (no CORS issues!)
+// ✅ 24-hour caching
+// ✅ Standardized header design
 
 import React, { useState, useEffect } from 'react';
-import { Star, MapPin, Loader, AlertCircle } from 'lucide-react';
+import { Star, MapPin, Loader } from 'lucide-react';
 
-// ⚙️ CONFIGURATION
 const GOOGLE_BUSINESS_CONFIG = {
-  // STEP 1: Get your Place ID from: https://developers.google.com/maps/documentation/places/web-service/place-id
-  // Search for "Lavpop Caxias do Sul" and copy the Place ID
-  PLACE_ID: 'ChIJW0SI_ryjHpUR_YAfB0aLu8I', // ← REPLACE THIS with your actual Place ID
-  
-  // STEP 2: Your Google API Key (already in GitHub secrets)
-  // This will be loaded from environment variable
-  API_KEY: import.meta.env.VITE_GOOGLE_API_KEY || '',
-  
-  // STEP 3: Cache duration (24 hours = 86400000 ms)
+  // Cache duration (24 hours)
   CACHE_DURATION: 24 * 60 * 60 * 1000,
+  
+  // Serverless function endpoint
+  // Netlify: /.netlify/functions/google-business
+  // Vercel: /api/google-business
+  API_ENDPOINT: '/.netlify/functions/google-business', // ← Change if using Vercel
   
   // Google Maps link (fallback)
   MAPS_URL: 'https://maps.app.goo.gl/VwNojjvheJrXZeRd8'
@@ -41,7 +31,7 @@ const GoogleBusinessWidget = () => {
   useEffect(() => {
     fetchBusinessData();
     
-    // Check for updates every hour, but only refetch if cache expired
+    // Check for updates every hour
     const interval = setInterval(checkAndRefresh, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -52,7 +42,6 @@ const GoogleBusinessWidget = () => {
       const { timestamp } = JSON.parse(cached);
       const now = Date.now();
       
-      // Only refresh if cache is older than 24 hours
       if (now - timestamp > GOOGLE_BUSINESS_CONFIG.CACHE_DURATION) {
         console.log('Google Business cache expired, refreshing...');
         fetchBusinessData();
@@ -70,7 +59,6 @@ const GoogleBusinessWidget = () => {
         const { data, timestamp } = JSON.parse(cached);
         const now = Date.now();
         
-        // Use cache if less than 24 hours old
         if (now - timestamp < GOOGLE_BUSINESS_CONFIG.CACHE_DURATION) {
           console.log('Using cached Google Business data');
           setBusinessData({
@@ -85,30 +73,16 @@ const GoogleBusinessWidget = () => {
       setBusinessData(prev => ({ ...prev, loading: true }));
       console.log('Fetching fresh Google Business data...');
 
-      // API Endpoint: Google Places API - Place Details
-      // https://developers.google.com/maps/documentation/places/web-service/details
-      const apiUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${GOOGLE_BUSINESS_CONFIG.PLACE_ID}&fields=rating,user_ratings_total,opening_hours&key=${GOOGLE_BUSINESS_CONFIG.API_KEY}`;
-      
-      const response = await fetch(apiUrl);
+      // Call serverless function (no CORS issues!)
+      const response = await fetch(GOOGLE_BUSINESS_CONFIG.API_ENDPOINT);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch Google Business data');
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      const result = await response.json();
+      const newData = await response.json();
       
-      if (result.status !== 'OK') {
-        throw new Error(`Google API Error: ${result.status}`);
-      }
-      
-      const place = result.result;
-      const newData = {
-        rating: place.rating,
-        totalReviews: place.user_ratings_total,
-        isOpen: place.opening_hours?.open_now ?? null
-      };
-      
-      // Cache the result for 24 hours
+      // Cache for 24 hours
       localStorage.setItem('googleBusinessCache', JSON.stringify({
         data: newData,
         timestamp: Date.now()
@@ -123,11 +97,11 @@ const GoogleBusinessWidget = () => {
     } catch (error) {
       console.error('Error fetching Google Business data:', error);
       
-      // If API fails, try to use old cache as fallback
+      // Try old cache as fallback
       const cached = localStorage.getItem('googleBusinessCache');
       if (cached) {
         const { data } = JSON.parse(cached);
-        console.log('API failed, using old cache as fallback');
+        console.log('API failed, using old cache');
         setBusinessData({
           ...data,
           loading: false,
@@ -170,7 +144,7 @@ const GoogleBusinessWidget = () => {
   }
 
   if (businessData.error && !businessData.rating) {
-    // Only hide if we have no data at all
+    // Hide widget if no data available
     return null;
   }
 
@@ -257,7 +231,7 @@ const GoogleBusinessWidget = () => {
             textTransform: 'uppercase',
             letterSpacing: '0.3px'
           }}>
-            {businessData.isOpen === null ? 'Status desconhecido' : businessData.isOpen ? 'ABERTO' : 'FECHADO'}
+            {businessData.isOpen === null ? 'N/D' : businessData.isOpen ? 'ABERTO' : 'FECHADO'}
           </span>
         </div>
       </div>
