@@ -210,6 +210,8 @@ function calculateWeekOverWeek(currentTotals, prevTotals, currentUtil, prevUtil)
     netRevenue: percentChange(currentTotals.netRevenue, prevTotals.netRevenue),
     transactions: percentChange(currentTotals.transactions, prevTotals.transactions),
     totalServices: percentChange(currentTotals.totalServices, prevTotals.totalServices),
+    washServices: percentChange(currentTotals.washServices, prevTotals.washServices),
+    dryServices: percentChange(currentTotals.dryServices, prevTotals.dryServices),
     servicesPerTransaction: percentChange(currentSPT, prevSPT),
     utilization: currentUtil.totalUtilization > 0 && prevUtil.totalUtilization > 0
       ? currentUtil.totalUtilization - prevUtil.totalUtilization : null,
