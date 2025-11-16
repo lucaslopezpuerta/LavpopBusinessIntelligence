@@ -1,12 +1,12 @@
-// KPICards.jsx v2.1 - FIXED NEW CLIENTS CALCULATION
-// ✅ Fixed new clients count (now uses normalized CPF like NewClientsChart)
-// ✅ Enhanced brand colors (Lavpop blue #1a5a8e and green #55b03b)
+// KPICards.jsx v2.2 - ENHANCED DEBUGGING FOR NEW CLIENTS
+// ✅ Added comprehensive debugging for new clients calculation
+// ✅ Fixed date parsing to handle various formats
+// ✅ Enhanced brand colors
 // ✅ 9 cards total with WoW indicators
-// ✅ Portuguese labels
 //
 // CHANGELOG:
+// v2.2 (2025-11-15): Enhanced debugging and date parsing for new clients
 // v2.1 (2025-11-15): Fixed new clients calculation with CPF normalization
-// v2.0 (2025-11-15): Added wash, dry, new clients metrics to main KPI grid
 
 import React, { useMemo } from 'react';
 import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
@@ -32,10 +32,47 @@ function normalizeDoc(doc) {
   return cleaned;
 }
 
+/**
+ * Parse Brazilian date format DD/MM/YYYY
+ */
+function parseBrDate(dateStr) {
+  if (!dateStr) return null;
+  
+  const str = String(dateStr).trim();
+  
+  // Try DD/MM/YYYY format
+  if (str.includes('/')) {
+    const parts = str.split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+      const year = parseInt(parts[2], 10);
+      
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+  }
+  
+  // Try ISO format
+  const isoDate = new Date(str);
+  if (!isNaN(isoDate.getTime())) {
+    return isoDate;
+  }
+  
+  return null;
+}
+
 const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
-  // Calculate new clients for current week with FIXED normalization
+  // Calculate new clients for current week with ENHANCED DEBUGGING
   const newClientsData = useMemo(() => {
-    if (!salesData || salesData.length === 0) return { count: 0, weekOverWeek: null };
+    if (!salesData || salesData.length === 0) {
+      console.log('❌ No sales data available');
+      return { count: 0, weekOverWeek: null };
+    }
+
+    console.log('🔍 NEW CLIENTS CALCULATION STARTED');
+    console.log('Total sales records:', salesData.length);
 
     // Get current week boundaries (using same logic as businessMetrics)
     const currentDate = new Date();
@@ -57,37 +94,64 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     prevWeekStart.setDate(prevWeekStart.getDate() - 6);
     prevWeekStart.setHours(0, 0, 0, 0);
 
+    console.log('📅 Current week:', startSunday.toLocaleDateString('pt-BR'), '-', lastSaturday.toLocaleDateString('pt-BR'));
+    console.log('📅 Previous week:', prevWeekStart.toLocaleDateString('pt-BR'), '-', prevWeekEnd.toLocaleDateString('pt-BR'));
+
     // Track first purchase per customer with NORMALIZED CPF
     const customerFirstPurchase = {};
+    let parsedDates = 0;
+    let skippedNoCPF = 0;
+    let skippedNoDate = 0;
     
     salesData.forEach(row => {
       const dateStr = row.Data || row.data || row.date;
-      if (!dateStr) return;
+      if (!dateStr) {
+        skippedNoDate++;
+        return;
+      }
       
-      // Parse DD/MM/YYYY format
-      const [day, month, year] = dateStr.split('/');
-      const saleDate = new Date(year, month - 1, day);
+      // Parse date
+      const saleDate = parseBrDate(dateStr);
+      if (!saleDate) {
+        console.log('⚠️ Failed to parse date:', dateStr);
+        return;
+      }
+      parsedDates++;
       
-      // ✅ FIXED: Normalize CPF like NewClientsChart does
+      // Normalize CPF
       const cpf = normalizeDoc(row.Doc_Cliente || row.doc || row.cpf);
-      if (!cpf) return;
+      if (!cpf) {
+        skippedNoCPF++;
+        return;
+      }
       
       if (!customerFirstPurchase[cpf] || saleDate < customerFirstPurchase[cpf]) {
         customerFirstPurchase[cpf] = saleDate;
       }
     });
 
+    console.log('📊 Parsing stats:');
+    console.log('  - Dates parsed:', parsedDates);
+    console.log('  - Skipped (no CPF):', skippedNoCPF);
+    console.log('  - Skipped (no date):', skippedNoDate);
+    console.log('  - Total unique customers:', Object.keys(customerFirstPurchase).length);
+
     // Count new clients in each window
     let currentWeekNew = 0;
     let lastWeekNew = 0;
     
-    Object.values(customerFirstPurchase).forEach(firstDate => {
+    Object.entries(customerFirstPurchase).forEach(([cpf, firstDate]) => {
       if (firstDate >= startSunday && firstDate <= lastSaturday) {
         currentWeekNew++;
+        console.log('✅ New client this week:', cpf.slice(-4), 'on', firstDate.toLocaleDateString('pt-BR'));
       } else if (firstDate >= prevWeekStart && firstDate <= prevWeekEnd) {
         lastWeekNew++;
       }
     });
+
+    console.log('🎯 RESULTS:');
+    console.log('  - New clients this week:', currentWeekNew);
+    console.log('  - New clients last week:', lastWeekNew);
 
     // Calculate week-over-week change
     let weekOverWeekChange = null;
@@ -96,6 +160,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     } else if (currentWeekNew > 0) {
       weekOverWeekChange = 100; // If we have new clients this week but none last week
     }
+
+    console.log('  - Week-over-week change:', weekOverWeekChange ? weekOverWeekChange.toFixed(1) + '%' : 'N/A');
+    console.log('🔍 NEW CLIENTS CALCULATION COMPLETED\n');
 
     return {
       count: currentWeekNew,
