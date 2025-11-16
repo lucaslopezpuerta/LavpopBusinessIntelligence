@@ -2,10 +2,24 @@
 // Google Places API Proxy - Handles CORS restrictions
 
 exports.handler = async (event, context) => {
+  // CORS headers for all responses
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS'
+  };
+
+  // Handle preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
   // Only allow GET requests
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
@@ -16,6 +30,7 @@ exports.handler = async (event, context) => {
   if (!API_KEY) {
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: 'API key not configured' })
     };
   }
@@ -29,6 +44,7 @@ exports.handler = async (event, context) => {
     if (data.status !== 'OK') {
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: data.status, message: data.error_message })
       };
     }
@@ -37,7 +53,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'application/json',
+        ...headers,
         'Cache-Control': 'public, max-age=86400' // Cache 24 hours
       },
       body: JSON.stringify({
@@ -50,6 +66,7 @@ exports.handler = async (event, context) => {
     console.error('Error fetching Google Business data:', error);
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: 'Failed to fetch data' })
     };
   }
