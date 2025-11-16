@@ -1,7 +1,13 @@
-// Dashboard.jsx v4.0 - STREAMLINED & COMPACT
-// No scrolling required - fits single screen
-// Components moved to Customers tab: Retention, TopPerformers, NewClientsChart
-// New components: WeeklyPerformanceCards, WashDryServiceCards, NewClientsWeekCard, GoogleBusinessWidget
+// Dashboard.jsx v5.0 - STREAMLINED LAYOUT
+// ✅ All 9 KPIs in main grid (including wash, dry, new clients)
+// ✅ Individual Quick Action cards
+// ✅ Removed redundant components
+// ✅ No scrolling required - optimized for single screen
+//
+// CHANGELOG:
+// v5.0 (2025-11-15): Reorganized layout - all metrics in KPI grid, individual quick action cards
+// v4.0 (2025-11-14): Streamlined version with new components
+// v3.0 (2025-11-13): Enhanced with customer lifecycle tool
 
 import React, { useMemo } from 'react';
 import KPICards from '../components/KPICards';
@@ -9,17 +15,14 @@ import WeatherWidget from '../components/WeatherWidget_API';
 import SocialMediaWidget from '../components/SocialMediaWidget';
 import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import UrgentInsightCard from '../components/UrgentInsightCard';
-import WeeklyPerformanceCards from '../components/WeeklyPerformanceCards';
-import QuickActionsPanel from '../components/QuickActionsPanel';
+import QuickActionsCards from '../components/QuickActionsCards';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
-import WashDryServiceCards from '../components/WashDryServiceCards';
-import NewClientsWeekCard from '../components/NewClientsWeekCard';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { ExternalLink, Calendar } from 'lucide-react';
 
 const Dashboard = ({ data, onNavigate }) => {
-  // Calculate business metrics (reuse existing logic)
+  // Calculate business metrics
   const businessMetrics = useMemo(() => {
     if (!data?.sales) return null;
     try {
@@ -30,7 +33,7 @@ const Dashboard = ({ data, onNavigate }) => {
     }
   }, [data?.sales]);
 
-  // Calculate customer metrics (reuse existing logic)
+  // Calculate customer metrics
   const customerMetrics = useMemo(() => {
     if (!data?.sales || !data?.rfm) return null;
     return calculateCustomerMetrics(data.sales, data.rfm);
@@ -143,10 +146,11 @@ const Dashboard = ({ data, onNavigate }) => {
         customerMetrics={customerMetrics}
       />
 
-      {/* KPI CARDS */}
+      {/* KPI CARDS - ALL 9 METRICS */}
       <KPICards 
         businessMetrics={businessMetrics}
         customerMetrics={customerMetrics}
+        salesData={data.sales}
       />
 
       {/* MAIN CONTENT GRID */}
@@ -156,12 +160,26 @@ const Dashboard = ({ data, onNavigate }) => {
         gap: '1.5rem',
         marginBottom: '1.5rem'
       }}>
-        {/* Row 1: Weekly Performance + Quick Actions */}
-        <div style={{ gridColumn: 'span 6' }}>
-          <WeeklyPerformanceCards businessMetrics={businessMetrics} />
-        </div>
-        <div style={{ gridColumn: 'span 6' }}>
-          <QuickActionsPanel onAction={handleQuickAction} />
+        {/* Row 1: Quick Actions (Full Width) */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '1.5rem',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{ 
+              fontSize: '16px',
+              fontWeight: '700',
+              color: '#1a5a8e',
+              margin: 0,
+              marginBottom: '1rem'
+            }}>
+              Ações Rápidas
+            </h3>
+            <QuickActionsCards onAction={handleQuickAction} />
+          </div>
         </div>
 
         {/* Row 2: At-Risk Customers (Full Width) */}
@@ -171,14 +189,6 @@ const Dashboard = ({ data, onNavigate }) => {
             salesData={data.sales}
             maxRows={5}
           />
-        </div>
-
-        {/* Row 3: Wash/Dry Cards + New Clients */}
-        <div style={{ gridColumn: 'span 6' }}>
-          <WashDryServiceCards businessMetrics={businessMetrics} />
-        </div>
-        <div style={{ gridColumn: 'span 6' }}>
-          <NewClientsWeekCard salesData={data.sales} />
         </div>
       </div>
 
