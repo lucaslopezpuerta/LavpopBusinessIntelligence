@@ -1,20 +1,23 @@
-// Dashboard.jsx v5.0 - STREAMLINED LAYOUT
+// Dashboard.jsx v5.1 - STREAMLINED LAYOUT
 // ✅ All 9 KPIs in main grid (including wash, dry, new clients)
 // ✅ Individual Quick Action cards
 // ✅ Removed redundant components
 // ✅ No scrolling required - optimized for single screen
-//
+// ✅ Fixed date formatting (already in DD/MM/YYYY)
+// ✅ Fixed alert panel width
+// ✅ Improved layout
+
 // CHANGELOG:
 // v5.0 (2025-11-15): Reorganized layout - all metrics in KPI grid, individual quick action cards
 // v4.0 (2025-11-14): Streamlined version with new components
 // v3.0 (2025-11-13): Enhanced with customer lifecycle tool
 
-// Dashboard.jsx v5.0
+// Dashboard.jsx v5.1 - FIXED
+
 import React, { useMemo } from 'react';
 import KPICards from '../components/KPICards';
 import WeatherWidget from '../components/WeatherWidget_API';
 import SocialMediaWidget from '../components/SocialMediaWidget';
-// import GoogleBusinessWidget from '../components/GoogleBusinessWidget'; // DISABLED - uncomment when API configured
 import UrgentInsightCard from '../components/UrgentInsightCard';
 import QuickActionsCards from '../components/QuickActionsCards';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
@@ -69,10 +72,9 @@ const Dashboard = ({ data, onNavigate }) => {
     );
   }
 
-  const formatDate = (dateStr) => {
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
-  };
+  // ✅ FIXED: Dates are already in DD/MM/YYYY format from businessMetrics
+  const startDate = businessMetrics.windows.weekly.startDate;
+  const endDate = businessMetrics.windows.weekly.endDate;
 
   return (
     <div style={{ 
@@ -100,11 +102,11 @@ const Dashboard = ({ data, onNavigate }) => {
         }}>
           <div>
             <h1 style={{
-              fontSize: '32px',
+              fontSize: '36px',
               fontWeight: '700',
               color: '#1a5a8e',
-              marginBottom: '0.5rem',
-              margin: 0
+              margin: 0,
+              marginBottom: '0.5rem'
             }}>
               Dashboard Lavpop
             </h1>
@@ -113,11 +115,10 @@ const Dashboard = ({ data, onNavigate }) => {
               color: '#6b7280',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              marginTop: '0.5rem'
+              gap: '0.5rem'
             }}>
               <Calendar style={{ width: '16px', height: '16px' }} />
-              Semana de {formatDate(businessMetrics.windows.weekly.startDate)} - {formatDate(businessMetrics.windows.weekly.endDate)}
+              Semana de {startDate} - {endDate}
             </div>
           </div>
 
@@ -132,17 +133,17 @@ const Dashboard = ({ data, onNavigate }) => {
               instagramFollowers={1200} 
               facebookFollowers={850}
             />
-            {/* <GoogleBusinessWidget /> */}
-            {/* Google Widget disabled - uncomment when API configured */}
           </div>
         </div>
       </div>
 
-      {/* URGENT INSIGHT */}
-      <UrgentInsightCard 
-        businessMetrics={businessMetrics}
-        customerMetrics={customerMetrics}
-      />
+      {/* URGENT INSIGHT - ✅ FIXED: Added max-width */}
+      <div style={{ maxWidth: '100%', marginBottom: '1.5rem' }}>
+        <UrgentInsightCard 
+          businessMetrics={businessMetrics}
+          customerMetrics={customerMetrics}
+        />
+      </div>
 
       {/* 9 KPI CARDS */}
       <KPICards 
@@ -205,106 +206,35 @@ const Dashboard = ({ data, onNavigate }) => {
           gap: '1rem',
           flexWrap: 'wrap'
         }}>
-          <a
-            href="https://admin.mercadopago.com.br"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '13px',
-              color: '#1a5a8e',
-              textDecoration: 'none',
-              fontWeight: '600',
-              transition: 'color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#55b03b'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#1a5a8e'}
-          >
-            <ExternalLink style={{ width: '14px', height: '14px' }} />
-            Mercado Pago
-          </a>
-          <a
-            href="https://app.asaas.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '13px',
-              color: '#1a5a8e',
-              textDecoration: 'none',
-              fontWeight: '600',
-              transition: 'color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#55b03b'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#1a5a8e'}
-          >
-            <ExternalLink style={{ width: '14px', height: '14px' }} />
-            Asaas
-          </a>
-          <a
-            href="https://console.twilio.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '13px',
-              color: '#1a5a8e',
-              textDecoration: 'none',
-              fontWeight: '600',
-              transition: 'color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#55b03b'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#1a5a8e'}
-          >
-            <ExternalLink style={{ width: '14px', height: '14px' }} />
-            Twilio SMS
-          </a>
-          <a
-            href="https://drive.google.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '13px',
-              color: '#1a5a8e',
-              textDecoration: 'none',
-              fontWeight: '600',
-              transition: 'color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#55b03b'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#1a5a8e'}
-          >
-            <ExternalLink style={{ width: '14px', height: '14px' }} />
-            Google Drive
-          </a>
-          <a
-            href="https://maps.app.goo.gl/VwNojjvheJrXZeRd8"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '13px',
-              color: '#1a5a8e',
-              textDecoration: 'none',
-              fontWeight: '600',
-              transition: 'color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#55b03b'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#1a5a8e'}
-          >
-            <ExternalLink style={{ width: '14px', height: '14px' }} />
-            Google Maps
-          </a>
+          {[
+            { href: 'https://admin.mercadopago.com.br', label: 'Mercado Pago' },
+            { href: 'https://app.asaas.com', label: 'Asaas' },
+            { href: 'https://console.twilio.com', label: 'Twilio SMS' },
+            { href: 'https://drive.google.com', label: 'Google Drive' },
+            { href: 'https://maps.app.goo.gl/VwNojjvheJrXZeRd8', label: 'Google Maps' }
+          ].map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '13px',
+                color: '#1a5a8e',
+                textDecoration: 'none',
+                fontWeight: '600',
+                transition: 'color 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#55b03b'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#1a5a8e'}
+            >
+              <ExternalLink style={{ width: '14px', height: '14px' }} />
+              {link.label}
+            </a>
+          ))}
         </div>
       </div>
     </div>
