@@ -1,12 +1,13 @@
-// AtRiskCustomersTable.jsx v2.2 - FIXED RISK % DISPLAY & CENTERED ALIGNMENT
-// ✅ Fixed risk percentage display (now uses returnLikelihood)
-// ✅ All columns center-aligned
-// ✅ Portuguese labels
-// ✅ Click-to-view-details functionality
+// AtRiskCustomersTable.jsx v2.3 - ULTRA COMPACT & ENHANCED DESIGN
+// ✅ Reduced padding and spacing for compactness
+// ✅ Removed footer tip to save space
+// ✅ Enhanced visual design with gradients
+// ✅ Center-aligned columns
+// ✅ Fixed risk percentage display
 //
 // CHANGELOG:
+// v2.3 (2025-11-15): Ultra compact design, removed footer, enhanced visuals
 // v2.2 (2025-11-15): Fixed risk % display, center-aligned all columns
-// v2.1 (2025-11-15): Added Portuguese labels, maxRows prop support
 
 import React, { useState } from 'react';
 import { Phone, MessageCircle, AlertTriangle } from 'lucide-react';
@@ -28,7 +29,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '1.5rem',
+        padding: '1rem',
         border: '1px solid #e5e7eb',
         textAlign: 'center',
         color: '#6b7280'
@@ -61,7 +62,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
   };
 
   const handleCall = (e, phone) => {
-    e.stopPropagation(); // Prevent row click
+    e.stopPropagation();
     const cleaned = formatPhone(phone);
     if (cleaned) {
       window.location.href = `tel:+55${cleaned}`;
@@ -69,7 +70,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
   };
 
   const handleWhatsApp = (e, phone) => {
-    e.stopPropagation(); // Prevent row click
+    e.stopPropagation();
     const cleaned = formatPhone(phone);
     if (cleaned) {
       window.open(`https://web.whatsapp.com/send?phone=55${cleaned}`, '_blank');
@@ -92,12 +93,9 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
     }
   };
 
-  // ✅ FIXED: Now uses returnLikelihood instead of churnLikelihood
   const getRiskBadge = (riskLevel, returnLikelihood) => {
     const color = getRiskColor(riskLevel);
     const translatedLevel = translateRiskLevel(riskLevel);
-    
-    // Calculate churn likelihood as inverse of return likelihood
     const churnPercent = returnLikelihood !== undefined && returnLikelihood !== null 
       ? Math.round(100 - returnLikelihood) 
       : 0;
@@ -107,16 +105,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
         display: 'inline-flex',
         alignItems: 'center',
         gap: '0.25rem',
-        padding: '4px 10px',
+        padding: '3px 8px',
         borderRadius: '12px',
         background: `${color}15`,
         color: color,
-        fontSize: '11px',
+        fontSize: '10px',
         fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: '0.5px'
       }}>
-        <AlertTriangle style={{ width: '12px', height: '12px' }} />
+        <AlertTriangle style={{ width: '11px', height: '11px' }} />
         {translatedLevel} ({churnPercent}%)
       </div>
     );
@@ -127,19 +125,19 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '1.5rem',
+        padding: '1rem',
         border: '1px solid #e5e7eb',
         textAlign: 'center'
       }}>
         <div style={{
           color: COLORS.primary,
-          fontSize: '16px',
+          fontSize: '15px',
           fontWeight: '600',
-          marginBottom: '0.5rem'
+          marginBottom: '0.25rem'
         }}>
           🎉 Ótimas notícias!
         </div>
-        <div style={{ color: COLORS.gray, fontSize: '14px' }}>
+        <div style={{ color: COLORS.gray, fontSize: '13px' }}>
           Nenhum cliente em risco detectado
         </div>
       </div>
@@ -151,16 +149,22 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '1.5rem',
+        padding: '1rem',
         border: '1px solid #e5e7eb',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
       }}>
-        {/* Header */}
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <AlertTriangle style={{ width: '20px', height: '20px', color: COLORS.amber }} />
+        {/* Compact Header with Gradient */}
+        <div style={{
+          marginBottom: '0.75rem',
+          padding: '0.75rem',
+          background: `linear-gradient(135deg, ${COLORS.amber}15 0%, ${COLORS.red}15 100%)`,
+          borderRadius: '8px',
+          border: `1px solid ${COLORS.amber}30`
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertTriangle style={{ width: '18px', height: '18px', color: COLORS.amber }} />
             <h3 style={{ 
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: '700',
               color: COLORS.primary,
               margin: 0
@@ -169,66 +173,68 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
             </h3>
           </div>
           <p style={{
-            fontSize: '13px',
+            fontSize: '11px',
             color: COLORS.gray,
-            margin: 0
+            margin: 0,
+            marginTop: '0.25rem',
+            marginLeft: '26px'
           }}>
-            Clientes de alto valor que precisam de atenção imediata • Clique para detalhes
+            Clientes de alto valor • Clique para detalhes
           </p>
         </div>
 
-        {/* Table */}
+        {/* Compact Table */}
         <div style={{ overflowX: 'auto' }}>
           <table style={{ 
             width: '100%', 
             borderCollapse: 'collapse',
-            fontSize: '14px'
+            fontSize: '13px'
           }}>
             <thead>
               <tr style={{ 
                 borderBottom: '2px solid #e5e7eb'
               }}>
                 <th style={{ 
-                  padding: '12px 8px', 
+                  padding: '8px 6px', 
                   fontWeight: '600', 
                   color: COLORS.gray, 
-                  fontSize: '12px',
+                  fontSize: '11px',
                   textAlign: 'center'
                 }}>
                   CLIENTE
                 </th>
                 <th style={{ 
-                  padding: '12px 8px', 
+                  padding: '8px 6px', 
                   fontWeight: '600', 
                   color: COLORS.gray, 
-                  fontSize: '12px',
+                  fontSize: '11px',
                   textAlign: 'center'
                 }}>
-                  STATUS DE RISCO
+                  STATUS
                 </th>
                 <th style={{ 
-                  padding: '12px 8px', 
+                  padding: '8px 6px', 
                   fontWeight: '600', 
                   color: COLORS.gray, 
-                  fontSize: '12px',
+                  fontSize: '11px',
                   textAlign: 'center'
                 }}>
-                  TOTAL GASTO
+                  TOTAL
                 </th>
                 <th style={{ 
-                  padding: '12px 8px', 
+                  padding: '8px 6px', 
                   fontWeight: '600', 
                   color: COLORS.gray, 
-                  fontSize: '12px', 
+                  fontSize: '11px', 
                   textAlign: 'center'
                 }}>
-                  DIAS INATIVO
+                  DIAS
                 </th>
                 <th style={{ 
-                  padding: '12px 8px', 
+                  padding: '8px 6px', 
                   fontWeight: '600', 
                   color: COLORS.gray, 
-                  fontSize: '12px', 
+                  fontSize: '11px', 
                   textAlign: 'center'
                 }}>
                   AÇÕES
@@ -244,59 +250,62 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                     transition: 'background 0.2s',
                     cursor: 'pointer'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = `${COLORS.primary}08`;
+                  }}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                   onClick={() => setSelectedCustomer(customer)}
                 >
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                    <div style={{ fontWeight: '600', color: '#111827', marginBottom: '2px' }}>
+                  <td style={{ padding: '8px 6px', textAlign: 'center' }}>
+                    <div style={{ fontWeight: '600', color: '#111827', fontSize: '12px', marginBottom: '2px' }}>
                       {customer.name || 'Cliente sem nome'}
                     </div>
                     {customer.phone && (
-                      <div style={{ fontSize: '12px', color: COLORS.gray }}>
+                      <div style={{ fontSize: '10px', color: COLORS.gray }}>
                         {customer.phone}
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                  <td style={{ padding: '8px 6px', textAlign: 'center' }}>
                     {getRiskBadge(customer.riskLevel, customer.returnLikelihood)}
                   </td>
                   <td style={{ 
-                    padding: '12px 8px', 
+                    padding: '8px 6px', 
                     textAlign: 'center', 
                     fontWeight: '600', 
-                    color: COLORS.primary 
+                    color: COLORS.primary,
+                    fontSize: '12px'
                   }}>
                     {formatCurrency(customer.netTotal || 0)}
                   </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                  <td style={{ padding: '8px 6px', textAlign: 'center' }}>
                     <span style={{
-                      padding: '4px 8px',
+                      padding: '3px 6px',
                       borderRadius: '6px',
                       background: '#f3f4f6',
-                      fontSize: '13px',
+                      fontSize: '11px',
                       fontWeight: '600',
                       color: COLORS.gray
                     }}>
                       {customer.daysSinceLastVisit || 0}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                  <td style={{ padding: '8px 6px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
                       {customer.phone && formatPhone(customer.phone) && (
                         <>
                           <button
                             onClick={(e) => handleCall(e, customer.phone)}
                             style={{
-                              padding: '6px 10px',
+                              padding: '5px 8px',
                               borderRadius: '6px',
                               border: '1px solid #e5e7eb',
                               background: 'white',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '12px',
+                              gap: '3px',
+                              fontSize: '11px',
                               fontWeight: '600',
                               color: COLORS.primary,
                               transition: 'all 0.2s'
@@ -312,21 +321,21 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                               e.currentTarget.style.borderColor = '#e5e7eb';
                             }}
                           >
-                            <Phone style={{ width: '14px', height: '14px' }} />
+                            <Phone style={{ width: '12px', height: '12px' }} />
                             Ligar
                           </button>
                           <button
                             onClick={(e) => handleWhatsApp(e, customer.phone)}
                             style={{
-                              padding: '6px 10px',
+                              padding: '5px 8px',
                               borderRadius: '6px',
                               border: '1px solid #e5e7eb',
                               background: 'white',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '12px',
+                              gap: '3px',
+                              fontSize: '11px',
                               fontWeight: '600',
                               color: '#25D366',
                               transition: 'all 0.2s'
@@ -342,7 +351,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                               e.currentTarget.style.borderColor = '#e5e7eb';
                             }}
                           >
-                            <MessageCircle style={{ width: '14px', height: '14px' }} />
+                            <MessageCircle style={{ width: '12px', height: '12px' }} />
                             WhatsApp
                           </button>
                         </>
@@ -353,18 +362,6 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
               ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Footer Info */}
-        <div style={{
-          marginTop: '1rem',
-          padding: '0.75rem',
-          background: '#f9fafb',
-          borderRadius: '8px',
-          fontSize: '12px',
-          color: COLORS.gray
-        }}>
-          💡 <strong>Dica:</strong> Clique em qualquer cliente para ver histórico completo e sugestões de reativação
         </div>
       </div>
 
