@@ -1,25 +1,24 @@
-// Dashboard.jsx v5.2 - OPTIMIZED SINGLE-SCREEN LAYOUT
-// ✅ Compact urgent insight card (single line)
-// ✅ Smaller quick action cards (icon-first design)
-// ✅ Enhanced brand colors (Lavpop blue #1a5a8e and green #55b03b)
-// ✅ No scrolling required on 1080p screens
-// ✅ Brand-focused header with gradient accents
+// Dashboard.jsx v5.3
+// ✅ Ultra compact layout - no scrolling on 1080p
+// ✅ Restored colorful QuickActionsCards design
+// ✅ Compact AtRiskCustomersTable with enhanced design
+// ✅ Enhanced brand colors with gradient header
+// ✅ All components optimized for space
 //
 // CHANGELOG:
-// v5.2 (2025-11-15): Optimized for single-screen view, enhanced brand colors, compact components
+// v5.3 (2025-11-15): Final optimization - restored QuickActions design, ultra compact table
+// v5.2 (2025-11-15): Optimized for single-screen view, enhanced brand colors
 // v5.1 (2025-11-15): Streamlined layout with 9 KPIs
-// v5.0 (2025-11-15): Reorganized layout with all metrics in KPI grid
 
 import React, { useMemo } from 'react';
 import KPICards from '../components/KPICards';
 import WeatherWidget from '../components/WeatherWidget_API';
 import SocialMediaWidget from '../components/SocialMediaWidget';
-import UrgentInsightCard from '../components/UrgentInsightCard';
 import QuickActionsCards from '../components/QuickActionsCards';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
-import { ExternalLink, Calendar, BarChart3, Users, Settings } from 'lucide-react';
+import { ExternalLink, Calendar } from 'lucide-react';
 
 const COLORS = {
   primary: '#1a5a8e',
@@ -55,6 +54,11 @@ const Dashboard = ({ data, onNavigate }) => {
       case 'operations':
         onNavigate?.('operations');
         break;
+      case 'schedule':
+      case 'campaigns':
+      case 'settings':
+        console.log('Action:', actionId, '(coming soon)');
+        break;
       default:
         console.log('Action:', actionId);
     }
@@ -78,7 +82,7 @@ const Dashboard = ({ data, onNavigate }) => {
   const startDate = businessMetrics.windows.weekly.startDate;
   const endDate = businessMetrics.windows.weekly.endDate;
 
-  // Get the urgent insight from UrgentInsightCard logic
+  // Get the urgent insight
   const getTopInsight = () => {
     const weekly = businessMetrics.weekly || {};
     const utilization = Math.round(weekly.totalUtilization || 0);
@@ -111,7 +115,7 @@ const Dashboard = ({ data, onNavigate }) => {
 
   return (
     <div style={{ 
-      padding: '1rem 1.5rem', 
+      padding: '0.875rem 1.25rem', 
       maxWidth: '1600px', 
       margin: '0 auto',
       background: '#f9fafb',
@@ -120,9 +124,9 @@ const Dashboard = ({ data, onNavigate }) => {
       {/* COMPACT HEADER with Brand Gradient */}
       <div style={{
         background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)`,
-        borderRadius: '16px',
-        padding: '1.25rem 1.5rem',
-        marginBottom: '1rem',
+        borderRadius: '14px',
+        padding: '1rem 1.25rem',
+        marginBottom: '0.875rem',
         boxShadow: '0 4px 12px rgba(26, 90, 142, 0.15)',
         border: '1px solid rgba(255, 255, 255, 0.1)'
       }}>
@@ -131,11 +135,11 @@ const Dashboard = ({ data, onNavigate }) => {
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '1rem'
+          gap: '0.875rem'
         }}>
           <div>
             <h1 style={{
-              fontSize: '32px',
+              fontSize: '28px',
               fontWeight: '700',
               color: 'white',
               margin: 0,
@@ -145,13 +149,13 @@ const Dashboard = ({ data, onNavigate }) => {
               Dashboard Lavpop
             </h1>
             <div style={{
-              fontSize: '13px',
+              fontSize: '12px',
               color: 'rgba(255, 255, 255, 0.9)',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.4rem'
             }}>
-              <Calendar style={{ width: '14px', height: '14px' }} />
+              <Calendar style={{ width: '13px', height: '13px' }} />
               Semana de {startDate} - {endDate}
             </div>
           </div>
@@ -159,7 +163,7 @@ const Dashboard = ({ data, onNavigate }) => {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
+            gap: '0.65rem',
             flexWrap: 'wrap'
           }}>
             <WeatherWidget />
@@ -171,41 +175,41 @@ const Dashboard = ({ data, onNavigate }) => {
         </div>
       </div>
 
-      {/* COMPACT URGENT INSIGHT - Single Line */}
+      {/* ULTRA COMPACT URGENT INSIGHT - Single Line */}
       <div style={{
         background: 'white',
-        borderRadius: '12px',
-        padding: '0.75rem 1.25rem',
-        marginBottom: '1rem',
+        borderRadius: '10px',
+        padding: '0.65rem 1rem',
+        marginBottom: '0.875rem',
         border: `2px solid ${topInsight.color}`,
         boxShadow: `0 2px 8px ${topInsight.color}20`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '1rem',
+        gap: '0.875rem',
         flexWrap: 'wrap'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <div style={{
-            width: '8px',
-            height: '8px',
+            width: '7px',
+            height: '7px',
             borderRadius: '50%',
             background: topInsight.color,
             animation: 'pulse 2s infinite'
           }} />
           <div>
             <span style={{
-              fontSize: '11px',
+              fontSize: '10px',
               fontWeight: '700',
               color: COLORS.gray,
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
-              marginRight: '0.75rem'
+              marginRight: '0.65rem'
             }}>
               ALERTA URGENTE
             </span>
             <span style={{
-              fontSize: '15px',
+              fontSize: '14px',
               fontWeight: '700',
               color: topInsight.color
             }}>
@@ -214,7 +218,7 @@ const Dashboard = ({ data, onNavigate }) => {
           </div>
         </div>
         <div style={{
-          fontSize: '13px',
+          fontSize: '12px',
           color: COLORS.gray,
           fontWeight: '500'
         }}>
@@ -229,153 +233,50 @@ const Dashboard = ({ data, onNavigate }) => {
         salesData={data.sales}
       />
 
-      {/* COMPACT QUICK ACTIONS - Horizontal Icons */}
+      {/* COMPACT QUICK ACTIONS - Colorful Cards Restored */}
       <div style={{
         background: 'white',
-        borderRadius: '12px',
-        padding: '1rem 1.25rem',
-        marginBottom: '1rem',
+        borderRadius: '10px',
+        padding: '0.875rem 1rem',
+        marginBottom: '0.875rem',
         border: '1px solid #e5e7eb',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
       }}>
         <h3 style={{ 
-          fontSize: '14px',
+          fontSize: '13px',
           fontWeight: '700',
           color: COLORS.primary,
           margin: 0,
-          marginBottom: '0.75rem'
+          marginBottom: '0.65rem'
         }}>
           Ações Rápidas
         </h3>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: '0.75rem'
-        }}>
-          <button
-            onClick={() => handleQuickAction('view-customers')}
-            style={{
-              padding: '0.75rem',
-              borderRadius: '10px',
-              border: '1px solid #e5e7eb',
-              background: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.2s',
-              fontSize: '13px',
-              fontWeight: '600',
-              color: COLORS.primary
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = COLORS.primary;
-              e.currentTarget.style.color = 'white';
-              e.currentTarget.style.borderColor = COLORS.primary;
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-              e.currentTarget.style.color = COLORS.primary;
-              e.currentTarget.style.borderColor = '#e5e7eb';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <Users style={{ width: '18px', height: '18px' }} />
-            Ver Clientes
-          </button>
-          
-          <button
-            onClick={() => handleQuickAction('analytics')}
-            style={{
-              padding: '0.75rem',
-              borderRadius: '10px',
-              border: '1px solid #e5e7eb',
-              background: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.2s',
-              fontSize: '13px',
-              fontWeight: '600',
-              color: COLORS.primary
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = COLORS.primary;
-              e.currentTarget.style.color = 'white';
-              e.currentTarget.style.borderColor = COLORS.primary;
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-              e.currentTarget.style.color = COLORS.primary;
-              e.currentTarget.style.borderColor = '#e5e7eb';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <BarChart3 style={{ width: '18px', height: '18px' }} />
-            Análises
-          </button>
-          
-          <button
-            onClick={() => handleQuickAction('operations')}
-            style={{
-              padding: '0.75rem',
-              borderRadius: '10px',
-              border: '1px solid #e5e7eb',
-              background: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.2s',
-              fontSize: '13px',
-              fontWeight: '600',
-              color: COLORS.primary
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = COLORS.primary;
-              e.currentTarget.style.color = 'white';
-              e.currentTarget.style.borderColor = COLORS.primary;
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-              e.currentTarget.style.color = COLORS.primary;
-              e.currentTarget.style.borderColor = '#e5e7eb';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <Settings style={{ width: '18px', height: '18px' }} />
-            Operações
-          </button>
-        </div>
+        <QuickActionsCards onAction={handleQuickAction} />
       </div>
 
-      {/* AT-RISK CUSTOMERS */}
+      {/* ULTRA COMPACT AT-RISK CUSTOMERS */}
       <AtRiskCustomersTable 
         customerMetrics={customerMetrics}
         salesData={data.sales}
         maxRows={5}
       />
 
-      {/* COMPACT FOOTER */}
+      {/* ULTRA COMPACT FOOTER */}
       <div style={{
         background: 'white',
-        borderRadius: '12px',
+        borderRadius: '10px',
         border: '1px solid #e5e7eb',
-        padding: '0.75rem 1.25rem',
-        marginTop: '1rem',
+        padding: '0.65rem 1rem',
+        marginTop: '0.875rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '0.75rem',
+        gap: '0.65rem',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
       }}>
         <div style={{
-          fontSize: '12px',
+          fontSize: '11px',
           color: COLORS.gray,
           fontWeight: '500'
         }}>
@@ -383,15 +284,15 @@ const Dashboard = ({ data, onNavigate }) => {
         </div>
         <div style={{
           display: 'flex',
-          gap: '1rem',
+          gap: '0.875rem',
           flexWrap: 'wrap'
         }}>
           {[
             { href: 'https://admin.mercadopago.com.br', label: 'Mercado Pago' },
             { href: 'https://app.asaas.com', label: 'Asaas' },
-            { href: 'https://console.twilio.com', label: 'Twilio SMS' },
-            { href: 'https://drive.google.com', label: 'Google Drive' },
-            { href: 'https://maps.app.goo.gl/VwNojjvheJrXZeRd8', label: 'Google Maps' }
+            { href: 'https://console.twilio.com', label: 'Twilio' },
+            { href: 'https://drive.google.com', label: 'Drive' },
+            { href: 'https://maps.app.goo.gl/VwNojjvheJrXZeRd8', label: 'Maps' }
           ].map((link) => (
             <a
               key={link.label}
@@ -401,8 +302,8 @@ const Dashboard = ({ data, onNavigate }) => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.35rem',
-                fontSize: '12px',
+                gap: '0.3rem',
+                fontSize: '11px',
                 color: COLORS.primary,
                 textDecoration: 'none',
                 fontWeight: '600',
@@ -411,7 +312,7 @@ const Dashboard = ({ data, onNavigate }) => {
               onMouseEnter={(e) => e.currentTarget.style.color = COLORS.accent}
               onMouseLeave={(e) => e.currentTarget.style.color = COLORS.primary}
             >
-              <ExternalLink style={{ width: '12px', height: '12px' }} />
+              <ExternalLink style={{ width: '11px', height: '11px' }} />
               {link.label}
             </a>
           ))}
