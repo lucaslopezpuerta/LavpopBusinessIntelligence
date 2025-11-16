@@ -1,54 +1,31 @@
-// QuickActionsCards.jsx v1.1 - COMPACT VERSION
-// ✅ Maintained original colorful design
-// ✅ Reduced padding for compactness
-// ✅ Smaller icons and text
-// ✅ All 6 action cards preserved
+// QuickActionsCards.jsx v2.0 - ONLY UTILITY ACTIONS
+// ✅ Only 3 cards: Agenda, Campanhas, Configurações
+// ✅ Removed duplicate navigation (Ver Clientes, Análises, Operações)
+// ✅ Larger, more prominent design
+// ✅ Brand colors for better integration
 //
 // CHANGELOG:
-// v1.1 (2025-11-15): Compact version - smaller padding, icons, text
-// v1.0 (2025-11-14): Initial version with 6 action cards
+// v2.0 (2025-11-15): Removed navigation duplicates, kept only utility actions
 
 import React from 'react';
-import { Users, TrendingUp, Gauge, Calendar, MessageSquare, Settings } from 'lucide-react';
+import { Calendar, MessageSquare, Settings } from 'lucide-react';
 
 const COLORS = {
   primary: '#1a5a8e',
   accent: '#55b03b',
+  purple: '#8b5cf6',
+  pink: '#ec4899',
   gray: '#6b7280'
 };
 
 const QuickActionsCards = ({ onAction }) => {
   const actions = [
     {
-      id: 'view-customers',
-      label: 'Ver Clientes',
-      description: 'Gestão de clientes',
-      icon: Users,
-      color: COLORS.primary,
-      bgColor: '#e3f2fd'
-    },
-    {
-      id: 'analytics',
-      label: 'Análises',
-      description: 'Tendências e insights',
-      icon: TrendingUp,
-      color: COLORS.accent,
-      bgColor: '#dcfce7'
-    },
-    {
-      id: 'operations',
-      label: 'Operações',
-      description: 'Desempenho de máquinas',
-      icon: Gauge,
-      color: '#f59e0b',
-      bgColor: '#fef3c7'
-    },
-    {
       id: 'schedule',
       label: 'Agenda',
       description: 'Manutenções e tarefas',
       icon: Calendar,
-      color: '#8b5cf6',
+      color: COLORS.purple,
       bgColor: '#ede9fe'
     },
     {
@@ -56,7 +33,7 @@ const QuickActionsCards = ({ onAction }) => {
       label: 'Campanhas',
       description: 'Marketing e SMS',
       icon: MessageSquare,
-      color: '#ec4899',
+      color: COLORS.pink,
       bgColor: '#fce7f3'
     },
     {
@@ -72,8 +49,8 @@ const QuickActionsCards = ({ onAction }) => {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-      gap: '0.75rem'
+      gridTemplateColumns: 'repeat(3, 1fr)',
+      gap: '0.875rem'
     }}>
       {actions.map((action) => {
         const Icon = action.icon;
@@ -86,19 +63,19 @@ const QuickActionsCards = ({ onAction }) => {
               background: 'white',
               borderRadius: '10px',
               border: '1px solid #e5e7eb',
-              padding: '0.875rem',
+              padding: '1rem',
               cursor: 'pointer',
               transition: 'all 0.2s',
               textAlign: 'center',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.625rem'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = action.bgColor;
               e.currentTarget.style.borderColor = action.color;
-              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
             }}
             onMouseLeave={(e) => {
@@ -109,28 +86,28 @@ const QuickActionsCards = ({ onAction }) => {
             }}
           >
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '48px',
+              height: '48px',
               borderRadius: '10px',
               background: action.bgColor,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <Icon style={{ width: '20px', height: '20px', color: action.color }} />
+              <Icon style={{ width: '24px', height: '24px', color: action.color }} />
             </div>
 
             <div>
               <div style={{
-                fontSize: '13px',
+                fontSize: '14px',
                 fontWeight: '700',
                 color: '#111827',
-                marginBottom: '0.15rem'
+                marginBottom: '0.2rem'
               }}>
                 {action.label}
               </div>
               <div style={{
-                fontSize: '10px',
+                fontSize: '11px',
                 color: COLORS.gray,
                 fontWeight: '500'
               }}>
