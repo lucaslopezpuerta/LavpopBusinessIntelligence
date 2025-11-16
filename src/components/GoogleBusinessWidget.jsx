@@ -10,10 +10,8 @@ const GOOGLE_BUSINESS_CONFIG = {
   // Cache duration (24 hours)
   CACHE_DURATION: 24 * 60 * 60 * 1000,
   
-  // Serverless function endpoint
-  // Netlify: /.netlify/functions/google-business
-  // Vercel: /api/google-business
-  API_ENDPOINT: '/.netlify/functions/google-business', // ← Change if using Vercel
+  // Serverless function endpoint - FULL URL for GitHub Pages
+  API_ENDPOINT: 'https://wondrous-medovik-7f51be.netlify.app/.netlify/functions/google-business',
   
   // Google Maps link (fallback)
   MAPS_URL: 'https://maps.app.goo.gl/VwNojjvheJrXZeRd8'
@@ -75,6 +73,19 @@ const GoogleBusinessWidget = () => {
 
       // Call serverless function (no CORS issues!)
       const response = await fetch(GOOGLE_BUSINESS_CONFIG.API_ENDPOINT);
+      
+      // If 404, function not deployed yet - hide widget gracefully
+      if (response.status === 404) {
+        console.warn('Google Business function not deployed yet. Widget disabled.');
+        setBusinessData({
+          rating: null,
+          totalReviews: null,
+          isOpen: null,
+          loading: false,
+          error: 'Function not deployed'
+        });
+        return;
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
