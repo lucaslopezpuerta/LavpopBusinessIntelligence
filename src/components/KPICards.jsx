@@ -1,16 +1,16 @@
-// KPICards.jsx v3.0 - RESPONSIVE GRID + BOTTOM-RIGHT BADGES
-// ✅ WoW badges moved to bottom-right (no title overlap)
-// ✅ Responsive grid: 9 cols (ultra-wide), 3x3 (1080p), 1 col (mobile)
-// ✅ All font sizes consistent and optimized
-// ✅ Perfect spacing for compact layout
+// KPICards.jsx v3.1 - FIXED NEW CUSTOMERS WOW CALCULATION
+// ✅ Uses shared date windows from businessMetrics (consistent with other KPIs)
+// ✅ WoW badges in bottom-right (no overlap)
+// ✅ Responsive grid with media queries
+// ✅ All font sizes consistent
 //
 // CHANGELOG:
-// v3.0 (2025-11-16): Responsive grid + bottom-right badges, no overlap
-// v2.4 (2025-11-15): Perfect font consistency, reduced sizes
-// v2.3 (2025-11-15): Fixed date field to include Data_Hora
+// v3.1 (2025-11-16): Fixed New Customers WoW to use shared date windows
+// v3.0 (2025-11-16): Responsive grid + bottom-right badges
+// v2.4 (2025-11-15): Perfect font consistency
 
 import React, { useMemo } from 'react';
-import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, DollarSign, WashingMachine, RefreshCw, Percent } from 'lucide-react';
+import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 const COLORS = {
@@ -33,27 +33,13 @@ function normalizeDoc(doc) {
 
 const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
   const newClientsData = useMemo(() => {
-    if (!salesData || salesData.length === 0) {
+    if (!salesData || salesData.length === 0 || !businessMetrics?.windows) {
       return { count: 0, weekOverWeek: null };
     }
 
-    const currentDate = new Date();
-    let lastSaturday = new Date(currentDate);
-    const daysFromSaturday = (currentDate.getDay() + 1) % 7;
-    lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
-    lastSaturday.setHours(23, 59, 59, 999);
-    
-    let startSunday = new Date(lastSaturday);
-    startSunday.setDate(startSunday.getDate() - 6);
-    startSunday.setHours(0, 0, 0, 0);
-
-    let prevWeekEnd = new Date(startSunday);
-    prevWeekEnd.setDate(prevWeekEnd.setDate() - 1);
-    prevWeekEnd.setHours(23, 59, 59, 999);
-    
-    let prevWeekStart = new Date(prevWeekEnd);
-    prevWeekStart.setDate(prevWeekStart.getDate() - 6);
-    prevWeekStart.setHours(0, 0, 0, 0);
+    // ✅ USE SAME DATE WINDOWS AS ALL OTHER KPIS
+    const currentWeek = businessMetrics.windows.weekly;
+    const previousWeek = businessMetrics.windows.previousWeekly;
 
     const customerFirstPurchase = {};
     
@@ -76,9 +62,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     let lastWeekNew = 0;
     
     Object.values(customerFirstPurchase).forEach(firstDate => {
-      if (firstDate >= startSunday && firstDate <= lastSaturday) {
+      if (firstDate >= currentWeek.start && firstDate <= currentWeek.end) {
         currentWeekNew++;
-      } else if (firstDate >= prevWeekStart && firstDate <= prevWeekEnd) {
+      } else if (firstDate >= previousWeek.start && firstDate <= previousWeek.end) {
         lastWeekNew++;
       }
     });
@@ -94,7 +80,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       count: currentWeekNew,
       weekOverWeek: weekOverWeekChange
     };
-  }, [salesData]);
+  }, [salesData, businessMetrics?.windows]);
 
   if (!businessMetrics || !customerMetrics) {
     return (
@@ -169,7 +155,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       value: formatCurrency(weekly.netRevenue || 0),
       trend: getTrendData(wow.netRevenue),
       subtitle: 'Esta semana',
-      icon: DollarSign,
+      icon: Activity,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
     },
@@ -179,7 +165,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       value: formatNumber(weekly.totalServices || 0),
       trend: getTrendData(wow.totalServices),
       subtitle: 'Esta semana',
-      icon: RefreshCw,
+      icon: Activity,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
     },
@@ -189,7 +175,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       value: `${Math.round(weekly.totalUtilization || 0)}%`,
       trend: getTrendData(wow.utilization),
       subtitle: 'Esta semana',
-      icon: Percent,
+      icon: Flame,
       color: COLORS.amber,
       iconBg: '#fef3c7'
     },
@@ -199,7 +185,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       value: formatNumber(washCount),
       subtitle: `${washPercent}% do total`,
       trend: getTrendData(wow.washServices),
-      icon: WashingMachine,
+      icon: Droplet,
       color: COLORS.blue,
       iconBg: '#dbeafe'
     },
