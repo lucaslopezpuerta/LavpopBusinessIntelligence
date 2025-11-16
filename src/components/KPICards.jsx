@@ -1,19 +1,92 @@
-// KPICards.jsx .0 - ENHANCED VERSION
-// Portuguese labels, prominent WoW indicators, brand colors
-// Reuses businessMetrics and customerMetrics calculations
+// KPICards.jsx v2.0 - ENHANCED WITH ALL METRICS
+// ✅ Added Wash, Dry, and New Clients cards
+// ✅ 9 cards total in responsive grid
+// ✅ Portuguese labels, prominent WoW indicators, brand colors
+//
+// CHANGELOG:
+// v2.0 (2025-11-15): Added wash, dry, new clients metrics to main KPI grid
+// v1.0 (2025-11-14): Initial version with 6 core KPIs
 
-import React from 'react';
-import { Activity, Users, AlertCircle, Heart, Droplet, Flame } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp, TrendingDown } from 'lucide-react';
 
 const COLORS = {
   primary: '#1a5a8e',     // Lavpop blue
   accent: '#55b03b',      // Lavpop green
   red: '#dc2626',
   amber: '#f59e0b',
+  blue: '#3b82f6',
   gray: '#6b7280'
 };
 
-const KPICards = ({ businessMetrics, customerMetrics }) => {
+const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
+  // Calculate new clients for current week
+  const newClientsData = useMemo(() => {
+    if (!salesData || salesData.length === 0) return { count: 0, weekOverWeek: null };
+
+    // Get current week boundaries (using same logic as businessMetrics)
+    const currentDate = new Date();
+    let lastSaturday = new Date(currentDate);
+    const daysFromSaturday = (currentDate.getDay() + 1) % 7;
+    lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
+    lastSaturday.setHours(23, 59, 59, 999);
+    
+    let startSunday = new Date(lastSaturday);
+    startSunday.setDate(startSunday.getDate() - 6);
+    startSunday.setHours(0, 0, 0, 0);
+
+    // Previous week
+    let prevWeekEnd = new Date(startSunday);
+    prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
+    prevWeekEnd.setHours(23, 59, 59, 999);
+    
+    let prevWeekStart = new Date(prevWeekEnd);
+    prevWeekStart.setDate(prevWeekStart.getDate() - 6);
+    prevWeekStart.setHours(0, 0, 0, 0);
+
+    // Track first purchase per customer
+    const customerFirstPurchase = {};
+    
+    salesData.forEach(row => {
+      const dateStr = row.Data || row.data || row.date;
+      if (!dateStr) return;
+      
+      // Parse DD/MM/YYYY format
+      const [day, month, year] = dateStr.split('/');
+      const saleDate = new Date(year, month - 1, day);
+      
+      const cpf = row.Doc_Cliente || row.doc || row.cpf;
+      if (!cpf) return;
+      
+      if (!customerFirstPurchase[cpf] || saleDate < customerFirstPurchase[cpf]) {
+        customerFirstPurchase[cpf] = saleDate;
+      }
+    });
+
+    // Count new clients in each window
+    let currentWeekNew = 0;
+    let lastWeekNew = 0;
+    
+    Object.values(customerFirstPurchase).forEach(firstDate => {
+      if (firstDate >= startSunday && firstDate <= lastSaturday) {
+        currentWeekNew++;
+      } else if (firstDate >= prevWeekStart && firstDate <= prevWeekEnd) {
+        lastWeekNew++;
+      }
+    });
+
+    // Calculate week-over-week change
+    let weekOverWeekChange = null;
+    if (lastWeekNew > 0) {
+      weekOverWeekChange = ((currentWeekNew - lastWeekNew) / lastWeekNew) * 100;
+    }
+
+    return {
+      count: currentWeekNew,
+      weekOverWeek: weekOverWeekChange
+    };
+  }, [salesData]);
+
   if (!businessMetrics || !customerMetrics) {
     return (
       <div style={{ color: '#6b7280', padding: '1rem' }}>
@@ -74,6 +147,13 @@ const KPICards = ({ businessMetrics, customerMetrics }) => {
     };
   };
 
+  // Calculate wash/dry percentages
+  const washCount = weekly.washServices || 0;
+  const dryCount = weekly.dryServices || 0;
+  const totalServices = washCount + dryCount;
+  const washPercent = totalServices > 0 ? ((washCount / totalServices) * 100).toFixed(0) : 0;
+  const dryPercent = totalServices > 0 ? ((dryCount / totalServices) * 100).toFixed(0) : 0;
+
   const kpis = [
     {
       id: 'revenue',
@@ -101,6 +181,36 @@ const KPICards = ({ businessMetrics, customerMetrics }) => {
       icon: Flame,
       color: COLORS.amber,
       iconBg: '#fef3c7'
+    },
+    {
+      id: 'wash',
+      title: 'Lavagens',
+      value: formatNumber(washCount),
+      subtitle: `${washPercent}% do total`,
+      trend: getTrendData(wow.washServices),
+      icon: Droplet,
+      color: COLORS.blue,
+      iconBg: '#dbeafe'
+    },
+    {
+      id: 'dry',
+      title: 'Secagens',
+      value: formatNumber(dryCount),
+      subtitle: `${dryPercent}% do total`,
+      trend: getTrendData(wow.dryServices),
+      icon: Flame,
+      color: COLORS.amber,
+      iconBg: '#fef3c7'
+    },
+    {
+      id: 'newclients',
+      title: 'Novos Clientes',
+      value: formatNumber(newClientsData.count),
+      subtitle: 'Esta semana',
+      trend: getTrendData(newClientsData.weekOverWeek),
+      icon: UserPlus,
+      color: COLORS.accent,
+      iconBg: '#dcfce7'
     },
     {
       id: 'active',
