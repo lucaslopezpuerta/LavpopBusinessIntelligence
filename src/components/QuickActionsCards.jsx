@@ -1,11 +1,4 @@
-// QuickActionsCards.jsx v1.0 - INDIVIDUAL CARD LAYOUT
-// ✅ Replaces QuickActionsPanel with modern card-style buttons
-// ✅ Each action is a separate card with icon and label
-// ✅ Hover effects and navigation
-//
-// CHANGELOG:
-// v1.0 (2025-11-15): Initial version with 6 action cards
-
+// QuickActionsCards.jsx v1.0
 import React from 'react';
 import { Users, TrendingUp, Gauge, Calendar, MessageSquare, Settings } from 'lucide-react';
 
@@ -106,7 +99,6 @@ const QuickActionsCards = ({ onAction }) => {
               e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
             }}
           >
-            {/* Icon */}
             <div style={{
               width: '48px',
               height: '48px',
@@ -119,7 +111,6 @@ const QuickActionsCards = ({ onAction }) => {
               <Icon style={{ width: '24px', height: '24px', color: action.color }} />
             </div>
 
-            {/* Label */}
             <div>
               <div style={{
                 fontSize: '14px',
@@ -140,20 +131,6 @@ const QuickActionsCards = ({ onAction }) => {
           </div>
         );
       })}
-
-      {/* Responsive Override */}
-      <style jsx>{`
-        @media (max-width: 768px) {
-          div[style*="gridTemplateColumns"] {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
-        @media (max-width: 480px) {
-          div[style*="gridTemplateColumns"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
