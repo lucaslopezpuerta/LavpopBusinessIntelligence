@@ -1,4 +1,4 @@
-// CustomerDetailModal.jsx v2.0 - COMPACT PROFESSIONAL REDESIGN
+// CustomerDetailModal.jsx v2.2 - COMPACT PROFESSIONAL REDESIGN
 // ✅ Matches At-Risk table design philosophy
 // ✅ All text in Brazilian Portuguese
 // ✅ Shows only last 5 transactions (not 10)
@@ -438,19 +438,19 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: COLORS.gray }}>Total Gasto</span>
                 <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
-                  {formatCurrency(customer.totalSpent || customer.netTotal || 0)}
+                  {formatCurrency(customer.netTotal || 0)}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: COLORS.gray }}>Total de Visitas</span>
                 <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
-                  {customer.totalVisits || customer.frequency || 0}
+                  {customer.transactions || customer.frequency || 0}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: COLORS.gray }}>Gasto/Visita</span>
                 <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.accent }}>
-                  {formatCurrency(customer.avgTicket || customer.avgSpend || 0)}
+                  {formatCurrency(customer.transactions > 0 ? customer.netTotal / customer.transactions : 0)}
                 </span>
               </div>
             </div>
