@@ -1,9 +1,15 @@
-// WeatherWidget.jsx v2.0 - API Version
-// Uses Visual Crossing Weather API for real-time data
-// Caxias do Sul, RS, Brazil
+// WeatherWidget.jsx v3.0 - STANDARDIZED HEADER DESIGN
+// ✅ Consistent with all other header widgets
+// ✅ Transparent blur background matching header style
+// ✅ Compact 36px height
+// ✅ Updates every 30 minutes
+//
+// CHANGELOG:
+// v3.0 (2025-11-16): Standardized design for header consistency
+// v2.0 (previous): API version with white background
 
 import React, { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Sun, Droplets, Wind, Loader, AlertCircle } from 'lucide-react';
+import { Cloud, CloudRain, Sun, Droplets, Loader, AlertCircle } from 'lucide-react';
 
 const WEATHER_API_URL = 'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/caxias%20do%20sul/today?unitGroup=metric&key=FTYV4SM9NMMTJKVFLEGRCGWJ9&contentType=json';
 
@@ -25,18 +31,13 @@ const WeatherWidget = () => {
         }
         
         const data = await response.json();
-        
-        // Visual Crossing API structure
         const today = data.days[0];
         
         setWeather({
           temp: today.temp.toFixed(1),
-          feelsLike: today.feelslike.toFixed(1),
           humidity: Math.round(today.humidity),
-          precip: today.precip.toFixed(1),
           conditions: today.conditions,
-          icon: today.icon,
-          description: today.description
+          icon: today.icon
         });
         
       } catch (err) {
@@ -48,17 +49,12 @@ const WeatherWidget = () => {
     };
 
     fetchWeather();
-    
-    // Refresh every 30 minutes
     const interval = setInterval(fetchWeather, 30 * 60 * 1000);
-    
     return () => clearInterval(interval);
   }, []);
 
   const getWeatherIcon = (iconName) => {
-    // Map Visual Crossing icons to Lucide icons
     if (!iconName) return Cloud;
-    
     const iconMap = {
       'clear-day': Sun,
       'clear-night': Cloud,
@@ -67,135 +63,100 @@ const WeatherWidget = () => {
       'cloudy': Cloud,
       'rain': CloudRain,
       'showers-day': CloudRain,
-      'showers-night': CloudRain,
-      'snow': CloudRain,
-      'wind': Wind,
-      'fog': Cloud
+      'showers-night': CloudRain
     };
-    
     return iconMap[iconName] || Cloud;
   };
 
-  const getIconColor = (iconName, temp) => {
-    if (iconName && iconName.includes('rain')) return '#3b82f6';
-    if (iconName && iconName.includes('clear')) return '#f59e0b';
-    if (temp > 25) return '#f59e0b';
-    return '#6b7280';
-  };
-
-  if (loading) {
+  if (loading || error) {
     return (
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e5e7eb',
-        padding: '0.75rem 1rem',
+        background: 'rgba(255, 255, 255, 0.15)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '8px',
+        padding: '0.5rem 0.75rem',
+        border: '1px solid rgba(255, 255, 255, 0.25)',
         display: 'flex',
         alignItems: 'center',
-        gap: '0.75rem',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        minWidth: '180px'
+        gap: '0.5rem',
+        minWidth: '120px',
+        height: '36px'
       }}>
-        <Loader style={{ width: '20px', height: '20px', color: '#6b7280' }} className="animate-spin" />
-        <div style={{ fontSize: '13px', color: '#6b7280' }}>
-          Carregando clima...
+        <Loader style={{ width: '14px', height: '14px', color: 'white' }} className="animate-spin" />
+        <div style={{
+          fontSize: '11px',
+          color: 'rgba(255, 255, 255, 0.9)',
+          fontWeight: '500'
+        }}>
+          Carregando...
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        border: '1px solid #fee2e2',
-        padding: '0.75rem 1rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        minWidth: '180px'
-      }}>
-        <AlertCircle style={{ width: '20px', height: '20px', color: '#dc2626' }} />
-        <div style={{ fontSize: '11px', color: '#dc2626' }}>
-          Erro ao carregar
-        </div>
-      </div>
-    );
-  }
-
-  if (!weather) return null;
-
-  const WeatherIcon = getWeatherIcon(weather.icon);
-  const iconColor = getIconColor(weather.icon, parseFloat(weather.temp));
-  const hasRain = parseFloat(weather.precip) > 0.5;
+  const Icon = getWeatherIcon(weather.icon);
 
   return (
     <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      border: '1px solid #e5e7eb',
-      padding: '0.75rem 1rem',
+      background: 'rgba(255, 255, 255, 0.15)',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '8px',
+      padding: '0.5rem 0.75rem',
+      border: '1px solid rgba(255, 255, 255, 0.25)',
       display: 'flex',
       alignItems: 'center',
-      gap: '0.75rem',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      minWidth: '200px'
+      gap: '0.625rem',
+      cursor: 'default',
+      transition: 'all 0.2s',
+      height: '36px'
     }}
-    title={weather.description} // Tooltip with full description
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+      e.currentTarget.style.transform = 'translateY(-1px)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+      e.currentTarget.style.transform = 'translateY(0)';
+    }}
+    title={`Clima: ${weather.conditions}`}
     >
-      {/* Weather Icon */}
+      {/* Icon Container */}
       <div style={{
-        width: '40px',
-        height: '40px',
-        borderRadius: '8px',
-        background: `${iconColor}15`,
+        width: '28px',
+        height: '28px',
+        borderRadius: '6px',
+        background: 'rgba(255, 255, 255, 0.2)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0
       }}>
-        <WeatherIcon style={{ width: '24px', height: '24px', color: iconColor }} />
+        <Icon style={{ width: '15px', height: '15px', color: 'white' }} />
       </div>
 
       {/* Weather Info */}
-      <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
         <div style={{
-          fontSize: '11px',
-          fontWeight: '600',
-          color: '#6b7280',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-          marginBottom: '2px'
-        }}>
-          Clima Caxias
-        </div>
-        <div style={{
-          fontSize: '20px',
+          fontSize: '12px',
           fontWeight: '700',
-          color: '#10306B',
-          lineHeight: '1'
+          color: 'white',
+          lineHeight: 1
         }}>
-          {weather.temp}°C
+          CLIMA CAXIAS
         </div>
-        <div style={{
-          fontSize: '11px',
-          color: '#6b7280',
-          marginTop: '2px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          {hasRain && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-              <Droplets style={{ width: '12px', height: '12px' }} />
-              {weather.precip}mm
-            </span>
-          )}
-          <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-            <Wind style={{ width: '12px', height: '12px' }} />
-            {weather.humidity}%
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{
+            fontSize: '11px',
+            fontWeight: '600',
+            color: 'rgba(255, 255, 255, 0.9)'
+          }}>
+            {weather.temp}°C
+          </span>
+          <span style={{
+            fontSize: '10px',
+            color: 'rgba(255, 255, 255, 0.8)'
+          }}>
+            ☁️ {weather.humidity}%
           </span>
         </div>
       </div>
