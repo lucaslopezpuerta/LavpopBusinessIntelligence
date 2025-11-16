@@ -16,14 +16,14 @@ import { Star, MapPin, Loader, AlertCircle } from 'lucide-react';
 const GOOGLE_BUSINESS_CONFIG = {
   // STEP 1: Get your Place ID from: https://developers.google.com/maps/documentation/places/web-service/place-id
   // Search for "Lavpop Caxias do Sul" and copy the Place ID
-  PLACE_ID: 'ChIJW0SI_ryjHpUR_YAfB0aLu8I', // ← Place ID
+  PLACE_ID: 'ChIJW0SI_ryjHpUR_YAfB0aLu8I', // ← REPLACE THIS with your actual Place ID
   
   // STEP 2: Your Google API Key (already in GitHub secrets)
   // This will be loaded from environment variable
   API_KEY: import.meta.env.VITE_GOOGLE_API_KEY || '',
   
   // STEP 3: Cache duration (24 hours = 86400000 ms)
-  CACHE_DURATION: 6 * 60 * 60 * 1000,
+  CACHE_DURATION: 24 * 60 * 60 * 1000,
   
   // Google Maps link (fallback)
   MAPS_URL: 'https://maps.app.goo.gl/VwNojjvheJrXZeRd8'
@@ -82,7 +82,7 @@ const GoogleBusinessWidget = () => {
         }
       }
 
-      setLoading(true);
+      setBusinessData(prev => ({ ...prev, loading: true }));
       console.log('Fetching fresh Google Business data...');
 
       // API Endpoint: Google Places API - Place Details
