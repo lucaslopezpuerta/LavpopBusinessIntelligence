@@ -1,14 +1,15 @@
-// KPICards.jsx v2.0 - ENHANCED WITH ALL METRICS
-// ✅ Added Wash, Dry, and New Clients cards
-// ✅ 9 cards total in responsive grid
-// ✅ Portuguese labels, prominent WoW indicators, brand colors
+// KPICards.jsx v2.1 - FIXED NEW CLIENTS CALCULATION
+// ✅ Fixed new clients count (now uses normalized CPF like NewClientsChart)
+// ✅ Enhanced brand colors (Lavpop blue #1a5a8e and green #55b03b)
+// ✅ 9 cards total with WoW indicators
+// ✅ Portuguese labels
 //
 // CHANGELOG:
+// v2.1 (2025-11-15): Fixed new clients calculation with CPF normalization
 // v2.0 (2025-11-15): Added wash, dry, new clients metrics to main KPI grid
-// v1.0 (2025-11-14): Initial version with 6 core KPIs
 
 import React, { useMemo } from 'react';
-import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
 
 const COLORS = {
   primary: '#1a5a8e',     // Lavpop blue
@@ -19,8 +20,20 @@ const COLORS = {
   gray: '#6b7280'
 };
 
+/**
+ * Normalize document number (CPF) - pad to 11 digits
+ */
+function normalizeDoc(doc) {
+  if (!doc) return '';
+  const cleaned = String(doc).replace(/\D/g, '');
+  if (cleaned.length > 0 && cleaned.length <= 11) {
+    return cleaned.padStart(11, '0');
+  }
+  return cleaned;
+}
+
 const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
-  // Calculate new clients for current week
+  // Calculate new clients for current week with FIXED normalization
   const newClientsData = useMemo(() => {
     if (!salesData || salesData.length === 0) return { count: 0, weekOverWeek: null };
 
@@ -44,7 +57,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     prevWeekStart.setDate(prevWeekStart.getDate() - 6);
     prevWeekStart.setHours(0, 0, 0, 0);
 
-    // Track first purchase per customer
+    // Track first purchase per customer with NORMALIZED CPF
     const customerFirstPurchase = {};
     
     salesData.forEach(row => {
@@ -55,7 +68,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       const [day, month, year] = dateStr.split('/');
       const saleDate = new Date(year, month - 1, day);
       
-      const cpf = row.Doc_Cliente || row.doc || row.cpf;
+      // ✅ FIXED: Normalize CPF like NewClientsChart does
+      const cpf = normalizeDoc(row.Doc_Cliente || row.doc || row.cpf);
       if (!cpf) return;
       
       if (!customerFirstPurchase[cpf] || saleDate < customerFirstPurchase[cpf]) {
@@ -79,6 +93,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     let weekOverWeekChange = null;
     if (lastWeekNew > 0) {
       weekOverWeekChange = ((currentWeekNew - lastWeekNew) / lastWeekNew) * 100;
+    } else if (currentWeekNew > 0) {
+      weekOverWeekChange = 100; // If we have new clients this week but none last week
     }
 
     return {
