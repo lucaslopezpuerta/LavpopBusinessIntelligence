@@ -1,10 +1,18 @@
+// App.jsx v2.0 - REDESIGNED HEADER
+// ✅ Sleek, compact header with better logo integration
+// ✅ Modern tab design with brand colors
+// ✅ Space-efficient layout
+//
+// CHANGELOG:
+// v2.0 (2025-11-15): Complete header redesign
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart3, Users, TrendingUp, Settings } from 'lucide-react';
 import { loadAllData } from './utils/csvLoader';
 import { calculateBusinessMetrics } from './utils/businessMetrics';
 import { calculateCustomerMetrics } from './utils/customerMetrics';
 import KPICards from './components/KPICards';
-import Logo from './assets/Logo1.png'; // Import logo
+import Logo from './assets/Logo1.png';
 import './App.css';
 
 // Import views
@@ -18,6 +26,12 @@ const Analytics = ({ data }) => (
     <p>Deep dive analytics coming soon...</p>
   </div>
 );
+
+const COLORS = {
+  primary: '#1a5a8e',
+  accent: '#55b03b',
+  gray: '#6b7280'
+};
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -61,13 +75,16 @@ function App() {
       <div className="loading-screen">
         <div className="loading-content">
           <div className="lavpop-logo">
-            <div className="logo-circle" style={{ background: '#10306B' }}>L</div>
+            <div className="logo-circle" style={{ background: COLORS.primary }}>L</div>
           </div>
           <h2>Carregando Lavpop BI</h2>
           <div className="progress-bar">
             <div 
               className="progress-fill" 
-              style={{ width: `${loadProgress.percent}%` }}
+              style={{ 
+                width: `${loadProgress.percent}%`,
+                background: `linear-gradient(90deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)`
+              }}
             />
           </div>
           <p>{loadProgress.loaded} de {loadProgress.total} arquivos carregados ({loadProgress.percent}%)</p>
@@ -132,7 +149,7 @@ function App() {
             style={{
               marginTop: '1.5rem',
               padding: '0.75rem 2rem',
-              background: '#10306B',
+              background: COLORS.primary,
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -149,43 +166,125 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="header-content">
-          <div className="logo-section">
-            {/* Use Logo 1 from assets */}
+    <div className="app" style={{ 
+      minHeight: '100vh',
+      background: '#f9fafb',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      {/* REDESIGNED HEADER */}
+      <header style={{
+        background: 'white',
+        borderBottom: '1px solid #e5e7eb',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+      }}>
+        <div style={{
+          maxWidth: '1600px',
+          margin: '0 auto',
+          padding: '0.75rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '2rem'
+        }}>
+          {/* Logo Section - Compact & Elegant */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.875rem'
+          }}>
             <img 
               src={Logo} 
               alt="Lavpop Logo" 
-              className="logo-image"
+              style={{
+                height: '42px',
+                width: 'auto',
+                objectFit: 'contain'
+              }}
               onError={(e) => {
-                // Fallback if logo doesn't load
                 e.target.style.display = 'none';
-                console.error('Logo failed to load');
               }}
             />
-            <div className="logo-text">
-              <h1>Lavpop</h1>
-              <span>Business Intelligence</span>
+            <div>
+              <h1 style={{
+                fontSize: '22px',
+                fontWeight: '700',
+                color: COLORS.primary,
+                margin: 0,
+                lineHeight: '1.2',
+                letterSpacing: '-0.5px'
+              }}>
+                Lavpop
+              </h1>
+              <span style={{
+                fontSize: '11px',
+                color: COLORS.gray,
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Business Intelligence
+              </span>
             </div>
           </div>
           
-          <nav className="tabs">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                <tab.icon size={20} />
-                <span>{tab.label}</span>
-              </button>
-            ))}
+          {/* Modern Tab Navigation */}
+          <nav style={{
+            display: 'flex',
+            gap: '0.5rem',
+            background: '#f9fafb',
+            padding: '0.35rem',
+            borderRadius: '10px',
+            border: '1px solid #e5e7eb'
+          }}>
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '7px',
+                    border: 'none',
+                    background: isActive ? 'white' : 'transparent',
+                    color: isActive ? COLORS.primary : COLORS.gray,
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: isActive ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = '#f3f4f6';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  <Icon size={16} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </nav>
         </div>
       </header>
 
-      <main className="app-main">
+      {/* Main Content */}
+      <main style={{ flex: 1 }}>
         <ActiveComponent data={data} onNavigate={setActiveTab} />
       </main>
     </div>
