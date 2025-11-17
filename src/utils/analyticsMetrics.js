@@ -1,15 +1,13 @@
-// Analytics Metrics Calculator v1.0
-// Calculate trends, growth rates, and historical performance
+// Analytics Metrics Calculator v1.1 - FIXED
+// ✅ Reuses proven calculation logic from businessMetrics.js
+// ✅ Uses correct field names from transactionParser
+// ✅ Same formulas for revenue, services, and utilization
 //
 // CHANGELOG:
-// v1.0 (2025-11-16): Initial implementation
-//   - Revenue trends with monthly/weekly aggregation
-//   - Service volume trends
-//   - Utilization trends
-//   - Growth rate calculations
-//   - Period-over-period comparisons
+// v1.1 (2025-11-16): Fixed to use proven calculation functions
+// v1.0 (2025-11-16): Initial implementation (had wrong field names)
 
-import { parseSalesRecords } from './transactionParser';
+import { parseSalesRecords, filterWithServices } from './transactionParser';
 import { getShortMonthName } from './analyticsDateUtils';
 
 const BUSINESS_PARAMS = {
@@ -140,39 +138,52 @@ function groupByDay(records, startDate, endDate) {
 
 /**
  * Calculate metrics for a group of records
+ * ✅ REUSES PROVEN LOGIC from businessMetrics.js
+ * ✅ Uses correct field names: netValue, washCount, dryCount
  */
 function calculateGroupMetrics(records, activeDays) {
-  // Filter out Recarga for service counts but include in revenue
-  const serviceRecords = records.filter(r => r.tipo !== 3);
+  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+  
+  // Filter out Recarga for service counts (use proven filterWithServices)
+  const serviceRecords = filterWithServices(records);
   
   // Calculate revenue (includes Type 1 and Type 3)
-  const revenue = records.reduce((sum, r) => sum + r.netRevenue, 0);
+  // ✅ CORRECT: Use netValue field (proven to work)
+  const revenue = Math.round(sum(records, r => r.netValue) * 100) / 100;
   
   // Count services (excludes Type 3 - Recarga)
-  const totalServices = serviceRecords.length;
-  const washServices = serviceRecords.filter(r => 
-    r.washerServices > 0 || r.tipo === 1
-  ).length;
-  const dryServices = serviceRecords.filter(r => 
-    r.dryerServices > 0 || r.tipo === 2
-  ).length;
+  // ✅ CORRECT: Use washCount, dryCount, totalServices fields
+  const washServices = sum(serviceRecords, r => r.washCount);
+  const dryServices = sum(serviceRecords, r => r.dryCount);
+  const totalServices = sum(serviceRecords, r => r.totalServices);
   
-  // Calculate utilization using TIME-BASED formula
-  const totalMachineMinutes = (
-    BUSINESS_PARAMS.TOTAL_WASHERS * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES +
-    BUSINESS_PARAMS.TOTAL_DRYERS * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES
-  ) * activeDays;
+  // Calculate utilization using TIME-BASED formula (proven)
+  // Filter for operating hours
+  const operatingRecords = records.filter(r =>
+    r.hour >= BUSINESS_PARAMS.OPERATING_HOURS.start &&
+    r.hour < BUSINESS_PARAMS.OPERATING_HOURS.end &&
+    !r.isRecarga
+  );
   
-  const usedWasherMinutes = washServices * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES;
-  const usedDryerMinutes = dryServices * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES;
-  const usedMachineMinutes = usedWasherMinutes + usedDryerMinutes;
+  const operatingWashCount = sum(operatingRecords, r => r.washCount);
+  const operatingDryCount = sum(operatingRecords, r => r.dryCount);
   
-  const utilization = totalMachineMinutes > 0 
-    ? (usedMachineMinutes / totalMachineMinutes) * 100 
+  // TIME-BASED UTILIZATION: Calculate machine-minutes used
+  const washMinutesUsed = operatingWashCount * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES;
+  const dryMinutesUsed = operatingDryCount * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES;
+  const totalMinutesUsed = washMinutesUsed + dryMinutesUsed;
+  
+  // Total available machine-minutes per period
+  const washMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * OPERATING_HOURS_PER_DAY * activeDays * 60;
+  const dryMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * OPERATING_HOURS_PER_DAY * activeDays * 60;
+  const totalMinutesAvailable = washMinutesAvailable + dryMinutesAvailable;
+  
+  const utilization = totalMinutesAvailable > 0 
+    ? (totalMinutesUsed / totalMinutesAvailable) * 100 
     : 0;
   
   return {
-    revenue: Math.round(revenue * 100) / 100,
+    revenue,
     totalServices,
     washServices,
     dryServices,
