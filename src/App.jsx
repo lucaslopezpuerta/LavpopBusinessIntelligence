@@ -1,9 +1,11 @@
-// App.jsx v2.0 - REDESIGNED HEADER
+// App.jsx v2.1 - ANALYTICS TAB INTEGRATED
 // ✅ Sleek, compact header with better logo integration
 // ✅ Modern tab design with brand colors
 // ✅ Space-efficient layout
+// ✅ Analytics tab with Performance Intelligence
 //
 // CHANGELOG:
+// v2.1 (2025-11-16): Added Analytics tab functionality
 // v2.0 (2025-11-15): Complete header redesign
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -19,13 +21,7 @@ import './App.css';
 import Dashboard from './views/Dashboard';
 import Customers from './views/Customers';
 import Operations from './views/Operations';
-
-const Analytics = ({ data }) => (
-  <div className="view-container">
-    <h2>Analytics</h2>
-    <p>Deep dive analytics coming soon...</p>
-  </div>
-);
+import Analytics from './views/Analytics';
 
 const COLORS = {
   primary: '#1a5a8e',
