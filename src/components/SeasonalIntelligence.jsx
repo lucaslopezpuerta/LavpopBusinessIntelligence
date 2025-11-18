@@ -211,7 +211,7 @@ const SeasonalIntelligence = ({ salesData }) => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', background: COLORS.green, borderRadius: '3px' }} />
-            <span>Forte (>110% da média)</span>
+            <span>Forte (&gt;110% da média)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', background: COLORS.primary, borderRadius: '3px' }} />
