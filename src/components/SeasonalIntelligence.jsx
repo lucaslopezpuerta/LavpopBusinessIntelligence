@@ -219,7 +219,7 @@ const SeasonalIntelligence = ({ salesData }) => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{ width: '12px', height: '12px', background: COLORS.amber, borderRadius: '3px' }} />
-            <span>Fraco (<90%)</span>
+            <span>Fraco (&lt;90%)</span>
           </div>
         </div>
       </div>
