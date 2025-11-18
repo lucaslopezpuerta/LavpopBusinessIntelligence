@@ -1,17 +1,20 @@
-// Analytics View v1.0
-// Main analytics view with date range selector and performance intelligence
-// Features: Summary panel, interactive trends, AI insights
+// Analytics View v2.0 - COMPLETE REDESIGN
+// Story-telling layout focused on strategic insights
+// Four main sections: Growth, Comparisons, Seasonal, Lifecycle
 //
 // CHANGELOG:
-// v1.0 (2025-11-16): Initial implementation
+// v2.0 (2025-11-16): Complete redesign - strategic focus
+//   - Removed redundant metrics (no duplicate of Dashboard)
+//   - Long-term focus (12 months, not weekly)
+//   - Story-telling design with sections
+//   - Uses proven math from businessMetrics.js
 
-import React, { useState, useMemo } from 'react';
-import { TrendingUp, BarChart3, Users, Zap } from 'lucide-react';
-import AnalyticsDateRangeSelector from '../components/AnalyticsDateRangeSelector';
-import PerformanceIntelligence from '../components/PerformanceIntelligence';
-import { getAnalyticsDateRange } from '../utils/analyticsDateUtils';
-import { calculatePeriodSummary } from '../utils/analyticsMetrics';
-import { formatCurrency } from '../utils/numberUtils';
+import React from 'react';
+import { Sparkles, BarChart3 } from 'lucide-react';
+import GrowthTrajectory from '../components/GrowthTrajectory';
+import PeriodComparisons from '../components/PeriodComparisons';
+import SeasonalIntelligence from '../components/SeasonalIntelligence';
+import CustomerLifecycle from '../components/CustomerLifecycle';
 
 const COLORS = {
   primary: '#1a5a8e',
@@ -20,45 +23,27 @@ const COLORS = {
 };
 
 const Analytics = ({ data }) => {
-  const [dateOption, setDateOption] = useState('last30days');
-  const [customDateRange, setCustomDateRange] = useState(null);
-  
-  // Get current date window
-  const dateWindow = useMemo(() => {
-    if (customDateRange) {
-      return getAnalyticsDateRange('custom', customDateRange.start, customDateRange.end);
-    }
-    return getAnalyticsDateRange(dateOption);
-  }, [dateOption, customDateRange]);
-  
-  // Calculate summary statistics
-  const summary = useMemo(() => {
-    if (!data || !data.sales) return null;
-    return calculatePeriodSummary(data.sales, dateWindow.start, dateWindow.end);
-  }, [data, dateWindow]);
-  
-  const handleDateChange = (newOption) => {
-    setDateOption(newOption);
-    if (newOption !== 'custom') {
-      setCustomDateRange(null);
-    }
-  };
-  
-  const handleCustomDateChange = (start, end) => {
-    setCustomDateRange({ start, end });
-    setDateOption('custom');
-  };
-  
   if (!data || !data.sales) {
     return (
       <div className="view-container" style={{ padding: '2rem' }}>
         <div style={{
           background: 'white',
-          padding: '2rem',
-          borderRadius: '12px',
-          textAlign: 'center'
+          padding: '3rem 2rem',
+          borderRadius: '16px',
+          textAlign: 'center',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
         }}>
-          <h3 style={{ color: COLORS.primary }}>Carregando dados de análise...</h3>
+          <BarChart3 size={48} style={{ color: COLORS.primary, margin: '0 auto 1rem' }} />
+          <h3 style={{ 
+            color: COLORS.primary, 
+            fontSize: '20px',
+            marginBottom: '0.5rem'
+          }}>
+            Carregando dados estratégicos...
+          </h3>
+          <p style={{ color: COLORS.gray, fontSize: '14px', margin: 0 }}>
+            Preparando análise de tendências e insights
+          </p>
         </div>
       </div>
     );
@@ -66,278 +51,128 @@ const Analytics = ({ data }) => {
   
   return (
     <div className="view-container" style={{
-      maxWidth: '1600px',
-      margin: '0 auto',
-      padding: '2rem 1.5rem'
+      background: '#f9fafb',
+      minHeight: '100vh',
+      paddingBottom: '3rem'
     }}>
-      {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{
-          fontSize: '28px',
-          fontWeight: '700',
-          color: COLORS.primary,
-          marginBottom: '0.5rem'
-        }}>
-          Analytics
-        </h1>
-        <p style={{
-          fontSize: '14px',
-          color: COLORS.gray
-        }}>
-          Análise detalhada de performance, tendências e insights estratégicos
-        </p>
-      </div>
-      
-      {/* Date Range Selector */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <AnalyticsDateRangeSelector
-          value={dateOption}
-          onChange={handleDateChange}
-          dateWindow={dateWindow}
-          onCustomDateChange={handleCustomDateChange}
-        />
-      </div>
-      
-      {/* Summary Panel */}
-      {summary && (
+      <div style={{
+        maxWidth: '1400px',
+        margin: '0 auto',
+        padding: '2rem 1.5rem'
+      }}>
+        {/* Hero Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
-          padding: '1.5rem',
-          borderRadius: '12px',
-          border: '1px solid #e5e7eb',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-          marginBottom: '1.5rem'
+          marginBottom: '2rem',
+          textAlign: 'center'
         }}>
           <div style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: '0.5rem',
+            padding: '0.5rem 1rem',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+            borderRadius: '20px',
             marginBottom: '1rem'
           }}>
-            <BarChart3 size={20} style={{ color: COLORS.primary }} />
+            <Sparkles size={16} style={{ color: COLORS.primary }} />
             <span style={{
-              fontSize: '14px',
+              fontSize: '12px',
               fontWeight: '700',
               color: COLORS.primary,
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}>
-              Resumo do Período
+              Análise Estratégica
             </span>
           </div>
           
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '1.5rem'
-          }}>
-            <div>
-              <div style={{ 
-                fontSize: '11px', 
-                fontWeight: '600',
-                color: COLORS.gray,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '0.5rem'
-              }}>
-                Receita Total
-              </div>
-              <div style={{ 
-                fontSize: '24px', 
-                fontWeight: '700', 
-                color: COLORS.primary 
-              }}>
-                {formatCurrency(summary.revenue)}
-              </div>
-              <div style={{ 
-                fontSize: '12px', 
-                color: COLORS.gray,
-                marginTop: '0.25rem'
-              }}>
-                {formatCurrency(summary.avgDailyRevenue)}/dia
-              </div>
-            </div>
-            
-            <div>
-              <div style={{ 
-                fontSize: '11px', 
-                fontWeight: '600',
-                color: COLORS.gray,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '0.5rem'
-              }}>
-                Total de Ciclos
-              </div>
-              <div style={{ 
-                fontSize: '24px', 
-                fontWeight: '700', 
-                color: COLORS.primary 
-              }}>
-                {summary.totalServices}
-              </div>
-              <div style={{ 
-                fontSize: '12px', 
-                color: COLORS.gray,
-                marginTop: '0.25rem'
-              }}>
-                {summary.avgDailyServices.toFixed(1)}/dia
-              </div>
-            </div>
-            
-            <div>
-              <div style={{ 
-                fontSize: '11px', 
-                fontWeight: '600',
-                color: COLORS.gray,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '0.5rem'
-              }}>
-                Utilização Média
-              </div>
-              <div style={{ 
-                fontSize: '24px', 
-                fontWeight: '700', 
-                color: COLORS.primary 
-              }}>
-                {summary.utilization.toFixed(1)}%
-              </div>
-              <div style={{ 
-                fontSize: '12px', 
-                color: COLORS.gray,
-                marginTop: '0.25rem'
-              }}>
-                {summary.daysInRange} dias
-              </div>
-            </div>
-            
-            <div>
-              <div style={{ 
-                fontSize: '11px', 
-                fontWeight: '600',
-                color: COLORS.gray,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: '0.5rem'
-              }}>
-                Mix de Serviços
-              </div>
-              <div style={{ 
-                display: 'flex',
-                gap: '0.75rem',
-                marginTop: '0.5rem'
-              }}>
-                <div>
-                  <div style={{ 
-                    fontSize: '18px', 
-                    fontWeight: '700', 
-                    color: COLORS.primary 
-                  }}>
-                    {summary.washServices}
-                  </div>
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: COLORS.gray 
-                  }}>
-                    Lavagens
-                  </div>
-                </div>
-                <div>
-                  <div style={{ 
-                    fontSize: '18px', 
-                    fontWeight: '700', 
-                    color: COLORS.accent 
-                  }}>
-                    {summary.dryServices}
-                  </div>
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: COLORS.gray 
-                  }}>
-                    Secagens
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Performance Intelligence Section */}
-      <div style={{
-        background: '#f9fafb',
-        padding: '1.5rem',
-        borderRadius: '12px',
-        border: '1px solid #e5e7eb'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '1.5rem'
-        }}>
-          <TrendingUp size={20} style={{ color: COLORS.primary }} />
-          <span style={{
-            fontSize: '18px',
+          <h1 style={{
+            fontSize: '36px',
             fontWeight: '700',
-            color: COLORS.primary
+            color: COLORS.primary,
+            margin: 0,
+            marginBottom: '0.75rem',
+            lineHeight: 1.2
           }}>
-            Inteligência de Performance
-          </span>
+            Analytics
+          </h1>
+          
+          <p style={{
+            fontSize: '16px',
+            color: COLORS.gray,
+            maxWidth: '600px',
+            margin: '0 auto',
+            lineHeight: 1.6
+          }}>
+            Análise de longo prazo, tendências de crescimento e insights para tomada de decisão estratégica
+          </p>
         </div>
         
-        <PerformanceIntelligence
-          salesData={data.sales}
-          startDate={dateWindow.start}
-          endDate={dateWindow.end}
-        />
-      </div>
-      
-      {/* Placeholder for future sections */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '1rem',
-        marginTop: '1.5rem'
-      }}>
-        {[
-          { icon: Users, title: 'Customer Analytics', subtitle: 'Em breve' },
-          { icon: Zap, title: 'Operational Patterns', subtitle: 'Em breve' },
-          { icon: BarChart3, title: 'External Factors', subtitle: 'Em breve' }
-        ].map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={index}
-              style={{
-                background: 'white',
-                padding: '1.5rem',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-                textAlign: 'center',
-                opacity: 0.6
-              }}
-            >
-              <Icon size={32} style={{ color: COLORS.primary, margin: '0 auto 1rem' }} />
-              <h3 style={{ 
-                fontSize: '16px', 
-                fontWeight: '600', 
-                color: COLORS.primary,
-                marginBottom: '0.5rem'
-              }}>
-                {item.title}
-              </h3>
-              <p style={{ 
-                fontSize: '13px', 
-                color: COLORS.gray 
-              }}>
-                {item.subtitle}
-              </p>
-            </div>
-          );
-        })}
+        {/* Section 1: Growth Trajectory (Hero) */}
+        <div style={{ marginBottom: '3rem' }}>
+          <GrowthTrajectory salesData={data.sales} />
+        </div>
+        
+        {/* Section 2: Period Comparisons */}
+        <div style={{
+          background: 'white',
+          padding: '2rem',
+          borderRadius: '16px',
+          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.05)',
+          marginBottom: '3rem'
+        }}>
+          <PeriodComparisons salesData={data.sales} />
+        </div>
+        
+        {/* Section 3 & 4: Side by Side */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '2rem',
+          marginBottom: '2rem'
+        }}>
+          {/* Section 3: Seasonal Intelligence */}
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '16px',
+            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.05)'
+          }}>
+            <SeasonalIntelligence salesData={data.sales} />
+          </div>
+          
+          {/* Section 4: Customer Lifecycle */}
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '16px',
+            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.05)'
+          }}>
+            <CustomerLifecycle 
+              salesData={data.sales} 
+              customerData={data.customers}
+            />
+          </div>
+        </div>
+        
+        {/* Footer insight */}
+        <div style={{
+          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+          padding: '1.5rem 2rem',
+          borderRadius: '12px',
+          border: '1px solid #bae6fd',
+          textAlign: 'center'
+        }}>
+          <p style={{
+            fontSize: '14px',
+            color: COLORS.gray,
+            margin: 0,
+            lineHeight: 1.6
+          }}>
+            <strong style={{ color: COLORS.primary }}>💡 Dica:</strong> Use esses insights para planejar campanhas, 
+            definir metas realistas e tomar decisões estratégicas baseadas em dados históricos comprovados.
+          </p>
+        </div>
       </div>
     </div>
   );
