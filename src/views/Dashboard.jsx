@@ -12,7 +12,7 @@
 //   - Added CurrentWeekBanner showing real-time partial week
 //   - Added view toggle (complete week vs current week)
 //   - Fixed misleading date labels
-//   - KPICards can now show either complete or current week
+//   - KPICards can now show either the complete or the current week
 // v6.0 (2025-11-16): Major layout optimization - Quick Actions in header
 
 import React, { useMemo, useState } from 'react';
