@@ -12,6 +12,11 @@
 //   - More detailed error logging
 // v3.3 (2025-11-19): HYBRID VIEW SUPPORT
 
+//businessMetrics.weekly              // LAST COMPLETE WEEK (Sun-Sat just ended)
+//businessMetrics.currentWeek         // CURRENT PARTIAL WEEK (Sun-Today)
+//businessMetrics.previousWeekly      // TWO WEEKS AGO
+
+
 import React, { useMemo } from 'react';
 import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
@@ -170,8 +175,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
   console.log('\n=== KPI CARDS RENDER (v3.3.1 HOTFIX) ===');
   console.log('View Mode:', viewMode);
   console.log('Business Metrics Keys:', Object.keys(businessMetrics));
-  console.log('Has weekly:', !!businessMetrics.weekly);
-  console.log('Has currentWeek:', !!businessMetrics.currentWeek);
+  console.log('Has weekly (LAST COMPLETE WEEK (Sun-Sat just ended)):', !!businessMetrics.weekly);
+  console.log('Has currentWeek (CURRENT PARTIAL WEEK (Sun-Today)):', !!businessMetrics.currentWeek);
 
   // ✅ HOTFIX: Safe data source selection with detailed logging
   let metricsSource;
