@@ -1,17 +1,19 @@
-// Business Metrics Calculator v2.6 - DASHBOARD VALIDATION FIX
-// ✅ FIXED: Windows now include Date objects (start/end) for KPICards
+// Business Metrics Calculator v2.7 - HYBRID VIEW WITH CURRENT WEEK
+// ✅ NEW: Current partial week calculations (Sunday → Today)
+// ✅ NEW: Weekly projection based on current pace
+// ✅ FIXED: Windows include Date objects (start/end) for KPICards
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ TIME-BASED utilization formula (machine-minutes, not service-weighted)
 // ✅ Excludes Recarga from service counts
 // ✅ Includes Recarga in revenue totals
-// ✅ Comprehensive console logging for validation
 //
 // CHANGELOG:
+// v2.7 (2025-11-19): HYBRID VIEW - Current week + projection
+//   - Added getCurrentPartialWeek() for real-time tracking
+//   - Added projection calculations for current week
+//   - Returns both complete and current week metrics
+//   - Smart projection logic (early week warning)
 // v2.6 (2025-11-19): CRITICAL FIX - Added start/end Date objects to windows return
-//   - Previous version only returned startDate/endDate strings
-//   - This caused the New Customers KPI to always show zero
-//   - Added detailed console logging for validation
-//   - All KPIs now have proper date window access
 // v2.5 (2025-11-16): Shared date windows, time-based utilization
 // v2.4 (2025-11-15): Enhanced cashback handling
 
@@ -29,11 +31,12 @@ const OPERATING_HOURS_PER_DAY = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_P
 
 /**
  * Get date windows for calculations
+ * BUSINESS WEEK: Sunday 00:00 → Saturday 23:59
  */
 function getDateWindows() {
   const currentDate = new Date();
   
-  // CURRENT WEEK: Most recent Sunday → Most recent Saturday
+  // LAST COMPLETE WEEK: Most recent Sunday → Most recent Saturday
   let lastSaturday = new Date(currentDate);
   const daysFromSaturday = (currentDate.getDay() + 1) % 7;
   lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
@@ -43,7 +46,7 @@ function getDateWindows() {
   startSunday.setDate(startSunday.getDate() - 6);
   startSunday.setHours(0, 0, 0, 0);
   
-  // PREVIOUS WEEK
+  // PREVIOUS COMPLETE WEEK
   let prevWeekEnd = new Date(startSunday);
   prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
   prevWeekEnd.setHours(23, 59, 59, 999);
@@ -93,6 +96,51 @@ function getDateWindows() {
       start: fourWeekStart, 
       end: lastSaturday 
     }
+  };
+}
+
+/**
+ * Get current partial week window (Sunday → Today)
+ * ✅ NEW in v2.7
+ */
+function getCurrentPartialWeek() {
+  const now = new Date();
+  
+  // Find the start of current week (last or this Sunday)
+  let currentWeekStart = new Date(now);
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  if (dayOfWeek === 0) {
+    // Today is Sunday - start today
+    currentWeekStart.setHours(0, 0, 0, 0);
+  } else {
+    // Go back to last Sunday
+    currentWeekStart.setDate(now.getDate() - dayOfWeek);
+    currentWeekStart.setHours(0, 0, 0, 0);
+  }
+  
+  // End is now (today at current time)
+  const currentWeekEnd = new Date(now);
+  currentWeekEnd.setHours(23, 59, 59, 999);
+  
+  // Calculate days elapsed (including today as partial day)
+  const daysElapsed = Math.floor((currentWeekEnd - currentWeekStart) / (1000 * 60 * 60 * 24)) + 1;
+  
+  const formatDate = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+  
+  return {
+    start: currentWeekStart,
+    end: currentWeekEnd,
+    startDate: formatDate(currentWeekStart),
+    endDate: formatDate(currentWeekEnd),
+    daysElapsed,
+    isPartial: daysElapsed < 7,
+    dayOfWeek: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][dayOfWeek]
   };
 }
 
@@ -211,75 +259,164 @@ function calculateWoW(current, previous) {
 }
 
 /**
+ * Calculate projection for current partial week
+ * ✅ NEW in v2.7
+ */
+function calculateProjection(currentWeekMetrics, currentWeekWindow, lastCompleteWeekMetrics) {
+  const { daysElapsed } = currentWeekWindow;
+  
+  // Not enough data to project
+  if (daysElapsed < 1) {
+    return {
+      canProject: false,
+      confidence: 'none',
+      message: 'Aguardando dados...'
+    };
+  }
+  
+  // Calculate daily average from current week
+  const dailyRevenue = currentWeekMetrics.netRevenue / daysElapsed;
+  const dailyServices = currentWeekMetrics.totalServices / daysElapsed;
+  
+  // Project to 7 days
+  const projectedRevenue = Math.round(dailyRevenue * 7 * 100) / 100;
+  const projectedServices = Math.round(dailyServices * 7);
+  
+  // Compare to last complete week
+  const revenueVsLast = lastCompleteWeekMetrics.netRevenue > 0
+    ? ((projectedRevenue - lastCompleteWeekMetrics.netRevenue) / lastCompleteWeekMetrics.netRevenue) * 100
+    : 0;
+  
+  const servicesVsLast = lastCompleteWeekMetrics.totalServices > 0
+    ? ((projectedServices - lastCompleteWeekMetrics.totalServices) / lastCompleteWeekMetrics.totalServices) * 100
+    : 0;
+  
+  // Determine confidence level
+  let confidence = 'low';
+  let message = '';
+  
+  if (daysElapsed === 1) {
+    confidence = 'very_low';
+    message = 'Projeção baseada em apenas 1 dia (muito volátil)';
+  } else if (daysElapsed <= 3) {
+    confidence = 'low';
+    message = 'Projeção preliminar (poucos dias)';
+  } else if (daysElapsed <= 5) {
+    confidence = 'medium';
+    message = 'Projeção com confiança moderada';
+  } else {
+    confidence = 'high';
+    message = 'Projeção confiável (semana quase completa)';
+  }
+  
+  return {
+    canProject: true,
+    confidence,
+    message,
+    daysElapsed,
+    dailyRevenue,
+    dailyServices,
+    projectedRevenue,
+    projectedServices,
+    revenueVsLast,
+    servicesVsLast,
+    trend: revenueVsLast > 5 ? 'up' : revenueVsLast < -5 ? 'down' : 'stable'
+  };
+}
+
+/**
  * Main calculation function
- * ✅ Returns windows with BOTH Date objects and formatted strings
+ * ✅ Returns BOTH complete week and current week metrics
+ * ✅ Includes projection for current week
  */
 export function calculateBusinessMetrics(salesData) {
   if (!salesData || salesData.length === 0) {
     return null;
   }
   
-  console.log('=== BUSINESS METRICS v2.6 - DASHBOARD VALIDATION ===');
+  console.log('\n=== BUSINESS METRICS v2.7 - HYBRID VIEW ===');
   console.log('Total sales records:', salesData.length);
   
   const records = parseSalesRecords(salesData);
   console.log('Parsed records:', records.length);
   
+  // Get windows
   const windows = getDateWindows();
+  const currentPartialWeek = getCurrentPartialWeek();
+  
   console.log('Date windows:', {
-    weekly: `${windows.weekly.startDate} - ${windows.weekly.endDate}`,
-    previousWeekly: `${windows.previousWeekly.startDate} - ${windows.previousWeekly.endDate}`,
-    weeklyDateObjects: {
-      start: windows.weekly.start.toISOString(),
-      end: windows.weekly.end.toISOString()
-    }
+    lastCompleteWeek: `${windows.weekly.startDate} - ${windows.weekly.endDate}`,
+    currentPartialWeek: `${currentPartialWeek.startDate} - ${currentPartialWeek.endDate} (${currentPartialWeek.daysElapsed} dias)`,
+    today: currentPartialWeek.dayOfWeek
   });
   
+  // Filter records for each window
   const weekRecords = filterByWindow(records, windows.weekly);
   const prevWeekRecords = filterByWindow(records, windows.previousWeekly);
   const twoWeeksAgoRecords = filterByWindow(records, windows.twoWeeksAgo);
   const fourWeekRecords = filterByWindow(records, windows.fourWeek);
+  const currentWeekRecords = filterByWindow(records, currentPartialWeek);
   
   console.log('Records per window:', {
-    currentWeek: weekRecords.length,
+    lastCompleteWeek: weekRecords.length,
     previousWeek: prevWeekRecords.length,
     twoWeeksAgo: twoWeeksAgoRecords.length,
-    fourWeeks: fourWeekRecords.length
+    fourWeeks: fourWeekRecords.length,
+    currentPartialWeek: currentWeekRecords.length
   });
   
+  // Calculate metrics for each window
   const weeklyTotals = calculateTotals(weekRecords, windows.weekly);
   const prevWeeklyTotals = calculateTotals(prevWeekRecords, windows.previousWeekly);
   const twoWeeksAgoTotals = calculateTotals(twoWeeksAgoRecords, windows.twoWeeksAgo);
   const fourWeekTotals = calculateTotals(fourWeekRecords, windows.fourWeek);
+  const currentWeekTotals = calculateTotals(currentWeekRecords, currentPartialWeek);
   
   const weeklyUtil = calculateUtilization(weekRecords, windows.weekly);
   const prevWeeklyUtil = calculateUtilization(prevWeekRecords, windows.previousWeekly);
   const twoWeeksAgoUtil = calculateUtilization(twoWeeksAgoRecords, windows.twoWeeksAgo);
   const fourWeekUtil = calculateUtilization(fourWeekRecords, windows.fourWeek);
+  const currentWeekUtil = calculateUtilization(currentWeekRecords, currentPartialWeek);
   
   const weekOverWeek = calculateWoW(
     { ...weeklyTotals, ...weeklyUtil },
     { ...prevWeeklyTotals, ...prevWeeklyUtil }
   );
   
-  console.log('Current Week Metrics:', {
-    netRevenue: `R$ ${weeklyTotals.netRevenue.toFixed(2)}`,
-    totalServices: weeklyTotals.totalServices,
-    utilization: `${weeklyUtil.totalUtilization.toFixed(1)}%`,
-    activeDays: weeklyTotals.activeDays,
-    records: weeklyTotals.recordCount,
-    serviceRecords: weeklyTotals.serviceRecordCount
+  // ✅ NEW: Calculate projection for current week
+  const projection = calculateProjection(
+    { ...currentWeekTotals, ...currentWeekUtil },
+    currentPartialWeek,
+    { ...weeklyTotals, ...weeklyUtil }
+  );
+  
+  console.log('Last Complete Week:', {
+    revenue: `R$ ${weeklyTotals.netRevenue.toFixed(2)}`,
+    services: weeklyTotals.totalServices,
+    utilization: `${weeklyUtil.totalUtilization.toFixed(1)}%`
   });
   
-  console.log('Week-over-Week Changes:', {
-    revenue: `${weekOverWeek.netRevenue > 0 ? '+' : ''}${weekOverWeek.netRevenue.toFixed(1)}%`,
-    services: `${weekOverWeek.totalServices > 0 ? '+' : ''}${weekOverWeek.totalServices.toFixed(1)}%`,
-    utilization: `${weekOverWeek.utilization > 0 ? '+' : ''}${weekOverWeek.utilization.toFixed(1)}%`
+  console.log('Current Partial Week:', {
+    revenue: `R$ ${currentWeekTotals.netRevenue.toFixed(2)}`,
+    services: currentWeekTotals.totalServices,
+    utilization: `${currentWeekUtil.totalUtilization.toFixed(1)}%`,
+    daysElapsed: currentPartialWeek.daysElapsed
   });
+  
+  if (projection.canProject) {
+    console.log('Projection:', {
+      projectedRevenue: `R$ ${projection.projectedRevenue.toFixed(2)}`,
+      projectedServices: projection.projectedServices,
+      vsLastWeek: `${projection.revenueVsLast > 0 ? '+' : ''}${projection.revenueVsLast.toFixed(1)}%`,
+      confidence: projection.confidence,
+      trend: projection.trend
+    });
+  }
   
   console.log('=== END BUSINESS METRICS ===\n');
   
   return {
+    // Last complete week (for stable comparisons)
     weekly: {
       ...weeklyTotals,
       ...weeklyUtil
@@ -296,21 +433,38 @@ export function calculateBusinessMetrics(salesData) {
       ...fourWeekTotals,
       ...fourWeekUtil
     },
+    
+    // ✅ NEW: Current partial week (for real-time tracking)
+    currentWeek: {
+      ...currentWeekTotals,
+      ...currentWeekUtil,
+      window: currentPartialWeek,
+      projection
+    },
+    
     weekOverWeek,
     
-    // ✅ CRITICAL FIX: Include BOTH Date objects AND formatted strings
+    // Windows with both Date objects and formatted strings
     windows: {
       weekly: {
-        start: windows.weekly.start,      // ✅ Date object (NEW!)
-        end: windows.weekly.end,          // ✅ Date object (NEW!)
-        startDate: windows.weekly.startDate,  // String for display
-        endDate: windows.weekly.endDate       // String for display
+        start: windows.weekly.start,
+        end: windows.weekly.end,
+        startDate: windows.weekly.startDate,
+        endDate: windows.weekly.endDate
       },
       previousWeekly: {
-        start: windows.previousWeekly.start,      // ✅ Date object (NEW!)
-        end: windows.previousWeekly.end,          // ✅ Date object (NEW!)
-        startDate: windows.previousWeekly.startDate,  // String for display
-        endDate: windows.previousWeekly.endDate       // String for display
+        start: windows.previousWeekly.start,
+        end: windows.previousWeekly.end,
+        startDate: windows.previousWeekly.startDate,
+        endDate: windows.previousWeekly.endDate
+      },
+      currentWeek: {
+        start: currentPartialWeek.start,
+        end: currentPartialWeek.end,
+        startDate: currentPartialWeek.startDate,
+        endDate: currentPartialWeek.endDate,
+        daysElapsed: currentPartialWeek.daysElapsed,
+        dayOfWeek: currentPartialWeek.dayOfWeek
       }
     }
   };
