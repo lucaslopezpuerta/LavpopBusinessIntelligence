@@ -1,24 +1,30 @@
-// Dashboard.jsx v6.0
-// ✅ Quick Actions moved to header as icon buttons (saves ~130px vertical)
+// Dashboard.jsx v6.1 - HYBRID VIEW WITH CURRENT WEEK BANNER
+// ✅ NEW: Current week banner with real-time metrics and projection
+// ✅ NEW: Toggle between "Última Semana Completa" and "Semana Atual"
+// ✅ Honest labeling (no more misleading "Esta semana")
+// ✅ Quick Actions in header as icon buttons
 // ✅ Responsive KPI grid (9 cols ultra-wide, 3x3 on 1080p, 1 col mobile)
 // ✅ Google Business Widget WITH API integration
 // ✅ Ultra compact layout - guaranteed no scroll on 1080p
-// ✅ Mobile responsive design
 //
 // CHANGELOG:
-// v6.0 (2025-11-16): Major layout optimization - Quick Actions in header, responsive grid, compact design
-// v5.3 (2025-11-15): Final optimization - restored QuickActions design, ultra compact table
-// v5.2 (2025-11-15): Optimized for single-screen view, enhanced brand colors
+// v6.1 (2025-11-19): HYBRID VIEW IMPLEMENTATION
+//   - Added CurrentWeekBanner showing real-time partial week
+//   - Added view toggle (complete week vs current week)
+//   - Fixed misleading date labels
+//   - KPICards can now show either complete or current week
+// v6.0 (2025-11-16): Major layout optimization - Quick Actions in header
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import KPICards from '../components/KPICards';
+import CurrentWeekBanner from '../components/CurrentWeekBanner';
 import WeatherWidget from '../components/WeatherWidget_API';
 import SocialMediaWidget from '../components/SocialMediaWidget';
 import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
-import { Calendar, MessageSquare, Settings, ExternalLink } from 'lucide-react';
+import { Calendar, MessageSquare, Settings, ExternalLink, BarChart3, CalendarDays } from 'lucide-react';
 
 const COLORS = {
   primary: '#1a5a8e',
@@ -26,10 +32,14 @@ const COLORS = {
   purple: '#8b5cf6',
   pink: '#ec4899',
   gray: '#6b7280',
-  lightGray: '#f3f4f6'
+  lightGray: '#f3f4f6',
+  blue: '#3b82f6'
 };
 
 const Dashboard = ({ data, onNavigate }) => {
+  // ✅ NEW: View mode state
+  const [viewMode, setViewMode] = useState('complete'); // 'complete' or 'current'
+
   const businessMetrics = useMemo(() => {
     if (!data?.sales) return null;
     try {
@@ -79,8 +89,24 @@ const Dashboard = ({ data, onNavigate }) => {
     );
   }
 
-  const startDate = businessMetrics.windows.weekly.startDate;
-  const endDate = businessMetrics.windows.weekly.endDate;
+  // Get the appropriate date range based on view mode
+  const getDateRange = () => {
+    if (viewMode === 'current') {
+      return {
+        start: businessMetrics.windows.currentWeek.startDate,
+        end: businessMetrics.windows.currentWeek.endDate,
+        label: `Semana Atual (${businessMetrics.windows.currentWeek.daysElapsed} dias)`
+      };
+    } else {
+      return {
+        start: businessMetrics.windows.weekly.startDate,
+        end: businessMetrics.windows.weekly.endDate,
+        label: 'Última Semana Completa'
+      };
+    }
+  };
+
+  const dateRange = getDateRange();
 
   // Get the urgent insight
   const getTopInsight = () => {
@@ -89,7 +115,7 @@ const Dashboard = ({ data, onNavigate }) => {
     
     if (utilization < 15) {
       return {
-        text: `Utilização crítica: ${utilization}% esta semana`,
+        text: `Utilização crítica: ${utilization}% última semana`,
         color: COLORS.primary,
         action: 'Considere promoção urgente ou marketing'
       };
@@ -98,289 +124,255 @@ const Dashboard = ({ data, onNavigate }) => {
     const atRiskCount = customerMetrics.atRiskCount || 0;
     if (atRiskCount > 15) {
       return {
-        text: `${atRiskCount} clientes em risco precisam atenção`,
-        color: '#dc2626',
-        action: 'Ver clientes em risco abaixo'
+        text: `${atRiskCount} clientes em risco de churn`,
+        color: COLORS.primary,
+        action: 'Contatar clientes em risco hoje'
       };
     }
     
-    return {
-      text: `Semana saudável: ${utilization}% utilização`,
-      color: COLORS.accent,
-      action: 'Continue o bom trabalho!'
-    };
+    return null;
   };
 
   const topInsight = getTopInsight();
 
-  // Quick Action buttons for header
-  const quickActions = [
-    {
-      id: 'schedule',
-      label: 'Agenda',
-      icon: Calendar,
-      color: COLORS.purple
-    },
-    {
-      id: 'campaigns',
-      label: 'Campanhas',
-      icon: MessageSquare,
-      color: COLORS.pink
-    },
-    {
-      id: 'settings',
-      label: 'Config',
-      icon: Settings,
-      color: COLORS.gray
-    }
-  ];
-
   return (
     <div style={{ 
-      padding: '0.75rem 1rem', 
-      maxWidth: '1600px', 
-      margin: '0 auto',
-      background: '#f9fafb',
-      minHeight: '100vh'
+      padding: '1rem',
+      maxWidth: '1920px',
+      margin: '0 auto'
     }}>
-      {/* OPTIMIZED HEADER with Quick Actions */}
+      {/* Header Row */}
       <div style={{
-        background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)`,
-        borderRadius: '12px',
-        padding: '0.875rem 1.125rem',
-        marginBottom: '0.75rem',
-        boxShadow: '0 4px 12px rgba(26, 90, 142, 0.15)',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '0.75rem',
+        marginBottom: '0.75rem'
       }}>
+        {/* Date Range Display */}
         <div style={{
+          background: 'white',
+          borderRadius: '10px',
+          border: '1px solid #e5e7eb',
+          padding: '0.75rem 1rem',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
           gap: '0.75rem'
         }}>
-          {/* Left: Title & Date */}
+          <Calendar style={{ 
+            width: '20px', 
+            height: '20px', 
+            color: COLORS.primary 
+          }} />
           <div>
-            <h1 style={{
-              fontSize: '26px',
-              fontWeight: '700',
-              color: 'white',
-              margin: 0,
-              marginBottom: '0.2rem',
-              textShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}>
-              Dashboard Lavpop
-            </h1>
             <div style={{
               fontSize: '11px',
-              color: 'rgba(255, 255, 255, 0.9)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem'
+              color: COLORS.gray,
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '2px'
             }}>
-              <Calendar style={{ width: '12px', height: '12px' }} />
-              Semana de {startDate} - {endDate}
+              {dateRange.label}
+            </div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: '700',
+              color: COLORS.primary
+            }}>
+              {dateRange.start} - {dateRange.end}
             </div>
           </div>
+        </div>
 
-          {/* Right: Widgets + Quick Actions */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.625rem',
-            flexWrap: 'wrap'
-          }}>
-            {/* Widgets */}
-            <WeatherWidget />
-            <SocialMediaWidget 
-              instagramFollowers={1200} 
-              facebookFollowers={850}
-            />
-            <GoogleBusinessWidget />
+        {/* Weather Widget */}
+        <WeatherWidget />
 
-            {/* Divider */}
-            <div style={{
-              width: '1px',
-              height: '32px',
-              background: 'rgba(255, 255, 255, 0.3)',
-              margin: '0 0.25rem'
-            }} />
+        {/* Social Media Widget */}
+        <SocialMediaWidget />
 
-            {/* Quick Action Icon Buttons */}
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.id}
-                  onClick={() => handleQuickAction(action.id)}
-                  title={action.label}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.25)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'white';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.querySelector('svg').style.color = action.color;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.querySelector('svg').style.color = 'white';
-                  }}
-                >
-                  <Icon style={{ width: '18px', height: '18px', color: 'white', transition: 'color 0.2s' }} />
-                </button>
-              );
-            })}
-          </div>
+        {/* Google Business Widget */}
+        <GoogleBusinessWidget />
+
+        {/* Quick Actions */}
+        <div style={{
+          background: 'white',
+          borderRadius: '10px',
+          border: '1px solid #e5e7eb',
+          padding: '0.75rem 1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          gap: '0.5rem'
+        }}>
+          <button
+            onClick={() => handleQuickAction('schedule')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0.5rem',
+              borderRadius: '8px',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = COLORS.lightGray}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+          >
+            <Calendar style={{ width: '20px', height: '20px', color: COLORS.primary }} />
+            <span style={{ fontSize: '10px', color: COLORS.gray, fontWeight: '600' }}>Agenda</span>
+          </button>
+
+          <button
+            onClick={() => handleQuickAction('campaigns')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0.5rem',
+              borderRadius: '8px',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = COLORS.lightGray}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+          >
+            <MessageSquare style={{ width: '20px', height: '20px', color: COLORS.accent }} />
+            <span style={{ fontSize: '10px', color: COLORS.gray, fontWeight: '600' }}>Campanhas</span>
+          </button>
+
+          <button
+            onClick={() => handleQuickAction('settings')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0.5rem',
+              borderRadius: '8px',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = COLORS.lightGray}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+          >
+            <Settings style={{ width: '20px', height: '20px', color: COLORS.gray }} />
+            <span style={{ fontSize: '10px', color: COLORS.gray, fontWeight: '600' }}>Config</span>
+          </button>
         </div>
       </div>
 
-      {/* ULTRA COMPACT URGENT INSIGHT */}
+      {/* ✅ NEW: Current Week Banner */}
+      <CurrentWeekBanner businessMetrics={businessMetrics} />
+
+      {/* ✅ NEW: View Mode Toggle */}
       <div style={{
-        background: 'white',
-        borderRadius: '8px',
-        padding: '0.5rem 0.875rem',
-        marginBottom: '0.75rem',
-        border: `2px solid ${topInsight.color}`,
-        boxShadow: `0 2px 8px ${topInsight.color}20`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '0.75rem',
-        flexWrap: 'wrap'
+        marginBottom: '0.75rem',
+        flexWrap: 'wrap',
+        gap: '0.75rem'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: topInsight.color,
-            animation: 'pulse 2s infinite'
-          }} />
-          <div>
-            <span style={{
-              fontSize: '9px',
-              fontWeight: '700',
-              color: COLORS.gray,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              marginRight: '0.5rem'
-            }}>
-              ALERTA
-            </span>
-            <span style={{
+        {/* Toggle Buttons */}
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          background: 'white',
+          padding: '0.25rem',
+          borderRadius: '8px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <button
+            onClick={() => setViewMode('complete')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
               fontSize: '13px',
-              fontWeight: '700',
-              color: topInsight.color
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              background: viewMode === 'complete' ? COLORS.primary : 'transparent',
+              color: viewMode === 'complete' ? 'white' : COLORS.gray
+            }}
+          >
+            <BarChart3 style={{ width: '16px', height: '16px' }} />
+            Última Semana Completa
+          </button>
+
+          <button
+            onClick={() => setViewMode('current')}
+            style={{
+              padding: '0.5rem 1rem',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.375rem',
+              background: viewMode === 'current' ? COLORS.accent : 'transparent',
+              color: viewMode === 'current' ? 'white' : COLORS.gray
+            }}
+          >
+            <CalendarDays style={{ width: '16px', height: '16px' }} />
+            Semana Atual ({businessMetrics.windows.currentWeek.daysElapsed} dias)
+          </button>
+        </div>
+
+        {/* Top Insight (if any) */}
+        {topInsight && (
+          <div style={{
+            padding: '0.625rem 1rem',
+            background: `${topInsight.color}15`,
+            borderRadius: '8px',
+            borderLeft: `4px solid ${topInsight.color}`,
+            flex: 1,
+            minWidth: '300px'
+          }}>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              color: topInsight.color,
+              marginBottom: '2px'
             }}>
               {topInsight.text}
-            </span>
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: COLORS.gray
+            }}>
+              {topInsight.action}
+            </div>
           </div>
-        </div>
-        <div style={{
-          fontSize: '11px',
-          color: COLORS.gray,
-          fontWeight: '500'
-        }}>
-          💡 {topInsight.action}
-        </div>
+        )}
       </div>
 
-      {/* RESPONSIVE KPI CARDS - 9 cols ultra-wide, 3x3 on 1080p, 1 col mobile */}
+      {/* KPI Cards - Shows either complete or current week based on toggle */}
       <KPICards 
         businessMetrics={businessMetrics}
         customerMetrics={customerMetrics}
         salesData={data.sales}
+        viewMode={viewMode}
       />
 
-      {/* ULTRA COMPACT AT-RISK CUSTOMERS */}
+      {/* At-Risk Customers Table */}
       <AtRiskCustomersTable 
         customerMetrics={customerMetrics}
-        salesData={data.sales}
-        maxRows={5}
       />
-
-      {/* COMPACT FOOTER */}
-      <div style={{
-        background: 'white',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb',
-        padding: '0.5rem 0.875rem',
-        marginTop: '0.75rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '0.5rem',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-      }}>
-        <div style={{
-          fontSize: '10px',
-          color: COLORS.gray,
-          fontWeight: '500'
-        }}>
-          Links Úteis:
-        </div>
-        <div style={{
-          display: 'flex',
-          gap: '0.75rem',
-          flexWrap: 'wrap'
-        }}>
-          {[
-            { href: 'https://admin.mercadopago.com.br', label: 'Mercado Pago' },
-            { href: 'https://app.asaas.com', label: 'Asaas' },
-            { href: 'https://console.twilio.com', label: 'Twilio' },
-            { href: 'https://drive.google.com', label: 'Drive' },
-            { href: 'https://maps.app.goo.gl/VwNojjvheJrXZeRd8', label: 'Maps' }
-          ].map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '10px',
-                color: COLORS.primary,
-                textDecoration: 'none',
-                fontWeight: '600',
-                transition: 'color 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.color = COLORS.accent}
-              onMouseLeave={(e) => e.currentTarget.style.color = COLORS.primary}
-            >
-              <ExternalLink style={{ width: '10px', height: '10px' }} />
-              {link.label}
-            </a>
-          ))}
-        </div>
-      </div>
-
-      {/* Pulse Animation */}
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        
-        @media (max-width: 768px) {
-          /* Mobile optimizations */
-          h1 { font-size: 20px !important; }
-        }
-      `}</style>
     </div>
   );
 };
