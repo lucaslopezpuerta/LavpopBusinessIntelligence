@@ -240,7 +240,7 @@ export function calculateCampaignROI(salesData, campaignData) {
     const campaignSales = [];
     
     salesData.forEach((rawRow, index) => {
-      const coupon = (rawRow.Cupom || rawRow.coupon || '').toLowerCase().trim();
+      const coupon = (rawRow.Codigo_Cupom || rawRow.coupon || '').toLowerCase().trim();
       if (coupon === campaign.code) {
         // Find matching parsed record by index
         if (records[index]) {
