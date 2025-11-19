@@ -1,21 +1,20 @@
-// KPICards.jsx v3.2 - DASHBOARD VALIDATION WITH COMPREHENSIVE LOGGING
-// ✅ FIXED: Works with businessMetrics v2.6 (includes Date objects)
+// KPICards.jsx v3.3 - HYBRID VIEW SUPPORT
+// ✅ NEW: Supports both "complete" and "current" week views
+// ✅ Shows appropriate data based on viewMode prop
+// ✅ Updates subtitle based on view (7 dias vs X dias)
 // ✅ Comprehensive console logging for validation
-// ✅ Uses shared date windows from businessMetrics (consistent with other KPIs)
+// ✅ Uses shared date windows from businessMetrics
 // ✅ WoW badges in bottom-right (no overlap)
 // ✅ Responsive grid with media queries
-// ✅ All font sizes consistent
 //
 // CHANGELOG:
-// v3.2 (2025-11-19): VALIDATION RELEASE
-//   - Added comprehensive console logging for all KPIs
-//   - Added New Customers calculation debugging
-//   - Validates date window access
-//   - Logs all week-over-week calculations
-//   - Reports any data inconsistencies
+// v3.3 (2025-11-19): HYBRID VIEW SUPPORT
+//   - Added viewMode prop ('complete' or 'current')
+//   - Dynamically shows complete week or current week metrics
+//   - Updates subtitles to reflect actual time period
+//   - WoW comparison adjusted for current week (day-over-day)
+// v3.2 (2025-11-19): VALIDATION RELEASE with comprehensive logging
 // v3.1 (2025-11-16): Fixed New Customers WoW to use shared date windows
-// v3.0 (2025-11-16): Responsive grid + bottom-right badges
-// v2.4 (2025-11-15): Perfect font consistency
 
 import React, { useMemo } from 'react';
 import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
@@ -39,9 +38,10 @@ function normalizeDoc(doc) {
   return cleaned;
 }
 
-const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
+const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'complete' }) => {
   const newClientsData = useMemo(() => {
-    console.log('\n=== NEW CUSTOMERS CALCULATION (KPICards v3.2) ===');
+    console.log('\n=== NEW CUSTOMERS CALCULATION (KPICards v3.3) ===');
+    console.log('View mode:', viewMode);
     
     if (!salesData || salesData.length === 0) {
       console.warn('⚠️ No sales data available');
@@ -53,30 +53,35 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       return { count: 0, weekOverWeek: null };
     }
 
-    // ✅ USE SAME DATE WINDOWS AS ALL OTHER KPIS
-    const currentWeek = businessMetrics.windows.weekly;
-    const previousWeek = businessMetrics.windows.previousWeekly;
+    // ✅ Select appropriate window based on view mode
+    const currentWindow = viewMode === 'current' 
+      ? businessMetrics.windows.currentWeek
+      : businessMetrics.windows.weekly;
+    
+    const previousWindow = businessMetrics.windows.previousWeekly;
     
     console.log('Date windows retrieved:', {
-      currentWeek: {
-        start: currentWeek.start ? currentWeek.start.toISOString() : 'MISSING!',
-        end: currentWeek.end ? currentWeek.end.toISOString() : 'MISSING!',
-        startDate: currentWeek.startDate,
-        endDate: currentWeek.endDate
+      viewMode,
+      currentWindow: {
+        start: currentWindow.start ? currentWindow.start.toISOString() : 'MISSING!',
+        end: currentWindow.end ? currentWindow.end.toISOString() : 'MISSING!',
+        startDate: currentWindow.startDate,
+        endDate: currentWindow.endDate,
+        daysElapsed: currentWindow.daysElapsed
       },
-      previousWeek: {
-        start: previousWeek.start ? previousWeek.start.toISOString() : 'MISSING!',
-        end: previousWeek.end ? previousWeek.end.toISOString() : 'MISSING!',
-        startDate: previousWeek.startDate,
-        endDate: previousWeek.endDate
+      previousWindow: {
+        start: previousWindow.start ? previousWindow.start.toISOString() : 'MISSING!',
+        end: previousWindow.end ? previousWindow.end.toISOString() : 'MISSING!',
+        startDate: previousWindow.startDate,
+        endDate: previousWindow.endDate
       }
     });
     
     // ✅ Validate that Date objects exist
-    if (!currentWeek.start || !currentWeek.end || !previousWeek.start || !previousWeek.end) {
+    if (!currentWindow.start || !currentWindow.end || !previousWindow.start || !previousWindow.end) {
       console.error('❌ CRITICAL: Date objects missing from windows!');
       console.error('This means businessMetrics.js is not returning start/end Date objects.');
-      console.error('Please update to businessMetrics v2.6 or later.');
+      console.error('Please update to businessMetrics v2.7 or later.');
       return { count: 0, weekOverWeek: null };
     }
 
@@ -111,47 +116,47 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       uniqueCustomers: Object.keys(customerFirstPurchase).length
     });
 
-    let currentWeekNew = 0;
-    let lastWeekNew = 0;
-    let currentWeekCustomers = [];
-    let lastWeekCustomers = [];
+    let currentPeriodNew = 0;
+    let lastPeriodNew = 0;
+    let currentPeriodCustomers = [];
+    let lastPeriodCustomers = [];
     
     Object.entries(customerFirstPurchase).forEach(([cpf, firstDate]) => {
-      if (firstDate >= currentWeek.start && firstDate <= currentWeek.end) {
-        currentWeekNew++;
-        currentWeekCustomers.push({ cpf, date: firstDate.toISOString().split('T')[0] });
-      } else if (firstDate >= previousWeek.start && firstDate <= previousWeek.end) {
-        lastWeekNew++;
-        lastWeekCustomers.push({ cpf, date: firstDate.toISOString().split('T')[0] });
+      if (firstDate >= currentWindow.start && firstDate <= currentWindow.end) {
+        currentPeriodNew++;
+        currentPeriodCustomers.push({ cpf, date: firstDate.toISOString().split('T')[0] });
+      } else if (firstDate >= previousWindow.start && firstDate <= previousWindow.end) {
+        lastPeriodNew++;
+        lastPeriodCustomers.push({ cpf, date: firstDate.toISOString().split('T')[0] });
       }
     });
     
     console.log('New customers found:', {
-      currentWeek: currentWeekNew,
-      previousWeek: lastWeekNew,
-      currentWeekSample: currentWeekCustomers.slice(0, 3),
-      previousWeekSample: lastWeekCustomers.slice(0, 3)
+      currentPeriod: currentPeriodNew,
+      previousPeriod: lastPeriodNew,
+      currentPeriodSample: currentPeriodCustomers.slice(0, 3),
+      previousPeriodSample: lastPeriodCustomers.slice(0, 3)
     });
 
-    let weekOverWeekChange = null;
-    if (lastWeekNew > 0) {
-      weekOverWeekChange = ((currentWeekNew - lastWeekNew) / lastWeekNew) * 100;
-    } else if (currentWeekNew > 0) {
-      weekOverWeekChange = 100;
+    let periodOverPeriodChange = null;
+    if (lastPeriodNew > 0) {
+      periodOverPeriodChange = ((currentPeriodNew - lastPeriodNew) / lastPeriodNew) * 100;
+    } else if (currentPeriodNew > 0) {
+      periodOverPeriodChange = 100;
     }
     
-    console.log('Week-over-week calculation:', {
-      change: weekOverWeekChange ? `${weekOverWeekChange.toFixed(1)}%` : 'N/A',
-      formula: `((${currentWeekNew} - ${lastWeekNew}) / ${lastWeekNew}) × 100`
+    console.log('Period-over-period calculation:', {
+      change: periodOverPeriodChange ? `${periodOverPeriodChange.toFixed(1)}%` : 'N/A',
+      formula: `((${currentPeriodNew} - ${lastPeriodNew}) / ${lastPeriodNew}) × 100`
     });
     
     console.log('=== END NEW CUSTOMERS CALCULATION ===\n');
 
     return {
-      count: currentWeekNew,
-      weekOverWeek: weekOverWeekChange
+      count: currentPeriodNew,
+      weekOverWeek: periodOverPeriodChange
     };
-  }, [salesData, businessMetrics?.windows]);
+  }, [salesData, businessMetrics?.windows, viewMode]);
 
   if (!businessMetrics || !customerMetrics) {
     return (
@@ -161,19 +166,22 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     );
   }
   
-  console.log('\n=== KPI CARDS RENDER (v3.2) ===');
+  console.log('\n=== KPI CARDS RENDER (v3.3) ===');
+  console.log('View Mode:', viewMode);
   console.log('Business Metrics Available:', !!businessMetrics);
   console.log('Customer Metrics Available:', !!customerMetrics);
 
-  const weekly = businessMetrics.weekly || {};
+  // ✅ Select data source based on view mode
+  const metricsSource = viewMode === 'current' ? businessMetrics.currentWeek : businessMetrics.weekly;
   const wow = businessMetrics.weekOverWeek || {};
   
-  console.log('Current Week Metrics:', {
-    netRevenue: weekly.netRevenue,
-    totalServices: weekly.totalServices,
-    utilization: weekly.totalUtilization,
-    washServices: weekly.washServices,
-    dryServices: weekly.dryServices
+  console.log(`${viewMode === 'current' ? 'Current' : 'Complete'} Week Metrics:`, {
+    netRevenue: metricsSource.netRevenue,
+    totalServices: metricsSource.totalServices,
+    utilization: metricsSource.totalUtilization,
+    washServices: metricsSource.washServices,
+    dryServices: metricsSource.dryServices,
+    daysInPeriod: metricsSource.activeDays
   });
   
   console.log('Week-over-Week Changes:', {
@@ -241,8 +249,17 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     };
   };
 
-  const washCount = weekly.washServices || 0;
-  const dryCount = weekly.dryServices || 0;
+  // ✅ Get appropriate subtitle based on view mode
+  const getTimeSubtitle = () => {
+    if (viewMode === 'current') {
+      const days = businessMetrics.windows.currentWeek.daysElapsed;
+      return `${days} ${days === 1 ? 'dia' : 'dias'}`;
+    }
+    return '7 dias';
+  };
+
+  const washCount = metricsSource.washServices || 0;
+  const dryCount = metricsSource.dryServices || 0;
   const totalServices = washCount + dryCount;
   const washPercent = totalServices > 0 ? ((washCount / totalServices) * 100).toFixed(0) : 0;
   const dryPercent = totalServices > 0 ? ((dryCount / totalServices) * 100).toFixed(0) : 0;
@@ -251,9 +268,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     {
       id: 'revenue',
       title: 'Receita Líquida',
-      value: formatCurrency(weekly.netRevenue || 0),
+      value: formatCurrency(metricsSource.netRevenue || 0),
       trend: getTrendData(wow.netRevenue),
-      subtitle: 'Esta semana',
+      subtitle: getTimeSubtitle(),
       icon: Activity,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
@@ -261,9 +278,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     {
       id: 'services',
       title: 'Total de Ciclos',
-      value: formatNumber(weekly.totalServices || 0),
+      value: formatNumber(metricsSource.totalServices || 0),
       trend: getTrendData(wow.totalServices),
-      subtitle: 'Esta semana',
+      subtitle: getTimeSubtitle(),
       icon: Activity,
       color: COLORS.primary,
       iconBg: '#e3f2fd'
@@ -271,9 +288,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     {
       id: 'utilization',
       title: 'Utilização Geral',
-      value: `${Math.round(weekly.totalUtilization || 0)}%`,
+      value: `${Math.round(metricsSource.totalUtilization || 0)}%`,
       trend: getTrendData(wow.utilization),
-      subtitle: 'Esta semana',
+      subtitle: getTimeSubtitle(),
       icon: Flame,
       color: COLORS.amber,
       iconBg: '#fef3c7'
@@ -302,7 +319,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       id: 'newclients',
       title: 'Novos Clientes',
       value: formatNumber(newClientsData.count),
-      subtitle: 'Esta semana',
+      subtitle: getTimeSubtitle(),
       trend: getTrendData(newClientsData.weekOverWeek),
       icon: UserPlus,
       color: COLORS.accent,
@@ -340,7 +357,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
   return (
     <div style={{ 
       display: 'grid',
-      // Responsive grid: 9 cols on ultra-wide (>1400px), 3x3 on desktop (>768px), 1 col on mobile
       gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
       gap: '0.75rem',
       marginBottom: '0.75rem'
@@ -399,7 +415,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
               </div>
             </div>
 
-            {/* Value - No overlap with badge now */}
+            {/* Value */}
             <div style={{ marginBottom: '0.375rem', flex: 1 }}>
               <div style={{ 
                 fontSize: '26px',
@@ -426,7 +442,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
                 {kpi.subtitle}
               </div>
 
-              {/* ✅ WoW Badge - Bottom Right (no overlap) */}
+              {/* WoW Badge */}
               {kpi.trend?.show && (
                 <div style={{
                   fontSize: '12px',
