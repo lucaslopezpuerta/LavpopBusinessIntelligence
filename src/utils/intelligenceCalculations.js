@@ -1,7 +1,9 @@
-// intelligenceCalculations.js v1.0.0
+// intelligenceCalculations.js v2.0 - FIXED VERSION
+// ✅ Uses existing transactionParser.js for consistent data handling
+// ✅ Uses existing businessMetrics.js patterns
+// ✅ Reuses proven math instead of reinventing
 // Strategic business intelligence calculations
 // Profitability, Weather Impact, Campaign ROI, Growth Analysis
-// Uses proven math from businessMetrics.js
 
 import { parseSalesRecords, filterWithServices } from './transactionParser';
 import { parseBrDate } from './dateUtils';
@@ -12,16 +14,19 @@ import { parseBrDate } from './dateUtils';
 export function parseWeatherData(weatherData) {
   if (!weatherData || weatherData.length === 0) return [];
   
-  return weatherData.map(row => ({
-    date: new Date(row['Data Medicao'] || row.date),
-    precipitation: parseFloat(row['PRECIPITACAO TOTAL, DIARIO(mm)'] || row.precipitation || 0),
-    temperature: parseFloat(row['TEMPERATURA MEDIA COMPENSADA, DIARIA(°C)'] || row.temperature || 0),
-    humidity: parseFloat(row['UMIDADE RELATIVA DO AR, MEDIA DIARIA(%)'] || row.humidity || 0),
-    isRainy: parseFloat(row['PRECIPITACAO TOTAL, DIARIO(mm)'] || row.precipitation || 0) > 5,
-    isCloudy: parseFloat(row['PRECIPITACAO TOTAL, DIARIO(mm)'] || row.precipitation || 0) > 0 && 
-              parseFloat(row['PRECIPITACAO TOTAL, DIARIO(mm)'] || row.precipitation || 0) <= 5,
-    isSunny: parseFloat(row['PRECIPITACAO TOTAL, DIARIO(mm)'] || row.precipitation || 0) === 0
-  }));
+  return weatherData.map(row => {
+    const precip = parseFloat(row['PRECIPITACAO TOTAL, DIARIO(mm)'] || row.precipitation || 0);
+    
+    return {
+      date: new Date(row['Data Medicao'] || row.date),
+      precipitation: precip,
+      temperature: parseFloat(row['TEMPERATURA MEDIA COMPENSADA, DIARIA(°C)'] || row.temperature || 0),
+      humidity: parseFloat(row['UMIDADE RELATIVA DO AR, MEDIA DIARIA(%)'] || row.humidity || 0),
+      isRainy: precip > 5,
+      isCloudy: precip > 0 && precip <= 5,
+      isSunny: precip === 0
+    };
+  });
 }
 
 /**
@@ -44,8 +49,10 @@ export function parseCampaignData(campaignData) {
 
 /**
  * Calculate profitability metrics
+ * ✅ Uses existing transactionParser for data handling
  */
 export function calculateProfitability(salesData, businessSettings, dateRange = null) {
+  // ✅ Use existing proven parser
   const records = parseSalesRecords(salesData);
   let filteredRecords = records;
   
@@ -56,14 +63,21 @@ export function calculateProfitability(salesData, businessSettings, dateRange = 
     );
   }
   
-  // Calculate totals
-  const totalRevenue = filteredRecords.reduce((sum, r) => sum + r.netRevenue, 0);
-  const totalCashback = filteredRecords.reduce((sum, r) => sum + r.cashbackAmount, 0);
-  const totalServices = filterWithServices(filteredRecords).length;
+  // ✅ Use existing sum pattern from businessMetrics.js
+  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+  
+  // Calculate totals (following businessMetrics.js pattern)
+  const totalGrossRevenue = Math.round(sum(filteredRecords, r => r.grossValue) * 100) / 100;
+  const totalNetRevenue = Math.round(sum(filteredRecords, r => r.netValue) * 100) / 100;
+  const totalCashback = Math.round(sum(filteredRecords, r => r.cashbackAmount) * 100) / 100;
+  
+  // ✅ Use existing filterWithServices to exclude Recarga
+  const serviceRecords = filterWithServices(filteredRecords);
+  const totalServices = sum(serviceRecords, r => r.totalServices);
   
   // Calculate costs
   const daysInPeriod = dateRange 
-    ? Math.ceil((dateRange.end - dateRange.start) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((dateRange.end - dateRange.start) / (1000 * 60 * 60 * 24)) + 1
     : 30;
   
   const monthlyFactor = daysInPeriod / 30;
@@ -80,8 +94,8 @@ export function calculateProfitability(salesData, businessSettings, dateRange = 
     (daysInPeriod / businessSettings.maintenanceIntervalDays);
   
   const totalCosts = fixedCosts + maintenanceCosts;
-  const netProfit = totalRevenue - totalCosts;
-  const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+  const netProfit = totalNetRevenue - totalCosts;
+  const profitMargin = totalNetRevenue > 0 ? (netProfit / totalNetRevenue) * 100 : 0;
   
   // Calculate break-even
   const serviceAfterCashback = businessSettings.servicePrice * 
@@ -95,9 +109,9 @@ export function calculateProfitability(salesData, businessSettings, dateRange = 
   
   return {
     // Revenue
-    totalRevenue,
+    totalRevenue: totalNetRevenue,
     totalCashback,
-    grossRevenue: totalRevenue + totalCashback,
+    grossRevenue: totalGrossRevenue,
     
     // Costs
     fixedCosts,
@@ -116,14 +130,16 @@ export function calculateProfitability(salesData, businessSettings, dateRange = 
     
     // Period
     daysInPeriod,
-    dailyAverage: totalRevenue / daysInPeriod
+    dailyAverage: totalNetRevenue / daysInPeriod
   };
 }
 
 /**
  * Calculate weather impact on business
+ * ✅ Uses existing transactionParser for data handling
  */
 export function calculateWeatherImpact(salesData, weatherData) {
+  // ✅ Use existing proven parser
   const records = parseSalesRecords(salesData);
   const weather = parseWeatherData(weatherData);
   
@@ -152,27 +168,29 @@ export function calculateWeatherImpact(salesData, weatherData) {
     }
   });
   
-  // Calculate averages
+  // Calculate averages (using businessMetrics.js pattern)
+  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+  
   const calculateAverage = (salesArray) => {
     if (salesArray.length === 0) return { revenue: 0, services: 0, days: 0 };
     
     // Group by date
     const dayMap = new Map();
     salesArray.forEach(record => {
-      const dateKey = record.date.toISOString().split('T')[0];
+      const dateKey = record.dateStr;
       if (!dayMap.has(dateKey)) {
         dayMap.set(dateKey, { revenue: 0, services: 0 });
       }
       const day = dayMap.get(dateKey);
-      day.revenue += record.netRevenue;
-      if (record.tipo !== 'Recarga') {
-        day.services++;
+      day.revenue += record.netValue;
+      if (!record.isRecarga) {
+        day.services += record.totalServices;
       }
     });
     
     const days = dayMap.size;
-    const totalRevenue = Array.from(dayMap.values()).reduce((sum, d) => sum + d.revenue, 0);
-    const totalServices = Array.from(dayMap.values()).reduce((sum, d) => sum + d.services, 0);
+    const totalRevenue = sum(Array.from(dayMap.values()), d => d.revenue);
+    const totalServices = sum(Array.from(dayMap.values()), d => d.services);
     
     return {
       revenue: totalRevenue / days,
@@ -208,23 +226,37 @@ export function calculateWeatherImpact(salesData, weatherData) {
 
 /**
  * Calculate campaign effectiveness
+ * ✅ Uses existing transactionParser for data handling
  */
 export function calculateCampaignROI(salesData, campaignData) {
+  // ✅ Use existing proven parser
   const records = parseSalesRecords(salesData);
   const campaigns = parseCampaignData(campaignData);
   
   const campaignPerformance = campaigns.map(campaign => {
     // Find sales using this coupon
-    const campaignSales = records.filter(record => {
-      const recordCoupon = (record.cupom || '').toLowerCase().trim();
-      return recordCoupon === campaign.code &&
-             record.date >= campaign.startDate &&
-             record.date <= campaign.endDate;
+    // Note: We need to check raw sales data for coupon codes
+    // Since parseSalesRecords doesn't include coupon field, we need to cross-reference
+    const campaignSales = [];
+    
+    salesData.forEach((rawRow, index) => {
+      const coupon = (rawRow.Cupom || rawRow.coupon || '').toLowerCase().trim();
+      if (coupon === campaign.code) {
+        // Find matching parsed record by index
+        if (records[index]) {
+          const record = records[index];
+          if (record.date >= campaign.startDate && record.date <= campaign.endDate) {
+            campaignSales.push(record);
+          }
+        }
+      }
     });
     
-    const totalRevenue = campaignSales.reduce((sum, r) => sum + r.grossRevenue, 0);
-    const totalDiscount = totalRevenue * (campaign.discountPercent / 100);
-    const netRevenue = totalRevenue - totalDiscount;
+    const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+    
+    const totalGrossRevenue = sum(campaignSales, r => r.grossValue);
+    const totalDiscount = totalGrossRevenue * (campaign.discountPercent / 100);
+    const netRevenue = sum(campaignSales, r => r.netValue);
     const redemptions = campaignSales.length;
     
     const redemptionRate = campaign.totalCyclesAvailable > 0 
@@ -257,7 +289,7 @@ export function calculateCampaignROI(salesData, campaignData) {
       ...campaign,
       redemptions,
       redemptionRate,
-      totalRevenue,
+      totalRevenue: totalGrossRevenue,
       totalDiscount,
       netRevenue,
       roi,
@@ -281,9 +313,12 @@ export function calculateCampaignROI(salesData, campaignData) {
 
 /**
  * Calculate month-over-month growth trends
+ * ✅ Uses existing transactionParser for data handling
  */
 export function calculateGrowthTrends(salesData) {
+  // ✅ Use existing proven parser
   const records = parseSalesRecords(salesData);
+  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
   
   // Group by month
   const monthlyData = new Map();
@@ -301,14 +336,10 @@ export function calculateGrowthTrends(salesData) {
     }
     
     const month = monthlyData.get(monthKey);
-    month.revenue += record.netRevenue;
+    month.revenue += record.netValue;
     
-    if (record.tipo !== 'Recarga') {
-      month.services++;
-    }
-    
-    if (record.cpf) {
-      month.customers.add(record.cpf);
+    if (!record.isRecarga) {
+      month.services += record.totalServices;
     }
   });
   
@@ -368,19 +399,25 @@ export function calculateGrowthTrends(salesData) {
 
 /**
  * Get current month metrics
+ * ✅ Uses existing transactionParser for data handling
  */
 export function getCurrentMonthMetrics(salesData) {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
   
+  // ✅ Use existing proven parser
   const records = parseSalesRecords(salesData);
   const currentMonthRecords = records.filter(r => 
     r.date >= startOfMonth && r.date <= endOfMonth
   );
   
-  const revenue = currentMonthRecords.reduce((sum, r) => sum + r.netRevenue, 0);
-  const services = filterWithServices(currentMonthRecords).length;
+  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+  const revenue = Math.round(sum(currentMonthRecords, r => r.netValue) * 100) / 100;
+  
+  // ✅ Use existing filterWithServices
+  const serviceRecords = filterWithServices(currentMonthRecords);
+  const services = sum(serviceRecords, r => r.totalServices);
   
   return {
     month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
@@ -393,6 +430,7 @@ export function getCurrentMonthMetrics(salesData) {
 
 /**
  * Get previous month metrics
+ * ✅ Uses existing transactionParser for data handling
  */
 export function getPreviousMonthMetrics(salesData) {
   const now = new Date();
@@ -400,13 +438,18 @@ export function getPreviousMonthMetrics(salesData) {
   const startOfMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
   const endOfMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59);
   
+  // ✅ Use existing proven parser
   const records = parseSalesRecords(salesData);
   const lastMonthRecords = records.filter(r => 
     r.date >= startOfMonth && r.date <= endOfMonth
   );
   
-  const revenue = lastMonthRecords.reduce((sum, r) => sum + r.netRevenue, 0);
-  const services = filterWithServices(lastMonthRecords).length;
+  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+  const revenue = Math.round(sum(lastMonthRecords, r => r.netValue) * 100) / 100;
+  
+  // ✅ Use existing filterWithServices
+  const serviceRecords = filterWithServices(lastMonthRecords);
+  const services = sum(serviceRecords, r => r.totalServices);
   
   return {
     month: `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`,
