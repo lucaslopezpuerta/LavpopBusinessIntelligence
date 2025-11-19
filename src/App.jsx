@@ -1,10 +1,7 @@
-// App.jsx v2.1 - ANALYTICS TAB INTEGRATED
-// ✅ Sleek, compact header with better logo integration
-// ✅ Modern tab design with brand colors
-// ✅ Space-efficient layout
-// ✅ Analytics tab with Performance Intelligence
+// App.jsx v3.0 - INTELLIGENCE TAB INTEGRATED
 //
 // CHANGELOG:
+// v3.0 (2025-11-18): Replaced Analytics Tab for the Intelligence tab functionality
 // v2.1 (2025-11-16): Added Analytics tab functionality
 // v2.0 (2025-11-15): Complete header redesign
 
@@ -21,7 +18,7 @@ import './App.css';
 import Dashboard from './views/Dashboard';
 import Customers from './views/Customers';
 import Operations from './views/Operations';
-import Analytics from './views/Analytics';
+import Intelligence from './views/Intelligence';
 
 const COLORS = {
   primary: '#1a5a8e',
@@ -59,7 +56,7 @@ function App() {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
     { id: 'customers', label: 'Clientes', icon: Users, component: Customers },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp, component: Analytics },
+    { id: 'intelligence', label: 'Inteligência', icon: TrendingUp, component: Intelligence },
     { id: 'operations', label: 'Operações', icon: Settings, component: Operations }
   ];
 
