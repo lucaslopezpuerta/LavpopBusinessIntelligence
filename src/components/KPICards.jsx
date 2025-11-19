@@ -1,10 +1,18 @@
-// KPICards.jsx v3.1 - FIXED NEW CUSTOMERS WOW CALCULATION
+// KPICards.jsx v3.2 - DASHBOARD VALIDATION WITH COMPREHENSIVE LOGGING
+// ✅ FIXED: Works with businessMetrics v2.6 (includes Date objects)
+// ✅ Comprehensive console logging for validation
 // ✅ Uses shared date windows from businessMetrics (consistent with other KPIs)
 // ✅ WoW badges in bottom-right (no overlap)
 // ✅ Responsive grid with media queries
 // ✅ All font sizes consistent
 //
 // CHANGELOG:
+// v3.2 (2025-11-19): VALIDATION RELEASE
+//   - Added comprehensive console logging for all KPIs
+//   - Added New Customers calculation debugging
+//   - Validates date window access
+//   - Logs all week-over-week calculations
+//   - Reports any data inconsistencies
 // v3.1 (2025-11-16): Fixed New Customers WoW to use shared date windows
 // v3.0 (2025-11-16): Responsive grid + bottom-right badges
 // v2.4 (2025-11-15): Perfect font consistency
@@ -33,40 +41,96 @@ function normalizeDoc(doc) {
 
 const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
   const newClientsData = useMemo(() => {
-    if (!salesData || salesData.length === 0 || !businessMetrics?.windows) {
+    console.log('\n=== NEW CUSTOMERS CALCULATION (KPICards v3.2) ===');
+    
+    if (!salesData || salesData.length === 0) {
+      console.warn('⚠️ No sales data available');
+      return { count: 0, weekOverWeek: null };
+    }
+    
+    if (!businessMetrics?.windows) {
+      console.warn('⚠️ No business metrics windows available');
       return { count: 0, weekOverWeek: null };
     }
 
     // ✅ USE SAME DATE WINDOWS AS ALL OTHER KPIS
     const currentWeek = businessMetrics.windows.weekly;
     const previousWeek = businessMetrics.windows.previousWeekly;
+    
+    console.log('Date windows retrieved:', {
+      currentWeek: {
+        start: currentWeek.start ? currentWeek.start.toISOString() : 'MISSING!',
+        end: currentWeek.end ? currentWeek.end.toISOString() : 'MISSING!',
+        startDate: currentWeek.startDate,
+        endDate: currentWeek.endDate
+      },
+      previousWeek: {
+        start: previousWeek.start ? previousWeek.start.toISOString() : 'MISSING!',
+        end: previousWeek.end ? previousWeek.end.toISOString() : 'MISSING!',
+        startDate: previousWeek.startDate,
+        endDate: previousWeek.endDate
+      }
+    });
+    
+    // ✅ Validate that Date objects exist
+    if (!currentWeek.start || !currentWeek.end || !previousWeek.start || !previousWeek.end) {
+      console.error('❌ CRITICAL: Date objects missing from windows!');
+      console.error('This means businessMetrics.js is not returning start/end Date objects.');
+      console.error('Please update to businessMetrics v2.6 or later.');
+      return { count: 0, weekOverWeek: null };
+    }
 
     const customerFirstPurchase = {};
+    let parsedCount = 0;
+    let validDateCount = 0;
+    let validCPFCount = 0;
     
     salesData.forEach(row => {
       const dateStr = row.Data || row.Data_Hora || row.date;
       if (!dateStr) return;
       
+      parsedCount++;
       const saleDate = parseBrDate(dateStr);
       if (!saleDate) return;
       
+      validDateCount++;
       const cpf = normalizeDoc(row.Doc_Cliente || row.document || row.doc);
       if (!cpf) return;
       
+      validCPFCount++;
       if (!customerFirstPurchase[cpf] || saleDate < customerFirstPurchase[cpf]) {
         customerFirstPurchase[cpf] = saleDate;
       }
     });
+    
+    console.log('Sales data parsing:', {
+      totalRows: salesData.length,
+      rowsWithDates: parsedCount,
+      validDates: validDateCount,
+      validCPFs: validCPFCount,
+      uniqueCustomers: Object.keys(customerFirstPurchase).length
+    });
 
     let currentWeekNew = 0;
     let lastWeekNew = 0;
+    let currentWeekCustomers = [];
+    let lastWeekCustomers = [];
     
-    Object.values(customerFirstPurchase).forEach(firstDate => {
-      if (firstDate >= currentWeek.startDate && firstDate <= currentWeek.endDate) {
+    Object.entries(customerFirstPurchase).forEach(([cpf, firstDate]) => {
+      if (firstDate >= currentWeek.start && firstDate <= currentWeek.end) {
         currentWeekNew++;
-      } else if (firstDate >= previousWeek.startDate && firstDate <= previousWeek.endDate) {
+        currentWeekCustomers.push({ cpf, date: firstDate.toISOString().split('T')[0] });
+      } else if (firstDate >= previousWeek.start && firstDate <= previousWeek.end) {
         lastWeekNew++;
+        lastWeekCustomers.push({ cpf, date: firstDate.toISOString().split('T')[0] });
       }
+    });
+    
+    console.log('New customers found:', {
+      currentWeek: currentWeekNew,
+      previousWeek: lastWeekNew,
+      currentWeekSample: currentWeekCustomers.slice(0, 3),
+      previousWeekSample: lastWeekCustomers.slice(0, 3)
     });
 
     let weekOverWeekChange = null;
@@ -75,6 +139,13 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     } else if (currentWeekNew > 0) {
       weekOverWeekChange = 100;
     }
+    
+    console.log('Week-over-week calculation:', {
+      change: weekOverWeekChange ? `${weekOverWeekChange.toFixed(1)}%` : 'N/A',
+      formula: `((${currentWeekNew} - ${lastWeekNew}) / ${lastWeekNew}) × 100`
+    });
+    
+    console.log('=== END NEW CUSTOMERS CALCULATION ===\n');
 
     return {
       count: currentWeekNew,
@@ -89,13 +160,41 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
       </div>
     );
   }
+  
+  console.log('\n=== KPI CARDS RENDER (v3.2) ===');
+  console.log('Business Metrics Available:', !!businessMetrics);
+  console.log('Customer Metrics Available:', !!customerMetrics);
 
   const weekly = businessMetrics.weekly || {};
   const wow = businessMetrics.weekOverWeek || {};
   
+  console.log('Current Week Metrics:', {
+    netRevenue: weekly.netRevenue,
+    totalServices: weekly.totalServices,
+    utilization: weekly.totalUtilization,
+    washServices: weekly.washServices,
+    dryServices: weekly.dryServices
+  });
+  
+  console.log('Week-over-Week Changes:', {
+    revenue: wow.netRevenue,
+    services: wow.totalServices,
+    utilization: wow.utilization,
+    wash: wow.washServices,
+    dry: wow.dryServices
+  });
+  
   const activeCount = customerMetrics.activeCount || 0;
   const atRiskCount = customerMetrics.atRiskCount || 0;
   const healthRate = customerMetrics.healthRate || 0;
+  
+  console.log('Customer Metrics:', {
+    active: activeCount,
+    atRisk: atRiskCount,
+    healthRate: `${healthRate.toFixed(1)}%`
+  });
+  
+  console.log('=== END KPI CARDS RENDER ===\n');
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
