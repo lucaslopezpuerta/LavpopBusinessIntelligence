@@ -62,9 +62,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData }) => {
     let lastWeekNew = 0;
     
     Object.values(customerFirstPurchase).forEach(firstDate => {
-      if (firstDate >= currentWeek.start && firstDate <= currentWeek.end) {
+      if (firstDate >= currentWeek.startDate && firstDate <= currentWeek.endDate) {
         currentWeekNew++;
-      } else if (firstDate >= previousWeek.start && firstDate <= previousWeek.end) {
+      } else if (firstDate >= previousWeek.startDate && firstDate <= previousWeek.endDate) {
         lastWeekNew++;
       }
     });
