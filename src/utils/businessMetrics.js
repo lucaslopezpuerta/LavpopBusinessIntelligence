@@ -10,7 +10,7 @@
 // CHANGELOG:
 // v2.7 (2025-11-19): HYBRID VIEW - Current week + projection
 //   - Added getCurrentPartialWeek() for real-time tracking
-//   - Added projection calculations for current week
+//   - Added projection calculations for the current week
 //   - Returns both complete and current week metrics
 //   - Smart projection logic (early week warning)
 // v2.6 (2025-11-19): CRITICAL FIX - Added start/end Date objects to windows return
@@ -171,8 +171,8 @@ function calculateTotals(records, window) {
   
   // Service counts (exclude Recarga - use serviceRecords)
   const totalServices = sum(serviceRecords, r => r.totalServices);
-  const washServices = sum(serviceRecords, r => r.washServices);
-  const dryServices = sum(serviceRecords, r => r.dryServices);
+  const washServices = sum(serviceRecords, r => r.washCount);
+  const dryServices = sum(serviceRecords, r => r.dryCount);
   
   // Calculate active days from window start/end (not from records)
   const activeDays = Math.ceil((window.end - window.start) / (1000 * 60 * 60 * 24)) + 1;
@@ -192,21 +192,21 @@ function calculateTotals(records, window) {
 }
 
 /**
- * Calculate machine utilization using time-based formula
- * ✅ Based on machine-minutes, not service counts
+ * Calculate machine utilization using a time-based formula
+ * ✅ Based on machine minutes, not service counts
  */
 function calculateUtilization(records, window) {
   const serviceRecords = filterWithServices(records);
   
-  const washers = serviceRecords.filter(r => r.washServices > 0);
-  const dryers = serviceRecords.filter(r => r.dryServices > 0);
+  const washers = serviceRecords.filter(r => r.washCount > 0);
+  const dryers = serviceRecords.filter(r => r.dryCount > 0);
   
   // Calculate machine-minutes
   const washerMinutesUsed = washers.reduce((sum, r) => 
-    sum + (r.washServices * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES), 0
+    sum + (r.washCount * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES), 0
   );
   const dryerMinutesUsed = dryers.reduce((sum, r) => 
-    sum + (r.dryServices * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES), 0
+    sum + (r.dryCount * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES), 0
   );
   
   // Calculate available machine-minutes
