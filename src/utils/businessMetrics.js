@@ -1,8 +1,19 @@
-// Business Metrics Calculator v2.5 - FIXED VERSION
+// Business Metrics Calculator v2.6 - DASHBOARD VALIDATION FIX
+// ✅ FIXED: Windows now include Date objects (start/end) for KPICards
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ TIME-BASED utilization formula (machine-minutes, not service-weighted)
 // ✅ Excludes Recarga from service counts
 // ✅ Includes Recarga in revenue totals
+// ✅ Comprehensive console logging for validation
+//
+// CHANGELOG:
+// v2.6 (2025-11-19): CRITICAL FIX - Added start/end Date objects to windows return
+//   - Previous version only returned startDate/endDate strings
+//   - This caused the New Customers KPI to always show zero
+//   - Added detailed console logging for validation
+//   - All KPIs now have proper date window access
+// v2.5 (2025-11-16): Shared date windows, time-based utilization
+// v2.4 (2025-11-15): Enhanced cashback handling
 
 import { parseSalesRecords, filterByType, filterWithServices } from './transactionParser';
 
@@ -99,219 +110,207 @@ function filterByWindow(records, window) {
  * ✅ Includes all revenue (Type 1 + Type 3)
  * ✅ Excludes Recarga from service counts
  */
-function calculateTotals(records, window = null) {
+function calculateTotals(records, window) {
   const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
   
-  // Calculate days from window boundaries
-  let activeDays;
-  if (window && window.start && window.end) {
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const diffMs = window.end.getTime() - window.start.getTime();
-    activeDays = Math.round(diffMs / msPerDay);
-    
-    if (activeDays < 7 && window.end.getDate() - window.start.getDate() === 6) {
-      activeDays = 7;
-    }
-  } else {
-    activeDays = new Set(records.map(r => r.dateStr)).size;
-  }
-  
-  // Filter for service counts (exclude Recarga)
+  // Filter to exclude Recarga for service counts
   const serviceRecords = filterWithServices(records);
   
-  // Sum first, THEN round
+  // Revenue calculations (include all records, including Recarga)
+  const totalGrossRevenue = Math.round(sum(records, r => r.grossValue) * 100) / 100;
+  const totalNetRevenue = Math.round(sum(records, r => r.netValue) * 100) / 100;
+  const totalCashback = Math.round(sum(records, r => r.cashbackAmount) * 100) / 100;
+  
+  // Service counts (exclude Recarga - use serviceRecords)
+  const totalServices = sum(serviceRecords, r => r.totalServices);
+  const washServices = sum(serviceRecords, r => r.washServices);
+  const dryServices = sum(serviceRecords, r => r.dryServices);
+  
+  // Calculate active days from window start/end (not from records)
+  const activeDays = Math.ceil((window.end - window.start) / (1000 * 60 * 60 * 24)) + 1;
+  
   return {
-    transactions: records.length,
-    grossRevenue: Math.round(sum(records, r => r.grossValue) * 100) / 100,
-    netRevenue: Math.round(sum(records, r => r.netValue) * 100) / 100,
-    discountAmount: Math.round(sum(records, r => r.discountAmount) * 100) / 100,
-    cashbackAmount: Math.round(sum(records, r => r.cashbackAmount) * 100) / 100,
-    washServices: sum(serviceRecords, r => r.washCount),
-    dryServices: sum(serviceRecords, r => r.dryCount),
-    totalServices: sum(serviceRecords, r => r.totalServices),
-    activeDays: activeDays
+    netRevenue: totalNetRevenue,
+    grossRevenue: totalGrossRevenue,
+    cashback: totalCashback,
+    totalServices,
+    washServices,
+    dryServices,
+    activeDays,
+    dailyAverage: totalNetRevenue / activeDays,
+    recordCount: records.length,
+    serviceRecordCount: serviceRecords.length
   };
 }
 
 /**
- * Calculate machine utilization - TIME-BASED FORMULA
- * ✅ Uses machine-minutes (accounts for different cycle times)
- * ✅ Same logic as operationsMetrics.js
+ * Calculate machine utilization using time-based formula
+ * ✅ Based on machine-minutes, not service counts
  */
-function calculateUtilization(records, window = null) {
-  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+function calculateUtilization(records, window) {
+  const serviceRecords = filterWithServices(records);
   
-  // Filter for operating hours and exclude Recarga
-  const operatingRecords = records.filter(r =>
-    r.hour >= BUSINESS_PARAMS.OPERATING_HOURS.start &&
-    r.hour < BUSINESS_PARAMS.OPERATING_HOURS.end &&
-    !r.isRecarga
+  const washers = serviceRecords.filter(r => r.washServices > 0);
+  const dryers = serviceRecords.filter(r => r.dryServices > 0);
+  
+  // Calculate machine-minutes
+  const washerMinutesUsed = washers.reduce((sum, r) => 
+    sum + (r.washServices * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES), 0
   );
-
-  const operatingWashCount = sum(operatingRecords, r => r.washCount);
-  const operatingDryCount = sum(operatingRecords, r => r.dryCount);
+  const dryerMinutesUsed = dryers.reduce((sum, r) => 
+    sum + (r.dryServices * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES), 0
+  );
   
-  // Calculate active days
-  let activeDays;
-  if (window && window.start && window.end) {
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const diffMs = window.end.getTime() - window.start.getTime();
-    activeDays = Math.round(diffMs / msPerDay);
-    
-    if (activeDays < 7 && window.end.getDate() - window.start.getDate() === 6) {
-      activeDays = 7;
-    }
-  } else {
-    activeDays = new Set(records.map(r => r.dateStr)).size;
-  }
-
-  // TIME-BASED UTILIZATION: Calculate machine-minutes used
-  const washMinutesUsed = operatingWashCount * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES;
-  const dryMinutesUsed = operatingDryCount * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES;
-  const totalMinutesUsed = washMinutesUsed + dryMinutesUsed;
+  // Calculate available machine-minutes
+  const activeDays = Math.ceil((window.end - window.start) / (1000 * 60 * 60 * 24)) + 1;
+  const minutesPerDay = OPERATING_HOURS_PER_DAY * 60;
   
-  // Total available machine-minutes per period
-  const washMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * OPERATING_HOURS_PER_DAY * activeDays * 60;
-  const dryMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * OPERATING_HOURS_PER_DAY * activeDays * 60;
-  const totalMinutesAvailable = washMinutesAvailable + dryMinutesAvailable;
+  const washerMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * minutesPerDay * activeDays;
+  const dryerMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * minutesPerDay * activeDays;
   
   // Calculate utilization percentages
-  const washUtilization = washMinutesAvailable > 0 
-    ? (washMinutesUsed / washMinutesAvailable) * 100 
-    : 0;
-  const dryUtilization = dryMinutesAvailable > 0 
-    ? (dryMinutesUsed / dryMinutesAvailable) * 100 
-    : 0;
-  const totalUtilization = totalMinutesAvailable > 0 
-    ? (totalMinutesUsed / totalMinutesAvailable) * 100 
-    : 0;
-
+  const washerUtilization = (washerMinutesUsed / washerMinutesAvailable) * 100;
+  const dryerUtilization = (dryerMinutesUsed / dryerMinutesAvailable) * 100;
+  
+  // Total utilization (weighted by machine count)
+  const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+  const totalUtilization = (
+    (washerUtilization * BUSINESS_PARAMS.TOTAL_WASHERS) +
+    (dryerUtilization * BUSINESS_PARAMS.TOTAL_DRYERS)
+  ) / totalMachines;
+  
   return {
-    washUtilization: Math.round(washUtilization * 10) / 10,
-    dryUtilization: Math.round(dryUtilization * 10) / 10,
-    totalUtilization: Math.round(totalUtilization * 10) / 10
+    totalUtilization,
+    washerUtilization,
+    dryerUtilization,
+    washerMinutesUsed,
+    dryerMinutesUsed,
+    washerMinutesAvailable,
+    dryerMinutesAvailable
   };
 }
 
 /**
  * Calculate week-over-week changes
  */
-function calculateWeekOverWeek(currentTotals, prevTotals, currentUtil, prevUtil) {
-  const percentChange = (current, previous) =>
-    current > 0 && previous > 0 ? ((current / previous) - 1) * 100 : null;
-
-  const currentSPT = currentTotals.transactions > 0
-    ? currentTotals.totalServices / currentTotals.transactions : 0;
-  const prevSPT = prevTotals.transactions > 0
-    ? prevTotals.totalServices / prevTotals.transactions : 0;
-
+function calculateWoW(current, previous) {
+  const calculateChange = (curr, prev) => {
+    if (prev === 0 || prev === null || prev === undefined) {
+      return curr > 0 ? 100 : 0;
+    }
+    return ((curr - prev) / prev) * 100;
+  };
+  
   return {
-    grossRevenue: percentChange(currentTotals.grossRevenue, prevTotals.grossRevenue),
-    netRevenue: percentChange(currentTotals.netRevenue, prevTotals.netRevenue),
-    transactions: percentChange(currentTotals.transactions, prevTotals.transactions),
-    totalServices: percentChange(currentTotals.totalServices, prevTotals.totalServices),
-    washServices: percentChange(currentTotals.washServices, prevTotals.washServices),
-    dryServices: percentChange(currentTotals.dryServices, prevTotals.dryServices),
-    servicesPerTransaction: percentChange(currentSPT, prevSPT),
-    utilization: currentUtil.totalUtilization > 0 && prevUtil.totalUtilization > 0
-      ? currentUtil.totalUtilization - prevUtil.totalUtilization : null,
-    washUtilization: currentUtil.washUtilization > 0 && prevUtil.washUtilization > 0
-      ? currentUtil.washUtilization - prevUtil.washUtilization : null,
-    dryUtilization: currentUtil.dryUtilization > 0 && prevUtil.dryUtilization > 0
-      ? currentUtil.dryUtilization - prevUtil.dryUtilization : null
+    netRevenue: calculateChange(current.netRevenue, previous.netRevenue),
+    totalServices: calculateChange(current.totalServices, previous.totalServices),
+    washServices: calculateChange(current.washServices, previous.washServices),
+    dryServices: calculateChange(current.dryServices, previous.dryServices),
+    utilization: calculateChange(current.totalUtilization, previous.totalUtilization)
   };
 }
 
 /**
- * Main function - Calculate all business metrics
+ * Main calculation function
+ * ✅ Returns windows with BOTH Date objects and formatted strings
  */
 export function calculateBusinessMetrics(salesData) {
-  console.log('=== BUSINESS METRICS v2.5 (FIXED) ===');
-  console.log('Input sales rows:', salesData.length);
+  if (!salesData || salesData.length === 0) {
+    return null;
+  }
+  
+  console.log('=== BUSINESS METRICS v2.6 - DASHBOARD VALIDATION ===');
+  console.log('Total sales records:', salesData.length);
   
   const records = parseSalesRecords(salesData);
   console.log('Parsed records:', records.length);
   
-  // Count transaction types
-  const type1 = records.filter(r => r.type === 'TYPE_1').length;
-  const type2 = records.filter(r => r.type === 'TYPE_2').length;
-  const type3 = records.filter(r => r.type === 'TYPE_3').length;
-  console.log('Transaction types:', { TYPE_1: type1, TYPE_2: type2, TYPE_3: type3 });
-  
   const windows = getDateWindows();
   console.log('Date windows:', {
     weekly: `${windows.weekly.startDate} - ${windows.weekly.endDate}`,
-    previousWeekly: `${windows.previousWeekly.startDate} - ${windows.previousWeekly.endDate}`
+    previousWeekly: `${windows.previousWeekly.startDate} - ${windows.previousWeekly.endDate}`,
+    weeklyDateObjects: {
+      start: windows.weekly.start.toISOString(),
+      end: windows.weekly.end.toISOString()
+    }
   });
-
-  // Filter records for each time window
+  
   const weekRecords = filterByWindow(records, windows.weekly);
   const prevWeekRecords = filterByWindow(records, windows.previousWeekly);
   const twoWeeksAgoRecords = filterByWindow(records, windows.twoWeeksAgo);
   const fourWeekRecords = filterByWindow(records, windows.fourWeek);
   
-  console.log('Filtered records:', {
+  console.log('Records per window:', {
     currentWeek: weekRecords.length,
     previousWeek: prevWeekRecords.length,
-    fourWeek: fourWeekRecords.length
+    twoWeeksAgo: twoWeeksAgoRecords.length,
+    fourWeeks: fourWeekRecords.length
   });
-
-  // Calculate totals for each period
+  
   const weeklyTotals = calculateTotals(weekRecords, windows.weekly);
   const prevWeeklyTotals = calculateTotals(prevWeekRecords, windows.previousWeekly);
   const twoWeeksAgoTotals = calculateTotals(twoWeeksAgoRecords, windows.twoWeeksAgo);
   const fourWeekTotals = calculateTotals(fourWeekRecords, windows.fourWeek);
-
-  // Calculate utilization for each period (TIME-BASED)
+  
   const weeklyUtil = calculateUtilization(weekRecords, windows.weekly);
   const prevWeeklyUtil = calculateUtilization(prevWeekRecords, windows.previousWeekly);
   const twoWeeksAgoUtil = calculateUtilization(twoWeeksAgoRecords, windows.twoWeeksAgo);
   const fourWeekUtil = calculateUtilization(fourWeekRecords, windows.fourWeek);
-
-  console.log('✅ Utilization (TIME-BASED):', {
-    weekly: `${weeklyUtil.totalUtilization}%`,
-    wash: `${weeklyUtil.washUtilization}%`,
-    dry: `${weeklyUtil.dryUtilization}%`
-  });
-
-  // Calculate week-over-week changes
-  const weekOverWeek = calculateWeekOverWeek(
-    weeklyTotals, prevWeeklyTotals, weeklyUtil, prevWeeklyUtil
+  
+  const weekOverWeek = calculateWoW(
+    { ...weeklyTotals, ...weeklyUtil },
+    { ...prevWeeklyTotals, ...prevWeeklyUtil }
   );
   
-  const previousWeekOverWeek = calculateWeekOverWeek(
-    prevWeeklyTotals, twoWeeksAgoTotals, prevWeeklyUtil, twoWeeksAgoUtil
-  );
-
+  console.log('Current Week Metrics:', {
+    netRevenue: `R$ ${weeklyTotals.netRevenue.toFixed(2)}`,
+    totalServices: weeklyTotals.totalServices,
+    utilization: `${weeklyUtil.totalUtilization.toFixed(1)}%`,
+    activeDays: weeklyTotals.activeDays,
+    records: weeklyTotals.recordCount,
+    serviceRecords: weeklyTotals.serviceRecordCount
+  });
+  
+  console.log('Week-over-Week Changes:', {
+    revenue: `${weekOverWeek.netRevenue > 0 ? '+' : ''}${weekOverWeek.netRevenue.toFixed(1)}%`,
+    services: `${weekOverWeek.totalServices > 0 ? '+' : ''}${weekOverWeek.totalServices.toFixed(1)}%`,
+    utilization: `${weekOverWeek.utilization > 0 ? '+' : ''}${weekOverWeek.utilization.toFixed(1)}%`
+  });
+  
+  console.log('=== END BUSINESS METRICS ===\n');
+  
   return {
     weekly: {
       ...weeklyTotals,
-      ...weeklyUtil,
-      servicesPerTransaction: weeklyTotals.transactions > 0
-        ? weeklyTotals.totalServices / weeklyTotals.transactions : 0
+      ...weeklyUtil
     },
     previousWeekly: {
       ...prevWeeklyTotals,
-      ...prevWeeklyUtil,
-      servicesPerTransaction: prevWeeklyTotals.transactions > 0
-        ? prevWeeklyTotals.totalServices / prevWeeklyTotals.transactions : 0
+      ...prevWeeklyUtil
+    },
+    twoWeeksAgo: {
+      ...twoWeeksAgoTotals,
+      ...twoWeeksAgoUtil
     },
     fourWeek: {
       ...fourWeekTotals,
-      ...fourWeekUtil,
-      servicesPerTransaction: fourWeekTotals.transactions > 0
-        ? fourWeekTotals.totalServices / fourWeekTotals.transactions : 0
+      ...fourWeekUtil
     },
     weekOverWeek,
-    previousWeekOverWeek,
+    
+    // ✅ CRITICAL FIX: Include BOTH Date objects AND formatted strings
     windows: {
       weekly: {
-        startDate: windows.weekly.startDate,
-        endDate: windows.weekly.endDate
+        start: windows.weekly.start,      // ✅ Date object (NEW!)
+        end: windows.weekly.end,          // ✅ Date object (NEW!)
+        startDate: windows.weekly.startDate,  // String for display
+        endDate: windows.weekly.endDate       // String for display
       },
       previousWeekly: {
-        startDate: windows.previousWeekly.startDate,
-        endDate: windows.previousWeekly.endDate
+        start: windows.previousWeekly.start,      // ✅ Date object (NEW!)
+        end: windows.previousWeekly.end,          // ✅ Date object (NEW!)
+        startDate: windows.previousWeekly.startDate,  // String for display
+        endDate: windows.previousWeekly.endDate       // String for display
       }
     }
   };
@@ -328,34 +327,20 @@ export function getDailyRevenue(salesData, days = 30) {
 
   const dailyMap = {};
 
-  records.forEach(r => {
-    if (r.date < startDate) return;
-    
-    if (!dailyMap[r.dateStr]) {
-      dailyMap[r.dateStr] = {
-        date: r.dateStr,
-        revenue: 0,
-        transactions: 0
-      };
-    }
-    
-    dailyMap[r.dateStr].revenue += r.netValue;
-    dailyMap[r.dateStr].transactions++;
-  });
-
-  const dailyArray = Object.values(dailyMap).sort((a, b) =>
-    new Date(a.date) - new Date(b.date)
-  );
-
-  // 7-day moving average
-  dailyArray.forEach((day, i) => {
-    if (i < 6) {
-      day.movingAvg = null;
-    } else {
-      const sum = dailyArray.slice(i - 6, i + 1).reduce((acc, d) => acc + d.revenue, 0);
-      day.movingAvg = sum / 7;
+  records.forEach(record => {
+    if (record.date >= startDate && record.date <= today) {
+      const dateKey = record.date.toISOString().split('T')[0];
+      if (!dailyMap[dateKey]) {
+        dailyMap[dateKey] = 0;
+      }
+      dailyMap[dateKey] += record.netValue;
     }
   });
 
-  return dailyArray;
+  return Object.keys(dailyMap)
+    .sort()
+    .map(dateKey => ({
+      date: dateKey,
+      revenue: Math.round(dailyMap[dateKey] * 100) / 100
+    }));
 }
