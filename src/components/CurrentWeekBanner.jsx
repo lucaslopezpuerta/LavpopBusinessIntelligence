@@ -1,5 +1,5 @@
 // CurrentWeekBanner.jsx v2.0 TAILWIND
-//
+// Highlight panel for current vs historical performance
 //
 // CHANGELOG:
 // v2.0 (2025-11-20): Complete Tailwind Redesign
@@ -14,8 +14,6 @@
 //   - Compares projection to last complete week
 //   - Smart confidence indicators based on days elapsed
 //   - Compact single-line or two-line layout
-
-// CurrentWeekBanner.jsx - Highlight panel for current vs historical performance
 
 import React, { useMemo } from 'react';
 import { ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
