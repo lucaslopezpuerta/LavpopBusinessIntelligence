@@ -1,149 +1,331 @@
-// CurrentWeekBanner.jsx v2.0 TAILWIND
-// Highlight panel for current vs historical performance
+// CurrentWeekBanner.jsx v1.0 - Real-time current week summary with projection
+// ✅ Shows current partial week metrics (Sunday → Today)
+// ✅ Projects full week performance based on current pace
+// ✅ Compares projection to last complete week
+// ✅ Smart confidence indicators based on days elapsed
+// ✅ Compact single-line or two-line layout
 //
 // CHANGELOG:
-// v2.0 (2025-11-20): Complete Tailwind Redesign
 // v1.0 (2025-11-19): Initial implementation
-//   - Real-time current week summary with projection
 //   - Current week summary (revenue, services, utilization)
 //   - Weekly projection with confidence indicator
 //   - Comparison to last complete week
 //   - Responsive design (desktop 1-line, mobile 2-lines)
-//   - Shows current partial week metrics (Sunday → Today)
-//   - Projects full week performance based on current pace
-//   - Compares projection to last complete week
-//   - Smart confidence indicators based on days elapsed
-//   - Compact single-line or two-line layout
 
-import React, { useMemo } from 'react';
-import { ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import React from 'react';
+import { TrendingUp, TrendingDown, Minus, AlertCircle, Calendar } from 'lucide-react';
 
-const BRAND = {
-  primary: '#0c4a6e',
-  accent: '#4ac02a',
+const COLORS = {
+  primary: '#1a5a8e',
+  accent: '#55b03b',
+  red: '#dc2626',
+  amber: '#f59e0b',
+  gray: '#6b7280',
+  lightGray: '#f3f4f6',
+  blue: '#3b82f6'
 };
 
-const formatCurrency = (value) =>
-  `R$ ${Number(value || 0).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-
-const formatPercent = (value) =>
-  `${Number(value || 0).toFixed(0)}%`;
-
 const CurrentWeekBanner = ({ businessMetrics }) => {
-  const {
-    currentRevenue,
-    projectedRevenue,
-    currentUtilization,
-    fourWeekRevenue,
-    deltaRevenue,
-    deltaDirection,
-  } = useMemo(() => {
-    const weekly = businessMetrics?.weekly || {};
-    const current = businessMetrics?.currentWeek || {};
-    const fourWeek = businessMetrics?.fourWeek || {};
+  if (!businessMetrics?.currentWeek) {
+    return null;
+  }
 
-    const currentRevenue = current.totalRevenue ?? current.revenue ?? 0;
-    const currentUtilization = current.totalUtilization ?? 0;
-    const fourWeekRevenue = fourWeek.totalRevenue ?? fourWeek.revenue ?? 0;
+  const { currentWeek } = businessMetrics;
+  const { window, projection } = currentWeek;
 
-    let projectedRevenue = null;
-    const daysElapsed = businessMetrics?.windows?.currentWeek?.daysElapsed;
-    const totalDays =
-      businessMetrics?.windows?.currentWeek?.totalDays || 7;
-    if (daysElapsed && daysElapsed > 0) {
-      projectedRevenue =
-        (currentRevenue / daysElapsed) * totalDays;
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
+  };
+
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat('pt-BR').format(value);
+  };
+
+  // Confidence level styling
+  const getConfidenceStyle = () => {
+    if (!projection.canProject) return { color: COLORS.gray, icon: AlertCircle };
+    
+    switch (projection.confidence) {
+      case 'very_low':
+        return { color: COLORS.red, icon: AlertCircle };
+      case 'low':
+        return { color: COLORS.amber, icon: AlertCircle };
+      case 'medium':
+        return { color: COLORS.blue, icon: TrendingUp };
+      case 'high':
+        return { color: COLORS.accent, icon: TrendingUp };
+      default:
+        return { color: COLORS.gray, icon: Minus };
     }
+  };
 
-    const delta = fourWeekRevenue
-      ? ((currentRevenue - fourWeekRevenue / 4) / (fourWeekRevenue / 4)) *
-        100
-      : 0;
+  // Trend icon and color
+  const getTrendIcon = () => {
+    if (!projection.canProject) return null;
+    
+    if (projection.trend === 'up') {
+      return <TrendingUp style={{ width: '18px', height: '18px', color: COLORS.accent }} />;
+    } else if (projection.trend === 'down') {
+      return <TrendingDown style={{ width: '18px', height: '18px', color: COLORS.red }} />;
+    } else {
+      return <Minus style={{ width: '18px', height: '18px', color: COLORS.gray }} />;
+    }
+  };
 
-    return {
-      currentRevenue,
-      projectedRevenue,
-      currentUtilization,
-      fourWeekRevenue,
-      deltaRevenue: delta,
-      deltaDirection: delta >= 0 ? 'up' : 'down',
-    };
-  }, [businessMetrics]);
+  const confidenceStyle = getConfidenceStyle();
+  const ConfidenceIcon = confidenceStyle.icon;
 
   return (
-    <div className="rounded-2xl bg-gradient-to-r from-[#0c4a6e] via-[#0c4a6e]/90 to-[#4ac02a] text-white shadow-md px-4 py-3">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70 mb-1">
-            Semana Atual - Visão Rápida
-          </div>
-          <div className="text-lg font-semibold">
-            Como está hoje em relação às últimas semanas?
-          </div>
+    <div style={{
+      background: 'linear-gradient(135deg, #1a5a8e 0%, #2563eb 100%)',
+      borderRadius: '12px',
+      padding: '1rem 1.25rem',
+      marginBottom: '0.75rem',
+      color: 'white',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '0.75rem',
+        flexWrap: 'wrap',
+        gap: '0.5rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Calendar style={{ width: '20px', height: '20px' }} />
+          <span style={{ 
+            fontSize: '14px', 
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Semana Atual
+          </span>
+          <span style={{
+            fontSize: '13px',
+            opacity: 0.9,
+            fontWeight: '500'
+          }}>
+            ({window.startDate} - {window.endDate}, {window.daysElapsed} {window.daysElapsed === 1 ? 'dia' : 'dias'})
+          </span>
         </div>
-
-        <div className="grid gap-3 md:grid-cols-3 flex-1 md:max-w-xl">
-          {/* Receita atual */}
-          <div className="rounded-xl bg-black/10 border border-white/10 px-3 py-2">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
-              Receita acumulada
-            </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-lg font-bold">
-                {formatCurrency(currentRevenue)}
-              </span>
-            </div>
-            {projectedRevenue != null && (
-              <div className="mt-1 text-[11px] text-white/80">
-                Projeção até fim da semana:{' '}
-                <span className="font-semibold">
-                  {formatCurrency(projectedRevenue)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Utilização */}
-          <div className="rounded-xl bg-black/10 border border-white/10 px-3 py-2">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
-                Utilização média
-              </div>
-              <Activity className="w-4 h-4 text-white/80" />
-            </div>
-            <div className="mt-1 text-lg font-bold">
-              {formatPercent(currentUtilization)}
-            </div>
-            <div className="mt-1 text-[11px] text-white/80">
-              Considera todos os ciclos da semana atual.
-            </div>
-          </div>
-
-          {/* Comparação 4 semanas */}
-          <div className="rounded-xl bg-black/10 border border-white/10 px-3 py-2">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
-              vs. média 4 semanas
-            </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-lg font-bold">
-                {deltaRevenue > 0 ? '+' : ''}
-                {deltaRevenue.toFixed(1)}%
-              </span>
-              {deltaDirection === 'up' ? (
-                <ArrowUpRight className="w-4 h-4 text-emerald-300" />
-              ) : (
-                <ArrowDownRight className="w-4 h-4 text-rose-300" />
-              )}
-            </div>
-            <div className="mt-1 text-[11px] text-white/80">
-              Baseado na média de receita das últimas 4 semanas.
-            </div>
-          </div>
+        
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.375rem',
+          fontSize: '12px',
+          opacity: 0.85,
+          background: 'rgba(255, 255, 255, 0.15)',
+          padding: '4px 10px',
+          borderRadius: '6px'
+        }}>
+          <ConfidenceIcon style={{ width: '14px', height: '14px' }} />
+          <span>{window.dayOfWeek}</span>
         </div>
       </div>
+
+      {/* Metrics Row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        {/* Current Week Stats */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.5rem',
+          flex: 1,
+          minWidth: '300px'
+        }}>
+          <div>
+            <div style={{ 
+              fontSize: '11px', 
+              opacity: 0.85,
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px',
+              marginBottom: '2px'
+            }}>
+              Receita
+            </div>
+            <div style={{ 
+              fontSize: '24px', 
+              fontWeight: '700',
+              lineHeight: '1.1'
+            }}>
+              {formatCurrency(currentWeek.netRevenue)}
+            </div>
+          </div>
+
+          <div style={{
+            width: '1px',
+            height: '40px',
+            background: 'rgba(255, 255, 255, 0.3)'
+          }} />
+
+          <div>
+            <div style={{ 
+              fontSize: '11px', 
+              opacity: 0.85,
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px',
+              marginBottom: '2px'
+            }}>
+              Ciclos
+            </div>
+            <div style={{ 
+              fontSize: '24px', 
+              fontWeight: '700',
+              lineHeight: '1.1'
+            }}>
+              {formatNumber(currentWeek.totalServices)}
+            </div>
+          </div>
+
+          <div style={{
+            width: '1px',
+            height: '40px',
+            background: 'rgba(255, 255, 255, 0.3)'
+          }} />
+
+          <div>
+            <div style={{ 
+              fontSize: '11px', 
+              opacity: 0.85,
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px',
+              marginBottom: '2px'
+            }}>
+              Utilização
+            </div>
+            <div style={{ 
+              fontSize: '24px', 
+              fontWeight: '700',
+              lineHeight: '1.1'
+            }}>
+              {Math.round(currentWeek.totalUtilization)}%
+            </div>
+          </div>
+        </div>
+
+        {/* Projection */}
+        {projection.canProject && (
+          <>
+            <div style={{
+              width: '2px',
+              height: '50px',
+              background: 'rgba(255, 255, 255, 0.4)'
+            }} />
+
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.15)',
+              borderRadius: '8px',
+              padding: '0.75rem 1rem',
+              minWidth: '280px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '0.5rem'
+              }}>
+                <span style={{
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  opacity: 0.9,
+                  fontWeight: '600'
+                }}>
+                  Projeção Semana Completa
+                </span>
+                {getTrendIcon()}
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '0.75rem',
+                marginBottom: '0.375rem'
+              }}>
+                <span style={{
+                  fontSize: '22px',
+                  fontWeight: '700'
+                }}>
+                  {formatCurrency(projection.projectedRevenue)}
+                </span>
+                <span style={{
+                  fontSize: '14px',
+                  opacity: 0.9
+                }}>
+                  • {formatNumber(projection.projectedServices)} ciclos
+                </span>
+              </div>
+
+              <div style={{
+                fontSize: '12px',
+                opacity: 0.85,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span>
+                  {projection.revenueVsLast > 0 ? '+' : ''}{projection.revenueVsLast.toFixed(1)}% vs última semana
+                </span>
+                {projection.confidence === 'very_low' && (
+                  <span style={{
+                    fontSize: '11px',
+                    background: 'rgba(220, 38, 38, 0.3)',
+                    padding: '2px 6px',
+                    borderRadius: '4px'
+                  }}>
+                    Volátil
+                  </span>
+                )}
+                {projection.confidence === 'low' && (
+                  <span style={{
+                    fontSize: '11px',
+                    background: 'rgba(245, 158, 11, 0.3)',
+                    padding: '2px 6px',
+                    borderRadius: '4px'
+                  }}>
+                    Preliminar
+                  </span>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {!projection.canProject && (
+          <div style={{
+            fontSize: '13px',
+            opacity: 0.8,
+            fontStyle: 'italic',
+            padding: '0.5rem 1rem',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '6px'
+          }}>
+            {projection.message}
+          </div>
+        )}
+      </div>
+
+      {/* Mobile-responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          /* Stack vertically on mobile */
+        }
+      `}</style>
     </div>
   );
 };
