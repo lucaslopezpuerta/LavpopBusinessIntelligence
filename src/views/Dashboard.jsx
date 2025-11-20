@@ -1,19 +1,11 @@
-// Dashboard.jsx v6.1 - HYBRID VIEW WITH CURRENT WEEK BANNER
-// ✅ NEW: Current week banner with real-time metrics and projection
-// ✅ NEW: Toggle between "Última Semana Completa" and "Semana Atual"
-// ✅ Honest labeling (no more misleading "Esta semana")
+// Dashboard.jsx v6.2 - Dark Header + Fixed Customer Detail Modal
+// ✅ Dark gradient header so glass widgets are visible
+// ✅ Current week banner with real-time metrics and projection
+// ✅ Toggle between "Última Semana Completa" and "Semana Atual"
 // ✅ Quick Actions in header as icon buttons
-// ✅ Responsive KPI grid (9 cols ultra-wide, 3x3 on 1080p, 1 col mobile)
-// ✅ Google Business Widget WITH API integration
-// ✅ Ultra compact layout - guaranteed no scroll on 1080p
-//
-// CHANGELOG:
-// v6.1 (2025-11-19): HYBRID VIEW IMPLEMENTATION
-//   - Added CurrentWeekBanner showing real-time partial week
-//   - Added view toggle (complete week vs current week)
-//   - Fixed misleading date labels
-//   - KPICards can now show either the complete or the current week
-// v6.0 (2025-11-16): Major layout optimization - Quick Actions in header
+// ✅ Google Business / Clima / Instagram widgets in header
+// ✅ KPICards respect viewMode
+// ✅ AtRiskCustomersTable receives salesData again (fixes last 5 transactions)
 
 import React, { useMemo, useState } from 'react';
 import KPICards from '../components/KPICards';
@@ -24,7 +16,7 @@ import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
-import { Calendar, MessageSquare, Settings, ExternalLink, BarChart3, CalendarDays } from 'lucide-react';
+import { Calendar, MessageSquare, Settings, BarChart3, CalendarDays } from 'lucide-react';
 
 const COLORS = {
   primary: '#1a5a8e',
@@ -37,8 +29,8 @@ const COLORS = {
 };
 
 const Dashboard = ({ data, onNavigate }) => {
-  // ✅ NEW: View mode state
-  const [viewMode, setViewMode] = useState('complete'); // 'complete' or 'current'
+  // View mode state: 'complete' (última semana completa) or 'current' (semana atual parcial)
+  const [viewMode, setViewMode] = useState('complete');
 
   const businessMetrics = useMemo(() => {
     if (!data?.sales) return null;
@@ -56,18 +48,15 @@ const Dashboard = ({ data, onNavigate }) => {
   }, [data?.sales, data?.rfm]);
 
   const handleQuickAction = (actionId) => {
-    switch(actionId) {
+    switch (actionId) {
       case 'schedule':
         console.log('Agenda: Coming soon');
-        // TODO: Integrate calendar/maintenance scheduling
         break;
       case 'campaigns':
         console.log('Campanhas: Coming soon');
-        // TODO: Integrate SMS/marketing campaigns
         break;
       case 'settings':
         console.log('Configurações: Coming soon');
-        // TODO: Integrate settings panel
         break;
       default:
         console.log('Action:', actionId);
@@ -76,20 +65,13 @@ const Dashboard = ({ data, onNavigate }) => {
 
   if (!businessMetrics || !customerMetrics) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '400px'
-      }}>
-        <div style={{ color: '#6b7280', fontSize: '16px' }}>
-          Carregando dashboard...
-        </div>
+      <div className="flex items-center justify-center min-h-[400px] text-slate-500 text-base">
+        Carregando dashboard...
       </div>
     );
   }
 
-  // Get the appropriate date range based on view mode
+  // Date range label based on view mode
   const getDateRange = () => {
     if (viewMode === 'current') {
       return {
@@ -97,22 +79,21 @@ const Dashboard = ({ data, onNavigate }) => {
         end: businessMetrics.windows.currentWeek.endDate,
         label: `Semana Atual (${businessMetrics.windows.currentWeek.daysElapsed} dias)`
       };
-    } else {
-      return {
-        start: businessMetrics.windows.weekly.startDate,
-        end: businessMetrics.windows.weekly.endDate,
-        label: 'Última Semana Completa'
-      };
     }
+    return {
+      start: businessMetrics.windows.weekly.startDate,
+      end: businessMetrics.windows.weekly.endDate,
+      label: 'Última Semana Completa'
+    };
   };
 
   const dateRange = getDateRange();
 
-  // Get the urgent insight
+  // Urgent insight banner
   const getTopInsight = () => {
     const weekly = businessMetrics.weekly || {};
     const utilization = Math.round(weekly.totalUtilization || 0);
-    
+
     if (utilization < 15) {
       return {
         text: `Utilização crítica: ${utilization}% última semana`,
@@ -120,7 +101,7 @@ const Dashboard = ({ data, onNavigate }) => {
         action: 'Considere promoção urgente ou marketing'
       };
     }
-    
+
     const atRiskCount = customerMetrics.atRiskCount || 0;
     if (atRiskCount > 15) {
       return {
@@ -129,248 +110,157 @@ const Dashboard = ({ data, onNavigate }) => {
         action: 'Contatar clientes em risco hoje'
       };
     }
-    
+
     return null;
   };
 
   const topInsight = getTopInsight();
 
   return (
-    <div style={{ 
-      padding: '1rem',
-      maxWidth: '1920px',
-      margin: '0 auto'
-    }}>
-      {/* Header Row */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '0.75rem',
-        marginBottom: '0.75rem'
-      }}>
-        {/* Date Range Display */}
-        <div style={{
-          background: 'white',
-          borderRadius: '10px',
-          border: '1px solid #e5e7eb',
-          padding: '0.75rem 1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem'
-        }}>
-          <Calendar style={{ 
-            width: '20px', 
-            height: '20px', 
-            color: COLORS.primary 
-          }} />
-          <div>
-            <div style={{
-              fontSize: '11px',
-              color: COLORS.gray,
-              fontWeight: '600',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              marginBottom: '2px'
-            }}>
-              {dateRange.label}
+    <div className="max-w-[1920px] mx-auto p-4 space-y-3">
+      {/* HEADER BAND - DARK GRADIENT WITH WIDGETS */}
+      <div className="w-full rounded-xl bg-gradient-to-b from-slate-950 via-slate-900 to-sky-900 text-white shadow-md p-4 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-stretch">
+          {/* Date Range Card */}
+          <div className="bg-white rounded-lg border border-slate-200 px-4 py-3 flex items-center gap-3">
+            <Calendar
+              style={{ width: 20, height: 20, color: COLORS.primary }}
+            />
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-500 mb-[2px]">
+                {dateRange.label}
+              </div>
+              <div
+                className="text-sm font-bold"
+                style={{ color: COLORS.primary }}
+              >
+                {dateRange.start} - {dateRange.end}
+              </div>
             </div>
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '700',
-              color: COLORS.primary
-            }}>
-              {dateRange.start} - {dateRange.end}
+          </div>
+
+          {/* Weather Widget */}
+          <div className="flex items-center justify-center">
+            <WeatherWidget />
+          </div>
+
+          {/* Social Media Widget */}
+          <div className="flex items-center justify-center">
+            <SocialMediaWidget />
+          </div>
+
+          {/* Google Business + Quick Actions */}
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
+            <div className="flex justify-center md:justify-end">
+              <GoogleBusinessWidget />
+            </div>
+
+            {/* Quick Actions Card (white) */}
+            <div className="bg-white rounded-lg border border-slate-200 px-4 py-2 flex items-center justify-around gap-2">
+              <button
+                onClick={() => handleQuickAction('schedule')}
+                className="flex flex-col items-center gap-1 p-2 rounded-md transition-colors hover:bg-slate-100"
+              >
+                <Calendar
+                  style={{ width: 20, height: 20, color: COLORS.primary }}
+                />
+                <span className="text-[10px] font-semibold text-slate-500">
+                  Agenda
+                </span>
+              </button>
+
+              <button
+                onClick={() => handleQuickAction('campaigns')}
+                className="flex flex-col items-center gap-1 p-2 rounded-md transition-colors hover:bg-slate-100"
+              >
+                <MessageSquare
+                  style={{ width: 20, height: 20, color: COLORS.accent }}
+                />
+                <span className="text-[10px] font-semibold text-slate-500">
+                  Campanhas
+                </span>
+              </button>
+
+              <button
+                onClick={() => handleQuickAction('settings')}
+                className="flex flex-col items-center gap-1 p-2 rounded-md transition-colors hover:bg-slate-100"
+              >
+                <Settings
+                  style={{ width: 20, height: 20, color: COLORS.gray }}
+                />
+                <span className="text-[10px] font-semibold text-slate-500">
+                  Config
+                </span>
+              </button>
             </div>
           </div>
         </div>
-
-        {/* Weather Widget */}
-        <WeatherWidget />
-
-        {/* Social Media Widget */}
-        <SocialMediaWidget />
-
-        {/* Google Business Widget */}
-        <GoogleBusinessWidget />
-
-        {/* Quick Actions */}
-        <div style={{
-          background: 'white',
-          borderRadius: '10px',
-          border: '1px solid #e5e7eb',
-          padding: '0.75rem 1rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-around',
-          gap: '0.5rem'
-        }}>
-          <button
-            onClick={() => handleQuickAction('schedule')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0.5rem',
-              borderRadius: '8px',
-              transition: 'all 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = COLORS.lightGray}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-          >
-            <Calendar style={{ width: '20px', height: '20px', color: COLORS.primary }} />
-            <span style={{ fontSize: '10px', color: COLORS.gray, fontWeight: '600' }}>Agenda</span>
-          </button>
-
-          <button
-            onClick={() => handleQuickAction('campaigns')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0.5rem',
-              borderRadius: '8px',
-              transition: 'all 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = COLORS.lightGray}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-          >
-            <MessageSquare style={{ width: '20px', height: '20px', color: COLORS.accent }} />
-            <span style={{ fontSize: '10px', color: COLORS.gray, fontWeight: '600' }}>Campanhas</span>
-          </button>
-
-          <button
-            onClick={() => handleQuickAction('settings')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0.5rem',
-              borderRadius: '8px',
-              transition: 'all 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = COLORS.lightGray}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-          >
-            <Settings style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-            <span style={{ fontSize: '10px', color: COLORS.gray, fontWeight: '600' }}>Config</span>
-          </button>
-        </div>
       </div>
 
-      {/* ✅ NEW: Current Week Banner */}
+      {/* CURRENT WEEK BANNER */}
       <CurrentWeekBanner businessMetrics={businessMetrics} />
 
-      {/* ✅ NEW: View Mode Toggle */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '0.75rem',
-        flexWrap: 'wrap',
-        gap: '0.75rem'
-      }}>
+      {/* VIEW MODE TOGGLE + TOP INSIGHT */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         {/* Toggle Buttons */}
-        <div style={{
-          display: 'flex',
-          gap: '0.5rem',
-          background: 'white',
-          padding: '0.25rem',
-          borderRadius: '8px',
-          border: '1px solid #e5e7eb'
-        }}>
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1">
           <button
             onClick={() => setViewMode('complete')}
-            style={{
-              padding: '0.5rem 1rem',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              background: viewMode === 'complete' ? COLORS.primary : 'transparent',
-              color: viewMode === 'complete' ? 'white' : COLORS.gray
-            }}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${
+              viewMode === 'complete'
+                ? 'bg-[#1a5a8e] text-white'
+                : 'bg-transparent text-slate-500'
+            }`}
           >
-            <BarChart3 style={{ width: '16px', height: '16px' }} />
+            <BarChart3 className="w-4 h-4" />
             Última Semana Completa
           </button>
 
           <button
             onClick={() => setViewMode('current')}
-            style={{
-              padding: '0.5rem 1rem',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              background: viewMode === 'current' ? COLORS.accent : 'transparent',
-              color: viewMode === 'current' ? 'white' : COLORS.gray
-            }}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${
+              viewMode === 'current'
+                ? 'bg-[#55b03b] text-white'
+                : 'bg-transparent text-slate-500'
+            }`}
           >
-            <CalendarDays style={{ width: '16px', height: '16px' }} />
+            <CalendarDays className="w-4 h-4" />
             Semana Atual ({businessMetrics.windows.currentWeek.daysElapsed} dias)
           </button>
         </div>
 
         {/* Top Insight (if any) */}
         {topInsight && (
-          <div style={{
-            padding: '0.625rem 1rem',
-            background: `${topInsight.color}15`,
-            borderRadius: '8px',
-            borderLeft: `4px solid ${topInsight.color}`,
-            flex: 1,
-            minWidth: '300px'
-          }}>
-            <div style={{
-              fontSize: '13px',
-              fontWeight: '600',
-              color: topInsight.color,
-              marginBottom: '2px'
-            }}>
+          <div
+            className="flex-1 min-w-[300px] rounded-lg border-l-4 px-4 py-2"
+            style={{
+              borderColor: topInsight.color,
+              background: `${topInsight.color}15`
+            }}
+          >
+            <div
+              className="text-[13px] font-semibold mb-0.5"
+              style={{ color: topInsight.color }}
+            >
               {topInsight.text}
             </div>
-            <div style={{
-              fontSize: '12px',
-              color: COLORS.gray
-            }}>
+            <div className="text-[12px] text-slate-600">
               {topInsight.action}
             </div>
           </div>
         )}
       </div>
 
-      {/* KPI Cards - Shows either complete or current week based on toggle */}
-      <KPICards 
+      {/* KPI CARDS */}
+      <KPICards
         businessMetrics={businessMetrics}
         customerMetrics={customerMetrics}
         salesData={data.sales}
         viewMode={viewMode}
       />
 
-      {/* At-Risk Customers Table */}
-      <AtRiskCustomersTable 
+      {/* AT-RISK CUSTOMERS TABLE (salesData wired back in) */}
+      <AtRiskCustomersTable
         customerMetrics={customerMetrics}
         salesData={data.sales}
       />
