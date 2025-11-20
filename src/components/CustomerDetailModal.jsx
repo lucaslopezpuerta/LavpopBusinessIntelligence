@@ -161,6 +161,14 @@ const CouponBadge = ({ couponCode }) => {
 };
 
 const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
+    console.log('[CustomerDetailModal] customer.doc:', customer?.doc);
+    console.log('[CustomerDetailModal] salesData length:', salesData?.length);
+    console.log('[CustomerDetailModal] first row keys:', salesData[0] && Object.keys(salesData[0]));
+    console.log('[CustomerDetailModal] first row doc fields:', {
+    Doc_Cliente: salesData[0]?.Doc_Cliente,
+    document: salesData[0]?.document,
+    });
+
   const transactionHistory = useMemo(() => {
     if (!salesData || salesData.length === 0) return [];
     
