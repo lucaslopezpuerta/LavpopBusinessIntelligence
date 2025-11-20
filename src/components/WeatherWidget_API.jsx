@@ -1,5 +1,5 @@
 // WeatherWidget.jsx v4.0 - Tailwind Redesign
-//
+// - Glass widget for header (dark background)
 //
 // CHANGELOG:
 // v4.0 (2025-11-20): Complete Tailwind Redesign
@@ -9,8 +9,6 @@
 //  - Compact 36px height
 //  - Updates every 30 minutes
 // v2.0 (previous): API version with white background
-
-// WeatherWidget_API.jsx v3 - Glass widget for header (dark background)
 
 import React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Droplets, Loader } from 'lucide-react';
