@@ -372,6 +372,7 @@ const Dashboard = ({ data, onNavigate }) => {
       {/* At-Risk Customers Table */}
       <AtRiskCustomersTable 
         customerMetrics={customerMetrics}
+        salesData={data.sales}
       />
     </div>
   );
