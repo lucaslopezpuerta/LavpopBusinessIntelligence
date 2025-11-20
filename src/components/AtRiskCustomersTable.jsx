@@ -1,146 +1,397 @@
-// AtRiskCustomersTable.jsx v5.0 - Tailwind Redesign
-// - Shows top N customers with risk of churn
-// - Opens CustomerDetailModal with last 5 transactions
-
+// AtRiskCustomersTable.jsx v4.0 - ULTRA COMPACT SPACE-SAVING DESIGN
+// ✅ Single-line compact header (saves ~30px)
+// ✅ Tighter row spacing (48px per row vs 65px)
+// ✅ Center-aligned text in appropriate columns
+// ✅ Professional clean design with brand colors
+// ✅ Total height reduction: ~85px for 5 rows
+//
 // CHANGELOG:
-// v5.0 (2025-11-20): Full Tailwind Redesign
-// v4.0 (2025-11-16): Ultra compact design - single-line header, tighter rows, center alignment, Total height reduction: ~85px for 5 rows, Professional clean design with brand colors
+// v4.0 (2025-11-16): Ultra compact design - single-line header, tighter rows, center alignment
 // v3.0 (2025-11-15): Complete redesign - clean, professional, brand-focused
 
-import React, { useMemo, useState } from 'react';
-import { AlertTriangle, Users, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, MessageCircle, AlertTriangle } from 'lucide-react';
 import CustomerDetailModal from './CustomerDetailModal';
 
-const BRAND = {
-  primary: '#0c4a6e',
-  accent: '#4ac02a',
-};
-
-const formatCurrency = (value) =>
-  `R$ ${Number(value || 0).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-
-const formatDate = (value) => {
-  if (!value) return '—';
-  if (value instanceof Date) {
-    return value.toLocaleDateString('pt-BR');
-  }
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString('pt-BR');
+const COLORS = {
+  primary: '#1a5a8e',
+  accent: '#55b03b',
+  amber: '#f59e0b',
+  red: '#dc2626',
+  gray: '#6b7280',
+  lightGray: '#f3f4f6'
 };
 
 const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  const rows = useMemo(() => {
-    const list = customerMetrics?.activeCustomers || [];
-    return list
-      .filter(
-        (c) =>
-          c.riskLevel === 'At Risk' || c.riskLevel === 'Churning'
-      )
-      .sort((a, b) => (b.netTotal || 0) - (a.netTotal || 0))
-      .slice(0, maxRows);
-  }, [customerMetrics, maxRows]);
+  if (!customerMetrics || !customerMetrics.activeCustomers) {
+    return (
+      <div style={{
+        background: 'white',
+        borderRadius: '10px',
+        padding: '1rem',
+        border: '1px solid #e5e7eb',
+        textAlign: 'center',
+        color: COLORS.gray
+      }}>
+        Carregando clientes em risco...
+      </div>
+    );
+  }
 
-  const totalAtRisk = customerMetrics?.atRiskCount || rows.length || 0;
+  const atRiskCustomers = customerMetrics.activeCustomers
+    .filter(c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning')
+    .sort((a, b) => b.netTotal - a.netTotal)
+    .slice(0, maxRows);
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatPhone = (phone) => {
+    if (!phone) return null;
+    const cleaned = String(phone).replace(/\D/g, '');
+    if (cleaned.length >= 10) {
+      return cleaned;
+    }
+    return null;
+  };
+
+  const handleCall = (e, phone) => {
+    e.stopPropagation();
+    const cleaned = formatPhone(phone);
+    if (cleaned) {
+      window.location.href = `tel:+55${cleaned}`;
+    }
+  };
+
+  const handleWhatsApp = (e, phone) => {
+    e.stopPropagation();
+    const cleaned = formatPhone(phone);
+    if (cleaned) {
+      window.open(`https://web.whatsapp.com/send?phone=55${cleaned}`, '_blank');
+    }
+  };
+
+  const getRiskColor = (riskLevel) => {
+    switch (riskLevel) {
+      case 'Churning': return COLORS.red;
+      case 'At Risk': return COLORS.amber;
+      default: return COLORS.gray;
+    }
+  };
+
+  const translateRiskLevel = (riskLevel) => {
+    switch (riskLevel) {
+      case 'Churning': return 'Perdendo';
+      case 'At Risk': return 'Em Risco';
+      default: return riskLevel;
+    }
+  };
+
+  const getRiskBadge = (riskLevel, returnLikelihood) => {
+    const color = getRiskColor(riskLevel);
+    const translatedLevel = translateRiskLevel(riskLevel);
+    const churnPercent = returnLikelihood !== undefined && returnLikelihood !== null 
+      ? Math.round(100 - returnLikelihood) 
+      : 0;
+    
+    return (
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.25rem',
+        padding: '3px 8px',
+        borderRadius: '5px',
+        background: `${color}10`,
+        border: `1px solid ${color}30`,
+        color: color,
+        fontSize: '10px',
+        fontWeight: '600'
+      }}>
+        <AlertTriangle style={{ width: '11px', height: '11px' }} />
+        {translatedLevel} {churnPercent}%
+      </div>
+    );
+  };
+
+  if (atRiskCustomers.length === 0) {
+    return (
+      <div style={{
+        background: 'white',
+        borderRadius: '10px',
+        padding: '1.25rem',
+        border: '1px solid #e5e7eb',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          color: COLORS.accent,
+          fontSize: '15px',
+          fontWeight: '600',
+          marginBottom: '0.25rem'
+        }}>
+          🎉 Ótimas notícias!
+        </div>
+        <div style={{ color: COLORS.gray, fontSize: '12px' }}>
+          Nenhum cliente em risco detectado
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="mt-4 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center rounded-md bg-rose-100 px-2 py-1 text-rose-700 text-[11px] font-semibold">
-              <AlertTriangle className="w-3.5 h-3.5 mr-1" />
-              RISCO DE CHURN
+      <div style={{
+        background: 'white',
+        borderRadius: '10px',
+        padding: '0.875rem',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+      }}>
+        {/* ✅ ULTRA COMPACT Single-Line Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '0.75rem',
+          paddingBottom: '0.625rem',
+          borderBottom: `2px solid ${COLORS.primary}`
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '7px',
+              background: `${COLORS.primary}15`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <AlertTriangle style={{ width: '16px', height: '16px', color: COLORS.primary }} />
             </div>
             <div>
-              <div className="text-sm font-semibold text-slate-900">
-                Top {rows.length || 0} Clientes em Risco
-              </div>
-              <div className="text-[11px] text-slate-500">
-                {totalAtRisk} clientes com alto risco de não retornar.
-              </div>
+              <h3 style={{ 
+                fontSize: '13px',
+                fontWeight: '700',
+                color: COLORS.primary,
+                margin: 0,
+                lineHeight: 1
+              }}>
+                Top {maxRows} Clientes em Risco
+              </h3>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-1 text-[11px] text-slate-500">
-            <Users className="w-3.5 h-3.5" />
-            <span>Priorize contato e ofertas direcionadas.</span>
+          <div style={{
+            fontSize: '10px',
+            color: COLORS.gray,
+            fontWeight: '500'
+          }}>
+            Alto valor • Clique para detalhes
           </div>
         </div>
 
-        {rows.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-slate-500">
-            Nenhum cliente em risco significativo neste momento. Boa saúde da base! 🎉
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50">
-                <tr className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                  <th className="px-4 py-2 text-left">Cliente</th>
-                  <th className="px-2 py-2 text-left">Segmento</th>
-                  <th className="px-2 py-2 text-right">Última visita</th>
-                  <th className="px-2 py-2 text-right">Dias</th>
-                  <th className="px-2 py-2 text-right">Retorno</th>
-                  <th className="px-4 py-2 text-right">Gasto Total</th>
+        {/* ✅ COMPACT Table with Tighter Spacing */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ 
+            width: '100%', 
+            borderCollapse: 'separate',
+            borderSpacing: 0,
+            fontSize: '12px'
+          }}>
+            <thead>
+              <tr style={{
+                background: COLORS.lightGray
+              }}>
+                <th style={{ 
+                  padding: '0.5rem 0.625rem',
+                  fontWeight: '600',
+                  color: COLORS.gray,
+                  fontSize: '10px',
+                  textAlign: 'left',
+                  borderTopLeftRadius: '6px',
+                  borderBottomLeftRadius: '6px'
+                }}>
+                  CLIENTE
+                </th>
+                <th style={{ 
+                  padding: '0.5rem 0.625rem',
+                  fontWeight: '600',
+                  color: COLORS.gray,
+                  fontSize: '10px',
+                  textAlign: 'center'
+                }}>
+                  RISCO
+                </th>
+                <th style={{ 
+                  padding: '0.5rem 0.625rem',
+                  fontWeight: '600',
+                  color: COLORS.gray,
+                  fontSize: '10px',
+                  textAlign: 'center'
+                }}>
+                  TOTAL
+                </th>
+                <th style={{ 
+                  padding: '0.5rem 0.625rem',
+                  fontWeight: '600',
+                  color: COLORS.gray,
+                  fontSize: '10px',
+                  textAlign: 'center'
+                }}>
+                  DIAS
+                </th>
+                <th style={{ 
+                  padding: '0.5rem 0.625rem',
+                  fontWeight: '600',
+                  color: COLORS.gray,
+                  fontSize: '10px',
+                  textAlign: 'center',
+                  borderTopRightRadius: '6px',
+                  borderBottomRightRadius: '6px'
+                }}>
+                  AÇÕES
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {atRiskCustomers.map((customer, index) => (
+                <tr 
+                  key={customer.doc || index}
+                  style={{ 
+                    borderBottom: index < atRiskCustomers.length - 1 ? `1px solid ${COLORS.lightGray}` : 'none',
+                    transition: 'background 0.15s',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = `${COLORS.primary}05`}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  onClick={() => setSelectedCustomer(customer)}
+                >
+                  {/* Cliente - Left aligned */}
+                  <td style={{ padding: '0.625rem' }}>
+                    <div style={{ fontWeight: '600', color: '#111827', fontSize: '12px', marginBottom: '1px' }}>
+                      {customer.name || 'Cliente sem nome'}
+                    </div>
+                    {customer.phone && (
+                      <div style={{ fontSize: '10px', color: COLORS.gray }}>
+                        {customer.phone}
+                      </div>
+                    )}
+                  </td>
+                  
+                  {/* Risco - Center aligned */}
+                  <td style={{ padding: '0.625rem', textAlign: 'center' }}>
+                    {getRiskBadge(customer.riskLevel, customer.returnLikelihood)}
+                  </td>
+                  
+                  {/* Total - Center aligned */}
+                  <td style={{ 
+                    padding: '0.625rem',
+                    textAlign: 'center',
+                    fontWeight: '600',
+                    color: COLORS.primary,
+                    fontSize: '12px'
+                  }}>
+                    {formatCurrency(customer.netTotal || 0)}
+                  </td>
+                  
+                  {/* Dias - Center aligned */}
+                  <td style={{ padding: '0.625rem', textAlign: 'center' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '3px 8px',
+                      borderRadius: '5px',
+                      background: COLORS.lightGray,
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: COLORS.gray
+                    }}>
+                      {customer.daysSinceLastVisit || 0}
+                    </span>
+                  </td>
+                  
+                  {/* Ações - Center aligned */}
+                  <td style={{ padding: '0.625rem', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.325rem', justifyContent: 'center' }}>
+                      {customer.phone && formatPhone(customer.phone) && (
+                        <>
+                          <button
+                            onClick={(e) => handleCall(e, customer.phone)}
+                            title="Ligar"
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: '5px',
+                              border: `1px solid ${COLORS.primary}30`,
+                              background: 'white',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '10px',
+                              fontWeight: '600',
+                              color: COLORS.primary,
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = COLORS.primary;
+                              e.currentTarget.style.color = 'white';
+                              e.currentTarget.style.borderColor = COLORS.primary;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'white';
+                              e.currentTarget.style.color = COLORS.primary;
+                              e.currentTarget.style.borderColor = `${COLORS.primary}30`;
+                            }}
+                          >
+                            <Phone style={{ width: '11px', height: '11px' }} />
+                            <span style={{ display: 'none' }}>Ligar</span>
+                          </button>
+                          <button
+                            onClick={(e) => handleWhatsApp(e, customer.phone)}
+                            title="WhatsApp"
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: '5px',
+                              border: '1px solid #25D36630',
+                              background: 'white',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '10px',
+                              fontWeight: '600',
+                              color: '#25D366',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#25D366';
+                              e.currentTarget.style.color = 'white';
+                              e.currentTarget.style.borderColor = '#25D366';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'white';
+                              e.currentTarget.style.color = '#25D366';
+                              e.currentTarget.style.borderColor = '#25D36630';
+                            }}
+                          >
+                            <MessageCircle style={{ width: '11px', height: '11px' }} />
+                            <span style={{ display: 'none' }}>WhatsApp</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((c) => (
-                  <tr
-                    key={c.doc}
-                    className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
-                    onClick={() => setSelectedCustomer(c)}
-                  >
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 flex items-center justify-center rounded-full bg-[#0c4a6e]/10 text-[11px] font-semibold text-[#0c4a6e]">
-                          {c.name?.charAt(0)?.toUpperCase() || 'C'}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[13px] font-semibold text-slate-900">
-                            {c.name || `Cliente ${c.doc?.slice(-4)}`}
-                          </span>
-                          <span className="text-[11px] text-slate-500">
-                            CPF: {c.doc}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-[12px] text-slate-600">
-                      {c.segment || '—'}
-                    </td>
-                    <td className="px-2 py-2 text-right text-[12px] text-slate-600">
-                      {formatDate(c.lastVisit)}
-                    </td>
-                    <td className="px-2 py-2 text-right text-[12px] text-slate-600">
-                      {c.daysSinceLastVisit ?? '—'}
-                    </td>
-                    <td className="px-2 py-2 text-right text-[12px] text-slate-600">
-                      {c.returnLikelihood != null
-                        ? `${c.returnLikelihood}%`
-                        : '—'}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <span className="text-[13px] font-semibold text-slate-900">
-                          {formatCurrency(c.netTotal)}
-                        </span>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* Customer Detail Modal */}
       {selectedCustomer && (
         <CustomerDetailModal
           customer={selectedCustomer}
@@ -148,6 +399,15 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
           onClose={() => setSelectedCustomer(null)}
         />
       )}
+      
+      {/* Responsive text display for action buttons */}
+      <style>{`
+        @media (min-width: 992px) {
+          button span {
+            display: inline !important;
+          }
+        }
+      `}</style>
     </>
   );
 };
