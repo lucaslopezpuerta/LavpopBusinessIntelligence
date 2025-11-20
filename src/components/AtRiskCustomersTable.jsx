@@ -153,5 +153,3 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
 };
 
 export default AtRiskCustomersTable;
-
-export default AtRiskCustomersTable;
