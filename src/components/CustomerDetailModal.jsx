@@ -1,115 +1,144 @@
-// CustomerDetailModal.jsx v2.2 - COMPACT PROFESSIONAL REDESIGN
+// CustomerDetailModal.jsx v3.0 - Tailwind version
+//
+// CHANGELOG:
+// v3.0 (2025-11-20): Tailwind version
+// - Matches Hybrid C dashboard styling
+// - Uses brand colors: primary #0c4a6e, accent #4ac02a
+// - No inline layout styling (only minimal inline color where needed)
+// v2.0 (2025-11-16): Complete redesign - compact, Portuguese, 5 transactions
 // ✅ Matches At-Risk table design philosophy
 // ✅ All text in Brazilian Portuguese
 // ✅ Shows only last 5 transactions (not 10)
 // ✅ Compact layout with optimized spacing
 // ✅ Two-column grid for better space usage
 // ✅ Professional brand colors
-//
-// CHANGELOG:
-// v2.0 (2025-11-16): Complete redesign - compact, Portuguese, 5 transactions
 // v1.5 (previous): English version with 10 transactions
 
 import React, { useMemo } from 'react';
-import { X, Phone, MessageCircle, Calendar, Activity, Tag, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+  X,
+  Phone,
+  MessageCircle,
+  Calendar,
+  Activity,
+  Tag,
+  XCircle,
+} from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
-const COLORS = {
-  primary: '#1a5a8e',
-  accent: '#55b03b',
-  red: '#dc2626',
-  amber: '#f59e0b',
-  gray: '#6b7280',
-  lightGray: '#f3f4f6'
+const BRAND = {
+  primary: '#0c4a6e',
+  accent: '#4ac02a',
 };
 
-const getRiskColor = (riskLevel) => {
-  switch(riskLevel) {
-    case 'Healthy': return { bg: '#f0fdf4', text: COLORS.accent, border: COLORS.accent };
-    case 'Monitor': return { bg: '#eff6ff', text: COLORS.primary, border: COLORS.primary };
-    case 'At Risk': return { bg: '#fef3c7', text: COLORS.amber, border: COLORS.amber };
-    case 'Churning': return { bg: '#fee2e2', text: COLORS.red, border: COLORS.red };
-    case 'New Customer': return { bg: '#f3e8ff', text: '#9333ea', border: '#a855f7' };
-    case 'Lost': return { bg: COLORS.lightGray, text: COLORS.gray, border: '#9ca3af' };
-    default: return { bg: COLORS.lightGray, text: COLORS.gray, border: '#9ca3af' };
+const getRiskTailwind = (riskLevel) => {
+  switch (riskLevel) {
+    case 'Healthy':
+      return {
+        bg: 'bg-emerald-50',
+        text: 'text-emerald-700',
+        border: 'border-emerald-400',
+        emoji: '🟢',
+        label: 'Saudável',
+      };
+    case 'Monitor':
+      return {
+        bg: 'bg-sky-50',
+        text: 'text-sky-700',
+        border: 'border-sky-400',
+        emoji: '🔵',
+        label: 'Monitorar',
+      };
+    case 'At Risk':
+      return {
+        bg: 'bg-amber-50',
+        text: 'text-amber-700',
+        border: 'border-amber-400',
+        emoji: '⚠️',
+        label: 'Em Risco',
+      };
+    case 'Churning':
+      return {
+        bg: 'bg-rose-50',
+        text: 'text-rose-700',
+        border: 'border-rose-400',
+        emoji: '🚨',
+        label: 'Perdendo',
+      };
+    case 'New Customer':
+      return {
+        bg: 'bg-violet-50',
+        text: 'text-violet-700',
+        border: 'border-violet-400',
+        emoji: '🆕',
+        label: 'Novo Cliente',
+      };
+    case 'Lost':
+      return {
+        bg: 'bg-slate-100',
+        text: 'text-slate-600',
+        border: 'border-slate-400',
+        emoji: '⛔',
+        label: 'Perdido',
+      };
+    default:
+      return {
+        bg: 'bg-slate-100',
+        text: 'text-slate-600',
+        border: 'border-slate-400',
+        emoji: '❓',
+        label: riskLevel || 'Indefinido',
+      };
   }
 };
 
-const translateRiskLevel = (riskLevel) => {
-  const translations = {
-    'Healthy': 'Saudável',
-    'Monitor': 'Monitorar',
-    'At Risk': 'Em Risco',
-    'Churning': 'Perdendo',
-    'New Customer': 'Novo Cliente',
-    'Lost': 'Perdido'
-  };
-  return translations[riskLevel] || riskLevel;
-};
-
-const getRiskIcon = (riskLevel) => {
-  switch(riskLevel) {
-    case 'Healthy': return '🟢';
-    case 'Monitor': return '🔵';
-    case 'At Risk': return '⚠️';
-    case 'Churning': return '🚨';
-    case 'New Customer': return '🆕';
-    case 'Lost': return '⛔';
-    default: return '❓';
-  }
-};
-
-/**
- * Parse machine string from Sales CSV
- */
 const parseMachines = (machineStr) => {
   if (!machineStr || machineStr === 'N/A') return [];
-  
-  const parts = machineStr.split(',').map(s => s.trim());
+
+  const parts = machineStr.split(',').map((s) => s.trim());
   const machines = [];
-  
-  parts.forEach(part => {
+
+  parts.forEach((part) => {
     const washMatch = part.match(/Lavadora:\s*(\d+)/i);
     if (washMatch) {
       machines.push({ code: `L${washMatch[1]}`, type: 'wash' });
       return;
     }
-    
+
     const dryMatch = part.match(/Secadora:\s*(\d+)/i);
     if (dryMatch) {
       machines.push({ code: `S${dryMatch[1]}`, type: 'dry' });
       return;
     }
   });
-  
+
   return machines;
 };
 
-// Machine badges component
 const MachineDisplay = ({ machineStr }) => {
   const machines = parseMachines(machineStr);
-  
+
   if (machines.length === 0) {
-    return <span style={{ color: COLORS.gray, fontSize: '11px' }}>-</span>;
+    return (
+      <span className="text-[11px] text-slate-500">
+        -
+      </span>
+    );
   }
 
   return (
-    <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'center' }}>
+    <div className="flex flex-wrap justify-center gap-[3px]">
       {machines.map((machine, idx) => {
         const isWash = machine.type === 'wash';
         return (
           <span
             key={idx}
-            style={{
-              display: 'inline-block',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontSize: '10px',
-              fontWeight: '700',
-              background: isWash ? '#dbeafe' : '#AAF7A6',
-              color: isWash ? COLORS.primary : '#2E4510',
-              border: `1px solid ${isWash ? '#93c5fd' : '#86efac'}`
-            }}
+            className={[
+              'inline-flex items-center rounded px-[6px] py-[2px] text-[10px] font-bold border',
+              isWash
+                ? 'bg-sky-100 text-[#0c4a6e] border-sky-300'
+                : 'bg-emerald-100 text-emerald-900 border-emerald-300',
+            ].join(' ')}
           >
             {machine.code}
           </span>
@@ -119,111 +148,92 @@ const MachineDisplay = ({ machineStr }) => {
   );
 };
 
-// Coupon badge component
 const CouponBadge = ({ couponCode }) => {
-  if (!couponCode || couponCode === '' || couponCode.toLowerCase() === 'n/d') {
+  if (
+    !couponCode ||
+    couponCode === '' ||
+    couponCode.toLowerCase() === 'n/d'
+  ) {
     return (
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '3px',
-        padding: '3px 8px',
-        borderRadius: '4px',
-        fontSize: '10px',
-        fontWeight: '600',
-        background: '#f3f4f6',
-        color: '#6b7280',
-        border: '1px solid #d1d5db'
-      }}>
-        <XCircle style={{ width: '10px', height: '10px' }} />
+      <span className="inline-flex items-center gap-[3px] rounded border border-slate-300 bg-slate-100 px-2 py-[3px] text-[10px] font-semibold text-slate-500">
+        <XCircle className="h-[10px] w-[10px]" />
         Não
       </span>
     );
   }
 
   return (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '3px',
-      padding: '3px 8px',
-      borderRadius: '4px',
-      fontSize: '10px',
-      fontWeight: '700',
-      background: '#dcfce7',
-      color: '#166534',
-      border: '1px solid #86efac'
-    }}>
-      <Tag style={{ width: '10px', height: '10px' }} />
+    <span className="inline-flex items-center gap-[3px] rounded border border-emerald-300 bg-emerald-100 px-2 py-[3px] text-[10px] font-bold text-emerald-800">
+      <Tag className="h-[10px] w-[10px]" />
       {couponCode}
     </span>
   );
 };
 
-const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
-    console.log('[CustomerDetailModal] customer.doc:', customer?.doc);
-    console.log('[CustomerDetailModal] salesData length:', salesData?.length);
-    console.log('[CustomerDetailModal] first row keys:', salesData[0] && Object.keys(salesData[0]));
-    console.log('[CustomerDetailModal] first row doc fields:', {
-    Doc_Cliente: salesData[0]?.Doc_Cliente,
-    document: salesData[0]?.document,
-    });
+const formatCurrency = (value) => {
+  if (isNaN(value)) return 'R$ 0,00';
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+};
 
+const formatDate = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return 'Data inválida';
+  }
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   const transactionHistory = useMemo(() => {
     if (!salesData || salesData.length === 0) return [];
-    
+
     const customerTxns = salesData
-      .filter(row => {
-        const doc = String(row.Doc_Cliente || row.document || '').replace(/\D/g, '').padStart(11, '0');
+      .filter((row) => {
+        const doc = String(
+          row.Doc_Cliente || row.document || '',
+        )
+          .replace(/\D/g, '')
+          .padStart(11, '0');
         return doc === customer.doc;
       })
-      .map(row => {
+      .map((row) => {
         const dateStr = row.Data_Hora || row.Data || '';
         const date = parseBrDate(dateStr);
-        
-        const amountStr = String(row.Valor_Pago || row.net_value || '0');
+
+        const amountStr = String(
+          row.Valor_Pago || row.net_value || '0',
+        );
         const amount = parseFloat(amountStr.replace(',', '.'));
-        
-        const machineStr = row.Maquinas || row.Maquina || row.machine || '';
+
+        const machineStr =
+          row.Maquinas || row.Maquina || row.machine || '';
         const machines = parseMachines(machineStr);
         const totalCycles = machines.length;
-        
-        const paymentMethod = row.Meio_de_Pagamento || row.payment_method || 'N/A';
-        const couponCode = row.Codigo_Cupom || row.coupon_code || '';
-        
+
+        const couponCode =
+          row.Codigo_Cupom || row.coupon_code || '';
         return {
           date,
-          dateValid: date !== null && !isNaN(date.getTime()),
+          dateValid:
+            date instanceof Date && !Number.isNaN(date.getTime()),
           amount,
           cycles: totalCycles,
           machineStr,
-          paymentMethod,
-          couponCode
+          couponCode,
         };
       })
-      .filter(txn => txn.dateValid)
+      .filter((txn) => txn.dateValid)
       .sort((a, b) => b.date - a.date)
-      .slice(0, 5); // Only last 5 transactions
-    
+      .slice(0, 5);
+
     return customerTxns;
   }, [salesData, customer.doc]);
-
-  const formatCurrency = (value) => {
-    if (isNaN(value)) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
-  const formatDate = (date) => {
-    if (!date || !(date instanceof Date) || isNaN(date)) return 'Data inválida';
-    return date.toLocaleDateString('pt-BR', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
-    });
-  };
 
   const handleCall = () => {
     if (customer.phone) {
@@ -235,272 +245,186 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   const handleWhatsApp = () => {
     if (customer.phone) {
       const cleanPhone = customer.phone.replace(/\D/g, '');
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const url = isMobile 
-        ? `https://api.whatsapp.com/send?phone=55${cleanPhone}` // Mobile: opens app
-        : `https://web.whatsapp.com/send?phone=55${cleanPhone}`; // Desktop: opens web
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(
+        navigator.userAgent,
+      );
+      const url = isMobile
+        ? `https://api.whatsapp.com/send?phone=55${cleanPhone}`
+        : `https://web.whatsapp.com/send?phone=55${cleanPhone}`;
       window.open(url, '_blank');
     }
   };
 
-  const riskColors = getRiskColor(customer.riskLevel);
+  const risk = getRiskTailwind(customer.riskLevel);
 
   return (
-    <div 
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '1rem'
-      }}
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 px-4 py-4"
       onClick={onClose}
     >
-      <div 
-        style={{
-          background: 'white',
-          borderRadius: '12px',
-          maxWidth: '900px',
-          width: '100%',
-          maxHeight: '90vh',
-          overflow: 'auto',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-        }}
+      <div
+        className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* COMPACT HEADER */}
-        <div style={{
-          background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.accent} 100%)`,
-          padding: '1rem 1.25rem',
-          borderTopLeftRadius: '12px',
-          borderTopRightRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          color: 'white'
-        }}>
-          <div style={{ flex: 1 }}>
-            <h2 style={{
-              fontSize: '20px',
-              fontWeight: '700',
-              margin: 0,
-              marginBottom: '0.25rem'
-            }}>
+        {/* HEADER */}
+        <div
+          className="flex items-center justify-between rounded-t-2xl px-5 py-4 text-white"
+          style={{
+            backgroundImage:
+              'linear-gradient(135deg, #0c4a6e 0%, #4ac02a 100%)',
+          }}
+        >
+          <div className="flex-1">
+            <h2 className="mb-0.5 text-xl font-bold leading-tight">
               {customer.name || 'Cliente sem nome'}
             </h2>
-            <div style={{ fontSize: '12px', opacity: 0.9 }}>
-              {customer.phone || 'Sem telefone'} • {customer.doc ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}` : 'Sem CPF'}
+            <div className="text-[12px] opacity-90">
+              {customer.phone || 'Sem telefone'} •{' '}
+              {customer.doc
+                ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}`
+                : 'Sem CPF'}
             </div>
           </div>
 
-          {/* Risk Badge */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem'
-          }}>
-            <div style={{
-              background: riskColors.bg,
-              padding: '0.5rem 1rem',
-              borderRadius: '8px',
-              border: `2px solid ${riskColors.border}`,
-              fontSize: '13px',
-              fontWeight: '700',
-              color: riskColors.text
-            }}>
-              {getRiskIcon(customer.riskLevel)} {translateRiskLevel(customer.riskLevel)}
+          <div className="flex items-center gap-3">
+            {/* Risk badge */}
+            <div
+              className={[
+                'flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-bold',
+                risk.bg,
+                risk.text,
+                risk.border,
+              ].join(' ')}
+            >
+              <span>{risk.emoji}</span>
+              <span>{risk.label}</span>
             </div>
 
             <button
               onClick={onClose}
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: '8px',
-                width: '36px',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/40 bg-white/25 text-white transition hover:bg-white/40"
             >
-              <X style={{ width: '20px', height: '20px', color: 'white' }} />
+              <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
         {/* ACTION BUTTONS */}
-        <div style={{
-          padding: '1rem 1.25rem',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          gap: '0.75rem'
-        }}>
+        <div className="flex gap-3 border-b border-slate-200 px-5 py-3">
           <button
             onClick={handleCall}
             disabled={!customer.phone}
-            style={{
-              flex: 1,
-              padding: '0.75rem',
-              borderRadius: '8px',
-              border: `2px solid ${COLORS.primary}`,
-              background: 'white',
-              cursor: customer.phone ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: COLORS.primary,
-              opacity: customer.phone ? 1 : 0.5,
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              if (customer.phone) {
-                e.currentTarget.style.background = COLORS.primary;
-                e.currentTarget.style.color = 'white';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-              e.currentTarget.style.color = COLORS.primary;
-            }}
+            className={[
+              'flex-1 inline-flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold transition',
+              customer.phone
+                ? 'border-[#0c4a6e] text-[#0c4a6e] hover:bg-[#0c4a6e] hover:text-white'
+                : 'cursor-not-allowed border-slate-200 text-slate-400',
+            ].join(' ')}
           >
-            <Phone style={{ width: '18px', height: '18px' }} />
+            <Phone className="h-4 w-4" />
             Ligar
           </button>
 
           <button
             onClick={handleWhatsApp}
             disabled={!customer.phone}
-            style={{
-              flex: 1,
-              padding: '0.75rem',
-              borderRadius: '8px',
-              border: '2px solid #25D366',
-              background: 'white',
-              cursor: customer.phone ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#25D366',
-              opacity: customer.phone ? 1 : 0.5,
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              if (customer.phone) {
-                e.currentTarget.style.background = '#25D366';
-                e.currentTarget.style.color = 'white';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-              e.currentTarget.style.color = '#25D366';
-            }}
+            className={[
+              'flex-1 inline-flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold transition',
+              customer.phone
+                ? 'border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white'
+                : 'cursor-not-allowed border-slate-200 text-slate-400',
+            ].join(' ')}
           >
-            <MessageCircle style={{ width: '18px', height: '18px' }} />
+            <MessageCircle className="h-4 w-4" />
             WhatsApp
           </button>
         </div>
 
         {/* TWO-COLUMN STATS GRID */}
-        <div style={{
-          padding: '1.25rem',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '1rem',
-          borderBottom: '1px solid #e5e7eb'
-        }}>
-          {/* Column 1: Financial */}
-          <div style={{
-            background: COLORS.lightGray,
-            borderRadius: '8px',
-            padding: '1rem'
-          }}>
-            <h3 style={{
-              fontSize: '12px',
-              fontWeight: '700',
-              color: COLORS.gray,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              margin: 0,
-              marginBottom: '0.75rem'
-            }}>
+        <div className="grid gap-3 border-b border-slate-200 px-5 py-4 md:grid-cols-2">
+          {/* Financial */}
+          <div className="rounded-xl bg-slate-50 p-4">
+            <h3 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-slate-500">
               💰 Resumo Financeiro
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: COLORS.gray }}>Total Gasto</span>
-                <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Total Gasto
+                </span>
+                <span
+                  className="text-[16px] font-bold"
+                  style={{ color: BRAND.primary }}
+                >
                   {formatCurrency(customer.netTotal || 0)}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: COLORS.gray }}>Total de Visitas</span>
-                <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
-                  {customer.transactions || customer.frequency || 0}
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Total de Visitas
+                </span>
+                <span
+                  className="text-[16px] font-bold"
+                  style={{ color: BRAND.primary }}
+                >
+                  {customer.transactions ||
+                    customer.frequency ||
+                    0}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: COLORS.gray }}>Gasto/Visita</span>
-                <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.accent }}>
-                  {formatCurrency(customer.transactions > 0 ? customer.netTotal / customer.transactions : 0)}
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Gasto/Visita
+                </span>
+                <span
+                  className="text-[16px] font-bold"
+                  style={{ color: BRAND.accent }}
+                >
+                  {formatCurrency(
+                    customer.transactions > 0
+                      ? customer.netTotal / customer.transactions
+                      : 0,
+                  )}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Column 2: Behavior */}
-          <div style={{
-            background: COLORS.lightGray,
-            borderRadius: '8px',
-            padding: '1rem'
-          }}>
-            <h3 style={{
-              fontSize: '12px',
-              fontWeight: '700',
-              color: COLORS.gray,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              margin: 0,
-              marginBottom: '0.75rem'
-            }}>
+          {/* Behavior */}
+          <div className="rounded-xl bg-slate-50 p-4">
+            <h3 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-slate-500">
               📊 Comportamento
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: COLORS.gray }}>Dias desde última visita</span>
-                <span style={{ 
-                  fontSize: '16px', 
-                  fontWeight: '700', 
-                  color: customer.daysSinceLastVisit > customer.avgDaysBetween ? COLORS.red : COLORS.accent
-                }}>
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Dias desde última visita
+                </span>
+                <span
+                  className={[
+                    'text-[16px] font-bold',
+                    customer.daysSinceLastVisit >
+                    customer.avgDaysBetween
+                      ? 'text-rose-600'
+                      : 'text-emerald-600',
+                  ].join(' ')}
+                >
                   {customer.daysSinceLastVisit || 0}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: COLORS.gray }}>Intervalo médio (dias)</span>
-                <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.gray }}>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Intervalo médio (dias)
+                </span>
+                <span className="text-[16px] font-bold text-slate-700">
                   {customer.avgDaysBetween || 0}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: COLORS.gray }}>Serviços/Visita</span>
-                <span style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Serviços/Visita
+                </span>
+                <span className="text-[16px] font-bold text-slate-800">
                   {customer.servicesPerVisit || 0}
                 </span>
               </div>
@@ -508,142 +432,90 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </div>
         </div>
 
-        {/* SERVICE PREFERENCES - COMPACT ROW */}
-        <div style={{
-          padding: '1rem 1.25rem',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Activity style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-            <span style={{ fontSize: '12px', fontWeight: '700', color: COLORS.gray, textTransform: 'uppercase' }}>
+        {/* SERVICE PREFERENCES */}
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+          <div className="flex items-center gap-2">
+            <Activity
+              className="h-4 w-4"
+              style={{ color: BRAND.primary }}
+            />
+            <span className="text-[12px] font-bold uppercase tracking-[0.06em] text-slate-500">
               Preferências
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '10px', color: COLORS.gray, marginBottom: '2px' }}>Lavagens</div>
-              <div style={{ fontSize: '16px', fontWeight: '700', color: COLORS.primary }}>
+          <div className="flex gap-6">
+            <div className="text-center">
+              <div className="mb-[2px] text-[10px] text-slate-500">
+                Lavagens
+              </div>
+              <div
+                className="text-[16px] font-bold"
+                style={{ color: BRAND.primary }}
+              >
                 {customer.washPercentage}%
               </div>
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '10px', color: COLORS.gray, marginBottom: '2px' }}>Secagens</div>
-              <div style={{ fontSize: '16px', fontWeight: '700', color: COLORS.accent }}>
+            <div className="text-center">
+              <div className="mb-[2px] text-[10px] text-slate-500">
+                Secagens
+              </div>
+              <div
+                className="text-[16px] font-bold"
+                style={{ color: BRAND.accent }}
+              >
                 {customer.dryPercentage}%
               </div>
             </div>
           </div>
         </div>
 
-        {/* COMPACT TRANSACTION HISTORY - Last 5 */}
-        <div style={{ padding: '1.25rem' }}>
-          <h3 style={{
-            fontSize: '13px',
-            fontWeight: '700',
-            color: COLORS.primary,
-            marginBottom: '0.75rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            <Calendar style={{ width: '16px', height: '16px' }} />
+        {/* TRANSACTION HISTORY (Last 5) */}
+        <div className="px-5 py-4">
+          <h3
+            className="mb-3 flex items-center gap-2 text-[13px] font-bold text-slate-900"
+            style={{ color: BRAND.primary }}
+          >
+            <Calendar className="h-4 w-4" />
             Últimas 5 Transações
           </h3>
-          
+
           {transactionHistory.length > 0 ? (
-            <div style={{ 
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              overflow: 'hidden'
-            }}>
-              <table style={{ 
-                width: '100%', 
-                borderCollapse: 'collapse', 
-                fontSize: '12px'
-              }}>
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <table className="min-w-full border-collapse text-[12px]">
                 <thead>
-                  <tr style={{ 
-                    background: COLORS.lightGray
-                  }}>
-                    <th style={{ 
-                      padding: '0.625rem', 
-                      textAlign: 'center', 
-                      fontWeight: '600', 
-                      color: COLORS.gray,
-                      fontSize: '10px',
-                      textTransform: 'uppercase'
-                    }}>DATA</th>
-                    <th style={{ 
-                      padding: '0.625rem', 
-                      textAlign: 'center', 
-                      fontWeight: '600', 
-                      color: COLORS.gray,
-                      fontSize: '10px',
-                      textTransform: 'uppercase'
-                    }}>VALOR</th>
-                    <th style={{ 
-                      padding: '0.625rem', 
-                      textAlign: 'center', 
-                      fontWeight: '600', 
-                      color: COLORS.gray,
-                      fontSize: '10px',
-                      textTransform: 'uppercase'
-                    }}>CICLOS</th>
-                    <th style={{ 
-                      padding: '0.625rem', 
-                      textAlign: 'center', 
-                      fontWeight: '600', 
-                      color: COLORS.gray,
-                      fontSize: '10px',
-                      textTransform: 'uppercase'
-                    }}>MÁQUINAS</th>
-                    <th style={{ 
-                      padding: '0.625rem', 
-                      textAlign: 'center', 
-                      fontWeight: '600', 
-                      color: COLORS.gray,
-                      fontSize: '10px',
-                      textTransform: 'uppercase'
-                    }}>CUPOM</th>
+                  <tr className="bg-slate-50 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    <th className="px-2 py-2 text-center">Data</th>
+                    <th className="px-2 py-2 text-center">Valor</th>
+                    <th className="px-2 py-2 text-center">Ciclos</th>
+                    <th className="px-2 py-2 text-center">Máquinas</th>
+                    <th className="px-2 py-2 text-center">Cupom</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactionHistory.map((txn, idx) => (
-                    <tr 
-                      key={idx} 
-                      style={{ 
-                        borderBottom: idx === transactionHistory.length - 1 ? 'none' : '1px solid #f3f4f6',
-                        background: 'white'
-                      }}
+                    <tr
+                      key={idx}
+                      className="border-t border-slate-100 bg-white"
                     >
-                      <td style={{ padding: '0.625rem', color: COLORS.gray, textAlign: 'center', fontSize: '11px' }}>
+                      <td className="px-2 py-2 text-center text-[11px] text-slate-600">
                         {formatDate(txn.date)}
                       </td>
-                      <td style={{ 
-                        padding: '0.625rem', 
-                        textAlign: 'center', 
-                        fontWeight: '700', 
-                        color: COLORS.primary,
-                        fontSize: '12px'
-                      }}>
+                      <td
+                        className="px-2 py-2 text-center text-[12px] font-bold"
+                        style={{ color: BRAND.primary }}
+                      >
                         {formatCurrency(txn.amount)}
                       </td>
-                      <td style={{ 
-                        padding: '0.625rem', 
-                        textAlign: 'center', 
-                        fontWeight: '700', 
-                        color: COLORS.primary,
-                        fontSize: '14px'
-                      }}>
+                      <td
+                        className="px-2 py-2 text-center text-[14px] font-bold"
+                        style={{ color: BRAND.primary }}
+                      >
                         {txn.cycles}
                       </td>
-                      <td style={{ padding: '0.625rem', textAlign: 'center' }}>
+                      <td className="px-2 py-2 text-center">
                         <MachineDisplay machineStr={txn.machineStr} />
                       </td>
-                      <td style={{ padding: '0.625rem', textAlign: 'center' }}>
+                      <td className="px-2 py-2 text-center">
                         <CouponBadge couponCode={txn.couponCode} />
                       </td>
                     </tr>
@@ -652,41 +524,31 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               </table>
             </div>
           ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '2rem', 
-              color: COLORS.gray,
-              background: COLORS.lightGray,
-              borderRadius: '8px'
-            }}>
+            <div className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
               Nenhuma transação disponível
             </div>
           )}
         </div>
 
-        {/* RISK ALERT - Compact */}
-        {(customer.riskLevel === 'At Risk' || customer.riskLevel === 'Churning') && customer.daysOverdue > 0 && (
-          <div style={{
-            margin: '0 1.25rem 1.25rem 1.25rem',
-            padding: '0.75rem 1rem',
-            background: customer.riskLevel === 'Churning' ? '#fee2e2' : '#fef3c7',
-            borderRadius: '8px',
-            border: `2px solid ${customer.riskLevel === 'Churning' ? COLORS.red : COLORS.amber}`,
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.75rem'
-          }}>
-            <div style={{ fontSize: '20px', flexShrink: 0 }}>⚠️</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: COLORS.primary, marginBottom: '4px' }}>
-                Atenção Necessária
-              </div>
-              <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.4' }}>
-                Cliente está <strong>{customer.daysOverdue} dias atrasado</strong> (frequência média: {customer.avgDaysBetween} dias).
+        {/* RISK ALERT */}
+        {(customer.riskLevel === 'At Risk' ||
+          customer.riskLevel === 'Churning') &&
+          customer.daysOverdue > 0 && (
+            <div className="mx-5 mb-4 flex gap-3 rounded-lg border-2 px-4 py-3 text-sm text-slate-800 bg-amber-50 border-amber-400">
+              <div className="text-xl flex-shrink-0">⚠️</div>
+              <div>
+                <div className="mb-1 text-[14px] font-bold text-slate-900">
+                  Atenção Necessária
+                </div>
+                <div className="text-[13px] leading-snug">
+                  Cliente está{' '}
+                  <strong>{customer.daysOverdue} dias atrasado</strong>{' '}
+                  (frequência média:{' '}
+                  {customer.avgDaysBetween} dias).
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </div>
   );
