@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { RefreshCw, Moon, Sun, Calendar } from 'lucide-react';
+import { RefreshCw, Moon, Sun, Calendar, TrendingUp, Cloud, ChevronUp, ChevronDown } from 'lucide-react';
 
 // Components
 import KPICards from '../components/KPICards';
