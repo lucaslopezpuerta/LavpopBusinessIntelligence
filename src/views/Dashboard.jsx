@@ -1,16 +1,18 @@
-// Dashboard.jsx v7.2 - TAILWIND MIGRATION
-// ✅ Replaced inline styles with Tailwind classes
-// ✅ Added dark mode support
-// ✅ Responsive layout integration
-// ✅ Preserved all data loading and processing logic
+// Dashboard.jsx v7.2 - DESIGN SYSTEM POLISH
+// ✅ Improved mobile header buttons (better touch targets)
+// ✅ Branded chart placeholder
+// ✅ Layout optimization for empty chart area
+// ✅ Design System color compliance
+// ✅ No logic changes
 //
 // CHANGELOG:
+// v7.2 (2025-11-21): Design System polish
 // v7.1 (2025-11-20): Tailwind migration & Dark Mode
 // v7.0 (2025-11-19): Full integration
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { RefreshCw, Moon, Sun, Calendar } from 'lucide-react';
+import { RefreshCw, Moon, Sun, Calendar, BarChart3 } from 'lucide-react';
 
 // Components
 import KPICards from '../components/KPICards';
@@ -161,12 +163,15 @@ const Dashboard = () => {
 
             {/* Right: Controls */}
             <div className="flex items-center gap-3">
-              {/* View Toggle - Mobile Optimized */}
+              {/* View Toggle - Improved Mobile */}
               <div className="bg-white/10 rounded-xl p-1 flex items-center backdrop-blur-sm border border-white/10">
                 <button
                   onClick={() => setViewMode('complete')}
                   className={`
-                    px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
+                    px-3 py-2 sm:px-4 sm:py-2.5
+                    rounded-lg text-xs sm:text-sm font-semibold 
+                    transition-all duration-200 
+                    flex items-center gap-1.5
                     ${viewMode === 'complete'
                       ? 'bg-white text-lavpop-blue shadow-md scale-105'
                       : 'text-white/70 hover:text-white hover:bg-white/5'}
@@ -178,13 +183,16 @@ const Dashboard = () => {
                 <button
                   onClick={() => setViewMode('current')}
                   className={`
-                    px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
+                    px-3 py-2 sm:px-4 sm:py-2.5
+                    rounded-lg text-xs sm:text-sm font-semibold 
+                    transition-all duration-200 
+                    flex items-center gap-1.5
                     ${viewMode === 'current'
                       ? 'bg-white text-lavpop-blue shadow-md scale-105'
                       : 'text-white/70 hover:text-white hover:bg-white/5'}
                   `}
                 >
-                  <Calendar className="w-3 h-3" />
+                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">Semana Atual</span>
                   <span className="sm:hidden">Atual</span>
                 </button>
@@ -239,21 +247,25 @@ const Dashboard = () => {
           />
         )}
 
-        {/* Main Grid: Charts & Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Grid: Charts & Table */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
 
-          {/* Left Column: Charts (Placeholder for future migration) */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* 
-              NOTE: Charts are not part of this migration batch but should be placed here.
-              For now, we keep the layout structure ready.
-            */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm min-h-[400px] flex items-center justify-center text-slate-400">
-              Área de Gráficos (Próxima Etapa)
+          {/* Left Column: Chart Placeholder */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-lavpop-blue/20 dark:border-lavpop-blue/30 p-8 lg:p-12 shadow-sm min-h-[400px] flex items-center justify-center">
+            <div className="text-center space-y-4 max-w-md">
+              <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-lavpop-blue/10 to-lavpop-green/10 dark:from-lavpop-blue/20 dark:to-lavpop-green/20 flex items-center justify-center">
+                <BarChart3 className="w-10 h-10 text-lavpop-blue dark:text-blue-400" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                Gráficos em Desenvolvimento
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Visualizações de tendências, utilização e performance em breve
+              </p>
             </div>
           </div>
 
-          {/* Right Column: Tables */}
+          {/* Right Column: At-Risk Table */}
           <div className="space-y-6">
             {metrics?.customers && (
               <AtRiskCustomersTable
@@ -273,4 +285,5 @@ const Dashboard = () => {
     </div>
   );
 };
+
 export default Dashboard;
