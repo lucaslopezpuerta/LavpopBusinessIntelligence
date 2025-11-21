@@ -250,27 +250,27 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-4"
+      className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:px-4 sm:py-4"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700"
+        className="w-full h-[95vh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER - Enhanced Branding */}
-        <div className="relative overflow-hidden rounded-t-3xl">
+        <div className="relative overflow-hidden rounded-t-3xl flex-shrink-0">
           {/* Decorative background */}
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-lavpop-blue to-blue-700 opacity-100"></div>
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 right-0 w-64 h-64 bg-lavpop-green rounded-full blur-3xl"></div>
           </div>
 
-          <div className="relative z-10 flex items-center justify-between px-6 py-5 text-white">
-            <div className="flex-1">
-              <h2 className="mb-1 text-2xl font-extrabold leading-tight text-white">
+          <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 text-white">
+            <div className="flex-1 min-w-0">
+              <h2 className="mb-1 text-xl sm:text-2xl font-extrabold leading-tight text-white truncate">
                 {customer.name || 'Cliente sem nome'}
               </h2>
-              <div className="text-sm text-white/90 font-medium">
+              <div className="text-xs sm:text-sm text-white/90 font-medium truncate">
                 {customer.phone || 'Sem telefone'} •{' '}
                 {customer.doc
                   ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}`
@@ -278,16 +278,21 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 ml-3">
               {/* Risk badge */}
               <div
                 className={`
-                  flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 text-sm font-extrabold shadow-lg
+                  hidden sm:flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 text-sm font-extrabold shadow-lg
                   ${risk.bg} ${risk.text} ${risk.border}
                 `}
               >
                 <span className="text-lg">{risk.emoji}</span>
                 <span>{risk.label}</span>
+              </div>
+
+              {/* Mobile Risk Badge (Icon Only) */}
+              <div className={`sm:hidden w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 ${risk.bg} ${risk.border} shadow-lg`}>
+                {risk.emoji}
               </div>
 
               <button
@@ -301,7 +306,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         </div>
 
         {/* ACTION BUTTONS */}
-        <div className="flex gap-3 border-b border-slate-200 dark:border-slate-700 px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex gap-3 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-4 bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-20">
           <button
             onClick={handleCall}
             disabled={!customer.phone}
@@ -386,8 +391,8 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 </span>
                 <span
                   className={`text-lg font-extrabold ${customer.daysSinceLastVisit > customer.avgDaysBetween
-                      ? 'text-rose-600 dark:text-rose-300'
-                      : 'text-emerald-600 dark:text-emerald-300'
+                    ? 'text-rose-600 dark:text-rose-300'
+                    : 'text-emerald-600 dark:text-emerald-300'
                     }`}
                 >
                   {customer.daysSinceLastVisit || 0}

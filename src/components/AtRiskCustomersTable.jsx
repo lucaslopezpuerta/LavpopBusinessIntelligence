@@ -140,10 +140,10 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                 <th className="px-3 py-2.5 font-bold text-slate-600 dark:text-slate-300 text-[10px] text-center">
                   RISCO
                 </th>
-                <th className="px-3 py-2.5 font-bold text-slate-600 dark:text-slate-300 text-[10px] text-center">
+                <th className="hidden sm:table-cell px-3 py-2.5 font-bold text-slate-600 dark:text-slate-300 text-[10px] text-center">
                   TOTAL
                 </th>
-                <th className="px-3 py-2.5 font-bold text-slate-600 dark:text-slate-300 text-[10px] text-center">
+                <th className="hidden sm:table-cell px-3 py-2.5 font-bold text-slate-600 dark:text-slate-300 text-[10px] text-center">
                   DIAS
                 </th>
                 <th className="px-3 py-2.5 font-bold text-slate-600 dark:text-slate-300 text-[10px] text-center rounded-r-lg">
@@ -179,13 +179,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                     {getRiskBadge(customer.riskLevel, customer.returnLikelihood)}
                   </td>
 
-                  {/* Total - Centered */}
-                  <td className="p-3 text-center font-bold text-lavpop-blue dark:text-blue-300 text-xs">
+                  {/* Total - Centered (Hidden on Mobile) */}
+                  <td className="hidden sm:table-cell p-3 text-center font-bold text-lavpop-blue dark:text-blue-300 text-xs">
                     {formatCurrency(customer.netTotal || 0)}
                   </td>
 
-                  {/* Dias - Centered */}
-                  <td className="p-3 text-center">
+                  {/* Dias - Centered (Hidden on Mobile) */}
+                  <td className="hidden sm:table-cell p-3 text-center">
                     <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300">
                       {customer.daysSinceLastVisit || 0}
                     </span>
