@@ -30,6 +30,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [viewMode, setViewMode] = useState('complete'); // 'complete' or 'current'
+  const [showMobileWidgets, setShowMobileWidgets] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' ||
