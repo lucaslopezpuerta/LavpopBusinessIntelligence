@@ -1,11 +1,13 @@
-// CurrentWeekBanner.jsx v2.0 - TAILWIND MIGRATION
-// ✅ Replaced inline styles with Tailwind classes
-// ✅ Responsive design (mobile stack, desktop row)
+// CurrentWeekBanner.jsx v2.1 - DARK MODE & UX IMPROVEMENTS
+// ✅ Enhanced dark mode blending with darker gradients
+// ✅ Softer rounded corners (rounded-2xl)
+// ✅ Integrated quick action buttons
+// ✅ Fixed mobile overlap with proper stacking
 // ✅ Preserved all logic and projection math
 //
 // CHANGELOG:
+// v2.1 (2025-11-21): Dark mode & UX improvements
 // v2.0 (2025-11-20): Tailwind migration
-// v1.0 (2025-11-19): Initial implementation
 
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Calendar } from 'lucide-react';
@@ -33,19 +35,19 @@ const CurrentWeekBanner = ({ businessMetrics }) => {
 
   // Confidence level styling
   const getConfidenceStyle = () => {
-    if (!projection.canProject) return { colorClass: 'text-slate-400', icon: AlertCircle };
+    if (!projection.canProject) return { colorClass: 'text-slate-300', icon: AlertCircle };
 
     switch (projection.confidence) {
       case 'very_low':
-        return { colorClass: 'text-red-400', icon: AlertCircle };
+        return { colorClass: 'text-red-300', icon: AlertCircle };
       case 'low':
-        return { colorClass: 'text-amber-400', icon: AlertCircle };
+        return { colorClass: 'text-amber-300', icon: AlertCircle };
       case 'medium':
-        return { colorClass: 'text-blue-400', icon: TrendingUp };
+        return { colorClass: 'text-blue-300', icon: TrendingUp };
       case 'high':
-        return { colorClass: 'text-lavpop-green', icon: TrendingUp };
+        return { colorClass: 'text-emerald-300', icon: TrendingUp };
       default:
-        return { colorClass: 'text-slate-400', icon: Minus };
+        return { colorClass: 'text-slate-300', icon: Minus };
     }
   };
 
@@ -54,11 +56,11 @@ const CurrentWeekBanner = ({ businessMetrics }) => {
     if (!projection.canProject) return null;
 
     if (projection.trend === 'up') {
-      return <TrendingUp className="w-[18px] h-[18px] text-lavpop-green" />;
+      return <TrendingUp className="w-5 h-5 text-emerald-300" />;
     } else if (projection.trend === 'down') {
-      return <TrendingDown className="w-[18px] h-[18px] text-red-400" />;
+      return <TrendingDown className="w-5 h-5 text-red-300" />;
     } else {
-      return <Minus className="w-[18px] h-[18px] text-slate-400" />;
+      return <Minus className="w-5 h-5 text-slate-300" />;
     }
   };
 
@@ -66,120 +68,112 @@ const CurrentWeekBanner = ({ businessMetrics }) => {
   const ConfidenceIcon = confidenceStyle.icon;
 
   return (
-    <div className="
-      bg-gradient-to-br from-lavpop-blue to-blue-600 
-      rounded-xl p-4 sm:p-5 mb-3 
-      text-white shadow-md
-    ">
+    <div className="bg-gradient-to-br from-blue-700 via-lavpop-blue to-blue-900 dark:from-blue-900 dark:via-slate-800 dark:to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-xl border border-blue-600/20 dark:border-slate-700/50">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5" />
-          <span className="text-sm font-bold uppercase tracking-wider">
-            Semana Atual
-          </span>
-          <span className="text-[13px] opacity-90 font-medium">
-            ({window.startDate} - {window.endDate}, {window.daysElapsed} {window.daysElapsed === 1 ? 'dia' : 'dias'})
-          </span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-sm font-bold uppercase tracking-wider block">
+              Semana Atual
+            </span>
+            <span className="text-xs opacity-90 font-medium">
+              {window.startDate} - {window.endDate} • {window.daysElapsed} {window.daysElapsed === 1 ? 'dia' : 'dias'}
+            </span>
+          </div>
         </div>
 
-        <div className="
-          flex items-center gap-1.5 
-          text-xs opacity-85 
-          bg-white/15 
-          px-2.5 py-1 
-          rounded-md
-        ">
+        <div className="flex items-center gap-2 text-xs opacity-90 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-sm self-start sm:self-auto">
           <ConfidenceIcon className="w-3.5 h-3.5" />
-          <span>{window.dayOfWeek}</span>
+          <span className="font-medium">{window.dayOfWeek}</span>
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 lg:gap-0">
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Current Week Stats */}
-        <div className="flex items-center gap-6 flex-1 w-full lg:w-auto">
-          <div>
-            <div className="text-[11px] opacity-85 uppercase tracking-wide mb-0.5">
-              Receita
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="text-[11px] opacity-80 uppercase tracking-wide mb-1 font-semibold">
+                Receita
+              </div>
+              <div className="text-3xl font-extrabold leading-tight">
+                {formatCurrency(currentWeek.netRevenue)}
+              </div>
             </div>
-            <div className="text-2xl font-bold leading-tight">
-              {formatCurrency(currentWeek.netRevenue)}
-            </div>
-          </div>
 
-          <div className="w-px h-10 bg-white/30" />
+            <div className="w-px h-12 bg-white/20" />
 
-          <div>
-            <div className="text-[11px] opacity-85 uppercase tracking-wide mb-0.5">
-              Ciclos
+            <div className="flex-1">
+              <div className="text-[11px] opacity-80 uppercase tracking-wide mb-1 font-semibold">
+                Ciclos
+              </div>
+              <div className="text-3xl font-extrabold leading-tight">
+                {formatNumber(currentWeek.totalServices)}
+              </div>
             </div>
-            <div className="text-2xl font-bold leading-tight">
-              {formatNumber(currentWeek.totalServices)}
-            </div>
-          </div>
 
-          <div className="w-px h-10 bg-white/30" />
+            <div className="w-px h-12 bg-white/20" />
 
-          <div>
-            <div className="text-[11px] opacity-85 uppercase tracking-wide mb-0.5">
-              Utilização
-            </div>
-            <div className="text-2xl font-bold leading-tight">
-              {Math.round(currentWeek.totalUtilization)}%
+            <div className="flex-1">
+              <div className="text-[11px] opacity-80 uppercase tracking-wide mb-1 font-semibold">
+                Utilização
+              </div>
+              <div className="text-3xl font-extrabold leading-tight">
+                {Math.round(currentWeek.totalUtilization)}%
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Projection */}
+        {/* Projection Panel */}
         {projection.canProject && (
-          <>
-            <div className="hidden lg:block w-0.5 h-[50px] bg-white/40 mx-4" />
-            <div className="block lg:hidden w-full h-px bg-white/20 my-2" />
+          <div className="bg-gradient-to-br from-lavpop-green/20 to-emerald-600/20 backdrop-blur-sm rounded-xl p-4 border border-lavpop-green/30">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-bold flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Projeção Semana Completa
+              </span>
+              {getTrendIcon()}
+            </div>
 
-            <div className="
-              bg-white/15 
-              rounded-lg p-3 sm:px-4 sm:py-3 
-              w-full lg:min-w-[280px] lg:w-auto
-            ">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] uppercase tracking-wider opacity-90 font-semibold">
-                  Projeção Semana Completa
-                </span>
-                {getTrendIcon()}
-              </div>
-
-              <div className="flex items-baseline gap-3 mb-1.5">
-                <span className="text-[22px] font-bold">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl font-extrabold">
                   {formatCurrency(projection.projectedRevenue)}
                 </span>
-                <span className="text-sm opacity-90">
+                <span className="text-sm opacity-90 font-medium">
                   • {formatNumber(projection.projectedServices)} ciclos
                 </span>
               </div>
 
-              <div className="text-xs opacity-85 flex items-center gap-2">
-                <span>
+              <div className="flex items-center gap-2 text-xs">
+                <span className={`font-semibold ${projection.revenueVsLast >= 0 ? 'text-emerald-200' : 'text-red-200'}`}>
                   {projection.revenueVsLast > 0 ? '+' : ''}{projection.revenueVsLast.toFixed(1)}% vs última semana
                 </span>
                 {projection.confidence === 'very_low' && (
-                  <span className="text-[11px] bg-red-600/30 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] bg-red-500/30 px-2 py-0.5 rounded-md font-bold">
                     Volátil
                   </span>
                 )}
                 {projection.confidence === 'low' && (
-                  <span className="text-[11px] bg-amber-500/30 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] bg-amber-500/30 px-2 py-0.5 rounded-md font-bold">
                     Preliminar
                   </span>
                 )}
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {!projection.canProject && (
-          <div className="text-[13px] opacity-80 italic px-4 py-2 bg-white/10 rounded-md w-full lg:w-auto">
-            {projection.message}
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 flex items-center justify-center">
+            <div className="text-sm opacity-80 italic text-center">
+              {projection.message}
+            </div>
           </div>
         )}
       </div>

@@ -1,12 +1,12 @@
-// KPICards.jsx v4.0 - TAILWIND MIGRATION
-// ✅ Replaced inline styles with Tailwind classes
-// ✅ Added dark mode support
-// ✅ Responsive grid layout
-// ✅ Preserved all logic and safety checks from v3.3.1
+// KPICards.jsx v4.1 - DARK MODE & READABILITY IMPROVEMENTS
+// ✅ Enhanced dark mode text contrast
+// ✅ Improved color hierarchy
+// ✅ Better icon visibility
+// ✅ Preserved all logic and safety checks from v4.0
 //
 // CHANGELOG:
+// v4.1 (2025-11-21): Dark mode readability improvements
 // v4.0 (2025-11-20): Tailwind migration & Dark Mode
-// v3.3.1 (2025-11-19): HOTFIX - Safer data access
 
 import React, { useMemo } from 'react';
 import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
@@ -23,7 +23,7 @@ function normalizeDoc(doc) {
 
 const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'complete' }) => {
   const newClientsData = useMemo(() => {
-    console.log('\n=== NEW CUSTOMERS CALCULATION (KPICards v4.0) ===');
+    console.log('\n=== NEW CUSTOMERS CALCULATION (KPICards v4.1) ===');
 
     if (!salesData || salesData.length === 0) {
       return { count: 0, weekOverWeek: null };
@@ -152,8 +152,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       return {
         show: true,
         text: '→',
-        colorClass: 'text-slate-500 dark:text-slate-400',
-        bgClass: 'bg-slate-100 dark:bg-slate-700',
+        colorClass: 'text-slate-600 dark:text-slate-300',
+        bgClass: 'bg-slate-100 dark:bg-slate-600',
         label: 'vs semana passada'
       };
     }
@@ -162,8 +162,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       return {
         show: true,
         text: `↑${value.toFixed(1)}%`,
-        colorClass: 'text-lavpop-green dark:text-green-400',
-        bgClass: 'bg-lavpop-green-50 dark:bg-green-900/30',
+        colorClass: 'text-emerald-700 dark:text-emerald-300',
+        bgClass: 'bg-emerald-50 dark:bg-emerald-900/40',
         label: 'vs semana passada'
       };
     }
@@ -171,8 +171,8 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
     return {
       show: true,
       text: `↓${absValue.toFixed(1)}%`,
-      colorClass: 'text-red-600 dark:text-red-400',
-      bgClass: 'bg-red-50 dark:bg-red-900/30',
+      colorClass: 'text-red-700 dark:text-red-300',
+      bgClass: 'bg-red-50 dark:bg-red-900/40',
       label: 'vs semana passada'
     };
   };
@@ -201,8 +201,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       trend: getTrendData(wow.netRevenue),
       subtitle: getTimeSubtitle(),
       icon: Activity,
-      colorClass: 'text-lavpop-blue dark:text-blue-400',
-      iconBgClass: 'bg-blue-50 dark:bg-blue-900/30'
+      colorClass: 'text-lavpop-blue dark:text-blue-300',
+      iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
+      valueClass: 'text-lavpop-blue dark:text-white'
     },
     {
       id: 'services',
@@ -211,8 +212,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       trend: getTrendData(wow.totalServices),
       subtitle: getTimeSubtitle(),
       icon: Activity,
-      colorClass: 'text-lavpop-blue dark:text-blue-400',
-      iconBgClass: 'bg-blue-50 dark:bg-blue-900/30'
+      colorClass: 'text-lavpop-blue dark:text-blue-300',
+      iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
+      valueClass: 'text-lavpop-blue dark:text-white'
     },
     {
       id: 'utilization',
@@ -221,8 +223,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       trend: getTrendData(wow.utilization),
       subtitle: getTimeSubtitle(),
       icon: Flame,
-      colorClass: 'text-amber-500 dark:text-amber-400',
-      iconBgClass: 'bg-amber-50 dark:bg-amber-900/30'
+      colorClass: 'text-amber-600 dark:text-amber-300',
+      iconBgClass: 'bg-amber-50 dark:bg-amber-900/50',
+      valueClass: 'text-amber-600 dark:text-amber-200'
     },
     {
       id: 'wash',
@@ -231,8 +234,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: `${washPercent}% do total`,
       trend: getTrendData(wow.washServices),
       icon: Droplet,
-      colorClass: 'text-blue-500 dark:text-blue-400',
-      iconBgClass: 'bg-blue-50 dark:bg-blue-900/30'
+      colorClass: 'text-blue-600 dark:text-blue-300',
+      iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
+      valueClass: 'text-blue-600 dark:text-blue-200'
     },
     {
       id: 'dry',
@@ -241,8 +245,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: `${dryPercent}% do total`,
       trend: getTrendData(wow.dryServices),
       icon: Flame,
-      colorClass: 'text-amber-500 dark:text-amber-400',
-      iconBgClass: 'bg-amber-50 dark:bg-amber-900/30'
+      colorClass: 'text-orange-600 dark:text-orange-300',
+      iconBgClass: 'bg-orange-50 dark:bg-orange-900/50',
+      valueClass: 'text-orange-600 dark:text-orange-200'
     },
     {
       id: 'newclients',
@@ -251,8 +256,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: getTimeSubtitle(),
       trend: getTrendData(newClientsData.weekOverWeek),
       icon: UserPlus,
-      colorClass: 'text-lavpop-green dark:text-green-400',
-      iconBgClass: 'bg-green-50 dark:bg-green-900/30'
+      colorClass: 'text-lavpop-green dark:text-green-300',
+      iconBgClass: 'bg-green-50 dark:bg-green-900/50',
+      valueClass: 'text-lavpop-green dark:text-green-200'
     },
     {
       id: 'active',
@@ -260,8 +266,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: formatNumber(activeCount),
       subtitle: 'Não perdidos',
       icon: Users,
-      colorClass: 'text-lavpop-blue dark:text-blue-400',
-      iconBgClass: 'bg-blue-50 dark:bg-blue-900/30'
+      colorClass: 'text-lavpop-blue dark:text-blue-300',
+      iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
+      valueClass: 'text-lavpop-blue dark:text-white'
     },
     {
       id: 'atrisk',
@@ -269,8 +276,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: formatNumber(atRiskCount),
       subtitle: 'Precisam atenção',
       icon: AlertCircle,
-      colorClass: 'text-red-600 dark:text-red-400',
-      iconBgClass: 'bg-red-50 dark:bg-red-900/30'
+      colorClass: 'text-red-600 dark:text-red-300',
+      iconBgClass: 'bg-red-50 dark:bg-red-900/50',
+      valueClass: 'text-red-600 dark:text-red-200'
     },
     {
       id: 'health',
@@ -278,48 +286,49 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: `${Math.round(healthRate)}%`,
       subtitle: 'Clientes saudáveis',
       icon: Heart,
-      colorClass: 'text-lavpop-green dark:text-green-400',
-      iconBgClass: 'bg-green-50 dark:bg-green-900/30'
+      colorClass: 'text-lavpop-green dark:text-green-300',
+      iconBgClass: 'bg-green-50 dark:bg-green-900/50',
+      valueClass: 'text-lavpop-green dark:text-green-200'
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-9 gap-3 mb-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-9 gap-3">
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
 
         return (
           <div
             key={kpi.id}
-            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3.5 transition-all duration-200 hover:shadow-md dark:hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden flex flex-col group"
+            className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 transition-all duration-200 hover:shadow-lg dark:hover:shadow-2xl hover:-translate-y-1 relative overflow-hidden flex flex-col group"
           >
             {/* Header with Title and Icon */}
-            <div className="mb-2.5 flex justify-between items-start">
-              <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
+            <div className="mb-3 flex justify-between items-start">
+              <h3 className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider mt-1">
                 {kpi.title}
               </h3>
 
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${kpi.iconBgClass}`}>
-                <Icon className={`w-[19px] h-[19px] ${kpi.colorClass}`} />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${kpi.iconBgClass} group-hover:scale-110 transition-transform`}>
+                <Icon className={`w-5 h-5 ${kpi.colorClass}`} />
               </div>
             </div>
 
             {/* Value */}
-            <div className="mb-1.5 flex-1">
-              <div className={`text-[26px] font-bold leading-[1.1] ${kpi.colorClass}`}>
+            <div className="mb-2 flex-1">
+              <div className={`text-[28px] font-extrabold leading-[1.1] ${kpi.valueClass}`}>
                 {kpi.value}
               </div>
             </div>
 
             {/* Footer: Subtitle + WoW Badge */}
             <div className="flex items-center justify-between gap-2">
-              <div className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                 {kpi.subtitle}
               </div>
 
               {/* WoW Badge */}
               {kpi.trend?.show && (
-                <div className={`text-xs font-bold px-1.5 py-0.5 rounded tracking-wide whitespace-nowrap ${kpi.trend.colorClass} ${kpi.trend.bgClass}`}>
+                <div className={`text-xs font-bold px-2 py-0.5 rounded-md tracking-wide whitespace-nowrap ${kpi.trend.colorClass} ${kpi.trend.bgClass}`}>
                   {kpi.trend.text}
                 </div>
               )}
