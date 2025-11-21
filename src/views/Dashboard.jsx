@@ -1,4 +1,4 @@
-// Dashboard.jsx v7.1 - TAILWIND MIGRATION
+// Dashboard.jsx v7.2 - TAILWIND MIGRATION
 // ✅ Replaced inline styles with Tailwind classes
 // ✅ Added dark mode support
 // ✅ Responsive layout integration
@@ -106,7 +106,6 @@ const Dashboard = () => {
   const metrics = useMemo(() => {
     if (!salesData.length) return null;
 
-    // ✅ Corrected function calls and arguments
     const business = calculateBusinessMetrics(salesData);
     const customers = calculateCustomerMetrics(salesData, rfmData);
 
@@ -162,30 +161,32 @@ const Dashboard = () => {
 
             {/* Right: Controls */}
             <div className="flex items-center gap-3">
-              {/* View Toggle */}
-              <div className="bg-white/10 rounded-lg p-1 flex items-center backdrop-blur-sm">
+              {/* View Toggle - Mobile Optimized */}
+              <div className="bg-white/10 rounded-xl p-1 flex items-center backdrop-blur-sm border border-white/10">
                 <button
                   onClick={() => setViewMode('complete')}
                   className={`
-                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
+                    px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
                     ${viewMode === 'complete'
-                      ? 'bg-white text-lavpop-blue shadow-sm'
+                      ? 'bg-white text-lavpop-blue shadow-md scale-105'
                       : 'text-white/70 hover:text-white hover:bg-white/5'}
                   `}
                 >
-                  Ult. Semana Completa
+                  <span className="hidden sm:inline">Última Semana Completa</span>
+                  <span className="sm:hidden">Última</span>
                 </button>
                 <button
                   onClick={() => setViewMode('current')}
                   className={`
-                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5
+                    px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
                     ${viewMode === 'current'
-                      ? 'bg-white text-lavpop-blue shadow-sm'
+                      ? 'bg-white text-lavpop-blue shadow-md scale-105'
                       : 'text-white/70 hover:text-white hover:bg-white/5'}
                   `}
                 >
                   <Calendar className="w-3 h-3" />
-                  Semana Atual
+                  <span className="hidden sm:inline">Semana Atual</span>
+                  <span className="sm:hidden">Atual</span>
                 </button>
               </div>
 
@@ -266,7 +267,7 @@ const Dashboard = () => {
         {/* Footer Info */}
         <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8 pb-4">
           Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} •
-          Lavpop BI v7.1
+          Lavpop BI v7.2
         </div>
       </main>
     </div>
