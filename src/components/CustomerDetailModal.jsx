@@ -254,36 +254,40 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
       onClick={onClose}
     >
       <div
-        className="w-full h-[95vh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 custom-scrollbar"
+        className="w-full h-[95vh] sm:h-auto sm:max-h-[90vh] sm:max-w-5xl overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER - Enhanced Branding */}
         <div className="relative overflow-hidden rounded-t-3xl flex-shrink-0">
           {/* Decorative background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-lavpop-blue to-blue-700 opacity-100"></div>
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-lavpop-green rounded-full blur-3xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-lavpop-blue via-blue-600 to-lavpop-green opacity-100"></div>
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl mix-blend-overlay"></div>
           </div>
 
-          <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 text-white">
+          <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-6 text-white">
             <div className="flex-1 min-w-0">
-              <h2 className="mb-1 text-xl sm:text-2xl font-extrabold leading-tight text-white truncate">
+              <h2 className="mb-1 text-xl sm:text-3xl font-extrabold leading-tight text-white truncate tracking-tight">
                 {customer.name || 'Cliente sem nome'}
               </h2>
-              <div className="text-xs sm:text-sm text-white/90 font-medium truncate">
-                {customer.phone || 'Sem telefone'} •{' '}
-                {customer.doc
-                  ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}`
-                  : 'Sem CPF'}
+              <div className="text-xs sm:text-sm text-white/90 font-medium truncate flex items-center gap-2">
+                <span className="bg-white/20 px-2 py-0.5 rounded-md backdrop-blur-sm">
+                  {customer.phone || 'Sem telefone'}
+                </span>
+                <span className="opacity-60">•</span>
+                <span className="opacity-90">
+                  {customer.doc
+                    ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}`
+                    : 'Sem CPF'}
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 ml-3">
+            <div className="flex items-center gap-2 sm:gap-4 ml-3">
               {/* Risk badge */}
               <div
                 className={`
-                  hidden sm:flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 text-sm font-extrabold shadow-lg
-                  ${risk.bg} ${risk.text} ${risk.border}
+                  hidden sm:flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-extrabold shadow-lg bg-white text-slate-800 border-white
                 `}
               >
                 <span className="text-lg">{risk.emoji}</span>
@@ -291,13 +295,13 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               </div>
 
               {/* Mobile Risk Badge (Icon Only) */}
-              <div className={`sm:hidden w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 ${risk.bg} ${risk.border} shadow-lg`}>
+              <div className={`sm:hidden w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 bg-white border-white shadow-lg`}>
                 {risk.emoji}
               </div>
 
               <button
                 onClick={onClose}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-white/40 bg-white/20 text-white transition hover:bg-white/30 hover:scale-110 backdrop-blur-sm"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-white/40 bg-white/20 text-white transition hover:bg-white hover:text-lavpop-blue hover:scale-110 backdrop-blur-sm"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -337,7 +341,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         </div>
 
         {/* TWO-COLUMN STATS GRID */}
-        <div className="grid gap-4 border-b border-slate-200 dark:border-slate-700 px-6 py-5 md:grid-cols-2 bg-white dark:bg-slate-800">
+        <div className="grid gap-4 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-5 md:grid-cols-2 bg-white dark:bg-slate-800">
           {/* Financial */}
           <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-700/30 p-5 border border-slate-200 dark:border-slate-600">
             <h3 className="mb-4 text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-2">
@@ -391,8 +395,8 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 </span>
                 <span
                   className={`text-lg font-extrabold ${customer.daysSinceLastVisit > customer.avgDaysBetween
-                    ? 'text-rose-600 dark:text-rose-300'
-                    : 'text-emerald-600 dark:text-emerald-300'
+                      ? 'text-rose-600 dark:text-rose-300'
+                      : 'text-emerald-600 dark:text-emerald-300'
                     }`}
                 >
                   {customer.daysSinceLastVisit || 0}
@@ -419,7 +423,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         </div>
 
         {/* SERVICE PREFERENCES */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-lavpop-blue dark:text-blue-400" />
             <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">
@@ -447,7 +451,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         </div>
 
         {/* TRANSACTION HISTORY (Last 5) */}
-        <div className="px-6 py-5 bg-white dark:bg-slate-800">
+        <div className="px-4 sm:px-6 py-5 bg-white dark:bg-slate-800">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-lavpop-blue dark:text-blue-300">
             <Calendar className="h-5 w-5" />
             Últimas 5 Transações
@@ -460,7 +464,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                   <tr className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-700 dark:to-slate-700/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                     <th className="px-3 py-3 text-center">Data</th>
                     <th className="px-3 py-3 text-center">Valor</th>
-                    <th className="px-3 py-3 text-center">Ciclos</th>
+                    <th className="hidden sm:table-cell px-3 py-3 text-center">Ciclos</th>
                     <th className="px-3 py-3 text-center">Máquinas</th>
                     <th className="px-3 py-3 text-center">Cupom</th>
                   </tr>
@@ -477,7 +481,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                       <td className="px-3 py-3 text-center text-xs font-bold text-lavpop-blue dark:text-blue-300">
                         {formatCurrency(txn.amount)}
                       </td>
-                      <td className="px-3 py-3 text-center text-sm font-extrabold text-lavpop-blue dark:text-blue-300">
+                      <td className="hidden sm:table-cell px-3 py-3 text-center text-sm font-extrabold text-lavpop-blue dark:text-blue-300">
                         {txn.cycles}
                       </td>
                       <td className="px-3 py-3 text-center">
