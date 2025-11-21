@@ -1,12 +1,12 @@
-// SocialMediaWidget.jsx v2.0 - STANDARDIZED HEADER DESIGN
-// ✅ Consistent with all other header widgets
-// ✅ Transparent blur background matching header style
+// SocialMediaWidget.jsx v3.0 - TAILWIND MIGRATION
+// ✅ Replaced inline styles with Tailwind classes
+// ✅ Glassmorphism effect using Tailwind
 // ✅ Combined Instagram + Facebook in single widget
-// ✅ Compact 36px height
+// ✅ Responsive design
 //
 // CHANGELOG:
-// v2.0 (2025-11-16): Standardized design for header consistency
-// v1.0 (previous): Separate cards with white background
+// v3.0 (2025-11-20): Tailwind migration & Glassmorphism
+// v2.0 (2025-11-16): Standardized design
 
 import React from 'react';
 import { Instagram, Users } from 'lucide-react';
@@ -26,62 +26,38 @@ const SocialMediaWidget = ({ instagramFollowers = 0, facebookFollowers = 0 }) =>
       href="https://www.instagram.com/lavpopcaxiasdosul/"
       target="_blank"
       rel="noopener noreferrer"
-      style={{
-        background: 'rgba(255, 255, 255, 0.15)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '8px',
-        padding: '0.5rem 0.75rem',
-        border: '1px solid rgba(255, 255, 255, 0.25)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.625rem',
-        textDecoration: 'none',
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        height: '36px'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
-        e.currentTarget.style.transform = 'translateY(-1px)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-        e.currentTarget.style.transform = 'translateY(0)';
-      }}
+      className="
+        bg-white/15 backdrop-blur-md 
+        rounded-lg px-3 py-2 
+        border border-white/25 
+        flex items-center gap-2.5 
+        no-underline cursor-pointer 
+        transition-all duration-200 
+        h-9
+        hover:bg-white/25 hover:-translate-y-px
+      "
       title="Ver no Instagram"
     >
       {/* Icon Container */}
-      <div style={{
-        width: '28px',
-        height: '28px',
-        borderRadius: '6px',
-        background: 'rgba(255, 255, 255, 0.2)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0
-      }}>
-        <Instagram style={{ width: '15px', height: '15px', color: 'white' }} />
+      <div className="
+        w-7 h-7 
+        rounded-md 
+        bg-white/20 
+        flex items-center justify-center 
+        shrink-0
+      ">
+        <Instagram className="w-[15px] h-[15px] text-white" />
       </div>
 
       {/* Social Info */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-        <div style={{
-          fontSize: '12px',
-          fontWeight: '700',
-          color: 'white',
-          lineHeight: 1
-        }}>
+      <div className="flex flex-col gap-px">
+        <div className="text-xs font-bold text-white leading-none">
           INSTAGRAM
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <Users style={{ width: '10px', height: '10px', color: 'rgba(255, 255, 255, 0.9)' }} />
-          <span style={{
-            fontSize: '11px',
-            fontWeight: '600',
-            color: 'rgba(255, 255, 255, 0.9)'
-          }}>
-            {formatFollowers(instagramFollowers)} {/* +Seguidores */}
+        <div className="flex items-center gap-1.5">
+          <Users className="w-2.5 h-2.5 text-white/90" />
+          <span className="text-[11px] font-semibold text-white/90">
+            {formatFollowers(instagramFollowers)}
           </span>
         </div>
       </div>
