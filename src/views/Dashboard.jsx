@@ -1,18 +1,16 @@
-// Dashboard.jsx v7.2 - DESIGN SYSTEM POLISH
-// ✅ Improved mobile header buttons (better touch targets)
-// ✅ Branded chart placeholder
-// ✅ Layout optimization for empty chart area
-// ✅ Design System color compliance
+// Dashboard.jsx v7.3 - HEADER & LAYOUT REFINEMENTS
+// ✅ Header gradient matches banner (blue)
+// ✅ Removed theme/reload buttons (in App.jsx)
+// ✅ Better desktop width (1800px max)
+// ✅ Icon added to "Última Semana Completa"
 // ✅ No logic changes
 //
 // CHANGELOG:
-// v7.2 (2025-11-21): Design System polish
-// v7.1 (2025-11-20): Tailwind migration & Dark Mode
-// v7.0 (2025-11-19): Full integration
+// v7.3 (2025-11-21): Header & layout refinements
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { RefreshCw, Moon, Sun, Calendar, BarChart3 } from 'lucide-react';
+import { Calendar, CheckCircle2, BarChart3 } from 'lucide-react';
 
 // Components
 import KPICards from '../components/KPICards';
@@ -31,35 +29,12 @@ const Dashboard = () => {
   const [rfmData, setRfmData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [viewMode, setViewMode] = useState('complete'); // 'complete' or 'current'
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' ||
-        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    }
-    return false;
-  });
-
-  // Theme Effect
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [darkMode]);
-
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
-  };
+  const [viewMode, setViewMode] = useState('complete');
 
   const loadData = async () => {
     try {
       setLoading(true);
 
-      // Load both Sales and RFM data
       const [salesRes, rfmRes] = await Promise.all([
         fetch('/data/sales.csv'),
         fetch('/data/rfm.csv')
@@ -72,12 +47,10 @@ const Dashboard = () => {
       const salesText = await salesRes.text();
       const rfmText = await rfmRes.text();
 
-      // Parse Sales
       Papa.parse(salesText, {
         header: true,
         skipEmptyLines: true,
         complete: (salesResults) => {
-          // Parse RFM
           Papa.parse(rfmText, {
             header: true,
             skipEmptyLines: true,
@@ -101,7 +74,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 5 * 60 * 1000); // 5 minutes
+    const interval = setInterval(loadData, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -118,7 +91,7 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-8 h-8 text-lavpop-blue animate-spin" />
+          <div className="w-8 h-8 border-4 border-lavpop-blue border-t-transparent rounded-full animate-spin" />
           <div className="text-slate-500 dark:text-slate-400 font-medium">
             Carregando dados...
           </div>
@@ -129,10 +102,10 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-8">
-      {/* HEADER BAND */}
-      <div className="bg-gradient-to-r from-slate-900 to-lavpop-blue shadow-lg">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-16 flex items-center justify-between">
+      {/* HEADER BAND - Matches Banner Gradient */}
+      <div className="bg-gradient-to-r from-blue-700 via-lavpop-blue to-blue-900 dark:from-slate-900 dark:to-lavpop-blue shadow-lg">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between gap-4">
 
             {/* Left: Logo & Title */}
             <div className="flex items-center gap-4">
@@ -161,68 +134,48 @@ const Dashboard = () => {
               <SocialMediaWidget />
             </div>
 
-            {/* Right: Controls */}
-            <div className="flex items-center gap-3">
-              {/* View Toggle - Improved Mobile */}
-              <div className="bg-white/10 rounded-xl p-1 flex items-center backdrop-blur-sm border border-white/10">
-                <button
-                  onClick={() => setViewMode('complete')}
-                  className={`
-                    px-3 py-2 sm:px-4 sm:py-2.5
-                    rounded-lg text-xs sm:text-sm font-semibold 
-                    transition-all duration-200 
-                    flex items-center gap-1.5
-                    ${viewMode === 'complete'
-                      ? 'bg-white text-lavpop-blue shadow-md scale-105'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'}
-                  `}
-                >
-                  <span className="hidden sm:inline">Última Semana Completa</span>
-                  <span className="sm:hidden">Última</span>
-                </button>
-                <button
-                  onClick={() => setViewMode('current')}
-                  className={`
-                    px-3 py-2 sm:px-4 sm:py-2.5
-                    rounded-lg text-xs sm:text-sm font-semibold 
-                    transition-all duration-200 
-                    flex items-center gap-1.5
-                    ${viewMode === 'current'
-                      ? 'bg-white text-lavpop-blue shadow-md scale-105'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'}
-                  `}
-                >
-                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Semana Atual</span>
-                  <span className="sm:hidden">Atual</span>
-                </button>
-              </div>
-
-              {/* Theme Toggle */}
+            {/* Right: View Toggle */}
+            <div className="bg-white/10 rounded-xl p-1 flex items-center backdrop-blur-sm border border-white/10">
               <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors backdrop-blur-sm"
-                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+                onClick={() => setViewMode('complete')}
+                className={`
+                  px-3 py-2.5 sm:px-4
+                  rounded-lg text-sm font-semibold 
+                  transition-all duration-200 
+                  flex items-center gap-2
+                  ${viewMode === 'complete'
+                    ? 'bg-white text-lavpop-blue shadow-md scale-105'
+                    : 'text-white/70 hover:text-white hover:bg-white/5'}
+                `}
               >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Última Semana Completa</span>
+                <span className="sm:hidden">Última</span>
               </button>
-
-              {/* Refresh Button */}
               <button
-                onClick={loadData}
-                className="p-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors backdrop-blur-sm"
-                title="Atualizar Dados"
+                onClick={() => setViewMode('current')}
+                className={`
+                  px-3 py-2.5 sm:px-4
+                  rounded-lg text-sm font-semibold 
+                  transition-all duration-200 
+                  flex items-center gap-2
+                  ${viewMode === 'current'
+                    ? 'bg-white text-lavpop-blue shadow-md scale-105'
+                    : 'text-white/70 hover:text-white hover:bg-white/5'}
+                `}
               >
-                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                <Calendar className="w-4 h-4" />
+                <span className="hidden sm:inline">Semana Atual</span>
+                <span className="sm:hidden">Atual</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* MOBILE WIDGETS (Visible only on small screens) */}
-      <div className="xl:hidden bg-slate-800 border-b border-slate-700/50">
-        <div className="max-w-[1920px] mx-auto px-4 py-3 flex flex-wrap gap-3 justify-center">
+      {/* MOBILE WIDGETS */}
+      <div className="xl:hidden bg-slate-800 dark:bg-slate-900 border-b border-slate-700/50">
+        <div className="max-w-[1800px] mx-auto px-4 py-3 flex flex-wrap gap-3 justify-center">
           <WeatherWidget />
           <GoogleBusinessWidget />
           <SocialMediaWidget />
@@ -230,9 +183,9 @@ const Dashboard = () => {
       </div>
 
       {/* MAIN CONTENT */}
-      <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        {/* Current Week Banner (Conditional) */}
+        {/* Current Week Banner */}
         {viewMode === 'current' && metrics?.business && (
           <CurrentWeekBanner businessMetrics={metrics.business} />
         )}
@@ -250,7 +203,7 @@ const Dashboard = () => {
         {/* Main Grid: Charts & Table */}
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
 
-          {/* Left Column: Chart Placeholder */}
+          {/* Left: Chart Placeholder */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-lavpop-blue/20 dark:border-lavpop-blue/30 p-8 lg:p-12 shadow-sm min-h-[400px] flex items-center justify-center">
             <div className="text-center space-y-4 max-w-md">
               <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-lavpop-blue/10 to-lavpop-green/10 dark:from-lavpop-blue/20 dark:to-lavpop-green/20 flex items-center justify-center">
@@ -265,7 +218,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Right Column: At-Risk Table */}
+          {/* Right: At-Risk Table */}
           <div className="space-y-6">
             {metrics?.customers && (
               <AtRiskCustomersTable
@@ -279,7 +232,7 @@ const Dashboard = () => {
         {/* Footer Info */}
         <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8 pb-4">
           Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} •
-          Lavpop BI v7.2
+          Lavpop BI v7.3
         </div>
       </main>
     </div>
