@@ -12,7 +12,7 @@ import { calculateBusinessMetrics } from './utils/businessMetrics';
 import { calculateCustomerMetrics } from './utils/customerMetrics';
 import KPICards from './components/KPICards';
 import Logo from './assets/Logo1.png';
-import './App.css';
+import './index.css';
 
 // Import views
 import Dashboard from './views/Dashboard';
