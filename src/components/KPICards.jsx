@@ -1,13 +1,13 @@
-// KPICards.jsx v5.0 - PROJECTION CARD ADDED
-// ✅ Projection moved from banner to KPI card
-// ✅ Shows only when "Atual" mode selected
-// ✅ No logic changes
+// KPICards.jsx v5.1 - PROJECTION CARD FIXED
+// ✅ Projection always visible (6th position)
+// ✅ Dynamic icon (up/down based on trend)
+// ✅ Title: "Projeção Atual"
 //
 // CHANGELOG:
-// v5.0 (2025-11-21): Projection card added
+// v5.1 (2025-11-21): Projection card positioning
 
 import React, { useMemo } from 'react';
-import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp } from 'lucide-react';
+import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp, TrendingDown } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 function normalizeDoc(doc) {
@@ -40,11 +40,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
 
     const previousWindow = businessMetrics.windows.previousWeekly;
 
-    if (!previousWindow) {
-      return { count: 0, weekOverWeek: null };
-    }
-
-    if (!currentWindow.start || !currentWindow.end || !previousWindow.start || !previousWindow.end) {
+    if (!previousWindow || !currentWindow.start || !currentWindow.end || !previousWindow.start || !previousWindow.end) {
       return { count: 0, weekOverWeek: null };
     }
 
@@ -117,7 +113,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
   }
 
   const wow = businessMetrics.weekOverWeek || {};
-
   const activeCount = customerMetrics.activeCount || 0;
   const atRiskCount = customerMetrics.atRiskCount || 0;
   const healthRate = customerMetrics.healthRate || 0;
@@ -146,8 +141,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
         show: true,
         text: '→',
         colorClass: 'text-slate-600 dark:text-slate-200',
-        bgClass: 'bg-slate-100 dark:bg-slate-600',
-        label: 'vs semana passada'
+        bgClass: 'bg-slate-100 dark:bg-slate-600'
       };
     }
 
@@ -156,8 +150,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
         show: true,
         text: `↑${value.toFixed(1)}%`,
         colorClass: 'text-emerald-700 dark:text-emerald-200',
-        bgClass: 'bg-emerald-50 dark:bg-emerald-900/40',
-        label: 'vs semana passada'
+        bgClass: 'bg-emerald-50 dark:bg-emerald-900/40'
       };
     }
 
@@ -165,8 +158,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       show: true,
       text: `↓${absValue.toFixed(1)}%`,
       colorClass: 'text-red-700 dark:text-red-200',
-      bgClass: 'bg-red-50 dark:bg-red-900/40',
-      label: 'vs semana passada'
+      bgClass: 'bg-red-50 dark:bg-red-900/40'
     };
   };
 
@@ -183,6 +175,14 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
   const totalServices = washCount + dryCount;
   const washPercent = totalServices > 0 ? ((washCount / totalServices) * 100).toFixed(0) : 0;
   const dryPercent = totalServices > 0 ? ((dryCount / totalServices) * 100).toFixed(0) : 0;
+
+  // Projection data (always available)
+  const projectionData = businessMetrics.currentWeek?.projection || null;
+  const hasProjection = projectionData?.canProject;
+  const projectionIcon = hasProjection && projectionData.trend === 'down' ? TrendingDown : TrendingUp;
+  const projectionValue = hasProjection ? formatCurrency(projectionData.projectedRevenue) : '—';
+  const projectionSubtitle = hasProjection ? `${formatNumber(projectionData.projectedServices)} ciclos` : 'Aguardando dados';
+  const projectionTrend = hasProjection ? getTrendData(projectionData.revenueVsLast) : { show: false };
 
   const kpis = [
     {
@@ -252,6 +252,17 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       valueClass: 'text-lavpop-green dark:text-green-200'
     },
     {
+      id: 'projection',
+      title: 'Projeção Atual',
+      value: projectionValue,
+      subtitle: projectionSubtitle,
+      trend: projectionTrend,
+      icon: projectionIcon,
+      colorClass: 'text-lavpop-green dark:text-green-400',
+      iconBgClass: 'bg-green-50 dark:bg-green-900/50',
+      valueClass: 'text-lavpop-green dark:text-green-200'
+    },
+    {
       id: 'active',
       title: 'Clientes Ativos',
       value: formatNumber(activeCount),
@@ -283,22 +294,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
     }
   ];
 
-  // Add projection card if in current week mode
-  if (viewMode === 'current' && businessMetrics.currentWeek?.projection?.canProject) {
-    const proj = businessMetrics.currentWeek.projection;
-    kpis.push({
-      id: 'projection',
-      title: 'Projeção Semana',
-      value: formatCurrency(proj.projectedRevenue),
-      subtitle: `${formatNumber(proj.projectedServices)} ciclos`,
-      trend: getTrendData(proj.revenueVsLast),
-      icon: TrendingUp,
-      colorClass: 'text-lavpop-green dark:text-green-400',
-      iconBgClass: 'bg-green-50 dark:bg-green-900/50',
-      valueClass: 'text-lavpop-green dark:text-green-200'
-    });
-  }
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
       {kpis.map((kpi) => {
@@ -309,7 +304,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
             key={kpi.id}
             className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 transition-all duration-200 hover:shadow-lg dark:hover:shadow-2xl hover:-translate-y-1 relative overflow-hidden flex flex-col group"
           >
-            {/* Header */}
             <div className="mb-3 flex justify-between items-start">
               <h3 className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mt-1">
                 {kpi.title}
@@ -320,14 +314,12 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
               </div>
             </div>
 
-            {/* Value */}
             <div className="mb-2 flex-1">
               <div className={`text-[28px] font-extrabold leading-[1.1] ${kpi.valueClass}`}>
                 {kpi.value}
               </div>
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-between gap-2">
               <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                 {kpi.subtitle}
