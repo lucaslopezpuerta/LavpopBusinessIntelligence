@@ -21,11 +21,12 @@ import SocialMediaWidget from '../components/SocialMediaWidget';
 import CurrentWeekBanner from '../components/CurrentWeekBanner';
 
 // Utils
-import { processBusinessMetrics } from '../utils/businessMetrics';
-import { processCustomerMetrics } from '../utils/customerMetrics';
+import { calculateBusinessMetrics } from '../utils/businessMetrics';
+import { calculateCustomerMetrics } from '../utils/customerMetrics';
 
 const Dashboard = () => {
   const [salesData, setSalesData] = useState([]);
+  const [rfmData, setRfmData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [viewMode, setViewMode] = useState('complete'); // 'complete' or 'current'
@@ -55,24 +56,43 @@ const Dashboard = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/data/vendas.csv');
-      const csvText = await response.text();
 
-      Papa.parse(csvText, {
+      // Load both Sales and RFM data
+      const [salesRes, rfmRes] = await Promise.all([
+        fetch('/data/sales.csv'),
+        fetch('/data/rfm.csv')
+      ]);
+
+      if (!salesRes.ok || !rfmRes.ok) {
+        throw new Error('Falha ao carregar arquivos de dados');
+      }
+
+      const salesText = await salesRes.text();
+      const rfmText = await rfmRes.text();
+
+      // Parse Sales
+      Papa.parse(salesText, {
         header: true,
         skipEmptyLines: true,
-        complete: (results) => {
-          setSalesData(results.data);
-          setLastUpdated(new Date());
-          setLoading(false);
+        complete: (salesResults) => {
+          // Parse RFM
+          Papa.parse(rfmText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (rfmResults) => {
+              setSalesData(salesResults.data);
+              setRfmData(rfmResults.data);
+              setLastUpdated(new Date());
+              setLoading(false);
+            },
+            error: (err) => console.error('Erro parsing RFM:', err)
+          });
         },
-        error: (error) => {
-          console.error('Erro ao carregar CSV:', error);
-          setLoading(false);
-        }
+        error: (err) => console.error('Erro parsing Sales:', err)
       });
+
     } catch (error) {
-      console.error('Erro ao buscar arquivo:', error);
+      console.error('Erro ao buscar arquivos:', error);
       setLoading(false);
     }
   };
@@ -86,11 +106,12 @@ const Dashboard = () => {
   const metrics = useMemo(() => {
     if (!salesData.length) return null;
 
-    const business = processBusinessMetrics(salesData);
-    const customers = processCustomerMetrics(salesData);
+    // ✅ Corrected function calls and arguments
+    const business = calculateBusinessMetrics(salesData);
+    const customers = calculateCustomerMetrics(salesData, rfmData);
 
     return { business, customers };
-  }, [salesData]);
+  }, [salesData, rfmData]);
 
   if (loading && !salesData.length) {
     return (
