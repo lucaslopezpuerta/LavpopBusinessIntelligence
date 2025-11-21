@@ -1,21 +1,199 @@
+/* Lavpop BI - Base Styles v2.0 (Tailwind Edition)
+ * Minimal CSS with theme variables
+ * All component styling moved to Tailwind classes
+ *
+ * CHANGELOG:
+ * v2.0 (2025-11-20): Complete Tailwind migration
+ *   - Removed all component-specific CSS
+ *   - Added CSS variables for theme switching
+ *   - Minimal base styles only
+ * v1.0: Legacy CSS version (deprecated)
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom global styles */
-@layer base {
+/* ============================================
+   CSS VARIABLES FOR THEME SWITCHING
+   ============================================ */
+
+:root {
+  /* Lavpop Brand Colors */
+  --color-lavpop-blue: #1a5a8e;
+  --color-lavpop-green: #55b03b;
+  
+  /* Light Theme (Default) */
+  --color-background: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f9fafb;
+  --color-border: #e5e7eb;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #9ca3af;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-lavpop: 0 4px 14px 0 rgba(26, 90, 142, 0.15);
+}
+
+.dark {
+  /* Dark Theme */
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-hover: #334155;
+  --color-border: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  
+  /* Darker shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-lavpop: 0 4px 14px 0 rgba(26, 90, 142, 0.3);
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Smooth transitions for theme switching */
+.theme-transition {
+  transition: background-color 0.3s ease, 
+              border-color 0.3s ease, 
+              color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* ============================================
+   RECHARTS THEME OVERRIDES
+   ============================================ */
+
+/* Make Recharts responsive to theme */
+.dark .recharts-surface {
+  background-color: transparent;
+}
+
+.dark .recharts-text {
+  fill: var(--color-text-secondary);
+}
+
+.dark .recharts-cartesian-axis-tick-value {
+  fill: var(--color-text-secondary);
+}
+
+.dark .recharts-legend-item-text {
+  color: var(--color-text-secondary) !important;
+}
+
+.dark .recharts-tooltip-wrapper {
+  outline: none;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    background: white;
+    color: black;
+  }
+  
+  .no-print {
+    display: none !important;
   }
 }
 
-/* Glassmorphism utility classes */
-@layer utilities {
-  .glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/20;
+/* ============================================
+   ANIMATION HELPERS
+   ============================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
   }
-  
-  .glass-dark {
-    @apply bg-gray-900/70 backdrop-blur-md border border-gray-800/20;
+  100% {
+    background-position: 1000px 0;
   }
+}
+
+.skeleton {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    to right,
+    var(--color-border) 4%,
+    var(--color-surface-hover) 25%,
+    var(--color-border) 36%
+  );
+  background-size: 1000px 100%;
+}
+
+/* ============================================
+   FOCUS VISIBLE (Accessibility)
+   ============================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-lavpop-blue);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-lavpop-blue);
+  outline-offset: 2px;
 }
