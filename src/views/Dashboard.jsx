@@ -1,16 +1,16 @@
-// Dashboard.jsx v7.2 - BRANDING & UX IMPROVEMENTS
-// ✅ Enhanced Lavpop branding with unforgettable presentation
-// ✅ Mobile-friendly week toggle button
-// ✅ Optimized layout for better space utilization
+// Dashboard.jsx v7.1 - TAILWIND MIGRATION
+// ✅ Replaced inline styles with Tailwind classes
+// ✅ Added dark mode support
+// ✅ Responsive layout integration
 // ✅ Preserved all data loading and processing logic
 //
 // CHANGELOG:
-// v7.2 (2025-11-21): Branding improvements & mobile UX
 // v7.1 (2025-11-20): Tailwind migration & Dark Mode
+// v7.0 (2025-11-19): Full integration
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { RefreshCw, Moon, Sun, Calendar, TrendingUp } from 'lucide-react';
+import { RefreshCw, Moon, Sun, Calendar } from 'lucide-react';
 
 // Components
 import KPICards from '../components/KPICards';
@@ -127,48 +127,32 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-      {/* HEADER BAND - Enhanced Branding */}
-      <div className="bg-gradient-to-r from-slate-900 via-lavpop-blue to-blue-700 shadow-xl relative overflow-hidden">
-        {/* Decorative background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-64 h-64 bg-lavpop-green rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
-        </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-8">
+      {/* HEADER BAND */}
+      <div className="bg-gradient-to-r from-slate-900 to-lavpop-blue shadow-lg">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="h-20 flex items-center justify-between">
-
-            {/* Left: Enhanced Logo & Title */}
+            {/* Left: Logo & Title */}
             <div className="flex items-center gap-4">
-              {/* Logo with glow effect */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-lavpop-green/20 rounded-xl blur-xl group-hover:bg-lavpop-green/30 transition-all"></div>
-                <div className="relative bg-white/95 dark:bg-white/90 p-3 rounded-xl shadow-lg backdrop-blur-sm transform group-hover:scale-105 transition-transform">
-                  <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-lavpop-blue to-blue-600">
-                    LAVPOP
-                  </span>
-                  <span className="text-2xl font-black text-lavpop-green">BI</span>
-                </div>
+              <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+                <span className="text-xl font-bold text-white tracking-tight">
+                  LAVPOP<span className="text-lavpop-green">BI</span>
+                </span>
               </div>
-
-              {/* Divider */}
-              <div className="hidden md:block h-12 w-px bg-white/20"></div>
-
-              {/* Title & Subtitle */}
+              <div className="hidden md:block h-8 w-px bg-white/20"></div>
               <div className="hidden md:flex flex-col">
-                <span className="text-xs font-semibold text-white/70 uppercase tracking-widest">
+                <span className="text-xs font-medium text-white/60 uppercase tracking-wider">
                   Business Intelligence
                 </span>
-                <span className="text-base font-bold text-white flex items-center gap-2">
+                <span className="text-sm font-semibold text-white">
                   Dashboard Executivo
-                  <TrendingUp className="w-4 h-4 text-lavpop-green" />
                 </span>
               </div>
             </div>
 
             {/* Center: Widgets (Desktop) */}
-            <div className="hidden xl:flex items-center gap-3">
+            <div className="hidden xl:flex items-center gap-4">
               <WeatherWidget />
               <div className="h-6 w-px bg-white/20"></div>
               <GoogleBusinessWidget />
@@ -177,40 +161,38 @@ const Dashboard = () => {
             </div>
 
             {/* Right: Controls */}
-            <div className="flex items-center gap-2">
-              {/* View Toggle - Mobile Optimized */}
-              <div className="bg-white/10 rounded-xl p-1 flex items-center backdrop-blur-sm border border-white/10">
+            <div className="flex items-center gap-3">
+              {/* View Toggle */}
+              <div className="bg-white/10 rounded-lg p-1 flex items-center backdrop-blur-sm">
                 <button
                   onClick={() => setViewMode('complete')}
                   className={`
-                    px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
+                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
                     ${viewMode === 'complete'
-                      ? 'bg-white text-lavpop-blue shadow-md scale-105'
+                      ? 'bg-white text-lavpop-blue shadow-sm'
                       : 'text-white/70 hover:text-white hover:bg-white/5'}
                   `}
                 >
-                  <span className="hidden sm:inline">Última Semana Completa</span>
-                  <span className="sm:hidden">Última</span>
+                  Ult. Semana Completa
                 </button>
                 <button
                   onClick={() => setViewMode('current')}
                   className={`
-                    px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
+                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5
                     ${viewMode === 'current'
-                      ? 'bg-white text-lavpop-blue shadow-md scale-105'
+                      ? 'bg-white text-lavpop-blue shadow-sm'
                       : 'text-white/70 hover:text-white hover:bg-white/5'}
                   `}
                 >
                   <Calendar className="w-3 h-3" />
-                  <span className="hidden sm:inline">Semana Atual</span>
-                  <span className="sm:hidden">Atual</span>
+                  Semana Atual
                 </button>
               </div>
 
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 hover:text-white hover:scale-105 transition-all backdrop-blur-sm border border-white/10"
+                className="p-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors backdrop-blur-sm"
                 title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
               >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -219,7 +201,7 @@ const Dashboard = () => {
               {/* Refresh Button */}
               <button
                 onClick={loadData}
-                className="p-2 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 hover:text-white hover:scale-105 transition-all backdrop-blur-sm border border-white/10"
+                className="p-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors backdrop-blur-sm"
                 title="Atualizar Dados"
               >
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
@@ -230,8 +212,8 @@ const Dashboard = () => {
       </div>
 
       {/* MOBILE WIDGETS (Visible only on small screens) */}
-      <div className="xl:hidden bg-gradient-to-r from-slate-800 to-slate-700 dark:from-slate-900 dark:to-slate-800 border-b border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-3 justify-center">
+      <div className="xl:hidden bg-slate-800 border-b border-slate-700/50">
+        <div className="max-w-[1920px] mx-auto px-4 py-3 flex flex-wrap gap-3 justify-center">
           <WeatherWidget />
           <GoogleBusinessWidget />
           <SocialMediaWidget />
@@ -239,7 +221,7 @@ const Dashboard = () => {
       </div>
 
       {/* MAIN CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+      <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         {/* Current Week Banner (Conditional) */}
         {viewMode === 'current' && metrics?.business && (
@@ -257,17 +239,21 @@ const Dashboard = () => {
         )}
 
         {/* Main Grid: Charts & Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* Left Column: Charts (Placeholder for future migration) */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm min-h-[400px] flex items-center justify-center text-slate-400">
+          <div className="lg:col-span-2 space-y-6">
+            {/* 
+              NOTE: Charts are not part of this migration batch but should be placed here.
+              For now, we keep the layout structure ready.
+            */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm min-h-[400px] flex items-center justify-center text-slate-400">
               Área de Gráficos (Próxima Etapa)
             </div>
           </div>
 
           {/* Right Column: Tables */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             {metrics?.customers && (
               <AtRiskCustomersTable
                 customerMetrics={metrics.customers}
@@ -278,13 +264,12 @@ const Dashboard = () => {
         </div>
 
         {/* Footer Info */}
-        <div className="text-center text-xs text-slate-400 dark:text-slate-500 pt-4 pb-2">
+        <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8 pb-4">
           Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} •
-          Lavpop BI v7.2
+          Lavpop BI v7.1
         </div>
       </main>
-    </div >
+    </div>
   );
 };
-
 export default Dashboard;
