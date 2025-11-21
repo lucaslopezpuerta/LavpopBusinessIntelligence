@@ -1,16 +1,13 @@
-// KPICards.jsx v4.2 - DARK MODE CONTRAST IMPROVEMENTS
-// ✅ Improved text contrast for dark mode (WCAG AA compliant)
-// ✅ Better color hierarchy in both themes
-// ✅ Design System color compliance
+// KPICards.jsx v5.0 - PROJECTION CARD ADDED
+// ✅ Projection moved from banner to KPI card
+// ✅ Shows only when "Atual" mode selected
 // ✅ No logic changes
 //
 // CHANGELOG:
-// v4.2 (2025-11-21): Dark mode contrast improvements
-// v4.1 (2025-11-21): Dark mode readability improvements
-// v4.0 (2025-11-20): Tailwind migration & Dark Mode
+// v5.0 (2025-11-21): Projection card added
 
 import React, { useMemo } from 'react';
-import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus } from 'lucide-react';
+import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 function normalizeDoc(doc) {
@@ -24,8 +21,6 @@ function normalizeDoc(doc) {
 
 const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'complete' }) => {
   const newClientsData = useMemo(() => {
-    console.log('\n=== NEW CUSTOMERS CALCULATION (KPICards v4.2) ===');
-
     if (!salesData || salesData.length === 0) {
       return { count: 0, weekOverWeek: null };
     }
@@ -34,7 +29,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       return { count: 0, weekOverWeek: null };
     }
 
-    // Safe window selection with fallback
     let currentWindow;
     if (viewMode === 'current' && businessMetrics.windows.currentWeek) {
       currentWindow = businessMetrics.windows.currentWeek;
@@ -50,7 +44,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       return { count: 0, weekOverWeek: null };
     }
 
-    // Validate that Date objects exist
     if (!currentWindow.start || !currentWindow.end || !previousWindow.start || !previousWindow.end) {
       return { count: 0, weekOverWeek: null };
     }
@@ -104,7 +97,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
     );
   }
 
-  // Safe data source selection
   let metricsSource;
   if (viewMode === 'current') {
     if (businessMetrics.currentWeek) {
@@ -119,7 +111,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
   if (!metricsSource) {
     return (
       <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
-        ⚠️ Erro ao carregar métricas. Verifique o console (F12) para detalhes.
+        ⚠️ Erro ao carregar métricas.
       </div>
     );
   }
@@ -178,7 +170,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
     };
   };
 
-  // Get appropriate subtitle based on view mode
   const getTimeSubtitle = () => {
     if (viewMode === 'current' && businessMetrics.windows?.currentWeek) {
       const days = businessMetrics.windows.currentWeek.daysElapsed || 1;
@@ -187,7 +178,6 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
     return '7 dias';
   };
 
-  // Safe access with fallbacks
   const washCount = metricsSource.washServices || 0;
   const dryCount = metricsSource.dryServices || 0;
   const totalServices = washCount + dryCount;
@@ -293,8 +283,24 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
     }
   ];
 
+  // Add projection card if in current week mode
+  if (viewMode === 'current' && businessMetrics.currentWeek?.projection?.canProject) {
+    const proj = businessMetrics.currentWeek.projection;
+    kpis.push({
+      id: 'projection',
+      title: 'Projeção Semana',
+      value: formatCurrency(proj.projectedRevenue),
+      subtitle: `${formatNumber(proj.projectedServices)} ciclos`,
+      trend: getTrendData(proj.revenueVsLast),
+      icon: TrendingUp,
+      colorClass: 'text-lavpop-green dark:text-green-400',
+      iconBgClass: 'bg-green-50 dark:bg-green-900/50',
+      valueClass: 'text-lavpop-green dark:text-green-200'
+    });
+  }
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-9 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
 
@@ -303,7 +309,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
             key={kpi.id}
             className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 transition-all duration-200 hover:shadow-lg dark:hover:shadow-2xl hover:-translate-y-1 relative overflow-hidden flex flex-col group"
           >
-            {/* Header with Title and Icon */}
+            {/* Header */}
             <div className="mb-3 flex justify-between items-start">
               <h3 className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mt-1">
                 {kpi.title}
@@ -321,13 +327,12 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
               </div>
             </div>
 
-            {/* Footer: Subtitle + WoW Badge */}
+            {/* Footer */}
             <div className="flex items-center justify-between gap-2">
               <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                 {kpi.subtitle}
               </div>
 
-              {/* WoW Badge */}
               {kpi.trend?.show && (
                 <div className={`text-xs font-bold px-2 py-0.5 rounded-md tracking-wide whitespace-nowrap ${kpi.trend.colorClass} ${kpi.trend.bgClass}`}>
                   {kpi.trend.text}
