@@ -1,4 +1,4 @@
-// Dashboard.jsx v7.3 - TAILWIND MIGRATION
+// Dashboard.jsx v7.2 - TAILWIND MIGRATION
 // ✅ Replaced inline styles with Tailwind classes
 // ✅ Added dark mode support
 // ✅ Responsive layout integration
@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { RefreshCw, Moon, Sun, Calendar, TrendingUp, Cloud, ChevronUp, ChevronDown } from 'lucide-react';
+import { RefreshCw, Moon, Sun, Calendar } from 'lucide-react';
 
 // Components
 import KPICards from '../components/KPICards';
@@ -30,7 +30,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [viewMode, setViewMode] = useState('complete'); // 'complete' or 'current'
-  const [showMobileWidgets, setShowMobileWidgets] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' ||
@@ -107,7 +106,6 @@ const Dashboard = () => {
   const metrics = useMemo(() => {
     if (!salesData.length) return null;
 
-    // ✅ Corrected function calls and arguments
     const business = calculateBusinessMetrics(salesData);
     const customers = calculateCustomerMetrics(salesData, rfmData);
 
@@ -129,115 +127,102 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-8">
-      {/* Header Band - Enhanced Branding */}
-      <div className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-16 sm:h-20 flex items-center justify-between">
+      {/* HEADER BAND */}
+      <div className="bg-gradient-to-r from-slate-900 to-lavpop-blue shadow-lg">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between">
 
-          {/* Left: Logo & Title */}
-          <div className="flex items-center gap-3 sm:gap-6">
-            {/* Logo Container - Resized for Mobile */}
-            <div className="relative group">
-              <div className="absolute -inset-2 bg-gradient-to-r from-lavpop-blue to-lavpop-green rounded-xl opacity-0 group-hover:opacity-20 blur transition duration-500"></div>
-              <div className="relative bg-lavpop-blue p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-lavpop transform transition duration-300 group-hover:scale-105">
-                <img
-                  src="/logo.png"
-                  alt="Lavpop"
-                  className="h-6 sm:h-8 w-auto object-contain brightness-0 invert"
-                />
-              </div>
-            </div>
-
-            {/* Title - Hidden on very small screens */}
-            <div className="hidden xs:block">
-              <h1 className="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight leading-none">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-lavpop-blue to-blue-600 dark:from-blue-400 dark:to-blue-200">
-                  LAVPOP
+            {/* Left: Logo & Title */}
+            <div className="flex items-center gap-4">
+              <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+                <span className="text-xl font-bold text-white tracking-tight">
+                  LAVPOP<span className="text-lavpop-green">BI</span>
                 </span>
-                <span className="text-lavpop-green dark:text-green-400 ml-0.5">BI</span>
-              </h1>
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                <TrendingUp className="w-3 h-3 text-lavpop-green" />
-                Intelligence Dashboard
+              </div>
+              <div className="hidden md:block h-8 w-px bg-white/20"></div>
+              <div className="hidden md:flex flex-col">
+                <span className="text-xs font-medium text-white/60 uppercase tracking-wider">
+                  Business Intelligence
+                </span>
+                <span className="text-sm font-semibold text-white">
+                  Dashboard Executivo
+                </span>
               </div>
             </div>
-          </div>
 
-          {/* Right: Controls & Toggles */}
-          <div className="flex items-center gap-2 sm:gap-4">
-            {/* View Toggle - Mobile Optimized */}
-            <div className="bg-slate-100 dark:bg-slate-700/50 rounded-lg sm:rounded-xl p-1 flex items-center border border-slate-200 dark:border-slate-600">
-              <button
-                onClick={() => setViewMode('complete')}
-                className={`
-                    px-2 sm:px-3 py-1.5 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all duration-200 flex items-center gap-1.5
-                    ${viewMode === 'complete'
-                    ? 'bg-white dark:bg-slate-600 text-lavpop-blue dark:text-white shadow-sm scale-105'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-600/50'}
-                  `}
-              >
-                <span className="hidden sm:inline">Última Semana Completa</span>
-                <span className="sm:hidden">Última</span>
-              </button>
-              <button
-                onClick={() => setViewMode('current')}
-                className={`
-                    px-2 sm:px-3 py-1.5 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all duration-200 flex items-center gap-1.5
-                    ${viewMode === 'current'
-                    ? 'bg-white dark:bg-slate-600 text-lavpop-blue dark:text-white shadow-sm scale-105'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-600/50'}
-                  `}
-              >
-                <Calendar className="w-3 h-3" />
-                <span className="hidden sm:inline">Semana Atual</span>
-                <span className="sm:hidden">Atual</span>
-              </button>
+            {/* Center: Widgets (Desktop) */}
+            <div className="hidden xl:flex items-center gap-4">
+              <WeatherWidget />
+              <div className="h-6 w-px bg-white/20"></div>
+              <GoogleBusinessWidget />
+              <div className="h-6 w-px bg-white/20"></div>
+              <SocialMediaWidget />
             </div>
 
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg sm:rounded-xl bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors border border-slate-200 dark:border-slate-600"
-              aria-label="Alternar tema"
-            >
-              {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
-            </button>
+            {/* Right: Controls */}
+            <div className="flex items-center gap-3">
+              {/* View Toggle - Mobile Optimized */}
+              <div className="bg-white/10 rounded-xl p-1 flex items-center backdrop-blur-sm border border-white/10">
+                <button
+                  onClick={() => setViewMode('complete')}
+                  className={`
+                    px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
+                    ${viewMode === 'complete'
+                      ? 'bg-white text-lavpop-blue shadow-md scale-105'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'}
+                  `}
+                >
+                  <span className="hidden sm:inline">Última Semana Completa</span>
+                  <span className="sm:hidden">Última</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('current')}
+                  className={`
+                    px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
+                    ${viewMode === 'current'
+                      ? 'bg-white text-lavpop-blue shadow-md scale-105'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'}
+                  `}
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span className="hidden sm:inline">Semana Atual</span>
+                  <span className="sm:hidden">Atual</span>
+                </button>
+              </div>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors backdrop-blur-sm"
+                title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+              >
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+
+              {/* Refresh Button */}
+              <button
+                onClick={loadData}
+                className="p-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors backdrop-blur-sm"
+                title="Atualizar Dados"
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-8 space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-
-        {/* Mobile Widgets (Collapsible) */}
-        <div className="lg:hidden">
-          <button
-            onClick={() => setShowMobileWidgets(!showMobileWidgets)}
-            className="w-full bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between text-sm font-bold text-slate-600 dark:text-slate-300"
-          >
-            <span className="flex items-center gap-2">
-              <Cloud className="w-4 h-4 text-lavpop-blue" />
-              Clima & Redes Sociais
-            </span>
-            {showMobileWidgets ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-
-          {showMobileWidgets && (
-            <div className="mt-3 grid grid-cols-1 gap-3 animate-in slide-in-from-top-2 duration-200">
-              <WeatherWidget />
-              <div className="grid grid-cols-2 gap-3">
-                <GoogleBusinessWidget />
-                <SocialMediaWidget />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Desktop Widgets (Visible only on large screens) */}
-        <div className="hidden lg:grid grid-cols-3 gap-6">
+      {/* MOBILE WIDGETS (Visible only on small screens) */}
+      <div className="xl:hidden bg-slate-800 border-b border-slate-700/50">
+        <div className="max-w-[1920px] mx-auto px-4 py-3 flex flex-wrap gap-3 justify-center">
           <WeatherWidget />
           <GoogleBusinessWidget />
           <SocialMediaWidget />
         </div>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         {/* Current Week Banner (Conditional) */}
         {viewMode === 'current' && metrics?.business && (
@@ -282,9 +267,9 @@ const Dashboard = () => {
         {/* Footer Info */}
         <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8 pb-4">
           Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} •
-          Lavpop BI v7.3
+          Lavpop BI v7.2
         </div>
-      </div>
+      </main>
     </div>
   );
 };
