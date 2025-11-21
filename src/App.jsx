@@ -1,25 +1,13 @@
-// App.jsx v4.0 - COMPLETE TAILWIND REDESIGN
-// Full Tailwind migration with dark/light theme support
-//
-// FEATURES:
-// ✅ 100% Tailwind CSS (no custom CSS)
-// ✅ Dark/Light theme toggle
-// ✅ Responsive mobile design
-// ✅ Smooth animations
-// ✅ Lavpop brand colors (#1a5a8e / #55b03b)
-// ✅ Loading states with skeleton
-// ✅ Error handling with retry
+// App.jsx v4.1 - DESIGN SYSTEM POLISH
+// ✅ Improved mobile menu spacing and touch targets
+// ✅ Better button sizing on mobile
+// ✅ Design System color compliance
+// ✅ No logic changes
 //
 // CHANGELOG:
+// v4.1 (2025-11-21): Design System polish
 // v4.0 (2025-11-20): Complete Tailwind redesign
-//   - Removed all custom CSS classes
-//   - Added ThemeProvider integration
-//   - Responsive header with mobile menu
-//   - Brand color consistency
-//   - Loading skeleton animation
 // v3.0 (2025-11-18): Intelligence Tab integrated
-// v2.1 (2025-11-16): Analytics tab added
-// v2.0 (2025-11-15): Header redesign
 
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Users, TrendingUp, Settings, Menu, X } from 'lucide-react';
@@ -224,7 +212,7 @@ function AppContent() {
             </div>
           </div>
 
-          {/* Mobile Navigation */}
+          {/* Mobile Navigation - Improved Spacing */}
           {mobileMenuOpen && (
             <div className="lg:hidden py-4 border-t border-slate-200 dark:border-slate-700 animate-slide-down">
               <nav className="flex flex-col gap-2">
@@ -237,11 +225,13 @@ function AppContent() {
                       key={tab.id}
                       onClick={() => handleTabChange(tab.id)}
                       className={`
-                        flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm
+                        flex items-center gap-3 
+                        px-4 py-3.5
+                        rounded-xl font-semibold text-base
                         transition-all duration-200
                         ${isActive
-                          ? 'bg-lavpop-blue text-white shadow-md'
-                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          ? 'bg-lavpop-blue text-white shadow-md scale-[1.02]'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 dark:active:bg-slate-600'
                         }
                       `}
                     >
