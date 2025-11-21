@@ -1,16 +1,13 @@
-// App.jsx v4.1 - DESIGN SYSTEM POLISH
-// ✅ Improved mobile menu spacing and touch targets
-// ✅ Better button sizing on mobile
-// ✅ Design System color compliance
+// App.jsx v4.2 - RELOAD BUTTON ADDED
+// ✅ Added reload data button to header
+// ✅ Mobile menu polish
 // ✅ No logic changes
 //
 // CHANGELOG:
-// v4.1 (2025-11-21): Design System polish
-// v4.0 (2025-11-20): Complete Tailwind redesign
-// v3.0 (2025-11-18): Intelligence Tab integrated
+// v4.2 (2025-11-21): Reload button added
 
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Users, TrendingUp, Settings, Menu, X } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, Settings, Menu, X, RefreshCw } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import { loadAllData } from './utils/csvLoader';
@@ -22,11 +19,6 @@ import Customers from './views/Customers';
 import Operations from './views/Operations';
 import Intelligence from './views/Intelligence';
 
-const BRAND_COLORS = {
-  primary: '#1a5a8e',
-  accent: '#55b03b',
-};
-
 function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState(null);
@@ -34,24 +26,26 @@ function AppContent() {
   const [error, setError] = useState(null);
   const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 7, percent: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const loadedData = await loadAllData((progress) => {
+        setLoadProgress(progress);
+      });
+      setData(loadedData);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const loadedData = await loadAllData((progress) => {
-          setLoadProgress(progress);
-        });
-        setData(loadedData);
-      } catch (err) {
-        console.error('Failed to load data:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadData();
   }, []);
 
@@ -67,7 +61,12 @@ function AppContent() {
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
-    setMobileMenuOpen(false); // Close mobile menu on tab change
+    setMobileMenuOpen(false);
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadData();
   };
 
   const handleRetry = () => {
@@ -79,17 +78,14 @@ function AppContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-lavpop-blue to-lavpop-green">
         <div className="text-center text-white px-4">
-          {/* Logo Animation */}
           <div className="mb-8 inline-block">
             <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl font-bold animate-pulse-slow">
               L
             </div>
           </div>
           
-          {/* Title */}
           <h2 className="text-3xl font-bold mb-8">Carregando Lavpop BI</h2>
           
-          {/* Progress Bar */}
           <div className="w-80 max-w-full mx-auto">
             <div className="h-2 bg-white/20 rounded-full overflow-hidden mb-4">
               <div 
@@ -124,7 +120,6 @@ function AppContent() {
               Não foi possível carregar os dados do dashboard. Por favor, tente novamente.
             </p>
             
-            {/* Error Details */}
             <div className="bg-slate-100 dark:bg-slate-700/50 rounded-lg p-4 mb-6 text-left">
               <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
                 Detalhes do erro:
@@ -197,8 +192,18 @@ function AppContent() {
               })}
             </nav>
 
-            {/* Right Section: Theme Toggle + Mobile Menu */}
+            {/* Right: Controls */}
             <div className="flex items-center gap-2">
+              {/* Reload Button */}
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                title="Atualizar Dados"
+              >
+                <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+
               <ThemeToggle className="no-print" />
               
               {/* Mobile Menu Button */}
@@ -212,7 +217,7 @@ function AppContent() {
             </div>
           </div>
 
-          {/* Mobile Navigation - Improved Spacing */}
+          {/* Mobile Navigation */}
           {mobileMenuOpen && (
             <div className="lg:hidden py-4 border-t border-slate-200 dark:border-slate-700 animate-slide-down">
               <nav className="flex flex-col gap-2">
@@ -256,7 +261,6 @@ function AppContent() {
   );
 }
 
-// Wrap with ThemeProvider
 function App() {
   return (
     <ThemeProvider>
