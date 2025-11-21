@@ -1,286 +1,554 @@
-// CustomerDetailModal.jsx v3.0 - TAILWIND MIGRATION + DARK MODE
-// ✅ Full Tailwind CSS with dark mode support
-// ✅ Responsive grid layout
-// ✅ All math/metrics logic preserved
+// CustomerDetailModal.jsx v3.0 - Tailwind version
+//
+// CHANGELOG:
+// v3.0 (2025-11-20): Tailwind version
+// - Matches Hybrid C dashboard styling
+// - Uses brand colors: primary #0c4a6e, accent #4ac02a
+// - No inline layout styling (only minimal inline color where needed)
+// v2.0 (2025-11-16): Complete redesign - compact, Portuguese, 5 transactions
+// ✅ Matches At-Risk table design philosophy
+// ✅ All text in Brazilian Portuguese
+// ✅ Shows only last 5 transactions (not 10)
+// ✅ Compact layout with optimized spacing
+// ✅ Two-column grid for better space usage
+// ✅ Professional brand colors
+// v1.5 (previous): English version with 10 transactions
 
-import React from 'react';
-import { X, Phone, MessageCircle, TrendingUp, Calendar, DollarSign, Activity } from 'lucide-react';
+import React, { useMemo } from 'react';
+import {
+  X,
+  Phone,
+  MessageCircle,
+  Calendar,
+  Activity,
+  Tag,
+  XCircle,
+} from 'lucide-react';
+import { parseBrDate } from '../utils/dateUtils';
 
-const CustomerDetailModal = ({ customer, salesData, onClose }) => {
-  if (!customer) return null;
+const BRAND = {
+  primary: '#0c4a6e',
+  accent: '#4ac02a',
+};
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+const getRiskTailwind = (riskLevel) => {
+  switch (riskLevel) {
+    case 'Healthy':
+      return {
+        bg: 'bg-emerald-50',
+        text: 'text-emerald-700',
+        border: 'border-emerald-400',
+        emoji: '🟢',
+        label: 'Saudável',
+      };
+    case 'Monitor':
+      return {
+        bg: 'bg-sky-50',
+        text: 'text-sky-700',
+        border: 'border-sky-400',
+        emoji: '🔵',
+        label: 'Monitorar',
+      };
+    case 'At Risk':
+      return {
+        bg: 'bg-amber-50',
+        text: 'text-amber-700',
+        border: 'border-amber-400',
+        emoji: '⚠️',
+        label: 'Em Risco',
+      };
+    case 'Churning':
+      return {
+        bg: 'bg-rose-50',
+        text: 'text-rose-700',
+        border: 'border-rose-400',
+        emoji: '🚨',
+        label: 'Perdendo',
+      };
+    case 'New Customer':
+      return {
+        bg: 'bg-violet-50',
+        text: 'text-violet-700',
+        border: 'border-violet-400',
+        emoji: '🆕',
+        label: 'Novo Cliente',
+      };
+    case 'Lost':
+      return {
+        bg: 'bg-slate-100',
+        text: 'text-slate-600',
+        border: 'border-slate-400',
+        emoji: '⛔',
+        label: 'Perdido',
+      };
+    default:
+      return {
+        bg: 'bg-slate-100',
+        text: 'text-slate-600',
+        border: 'border-slate-400',
+        emoji: '❓',
+        label: riskLevel || 'Indefinido',
+      };
+  }
+};
 
-  const formatPhone = (phone) => {
-    if (!phone) return null;
-    const cleaned = String(phone).replace(/\D/g, '');
-    if (cleaned.length === 13) {
-      return `+${cleaned.slice(0, 2)} ${cleaned.slice(2, 4)} ${cleaned.slice(4, 9)}-${cleaned.slice(9)}`;
+const parseMachines = (machineStr) => {
+  if (!machineStr || machineStr === 'N/A') return [];
+
+  const parts = machineStr.split(',').map((s) => s.trim());
+  const machines = [];
+
+  parts.forEach((part) => {
+    const washMatch = part.match(/Lavadora:\s*(\d+)/i);
+    if (washMatch) {
+      machines.push({ code: `L${washMatch[1]}`, type: 'wash' });
+      return;
     }
-    return phone;
-  };
 
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('pt-BR');
-  };
+    const dryMatch = part.match(/Secadora:\s*(\d+)/i);
+    if (dryMatch) {
+      machines.push({ code: `S${dryMatch[1]}`, type: 'dry' });
+      return;
+    }
+  });
+
+  return machines;
+};
+
+const MachineDisplay = ({ machineStr }) => {
+  const machines = parseMachines(machineStr);
+
+  if (machines.length === 0) {
+    return (
+      <span className="text-[11px] text-slate-500">
+        -
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap justify-center gap-[3px]">
+      {machines.map((machine, idx) => {
+        const isWash = machine.type === 'wash';
+        return (
+          <span
+            key={idx}
+            className={[
+              'inline-flex items-center rounded px-[6px] py-[2px] text-[10px] font-bold border',
+              isWash
+                ? 'bg-sky-100 text-[#0c4a6e] border-sky-300'
+                : 'bg-emerald-100 text-emerald-900 border-emerald-300',
+            ].join(' ')}
+          >
+            {machine.code}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+const CouponBadge = ({ couponCode }) => {
+  if (
+    !couponCode ||
+    couponCode === '' ||
+    couponCode.toLowerCase() === 'n/d'
+  ) {
+    return (
+      <span className="inline-flex items-center gap-[3px] rounded border border-slate-300 bg-slate-100 px-2 py-[3px] text-[10px] font-semibold text-slate-500">
+        <XCircle className="h-[10px] w-[10px]" />
+        Não
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-[3px] rounded border border-emerald-300 bg-emerald-100 px-2 py-[3px] text-[10px] font-bold text-emerald-800">
+      <Tag className="h-[10px] w-[10px]" />
+      {couponCode}
+    </span>
+  );
+};
+
+const formatCurrency = (value) => {
+  if (isNaN(value)) return 'R$ 0,00';
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+};
+
+const formatDate = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return 'Data inválida';
+  }
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
+  const transactionHistory = useMemo(() => {
+    if (!salesData || salesData.length === 0) return [];
+
+    const customerTxns = salesData
+      .filter((row) => {
+        const doc = String(
+          row.Doc_Cliente || row.document || '',
+        )
+          .replace(/\D/g, '')
+          .padStart(11, '0');
+        return doc === customer.doc;
+      })
+      .map((row) => {
+        const dateStr = row.Data_Hora || row.Data || '';
+        const date = parseBrDate(dateStr);
+
+        const amountStr = String(
+          row.Valor_Pago || row.net_value || '0',
+        );
+        const amount = parseFloat(amountStr.replace(',', '.'));
+
+        const machineStr =
+          row.Maquinas || row.Maquina || row.machine || '';
+        const machines = parseMachines(machineStr);
+        const totalCycles = machines.length;
+
+        const couponCode =
+          row.Codigo_Cupom || row.coupon_code || '';
+        return {
+          date,
+          dateValid:
+            date instanceof Date && !Number.isNaN(date.getTime()),
+          amount,
+          cycles: totalCycles,
+          machineStr,
+          couponCode,
+        };
+      })
+      .filter((txn) => txn.dateValid)
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 5);
+
+    return customerTxns;
+  }, [salesData, customer.doc]);
 
   const handleCall = () => {
-    const cleaned = customer.phone?.replace(/\D/g, '');
-    if (cleaned) {
-      window.location.href = `tel:+55${cleaned}`;
+    if (customer.phone) {
+      const cleanPhone = customer.phone.replace(/\D/g, '');
+      window.location.href = `tel:+55${cleanPhone}`;
     }
   };
 
   const handleWhatsApp = () => {
-    const cleaned = customer.phone?.replace(/\D/g, '');
-    if (cleaned) {
-      window.open(`https://web.whatsapp.com/send?phone=55${cleaned}`, '_blank');
+    if (customer.phone) {
+      const cleanPhone = customer.phone.replace(/\D/g, '');
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(
+        navigator.userAgent,
+      );
+      const url = isMobile
+        ? `https://api.whatsapp.com/send?phone=55${cleanPhone}`
+        : `https://web.whatsapp.com/send?phone=55${cleanPhone}`;
+      window.open(url, '_blank');
     }
   };
 
-  const getRiskColor = (riskLevel) => {
-    const colors = {
-      'Healthy': 'text-lavpop-green bg-lavpop-green-100 dark:bg-lavpop-green-900/30',
-      'Monitor': 'text-lavpop-blue bg-lavpop-blue-100 dark:bg-lavpop-blue-900/30',
-      'At Risk': 'text-amber-600 bg-amber-100 dark:bg-amber-900/30',
-      'Churning': 'text-red-600 bg-red-100 dark:bg-red-900/30',
-      'New Customer': 'text-purple-600 bg-purple-100 dark:bg-purple-900/30',
-      'Lost': 'text-slate-600 bg-slate-100 dark:bg-slate-700/30'
-    };
-    return colors[riskLevel] || colors['Monitor'];
-  };
+  const risk = getRiskTailwind(customer.riskLevel);
 
   return (
-    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="
-        bg-white dark:bg-slate-800 
-        rounded-xl 
-        shadow-2xl 
-        p-6 
-        max-w-2xl 
-        w-full 
-        max-h-[80vh] 
-        overflow-y-auto
-      ">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {customer.name}
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-              Documento: {customer.doc}
-            </p>
-            {customer.phone && (
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                📞 {formatPhone(customer.phone)}
-              </p>
-            )}
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 px-4 py-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* HEADER */}
+        <div
+          className="flex items-center justify-between rounded-t-2xl px-5 py-4 text-white"
+          style={{
+            backgroundImage:
+              'linear-gradient(135deg, #0c4a6e 0%, #4ac02a 100%)',
+          }}
+        >
+          <div className="flex-1">
+            <h2 className="mb-0.5 text-xl font-bold leading-tight">
+              {customer.name || 'Cliente sem nome'}
+            </h2>
+            <div className="text-[12px] opacity-90">
+              {customer.phone || 'Sem telefone'} •{' '}
+              {customer.doc
+                ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}`
+                : 'Sem CPF'}
+            </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="
-              text-slate-500 dark:text-slate-400 
-              hover:text-slate-700 dark:hover:text-slate-200 
-              transition-colors
-            "
+
+          <div className="flex items-center gap-3">
+            {/* Risk badge */}
+            <div
+              className={[
+                'flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-bold',
+                risk.bg,
+                risk.text,
+                risk.border,
+              ].join(' ')}
+            >
+              <span>{risk.emoji}</span>
+              <span>{risk.label}</span>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/40 bg-white/25 text-white transition hover:bg-white/40"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* ACTION BUTTONS */}
+        <div className="flex gap-3 border-b border-slate-200 px-5 py-3">
+          <button
+            onClick={handleCall}
+            disabled={!customer.phone}
+            className={[
+              'flex-1 inline-flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold transition',
+              customer.phone
+                ? 'border-[#0c4a6e] text-[#0c4a6e] hover:bg-[#0c4a6e] hover:text-white'
+                : 'cursor-not-allowed border-slate-200 text-slate-400',
+            ].join(' ')}
           >
-            <X className="w-6 h-6" />
+            <Phone className="h-4 w-4" />
+            Ligar
+          </button>
+
+          <button
+            onClick={handleWhatsApp}
+            disabled={!customer.phone}
+            className={[
+              'flex-1 inline-flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold transition',
+              customer.phone
+                ? 'border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white'
+                : 'cursor-not-allowed border-slate-200 text-slate-400',
+            ].join(' ')}
+          >
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
           </button>
         </div>
 
-        {/* Quick Actions */}
-        {customer.phone && formatPhone(customer.phone) && (
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={handleCall}
-              className="
-                flex-1 
-                flex items-center justify-center gap-2 
-                px-4 py-2 
-                bg-slate-100 dark:bg-slate-700 
-                hover:bg-slate-200 dark:hover:bg-slate-600 
-                rounded-lg 
-                font-medium 
-                transition-colors
-              "
-            >
-              <Phone className="w-4 h-4" />
-              Ligar
-            </button>
-            <button
-              onClick={handleWhatsApp}
-              className="
-                flex-1 
-                flex items-center justify-center gap-2 
-                px-4 py-2 
-                bg-green-600 dark:bg-green-700 
-                hover:bg-green-700 dark:hover:bg-green-600 
-                text-white 
-                rounded-lg 
-                font-medium 
-                transition-colors
-              "
-            >
-              <MessageCircle className="w-4 h-4" />
-              WhatsApp
-            </button>
+        {/* TWO-COLUMN STATS GRID */}
+        <div className="grid gap-3 border-b border-slate-200 px-5 py-4 md:grid-cols-2">
+          {/* Financial */}
+          <div className="rounded-xl bg-slate-50 p-4">
+            <h3 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-slate-500">
+              💰 Resumo Financeiro
+            </h3>
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Total Gasto
+                </span>
+                <span
+                  className="text-[16px] font-bold"
+                  style={{ color: BRAND.primary }}
+                >
+                  {formatCurrency(customer.netTotal || 0)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Total de Visitas
+                </span>
+                <span
+                  className="text-[16px] font-bold"
+                  style={{ color: BRAND.primary }}
+                >
+                  {customer.transactions ||
+                    customer.frequency ||
+                    0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Gasto/Visita
+                </span>
+                <span
+                  className="text-[16px] font-bold"
+                  style={{ color: BRAND.accent }}
+                >
+                  {formatCurrency(
+                    customer.transactions > 0
+                      ? customer.netTotal / customer.transactions
+                      : 0,
+                  )}
+                </span>
+              </div>
+            </div>
           </div>
-        )}
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div className="bg-lavpop-blue-50 dark:bg-lavpop-blue-900/20 rounded-lg p-4">
-            <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-              Valor Total
-            </div>
-            <div className="text-2xl font-bold text-lavpop-blue dark:text-lavpop-blue-400">
-              {formatCurrency(customer.netTotal)}
-            </div>
-          </div>
-
-          <div className="bg-lavpop-green-50 dark:bg-lavpop-green-900/20 rounded-lg p-4">
-            <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-              Total de Visitas
-            </div>
-            <div className="text-2xl font-bold text-lavpop-green dark:text-lavpop-green-400">
-              {customer.transactions}
+          {/* Behavior */}
+          <div className="rounded-xl bg-slate-50 p-4">
+            <h3 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-slate-500">
+              📊 Comportamento
+            </h3>
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Dias desde última visita
+                </span>
+                <span
+                  className={[
+                    'text-[16px] font-bold',
+                    customer.daysSinceLastVisit >
+                    customer.avgDaysBetween
+                      ? 'text-rose-600'
+                      : 'text-emerald-600',
+                  ].join(' ')}
+                >
+                  {customer.daysSinceLastVisit || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Intervalo médio (dias)
+                </span>
+                <span className="text-[16px] font-bold text-slate-700">
+                  {customer.avgDaysBetween || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-slate-500">
+                  Serviços/Visita
+                </span>
+                <span className="text-[16px] font-bold text-slate-800">
+                  {customer.servicesPerVisit || 0}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Service Preferences */}
-        <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-lavpop-blue-50 to-lavpop-green-50 dark:from-lavpop-blue-900/20 dark:to-lavpop-green-900/20">
-          <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
-            Preferências de Serviço
-          </h4>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+        {/* SERVICE PREFERENCES */}
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+          <div className="flex items-center gap-2">
+            <Activity
+              className="h-4 w-4"
+              style={{ color: BRAND.primary }}
+            />
+            <span className="text-[12px] font-bold uppercase tracking-[0.06em] text-slate-500">
+              Preferências
+            </span>
+          </div>
+          <div className="flex gap-6">
+            <div className="text-center">
+              <div className="mb-[2px] text-[10px] text-slate-500">
                 Lavagens
               </div>
-              <div className="text-2xl font-bold text-lavpop-blue dark:text-lavpop-blue-400">
-                {customer.washServices}
-              </div>
-              <div className="text-xs text-slate-600 dark:text-slate-500">
-                {customer.washPercentage}% dos serviços
-              </div>
-              <div className="text-xs text-slate-600 dark:text-slate-500">
-                {formatCurrency(customer.washRevenue)} receita
+              <div
+                className="text-[16px] font-bold"
+                style={{ color: BRAND.primary }}
+              >
+                {customer.washPercentage}%
               </div>
             </div>
-            <div>
-              <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+            <div className="text-center">
+              <div className="mb-[2px] text-[10px] text-slate-500">
                 Secagens
               </div>
-              <div className="text-2xl font-bold text-lavpop-green dark:text-lavpop-green-400">
-                {customer.dryServices}
-              </div>
-              <div className="text-xs text-slate-600 dark:text-slate-500">
-                {customer.dryPercentage}% dos serviços
-              </div>
-              <div className="text-xs text-slate-600 dark:text-slate-500">
-                {formatCurrency(customer.dryRevenue)} receita
+              <div
+                className="text-[16px] font-bold"
+                style={{ color: BRAND.accent }}
+              >
+                {customer.dryPercentage}%
               </div>
             </div>
           </div>
         </div>
 
-        {/* Details List */}
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Segmento:</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {customer.segment}
-            </span>
-          </div>
-          
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Nível de Risco:</span>
-            <span className={`
-              px-2 py-1 
-              rounded-full 
-              text-xs font-bold 
-              uppercase 
-              ${getRiskColor(customer.riskLevel)}
-            `}>
-              {customer.riskLevel}
-            </span>
-          </div>
-          
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Probabilidade de Retorno:</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {customer.returnLikelihood}%
-            </span>
-          </div>
-          
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Total de Serviços:</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {customer.totalServices}
-            </span>
-          </div>
-          
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Serviços por Visita:</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {customer.servicesPerVisit}
-            </span>
-          </div>
-          
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Frequência de Visitas:</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {customer.avgDaysBetween ? `A cada ${customer.avgDaysBetween} dias` : 'N/A'}
-            </span>
-          </div>
-          
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Dias Desde Última Visita:</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {customer.daysSinceLastVisit} dias
-            </span>
-          </div>
-          
-          {customer.daysOverdue > 0 && (
-            <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-              <span className="text-slate-600 dark:text-slate-400">Dias em Atraso:</span>
-              <span className="font-bold text-red-600 dark:text-red-500">
-                {customer.daysOverdue} dias
-              </span>
+        {/* TRANSACTION HISTORY (Last 5) */}
+        <div className="px-5 py-4">
+          <h3
+            className="mb-3 flex items-center gap-2 text-[13px] font-bold text-slate-900"
+            style={{ color: BRAND.primary }}
+          >
+            <Calendar className="h-4 w-4" />
+            Últimas 5 Transações
+          </h3>
+
+          {transactionHistory.length > 0 ? (
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <table className="min-w-full border-collapse text-[12px]">
+                <thead>
+                  <tr className="bg-slate-50 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    <th className="px-2 py-2 text-center">Data</th>
+                    <th className="px-2 py-2 text-center">Valor</th>
+                    <th className="px-2 py-2 text-center">Ciclos</th>
+                    <th className="px-2 py-2 text-center">Máquinas</th>
+                    <th className="px-2 py-2 text-center">Cupom</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactionHistory.map((txn, idx) => (
+                    <tr
+                      key={idx}
+                      className="border-t border-slate-100 bg-white"
+                    >
+                      <td className="px-2 py-2 text-center text-[11px] text-slate-600">
+                        {formatDate(txn.date)}
+                      </td>
+                      <td
+                        className="px-2 py-2 text-center text-[12px] font-bold"
+                        style={{ color: BRAND.primary }}
+                      >
+                        {formatCurrency(txn.amount)}
+                      </td>
+                      <td
+                        className="px-2 py-2 text-center text-[14px] font-bold"
+                        style={{ color: BRAND.primary }}
+                      >
+                        {txn.cycles}
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <MachineDisplay machineStr={txn.machineStr} />
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <CouponBadge couponCode={txn.couponCode} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-          
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Primeira Visita:</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {formatDate(customer.firstVisit)}
-            </span>
-          </div>
-          
-          <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-700">
-            <span className="text-slate-600 dark:text-slate-400">Última Visita:</span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {formatDate(customer.lastVisit)}
-            </span>
-          </div>
-          
-          {customer.lastContactDate && (
-            <div className="flex justify-between py-2">
-              <span className="text-slate-600 dark:text-slate-400">Último Contato:</span>
-              <span className="font-semibold text-slate-900 dark:text-white">
-                {formatDate(customer.lastContactDate)}
-              </span>
+          ) : (
+            <div className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Nenhuma transação disponível
             </div>
           )}
         </div>
+
+        {/* RISK ALERT */}
+        {(customer.riskLevel === 'At Risk' ||
+          customer.riskLevel === 'Churning') &&
+          customer.daysOverdue > 0 && (
+            <div className="mx-5 mb-4 flex gap-3 rounded-lg border-2 px-4 py-3 text-sm text-slate-800 bg-amber-50 border-amber-400">
+              <div className="text-xl flex-shrink-0">⚠️</div>
+              <div>
+                <div className="mb-1 text-[14px] font-bold text-slate-900">
+                  Atenção Necessária
+                </div>
+                <div className="text-[13px] leading-snug">
+                  Cliente está{' '}
+                  <strong>{customer.daysOverdue} dias atrasado</strong>{' '}
+                  (frequência média:{' '}
+                  {customer.avgDaysBetween} dias).
+                </div>
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );
