@@ -1,16 +1,16 @@
-// Dashboard.jsx v8.0 - UNIFIED HEADER DESIGN
-// ✅ Combined header + banner into single component
-// ✅ Design System color integration
-// ✅ No horizontal overflow
-// ✅ Responsive stacking
-// ✅ No logic changes
+// Dashboard.jsx v8.1 - REFINED BANNER
+// ✅ Toggle button height matches widgets
+// ✅ Date range moved left, updates with toggle
+// ✅ Removed stats from banner (in KPIs)
+// ✅ Banner rounded, same width as KPIs
+// ✅ Darker logo background in light mode
 //
 // CHANGELOG:
-// v8.0 (2025-11-21): Unified header design
+// v8.1 (2025-11-21): Refined banner
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { Calendar, CheckCircle2, BarChart3, TrendingUp } from 'lucide-react';
+import { Calendar, CheckCircle2, BarChart3 } from 'lucide-react';
 
 // Components
 import KPICards from '../components/KPICards';
@@ -95,32 +95,45 @@ const Dashboard = () => {
     );
   }
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
+  // Get date range based on view mode
+  const getDateRange = () => {
+    if (!metrics?.business?.windows) return null;
+    
+    if (viewMode === 'current' && metrics.business.windows.currentWeek) {
+      const w = metrics.business.windows.currentWeek;
+      const days = w.daysElapsed || 0;
+      return {
+        start: w.startDate,
+        end: w.endDate,
+        days: days,
+        label: `${days} ${days === 1 ? 'dia' : 'dias'}`
+      };
+    }
+    
+    if (metrics.business.windows.weekly) {
+      const w = metrics.business.windows.weekly;
+      return {
+        start: w.startDate,
+        end: w.endDate,
+        days: w.activeDays || 7,
+        label: '7 dias'
+      };
+    }
+    
+    return null;
   };
 
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat('pt-BR').format(value);
-  };
-
-  const currentWeek = viewMode === 'current' ? metrics?.business?.currentWeek : null;
-  const showBanner = currentWeek && currentWeek.projection;
+  const dateRange = getDateRange();
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-8">
-      {/* UNIFIED HEADER */}
+      {/* HEADER */}
       <div className="bg-gradient-to-br from-lavpop-blue via-blue-600 to-blue-800 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950 shadow-xl">
         <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Top Row */}
-          <div className="h-16 flex items-center justify-between gap-4 border-b border-white/10">
+          <div className="h-16 flex items-center justify-between gap-4">
             {/* Logo & Title */}
             <div className="flex items-center gap-4">
-              <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+              <div className="bg-slate-800/60 dark:bg-white/10 p-2 rounded-lg backdrop-blur-sm">
                 <span className="text-xl font-bold text-white tracking-tight">
                   LAVPOP<span className="text-lavpop-green">BI</span>
                 </span>
@@ -145,114 +158,49 @@ const Dashboard = () => {
               <SocialMediaWidget />
             </div>
 
-            {/* View Toggle */}
-            <div className="bg-white/10 rounded-xl p-1 flex items-center backdrop-blur-sm border border-white/10">
-              <button
-                onClick={() => setViewMode('complete')}
-                className={`
-                  px-3 py-2 sm:px-4 sm:py-2.5
-                  rounded-lg text-sm font-semibold 
-                  transition-all duration-200 
-                  flex items-center gap-2
-                  ${viewMode === 'complete'
-                    ? 'bg-white text-lavpop-blue shadow-md'
-                    : 'text-white/70 hover:text-white hover:bg-white/5'}
-                `}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Última Completa</span>
-                <span className="sm:hidden">Última</span>
-              </button>
-              <button
-                onClick={() => setViewMode('current')}
-                className={`
-                  px-3 py-2 sm:px-4 sm:py-2.5
-                  rounded-lg text-sm font-semibold 
-                  transition-all duration-200 
-                  flex items-center gap-2
-                  ${viewMode === 'current'
-                    ? 'bg-white text-lavpop-blue shadow-md'
-                    : 'text-white/70 hover:text-white hover:bg-white/5'}
-                `}
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Atual</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom Row - Week Stats (only show when "Atual" selected) */}
-          {showBanner && (
-            <div className="py-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                
-                {/* Week Info */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-lavpop-green/20 backdrop-blur-sm flex items-center justify-center border border-lavpop-green/30">
-                    <Calendar className="w-5 h-5 text-lavpop-green" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                      Semana Atual
-                    </h3>
-                    <p className="text-xs text-white/80">
-                      {currentWeek.window.startDate} - {currentWeek.window.endDate} • {currentWeek.window.daysElapsed} dias
-                    </p>
-                  </div>
+            {/* Date Range + Toggle */}
+            <div className="flex items-center gap-3">
+              {dateRange && (
+                <div className="hidden lg:flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm border border-white/10">
+                  <Calendar className="w-4 h-4 text-white/80" />
+                  <span className="text-xs text-white font-medium">
+                    {dateRange.start} - {dateRange.end} • {dateRange.label}
+                  </span>
                 </div>
-
-                {/* Current Stats */}
-                <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
-                  <div>
-                    <div className="text-[10px] text-white/60 uppercase tracking-wide font-semibold mb-0.5">
-                      Receita
-                    </div>
-                    <div className="text-2xl font-extrabold text-white">
-                      {formatCurrency(currentWeek.netRevenue)}
-                    </div>
-                  </div>
-                  <div className="w-px h-10 bg-white/20 hidden sm:block" />
-                  <div>
-                    <div className="text-[10px] text-white/60 uppercase tracking-wide font-semibold mb-0.5">
-                      Ciclos
-                    </div>
-                    <div className="text-2xl font-extrabold text-white">
-                      {formatNumber(currentWeek.totalServices)}
-                    </div>
-                  </div>
-                  <div className="w-px h-10 bg-white/20 hidden sm:block" />
-                  <div>
-                    <div className="text-[10px] text-white/60 uppercase tracking-wide font-semibold mb-0.5">
-                      Utilização
-                    </div>
-                    <div className="text-2xl font-extrabold text-white">
-                      {Math.round(currentWeek.totalUtilization)}%
-                    </div>
-                  </div>
-                </div>
-
-                {/* Projection */}
-                {currentWeek.projection.canProject && (
-                  <div className="bg-lavpop-green/20 backdrop-blur-sm rounded-xl px-4 py-3 border border-lavpop-green/30">
-                    <div className="flex items-center gap-2 mb-1">
-                      <TrendingUp className="w-4 h-4 text-lavpop-green" />
-                      <span className="text-[10px] text-white uppercase tracking-wider font-bold">
-                        Projeção
-                      </span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-extrabold text-white">
-                        {formatCurrency(currentWeek.projection.projectedRevenue)}
-                      </span>
-                      <span className={`text-xs font-semibold ${currentWeek.projection.revenueVsLast >= 0 ? 'text-lavpop-green' : 'text-red-300'}`}>
-                        {currentWeek.projection.revenueVsLast > 0 ? '+' : ''}{currentWeek.projection.revenueVsLast.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                )}
+              )}
+              
+              <div className="bg-white/10 rounded-lg p-1 flex items-center backdrop-blur-sm border border-white/10 h-9">
+                <button
+                  onClick={() => setViewMode('complete')}
+                  className={`
+                    px-3 h-7 rounded-md text-xs font-semibold 
+                    transition-all duration-200 
+                    flex items-center gap-1.5
+                    ${viewMode === 'complete'
+                      ? 'bg-white text-lavpop-blue shadow-md'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'}
+                  `}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Anterior</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('current')}
+                  className={`
+                    px-3 h-7 rounded-md text-xs font-semibold 
+                    transition-all duration-200 
+                    flex items-center gap-1.5
+                    ${viewMode === 'current'
+                      ? 'bg-white text-lavpop-blue shadow-md'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'}
+                  `}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Atual</span>
+                </button>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -267,6 +215,25 @@ const Dashboard = () => {
 
       {/* MAIN CONTENT */}
       <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Date Range Banner (Mobile) */}
+        {dateRange && (
+          <div className="lg:hidden bg-gradient-to-br from-lavpop-blue to-blue-700 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-4 text-white shadow-lg border border-blue-600/30 dark:border-slate-700">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider">
+                  {viewMode === 'current' ? 'Semana Atual' : 'Semana Anterior'}
+                </h3>
+                <p className="text-xs opacity-90">
+                  {dateRange.start} - {dateRange.end} • {dateRange.label}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* KPI Cards */}
         {metrics && (
           <KPICards
@@ -305,7 +272,7 @@ const Dashboard = () => {
 
         {/* Footer */}
         <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
-          Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.0
+          Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.1
         </div>
       </main>
     </div>
