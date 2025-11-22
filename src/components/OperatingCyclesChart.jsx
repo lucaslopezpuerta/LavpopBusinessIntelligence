@@ -255,7 +255,8 @@ const OperatingCyclesChart = ({
             legendOffset: -40
           }}
           enableGridY={true}
-          enableLabel={true}
+          enableLabel={false}
+          enableTotals={true}
           labelPosition="end"
           label={d => d.value > 0 ? d.value : ''}
           labelSkipWidth={0}
