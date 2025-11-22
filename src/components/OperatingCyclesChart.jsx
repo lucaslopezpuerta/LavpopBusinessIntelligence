@@ -1,15 +1,16 @@
-// OperatingCyclesChart_v1.3.jsx
+// OperatingCyclesChart_v1.4.jsx
 // Operating cycles chart using Recharts
 //
 // FEATURES:
 // ✅ Recharts BarChart (grouped mode)
 // ✅ Labels above bars
-// ✅ Mobile: last 10 days with responsive detection
-// ✅ Rectangular bars (no rounded corners)
-// ✅ Lavpop brand colors
+// ✅ Mobile: last 10 days from the current date
+// ✅ Footer: always shows full month totals
+// ✅ Rectangular bars, Lavpop brand colors
 //
 // CHANGELOG:
-// v1.3 (2025-11-21): Switched to Recharts, fixed mobile detection, labels above, rectangular bars
+// v1.4 (2025-11-21): Mobile shows 10 days before current date, footer shows full month totals
+// v1.3 (2025-11-21): Switched to Recharts, rectangular bars
 // v1.2 (2025-11-21): Brand colors, full month names
 // v1.1 (2025-11-21): Fixed sorting, grouped bars
 // v1.0 (2025-11-21): Initial implementation
@@ -105,15 +106,19 @@ const OperatingCyclesChart = ({
       }
     });
 
-    let data = Object.values(dailyMap).sort((a, b) => a.dayNum - b.dayNum);
+    let allData = Object.values(dailyMap).sort((a, b) => a.dayNum - b.dayNum);
 
-    // Mobile: last 10 days
-    if (isMobile && data.length > 10) {
-      data = data.slice(-10);
+    // Calculate FULL MONTH totals (always)
+    const totalWash = allData.reduce((sum, d) => sum + d.Lavagens, 0);
+    const totalDry = allData.reduce((sum, d) => sum + d.Secagens, 0);
+
+    // For mobile: show 10 days before current date
+    let displayData = allData;
+    if (isMobile) {
+      const currentDay = now.getDate();
+      const startDay = Math.max(1, currentDay - 9);
+      displayData = allData.filter(d => d.dayNum >= startDay && d.dayNum <= currentDay);
     }
-
-    const totalWash = data.reduce((sum, d) => sum + d.Lavagens, 0);
-    const totalDry = data.reduce((sum, d) => sum + d.Secagens, 0);
 
     const info = {
       month: getMonthName(targetMonth),
@@ -123,7 +128,7 @@ const OperatingCyclesChart = ({
       totalCycles: totalWash + totalDry
     };
 
-    return { chartData: data, periodInfo: info };
+    return { chartData: displayData, periodInfo: info };
   }, [salesData, month, year, isMobile]);
 
   const washColor = isDark ? COLORS.wash.dark : COLORS.wash.light;
@@ -283,7 +288,7 @@ const OperatingCyclesChart = ({
         </ResponsiveContainer>
       </div>
 
-      {/* Stats Footer */}
+      {/* Stats Footer - Always Full Month */}
       <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
