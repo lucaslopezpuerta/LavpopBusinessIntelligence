@@ -1,39 +1,36 @@
-// OperatingCyclesChart_v1.2.jsx
-// Operating cycles chart showing daily wash vs dry cycles using Nivo
+// OperatingCyclesChart_v1.3.jsx
+// Operating cycles chart using Recharts
 //
 // FEATURES:
-// ✅ Nivo ResponsiveBar chart (grouped mode)
-// ✅ Dark/Light theme support
-// ✅ Lavpop brand colors (blue wash, green dry)
+// ✅ Recharts BarChart (grouped mode)
 // ✅ Labels above bars
-// ✅ Mobile: last 10 days only
-// ✅ Full month names
+// ✅ Mobile: last 10 days with responsive detection
+// ✅ Rectangular bars (no rounded corners)
+// ✅ Lavpop brand colors
 //
 // CHANGELOG:
-// v1.2 (2025-11-21): Brand colors, labels above bars, mobile optimization, full month names
-// v1.1 (2025-11-21): Fixed sorting, grouped bars, labels, icon, font
+// v1.3 (2025-11-21): Switched to Recharts, fixed mobile detection, labels above, rectangular bars
+// v1.2 (2025-11-21): Brand colors, full month names
+// v1.1 (2025-11-21): Fixed sorting, grouped bars
 // v1.0 (2025-11-21): Initial implementation
 
-import React, { useMemo } from 'react';
-import { ResponsiveBar } from '@nivo/bar';
+import React, { useMemo, useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { WashingMachine, Calendar } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
 
 const COLORS = {
   wash: {
-    light: '#1a5a8e',    // Lavpop primary blue
-    dark: '#3b82f6'      // Lighter blue for dark mode
+    light: '#1a5a8e',
+    dark: '#3b82f6'
   },
   dry: {
-    light: '#55b03b',    // Lavpop accent green
-    dark: '#55b03b'      // Same green works in both modes
+    light: '#55b03b',
+    dark: '#55b03b'
   }
 };
 
-/**
- * Count machines from string like "Lavadora 1, Secadora 2"
- */
 function countMachines(str) {
   if (!str) return { wash: 0, dry: 0 };
   const machines = String(str).toLowerCase().split(',').map(m => m.trim());
@@ -45,9 +42,6 @@ function countMachines(str) {
   return { wash, dry };
 }
 
-/**
- * Get full month name in Portuguese
- */
 function getMonthName(monthIndex) {
   const months = [
     'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
@@ -58,10 +52,21 @@ function getMonthName(monthIndex) {
 
 const OperatingCyclesChart = ({ 
   salesData, 
-  month = null,  // 0-11, null = current month
-  year = null    // YYYY, null = current year
+  month = null,
+  year = null
 }) => {
   const { isDark } = useTheme();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const { chartData, periodInfo } = useMemo(() => {
     if (!salesData || salesData.length === 0) {
@@ -71,11 +76,8 @@ const OperatingCyclesChart = ({
     const now = new Date();
     const targetMonth = month !== null ? month : now.getMonth();
     const targetYear = year !== null ? year : now.getFullYear();
-
-    // Get days in target month
     const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
 
-    // Initialize daily map with NUMERIC keys
     const dailyMap = {};
     for (let day = 1; day <= daysInMonth; day++) {
       dailyMap[day] = {
@@ -86,12 +88,10 @@ const OperatingCyclesChart = ({
       };
     }
 
-    // Process sales data
     salesData.forEach(row => {
       const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
       if (!date) return;
 
-      // Filter by target month/year
       if (date.getMonth() !== targetMonth || date.getFullYear() !== targetYear) {
         return;
       }
@@ -105,16 +105,13 @@ const OperatingCyclesChart = ({
       }
     });
 
-    // Convert to array and sort by numeric day
     let data = Object.values(dailyMap).sort((a, b) => a.dayNum - b.dayNum);
 
-    // For mobile: only show last 10 days
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    // Mobile: last 10 days
     if (isMobile && data.length > 10) {
       data = data.slice(-10);
     }
 
-    // Calculate totals
     const totalWash = data.reduce((sum, d) => sum + d.Lavagens, 0);
     const totalDry = data.reduce((sum, d) => sum + d.Secagens, 0);
 
@@ -127,70 +124,60 @@ const OperatingCyclesChart = ({
     };
 
     return { chartData: data, periodInfo: info };
-  }, [salesData, month, year]);
+  }, [salesData, month, year, isMobile]);
 
-  // Theme-aware colors
   const washColor = isDark ? COLORS.wash.dark : COLORS.wash.light;
   const dryColor = isDark ? COLORS.dry.dark : COLORS.dry.light;
 
-  const theme = {
-    background: 'transparent',
-    textColor: isDark ? '#e2e8f0' : '#475569',
-    fontSize: 11,
-    axis: {
-      domain: {
-        line: {
-          stroke: isDark ? '#334155' : '#e2e8f0',
-          strokeWidth: 1
-        }
-      },
-      ticks: {
-        line: {
-          stroke: isDark ? '#334155' : '#e2e8f0',
-          strokeWidth: 1
-        },
-        text: {
-          fontSize: 11,
-          fill: isDark ? '#94a3b8' : '#64748b',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-        }
-      },
-      legend: {
-        text: {
-          fontSize: 12,
-          fill: isDark ? '#cbd5e1' : '#475569',
-          fontWeight: 600,
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-        }
-      }
-    },
-    grid: {
-      line: {
-        stroke: isDark ? '#1e293b' : '#f1f5f9',
-        strokeWidth: 1
-      }
-    },
-    labels: {
-      text: {
-        fontSize: 10,
-        fontWeight: 600,
-        fill: isDark ? '#e2e8f0' : '#1e293b',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-      }
-    },
-    tooltip: {
-      container: {
-        background: isDark ? '#1e293b' : '#ffffff',
-        color: isDark ? '#f1f5f9' : '#0f172a',
-        fontSize: 12,
-        borderRadius: '8px',
-        boxShadow: isDark 
-          ? '0 4px 6px rgba(0, 0, 0, 0.3)' 
-          : '0 4px 6px rgba(0, 0, 0, 0.1)',
-        padding: '8px 12px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-      }
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+              Dia {label}
+            </p>
+          </div>
+          {payload.map((entry, index) => (
+            <div key={index} className="flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-2 h-2 rounded-sm" 
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="text-slate-600 dark:text-slate-400 font-medium">
+                  {entry.name}:
+                </span>
+              </div>
+              <span className="font-bold text-slate-900 dark:text-white">
+                {entry.value} {entry.value === 1 ? 'ciclo' : 'ciclos'}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
     }
+    return null;
+  };
+
+  const renderLabel = (props) => {
+    const { x, y, width, value } = props;
+    if (value === 0) return null;
+    
+    return (
+      <text
+        x={x + width / 2}
+        y={y - 5}
+        fill={isDark ? '#e2e8f0' : '#1e293b'}
+        textAnchor="middle"
+        fontSize={10}
+        fontWeight={600}
+        fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+      >
+        {value}
+      </text>
+    );
   };
 
   if (!periodInfo || chartData.length === 0) {
@@ -212,144 +199,114 @@ const OperatingCyclesChart = ({
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <WashingMachine className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white font-sans">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Ciclos de Operação
           </h3>
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400 font-sans">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Mês de {periodInfo.month}/{periodInfo.year}
         </p>
       </div>
 
       {/* Chart */}
       <div style={{ height: '400px' }}>
-        <ResponsiveBar
-          data={chartData}
-          keys={['Lavagens', 'Secagens']}
-          indexBy="day"
-          margin={{ top: 20, right: 20, bottom: 50, left: 50 }}
-          padding={0.3}
-          groupMode="grouped"
-          valueScale={{ type: 'linear' }}
-          indexScale={{ type: 'band', round: true }}
-          colors={[washColor, dryColor]}
-          borderRadius={4}
-          borderWidth={0}
-          theme={theme}
-          axisTop={null}
-          axisRight={null}
-          axisBottom={{
-            tickSize: 5,
-            tickPadding: 5,
-            tickRotation: 0,
-            legend: 'Dia do Mês',
-            legendPosition: 'middle',
-            legendOffset: 40
-          }}
-          axisLeft={{
-            tickSize: 5,
-            tickPadding: 5,
-            tickRotation: 0,
-            legend: 'Número de Ciclos',
-            legendPosition: 'middle',
-            legendOffset: -40
-          }}
-          enableGridY={true}
-          enableLabel={false}
-          enableTotals={true}
-          labelPosition="end"
-          label={d => d.value > 0 ? d.value : ''}
-          labelSkipWidth={0}
-          labelSkipHeight={0}
-          labelTextColor={isDark ? '#e2e8f0' : '#1e293b'}
-          legends={[]}
-          role="application"
-          ariaLabel="Gráfico de ciclos de operação"
-          barAriaLabel={e => `${e.id}: ${e.formattedValue} no dia ${e.indexValue}`}
-          tooltip={({ id, value, indexValue, color }) => (
-            <div style={{
-              padding: '8px 12px',
-              background: isDark ? '#1e293b' : '#ffffff',
-              border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
-              borderRadius: '8px',
-              boxShadow: isDark 
-                ? '0 4px 6px rgba(0, 0, 0, 0.3)' 
-                : '0 4px 6px rgba(0, 0, 0, 0.1)'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '4px',
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart 
+            data={chartData}
+            margin={{ top: 30, right: 20, bottom: 50, left: 50 }}
+          >
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke={isDark ? '#1e293b' : '#f1f5f9'} 
+            />
+            <XAxis 
+              dataKey="day"
+              tick={{ 
+                fontSize: 11, 
+                fill: isDark ? '#94a3b8' : '#64748b',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-              }}>
-                <Calendar className="w-4 h-4" style={{ color: washColor }} />
-                <strong style={{ 
-                  color: isDark ? '#f1f5f9' : '#0f172a',
-                  fontSize: '13px'
-                }}>
-                  Dia {indexValue}
-                </strong>
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
+              }}
+              axisLine={{ stroke: isDark ? '#334155' : '#e2e8f0' }}
+              tickLine={{ stroke: isDark ? '#334155' : '#e2e8f0' }}
+              label={{ 
+                value: 'Dia do Mês', 
+                position: 'insideBottom', 
+                offset: -40,
+                style: {
+                  fontSize: 12,
+                  fill: isDark ? '#cbd5e1' : '#475569',
+                  fontWeight: 600,
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                }
+              }}
+            />
+            <YAxis 
+              tick={{ 
+                fontSize: 11, 
+                fill: isDark ? '#94a3b8' : '#64748b',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-              }}>
-                <div 
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '2px',
-                    backgroundColor: color
-                  }}
-                />
-                <span style={{ 
-                  color: isDark ? '#cbd5e1' : '#475569',
-                  fontWeight: 600
-                }}>
-                  {id}:
-                </span>
-                <span style={{ 
-                  color: isDark ? '#e2e8f0' : '#1e293b',
-                  fontWeight: 700
-                }}>
-                  {value} {value === 1 ? 'ciclo' : 'ciclos'}
-                </span>
-              </div>
-            </div>
-          )}
-          animate={true}
-          motionConfig="gentle"
-        />
+              }}
+              axisLine={{ stroke: isDark ? '#334155' : '#e2e8f0' }}
+              tickLine={{ stroke: isDark ? '#334155' : '#e2e8f0' }}
+              label={{ 
+                value: 'Número de Ciclos', 
+                angle: -90, 
+                position: 'insideLeft',
+                style: {
+                  fontSize: 12,
+                  fill: isDark ? '#cbd5e1' : '#475569',
+                  fontWeight: 600,
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                }
+              }}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? '#1e293b40' : '#f1f5f940' }} />
+            
+            <Bar 
+              dataKey="Lavagens" 
+              fill={washColor} 
+              radius={0}
+              name="Lavagens"
+            >
+              <LabelList content={renderLabel} />
+            </Bar>
+            
+            <Bar 
+              dataKey="Secagens" 
+              fill={dryColor} 
+              radius={0}
+              name="Secagens"
+            >
+              <LabelList content={renderLabel} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Stats Footer */}
       <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-slate-900 dark:text-white font-sans">
+            <div className="text-2xl font-bold text-slate-900 dark:text-white">
               {periodInfo.totalCycles}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
+            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
               Total Ciclos
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold font-sans" style={{ color: washColor }}>
+            <div className="text-2xl font-bold" style={{ color: washColor }}>
               {periodInfo.totalWash}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
+            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
               Lavagens
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold font-sans" style={{ color: dryColor }}>
+            <div className="text-2xl font-bold" style={{ color: dryColor }}>
               {periodInfo.totalDry}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
+            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
               Secagens
             </div>
           </div>
