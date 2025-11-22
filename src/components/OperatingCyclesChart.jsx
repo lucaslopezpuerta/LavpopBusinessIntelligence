@@ -256,6 +256,7 @@ const OperatingCyclesChart = ({
           }}
           enableGridY={true}
           enableLabel={true}
+          labelPosition="end"
           label={d => d.value > 0 ? d.value : ''}
           labelSkipWidth={0}
           labelSkipHeight={0}
