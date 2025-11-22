@@ -218,7 +218,7 @@ const OperatingCyclesChart = ({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={chartData}
-            margin={{ top: 30, right: 20, bottom: 50, left: 50 }}
+            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
           >
             <CartesianGrid 
               strokeDasharray="3 3" 
@@ -236,7 +236,7 @@ const OperatingCyclesChart = ({
               label={{ 
                 value: 'Dia do Mês', 
                 position: 'insideBottom', 
-                offset: -40,
+                offset: -10,
                 style: {
                   fontSize: 12,
                   fill: isDark ? '#cbd5e1' : '#475569',
@@ -257,6 +257,7 @@ const OperatingCyclesChart = ({
                 value: 'Número de Ciclos', 
                 angle: -90, 
                 position: 'insideLeft',
+                offset: -10,
                 style: {
                   fontSize: 12,
                   fill: isDark ? '#cbd5e1' : '#475569',
