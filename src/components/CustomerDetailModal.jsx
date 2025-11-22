@@ -203,29 +203,26 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         const amountStr = String(
           row.Valor_Pago || row.net_value || '0',
         );
-        const amount = parseFloat(
-          amountStr.replace(/[^\d,-]/g, '').replace(',', '.'),
-        );
-
-        const cycles = parseInt(
-          String(row.Ciclos || row.cycles || '0'),
-          10,
-        );
+        const amount = parseFloat(amountStr.replace(',', '.'));
 
         const machineStr =
-          row.Maquinas_Utilizadas || row.machines || 'N/A';
+          row.Maquinas || row.Maquina || row.machine || '';
+        const machines = parseMachines(machineStr);
+        const totalCycles = machines.length;
 
-        const couponCode = row.Cupom_Utilizado || row.coupon || '';
-
+        const couponCode =
+          row.Codigo_Cupom || row.coupon_code || '';
         return {
           date,
+          dateValid:
+            date instanceof Date && !Number.isNaN(date.getTime()),
           amount,
-          cycles,
+          cycles: totalCycles,
           machineStr,
           couponCode,
         };
       })
-      .filter((txn) => txn.date instanceof Date && !isNaN(txn.date))
+      .filter((txn) => txn.dateValid)
       .sort((a, b) => b.date - a.date)
       .slice(0, 5);
 
@@ -236,20 +233,21 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
 
   const handleCall = () => {
     if (customer.phone) {
-      window.location.href = `tel:${customer.phone}`;
+      const cleanPhone = customer.phone.replace(/\D/g, '');
+      window.location.href = `tel:+55${cleanPhone}`;
     }
   };
 
   const handleWhatsApp = () => {
     if (customer.phone) {
-      const phone = customer.phone.replace(/\D/g, '');
-      const message = encodeURIComponent(
-        `Olá ${customer.name}! Tudo bem? Aqui é da Lavpop 👋`,
+      const cleanPhone = customer.phone.replace(/\D/g, '');
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(
+        navigator.userAgent,
       );
-      window.open(
-        `https://wa.me/55${phone}?text=${message}`,
-        '_blank',
-      );
+      const url = isMobile
+        ? `https://api.whatsapp.com/send?phone=55${cleanPhone}`
+        : `https://web.whatsapp.com/send?phone=55${cleanPhone}`;
+      window.open(url, '_blank');
     }
   };
 
