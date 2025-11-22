@@ -1,17 +1,16 @@
-// OperatingCyclesChart_v1.1.jsx
+// OperatingCyclesChart_v1.2.jsx
 // Operating cycles chart showing daily wash vs dry cycles using Nivo
 //
 // FEATURES:
 // ✅ Nivo ResponsiveBar chart (grouped mode)
 // ✅ Dark/Light theme support
-// ✅ Shows wash and dry cycles per day
-// ✅ Proper numeric day sorting
-// ✅ Labels on top of bars
-// ✅ No legends (uses color key in header)
-// ✅ WashingMachine icon
-// ✅ Follows Lavpop Design System
+// ✅ Lavpop brand colors (blue wash, green dry)
+// ✅ Labels above bars
+// ✅ Mobile: last 10 days only
+// ✅ Full month names
 //
 // CHANGELOG:
+// v1.2 (2025-11-21): Brand colors, labels above bars, mobile optimization, full month names
 // v1.1 (2025-11-21): Fixed sorting, grouped bars, labels, icon, font
 // v1.0 (2025-11-21): Initial implementation
 
@@ -22,10 +21,14 @@ import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
 
 const COLORS = {
-  wash: '#3b82f6',     // Blue for washes
-  dry: '#f59e0b',      // Amber for dryers
-  primary: '#1a5a8e',  // Lavpop blue
-  accent: '#55b03b'    // Lavpop green
+  wash: {
+    light: '#1a5a8e',    // Lavpop primary blue
+    dark: '#3b82f6'      // Lighter blue for dark mode
+  },
+  dry: {
+    light: '#55b03b',    // Lavpop accent green
+    dark: '#55b03b'      // Same green works in both modes
+  }
 };
 
 /**
@@ -43,12 +46,12 @@ function countMachines(str) {
 }
 
 /**
- * Get month name in Portuguese
+ * Get full month name in Portuguese
  */
 function getMonthName(monthIndex) {
   const months = [
-    'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
-    'jul', 'ago', 'set', 'out', 'nov', 'dez'
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
   ];
   return months[monthIndex];
 }
@@ -103,7 +106,13 @@ const OperatingCyclesChart = ({
     });
 
     // Convert to array and sort by numeric day
-    const data = Object.values(dailyMap).sort((a, b) => a.dayNum - b.dayNum);
+    let data = Object.values(dailyMap).sort((a, b) => a.dayNum - b.dayNum);
+
+    // For mobile: only show last 10 days
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile && data.length > 10) {
+      data = data.slice(-10);
+    }
 
     // Calculate totals
     const totalWash = data.reduce((sum, d) => sum + d.Lavagens, 0);
@@ -121,6 +130,9 @@ const OperatingCyclesChart = ({
   }, [salesData, month, year]);
 
   // Theme-aware colors
+  const washColor = isDark ? COLORS.wash.dark : COLORS.wash.light;
+  const dryColor = isDark ? COLORS.dry.dark : COLORS.dry.light;
+
   const theme = {
     background: 'transparent',
     textColor: isDark ? '#e2e8f0' : '#475569',
@@ -160,8 +172,9 @@ const OperatingCyclesChart = ({
     },
     labels: {
       text: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: 600,
+        fill: isDark ? '#e2e8f0' : '#1e293b',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
       }
     },
@@ -203,25 +216,9 @@ const OperatingCyclesChart = ({
             Ciclos de Operação
           </h3>
         </div>
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <p className="text-sm text-slate-600 dark:text-slate-400 font-sans">
-            Mês de {periodInfo.month}/{periodInfo.year}
-          </p>
-          <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.wash }} />
-              <span className="text-slate-600 dark:text-slate-400 font-medium font-sans">
-                Lavagens ({periodInfo.totalWash})
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.dry }} />
-              <span className="text-slate-600 dark:text-slate-400 font-medium font-sans">
-                Secagens ({periodInfo.totalDry})
-              </span>
-            </div>
-          </div>
-        </div>
+        <p className="text-sm text-slate-600 dark:text-slate-400 font-sans">
+          Mês de {periodInfo.month}/{periodInfo.year}
+        </p>
       </div>
 
       {/* Chart */}
@@ -230,12 +227,12 @@ const OperatingCyclesChart = ({
           data={chartData}
           keys={['Lavagens', 'Secagens']}
           indexBy="day"
-          margin={{ top: 40, right: 20, bottom: 50, left: 50 }}
+          margin={{ top: 50, right: 20, bottom: 50, left: 50 }}
           padding={0.3}
           groupMode="grouped"
           valueScale={{ type: 'linear' }}
           indexScale={{ type: 'band', round: true }}
-          colors={[COLORS.wash, COLORS.dry]}
+          colors={[washColor, dryColor]}
           borderRadius={4}
           borderWidth={0}
           theme={theme}
@@ -262,10 +259,7 @@ const OperatingCyclesChart = ({
           label={d => d.value > 0 ? d.value : ''}
           labelSkipWidth={0}
           labelSkipHeight={0}
-          labelTextColor={{
-            from: 'color',
-            modifiers: [['darker', 2]]
-          }}
+          labelTextColor={isDark ? '#e2e8f0' : '#1e293b'}
           legends={[]}
           role="application"
           ariaLabel="Gráfico de ciclos de operação"
@@ -287,7 +281,7 @@ const OperatingCyclesChart = ({
                 marginBottom: '4px',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
               }}>
-                <Calendar className="w-4 h-4" style={{ color: COLORS.primary }} />
+                <Calendar className="w-4 h-4" style={{ color: washColor }} />
                 <strong style={{ 
                   color: isDark ? '#f1f5f9' : '#0f172a',
                   fontSize: '13px'
@@ -342,7 +336,7 @@ const OperatingCyclesChart = ({
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold font-sans" style={{ color: COLORS.wash }}>
+            <div className="text-2xl font-bold font-sans" style={{ color: washColor }}>
               {periodInfo.totalWash}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
@@ -350,7 +344,7 @@ const OperatingCyclesChart = ({
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold font-sans" style={{ color: COLORS.dry }}>
+            <div className="text-2xl font-bold font-sans" style={{ color: dryColor }}>
               {periodInfo.totalDry}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
