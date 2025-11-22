@@ -257,7 +257,7 @@ const OperatingCyclesChart = ({
                 value: 'Número de Ciclos', 
                 angle: -90, 
                 position: 'insideLeft',
-                offset: -10,
+                offset: 10,
                 style: {
                   fontSize: 12,
                   fill: isDark ? '#cbd5e1' : '#475569',
