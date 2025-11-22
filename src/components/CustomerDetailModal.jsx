@@ -32,7 +32,7 @@ const getRiskTailwind = (riskLevel) => {
         bg: 'bg-emerald-50 dark:bg-emerald-900/30',
         text: 'text-emerald-700 dark:text-emerald-300',
         border: 'border-emerald-400 dark:border-emerald-600',
-        emoji: '🟢',
+        emoji: '🥦',
         label: 'Saudável',
       };
     case 'Monitor':
@@ -40,7 +40,7 @@ const getRiskTailwind = (riskLevel) => {
         bg: 'bg-sky-50 dark:bg-sky-900/30',
         text: 'text-sky-700 dark:text-sky-300',
         border: 'border-sky-400 dark:border-sky-600',
-        emoji: '🔵',
+        emoji: '👁️',
         label: 'Monitorar',
       };
     case 'At Risk':
@@ -53,10 +53,10 @@ const getRiskTailwind = (riskLevel) => {
       };
     case 'Churning':
       return {
-        bg: 'bg-rose-50 dark:bg-rose-900/30',
-        text: 'text-rose-700 dark:text-rose-300',
-        border: 'border-rose-400 dark:border-rose-600',
-        emoji: '🚨',
+        bg: 'bg-red-50 dark:bg-red-900/30',
+        text: 'text-red-700 dark:text-red-300',
+        border: 'border-red-400 dark:border-red-600',
+        emoji: '💔',
         label: 'Perdendo',
       };
     case 'New Customer':
@@ -127,10 +127,9 @@ const MachineDisplay = ({ machineStr }) => {
             key={idx}
             className={`
               inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold
-              ${
-                isWash
-                  ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
-                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+              ${isWash
+                ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
               }
             `}
           >
@@ -261,19 +260,21 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* COMPACT HEADER */}
-        <div className="sticky top-0 z-10 bg-lavpop-blue px-4 py-3 sm:px-6">
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-700 via-lavpop-blue to-blue-900 dark:from-slate-800 dark:to-slate-900 px-4 py-3 sm:px-6">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-white truncate">
-                {customer.name}
+                {customer.name || 'Cliente sem nome'}
               </h2>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className="text-xs text-white/80">
-                  +{customer.phone}
+                  {customer.phone || 'Cliente sem telefone'}
                 </span>
                 <span className="text-xs text-white/60">•</span>
                 <span className="text-xs text-white/80">
-                  CPF: {customer.cpf}
+                  {customer.doc
+                    ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}`
+                    : 'Cliente sem CPF'}
                 </span>
               </div>
             </div>
@@ -303,10 +304,9 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             disabled={!customer.phone}
             className={`
               flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all
-              ${
-                customer.phone
-                  ? 'bg-lavpop-blue text-white hover:bg-lavpop-blue-600 shadow-sm'
-                  : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-600'
+              ${customer.phone
+                ? 'bg-lavpop-blue text-white hover:bg-lavpop-blue-600 shadow-sm'
+                : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-600'
               }
             `}
           >
@@ -318,10 +318,9 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             disabled={!customer.phone}
             className={`
               flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all
-              ${
-                customer.phone
-                  ? 'bg-[#25D366] text-white hover:bg-[#1fb855] shadow-sm'
-                  : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-600'
+              ${customer.phone
+                ? 'bg-[#25D366] text-white hover:bg-[#1fb855] shadow-sm'
+                : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-600'
               }
             `}
           >
@@ -340,7 +339,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 Financeiro
               </h3>
             </div>
-            
+
             <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
               <span className="text-xs text-slate-600 dark:text-slate-400">
                 Total Gasto
@@ -387,11 +386,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 Dias desde última visita
               </span>
               <span
-                className={`text-base font-bold ${
-                  customer.daysSinceLastVisit > customer.avgDaysBetween
-                    ? 'text-rose-600 dark:text-rose-300'
-                    : 'text-emerald-600 dark:text-emerald-300'
-                }`}
+                className={`text-base font-bold ${customer.daysSinceLastVisit > customer.avgDaysBetween
+                  ? 'text-rose-600 dark:text-rose-300'
+                  : 'text-emerald-600 dark:text-emerald-300'
+                  }`}
               >
                 {customer.daysSinceLastVisit || 0}
               </span>
