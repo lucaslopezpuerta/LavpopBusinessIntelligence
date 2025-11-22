@@ -142,7 +142,7 @@ const Dashboard = () => {
               <div className="hidden md:block h-8 w-px bg-white/20"></div>
               <div className="hidden md:flex flex-col">
                 <span className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                  Business Intelligence
+                  CAXIAS DO SUL
                 </span>
                 <span className="text-sm font-semibold text-white">
                   Dashboard Executivo
