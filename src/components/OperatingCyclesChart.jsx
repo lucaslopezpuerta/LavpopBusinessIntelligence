@@ -227,7 +227,7 @@ const OperatingCyclesChart = ({
           data={chartData}
           keys={['Lavagens', 'Secagens']}
           indexBy="day"
-          margin={{ top: 50, right: 20, bottom: 50, left: 50 }}
+          margin={{ top: 20, right: 20, bottom: 50, left: 50 }}
           padding={0.3}
           groupMode="grouped"
           valueScale={{ type: 'linear' }}
@@ -328,7 +328,7 @@ const OperatingCyclesChart = ({
       <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-lavpop-blue dark:text-blue-400 font-sans">
+            <div className="text-2xl font-bold text-slate-900 dark:text-white font-sans">
               {periodInfo.totalCycles}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
