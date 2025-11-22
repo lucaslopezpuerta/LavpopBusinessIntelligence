@@ -1,20 +1,23 @@
-// OperatingCyclesChart_v1.0.jsx
+// OperatingCyclesChart_v1.1.jsx
 // Operating cycles chart showing daily wash vs dry cycles using Nivo
 //
 // FEATURES:
-// âœ… Nivo ResponsiveBar chart
-// âœ… Dark/Light theme support
-// âœ… Shows wash and dry cycles per day
-// âœ… Configurable month/year filtering
-// âœ… Follows Lavpop Design System
-// âœ… Portuguese localization
+// ✅ Nivo ResponsiveBar chart (grouped mode)
+// ✅ Dark/Light theme support
+// ✅ Shows wash and dry cycles per day
+// ✅ Proper numeric day sorting
+// ✅ Labels on top of bars
+// ✅ No legends (uses color key in header)
+// ✅ WashingMachine icon
+// ✅ Follows Lavpop Design System
 //
 // CHANGELOG:
+// v1.1 (2025-11-21): Fixed sorting, grouped bars, labels, icon, font
 // v1.0 (2025-11-21): Initial implementation
 
 import React, { useMemo } from 'react';
 import { ResponsiveBar } from '@nivo/bar';
-import { Activity, Calendar } from 'lucide-react';
+import { WashingMachine, Calendar } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -69,12 +72,12 @@ const OperatingCyclesChart = ({
     // Get days in target month
     const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
 
-    // Initialize daily map
+    // Initialize daily map with NUMERIC keys
     const dailyMap = {};
     for (let day = 1; day <= daysInMonth; day++) {
-      const dayKey = String(day).padStart(2, '0');
-      dailyMap[dayKey] = {
-        day: dayKey,
+      dailyMap[day] = {
+        dayNum: day,
+        day: String(day).padStart(2, '0'),
         Lavagens: 0,
         Secagens: 0
       };
@@ -90,17 +93,17 @@ const OperatingCyclesChart = ({
         return;
       }
 
-      const day = String(date.getDate()).padStart(2, '0');
+      const dayNum = date.getDate();
       const machineInfo = countMachines(row.Maquina || row.machine || row.Maquinas || '');
 
-      if (dailyMap[day]) {
-        dailyMap[day].Lavagens += machineInfo.wash;
-        dailyMap[day].Secagens += machineInfo.dry;
+      if (dailyMap[dayNum]) {
+        dailyMap[dayNum].Lavagens += machineInfo.wash;
+        dailyMap[dayNum].Secagens += machineInfo.dry;
       }
     });
 
-    // Convert to array
-    const data = Object.values(dailyMap);
+    // Convert to array and sort by numeric day
+    const data = Object.values(dailyMap).sort((a, b) => a.dayNum - b.dayNum);
 
     // Calculate totals
     const totalWash = data.reduce((sum, d) => sum + d.Lavagens, 0);
@@ -136,14 +139,16 @@ const OperatingCyclesChart = ({
         },
         text: {
           fontSize: 11,
-          fill: isDark ? '#94a3b8' : '#64748b'
+          fill: isDark ? '#94a3b8' : '#64748b',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
         }
       },
       legend: {
         text: {
           fontSize: 12,
           fill: isDark ? '#cbd5e1' : '#475569',
-          fontWeight: 600
+          fontWeight: 600,
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
         }
       }
     },
@@ -153,10 +158,11 @@ const OperatingCyclesChart = ({
         strokeWidth: 1
       }
     },
-    legends: {
+    labels: {
       text: {
-        fontSize: 12,
-        fill: isDark ? '#e2e8f0' : '#475569'
+        fontSize: 11,
+        fontWeight: 600,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
       }
     },
     tooltip: {
@@ -168,7 +174,8 @@ const OperatingCyclesChart = ({
         boxShadow: isDark 
           ? '0 4px 6px rgba(0, 0, 0, 0.3)' 
           : '0 4px 6px rgba(0, 0, 0, 0.1)',
-        padding: '8px 12px'
+        padding: '8px 12px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
       }
     }
   };
@@ -178,8 +185,8 @@ const OperatingCyclesChart = ({
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
         <div className="flex items-center justify-center h-64 text-slate-500 dark:text-slate-400">
           <div className="text-center">
-            <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="text-sm">Sem dados disponÃ­veis para o perÃ­odo selecionado</p>
+            <WashingMachine className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="text-sm font-sans">Sem dados disponíveis para o período selecionado</p>
           </div>
         </div>
       </div>
@@ -191,25 +198,25 @@ const OperatingCyclesChart = ({
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <Activity className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-            Ciclos de OperaÃ§Ã£o
+          <WashingMachine className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white font-sans">
+            Ciclos de Operação
           </h3>
         </div>
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            MÃªs de {periodInfo.month}/{periodInfo.year}
+          <p className="text-sm text-slate-600 dark:text-slate-400 font-sans">
+            Mês de {periodInfo.month}/{periodInfo.year}
           </p>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.wash }} />
-              <span className="text-slate-600 dark:text-slate-400 font-medium">
+              <span className="text-slate-600 dark:text-slate-400 font-medium font-sans">
                 Lavagens ({periodInfo.totalWash})
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.dry }} />
-              <span className="text-slate-600 dark:text-slate-400 font-medium">
+              <span className="text-slate-600 dark:text-slate-400 font-medium font-sans">
                 Secagens ({periodInfo.totalDry})
               </span>
             </div>
@@ -221,13 +228,14 @@ const OperatingCyclesChart = ({
       <div style={{ height: '400px' }}>
         <ResponsiveBar
           data={chartData}
-          keys={['Secagens', 'Lavagens']}
+          keys={['Lavagens', 'Secagens']}
           indexBy="day"
-          margin={{ top: 20, right: 20, bottom: 50, left: 50 }}
+          margin={{ top: 40, right: 20, bottom: 50, left: 50 }}
           padding={0.3}
+          groupMode="grouped"
           valueScale={{ type: 'linear' }}
           indexScale={{ type: 'band', round: true }}
-          colors={[COLORS.dry, COLORS.wash]}
+          colors={[COLORS.wash, COLORS.dry]}
           borderRadius={4}
           borderWidth={0}
           theme={theme}
@@ -237,7 +245,7 @@ const OperatingCyclesChart = ({
             tickSize: 5,
             tickPadding: 5,
             tickRotation: 0,
-            legend: 'Dia do MÃªs',
+            legend: 'Dia do Mês',
             legendPosition: 'middle',
             legendOffset: 40
           }}
@@ -245,45 +253,22 @@ const OperatingCyclesChart = ({
             tickSize: 5,
             tickPadding: 5,
             tickRotation: 0,
-            legend: 'NÃºmero de Ciclos',
+            legend: 'Número de Ciclos',
             legendPosition: 'middle',
             legendOffset: -40
           }}
           enableGridY={true}
           enableLabel={true}
-          labelSkipWidth={12}
-          labelSkipHeight={12}
+          label={d => d.value > 0 ? d.value : ''}
+          labelSkipWidth={0}
+          labelSkipHeight={0}
           labelTextColor={{
             from: 'color',
             modifiers: [['darker', 2]]
           }}
-          legends={[
-            {
-              dataFrom: 'keys',
-              anchor: 'top-right',
-              direction: 'row',
-              justify: false,
-              translateX: 0,
-              translateY: -20,
-              itemsSpacing: 2,
-              itemWidth: 100,
-              itemHeight: 20,
-              itemDirection: 'left-to-right',
-              itemOpacity: 0.85,
-              symbolSize: 12,
-              symbolShape: 'circle',
-              effects: [
-                {
-                  on: 'hover',
-                  style: {
-                    itemOpacity: 1
-                  }
-                }
-              ]
-            }
-          ]}
+          legends={[]}
           role="application"
-          ariaLabel="GrÃ¡fico de ciclos de operaÃ§Ã£o"
+          ariaLabel="Gráfico de ciclos de operação"
           barAriaLabel={e => `${e.id}: ${e.formattedValue} no dia ${e.indexValue}`}
           tooltip={({ id, value, indexValue, color }) => (
             <div style={{
@@ -299,7 +284,8 @@ const OperatingCyclesChart = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginBottom: '4px'
+                marginBottom: '4px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
               }}>
                 <Calendar className="w-4 h-4" style={{ color: COLORS.primary }} />
                 <strong style={{ 
@@ -313,7 +299,8 @@ const OperatingCyclesChart = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontSize: '12px'
+                fontSize: '12px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
               }}>
                 <div 
                   style={{
@@ -347,26 +334,26 @@ const OperatingCyclesChart = ({
       <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-lavpop-blue dark:text-blue-400">
+            <div className="text-2xl font-bold text-lavpop-blue dark:text-blue-400 font-sans">
               {periodInfo.totalCycles}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
+            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
               Total Ciclos
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold" style={{ color: COLORS.wash }}>
+            <div className="text-2xl font-bold font-sans" style={{ color: COLORS.wash }}>
               {periodInfo.totalWash}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
+            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
               Lavagens
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold" style={{ color: COLORS.dry }}>
+            <div className="text-2xl font-bold font-sans" style={{ color: COLORS.dry }}>
               {periodInfo.totalDry}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
+            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 font-sans">
               Secagens
             </div>
           </div>
