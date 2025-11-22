@@ -1,11 +1,11 @@
-// Dashboard.jsx v8.1 - REFINED BANNER
-// ✅ Toggle button height matches widgets
-// ✅ Date range moved left, updates with toggle
-// ✅ Removed stats from banner (in KPIs)
-// ✅ Banner rounded, same width as KPIs
-// ✅ Darker logo background in light mode
+// Dashboard.jsx v8.2 - OPERATING CYCLES CHART
+// ✅ Replaced chart placeholder with Nivo-based operating cycles chart
+// ✅ Shows daily wash vs dry cycles for the current month
+// ✅ Full dark/light theme support
+// ✅ Portuguese localization
 //
 // CHANGELOG:
+// v8.2 (2025-11-21): Operating cycles chart integration
 // v8.1 (2025-11-21): Refined banner
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -18,6 +18,7 @@ import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import WeatherWidget from '../components/WeatherWidget_API';
 import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import SocialMediaWidget from '../components/SocialMediaWidget';
+import OperatingCyclesChart from '../components/OperatingCyclesChart';
 
 // Utils
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
@@ -246,20 +247,8 @@ const Dashboard = () => {
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 2xl:grid-cols-[1fr_440px] gap-6">
-          {/* Chart Placeholder */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-lavpop-blue/20 dark:border-lavpop-blue/30 p-8 lg:p-12 shadow-sm min-h-[400px] flex items-center justify-center">
-            <div className="text-center space-y-4 max-w-md">
-              <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-lavpop-blue/10 to-lavpop-green/10 dark:from-lavpop-blue/20 dark:to-lavpop-green/20 flex items-center justify-center">
-                <BarChart3 className="w-10 h-10 text-lavpop-blue dark:text-blue-400" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                Gráficos em Desenvolvimento
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Visualizações de tendências em breve
-              </p>
-            </div>
-          </div>
+          {/* Operating Cycles Chart */}
+          <OperatingCyclesChart salesData={salesData} />
 
           {/* At-Risk Table */}
           {metrics?.customers && (
@@ -272,7 +261,7 @@ const Dashboard = () => {
 
         {/* Footer */}
         <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
-          Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.1
+          Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.2
         </div>
       </main>
     </div>
