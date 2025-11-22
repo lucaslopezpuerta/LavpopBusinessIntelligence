@@ -1,11 +1,13 @@
-// CustomerDetailModal.jsx v4.1 - BRANDING & DESIGN IMPROVEMENTS
-// ✅ Enhanced Lavpop branding
-// ✅ Rounded corners (rounded-2xl)
-// ✅ Improved dark mode colors
-// ✅ Better visual hierarchy
-// ✅ Preserved all logic
+// CustomerDetailModal.jsx v5.0 - REDESIGN: COMPACT & MOBILE-FRIENDLY
+// ✅ Follows Design System v2.0 strictly
+// ✅ Simplified header (no gradient)
+// ✅ More compact layout
+// ✅ Better mobile responsiveness
+// ✅ Cleaner card designs
+// ✅ Optimized spacing
 //
 // CHANGELOG:
+// v5.0 (2025-11-22): Complete redesign - compact & mobile-friendly
 // v4.1 (2025-11-21): Branding & design improvements
 // v4.0 (2025-11-20): Tailwind migration & Dark Mode
 
@@ -18,6 +20,8 @@ import {
   Activity,
   Tag,
   XCircle,
+  TrendingUp,
+  Clock,
 } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
@@ -110,9 +114,7 @@ const MachineDisplay = ({ machineStr }) => {
 
   if (machines.length === 0) {
     return (
-      <span className="text-[11px] text-slate-500 dark:text-slate-400">
-        -
-      </span>
+      <span className="text-xs text-slate-500 dark:text-slate-400">-</span>
     );
   }
 
@@ -124,10 +126,11 @@ const MachineDisplay = ({ machineStr }) => {
           <span
             key={idx}
             className={`
-              inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold border
-              ${isWash
-                ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/40 dark:text-sky-300 dark:border-sky-700'
-                : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+              inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold
+              ${
+                isWash
+                  ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
               }
             `}
           >
@@ -146,7 +149,7 @@ const CouponBadge = ({ couponCode }) => {
     couponCode.toLowerCase() === 'n/d'
   ) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300">
+      <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-400">
         <XCircle className="h-2.5 w-2.5" />
         Não
       </span>
@@ -154,7 +157,7 @@ const CouponBadge = ({ couponCode }) => {
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/40 dark:border-emerald-700 dark:text-emerald-300">
+    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300">
       <Tag className="h-2.5 w-2.5" />
       {couponCode}
     </span>
@@ -200,108 +203,94 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         const amountStr = String(
           row.Valor_Pago || row.net_value || '0',
         );
-        const amount = parseFloat(amountStr.replace(',', '.'));
+        const amount = parseFloat(
+          amountStr.replace(/[^\d,-]/g, '').replace(',', '.'),
+        );
+
+        const cycles = parseInt(
+          String(row.Ciclos || row.cycles || '0'),
+          10,
+        );
 
         const machineStr =
-          row.Maquinas || row.Maquina || row.machine || '';
-        const machines = parseMachines(machineStr);
-        const totalCycles = machines.length;
+          row.Maquinas_Utilizadas || row.machines || 'N/A';
 
-        const couponCode =
-          row.Codigo_Cupom || row.coupon_code || '';
+        const couponCode = row.Cupom_Utilizado || row.coupon || '';
+
         return {
           date,
-          dateValid:
-            date instanceof Date && !Number.isNaN(date.getTime()),
           amount,
-          cycles: totalCycles,
+          cycles,
           machineStr,
           couponCode,
         };
       })
-      .filter((txn) => txn.dateValid)
+      .filter((txn) => txn.date instanceof Date && !isNaN(txn.date))
       .sort((a, b) => b.date - a.date)
       .slice(0, 5);
 
     return customerTxns;
   }, [salesData, customer.doc]);
 
+  const risk = getRiskTailwind(customer.riskLevel);
+
   const handleCall = () => {
     if (customer.phone) {
-      const cleanPhone = customer.phone.replace(/\D/g, '');
-      window.location.href = `tel:+55${cleanPhone}`;
+      window.location.href = `tel:${customer.phone}`;
     }
   };
 
   const handleWhatsApp = () => {
     if (customer.phone) {
-      const cleanPhone = customer.phone.replace(/\D/g, '');
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(
-        navigator.userAgent,
+      const phone = customer.phone.replace(/\D/g, '');
+      const message = encodeURIComponent(
+        `Olá ${customer.name}! Tudo bem? Aqui é da Lavpop 👋`,
       );
-      const url = isMobile
-        ? `https://api.whatsapp.com/send?phone=55${cleanPhone}`
-        : `https://web.whatsapp.com/send?phone=55${cleanPhone}`;
-      window.open(url, '_blank');
+      window.open(
+        `https://wa.me/55${phone}?text=${message}`,
+        '_blank',
+      );
     }
   };
 
-  const risk = getRiskTailwind(customer.riskLevel);
-
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:px-4 sm:py-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
-        className="w-full h-[95vh] sm:h-auto sm:max-h-[90vh] sm:max-w-5xl overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 custom-scrollbar"
+        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-slate-900 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* HEADER - Enhanced Branding */}
-        <div className="relative overflow-hidden rounded-t-3xl flex-shrink-0">
-          {/* Decorative background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-lavpop-blue via-blue-600 to-lavpop-green opacity-100"></div>
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl mix-blend-overlay"></div>
-          </div>
-
-          <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-6 text-white">
+        {/* COMPACT HEADER */}
+        <div className="sticky top-0 z-10 bg-lavpop-blue px-4 py-3 sm:px-6">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="mb-1 text-xl sm:text-3xl font-extrabold leading-tight text-white truncate tracking-tight">
-                {customer.name || 'Cliente sem nome'}
+              <h2 className="text-lg sm:text-xl font-bold text-white truncate">
+                {customer.name}
               </h2>
-              <div className="text-xs sm:text-sm text-white/90 font-medium truncate flex items-center gap-2">
-                <span className="bg-white/20 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                  {customer.phone || 'Sem telefone'}
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <span className="text-xs text-white/80">
+                  +{customer.phone}
                 </span>
-                <span className="opacity-60">•</span>
-                <span className="opacity-90">
-                  {customer.doc
-                    ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}`
-                    : 'Sem CPF'}
+                <span className="text-xs text-white/60">•</span>
+                <span className="text-xs text-white/80">
+                  CPF: {customer.cpf}
                 </span>
               </div>
             </div>
-
-            <div className="flex items-center gap-2 sm:gap-4 ml-3">
-              {/* Risk badge */}
-              <div
-                className={`
-                  hidden sm:flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-extrabold shadow-lg bg-white text-slate-800 border-white
-                `}
+            <div className="flex items-center gap-2">
+              {/* Risk Badge */}
+              <span
+                className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold ${risk.bg} ${risk.text} border ${risk.border}`}
               >
-                <span className="text-lg">{risk.emoji}</span>
-                <span>{risk.label}</span>
-              </div>
-
-              {/* Mobile Risk Badge (Icon Only) */}
-              <div className={`sm:hidden w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 bg-white border-white shadow-lg`}>
-                {risk.emoji}
-              </div>
-
+                <span className="text-sm">{risk.emoji}</span>
+                {risk.label}
+              </span>
+              {/* Close Button */}
               <button
                 onClick={onClose}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-white/40 bg-white/20 text-white transition hover:bg-white hover:text-lavpop-blue hover:scale-110 backdrop-blur-sm"
+                className="rounded-lg p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -309,30 +298,33 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </div>
         </div>
 
-        {/* ACTION BUTTONS */}
-        <div className="flex gap-3 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-4 bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-20">
+        {/* ACTION BUTTONS - More compact */}
+        <div className="flex gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 sm:px-6">
           <button
             onClick={handleCall}
             disabled={!customer.phone}
             className={`
-              flex-1 inline-flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all
-              ${customer.phone
-                ? 'border-lavpop-blue text-lavpop-blue hover:bg-lavpop-blue hover:text-white hover:scale-105 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white shadow-sm'
-                : 'cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700 dark:text-slate-600'}
+              flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all
+              ${
+                customer.phone
+                  ? 'bg-lavpop-blue text-white hover:bg-lavpop-blue-600 shadow-sm'
+                  : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-600'
+              }
             `}
           >
             <Phone className="h-4 w-4" />
             Ligar
           </button>
-
           <button
             onClick={handleWhatsApp}
             disabled={!customer.phone}
             className={`
-              flex-1 inline-flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all
-              ${customer.phone
-                ? 'border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white hover:scale-105 shadow-sm'
-                : 'cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700 dark:text-slate-600'}
+              flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all
+              ${
+                customer.phone
+                  ? 'bg-[#25D366] text-white hover:bg-[#1fb855] shadow-sm'
+                  : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-600'
+              }
             `}
           >
             <MessageCircle className="h-4 w-4" />
@@ -340,183 +332,193 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </button>
         </div>
 
-        {/* TWO-COLUMN STATS GRID */}
-        <div className="grid gap-4 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-5 md:grid-cols-2 bg-white dark:bg-slate-800">
-          {/* Financial */}
-          <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-700/30 p-5 border border-slate-200 dark:border-slate-600">
-            <h3 className="mb-4 text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-2">
-              <span className="text-lg">💰</span>
-              Resumo Financeiro
-            </h3>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  Total Gasto
-                </span>
-                <span className="text-lg font-extrabold text-lavpop-blue dark:text-blue-300">
-                  {formatCurrency(customer.netTotal || 0)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  Total de Visitas
-                </span>
-                <span className="text-lg font-extrabold text-lavpop-blue dark:text-blue-300">
-                  {customer.transactions ||
-                    customer.frequency ||
-                    0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  Gasto/Visita
-                </span>
-                <span className="text-lg font-extrabold text-lavpop-green dark:text-green-300">
-                  {formatCurrency(
-                    customer.transactions > 0
-                      ? customer.netTotal / customer.transactions
-                      : 0,
-                  )}
-                </span>
-              </div>
+        {/* STATS GRID - More compact, cleaner design */}
+        <div className="grid gap-3 px-4 py-4 border-b border-slate-200 dark:border-slate-700 sm:grid-cols-2 sm:px-6">
+          {/* Financial Stats */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
+              <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
+                Financeiro
+              </h3>
+            </div>
+            
+            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Total Gasto
+              </span>
+              <span className="text-base font-bold text-lavpop-blue dark:text-blue-300">
+                {formatCurrency(customer.netTotal || 0)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Total de Visitas
+              </span>
+              <span className="text-base font-bold text-lavpop-blue dark:text-blue-300">
+                {customer.transactions || customer.frequency || 0}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Gasto/Visita
+              </span>
+              <span className="text-base font-bold text-lavpop-green dark:text-green-300">
+                {formatCurrency(
+                  customer.transactions > 0
+                    ? customer.netTotal / customer.transactions
+                    : 0,
+                )}
+              </span>
             </div>
           </div>
 
-          {/* Behavior */}
-          <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-700/30 p-5 border border-slate-200 dark:border-slate-600">
-            <h3 className="mb-4 text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-2">
-              <span className="text-lg">📊</span>
-              Comportamento
-            </h3>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  Dias desde última visita
-                </span>
-                <span
-                  className={`text-lg font-extrabold ${customer.daysSinceLastVisit > customer.avgDaysBetween
-                      ? 'text-rose-600 dark:text-rose-300'
-                      : 'text-emerald-600 dark:text-emerald-300'
-                    }`}
-                >
-                  {customer.daysSinceLastVisit || 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  Intervalo médio (dias)
-                </span>
-                <span className="text-lg font-extrabold text-slate-700 dark:text-slate-200">
-                  {customer.avgDaysBetween || 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  Serviços/Visita
-                </span>
-                <span className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
-                  {customer.servicesPerVisit || 0}
-                </span>
-              </div>
+          {/* Behavior Stats */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="h-4 w-4 text-lavpop-green dark:text-green-400" />
+              <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
+                Comportamento
+              </h3>
+            </div>
+
+            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Dias desde última visita
+              </span>
+              <span
+                className={`text-base font-bold ${
+                  customer.daysSinceLastVisit > customer.avgDaysBetween
+                    ? 'text-rose-600 dark:text-rose-300'
+                    : 'text-emerald-600 dark:text-emerald-300'
+                }`}
+              >
+                {customer.daysSinceLastVisit || 0}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Intervalo médio (dias)
+              </span>
+              <span className="text-base font-bold text-slate-700 dark:text-slate-200">
+                {customer.avgDaysBetween || 0}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Serviços/Visita
+              </span>
+              <span className="text-base font-bold text-slate-700 dark:text-slate-200">
+                {customer.servicesPerVisit || 0}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* SERVICE PREFERENCES */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-4 bg-slate-50 dark:bg-slate-800/50">
+        {/* SERVICE PREFERENCES - More compact */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 sm:px-6">
           <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-lavpop-blue dark:text-blue-400" />
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+            <Activity className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
+            <span className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
               Preferências
             </span>
           </div>
-          <div className="flex gap-8">
+          <div className="flex gap-6">
             <div className="text-center">
-              <div className="mb-1 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
                 Lavagens
               </div>
-              <div className="text-xl font-extrabold text-lavpop-blue dark:text-blue-300">
+              <div className="text-lg font-bold text-lavpop-blue dark:text-blue-300">
                 {customer.washPercentage}%
               </div>
             </div>
             <div className="text-center">
-              <div className="mb-1 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
                 Secagens
               </div>
-              <div className="text-xl font-extrabold text-lavpop-green dark:text-green-300">
+              <div className="text-lg font-bold text-lavpop-green dark:text-green-300">
                 {customer.dryPercentage}%
               </div>
             </div>
           </div>
         </div>
 
-        {/* TRANSACTION HISTORY (Last 5) */}
-        <div className="px-4 sm:px-6 py-5 bg-white dark:bg-slate-800">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-lavpop-blue dark:text-blue-300">
-            <Calendar className="h-5 w-5" />
-            Últimas 5 Transações
-          </h3>
+        {/* TRANSACTION HISTORY - More compact table */}
+        <div className="px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              Últimas 5 Transações
+            </h3>
+          </div>
 
           {transactionHistory.length > 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
-              <table className="min-w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-700 dark:to-slate-700/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    <th className="px-3 py-3 text-center">Data</th>
-                    <th className="px-3 py-3 text-center">Valor</th>
-                    <th className="hidden sm:table-cell px-3 py-3 text-center">Ciclos</th>
-                    <th className="px-3 py-3 text-center">Máquinas</th>
-                    <th className="px-3 py-3 text-center">Cupom</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactionHistory.map((txn, idx) => (
-                    <tr
-                      key={idx}
-                      className="border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                    >
-                      <td className="px-3 py-3 text-center text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                        {formatDate(txn.date)}
-                      </td>
-                      <td className="px-3 py-3 text-center text-xs font-bold text-lavpop-blue dark:text-blue-300">
-                        {formatCurrency(txn.amount)}
-                      </td>
-                      <td className="hidden sm:table-cell px-3 py-3 text-center text-sm font-extrabold text-lavpop-blue dark:text-blue-300">
-                        {txn.cycles}
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <MachineDisplay machineStr={txn.machineStr} />
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <CouponBadge couponCode={txn.couponCode} />
-                      </td>
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400">
+                      <th className="px-2 py-2 text-left">Data</th>
+                      <th className="px-2 py-2 text-right">Valor</th>
+                      <th className="hidden sm:table-cell px-2 py-2 text-center">
+                        Ciclos
+                      </th>
+                      <th className="px-2 py-2 text-center">Máquinas</th>
+                      <th className="px-2 py-2 text-center">Cupom</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {transactionHistory.map((txn, idx) => (
+                      <tr
+                        key={idx}
+                        className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <td className="px-2 py-2 text-xs text-slate-600 dark:text-slate-300">
+                          {formatDate(txn.date)}
+                        </td>
+                        <td className="px-2 py-2 text-right text-xs font-bold text-lavpop-blue dark:text-blue-300">
+                          {formatCurrency(txn.amount)}
+                        </td>
+                        <td className="hidden sm:table-cell px-2 py-2 text-center text-sm font-bold text-slate-700 dark:text-slate-200">
+                          {txn.cycles}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <MachineDisplay machineStr={txn.machineStr} />
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <CouponBadge couponCode={txn.couponCode} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
-            <div className="rounded-2xl bg-slate-50 dark:bg-slate-700/50 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
               Nenhuma transação disponível
             </div>
           )}
         </div>
 
-        {/* RISK ALERT */}
+        {/* RISK ALERT - More compact */}
         {(customer.riskLevel === 'At Risk' ||
           customer.riskLevel === 'Churning') &&
           customer.daysOverdue > 0 && (
-            <div className="mx-6 mb-5 flex gap-3 rounded-2xl border-2 px-5 py-4 text-sm bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-700 text-slate-800 dark:text-slate-200">
-              <div className="text-2xl flex-shrink-0">⚠️</div>
+            <div className="mx-4 mb-4 flex gap-2 rounded-lg border-2 px-4 py-3 text-sm bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-700 sm:mx-6">
+              <div className="text-xl flex-shrink-0">⚠️</div>
               <div>
-                <div className="mb-1 text-base font-extrabold text-slate-900 dark:text-white">
+                <div className="mb-0.5 text-sm font-bold text-slate-900 dark:text-white">
                   Atenção Necessária
                 </div>
-                <div className="text-sm leading-relaxed">
+                <div className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
                   Cliente está{' '}
                   <strong>{customer.daysOverdue} dias atrasado</strong>{' '}
-                  (frequência média:{' '}
-                  {customer.avgDaysBetween} dias).
+                  (frequência média: {customer.avgDaysBetween} dias).
                 </div>
               </div>
             </div>
