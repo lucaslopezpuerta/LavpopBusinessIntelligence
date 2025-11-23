@@ -7,12 +7,15 @@
 // v4.2 (2025-11-21): Reload button added
 
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Users, TrendingUp, Settings, Menu, X, RefreshCw } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, Settings, Menu, X, RefreshCw, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import { loadAllData } from './utils/csvLoader';
 import Logo from './assets/Logo1.png';
+import WeatherWidget from './components/WeatherWidget_API';
+import GoogleBusinessWidget from './components/GoogleBusinessWidget';
+import SocialMediaWidget from './components/SocialMediaWidget';
 
 // Import views
 import Dashboard from './views/Dashboard';
@@ -28,6 +31,7 @@ function AppContent() {
   const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 7, percent: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState('complete');
 
   const loadData = async (skipCache = false) => {
     try {
@@ -166,7 +170,7 @@ function AppContent() {
         <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
 
-            {/* Logo Section */}
+            {/* Logo + Location */}
             <div className="flex items-center gap-3 flex-shrink-0">
               <motion.img
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -175,13 +179,14 @@ function AppContent() {
                 alt="Lavpop Logo"
                 className="h-10 w-auto object-contain"
               />
-              <div className="hidden sm:block">
-                <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
-                  Lavpop<span className="text-lavpop-blue">BI</span>
-                </h1>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-bold">
-                  Intelligence
-                </p>
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
+                  <MapPin className="w-3 h-3 text-lavpop-blue dark:text-blue-400" />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Caxias do Sul
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -220,8 +225,16 @@ function AppContent() {
               })}
             </nav>
 
-            {/* Right: Controls */}
+            {/* Right: Widgets + Controls */}
             <div className="flex items-center gap-2">
+              {/* Widgets - Hidden on mobile */}
+              <div className="hidden lg:flex items-center gap-2">
+                <WeatherWidget compact />
+                <GoogleBusinessWidget compact />
+                <SocialMediaWidget compact />
+                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+              </div>
+
               {/* Reload Button */}
               <button
                 onClick={handleRefresh}
@@ -300,7 +313,12 @@ function AppContent() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
           >
-            <ActiveComponent data={data} onNavigate={handleTabChange} />
+            <ActiveComponent
+              data={data}
+              onNavigate={handleTabChange}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+            />
           </motion.div>
         </AnimatePresence>
       </main>
