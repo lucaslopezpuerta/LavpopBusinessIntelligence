@@ -31,58 +31,51 @@ const getRiskTailwind = (riskLevel) => {
   switch (riskLevel) {
     case 'Healthy':
       return {
-        bg: 'bg-emerald-50 dark:bg-emerald-900/30',
+        bg: 'bg-emerald-100 dark:bg-emerald-900/40',
         text: 'text-emerald-700 dark:text-emerald-300',
-        border: 'border-emerald-400 dark:border-emerald-600',
-        emoji: '🥦',
+        dot: 'bg-emerald-500',
         label: 'Saudável',
       };
     case 'Monitor':
       return {
-        bg: 'bg-sky-50 dark:bg-sky-900/30',
+        bg: 'bg-sky-100 dark:bg-sky-900/40',
         text: 'text-sky-700 dark:text-sky-300',
-        border: 'border-sky-400 dark:border-sky-600',
-        emoji: '👁️',
+        dot: 'bg-sky-500',
         label: 'Monitorar',
       };
     case 'At Risk':
       return {
-        bg: 'bg-amber-50 dark:bg-amber-900/30',
+        bg: 'bg-amber-100 dark:bg-amber-900/40',
         text: 'text-amber-700 dark:text-amber-300',
-        border: 'border-amber-400 dark:border-amber-600',
-        emoji: '⚠️',
+        dot: 'bg-amber-500',
         label: 'Em Risco',
       };
     case 'Churning':
       return {
-        bg: 'bg-red-50 dark:bg-red-900/30',
+        bg: 'bg-red-100 dark:bg-red-900/40',
         text: 'text-red-700 dark:text-red-300',
-        border: 'border-red-400 dark:border-red-600',
-        emoji: '💔',
+        dot: 'bg-red-500',
         label: 'Perdendo',
       };
     case 'New Customer':
       return {
-        bg: 'bg-violet-50 dark:bg-violet-900/30',
+        bg: 'bg-violet-100 dark:bg-violet-900/40',
         text: 'text-violet-700 dark:text-violet-300',
-        border: 'border-violet-400 dark:border-violet-600',
-        emoji: '🆕',
-        label: 'Novo Cliente',
+        dot: 'bg-violet-500',
+        label: 'Novo',
       };
     case 'Lost':
       return {
         bg: 'bg-slate-100 dark:bg-slate-800',
         text: 'text-slate-600 dark:text-slate-400',
-        border: 'border-slate-400 dark:border-slate-600',
-        emoji: '⛔',
+        dot: 'bg-slate-500',
         label: 'Perdido',
       };
     default:
       return {
         bg: 'bg-slate-100 dark:bg-slate-800',
         text: 'text-slate-600 dark:text-slate-400',
-        border: 'border-slate-400 dark:border-slate-600',
-        emoji: '❓',
+        dot: 'bg-slate-500',
         label: riskLevel || 'Indefinido',
       };
   }
@@ -186,7 +179,7 @@ const formatDate = (date) => {
 
 const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   // State for managing which section is expanded (only one at a time)
-  const [expandedSection, setExpandedSection] = useState('behaviour');
+  const [expandedSection, setExpandedSection] = useState('financials'); // Default to financials
 
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -265,52 +258,52 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-slate-900 shadow-2xl"
+        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* BRANDED HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-lavpop-blue to-blue-600 border-b border-blue-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
+        {/* COMPACT SINGLE-ROW HEADER */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-gradient-to-r from-lavpop-blue to-blue-600 border-b border-blue-700">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-sm sm:text-lg font-bold text-white truncate">
                 {customer.name || 'Cliente'}
               </h2>
-              <p className="text-xs text-white/80">
+              <p className="text-[10px] sm:text-xs text-white/80 truncate">
                 {customer.phone || 'Sem telefone'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Risk Badge */}
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 ${risk.bg} ${risk.border}`}>
-              <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
-              <span className={`text-sm font-bold ${risk.text}`}>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Compact Risk Badge */}
+            <div className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-md ${risk.bg}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${risk.dot}`} />
+              <span className={`text-[10px] sm:text-xs font-bold ${risk.text}`}>
                 {risk.label}
               </span>
             </div>
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
 
-        {/* ACTION BUTTONS */}
-        <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+        {/* COMPACT ACTION BUTTONS */}
+        <div className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={handleCall}
             disabled={!customer.phone}
             className={`
-              flex-1 flex items-center justify-center gap-2
-              px-4 py-3 rounded-xl
-              font-semibold text-sm
-              shadow-lg
+              flex-1 flex items-center justify-center gap-1.5
+              px-3 py-2 rounded-lg
+              font-semibold text-xs sm:text-sm
+              shadow-md
               active:scale-[0.98]
               transition-all duration-200
               ${customer.phone
@@ -318,17 +311,17 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed'}
             `}
           >
-            <Phone className="w-4 h-4" />
-            Ligar
+            <Phone className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Ligar</span>
           </button>
           <button
             onClick={handleWhatsApp}
             disabled={!customer.phone}
             className={`
-              flex-1 flex items-center justify-center gap-2
-              px-4 py-3 rounded-xl
-              font-semibold text-sm
-              shadow-lg
+              flex-1 flex items-center justify-center gap-1.5
+              px-3 py-2 rounded-lg
+              font-semibold text-xs sm:text-sm
+              shadow-md
               active:scale-[0.98]
               transition-all duration-200
               ${customer.phone
@@ -336,96 +329,112 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed'}
             `}
           >
-            <MessageCircle className="w-4 h-4" />
-            WhatsApp
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">WhatsApp</span>
           </button>
         </div>
 
-        {/* COLLAPSIBLE SECTIONS - Mobile-friendly accordion */}
-        <div className="border-b border-slate-200 dark:border-slate-700 lg:grid lg:grid-cols-2 lg:gap-0">
-          {/* Financial Stats */}
-          <div className="border-b border-slate-200 dark:border-slate-700 md:border-r md:border-b-0">
-            <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900">
+        {/* COLLAPSIBLE SECTIONS - Compressed */}
+        <div className="border-b border-slate-200 dark:border-slate-700">
+          {/* Financial Stats - Collapsible */}
+          <div className="border-b border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => toggleSection('financials')}
+              className="w-full flex items-center justify-between px-4 sm:px-6 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+            >
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-[10px] sm:text-xs font-bold uppercase text-slate-700 dark:text-slate-300 tracking-wider">
                   Financeiro
                 </h3>
               </div>
-            </div>
-            <div className="px-6 py-4 space-y-3">
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Total Gasto
-                </span>
-                <span className="text-base font-bold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(customer.netTotal || 0)}
-                </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'financials' ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {expandedSection === 'financials' && (
+              <div className="px-4 sm:px-6 py-2 space-y-2">
+                <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
+                    Total Gasto
+                  </span>
+                  <span className="text-sm sm:text-base font-bold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(customer.netTotal || 0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
+                    Total de Visitas
+                  </span>
+                  <span className="text-sm sm:text-base font-bold text-blue-600 dark:text-blue-400">
+                    {customer.transactions || customer.frequency || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
+                    Gasto/Visita
+                  </span>
+                  <span className="text-sm sm:text-base font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(
+                      customer.transactions > 0
+                        ? customer.netTotal / customer.transactions
+                        : 0,
+                    )}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Total de Visitas
-                </span>
-                <span className="text-base font-bold text-blue-600 dark:text-blue-400">
-                  {customer.transactions || customer.frequency || 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Gasto/Visita
-                </span>
-                <span className="text-base font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(
-                    customer.transactions > 0
-                      ? customer.netTotal / customer.transactions
-                      : 0,
-                  )}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Behavior Stats */}
-          <div className="border-b border-slate-200 dark:border-slate-700 md:border-b-0">
-            <div className="px-6 py-4 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-100 dark:border-purple-900">
+          {/* Behavior Stats - Collapsible */}
+          <div className="border-b border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => toggleSection('behaviour')}
+              className="w-full flex items-center justify-between px-4 sm:px-6 py-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+            >
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                <Clock className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-[10px] sm:text-xs font-bold uppercase text-slate-700 dark:text-slate-300 tracking-wider">
                   Comportamento
                 </h3>
               </div>
-            </div>
-            <div className="px-6 py-4 space-y-3">
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Dias desde última visita
-                </span>
-                <span
-                  className={`text-base font-bold ${customer.daysSinceLastVisit > customer.avgDaysBetween
-                    ? 'text-red-600 dark:text-red-400'
-                    : 'text-emerald-600 dark:text-emerald-400'
-                    }`}
-                >
-                  {customer.daysSinceLastVisit || 0}
-                </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'behaviour' ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {expandedSection === 'behaviour' && (
+              <div className="px-4 sm:px-6 py-2 space-y-2">
+                <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
+                    Dias desde última visita
+                  </span>
+                  <span
+                    className={`text-sm sm:text-base font-bold ${customer.daysSinceLastVisit > customer.avgDaysBetween
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-emerald-600 dark:text-emerald-400'
+                      }`}
+                  >
+                    {customer.daysSinceLastVisit || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
+                    Intervalo médio (dias)
+                  </span>
+                  <span className="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-200">
+                    {customer.avgDaysBetween || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">
+                    Serviços/Visita
+                  </span>
+                  <span className="text-sm sm:text-base font-bold text-slate-700 dark:text-slate-200">
+                    {customer.servicesPerVisit || 0}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Intervalo médio (dias)
-                </span>
-                <span className="text-base font-bold text-slate-700 dark:text-slate-200">
-                  {customer.avgDaysBetween || 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Serviços/Visita
-                </span>
-                <span className="text-base font-bold text-slate-700 dark:text-slate-200">
-                  {customer.servicesPerVisit || 0}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
