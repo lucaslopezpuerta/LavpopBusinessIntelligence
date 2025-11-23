@@ -7,7 +7,7 @@
 // v5.1 (2025-11-21): Projection card positioning
 
 import React, { useMemo } from 'react';
-import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp, TrendingDown, DollarSign, WashingMachine } from 'lucide-react';
+import { Percent, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp, TrendingDown, DollarSign, WashingMachine } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 function normalizeDoc(doc) {
@@ -192,9 +192,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       trend: getTrendData(wow.netRevenue),
       subtitle: getTimeSubtitle(),
       icon: DollarSign,
-      colorClass: 'text-[#053B06] dark:text-[#0DAB76]',
-      iconBgClass: 'bg-[#E8F5E9] dark:bg-[#053B06]/50',
-      valueClass: 'text-[#053B06] dark:text-[#4ADE80]'
+      colorClass: 'text-[#20A39E] dark:text-[#0DAB76]',
+      iconBgClass: 'bg-[#E8F5E9] dark:bg-[#20A39E]/50',
+      valueClass: 'text-[#20A39E] dark:text-[#4ADE80]'
     },
     {
       id: 'services',
@@ -213,10 +213,10 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: `${Math.round(metricsSource.totalUtilization || 0)}%`,
       trend: getTrendData(wow.utilization),
       subtitle: getTimeSubtitle(),
-      icon: Flame,
-      colorClass: 'text-[#381D2A] dark:text-[#D4A5B8]',
-      iconBgClass: 'bg-[#F5E6ED] dark:bg-[#381D2A]/50',
-      valueClass: 'text-[#381D2A] dark:text-[#E8C4D4]'
+      icon: Percent,
+      colorClass: 'text-[#F97068] dark:text-[#D4A5B8]',
+      iconBgClass: 'bg-[#FDC7C4] dark:bg-[#F97068]/40',
+      valueClass: 'text-[#F97068] dark:text-[#E8C4D4]'
     },
     {
       id: 'wash',
@@ -268,9 +268,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: formatNumber(activeCount),
       subtitle: 'Não perdidos',
       icon: Users,
-      colorClass: 'text-[#362023] dark:text-[#ECBA82]',
-      iconBgClass: 'bg-[#F5E6E8] dark:bg-[#362023]/50',
-      valueClass: 'text-[#362023] dark:text-[#F4D4A8]'
+      colorClass: 'text-[#FFBA49] dark:text-[#ECBA82]',
+      iconBgClass: 'bg-[#FFE8C2] dark:bg-[#FFE8C2]/50',
+      valueClass: 'text-[#FFBA49] dark:text-[#F4D4A8]'
     },
     {
       id: 'atrisk',
