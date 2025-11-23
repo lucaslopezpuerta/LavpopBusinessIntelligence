@@ -192,9 +192,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       trend: getTrendData(wow.netRevenue),
       subtitle: getTimeSubtitle(),
       icon: DollarSign,
-      colorClass: 'text-lavpop-blue dark:text-blue-400',
-      iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
-      valueClass: 'text-lavpop-blue dark:text-blue-200'
+      colorClass: 'text-[#053B06] dark:text-[#0DAB76]-400',
+      iconBgClass: 'bg-[#053B06]-50 dark:bg-[#0DAB76]-900/50',
+      valueClass: 'text-[#053B06] dark:text-[#0DAB76]-200'
     },
     {
       id: 'services',
@@ -214,9 +214,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       trend: getTrendData(wow.utilization),
       subtitle: getTimeSubtitle(),
       icon: Flame,
-      colorClass: 'text-amber-600 dark:text-amber-400',
-      iconBgClass: 'bg-amber-50 dark:bg-amber-900/50',
-      valueClass: 'text-amber-600 dark:text-amber-200'
+      colorClass: 'text-[#381D2A]-600 dark:text-[#381D2A]-400',
+      iconBgClass: 'bg-[#381D2A]-50 dark:bg-[#381D2A]-900/50',
+      valueClass: 'text-[#381D2A]-600 dark:text-[#381D2A]-200'
     },
     {
       id: 'wash',
@@ -225,9 +225,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: `${washPercent}% do total`,
       trend: getTrendData(wow.washServices),
       icon: Droplet,
-      colorClass: 'text-blue-600 dark:text-blue-400',
-      iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
-      valueClass: 'text-blue-600 dark:text-blue-200'
+      colorClass: 'text-[#0acdff]-600 dark:text-[#0acdff]-400',
+      iconBgClass: 'bg-[#0acdff]-50 dark:bg-[#0acdff]-900/50',
+      valueClass: 'text-[#0acdff]-600 dark:text-[#0acdff]-200'
     },
     {
       id: 'dry',
@@ -236,9 +236,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: `${dryPercent}% do total`,
       trend: getTrendData(wow.dryServices),
       icon: Flame,
-      colorClass: 'text-orange-600 dark:text-orange-400',
-      iconBgClass: 'bg-orange-50 dark:bg-orange-900/50',
-      valueClass: 'text-orange-600 dark:text-orange-200'
+      colorClass: 'text-[#ff4000]-600 dark:text-[#ff4000]-400',
+      iconBgClass: 'bg-[#ff4000]-50 dark:bg-[#ff4000]-900/50',
+      valueClass: 'text-[#ff4000]-600 dark:text-[#ff4000]-200'
     },
     {
       id: 'newclients',
@@ -247,9 +247,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: getTimeSubtitle(),
       trend: getTrendData(newClientsData.weekOverWeek),
       icon: UserPlus,
-      colorClass: 'text-risk-new-600 dark:text-risk-new-400',
-      iconBgClass: 'bg-risk-new-50 dark:bg-risk-new-900/50',
-      valueClass: 'text-risk-new-600 dark:text-risk-new-200'
+      colorClass: 'text-[#9333ea]-600 dark:text-[#9333ea]-400',
+      iconBgClass: 'bg-[#9333ea]-50 dark:bg-[#9333ea]-900/50',
+      valueClass: 'text-[#9333ea]-600 dark:text-[#9333ea]-200'
     },
     {
       id: 'projection',
@@ -258,9 +258,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: projectionSubtitle,
       trend: projectionTrend,
       icon: projectionIcon,
-      colorClass: 'text-black-900 dark:text-white-400',
-      iconBgClass: 'bg-black-50 dark:bg-white-900/50',
-      valueClass: 'text-black-900 dark:text-white-200'
+      colorClass: 'text-[#171A21]-600 dark:text-[#7A93AC]-400',
+      iconBgClass: 'bg-[#171A21]-50 dark:bg-[#7A93AC]-900/50',
+      valueClass: 'text-[#171A21]-600 dark:text-[#7A93AC]-200'
     },
     {
       id: 'active',
@@ -268,9 +268,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: formatNumber(activeCount),
       subtitle: 'Não perdidos',
       icon: Users,
-      colorClass: 'text-brown-600 dark:text-brown-400',
-      iconBgClass: 'bg-brown-50 dark:bg-brown-900/50',
-      valueClass: 'text-brown-600 dark:text-brown-200'
+      colorClass: 'text-[#362023]-600 dark:text-[#ECBA82]-400',
+      iconBgClass: 'bg-[#362023]-50 dark:bg-[#ECBA82]-900/50',
+      valueClass: 'text-[#362023]-600 dark:text-[#ECBA82]-200'
     },
     {
       id: 'atrisk',
