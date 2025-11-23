@@ -25,23 +25,23 @@ const SocialMediaWidget = ({ instagramFollowers = 0, facebookFollowers = 0, comp
         rel="noopener noreferrer"
         className="
           bg-slate-100 dark:bg-slate-800
-          rounded-lg px-2.5 py-1.5
-          flex items-center gap-2
+          rounded-lg px-2 py-1.5
+          flex items-center gap-1.5
           no-underline cursor-pointer
           transition-all duration-200
           h-9
           hover:bg-slate-200 dark:hover:bg-slate-700
         "
-        title="Ver no Instagram"
+        title={`Instagram • ${formatFollowers(instagramFollowers)} seguidores`}
       >
         {/* Instagram Icon */}
-        <div className="w-6 h-6 rounded-md bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
-          <Instagram className="w-3.5 h-3.5 text-white" />
+        <div className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+          <Instagram className="w-3 h-3 text-white" />
         </div>
 
-        {/* Follower Count */}
-        <div className="flex items-center gap-1">
-          <Users className="w-3 h-3 text-purple-500 dark:text-purple-400" />
+        {/* Follower Count - Hidden on smallest screens */}
+        <div className="hidden sm:flex items-center gap-0.5">
+          <Users className="w-2.5 h-2.5 text-purple-500 dark:text-purple-400" />
           <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
             {formatFollowers(instagramFollowers)}
           </span>

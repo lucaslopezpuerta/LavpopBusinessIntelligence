@@ -43,7 +43,7 @@ const DashboardDateControl = ({ viewMode, setViewMode, dateRange }) => {
                     >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Anterior</span>
-                        <span className="sm:hidden">Ant</span>
+                        <span className="sm:hidden">Ant.</span>
                     </button>
                     <button
                         onClick={() => setViewMode('current')}
@@ -58,7 +58,7 @@ const DashboardDateControl = ({ viewMode, setViewMode, dateRange }) => {
                     >
                         <Calendar className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Atual</span>
-                        <span className="sm:hidden">Hoje</span>
+                        <span className="sm:hidden">Atual</span>
                     </button>
                 </div>
             </div>

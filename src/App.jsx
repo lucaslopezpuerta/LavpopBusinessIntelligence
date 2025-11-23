@@ -12,7 +12,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import { loadAllData } from './utils/csvLoader';
-import Logo from './assets/Logo1.png';
 import WeatherWidget from './components/WeatherWidget_API';
 import GoogleBusinessWidget from './components/GoogleBusinessWidget';
 import SocialMediaWidget from './components/SocialMediaWidget';
@@ -170,24 +169,19 @@ function AppContent() {
         <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
 
-            {/* Logo + Location */}
+            {/* Logo + Weather/Location */}
             <div className="flex items-center gap-3 flex-shrink-0">
-              <motion.img
+              <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                src={Logo}
-                alt="Lavpop Logo"
-                className="h-10 w-auto object-contain"
-              />
-              <div className="hidden sm:flex items-center gap-2">
-                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
-                  <MapPin className="w-3 h-3 text-lavpop-blue dark:text-blue-400" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Caxias do Sul
-                  </span>
-                </div>
-              </div>
+                className="flex items-center"
+              >
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-tight">
+                  Lavpop<span className="text-lavpop-blue">BI</span>
+                </h1>
+              </motion.div>
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+              <WeatherWidget compact showLocation />
             </div>
 
             {/* Desktop Navigation - Sliding Pill */}
@@ -227,12 +221,11 @@ function AppContent() {
 
             {/* Right: Widgets + Controls */}
             <div className="flex items-center gap-2">
-              {/* Widgets - Hidden on mobile */}
-              <div className="hidden lg:flex items-center gap-2">
-                <WeatherWidget compact />
+              {/* Widgets - Google & Social only */}
+              <div className="flex items-center gap-2">
                 <GoogleBusinessWidget compact />
                 <SocialMediaWidget compact />
-                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700" />
               </div>
 
               {/* Reload Button */}
