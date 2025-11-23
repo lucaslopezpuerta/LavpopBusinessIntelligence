@@ -11,7 +11,7 @@
 // v4.1 (2025-11-21): Branding & design improvements
 // v4.0 (2025-11-20): Tailwind migration & Dark Mode
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   X,
   Phone,
@@ -22,6 +22,7 @@ import {
   XCircle,
   TrendingUp,
   Clock,
+  ChevronDown,
 } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
@@ -183,6 +184,13 @@ const formatDate = (date) => {
 };
 
 const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
+  // State for managing which section is expanded (only one at a time)
+  const [expandedSection, setExpandedSection] = useState('behaviour');
+
+  const toggleSection = (section) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
   const transactionHistory = useMemo(() => {
     if (!salesData || salesData.length === 0) return [];
 
@@ -329,174 +337,219 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </button>
         </div>
 
-        {/* STATS GRID - More compact, cleaner design */}
-        <div className="grid gap-3 px-4 py-4 border-b border-slate-200 dark:border-slate-700 sm:grid-cols-2 sm:px-6">
-          {/* Financial Stats */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
-              <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
-                Financeiro
-              </h3>
-            </div>
+        {/* COLLAPSIBLE SECTIONS - Mobile-friendly accordion */}
+        <div className="border-b border-slate-200 dark:border-slate-700">
+          {/* Financial Stats - Collapsible */}
+          <div className="border-b border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => toggleSection('financials')}
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6"
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
+                <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
+                  Financeiro
+                </h3>
+              </div>
+              <ChevronDown
+                className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'financials' ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {expandedSection === 'financials' && (
+              <div className="px-4 py-3 space-y-3 sm:px-6">
+                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Total Gasto
+                  </span>
+                  <span className="text-base font-bold text-lavpop-blue dark:text-blue-300">
+                    {formatCurrency(customer.netTotal || 0)}
+                  </span>
+                </div>
 
-            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Total Gasto
-              </span>
-              <span className="text-base font-bold text-lavpop-blue dark:text-blue-300">
-                {formatCurrency(customer.netTotal || 0)}
-              </span>
-            </div>
+                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Total de Visitas
+                  </span>
+                  <span className="text-base font-bold text-lavpop-blue dark:text-blue-300">
+                    {customer.transactions || customer.frequency || 0}
+                  </span>
+                </div>
 
-            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Total de Visitas
-              </span>
-              <span className="text-base font-bold text-lavpop-blue dark:text-blue-300">
-                {customer.transactions || customer.frequency || 0}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Gasto/Visita
-              </span>
-              <span className="text-base font-bold text-lavpop-green dark:text-green-300">
-                {formatCurrency(
-                  customer.transactions > 0
-                    ? customer.netTotal / customer.transactions
-                    : 0,
-                )}
-              </span>
-            </div>
+                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Gasto/Visita
+                  </span>
+                  <span className="text-base font-bold text-lavpop-green dark:text-green-300">
+                    {formatCurrency(
+                      customer.transactions > 0
+                        ? customer.netTotal / customer.transactions
+                        : 0,
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Behavior Stats */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="h-4 w-4 text-lavpop-green dark:text-green-400" />
-              <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
-                Comportamento
-              </h3>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Dias desde última visita
-              </span>
-              <span
-                className={`text-base font-bold ${customer.daysSinceLastVisit > customer.avgDaysBetween
-                  ? 'text-rose-600 dark:text-rose-300'
-                  : 'text-emerald-600 dark:text-emerald-300'
-                  }`}
-              >
-                {customer.daysSinceLastVisit || 0}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Intervalo médio (dias)
-              </span>
-              <span className="text-base font-bold text-slate-700 dark:text-slate-200">
-                {customer.avgDaysBetween || 0}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Serviços/Visita
-              </span>
-              <span className="text-base font-bold text-slate-700 dark:text-slate-200">
-                {customer.servicesPerVisit || 0}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* SERVICE PREFERENCES - More compact */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 sm:px-6">
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
-            <span className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
-              Preferências
-            </span>
-          </div>
-          <div className="flex gap-6">
-            <div className="text-center">
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                Lavagens
+          {/* Behavior Stats - Open by default */}
+          <div className="border-b border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => toggleSection('behaviour')}
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6"
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-lavpop-green dark:text-green-400" />
+                <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
+                  Comportamento
+                </h3>
               </div>
-              <div className="text-lg font-bold text-lavpop-blue dark:text-blue-300">
-                {customer.washPercentage}%
+              <ChevronDown
+                className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'behaviour' ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {expandedSection === 'behaviour' && (
+              <div className="px-4 py-3 space-y-3 sm:px-6">
+                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Dias desde última visita
+                  </span>
+                  <span
+                    className={`text-base font-bold ${customer.daysSinceLastVisit > customer.avgDaysBetween
+                      ? 'text-rose-600 dark:text-rose-300'
+                      : 'text-emerald-600 dark:text-emerald-300'
+                      }`}
+                  >
+                    {customer.daysSinceLastVisit || 0}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Intervalo médio (dias)
+                  </span>
+                  <span className="text-base font-bold text-slate-700 dark:text-slate-200">
+                    {customer.avgDaysBetween || 0}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    Serviços/Visita
+                  </span>
+                  <span className="text-base font-bold text-slate-700 dark:text-slate-200">
+                    {customer.servicesPerVisit || 0}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="text-center">
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                Secagens
-              </div>
-              <div className="text-lg font-bold text-lavpop-green dark:text-green-300">
-                {customer.dryPercentage}%
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* TRANSACTION HISTORY - More compact table */}
-        <div className="px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Últimas 5 Transações
-            </h3>
-          </div>
-
-          {transactionHistory.length > 0 ? (
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-xs">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400">
-                      <th className="px-2 py-2 text-left">Data</th>
-                      <th className="px-2 py-2 text-right">Valor</th>
-                      <th className="hidden sm:table-cell px-2 py-2 text-center">
-                        Ciclos
-                      </th>
-                      <th className="px-2 py-2 text-center">Máquinas</th>
-                      <th className="px-2 py-2 text-center">Cupom</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {transactionHistory.map((txn, idx) => (
-                      <tr
-                        key={idx}
-                        className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                      >
-                        <td className="px-2 py-2 text-xs text-slate-600 dark:text-slate-300">
-                          {formatDate(txn.date)}
-                        </td>
-                        <td className="px-2 py-2 text-right text-xs font-bold text-lavpop-blue dark:text-blue-300">
-                          {formatCurrency(txn.amount)}
-                        </td>
-                        <td className="hidden sm:table-cell px-2 py-2 text-center text-sm font-bold text-slate-700 dark:text-slate-200">
-                          {txn.cycles}
-                        </td>
-                        <td className="px-2 py-2 text-center">
-                          <MachineDisplay machineStr={txn.machineStr} />
-                        </td>
-                        <td className="px-2 py-2 text-center">
-                          <CouponBadge couponCode={txn.couponCode} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* SERVICE PREFERENCES - Collapsible */}
+        <div className="border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => toggleSection('preferences')}
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6"
+          >
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
+              <span className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
+                Preferências
+              </span>
+            </div>
+            <ChevronDown
+              className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'preferences' ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {expandedSection === 'preferences' && (
+            <div className="px-4 py-3 sm:px-6">
+              <div className="flex gap-6 justify-center">
+                <div className="text-center">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Lavagens
+                  </div>
+                  <div className="text-lg font-bold text-lavpop-blue dark:text-blue-300">
+                    {customer.washPercentage}%
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Secagens
+                  </div>
+                  <div className="text-lg font-bold text-lavpop-green dark:text-green-300">
+                    {customer.dryPercentage}%
+                  </div>
+                </div>
               </div>
             </div>
-          ) : (
-            <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-              Nenhuma transação disponível
+          )}
+        </div>
+
+        {/* TRANSACTION HISTORY - Collapsible */}
+        <div className="border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => toggleSection('transactions')}
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6"
+          >
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
+              <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
+                Últimas 5 Transações
+              </h3>
+            </div>
+            <ChevronDown
+              className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'transactions' ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {expandedSection === 'transactions' && (
+            <div className="px-4 py-3 sm:px-6">
+              {transactionHistory.length > 0 ? (
+                <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400">
+                          <th className="px-2 py-2 text-left">Data</th>
+                          <th className="px-2 py-2 text-right">Valor</th>
+                          <th className="hidden sm:table-cell px-2 py-2 text-center">
+                            Ciclos
+                          </th>
+                          <th className="px-2 py-2 text-center">Máquinas</th>
+                          <th className="px-2 py-2 text-center">Cupom</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {transactionHistory.map((txn, idx) => (
+                          <tr
+                            key={idx}
+                            className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          >
+                            <td className="px-2 py-2 text-xs text-slate-600 dark:text-slate-300">
+                              {formatDate(txn.date)}
+                            </td>
+                            <td className="px-2 py-2 text-right text-xs font-bold text-lavpop-blue dark:text-blue-300">
+                              {formatCurrency(txn.amount)}
+                            </td>
+                            <td className="hidden sm:table-cell px-2 py-2 text-center text-sm font-bold text-slate-700 dark:text-slate-200">
+                              {txn.cycles}
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                              <MachineDisplay machineStr={txn.machineStr} />
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                              <CouponBadge couponCode={txn.couponCode} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                  Nenhuma transação disponível
+                </div>
+              )}
             </div>
           )}
         </div>
