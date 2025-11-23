@@ -1,0 +1,1403 @@
+# LavpopBI Design System v3.0
+
+> **Last Updated:** November 2025  
+> **Status:** Active - All components aligned with this system
+
+---
+
+## 🎨 Brand Identity
+
+### Brand Colors
+
+```javascript
+// Primary Brand Colors
+'lavpop-blue': {
+  DEFAULT: '#1a5a8e',  // Primary brand blue
+  50: '#e8f1f8',
+  100: '#d1e3f1',
+  200: '#a3c7e3',
+  300: '#75abd5',
+  400: '#478fc7',
+  500: '#1a5a8e',      // Base
+  600: '#154872',
+  700: '#103656',
+  800: '#0b243a',
+  900: '#06121d'
+}
+
+'lavpop-green': {
+  DEFAULT: '#10b981',  // Accent green
+  50: '#ecfdf5',
+  100: '#d1fae5',
+  200: '#a7f3d0',
+  300: '#6ee7b7',
+  400: '#34d399',
+  500: '#10b981',      // Base
+  600: '#059669',
+  700: '#047857',
+  800: '#065f46',
+  900: '#064e3b'
+}
+```
+
+### Typography
+
+**Primary Font:** System UI Stack
+```css
+font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 
+             "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+```
+
+**Font Sizes:**
+- **Display:** `text-2xl` (24px) - Logo, major headings
+- **Heading:** `text-xl` (20px) - Section titles
+- **Body:** `text-sm` (14px) - Standard text
+- **Small:** `text-xs` (12px) - Labels, captions
+- **Micro:** `text-[10px]` - Compact widget labels
+
+---
+
+## 📐 Layout System
+
+### Responsive Breakpoints
+
+```javascript
+sm: '640px'   // Mobile landscape, small tablets
+md: '768px'   // Tablets
+lg: '1024px'  // Desktop
+xl: '1280px'  // Large desktop
+2xl: '1536px' // Extra large screens
+```
+
+### Container Widths
+
+```css
+max-w-[100rem]  /* 1600px - Main app container */
+max-w-7xl       /* 1280px - Content sections */
+max-w-md        /* 448px - Modals, cards */
+```
+
+### Spacing Scale
+
+```javascript
+gap-1    // 4px  - Tight spacing
+gap-2    // 8px  - Compact elements
+gap-3    // 12px - Standard spacing
+gap-4    // 16px - Section spacing
+gap-6    // 24px - Large spacing
+gap-8    // 32px - Major sections
+```
+
+---
+
+## 🎯 Component Patterns
+
+### Header (App.jsx)
+
+**Desktop Layout:**
+```
+[Logo + Location] | [Navigation Pills] | [Widgets] [Controls] [Menu]
+```
+
+**Mobile Layout:**
+```
+[Logo + Location] | [Weather] [Google] [Instagram] [Menu]
+```
+
+**Specifications:**
+- Height: `h-16` (64px)
+- Background: `bg-white/80 dark:bg-slate-900/80 backdrop-blur-md`
+- Border: `border-b border-slate-200/50 dark:border-slate-800/50`
+- Position: `sticky top-0 z-50`
+
+### Compact Widgets
+
+**Mobile Display (< 640px):**
+- **Weather:** Temperature only (`20.5°`)
+- **Google:** Rating + star (`4.9 ⭐`)
+- **Instagram:** Follower count (`2.5k`)
+
+**Desktop Display (≥ 640px):**
+- **Weather:** Icon + temp + humidity
+- **Google:** Map pin + rating + reviews + status
+- **Instagram:** Icon + followers
+
+**Widget Styling:**
+```css
+bg-slate-100 dark:bg-slate-800
+rounded-lg px-2 py-1.5
+h-9
+hover:bg-slate-200 dark:hover:bg-slate-700
+transition-all duration-200
+```
+
+### Navigation Pills (Desktop)
+
+**Container:**
+```css
+bg-slate-100/50 dark:bg-slate-800/50
+p-1.5 rounded-full
+border border-slate-200/50 dark:border-slate-700/50
+backdrop-blur-sm
+```
+
+**Active Tab:**
+```css
+bg-gradient-to-r from-lavpop-blue to-blue-600
+text-white
+rounded-full
+shadow-md
+```
+
+**Inactive Tab:**
+```css
+text-slate-600 dark:text-slate-400
+hover:text-slate-900 dark:hover:text-slate-200
+```
+
+### Mobile Menu
+
+**Controls Section:**
+```css
+bg-slate-50 dark:bg-slate-800
+rounded-xl
+border border-slate-200 dark:border-slate-700
+px-4 py-3
+```
+
+**Navigation Items:**
+```css
+/* Active */
+bg-lavpop-blue text-white
+shadow-lg shadow-blue-500/20
+
+/* Inactive */
+text-slate-600 dark:text-slate-400
+hover:bg-slate-50 dark:hover:bg-slate-800
+```
+
+### Cards & Containers
+
+**Standard Card:**
+```css
+bg-white dark:bg-slate-800
+rounded-xl
+shadow-sm
+border border-slate-200 dark:border-slate-700
+p-6
+```
+
+**Glassmorphism Card:**
+```css
+bg-white/80 dark:bg-slate-800/80
+backdrop-blur-md
+border border-slate-200/50 dark:border-slate-700/50
+rounded-xl
+shadow-sm
+```
+
+**KPI Card:**
+```css
+bg-gradient-to-br from-{color}-500 to-{color}-600
+text-white
+rounded-xl
+shadow-lg
+p-6
+```
+
+### Buttons
+
+**Primary Button:**
+```css
+bg-gradient-to-r from-lavpop-blue to-blue-600
+hover:from-blue-600 hover:to-blue-700
+text-white font-bold
+rounded-xl
+px-6 py-3.5
+shadow-lg hover:shadow-blue-500/25
+active:scale-[0.98]
+transition-all duration-200
+```
+
+**Secondary Button:**
+```css
+bg-slate-100 dark:bg-slate-800
+hover:bg-slate-200 dark:hover:bg-slate-700
+text-slate-700 dark:text-slate-300
+rounded-xl
+px-4 py-2
+transition-all duration-200
+```
+
+**Icon Button:**
+```css
+p-2.5 rounded-xl
+text-slate-500 dark:text-slate-400
+hover:bg-slate-100 dark:hover:bg-slate-800
+hover:text-lavpop-blue
+transition-all
+active:scale-95
+```
+
+---
+
+## 🌓 Dark Mode
+
+### Color Mappings
+
+| Light Mode | Dark Mode | Usage |
+|------------|-----------|-------|
+| `bg-white` | `bg-slate-900` | App background |
+| `bg-slate-50` | `bg-slate-800` | Card backgrounds |
+| `bg-slate-100` | `bg-slate-800` | Widget backgrounds |
+| `text-slate-900` | `text-white` | Primary text |
+| `text-slate-600` | `text-slate-400` | Secondary text |
+| `border-slate-200` | `border-slate-700` | Borders |
+
+### Implementation
+
+```jsx
+// Always use paired classes
+className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+
+// Opacity variants for dark mode
+className="bg-white/80 dark:bg-slate-900/80"
+```
+
+---
+
+## 📱 Mobile-First Principles
+
+### 1. **Progressive Enhancement**
+- Start with mobile layout
+- Add desktop features with `sm:`, `lg:`, `xl:` breakpoints
+- Hide non-essential elements on mobile
+
+### 2. **Touch Targets**
+- Minimum height: `h-9` (36px)
+- Minimum tap area: `44x44px` for interactive elements
+- Adequate spacing between clickable items
+
+### 3. **Content Priority**
+- Show essential data first (temperature, not icon)
+- Use hamburger menu for secondary controls
+- Collapse complex layouts into vertical stacks
+
+### 4. **Performance**
+- Use `backdrop-blur-md` sparingly
+- Lazy load off-screen content
+- Optimize images and icons
+
+---
+
+## 🎭 Animation & Transitions
+
+### Standard Transitions
+
+```css
+transition-all duration-200  /* Standard hover/state changes */
+transition-colors duration-300  /* Theme switching */
+```
+
+### Framer Motion Patterns
+
+**Page Transitions:**
+```jsx
+initial={{ opacity: 0, y: 10 }}
+animate={{ opacity: 1, y: 0 }}
+exit={{ opacity: 0, y: -10 }}
+transition={{ duration: 0.3 }}
+```
+
+**Tab Indicator:**
+```jsx
+<motion.div
+  layoutId="activeTab"
+  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+/>
+```
+
+**Scale Feedback:**
+```css
+active:scale-95      /* Buttons */
+active:scale-[0.98]  /* Large buttons */
+hover:scale-105      /* Cards (optional) */
+```
+
+---
+
+## 🔤 Text Styles
+
+### Headings
+
+```jsx
+// Page Title
+<h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+
+// Section Title
+<h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">
+
+// Card Title
+<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">
+```
+
+### Body Text
+
+```jsx
+// Primary
+<p className="text-sm text-slate-700 dark:text-slate-300">
+
+// Secondary
+<p className="text-xs text-slate-600 dark:text-slate-400">
+
+// Muted
+<p className="text-xs text-slate-500 dark:text-slate-500">
+```
+
+### Labels & Captions
+
+```jsx
+// Label
+<span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+
+// Caption
+<span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
+```
+
+---
+
+## 📊 Data Visualization
+
+### Chart Colors
+
+```javascript
+// Primary data series
+colors: ['#1a5a8e', '#10b981', '#f59e0b', '#ef4444']
+
+// Gradient bars
+from-lavpop-blue to-blue-600
+from-lavpop-green to-emerald-600
+```
+
+### Chart Styling
+
+```css
+/* Container */
+bg-white dark:bg-slate-800
+rounded-xl
+border border-slate-200 dark:border-slate-700
+p-6
+
+/* Responsive height */
+h-64 sm:h-80 lg:h-96
+```
+
+### Chart Best Practices
+
+**1. Color Selection**
+- Use semantic colors: Green for positive, Red for negative, Blue for neutral
+- Maintain consistent color mapping across all charts
+- Ensure sufficient contrast in dark mode
+
+**2. Data Presentation**
+- Limit to 4-5 data series per chart for readability
+- Use gradients for visual appeal but maintain clarity
+- Include legends for multi-series charts
+
+**3. Responsive Design**
+- Reduce chart height on mobile: `h-48 sm:h-64 lg:h-80`
+- Simplify labels on small screens
+- Consider horizontal scrolling for dense data
+
+**4. Accessibility**
+- Don't rely solely on color to convey information
+- Include text labels and values
+- Provide alternative data views (tables)
+
+---
+
+## 🎨 Card Color Palette
+
+### KPI Cards (Gradient Backgrounds)
+
+**Revenue/Financial (Teal/Emerald):**
+```css
+bg-gradient-to-br from-teal-500 to-emerald-600
+hover:from-teal-600 hover:to-emerald-700
+```
+**Usage:** Revenue, sales, financial metrics
+
+**Customer/Growth (Blue/Indigo):**
+```css
+bg-gradient-to-br from-blue-500 to-indigo-600
+hover:from-blue-600 hover:to-indigo-700
+```
+**Usage:** Customer count, growth metrics, engagement
+
+**Operations (Purple/Violet):**
+```css
+bg-gradient-to-br from-purple-500 to-violet-600
+hover:from-purple-600 hover:to-violet-700
+```
+**Usage:** Operational metrics, efficiency, cycles
+
+**Performance (Orange/Amber):**
+```css
+bg-gradient-to-br from-orange-500 to-amber-600
+hover:from-orange-600 hover:to-amber-700
+```
+**Usage:** Performance indicators, utilization, capacity
+
+**Alert/Warning (Red/Rose):**
+```css
+bg-gradient-to-br from-red-500 to-rose-600
+hover:from-red-600 hover:to-rose-700
+```
+**Usage:** At-risk customers, warnings, critical metrics
+
+**Success/Positive (Green/Emerald):**
+```css
+bg-gradient-to-br from-green-500 to-emerald-600
+hover:from-green-600 hover:to-emerald-700
+```
+**Usage:** Achievements, positive trends, goals met
+
+### Information Cards (Neutral Backgrounds)
+
+**Standard Card:**
+```css
+bg-white dark:bg-slate-800
+border border-slate-200 dark:border-slate-700
+```
+
+**Highlighted Card:**
+```css
+bg-slate-50 dark:bg-slate-800/50
+border border-slate-200 dark:border-slate-700
+```
+
+**Interactive Card:**
+```css
+bg-white dark:bg-slate-800
+hover:bg-slate-50 dark:hover:bg-slate-700
+border border-slate-200 dark:border-slate-700
+hover:border-lavpop-blue dark:hover:border-blue-500
+cursor-pointer
+transition-all duration-200
+```
+
+### Status Indicators
+
+**Success:**
+```css
+bg-emerald-50 dark:bg-emerald-900/20
+text-emerald-700 dark:text-emerald-400
+border-emerald-200 dark:border-emerald-800
+```
+
+**Warning:**
+```css
+bg-amber-50 dark:bg-amber-900/20
+text-amber-700 dark:text-amber-400
+border-amber-200 dark:border-amber-800
+```
+
+**Error:**
+```css
+bg-red-50 dark:bg-red-900/20
+text-red-700 dark:text-red-400
+border-red-200 dark:border-red-800
+```
+
+**Info:**
+```css
+bg-blue-50 dark:bg-blue-900/20
+text-blue-700 dark:text-blue-400
+border-blue-200 dark:border-blue-800
+```
+
+---
+
+## 🪟 Modals & Overlays
+
+### Modal Container
+
+```jsx
+<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  {/* Backdrop */}
+  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+  
+  {/* Modal */}
+  <div className="
+    relative z-10
+    bg-white dark:bg-slate-800
+    rounded-2xl
+    shadow-2xl
+    border border-slate-200 dark:border-slate-700
+    max-w-2xl w-full
+    max-h-[90vh]
+    overflow-hidden
+  ">
+    {/* Content */}
+  </div>
+</div>
+```
+
+### Modal Sizes
+
+```css
+/* Small - Confirmations, alerts */
+max-w-md
+
+/* Medium - Forms, details */
+max-w-2xl
+
+/* Large - Complex data, tables */
+max-w-4xl
+
+/* Full - Image viewers, detailed reports */
+max-w-6xl
+```
+
+### Modal Header
+
+```jsx
+<div className="
+  flex items-center justify-between
+  px-6 py-4
+  border-b border-slate-200 dark:border-slate-700
+  bg-gradient-to-r from-lavpop-blue to-blue-600
+">
+  <h2 className="text-xl font-bold text-white">
+    Modal Title
+  </h2>
+  <button className="
+    p-2 rounded-lg
+    text-white/80 hover:text-white
+    hover:bg-white/10
+    transition-colors
+  ">
+    <X className="w-5 h-5" />
+  </button>
+</div>
+```
+
+### Modal Body
+
+```jsx
+<div className="
+  px-6 py-4
+  overflow-y-auto
+  max-h-[calc(90vh-8rem)]
+">
+  {/* Scrollable content */}
+</div>
+```
+
+### Modal Footer
+
+```jsx
+<div className="
+  flex items-center justify-end gap-3
+  px-6 py-4
+  border-t border-slate-200 dark:border-slate-700
+  bg-slate-50 dark:bg-slate-900/50
+">
+  <button className="secondary-button">Cancel</button>
+  <button className="primary-button">Confirm</button>
+</div>
+```
+
+### Modal Animation (Framer Motion)
+
+```jsx
+<AnimatePresence>
+  {isOpen && (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+    >
+      {/* Modal content */}
+    </motion.div>
+  )}
+</AnimatePresence>
+```
+
+---
+
+## 💬 Tooltips
+
+### Tooltip Component Structure
+
+```jsx
+<div className="relative group">
+  {/* Trigger element */}
+  <button>Hover me</button>
+  
+  {/* Tooltip */}
+  <div className="
+    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+    px-3 py-2
+    bg-slate-900 dark:bg-slate-700
+    text-white text-xs font-medium
+    rounded-lg
+    shadow-lg
+    opacity-0 group-hover:opacity-100
+    pointer-events-none
+    transition-opacity duration-200
+    whitespace-nowrap
+    z-50
+  ">
+    Tooltip text
+    {/* Arrow */}
+    <div className="
+      absolute top-full left-1/2 -translate-x-1/2
+      w-0 h-0
+      border-l-4 border-l-transparent
+      border-r-4 border-r-transparent
+      border-t-4 border-t-slate-900 dark:border-t-slate-700
+    " />
+  </div>
+</div>
+```
+
+### Tooltip Positions
+
+**Top (default):**
+```css
+bottom-full left-1/2 -translate-x-1/2 mb-2
+```
+
+**Bottom:**
+```css
+top-full left-1/2 -translate-x-1/2 mt-2
+```
+
+**Left:**
+```css
+right-full top-1/2 -translate-y-1/2 mr-2
+```
+
+**Right:**
+```css
+left-full top-1/2 -translate-y-1/2 ml-2
+```
+
+### Tooltip Variants
+
+**Standard (Dark):**
+```css
+bg-slate-900 dark:bg-slate-700
+text-white
+```
+
+**Light:**
+```css
+bg-white dark:bg-slate-800
+text-slate-900 dark:text-white
+border border-slate-200 dark:border-slate-700
+shadow-xl
+```
+
+**Info:**
+```css
+bg-blue-600 dark:bg-blue-700
+text-white
+```
+
+**Warning:**
+```css
+bg-amber-600 dark:bg-amber-700
+text-white
+```
+
+**Error:**
+```css
+bg-red-600 dark:bg-red-700
+text-white
+```
+
+### Tooltip Best Practices
+
+1. **Keep it concise** - Max 1-2 lines
+2. **Use for clarification** - Not for essential information
+3. **Delay appearance** - 300-500ms hover delay
+4. **Portal rendering** - Use React Portal for z-index issues
+5. **Mobile alternative** - Use modals or expandable sections on touch devices
+
+---
+
+## 📋 Tables & Data Grids
+
+### Table Container
+
+```jsx
+<div className="
+  overflow-x-auto
+  rounded-xl
+  border border-slate-200 dark:border-slate-700
+">
+  <table className="w-full">
+    {/* Table content */}
+  </table>
+</div>
+```
+
+### Table Header
+
+```css
+bg-slate-50 dark:bg-slate-800/50
+border-b border-slate-200 dark:border-slate-700
+text-xs font-semibold text-slate-700 dark:text-slate-300
+uppercase tracking-wider
+```
+
+### Table Rows
+
+**Standard:**
+```css
+border-b border-slate-200 dark:border-slate-700
+hover:bg-slate-50 dark:hover:bg-slate-800/50
+transition-colors
+```
+
+**Striped:**
+```css
+even:bg-slate-50 dark:even:bg-slate-800/30
+```
+
+**Interactive:**
+```css
+cursor-pointer
+hover:bg-blue-50 dark:hover:bg-blue-900/20
+active:bg-blue-100 dark:active:bg-blue-900/30
+```
+
+### Table Cells
+
+```css
+px-4 py-3
+text-sm text-slate-700 dark:text-slate-300
+```
+
+---
+
+## 🎯 Design Patterns for Tabs
+
+### Tab Content Layout
+
+**Standard Tab Structure:**
+```jsx
+<div className="space-y-6">
+  {/* Header Section */}
+  <div className="flex items-center justify-between">
+    <h1 className="text-2xl font-bold">Tab Title</h1>
+    <div className="flex items-center gap-3">
+      {/* Actions */}
+    </div>
+  </div>
+
+  {/* Main Content Grid */}
+  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+    {/* Cards */}
+  </div>
+
+  {/* Data Section */}
+  <div className="bg-white dark:bg-slate-800 rounded-xl p-6">
+    {/* Charts, tables, etc. */}
+  </div>
+</div>
+```
+
+### Consistent Spacing
+
+```css
+/* Between sections */
+space-y-6
+
+/* Card grids */
+gap-6
+
+/* Internal card padding */
+p-6
+
+/* Compact elements */
+gap-3
+```
+
+### Loading States
+
+```jsx
+<div className="flex items-center justify-center h-64">
+  <div className="text-center">
+    <Loader className="w-8 h-8 animate-spin text-lavpop-blue mx-auto mb-3" />
+    <p className="text-sm text-slate-600 dark:text-slate-400">
+      Loading data...
+    </p>
+  </div>
+</div>
+```
+
+### Empty States
+
+```jsx
+<div className="flex flex-col items-center justify-center h-64 text-center">
+  <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+    <Icon className="w-8 h-8 text-slate-400" />
+  </div>
+  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+    No data available
+  </h3>
+  <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm">
+    Description of why there's no data and what to do next.
+  </p>
+</div>
+```
+
+---
+
+## ✅ Accessibility
+
+### Color Contrast
+- Text on background: Minimum 4.5:1 ratio
+- Large text (18px+): Minimum 3:1 ratio
+- Interactive elements: Clear focus states
+
+### Focus States
+
+```css
+focus:outline-none
+focus:ring-2
+focus:ring-lavpop-blue
+focus:ring-offset-2
+```
+
+### ARIA Labels
+
+```jsx
+<button aria-label="Menu">
+<nav aria-label="Main navigation">
+<div role="status" aria-live="polite">
+```
+
+---
+
+## 🎯 Best Practices
+
+### 1. **Consistency**
+- Use design tokens from `tailwind.config.js`
+- Follow established component patterns
+- Maintain spacing rhythm
+
+### 2. **Performance**
+- Minimize re-renders with `useMemo`, `useCallback`
+- Use CSS transforms for animations
+- Lazy load heavy components
+
+### 3. **Maintainability**
+- Extract repeated patterns into components
+- Document complex logic
+- Use semantic HTML
+
+### 4. **Responsiveness**
+- Test on multiple screen sizes
+- Use relative units (`rem`, `%`, `vh/vw`)
+- Provide fallbacks for older browsers
+
+---
+
+## 📱 Mobile View Best Practices
+
+### Viewport & Scaling
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+```
+
+**Guidelines:**
+- Allow zoom up to 5x for accessibility
+- Never use `user-scalable=no`
+- Set initial scale to 1.0
+
+### Preventing Horizontal Scroll
+
+**1. Container Constraints:**
+```css
+/* Always constrain width */
+max-w-full
+overflow-x-hidden
+
+/* For the body/root */
+<body className="overflow-x-hidden">
+```
+
+**2. Responsive Images:**
+```css
+/* Images */
+max-w-full h-auto
+
+/* Background images */
+bg-cover bg-center
+```
+
+**3. Tables & Wide Content:**
+```jsx
+<div className="overflow-x-auto -mx-4 px-4">
+  <table className="min-w-full">
+    {/* Table content */}
+  </table>
+</div>
+```
+
+**4. Fixed Width Elements:**
+```css
+/* Avoid fixed widths, use max-width instead */
+❌ w-[500px]
+✅ max-w-[500px] w-full
+```
+
+### Touch Targets
+
+**Minimum Sizes:**
+```css
+/* Buttons, links, interactive elements */
+min-h-[44px] min-w-[44px]  /* iOS guideline */
+min-h-[48px] min-w-[48px]  /* Android guideline */
+
+/* Standard touch target */
+h-11 px-4  /* 44px height */
+```
+
+**Spacing Between Targets:**
+```css
+/* Minimum 8px gap between interactive elements */
+gap-2  /* 8px */
+gap-3  /* 12px - preferred */
+```
+
+### Mobile Navigation Patterns
+
+**1. Hamburger Menu:**
+```jsx
+<button
+  className="lg:hidden p-2.5 rounded-xl"
+  aria-label="Menu"
+  aria-expanded={isOpen}
+>
+  {isOpen ? <X /> : <Menu />}
+</button>
+```
+
+**2. Bottom Navigation (Alternative):**
+```jsx
+<nav className="
+  fixed bottom-0 left-0 right-0
+  bg-white dark:bg-slate-900
+  border-t border-slate-200 dark:border-slate-700
+  safe-area-inset-bottom
+  lg:hidden
+">
+  {/* Nav items */}
+</nav>
+```
+
+### Mobile Typography
+
+```css
+/* Reduce font sizes on mobile */
+text-2xl sm:text-3xl lg:text-4xl  /* Headings */
+text-sm sm:text-base              /* Body */
+text-xs sm:text-sm                /* Small text */
+```
+
+### Mobile Spacing
+
+```css
+/* Reduce padding on mobile */
+p-4 sm:p-6 lg:p-8
+gap-4 sm:gap-6 lg:gap-8
+
+/* Reduce margins */
+space-y-4 sm:space-y-6
+```
+
+### Mobile Forms
+
+**Input Styling:**
+```css
+/* Larger inputs for touch */
+h-12 px-4
+text-base  /* Prevents zoom on iOS */
+rounded-xl
+```
+
+**Input Types:**
+```jsx
+{/* Use appropriate input types for mobile keyboards */}
+<input type="email" inputMode="email" />
+<input type="tel" inputMode="tel" />
+<input type="number" inputMode="numeric" />
+```
+
+### Mobile Performance
+
+**1. Reduce Animations:**
+```jsx
+// Disable complex animations on mobile
+const shouldAnimate = useMediaQuery('(min-width: 1024px)');
+
+<motion.div
+  animate={shouldAnimate ? { ... } : undefined}
+>
+```
+
+**2. Lazy Loading:**
+```jsx
+// Load heavy components only when needed
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+
+<Suspense fallback={<Loader />}>
+  <HeavyComponent />
+</Suspense>
+```
+
+**3. Image Optimization:**
+```jsx
+<img
+  src="image.jpg"
+  srcSet="image-small.jpg 640w, image-medium.jpg 1024w, image-large.jpg 1920w"
+  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+  loading="lazy"
+  alt="Description"
+/>
+```
+
+---
+
+## 🎠 Card Carousels (Embla)
+
+### Basic Carousel Setup
+
+```jsx
+import useEmblaCarousel from 'embla-carousel-react';
+
+const MyCarousel = ({ items }) => {
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: 'start',
+    containScroll: 'trimSnaps',
+    dragFree: false,
+    loop: false,
+  });
+
+  return (
+    <div className="overflow-hidden" ref={emblaRef}>
+      <div className="flex gap-4">
+        {items.map((item, index) => (
+          <div
+            key={index}
+            className="flex-[0_0_100%] sm:flex-[0_0_50%] lg:flex-[0_0_33.333%] min-w-0"
+          >
+            {/* Card content */}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+### Carousel Configuration
+
+**Options:**
+```javascript
+{
+  align: 'start',        // 'start', 'center', 'end'
+  containScroll: 'trimSnaps',  // Prevents blank space
+  dragFree: false,       // Snap to slides
+  loop: false,           // Infinite loop
+  skipSnaps: false,      // Skip empty snaps
+  slidesToScroll: 1,     // Number of slides per scroll
+}
+```
+
+### Responsive Slide Widths
+
+```css
+/* Mobile: 1 card */
+flex-[0_0_100%]
+
+/* Tablet: 2 cards */
+sm:flex-[0_0_50%]
+
+/* Desktop: 3 cards */
+lg:flex-[0_0_33.333%]
+
+/* Large desktop: 4 cards */
+xl:flex-[0_0_25%]
+```
+
+### Carousel Navigation
+
+```jsx
+const [emblaRef, emblaApi] = useEmblaCarousel();
+const [canScrollPrev, setCanScrollPrev] = useState(false);
+const [canScrollNext, setCanScrollNext] = useState(false);
+
+useEffect(() => {
+  if (!emblaApi) return;
+
+  const onSelect = () => {
+    setCanScrollPrev(emblaApi.canScrollPrev());
+    setCanScrollNext(emblaApi.canScrollNext());
+  };
+
+  emblaApi.on('select', onSelect);
+  onSelect();
+
+  return () => emblaApi.off('select', onSelect);
+}, [emblaApi]);
+
+// Navigation buttons
+<button
+  onClick={() => emblaApi?.scrollPrev()}
+  disabled={!canScrollPrev}
+  className="carousel-button"
+>
+  <ChevronLeft />
+</button>
+```
+
+### Carousel Dots
+
+```jsx
+const [selectedIndex, setSelectedIndex] = useState(0);
+const [scrollSnaps, setScrollSnaps] = useState([]);
+
+useEffect(() => {
+  if (!emblaApi) return;
+
+  setScrollSnaps(emblaApi.scrollSnapList());
+  
+  const onSelect = () => {
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  };
+
+  emblaApi.on('select', onSelect);
+  onSelect();
+
+  return () => emblaApi.off('select', onSelect);
+}, [emblaApi]);
+
+// Dots
+<div className="flex justify-center gap-2 mt-4">
+  {scrollSnaps.map((_, index) => (
+    <button
+      key={index}
+      onClick={() => emblaApi?.scrollTo(index)}
+      className={`
+        w-2 h-2 rounded-full transition-all
+        ${index === selectedIndex
+          ? 'bg-lavpop-blue w-6'
+          : 'bg-slate-300 dark:bg-slate-600'}
+      `}
+    />
+  ))}
+</div>
+```
+
+### Carousel Best Practices
+
+1. **Always set min-w-0** - Prevents flex items from overflowing
+2. **Use gap instead of margin** - Better spacing control
+3. **Disable on desktop when not needed** - Show grid instead
+4. **Add touch feedback** - Visual indication of draggability
+5. **Preload adjacent slides** - Better performance
+
+### When to Use Carousels
+
+**✅ Good Use Cases:**
+- KPI cards on mobile (limited screen space)
+- Image galleries
+- Product showcases
+- Testimonials
+
+**❌ Avoid Carousels For:**
+- Critical information (users might miss it)
+- Long lists (use pagination or infinite scroll)
+- Desktop layouts with plenty of space
+
+---
+
+## 🔍 Search & Filtering
+
+### Search Input
+
+```jsx
+<div className="relative">
+  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+  <input
+    type="search"
+    placeholder="Search..."
+    className="
+      w-full h-11 pl-10 pr-4
+      bg-slate-50 dark:bg-slate-800
+      border border-slate-200 dark:border-slate-700
+      rounded-xl
+      text-sm
+      placeholder:text-slate-400
+      focus:outline-none focus:ring-2 focus:ring-lavpop-blue
+      transition-all
+    "
+  />
+</div>
+```
+
+### Filter Chips
+
+```jsx
+<div className="flex flex-wrap gap-2">
+  {filters.map(filter => (
+    <button
+      key={filter.id}
+      className={`
+        px-3 py-1.5 rounded-full text-xs font-medium
+        transition-all
+        ${filter.active
+          ? 'bg-lavpop-blue text-white'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}
+      `}
+    >
+      {filter.label}
+      {filter.active && (
+        <X className="inline-block w-3 h-3 ml-1" />
+      )}
+    </button>
+  ))}
+</div>
+```
+
+---
+
+## 📊 Data States
+
+### Loading Skeleton
+
+```jsx
+<div className="animate-pulse space-y-4">
+  <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4" />
+  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
+</div>
+```
+
+### Error State
+
+```jsx
+<div className="flex flex-col items-center justify-center h-64 text-center">
+  <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
+    <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
+  </div>
+  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+    Error loading data
+  </h3>
+  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 max-w-sm">
+    {errorMessage}
+  </p>
+  <button onClick={retry} className="primary-button">
+    Try Again
+  </button>
+</div>
+```
+
+---
+
+## 🎨 Micro-interactions
+
+### Button Press Feedback
+
+```css
+active:scale-95
+transition-transform duration-100
+```
+
+### Hover Lift
+
+```css
+hover:-translate-y-1
+hover:shadow-lg
+transition-all duration-200
+```
+
+### Ripple Effect (CSS only)
+
+```css
+relative overflow-hidden
+before:absolute before:inset-0
+before:bg-white/20
+before:scale-0 before:rounded-full
+hover:before:scale-100
+before:transition-transform before:duration-500
+```
+
+### Loading Spinner
+
+```jsx
+<div className="relative">
+  <div className="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 border-t-lavpop-blue rounded-full animate-spin" />
+</div>
+```
+
+---
+
+## 🔐 Security & Privacy
+
+### Data Handling
+
+1. **Never log sensitive data** to console in production
+2. **Sanitize user inputs** before displaying
+3. **Use HTTPS** for all API calls
+4. **Implement CORS** properly on backend
+
+### Local Storage
+
+```javascript
+// Encrypt sensitive data before storing
+const encryptedData = encrypt(sensitiveData);
+localStorage.setItem('key', encryptedData);
+
+// Clear on logout
+const clearUserData = () => {
+  localStorage.clear();
+  sessionStorage.clear();
+};
+```
+
+---
+
+## 📦 Component Checklist
+
+When creating new components, ensure:
+
+- [ ] Responsive design (mobile-first)
+- [ ] Dark mode support
+- [ ] Proper spacing and typography
+- [ ] Accessible markup and labels
+- [ ] Smooth transitions
+- [ ] Loading and error states
+- [ ] Touch-friendly on mobile
+- [ ] Consistent with design system
+
+---
+
+## 🔗 Related Files
+
+- **Config:** `tailwind.config.js`
+- **Theme:** `src/contexts/ThemeContext.jsx`
+- **Main App:** `src/App.jsx`
+- **Components:** `src/components/`
+
+---
+
+**Powered by Nova Lopez Lavanderia Ltd.**
