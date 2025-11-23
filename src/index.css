@@ -1,8 +1,10 @@
-/* Lavpop BI - Base Styles v2.1 (Tailwind Edition)
+/* Lavpop BI - Base Styles v3.0 (Tailwind Edition)
+ * Premium design system with Google Fonts and enhanced animations
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
  *
  * CHANGELOG:
+ * v3.0 (2025-11-23): Google Fonts (Inter, JetBrains Mono), enhanced animations
  * v2.1 Refined Custom Scrollbar for Modals
  * v2.0 (2025-11-20): Complete Tailwind migration
  *   - Removed all component-specific CSS
@@ -10,6 +12,9 @@
  *   - Minimal base styles only
  * v1.0: Legacy CSS version (deprecated)
  */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -23,7 +28,7 @@
   /* Lavpop Brand Colors */
   --color-lavpop-blue: #1a5a8e;
   --color-lavpop-green: #55b03b;
-  
+
   /* Light Theme (Default) */
   --color-background: #f5f7fa;
   --color-surface: #ffffff;
@@ -32,7 +37,7 @@
   --color-text-primary: #1f2937;
   --color-text-secondary: #6b7280;
   --color-text-muted: #9ca3af;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -49,7 +54,7 @@
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
   --color-text-muted: #64748b;
-  
+
   /* Darker shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
@@ -87,10 +92,10 @@ body {
 
 /* Smooth transitions for theme switching */
 .theme-transition {
-  transition: background-color 0.3s ease, 
-              border-color 0.3s ease, 
-              color 0.3s ease,
-              box-shadow 0.3s ease;
+  transition: background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 /* Custom scrollbar */
@@ -180,7 +185,7 @@ body {
     background: white;
     color: black;
   }
-  
+
   .no-print {
     display: none !important;
   }
@@ -194,6 +199,7 @@ body {
   0% {
     background-position: -1000px 0;
   }
+
   100% {
     background-position: 1000px 0;
   }
@@ -201,13 +207,47 @@ body {
 
 .skeleton {
   animation: shimmer 2s infinite;
-  background: linear-gradient(
-    to right,
-    var(--color-border) 4%,
-    var(--color-surface-hover) 25%,
-    var(--color-border) 36%
-  );
+  background: linear-gradient(to right,
+      var(--color-border) 4%,
+      var(--color-surface-hover) 25%,
+      var(--color-border) 36%);
   background-size: 1000px 100%;
+}
+
+/* Premium transition utilities */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-bounce {
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Card lift effect */
+.card-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+}
+
+.dark .card-lift:hover {
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.4);
+}
+
+/* Number count-up animation base */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================

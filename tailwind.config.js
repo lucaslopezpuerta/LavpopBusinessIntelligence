@@ -1,11 +1,12 @@
-// Lavpop BI - Tailwind Configuration v2.0
-// Complete design system with brand colors and dark mode support
+// Lavpop BI - Tailwind Configuration v3.0
+// Premium design system with enhanced typography, gradients, and animations
 // 
 // BRAND COLORS:
 // - Primary Blue: #1a5a8e (Lavpop brand blue)
 // - Accent Green: #55b03b (Lavpop brand green)
 //
 // CHANGELOG:
+// v3.0 (2025-11-23): Premium enhancements - Google Fonts, gradients, animations
 // v2.0 (2025-11-20): Tailwind setup with complete design system
 
 /** @type {import('tailwindcss').Config} */
@@ -45,7 +46,7 @@ export default {
           800: '#224618',
           900: '#11230c',
         },
-        
+
         // Risk Level Colors (for customer segmentation)
         'risk': {
           churning: '#dc2626',  // Red - Critical
@@ -55,7 +56,7 @@ export default {
           new: '#9333ea',       // Purple - New customer
           lost: '#6b7280',      // Gray - Inactive
         },
-        
+
         // Semantic UI Colors
         'ui': {
           background: {
@@ -82,9 +83,10 @@ export default {
           }
         }
       },
-      
+
       fontFamily: {
         sans: [
+          'Inter',
           '-apple-system',
           'BlinkMacSystemFont',
           '"Segoe UI"',
@@ -93,8 +95,16 @@ export default {
           'Arial',
           'sans-serif',
         ],
+        mono: [
+          '"JetBrains Mono"',
+          '"Fira Code"',
+          'Consolas',
+          'Monaco',
+          '"Courier New"',
+          'monospace',
+        ],
       },
-      
+
       fontSize: {
         'xs': ['0.75rem', { lineHeight: '1rem' }],     // 12px
         'sm': ['0.875rem', { lineHeight: '1.25rem' }], // 14px
@@ -105,20 +115,38 @@ export default {
         '3xl': ['1.875rem', { lineHeight: '2.25rem' }], // 30px
         '4xl': ['2.25rem', { lineHeight: '2.5rem' }],  // 36px
       },
-      
+
       spacing: {
         '18': '4.5rem',  // 72px
         '88': '22rem',   // 352px
         '112': '28rem',  // 448px
         '128': '32rem',  // 512px
       },
-      
+
+      backgroundImage: {
+        'gradient-lavpop': 'linear-gradient(135deg, #1a5a8e 0%, #2a7ab8 100%)',
+        'gradient-lavpop-dark': 'linear-gradient(135deg, #0d3a5c 0%, #1a5a8e 100%)',
+        'gradient-green': 'linear-gradient(135deg, #55b03b 0%, #6bc04d 100%)',
+        'gradient-green-dark': 'linear-gradient(135deg, #448d2f 0%, #55b03b 100%)',
+        'gradient-blue-green': 'linear-gradient(135deg, #1a5a8e 0%, #55b03b 100%)',
+        'gradient-subtle': 'linear-gradient(135deg, rgba(26, 90, 142, 0.05) 0%, rgba(85, 176, 59, 0.05) 100%)',
+      },
+
+      zIndex: {
+        'dropdown': '1000',
+        'sticky': '1020',
+        'modal-backdrop': '1040',
+        'modal': '1050',
+        'tooltip': '1060',
+        'notification': '1070',
+      },
+
       borderRadius: {
         'xl': '0.75rem',  // 12px
         '2xl': '1rem',    // 16px
         '3xl': '1.5rem',  // 24px
       },
-      
+
       boxShadow: {
         'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
         'DEFAULT': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
@@ -127,34 +155,6 @@ export default {
         'xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         'lavpop': '0 4px 14px 0 rgba(26, 90, 142, 0.15)', // Branded shadow
         'lavpop-lg': '0 10px 40px -10px rgba(26, 90, 142, 0.25)', // Large branded shadow
-      },
-      
-      animation: {
-        'fade-in': 'fadeIn 0.3s ease-in-out',
-        'slide-up': 'slideUp 0.3s ease-out',
-        'slide-down': 'slideDown 0.3s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      },
-      
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideUp: {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        slideDown: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-      },
-      
-      maxWidth: {
-        '8xl': '88rem',   // 1408px
-        '9xl': '96rem',   // 1536px
-        'lavpop': '100rem', // 1600px - Dashboard max width
       },
     },
   },

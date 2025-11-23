@@ -2,9 +2,13 @@
  * CSV Loader - Fetches and parses CSV files from /data folder
  * Uses PapaParse for robust CSV parsing
  * 
- * VERSION: 1.2
+ * VERSION: 2.0
  * 
  * CHANGELOG:
+ * v2.0 (2025-11-23): Added localStorage caching for performance
+ *   - Cache parsed CSV data for 5 minutes
+ *   - Dramatically improves load times on subsequent visits
+ *   - Cache invalidation on manual refresh
  * v1.2 (2025-11-15): Added auto-delimiter detection
  *   - Auto-detects comma, semicolon, tab, and pipe delimiters
  *   - Fixes customer.csv loading (semicolon-delimited)
@@ -14,30 +18,41 @@
  */
 
 import Papa from 'papaparse';
+import { getCachedData, setCachedData } from './dataCache';
 
 /**
  * Load a single CSV file
+ * @param {string} filename - CSV filename
+ * @param {boolean} skipCache - Skip cache and force fresh fetch
  */
-export const loadCSV = async (filename) => {
+export const loadCSV = async (filename, skipCache = false) => {
   try {
+    // Check cache first (unless skipping)
+    if (!skipCache) {
+      const cachedData = getCachedData(filename);
+      if (cachedData) {
+        return cachedData;
+      }
+    }
+
     // Use base path from Vite config (/LavpopBusinessIntelligence/)
     const basePath = import.meta.env.BASE_URL;
     const url = `${basePath}data/${filename}`;
-    
+
     console.log(`Loading ${filename} from ${url}`);
-    
+
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: Não foi possível carregar ${filename}. URL: ${url}`);
     }
-    
+
     const csvText = await response.text();
-    
+
     if (!csvText || csvText.trim().length === 0) {
       throw new Error(`${filename} está vazio`);
     }
-    
+
     return new Promise((resolve, reject) => {
       Papa.parse(csvText, {
         header: true,
@@ -49,13 +64,17 @@ export const loadCSV = async (filename) => {
           if (results.errors.length > 0) {
             console.warn(`Avisos ao processar ${filename}:`, results.errors);
           }
-          
+
           if (!results.data || results.data.length === 0) {
             reject(new Error(`${filename} não contém dados válidos`));
             return;
           }
-          
+
           console.log(`✓ Loaded ${filename}: ${results.data.length} rows`);
+
+          // Cache the parsed data
+          setCachedData(filename, results.data);
+
           resolve(results.data);
         },
         error: (error) => {
@@ -71,8 +90,10 @@ export const loadCSV = async (filename) => {
 
 /**
  * Load all required CSV files
+ * @param {function} onProgress - Progress callback
+ * @param {boolean} skipCache - Skip cache and force fresh fetch
  */
-export const loadAllData = async (onProgress) => {
+export const loadAllData = async (onProgress, skipCache = false) => {
   const files = [
     'sales.csv',
     'rfm.csv',
@@ -82,16 +103,16 @@ export const loadAllData = async (onProgress) => {
     'weather.csv',
     'campaigns.csv'
   ];
-  
+
   const data = {};
   let loaded = 0;
-  
+
   for (const file of files) {
     try {
       const key = file.replace('.csv', '');
-      data[key] = await loadCSV(file);
+      data[key] = await loadCSV(file, skipCache);
       loaded++;
-      
+
       if (onProgress) {
         onProgress({
           file,
@@ -105,7 +126,7 @@ export const loadAllData = async (onProgress) => {
       throw new Error(`Falha ao carregar ${file}: ${error.message}`);
     }
   }
-  
+
   return data;
 };
 
@@ -127,17 +148,17 @@ export const normalizeDoc = (doc) => {
  */
 export const countMachines = (str) => {
   if (!str) return { wash: 0, dry: 0, total: 0 };
-  
+
   const machineStr = String(str).toLowerCase().trim();
   const machines = machineStr.split(',').map(m => m.trim());
-  
+
   let wash = 0, dry = 0;
-  
+
   machines.forEach(m => {
     if (m.includes('lavadora')) wash++;
     else if (m.includes('secadora')) dry++;
   });
-  
+
   return { wash, dry, total: wash + dry };
 };
 
@@ -148,11 +169,11 @@ export const countMachines = (str) => {
 export const formatPhone = (phone) => {
   if (!phone) return '';
   const cleaned = phone.replace(/\D/g, '');
-  
+
   if (cleaned.length === 13) { // +55 + 11 digits
     return `+${cleaned.slice(0, 2)} ${cleaned.slice(2, 4)} ${cleaned.slice(4, 9)}-${cleaned.slice(9)}`;
   }
-  
+
   return phone;
 };
 

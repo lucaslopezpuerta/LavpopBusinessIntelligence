@@ -1,12 +1,12 @@
-// Dashboard.jsx v8.2 - OPERATING CYCLES CHART
-// ✅ Replaced chart placeholder with Nivo-based operating cycles chart
-// ✅ Shows daily wash vs dry cycles for the current month
+// Dashboard.jsx v8.3 - HEADER REDESIGN & LAYOUT OPTIMIZATION
+// ✅ Integrated date range into header (no more fighting banner)
+// ✅ Optimized spacing to minimize scrolling
+// ✅ Restored Quick Actions Card
 // ✅ Full dark/light theme support
-// ✅ Portuguese localization
 //
 // CHANGELOG:
+// v8.3 (2025-11-23): Header redesign & layout optimization
 // v8.2 (2025-11-21): Operating cycles chart integration
-// v8.1 (2025-11-21): Refined banner
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
@@ -19,12 +19,13 @@ import WeatherWidget from '../components/WeatherWidget_API';
 import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import SocialMediaWidget from '../components/SocialMediaWidget';
 import OperatingCyclesChart from '../components/OperatingCyclesChart';
+import QuickActionsCard from '../components/QuickActionsCard';
 
 // Utils
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 
-const Dashboard = () => {
+const Dashboard = (props) => {
   const [salesData, setSalesData] = useState([]);
   const [rfmData, setRfmData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +100,7 @@ const Dashboard = () => {
   // Get date range based on view mode
   const getDateRange = () => {
     if (!metrics?.business?.windows) return null;
-    
+
     if (viewMode === 'current' && metrics.business.windows.currentWeek) {
       const w = metrics.business.windows.currentWeek;
       const days = w.daysElapsed || 0;
@@ -110,7 +111,7 @@ const Dashboard = () => {
         label: `${days} ${days === 1 ? 'dia' : 'dias'}`
       };
     }
-    
+
     if (metrics.business.windows.weekly) {
       const w = metrics.business.windows.weekly;
       return {
@@ -120,7 +121,7 @@ const Dashboard = () => {
         label: '7 dias'
       };
     }
-    
+
     return null;
   };
 
@@ -161,15 +162,9 @@ const Dashboard = () => {
 
             {/* Date Range + Toggle */}
             <div className="flex items-center gap-3">
-              {dateRange && (
-                <div className="hidden lg:flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm border border-white/10">
-                  <Calendar className="w-4 h-4 text-white/80" />
-                  <span className="text-xs text-white font-medium">
-                    {dateRange.start} - {dateRange.end} • {dateRange.label}
-                  </span>
-                </div>
-              )}
-              
+              {/* Desktop Date Range Pill - Hidden on mobile, kept for desktop layout balance if needed, 
+                  but we are integrating it below. Let's keep the toggle. */}
+
               <div className="bg-white/10 rounded-lg p-1 flex items-center backdrop-blur-sm border border-white/10 h-9">
                 <button
                   onClick={() => setViewMode('complete')}
@@ -183,7 +178,8 @@ const Dashboard = () => {
                   `}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Anterior</span>
+                  <span className="hidden sm:inline">Anterior</span>
+                  <span className="sm:hidden">Ant</span>
                 </button>
                 <button
                   onClick={() => setViewMode('current')}
@@ -197,11 +193,32 @@ const Dashboard = () => {
                   `}
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Atual</span>
+                  <span className="hidden sm:inline">Atual</span>
+                  <span className="sm:hidden">Hoje</span>
                 </button>
               </div>
             </div>
           </div>
+
+          {/* Date Range Info Bar - Integrated below main header */}
+          {dateRange && (
+            <div className="border-t border-white/10 py-2">
+              <div className="flex items-center justify-center gap-2 text-white/90 text-xs">
+                <Calendar className="w-3.5 h-3.5" />
+                <span className="font-medium">
+                  {dateRange.start} - {dateRange.end}
+                </span>
+                <span className="text-white/60">•</span>
+                <span className="font-medium">
+                  {dateRange.label}
+                </span>
+                <span className="hidden sm:inline text-white/60">•</span>
+                <span className="hidden sm:inline">
+                  {viewMode === 'current' ? 'Semana Atual' : 'Semana Anterior'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -215,26 +232,7 @@ const Dashboard = () => {
       </div>
 
       {/* MAIN CONTENT */}
-      <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Date Range Banner (Mobile) */}
-        {dateRange && (
-          <div className="lg:hidden bg-gradient-to-br from-lavpop-blue to-blue-700 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-4 text-white shadow-lg border border-blue-600/30 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider">
-                  {viewMode === 'current' ? 'Semana Atual' : 'Semana Anterior'}
-                </h3>
-                <p className="text-xs opacity-90">
-                  {dateRange.start} - {dateRange.end} • {dateRange.label}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
+      <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
         {/* KPI Cards */}
         {metrics && (
           <KPICards
@@ -242,26 +240,38 @@ const Dashboard = () => {
             customerMetrics={metrics.customers}
             salesData={salesData}
             viewMode={viewMode}
+            onNavigate={props.onNavigate}
           />
         )}
 
         {/* Main Grid */}
-        <div className="grid grid-cols-1 2xl:grid-cols-[1fr_440px] gap-6">
+        <div className="grid grid-cols-1 2xl:grid-cols-[1fr_440px] gap-4">
           {/* Operating Cycles Chart */}
           <OperatingCyclesChart salesData={salesData} />
 
-          {/* At-Risk Table */}
-          {metrics?.customers && (
-            <AtRiskCustomersTable
-              customerMetrics={metrics.customers}
-              salesData={salesData}
+          {/* Right Column: At-Risk Table + Quick Actions */}
+          <div className="space-y-4">
+            {/* At-Risk Table */}
+            {metrics?.customers && (
+              <AtRiskCustomersTable
+                customerMetrics={metrics.customers}
+                salesData={salesData}
+              />
+            )}
+
+            {/* Quick Actions Card */}
+            <QuickActionsCard
+              onRefresh={() => window.location.reload()}
+              onExportReport={() => alert('Funcionalidade de exportação em breve!')}
+              onSendCampaign={() => alert('Funcionalidade de campanha em breve!')}
+              onOpenSettings={() => alert('Configurações em breve!')}
             />
-          )}
+          </div>
         </div>
 
         {/* Footer */}
         <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
-          Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.2
+          Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.3
         </div>
       </main>
     </div>
