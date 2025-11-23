@@ -10,7 +10,7 @@
 // v6.0 (2025-11-21): No overflow redesign
 
 import React, { useState } from 'react';
-import { Phone, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Phone, MessageCircle, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import CustomerDetailModal from './CustomerDetailModal';
 
 const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
@@ -31,13 +31,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
 
   if (atRiskCustomers.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 text-center">
-        <div className="text-lavpop-green dark:text-green-400 text-base font-semibold mb-1">
-          🎉 Ótimas notícias!
+      <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-2xl p-8 text-center border border-emerald-200 dark:border-emerald-800 shadow-sm">
+        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
         </div>
-        <div className="text-slate-500 dark:text-slate-400 text-sm">
-          Nenhum cliente em risco
-        </div>
+        <h3 className="text-lg font-bold text-emerald-900 dark:text-emerald-100 mb-2">
+          Excelente trabalho!
+        </h3>
+        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+          Nenhum cliente em risco no momento
+        </p>
       </div>
     );
   }
@@ -89,41 +92,53 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
 
   return (
     <>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-lavpop-blue/30 dark:border-blue-700">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-lavpop-blue to-blue-600 flex items-center justify-center shadow-md">
-            <AlertTriangle className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-extrabold text-lavpop-blue dark:text-blue-400 leading-none">
-              Top {maxRows} Clientes em Risco
-            </h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              Alto valor • Clique para detalhes
-            </p>
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg">
+              <AlertTriangle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Clientes em Risco
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                {atRiskCustomers.length} clientes precisam de atenção
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Table */}
         <div className="overflow-hidden">
-          <table className="w-full text-xs border-collapse">
+          <table className="w-full text-xs">
             <thead>
-              <tr className="bg-slate-100 dark:bg-slate-700/50">
-                <th className="px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center rounded-tl-lg">
-                  CLIENTE
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-200 dark:border-slate-700">
+                <th className="px-4 py-3 text-left">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Cliente
+                  </span>
                 </th>
-                <th className="hidden lg:table-cell px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center">
-                  RISCO
+                <th className="hidden lg:table-cell px-4 py-3 text-center">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Risco
+                  </span>
                 </th>
-                <th className="hidden lg:table-cell px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center">
-                  TOTAL
+                <th className="hidden lg:table-cell px-4 py-3 text-right">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Total
+                  </span>
                 </th>
-                <th className="hidden lg:table-cell px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center">
-                  DIAS
+                <th className="hidden lg:table-cell px-4 py-3 text-center">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Dias
+                  </span>
                 </th>
-                <th className="px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center rounded-tr-lg">
-                  AÇÕES
+                <th className="px-4 py-3 text-center">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Ações
+                  </span>
                 </th>
               </tr>
             </thead>
@@ -135,22 +150,33 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
                   <tr
                     key={customer.doc || index}
                     className={`
-                      min-h-[60px] transition-all duration-150 cursor-pointer
-                      hover:brightness-95 dark:hover:brightness-110
-                      ${index < atRiskCustomers.length - 1 ? 'border-b border-slate-200 dark:border-slate-700' : ''}
-                      hover:bg-slate-50 dark:hover:bg-slate-700/50
-                      border-l-4 lg:border-l-0
+                      group cursor-pointer
+                      border-b border-slate-100 dark:border-slate-800
+                      hover:bg-slate-50 dark:hover:bg-slate-800/50
+                      hover:shadow-md
+                      transition-all duration-200
+                      border-l-4
                     `}
                     style={{ borderLeftColor: styles.borderColorValue }}
                     onClick={() => setSelectedCustomer(customer)}
                   >
                     {/* Cliente */}
-                    <td className="p-4 lg:p-3">
-                      <div className="font-bold text-sm lg:text-xs text-slate-900 dark:text-white">
-                        {customer.name || 'Sem nome'}
-                      </div>
-                      <div className="lg:hidden text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
-                        {styles.label}
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm text-slate-900 dark:text-white">
+                            {customer.name || 'Sem nome'}
+                          </div>
+                          <div className="lg:hidden flex items-center gap-2 mt-1">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${styles.badge}`}>
+                              {styles.label}
+                            </span>
+                            <span className="text-xs text-slate-600 dark:text-slate-400">
+                              {customer.daysSinceLastVisit || 0}d
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronRight className="lg:hidden w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
                       </div>
                     </td>
 
@@ -174,23 +200,39 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
                     </td>
 
                     {/* Ações */}
-                    <td className="p-4 lg:p-3">
-                      <div className="flex gap-2 justify-center">
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-2">
                         {customer.phone && formatPhone(customer.phone) && (
                           <>
                             <button
                               onClick={(e) => handleCall(e, customer.phone)}
-                              className="p-2.5 lg:p-2 rounded-lg border-2 border-lavpop-blue dark:border-blue-500 bg-white dark:bg-slate-800 text-lavpop-blue dark:text-blue-400 hover:bg-lavpop-blue hover:text-white dark:hover:bg-blue-600 transition-all"
+                              className="
+                                p-2 rounded-lg
+                                bg-blue-50 dark:bg-blue-900/20
+                                text-blue-600 dark:text-blue-400
+                                hover:bg-blue-100 dark:hover:bg-blue-900/40
+                                hover:scale-110
+                                transition-all duration-200
+                                group-hover:shadow-md
+                              "
                               title="Ligar"
                             >
-                              <Phone className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+                              <Phone className="w-4 h-4" />
                             </button>
                             <button
                               onClick={(e) => handleWhatsApp(e, customer.phone)}
-                              className="p-2.5 lg:p-2 rounded-lg border-2 border-lavpop-green bg-white dark:bg-slate-800 text-lavpop-green hover:bg-lavpop-green hover:text-white transition-all"
+                              className="
+                                p-2 rounded-lg
+                                bg-green-50 dark:bg-green-900/20
+                                text-green-600 dark:text-green-400
+                                hover:bg-green-100 dark:hover:bg-green-900/40
+                                hover:scale-110
+                                transition-all duration-200
+                                group-hover:shadow-md
+                              "
                               title="WhatsApp"
                             >
-                              <MessageCircle className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+                              <MessageCircle className="w-4 h-4" />
                             </button>
                           </>
                         )}

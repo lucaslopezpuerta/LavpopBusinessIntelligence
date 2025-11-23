@@ -23,6 +23,7 @@ import {
   TrendingUp,
   Clock,
   ChevronDown,
+  User,
 } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
@@ -231,7 +232,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
       })
       .filter((txn) => txn.dateValid)
       .sort((a, b) => b.date - a.date)
-      .slice(0, window.innerWidth >= 1024 ? 4 : 5);
+      .slice(0, 5); // Limit to 5 transactions
 
     return customerTxns;
   }, [salesData, customer.doc]);
@@ -267,181 +268,164 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-slate-900 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* COMPACT HEADER */}
-        <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-700 via-lavpop-blue to-blue-900 dark:from-slate-800 dark:to-slate-900 px-4 py-3 sm:px-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold text-white truncate">
-                {customer.name || 'Cliente sem nome'}
-              </h2>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                <span className="text-xs text-white/80">
-                  {customer.phone || 'Cliente sem telefone'}
-                </span>
-                <span className="text-xs text-white/60">•</span>
-                <span className="text-xs text-white/80">
-                  {customer.doc
-                    ? `CPF: ${customer.doc.slice(0, 3)}...${customer.doc.slice(-2)}`
-                    : 'Cliente sem CPF'}
-                </span>
-              </div>
+        {/* BRANDED HEADER */}
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-lavpop-blue to-blue-600 border-b border-blue-700">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+              <User className="w-5 h-5 text-white" />
             </div>
-            <div className="flex items-center gap-2">
-              {/* Risk Badge */}
-              <span
-                className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold ${risk.bg} ${risk.text} border ${risk.border}`}
-              >
-                <span className="text-sm">{risk.emoji}</span>
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                {customer.name || 'Cliente'}
+              </h2>
+              <p className="text-xs text-white/80">
+                {customer.phone || 'Sem telefone'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Risk Badge */}
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 ${risk.bg} ${risk.border}`}>
+              <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
+              <span className={`text-sm font-bold ${risk.text}`}>
                 {risk.label}
               </span>
-              {/* Close Button */}
-              <button
-                onClick={onClose}
-                className="rounded-lg p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </div>
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        {/* ACTION BUTTONS - More compact */}
-        <div className="flex gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 sm:px-6">
+        {/* ACTION BUTTONS */}
+        <div className="flex items-center gap-3 px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={handleCall}
             disabled={!customer.phone}
             className={`
-              flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all
+              flex-1 flex items-center justify-center gap-2
+              px-4 py-3 rounded-xl
+              font-semibold text-sm
+              shadow-lg
+              active:scale-[0.98]
+              transition-all duration-200
               ${customer.phone
-                ? 'bg-lavpop-blue text-white hover:bg-lavpop-blue-600 shadow-sm'
-                : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-600'
-              }
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white hover:shadow-blue-500/25'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed'}
             `}
           >
-            <Phone className="h-4 w-4" />
+            <Phone className="w-4 h-4" />
             Ligar
           </button>
           <button
             onClick={handleWhatsApp}
             disabled={!customer.phone}
             className={`
-              flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all
+              flex-1 flex items-center justify-center gap-2
+              px-4 py-3 rounded-xl
+              font-semibold text-sm
+              shadow-lg
+              active:scale-[0.98]
+              transition-all duration-200
               ${customer.phone
-                ? 'bg-[#25D366] text-white hover:bg-[#1fb855] shadow-sm'
-                : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-600'
-              }
+                ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white hover:shadow-green-500/25'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed'}
             `}
           >
-            <MessageCircle className="h-4 w-4" />
+            <MessageCircle className="w-4 h-4" />
             WhatsApp
           </button>
         </div>
 
         {/* COLLAPSIBLE SECTIONS - Mobile-friendly accordion */}
         <div className="border-b border-slate-200 dark:border-slate-700 lg:grid lg:grid-cols-2 lg:gap-0">
-          {/* Financial Stats - Collapsible */}
-          <div className="border-b border-slate-200 dark:border-slate-700 lg:border-r">
-            <button
-              onClick={() => toggleSection('financials')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50 lg:py-2"
-            >
+          {/* Financial Stats */}
+          <div className="border-b border-slate-200 dark:border-slate-700 md:border-r md:border-b-0">
+            <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
-                <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
+                <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Financeiro
                 </h3>
               </div>
-              <ChevronDown
-                className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform lg:hidden ${expandedSection === 'financials' ? 'rotate-180' : ''}`}
-              />
-            </button>
-            {(expandedSection === 'financials' || window.innerWidth >= 1024) && (
-              <div className="px-4 py-3 space-y-3 sm:px-6 lg:py-2 lg:space-y-2">
-                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Total Gasto
-                  </span>
-                  <span className="text-base font-bold text-lavpop-blue dark:text-blue-300">
-                    {formatCurrency(customer.netTotal || 0)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Total de Visitas
-                  </span>
-                  <span className="text-base font-bold text-lavpop-blue dark:text-blue-300">
-                    {customer.transactions || customer.frequency || 0}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Gasto/Visita
-                  </span>
-                  <span className="text-base font-bold text-lavpop-green dark:text-green-300">
-                    {formatCurrency(
-                      customer.transactions > 0
-                        ? customer.netTotal / customer.transactions
-                        : 0,
-                    )}
-                  </span>
-                </div>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Total Gasto
+                </span>
+                <span className="text-base font-bold text-blue-600 dark:text-blue-400">
+                  {formatCurrency(customer.netTotal || 0)}
+                </span>
               </div>
-            )}
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Total de Visitas
+                </span>
+                <span className="text-base font-bold text-blue-600 dark:text-blue-400">
+                  {customer.transactions || customer.frequency || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Gasto/Visita
+                </span>
+                <span className="text-base font-bold text-green-600 dark:text-green-400">
+                  {formatCurrency(
+                    customer.transactions > 0
+                      ? customer.netTotal / customer.transactions
+                      : 0,
+                  )}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Behavior Stats - Open by default */}
-          <div className="border-b border-slate-200 dark:border-slate-700 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0">
-            <button
-              onClick={() => toggleSection('behaviour')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50 lg:py-2"
-            >
+          {/* Behavior Stats */}
+          <div className="border-b border-slate-200 dark:border-slate-700 md:border-b-0">
+            <div className="px-6 py-4 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-100 dark:border-purple-900">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-lavpop-green dark:text-green-400" />
-                <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
+                <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Comportamento
                 </h3>
               </div>
-              <ChevronDown
-                className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform lg:hidden ${expandedSection === 'behaviour' ? 'rotate-180' : ''}`}
-              />
-            </button>
-            {(expandedSection === 'behaviour' || window.innerWidth >= 1024) && (
-              <div className="px-4 py-3 space-y-3 sm:px-6 lg:py-2 lg:space-y-2">
-                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Dias desde última visita
-                  </span>
-                  <span
-                    className={`text-base font-bold ${customer.daysSinceLastVisit > customer.avgDaysBetween
-                      ? 'text-rose-600 dark:text-rose-300'
-                      : 'text-emerald-600 dark:text-emerald-300'
-                      }`}
-                  >
-                    {customer.daysSinceLastVisit || 0}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Intervalo médio (dias)
-                  </span>
-                  <span className="text-base font-bold text-slate-700 dark:text-slate-200">
-                    {customer.avgDaysBetween || 0}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">
-                    Serviços/Visita
-                  </span>
-                  <span className="text-base font-bold text-slate-700 dark:text-slate-200">
-                    {customer.servicesPerVisit || 0}
-                  </span>
-                </div>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Dias desde última visita
+                </span>
+                <span
+                  className={`text-base font-bold ${customer.daysSinceLastVisit > customer.avgDaysBetween
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-emerald-600 dark:text-emerald-400'
+                    }`}
+                >
+                  {customer.daysSinceLastVisit || 0}
+                </span>
               </div>
-            )}
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Intervalo médio (dias)
+                </span>
+                <span className="text-base font-bold text-slate-700 dark:text-slate-200">
+                  {customer.avgDaysBetween || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Serviços/Visita
+                </span>
+                <span className="text-base font-bold text-slate-700 dark:text-slate-200">
+                  {customer.servicesPerVisit || 0}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
