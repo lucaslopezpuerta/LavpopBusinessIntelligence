@@ -343,7 +343,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           <div className="border-b border-slate-200 dark:border-slate-700">
             <button
               onClick={() => toggleSection('financials')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6"
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50"
             >
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
@@ -352,10 +352,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 </h3>
               </div>
               <ChevronDown
-                className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'financials' ? 'rotate-180' : ''}`}
+                className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform lg:hidden ${expandedSection === 'financials' ? 'rotate-180' : ''}`}
               />
             </button>
-            {expandedSection === 'financials' && (
+            {(expandedSection === 'financials' || window.innerWidth >= 1024) && (
               <div className="px-4 py-3 space-y-3 sm:px-6">
                 <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                   <span className="text-xs text-slate-600 dark:text-slate-400">
@@ -395,7 +395,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           <div className="border-b border-slate-200 dark:border-slate-700">
             <button
               onClick={() => toggleSection('behaviour')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6"
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50"
             >
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-lavpop-green dark:text-green-400" />
@@ -404,10 +404,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                 </h3>
               </div>
               <ChevronDown
-                className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'behaviour' ? 'rotate-180' : ''}`}
+                className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform lg:hidden ${expandedSection === 'behaviour' ? 'rotate-180' : ''}`}
               />
             </button>
-            {expandedSection === 'behaviour' && (
+            {(expandedSection === 'behaviour' || window.innerWidth >= 1024) && (
               <div className="px-4 py-3 space-y-3 sm:px-6">
                 <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                   <span className="text-xs text-slate-600 dark:text-slate-400">
@@ -449,7 +449,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         <div className="border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={() => toggleSection('preferences')}
-            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6"
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50"
           >
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
@@ -458,10 +458,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               </span>
             </div>
             <ChevronDown
-              className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'preferences' ? 'rotate-180' : ''}`}
+              className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform lg:hidden ${expandedSection === 'preferences' ? 'rotate-180' : ''}`}
             />
           </button>
-          {expandedSection === 'preferences' && (
+          {(expandedSection === 'preferences' || window.innerWidth >= 1024) && (
             <div className="px-4 py-3 sm:px-6">
               <div className="flex gap-6 justify-center">
                 <div className="text-center">
@@ -489,7 +489,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         <div className="border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={() => toggleSection('transactions')}
-            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6"
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50"
           >
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
@@ -498,10 +498,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               </h3>
             </div>
             <ChevronDown
-              className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${expandedSection === 'transactions' ? 'rotate-180' : ''}`}
+              className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform lg:hidden ${expandedSection === 'transactions' ? 'rotate-180' : ''}`}
             />
           </button>
-          {expandedSection === 'transactions' && (
+          {(expandedSection === 'transactions' || window.innerWidth >= 1024) && (
             <div className="px-4 py-3 sm:px-6">
               {transactionHistory.length > 0 ? (
                 <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
@@ -554,24 +554,6 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           )}
         </div>
 
-        {/* RISK ALERT - More compact */}
-        {(customer.riskLevel === 'At Risk' ||
-          customer.riskLevel === 'Churning') &&
-          customer.daysOverdue > 0 && (
-            <div className="mx-4 mb-4 flex gap-2 rounded-lg border-2 px-4 py-3 text-sm bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-700 sm:mx-6">
-              <div className="text-xl flex-shrink-0">⚠️</div>
-              <div>
-                <div className="mb-0.5 text-sm font-bold text-slate-900 dark:text-white">
-                  Atenção Necessária
-                </div>
-                <div className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  Cliente está{' '}
-                  <strong>{customer.daysOverdue} dias atrasado</strong>{' '}
-                  (frequência média: {customer.avgDaysBetween} dias).
-                </div>
-              </div>
-            </div>
-          )}
       </div>
     </div>
   );
