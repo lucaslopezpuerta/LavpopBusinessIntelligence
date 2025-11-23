@@ -169,28 +169,25 @@ function AppContent() {
         <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
 
-            {/* Logo + Weather/Location */}
+            {/* Logo + Location */}
             <div className="flex items-center gap-3 flex-shrink-0">
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="flex items-center"
+                className="flex flex-col items-start"
               >
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-tight">
                   Lavpop<span className="text-lavpop-blue">BI</span>
                 </h1>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <MapPin className="w-2.5 h-2.5 text-lavpop-blue dark:text-blue-400" />
+                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                    Caxias do Sul
+                  </span>
+                </div>
               </motion.div>
               <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
-                <MapPin className="w-3 h-3 text-lavpop-blue dark:text-blue-400" />
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Caxias do Sul
-                </span>
-              </div>
-              <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700" />
-              <div className="hidden sm:block">
-                <WeatherWidget compact />
-              </div>
+              <WeatherWidget compact />
             </div>
 
             {/* Desktop Navigation - Sliding Pill */}
@@ -346,6 +343,15 @@ function AppContent() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+        <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+            Powered by <span className="font-semibold text-slate-700 dark:text-slate-300">Nova Lopez Lavanderia Ltd.</span>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
