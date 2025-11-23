@@ -4,7 +4,7 @@ on:
     branches: [ main ]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write  # ✅ CHANGED: Need write permission
   pages: write
   id-token: write
 concurrency:
@@ -21,10 +21,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'  # ✅ RESTORED: npm caching enabled
       
       - name: Install dependencies
-        run: npm ci  # ✅ RESTORED: Fast, deterministic installs
+        run: npm install
+      
+      # ✅ NEW: Commit package-lock.json if it changed
+      - name: Commit package-lock.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update package-lock.json [skip ci]"
+          git push
+        continue-on-error: true
       
       - name: Build
         env:
