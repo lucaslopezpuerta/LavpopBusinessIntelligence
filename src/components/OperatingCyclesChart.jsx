@@ -250,7 +250,7 @@ const OperatingCyclesChart = ({
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <WashingMachine className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
@@ -264,7 +264,7 @@ const OperatingCyclesChart = ({
         </div>
 
         {/* Legend */}
-        <div className="hidden sm:flex items-center gap-4 text-xs">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
             <span className="text-slate-600 dark:text-slate-400">Lavagens</span>

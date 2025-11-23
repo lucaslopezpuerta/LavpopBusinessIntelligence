@@ -8,7 +8,6 @@ import Papa from 'papaparse';
 import { Calendar, CheckCircle2 } from 'lucide-react';
 import KPICards from '../components/KPICards';
 import OperatingCyclesChart from '../components/OperatingCyclesChart';
-import OperationsKPICards from '../components/OperationsKPICards';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import QuickActionsCard from '../components/QuickActionsCard';
 import WeatherWidget from '../components/WeatherWidget_API';
@@ -250,26 +249,15 @@ const Dashboard = (props) => {
 
             {/* Charts & Operations Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              {/* Left Column: Operating Cycles (2/3 width) */}
+              {/* Left Column: Operating Cycles (Full width on mobile, 2/3 on desktop) */}
               <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
-                  <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  Ciclos de Operação
-                </h3>
                 <div className="h-[400px] w-full">
                   <OperatingCyclesChart salesData={salesData} />
                 </div>
               </div>
 
-              {/* Right Column: Operations KPIs & Quick Actions (1/3 width) */}
+              {/* Right Column: Quick Actions (1/3 width) */}
               <div className="space-y-6">
-                <OperationsKPICards
-                  businessMetrics={businessMetrics}
-                  operationsMetrics={operationsMetrics}
-                  previousWeekMetrics={metrics?.business?.previousWeekly}
-                />
                 <QuickActionsCard />
               </div>
             </div>

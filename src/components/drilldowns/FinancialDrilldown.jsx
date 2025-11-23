@@ -124,7 +124,7 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
             </div>
 
             {/* Chart */}
-            <div className="h-64 w-full">
+            <div className="h-48 sm:h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
                         <defs>

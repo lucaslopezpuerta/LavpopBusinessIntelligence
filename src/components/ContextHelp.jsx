@@ -2,7 +2,7 @@ import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import Tooltip from './Tooltip';
 
-const ContextHelp = ({ title, description, formula, children }) => {
+const ContextHelp = ({ title, description, formula, children, className }) => {
     const content = (
         <div className="space-y-2 p-1">
             {title && (
@@ -24,7 +24,7 @@ const ContextHelp = ({ title, description, formula, children }) => {
 
     return (
         <Tooltip content={content} position="top">
-            <HelpCircle className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 hover:text-lavpop-blue dark:hover:text-blue-400 transition-colors cursor-help" />
+            <HelpCircle className={`w-3.5 h-3.5 transition-colors cursor-help ${className || 'text-slate-400 dark:text-slate-500 hover:text-lavpop-blue dark:hover:text-blue-400'}`} />
         </Tooltip>
     );
 };

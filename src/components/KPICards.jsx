@@ -1,8 +1,9 @@
-// KPICards.jsx v6.1 - FIXED IMPORTS
+// KPICards.jsx v6.2 - FIXED SYNTAX & TOOLTIPS
 // ✅ Premium gradients and depth
 // ✅ Count-up animations with react-countup
 // ✅ Card lift hover effects
 // ✅ Improved mobile sizing
+// ✅ Fixed Tooltip & Icon positioning
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
@@ -413,21 +414,22 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
         <div className="relative z-10 flex flex-col h-full justify-between">
           {/* Header */}
           <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-[11px] font-bold text-white/90 uppercase tracking-wider flex items-center gap-1">
+            <div className="flex-1 min-w-0 mr-2">
+              <h3 className="text-[11px] font-bold text-white/90 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
                 {kpi.title}
+                <ContextHelp
+                  title={kpi.title}
+                  description={kpi.tooltip}
+                  formula={kpi.metricType === 'health' ? 'Ativos / Total' : kpi.metricType === 'utilization' ? 'Uso / Capacidade' : null}
+                  className="text-white/70 hover:text-white"
+                />
                 {kpi.drilldownType && (
                   <MousePointerClick className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                 )}
               </h3>
-              <ContextHelp
-                title={kpi.title}
-                description={kpi.tooltip}
-                formula={kpi.metricType === 'health' ? 'Ativos / Total' : kpi.metricType === 'utilization' ? 'Uso / Capacidade' : null}
-              />
             </div>
 
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${kpi.iconBgClass} bg-opacity-20 backdrop-blur-sm shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${kpi.iconBgClass} bg-opacity-20 backdrop-blur-sm shadow-sm group-hover:scale-110 transition-transform duration-300 shrink-0`}>
               <Icon className="w-5 h-5 text-white" />
             </div>
           </div>
@@ -447,12 +449,12 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
 
           {/* Footer */}
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-white/80 font-medium">
+            <div className="text-xs text-white/80 font-medium truncate">
               {kpi.subtitle}
             </div>
 
             {kpi.trend?.show && (
-              <div className={`text-xs font-bold px-2.5 py-1 rounded-md ${kpi.trend.colorClass} ${kpi.trend.bgClass} shadow-sm`}>
+              <div className={`text-xs font-bold px-2.5 py-1 rounded-md ${kpi.trend.colorClass} ${kpi.trend.bgClass} shadow-sm whitespace-nowrap`}>
                 {kpi.trend.text}
               </div>
             )}
