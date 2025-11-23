@@ -7,7 +7,7 @@
 // v5.1 (2025-11-21): Projection card positioning
 
 import React, { useMemo } from 'react';
-import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Activity, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp, TrendingDown, DollarSign, WashingMachine } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 
 function normalizeDoc(doc) {
@@ -191,7 +191,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: formatCurrency(metricsSource.netRevenue),
       trend: getTrendData(wow.netRevenue),
       subtitle: getTimeSubtitle(),
-      icon: Activity,
+      icon: DollarSign,
       colorClass: 'text-lavpop-blue dark:text-blue-400',
       iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
       valueClass: 'text-lavpop-blue dark:text-blue-200'
@@ -202,7 +202,7 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: formatNumber(metricsSource.totalServices),
       trend: getTrendData(wow.totalServices),
       subtitle: getTimeSubtitle(),
-      icon: Activity,
+      icon: WashingMachine,
       colorClass: 'text-lavpop-blue dark:text-blue-400',
       iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
       valueClass: 'text-lavpop-blue dark:text-blue-200'
@@ -247,9 +247,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: getTimeSubtitle(),
       trend: getTrendData(newClientsData.weekOverWeek),
       icon: UserPlus,
-      colorClass: 'text-lavpop-green dark:text-green-400',
-      iconBgClass: 'bg-green-50 dark:bg-green-900/50',
-      valueClass: 'text-lavpop-green dark:text-green-200'
+      colorClass: 'text-risk-new-600 dark:text-risk-new-400',
+      iconBgClass: 'bg-risk-new-50 dark:bg-risk-new-900/50',
+      valueClass: 'text-risk-new-600 dark:text-risk-new-200'
     },
     {
       id: 'projection',
@@ -258,9 +258,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       subtitle: projectionSubtitle,
       trend: projectionTrend,
       icon: projectionIcon,
-      colorClass: 'text-lavpop-green dark:text-green-400',
-      iconBgClass: 'bg-green-50 dark:bg-green-900/50',
-      valueClass: 'text-lavpop-green dark:text-green-200'
+      colorClass: 'text-black-900 dark:text-white-400',
+      iconBgClass: 'bg-black-50 dark:bg-white-900/50',
+      valueClass: 'text-black-900 dark:text-white-200'
     },
     {
       id: 'active',
@@ -268,9 +268,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
       value: formatNumber(activeCount),
       subtitle: 'Não perdidos',
       icon: Users,
-      colorClass: 'text-lavpop-blue dark:text-blue-400',
-      iconBgClass: 'bg-blue-50 dark:bg-blue-900/50',
-      valueClass: 'text-lavpop-blue dark:text-blue-200'
+      colorClass: 'text-brown-600 dark:text-brown-400',
+      iconBgClass: 'bg-brown-50 dark:bg-brown-900/50',
+      valueClass: 'text-brown-600 dark:text-brown-200'
     },
     {
       id: 'atrisk',
