@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v6.0 - NO OVERFLOW DESIGN
+// AtRiskCustomersTable.jsx v6.1 - MOBILE VIEW OPTIMIZATION
 // ✅ No horizontal scroll
 // ✅ Mobile: Cliente + Ações only
 // ✅ Desktop: All columns visible
@@ -6,6 +6,7 @@
 // ✅ Row coloring by risk
 //
 // CHANGELOG:
+// v6.1 (2025-11-22): Mobile view optimization
 // v6.0 (2025-11-21): No overflow redesign
 
 import React, { useState } from 'react';
@@ -64,19 +65,23 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
   const handleWhatsApp = (e, phone) => {
     e.stopPropagation();
     const cleaned = formatPhone(phone);
-    if (cleaned) window.open(`https://web.whatsapp.com/send?phone=55${cleaned}`, '_blank');
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const url = isMobile
+      ? `https://api.whatsapp.com/send?phone=55${cleaned}`
+      : `https://web.whatsapp.com/send?phone=55${cleaned}`;
+    window.open(url, '_blank');
   };
 
   const getRiskStyles = (riskLevel) => {
     if (riskLevel === 'Churning') {
       return {
-        mobile: 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500',
+        borderColor: 'border-red-500',
         badge: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 border-red-300 dark:border-red-600',
         label: 'Perdendo'
       };
     }
     return {
-      mobile: 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500',
+      borderColor: 'border-amber-500',
       badge: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-600',
       label: 'Em Risco'
     };
@@ -105,13 +110,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-700/50">
-                <th className="px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-left rounded-tl-lg">
+                <th className="px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center rounded-tl-lg">
                   CLIENTE
                 </th>
                 <th className="hidden lg:table-cell px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center">
                   RISCO
                 </th>
-                <th className="hidden lg:table-cell px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-right">
+                <th className="hidden lg:table-cell px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center">
                   TOTAL
                 </th>
                 <th className="hidden lg:table-cell px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200 text-[10px] text-center">
@@ -125,7 +130,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
             <tbody>
               {atRiskCustomers.map((customer, index) => {
                 const styles = getRiskStyles(customer.riskLevel);
-                
+
                 return (
                   <tr
                     key={customer.doc || index}
@@ -133,8 +138,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                       min-h-[60px] transition-all duration-150 cursor-pointer
                       hover:brightness-95 dark:hover:brightness-110
                       ${index < atRiskCustomers.length - 1 ? 'border-b border-slate-200 dark:border-slate-700' : ''}
-                      lg:bg-transparent lg:hover:bg-slate-50 lg:dark:hover:bg-slate-700/50
-                      ${styles.mobile} lg:border-l-0
+                      hover:bg-slate-50 dark:hover:bg-slate-700/50
+                      border-l-4 ${styles.borderColor} lg:border-l-0
                     `}
                     onClick={() => setSelectedCustomer(customer)}
                   >
