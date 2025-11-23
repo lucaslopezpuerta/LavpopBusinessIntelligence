@@ -231,7 +231,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
       })
       .filter((txn) => txn.dateValid)
       .sort((a, b) => b.date - a.date)
-      .slice(0, 5);
+      .slice(0, window.innerWidth >= 1024 ? 4 : 5);
 
     return customerTxns;
   }, [salesData, customer.doc]);
@@ -338,12 +338,12 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         </div>
 
         {/* COLLAPSIBLE SECTIONS - Mobile-friendly accordion */}
-        <div className="border-b border-slate-200 dark:border-slate-700">
+        <div className="border-b border-slate-200 dark:border-slate-700 lg:grid lg:grid-cols-2 lg:gap-0">
           {/* Financial Stats - Collapsible */}
-          <div className="border-b border-slate-200 dark:border-slate-700">
+          <div className="border-b border-slate-200 dark:border-slate-700 lg:border-r">
             <button
               onClick={() => toggleSection('financials')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50"
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50 lg:py-2"
             >
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
@@ -356,7 +356,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               />
             </button>
             {(expandedSection === 'financials' || window.innerWidth >= 1024) && (
-              <div className="px-4 py-3 space-y-3 sm:px-6">
+              <div className="px-4 py-3 space-y-3 sm:px-6 lg:py-2 lg:space-y-2">
                 <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                   <span className="text-xs text-slate-600 dark:text-slate-400">
                     Total Gasto
@@ -392,10 +392,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           </div>
 
           {/* Behavior Stats - Open by default */}
-          <div className="border-b border-slate-200 dark:border-slate-700">
+          <div className="border-b border-slate-200 dark:border-slate-700 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0">
             <button
               onClick={() => toggleSection('behaviour')}
-              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50"
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50 lg:py-2"
             >
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-lavpop-green dark:text-green-400" />
@@ -408,7 +408,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               />
             </button>
             {(expandedSection === 'behaviour' || window.innerWidth >= 1024) && (
-              <div className="px-4 py-3 space-y-3 sm:px-6">
+              <div className="px-4 py-3 space-y-3 sm:px-6 lg:py-2 lg:space-y-2">
                 <div className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                   <span className="text-xs text-slate-600 dark:text-slate-400">
                     Dias desde última visita
@@ -446,10 +446,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         </div>
 
         {/* SERVICE PREFERENCES - Collapsible */}
-        <div className="border-b border-slate-200 dark:border-slate-700">
+        <div className="border-b border-slate-200 dark:border-slate-700 lg:border-r">
           <button
             onClick={() => toggleSection('preferences')}
-            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50"
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50 lg:py-2"
           >
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
@@ -462,7 +462,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             />
           </button>
           {(expandedSection === 'preferences' || window.innerWidth >= 1024) && (
-            <div className="px-4 py-3 sm:px-6">
+            <div className="px-4 py-3 sm:px-6 lg:py-2">
               <div className="flex gap-6 justify-center">
                 <div className="text-center">
                   <div className="text-[10px] text-slate-500 dark:text-slate-400">
@@ -486,15 +486,16 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         </div>
 
         {/* TRANSACTION HISTORY - Collapsible */}
-        <div className="border-b border-slate-200 dark:border-slate-700">
+        <div className="border-b border-slate-200 dark:border-slate-700 lg:col-span-2">
           <button
             onClick={() => toggleSection('transactions')}
-            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50"
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50 lg:py-2"
           >
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
               <h3 className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
-                Últimas 5 Transações
+                <span className="lg:hidden">Últimas 5 Transações</span>
+                <span className="hidden lg:inline">Últimas 4 Transações</span>
               </h3>
             </div>
             <ChevronDown
@@ -502,7 +503,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             />
           </button>
           {(expandedSection === 'transactions' || window.innerWidth >= 1024) && (
-            <div className="px-4 py-3 sm:px-6">
+            <div className="px-4 py-3 sm:px-6 lg:py-2">
               {transactionHistory.length > 0 ? (
                 <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
                   <div className="overflow-x-auto">
@@ -555,7 +556,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         </div>
 
       </div>
-    </div>
+    </div >
   );
 };
 
