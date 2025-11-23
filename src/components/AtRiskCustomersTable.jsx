@@ -13,7 +13,7 @@ import React, { useState } from 'react';
 import { Phone, MessageCircle, AlertTriangle } from 'lucide-react';
 import CustomerDetailModal from './CustomerDetailModal';
 
-const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
+const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   if (!customerMetrics?.activeCustomers) {
@@ -75,15 +75,15 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
   const getRiskStyles = (riskLevel) => {
     if (riskLevel === 'Churning') {
       return {
-        borderColor: 'border-red-500',
+        borderColorValue: '#ef4444', // red-500
         badge: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 border-red-300 dark:border-red-600',
-        label: 'Perdendo'
+        label: 'Perdendo 💔'
       };
     }
     return {
-      borderColor: 'border-amber-500',
+      borderColorValue: '#f59e0b', // amber-500
       badge: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-600',
-      label: 'Em Risco'
+      label: 'Em Risco ⚠️'
     };
   };
 
@@ -139,8 +139,9 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                       hover:brightness-95 dark:hover:brightness-110
                       ${index < atRiskCustomers.length - 1 ? 'border-b border-slate-200 dark:border-slate-700' : ''}
                       hover:bg-slate-50 dark:hover:bg-slate-700/50
-                      border-l-4 ${styles.borderColor} lg:border-l-0
+                      border-l-4
                     `}
+                    style={{ borderLeftColor: styles.borderColorValue }}
                     onClick={() => setSelectedCustomer(customer)}
                   >
                     {/* Cliente */}
@@ -156,7 +157,6 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 5 }) => {
                     {/* Risco - Desktop only */}
                     <td className="hidden lg:table-cell p-3 text-center">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10px] font-bold ${styles.badge}`}>
-                        <AlertTriangle className="w-3 h-3" />
                         {styles.label}
                       </span>
                     </td>
