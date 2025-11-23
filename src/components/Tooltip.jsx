@@ -10,6 +10,8 @@
 import React, { useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 
+import ReactDOM from 'react-dom';
+
 const Tooltip = ({
     content,
     children,
@@ -19,29 +21,70 @@ const Tooltip = ({
     iconSize = 'w-4 h-4'
 }) => {
     const [isVisible, setIsVisible] = useState(false);
+    const [coords, setCoords] = useState({ top: 0, left: 0 });
 
-    const positionClasses = {
-        top: 'bottom-full left-1/2 -translate-x-1/2 -translate-y-2 mb-2',
-        bottom: 'top-full left-1/2 -translate-x-1/2 translate-y-2 mt-2',
-        left: 'right-full top-1/2 -translate-y-1/2 -translate-x-2 mr-2',
-        right: 'left-full top-1/2 -translate-y-1/2 translate-x-2 ml-2',
+    const handleMouseEnter = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setCoords({
+            top: rect.top + window.scrollY,
+            left: rect.left + window.scrollX,
+            width: rect.width,
+            height: rect.height
+        });
+        setIsVisible(true);
     };
 
-    const arrowClasses = {
-        top: 'top-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-b-transparent',
-        bottom: 'bottom-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-t-transparent',
-        left: 'left-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-r-transparent',
-        right: 'right-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-l-transparent',
-    };
+    const tooltipContent = (
+        <div
+            className={`
+                fixed z-[9999] px-3 py-2 
+                bg-slate-900 dark:bg-slate-700
+                text-white text-xs font-medium
+                rounded-lg shadow-xl
+                pointer-events-none
+                animate-fade-in
+                min-w-max max-w-xs
+                border border-slate-700 dark:border-slate-600
+            `}
+            style={{
+                top: position === 'top' ? coords.top - 8 : position === 'bottom' ? coords.top + coords.height + 8 : coords.top + coords.height / 2,
+                left: position === 'left' ? coords.left - 8 : position === 'right' ? coords.left + coords.width + 8 : coords.left + coords.width / 2,
+                transform: position === 'top' ? 'translate(-50%, -100%)' :
+                    position === 'bottom' ? 'translate(-50%, 0)' :
+                        position === 'left' ? 'translate(-100%, -50%)' :
+                            'translate(0, -50%)'
+            }}
+            role="tooltip"
+        >
+            {content}
+            {/* Arrow - simplified for portal */}
+            <div
+                className={`
+                    absolute w-2 h-2 bg-slate-900 dark:bg-slate-700
+                    transform rotate-45 border-slate-700 dark:border-slate-600
+                `}
+                style={{
+                    bottom: position === 'top' ? '-4px' : 'auto',
+                    top: position === 'bottom' ? '-4px' : 'auto',
+                    left: '50%',
+                    marginLeft: '-4px',
+                    borderRight: position === 'left' ? '1px solid' : 'none',
+                    borderBottom: position === 'top' ? '1px solid' : 'none',
+                    borderTop: position === 'bottom' ? '1px solid' : 'none',
+                    borderLeft: position === 'right' ? '1px solid' : 'none',
+                    visibility: (position === 'left' || position === 'right') ? 'hidden' : 'visible'
+                }}
+            />
+        </div>
+    );
 
     return (
-        <div className={`relative inline-flex items-center ${className}`}>
-            {/* Trigger */}
+        <div className={`inline-flex items-center ${className}`}>
             <div
                 className="inline-flex items-center gap-1 cursor-help"
-                onMouseEnter={() => setIsVisible(true)}
+                onMouseEnter={handleMouseEnter}
                 onMouseLeave={() => setIsVisible(false)}
-                onFocus={() => setIsVisible(true)}
+                onFocus={handleMouseEnter}
                 onBlur={() => setIsVisible(false)}
                 tabIndex={0}
             >
@@ -51,35 +94,7 @@ const Tooltip = ({
                 )}
             </div>
 
-            {/* Tooltip Content */}
-            {isVisible && (
-                <div
-                    className={`
-            absolute z-tooltip
-            ${positionClasses[position]}
-            px-3 py-2 
-            bg-slate-900 dark:bg-slate-700
-            text-white text-xs font-medium
-            rounded-lg shadow-lg
-            rounded-lg shadow-lg
-            pointer-events-none
-            animate-fade-in
-            min-w-max max-w-xs
-          `}
-                    role="tooltip"
-                >
-                    {content}
-
-                    {/* Arrow */}
-                    <div
-                        className={`
-              absolute w-0 h-0
-              border-4 border-slate-900 dark:border-slate-700
-              ${arrowClasses[position]}
-            `}
-                    />
-                </div>
-            )}
+            {isVisible && ReactDOM.createPortal(tooltipContent, document.body)}
         </div>
     );
 };

@@ -264,7 +264,7 @@ const OperatingCyclesChart = ({
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
             <span className="text-slate-600 dark:text-slate-400">Lavagens</span>
@@ -274,8 +274,12 @@ const OperatingCyclesChart = ({
             <span className="text-slate-600 dark:text-slate-400">Secagens</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-4 h-0.5 bg-slate-400 border-t border-dashed border-slate-400"></div>
-            <span className="text-slate-600 dark:text-slate-400">Mês Anterior</span>
+            <div className="w-4 h-0.5 bg-blue-300 border-t border-dashed border-blue-300"></div>
+            <span className="text-slate-600 dark:text-slate-400">Lavagens (Mês Ant.)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5 bg-orange-300 border-t border-dashed border-orange-300"></div>
+            <span className="text-slate-600 dark:text-slate-400">Secagens (Mês Ant.)</span>
           </div>
         </div>
       </div>

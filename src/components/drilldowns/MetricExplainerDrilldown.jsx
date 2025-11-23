@@ -55,9 +55,9 @@ const MetricExplainerDrilldown = ({ metricType }) => {
     const content = getContent();
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6 max-h-[70vh] overflow-y-auto pr-1">
             {/* Formula Card */}
-            <div className="bg-slate-50 dark:bg-slate-700/50 p-5 rounded-xl border border-slate-100 dark:border-slate-700">
+            <div className="bg-slate-50 dark:bg-slate-700/50 p-4 sm:p-5 rounded-xl border border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-2 mb-3">
                     <Calculator className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
                     <h3 className="font-semibold text-slate-900 dark:text-white">Como é calculado?</h3>

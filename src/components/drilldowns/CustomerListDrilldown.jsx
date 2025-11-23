@@ -51,7 +51,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active', onNavigate }) 
                 </span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
                 {displayList.map((customer, index) => (
                     <div
                         key={customer.doc || index}
@@ -104,7 +104,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active', onNavigate }) 
             <div className="flex justify-end pt-2">
                 <button
                     onClick={onNavigate}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:opacity-90 transition-opacity w-full sm:w-auto justify-center"
                 >
                     Ver Todos na Lista
                     <ArrowRight className="w-4 h-4" />

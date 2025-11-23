@@ -249,25 +249,22 @@ const Dashboard = (props) => {
 
             {/* Charts & Operations Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              {/* Left Column: Operating Cycles (Full width on mobile, 2/3 on desktop) */}
+              {/* Left Column: Operating Cycles (2/3 width) */}
               <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-                <div className="h-[400px] w-full">
+                <div className="w-full">
                   <OperatingCyclesChart salesData={salesData} />
                 </div>
               </div>
 
-              {/* Right Column: Quick Actions (1/3 width) */}
+              {/* Right Column: Table & Quick Actions (1/3 width) */}
               <div className="space-y-6">
+                <AtRiskCustomersTable
+                  customerMetrics={customerMetrics}
+                  salesData={salesData}
+                  maxRows={5}
+                />
                 <QuickActionsCard />
               </div>
-            </div>
-
-            {/* Bottom Section: At Risk Customers */}
-            <div className="w-full">
-              <AtRiskCustomersTable
-                customerMetrics={customerMetrics}
-                salesData={salesData}
-              />
             </div>
 
           </div>
