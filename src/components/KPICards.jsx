@@ -1,8 +1,18 @@
-// KPICards.jsx v6.0 - PREMIUM DESIGN ENHANCEMENT
+// KPICards.jsx v6.1 - FIXED IMPORTS
 // ✅ Premium gradients and depth
 // ✅ Count-up animations with react-countup
 // ✅ Card lift hover effects
 // ✅ Improved mobile sizing
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
+import {
+  DollarSign, WashingMachine, Percent, Droplet, Flame,
+  UserPlus, TrendingUp, TrendingDown, Users, AlertCircle,
+  Heart, MousePointerClick
+} from 'lucide-react';
+import { parseBrDate } from '../utils/dateUtils';
+import ContextHelp from './ContextHelp';
+
 // Drill-down Components
 import KPIDetailModal from './modals/KPIDetailModal';
 import FinancialDrilldown from './drilldowns/FinancialDrilldown';

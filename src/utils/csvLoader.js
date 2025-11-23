@@ -2,17 +2,12 @@
  * CSV Loader - Fetches and parses CSV files from /data folder
  * Uses PapaParse for robust CSV parsing
  * 
- * VERSION: 2.0
+ * VERSION: 2.1
  * 
  * CHANGELOG:
+ * v2.1 (2025-11-23): Migrated to IndexedDB (async cache)
  * v2.0 (2025-11-23): Added localStorage caching for performance
- *   - Cache parsed CSV data for 5 minutes
- *   - Dramatically improves load times on subsequent visits
- *   - Cache invalidation on manual refresh
  * v1.2 (2025-11-15): Added auto-delimiter detection
- *   - Auto-detects comma, semicolon, tab, and pipe delimiters
- *   - Fixes customer.csv loading (semicolon-delimited)
- *   - Supports Brazilian/European Excel exports
  * v1.1 (Previous): Fixed base path and added detailed error messages
  * v1.0 (Previous): Initial implementation
  */
@@ -29,7 +24,7 @@ export const loadCSV = async (filename, skipCache = false) => {
   try {
     // Check cache first (unless skipping)
     if (!skipCache) {
-      const cachedData = getCachedData(filename);
+      const cachedData = await getCachedData(filename);
       if (cachedData) {
         return cachedData;
       }
@@ -60,7 +55,7 @@ export const loadCSV = async (filename, skipCache = false) => {
         delimiter: "", // Auto-detect delimiter (works with both , and ;)
         delimitersToGuess: [',', ';', '\t', '|'], // Support multiple delimiters
         transformHeader: (header) => header.trim(),
-        complete: (results) => {
+        complete: async (results) => {
           if (results.errors.length > 0) {
             console.warn(`Avisos ao processar ${filename}:`, results.errors);
           }
@@ -72,8 +67,8 @@ export const loadCSV = async (filename, skipCache = false) => {
 
           console.log(`✓ Loaded ${filename}: ${results.data.length} rows`);
 
-          // Cache the parsed data
-          setCachedData(filename, results.data);
+          // Cache the parsed data (async now)
+          await setCachedData(filename, results.data);
 
           resolve(results.data);
         },

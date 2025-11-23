@@ -1,11 +1,15 @@
-// dataCache.js v1.0 - LOCAL STORAGE CACHING
+// dataCache.js v2.0 - INDEXED DB CACHING
 // ✅ Cache CSV data with timestamp
 // ✅ Configurable cache duration
 // ✅ Cache invalidation support
 // ✅ Fallback to fetch if cache is stale
+// ✅ Uses IndexedDB to avoid QuotaExceededError
 //
 // CHANGELOG:
-// v1.0 (2025-11-23): Initial implementation
+// v2.0 (2025-11-23): Migrated to IndexedDB
+// v1.0 (2025-11-23): Initial implementation (localStorage)
+
+import idb from './idbStorage';
 
 const CACHE_PREFIX = 'lavpop_data_';
 const DEFAULT_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours (data updates daily)
@@ -13,19 +17,19 @@ const DEFAULT_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours (data updates da
 /**
  * Get data from cache
  * @param {string} key - Cache key
- * @param {number} maxAge - Maximum age in milliseconds (default: 5 minutes)
- * @returns {any|null} - Cached data or null if not found/expired
+ * @param {number} maxAge - Maximum age in milliseconds (default: 24 hours)
+ * @returns {Promise<any|null>} - Cached data or null if not found/expired
  */
-export const getCachedData = (key, maxAge = DEFAULT_CACHE_DURATION) => {
+export const getCachedData = async (key, maxAge = DEFAULT_CACHE_DURATION) => {
     try {
         const cacheKey = `${CACHE_PREFIX}${key}`;
-        const cached = localStorage.getItem(cacheKey);
+        const cached = await idb.get(cacheKey);
 
         if (!cached) {
             return null;
         }
 
-        const { data, timestamp } = JSON.parse(cached);
+        const { data, timestamp } = cached;
         const age = Date.now() - timestamp;
 
         // Check if cache is still valid
@@ -36,7 +40,7 @@ export const getCachedData = (key, maxAge = DEFAULT_CACHE_DURATION) => {
 
         // Cache is stale, remove it
         console.log(`⏰ Cache EXPIRED for ${key} (age: ${Math.round(age / 1000)}s)`);
-        localStorage.removeItem(cacheKey);
+        await idb.del(cacheKey);
         return null;
     } catch (error) {
         console.error('Error reading from cache:', error);
@@ -48,8 +52,9 @@ export const getCachedData = (key, maxAge = DEFAULT_CACHE_DURATION) => {
  * Save data to cache
  * @param {string} key - Cache key
  * @param {any} data - Data to cache
+ * @returns {Promise<void>}
  */
-export const setCachedData = (key, data) => {
+export const setCachedData = async (key, data) => {
     try {
         const cacheKey = `${CACHE_PREFIX}${key}`;
         const cacheData = {
@@ -57,36 +62,22 @@ export const setCachedData = (key, data) => {
             timestamp: Date.now(),
         };
 
-        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        await idb.set(cacheKey, cacheData);
         console.log(`💾 Cached data for ${key}`);
     } catch (error) {
         console.error('Error writing to cache:', error);
-        // If localStorage is full, clear old cache entries
-        if (error.name === 'QuotaExceededError') {
-            clearAllCache();
-            // Try again
-            try {
-                const cacheKey = `${CACHE_PREFIX}${key}`;
-                const cacheData = {
-                    data,
-                    timestamp: Date.now(),
-                };
-                localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-            } catch (retryError) {
-                console.error('Still cannot write to cache after clearing:', retryError);
-            }
-        }
     }
 };
 
 /**
  * Invalidate a specific cache entry
  * @param {string} key - Cache key to invalidate
+ * @returns {Promise<void>}
  */
-export const invalidateCache = (key) => {
+export const invalidateCache = async (key) => {
     try {
         const cacheKey = `${CACHE_PREFIX}${key}`;
-        localStorage.removeItem(cacheKey);
+        await idb.del(cacheKey);
         console.log(`🗑️ Invalidated cache for ${key}`);
     } catch (error) {
         console.error('Error invalidating cache:', error);
@@ -95,21 +86,15 @@ export const invalidateCache = (key) => {
 
 /**
  * Clear all Lavpop cache entries
+ * @returns {Promise<void>}
  */
-export const clearAllCache = () => {
+export const clearAllCache = async () => {
     try {
-        const keysToRemove = [];
-
-        // Find all Lavpop cache keys
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith(CACHE_PREFIX)) {
-                keysToRemove.push(key);
-            }
-        }
+        const allKeys = await idb.keys();
+        const keysToRemove = allKeys.filter(key => key.startsWith(CACHE_PREFIX));
 
         // Remove them
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+        await Promise.all(keysToRemove.map(key => idb.del(key)));
         console.log(`🧹 Cleared ${keysToRemove.length} cache entries`);
     } catch (error) {
         console.error('Error clearing cache:', error);
@@ -118,22 +103,24 @@ export const clearAllCache = () => {
 
 /**
  * Get cache statistics
- * @returns {object} - Cache statistics
+ * @returns {Promise<object>} - Cache statistics
  */
-export const getCacheStats = () => {
+export const getCacheStats = async () => {
     try {
         const stats = {
             totalEntries: 0,
-            totalSize: 0,
+            totalSize: 0, // Size estimation is harder with IDB, might skip or estimate
             entries: [],
         };
 
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith(CACHE_PREFIX)) {
-                const value = localStorage.getItem(key);
-                const size = new Blob([value]).size;
-                const { timestamp } = JSON.parse(value);
+        const allKeys = await idb.keys();
+
+        for (const key of allKeys) {
+            if (key.startsWith(CACHE_PREFIX)) {
+                const value = await idb.get(key);
+                // Rough size estimation
+                const size = JSON.stringify(value).length;
+                const { timestamp } = value;
                 const age = Date.now() - timestamp;
 
                 stats.totalEntries++;
