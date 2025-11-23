@@ -228,19 +228,22 @@ function AppContent() {
                 <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700" />
               </div>
 
-              {/* Reload Button */}
+              {/* Reload Button - Hidden on mobile */}
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-lavpop-blue dark:hover:text-lavpop-blue transition-all disabled:opacity-50 active:scale-95"
+                className="hidden sm:flex p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-lavpop-blue dark:hover:text-lavpop-blue transition-all disabled:opacity-50 active:scale-95"
                 title="Atualizar Dados"
               >
                 <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
 
-              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+              <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
-              <ThemeToggle className="no-print" />
+              {/* Theme Toggle - Hidden on mobile */}
+              <div className="hidden sm:block">
+                <ThemeToggle className="no-print" />
+              </div>
 
               {/* Mobile Menu Button */}
               <button
@@ -264,6 +267,25 @@ function AppContent() {
                 className="lg:hidden overflow-hidden border-t border-slate-100 dark:border-slate-800"
               >
                 <nav className="flex flex-col gap-2 py-4">
+                  {/* Mobile Controls */}
+                  <div className="flex items-center justify-around px-4 py-3 mx-2 mb-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <button
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                      title="Atualizar Dados"
+                    >
+                      <RefreshCw className={`w-5 h-5 text-slate-600 dark:text-slate-400 ${refreshing ? 'animate-spin' : ''}`} />
+                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">Atualizar</span>
+                    </button>
+                    <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
+                    <div className="flex flex-col items-center gap-1">
+                      <ThemeToggle />
+                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">Tema</span>
+                    </div>
+                  </div>
+
+                  {/* Navigation Tabs */}
                   {tabs.map(tab => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;

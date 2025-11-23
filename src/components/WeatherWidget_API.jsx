@@ -68,16 +68,20 @@ const WeatherWidget = ({ compact = false, showLocation = false }) => {
     return (
       <div className={`
         ${compact
-          ? 'bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5'
+          ? 'bg-slate-100 dark:bg-slate-800 px-2 py-1.5'
           : 'bg-white/15 backdrop-blur-md px-3 py-2 border border-white/25'}
         rounded-lg flex items-center gap-2 h-9
       `}>
         <Loader className={`w-3.5 h-3.5 ${compact ? 'text-slate-400 dark:text-slate-500' : 'text-white'} animate-spin`} />
         <div className={`text-[11px] font-medium ${compact ? 'text-slate-600 dark:text-slate-400' : 'text-white/90'}`}>
-          Clima...
+          {showLocation && compact ? 'Caxias do Sul...' : 'Clima...'}
         </div>
       </div>
     );
+  }
+
+  if (!weather) {
+    return null;
   }
 
   const Icon = getWeatherIcon(weather.icon);
