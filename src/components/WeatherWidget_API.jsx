@@ -1,8 +1,9 @@
-// WeatherWidget_API.jsx v5.0 - COMPACT MODE
+// WeatherWidget_API.jsx v5.1 - COMPACT MODE
 // ✅ Added compact prop for header integration
 // ✅ Compact: Icon + Temp + Humidity only
 // ✅ Full: Original design with location
 // ✅ Glassmorphism styling
+// ✅ Added mobile view
 import React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Loader, Droplets, Thermometer } from 'lucide-react';
 
@@ -174,7 +175,7 @@ const WeatherWidget = ({ compact = false, showLocation = false }) => {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold text-white/90">
-            {weather.temp}°C
+            {weather.feelslike}°C
           </span>
           <span className="text-[10px] text-white/80">
             ☁️ {weather.humidity}%
