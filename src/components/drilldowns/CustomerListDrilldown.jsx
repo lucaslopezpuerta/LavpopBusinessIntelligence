@@ -33,8 +33,8 @@ const CustomerListDrilldown = ({ customers = [], type = 'active', onNavigate }) 
         }
     };
 
-    // Limit to 5-10 items
-    const displayList = customers.slice(0, 10);
+    // Limit to 5 items
+    const displayList = customers.slice(0, 5);
 
     return (
         <div className="space-y-4">

@@ -1,20 +1,3 @@
-// OperatingCyclesChart_v1.4.jsx
-// Operating cycles chart using Recharts
-//
-// FEATURES:
-// ✅ Recharts BarChart (grouped mode)
-// ✅ Labels above bars
-// ✅ Mobile: last 10 days from the current date
-// ✅ Footer: always shows full month totals
-// ✅ Rectangular bars, Lavpop brand colors
-//
-// CHANGELOG:
-// v1.4 (2025-11-21): Mobile shows 10 days before current date, footer shows full month totals
-// v1.3 (2025-11-21): Switched to Recharts, rectangular bars
-// v1.2 (2025-11-21): Brand colors, full month names
-// v1.1 (2025-11-21): Fixed sorting, grouped bars
-// v1.0 (2025-11-21): Initial implementation
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart, Defs, LinearGradient, Stop } from 'recharts';
 import { WashingMachine, Calendar, TrendingUp } from 'lucide-react';
@@ -107,9 +90,11 @@ const OperatingCyclesChart = ({
         Lavagens: 0,
         Secagens: 0,
         Total: 0,
+        PrevWash: 0,
+        PrevDry: 0,
         PreviousTotal: 0
       };
-      prevMonthMap[day] = 0;
+      prevMonthMap[day] = { wash: 0, dry: 0, total: 0 };
     }
 
     salesData.forEach(row => {
@@ -131,15 +116,19 @@ const OperatingCyclesChart = ({
 
       // Previous Month Data (for comparison)
       if (date.getMonth() === prevMonth && date.getFullYear() === prevYear) {
-        if (prevMonthMap[dayNum] !== undefined) {
-          prevMonthMap[dayNum] += totalCycles;
+        if (prevMonthMap[dayNum]) {
+          prevMonthMap[dayNum].wash += machineInfo.wash;
+          prevMonthMap[dayNum].dry += machineInfo.dry;
+          prevMonthMap[dayNum].total += totalCycles;
         }
       }
     });
 
     // Merge previous month data into dailyMap
     Object.keys(dailyMap).forEach(day => {
-      dailyMap[day].PreviousTotal = prevMonthMap[day] || 0;
+      dailyMap[day].PrevWash = prevMonthMap[day]?.wash || 0;
+      dailyMap[day].PrevDry = prevMonthMap[day]?.dry || 0;
+      dailyMap[day].PreviousTotal = prevMonthMap[day]?.total || 0;
     });
 
     let allData = Object.values(dailyMap).sort((a, b) => a.dayNum - b.dayNum);
@@ -186,16 +175,24 @@ const OperatingCyclesChart = ({
           </div>
           {payload.map((entry, index) => {
             // Skip rendering if value is 0 and it's not the comparison line
-            if (entry.value === 0 && entry.dataKey !== 'PreviousTotal') return null;
+            if (entry.value === 0 && !entry.dataKey.startsWith('Prev')) return null;
 
-            const isComparison = entry.dataKey === 'PreviousTotal';
-            const labelText = isComparison ? `Mês Anterior (${periodInfo.prevMonth})` : entry.name;
+            let labelText = entry.name;
+            let isPrev = false;
+
+            if (entry.dataKey === 'PrevWash') {
+              labelText = `Lavagens (${periodInfo.prevMonth})`;
+              isPrev = true;
+            } else if (entry.dataKey === 'PrevDry') {
+              labelText = `Secagens (${periodInfo.prevMonth})`;
+              isPrev = true;
+            }
 
             return (
               <div key={index} className="flex items-center justify-between gap-3 text-xs mb-1 last:mb-0">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 ${isComparison ? 'rounded-full' : 'rounded-sm'}`}
+                    className={`w-2 h-2 ${isPrev ? 'rounded-full' : 'rounded-sm'}`}
                     style={{ backgroundColor: entry.color }}
                   />
                   <span className="text-slate-600 dark:text-slate-400 font-medium">
@@ -334,16 +331,27 @@ const OperatingCyclesChart = ({
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? '#1e293b40' : '#f1f5f940' }} />
 
-            {/* Previous Month Comparison Line */}
+            {/* Previous Month Wash Trend */}
             <Line
               type="monotone"
-              dataKey="PreviousTotal"
-              stroke={comparisonColor}
+              dataKey="PrevWash"
+              name="Lavagens (Mês Anterior)"
+              stroke="#93c5fd" // Light blue
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}
-              activeDot={{ r: 4, fill: comparisonColor }}
-              name="Mês Anterior"
+              activeDot={false}
+            />
+            {/* Previous Month Dry Trend */}
+            <Line
+              type="monotone"
+              dataKey="PrevDry"
+              name="Secagens (Mês Anterior)"
+              stroke="#fdba74" // Light orange
+              strokeWidth={2}
+              strokeDasharray="4 4"
+              dot={false}
+              activeDot={false}
             />
 
             <Bar

@@ -3,20 +3,6 @@
 // ✅ Count-up animations with react-countup
 // ✅ Card lift hover effects
 // ✅ Improved mobile sizing
-// ✅ Tooltips for context
-//
-// CHANGELOG:
-// v6.0 (2025-11-23): Premium visual enhancement
-// v5.1 (2025-11-21): Projection card positioning
-
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import CountUp from 'react-countup';
-import useEmblaCarousel from 'embla-carousel-react';
-import { Percent, Users, AlertCircle, Heart, Droplet, Flame, UserPlus, TrendingUp, TrendingDown, DollarSign, WashingMachine, ChevronLeft, ChevronRight, MousePointerClick } from 'lucide-react';
-import { parseBrDate } from '../utils/dateUtils';
-import Tooltip from './Tooltip';
-import ContextHelp from './ContextHelp';
-
 // Drill-down Components
 import KPIDetailModal from './modals/KPIDetailModal';
 import FinancialDrilldown from './drilldowns/FinancialDrilldown';
@@ -431,22 +417,20 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
               />
             </div>
 
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${kpi.iconBgClass} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${kpi.iconBgClass} bg-opacity-20 backdrop-blur-sm shadow-sm group-hover:scale-110 transition-transform duration-300`}>
               <Icon className="w-5 h-5 text-white" />
             </div>
           </div>
 
-          {/* Value with Count-Up Animation */}
+          {/* Value */}
           <div className="mb-3">
             <div className="text-3xl sm:text-4xl font-extrabold text-white leading-none font-mono">
               {kpi.isCurrency && 'R$ '}
-              <CountUp
-                end={kpi.value}
-                duration={1.5}
-                separator="."
-                decimals={0}
-                preserveValue={true}
-              />
+              {kpi.value !== undefined && kpi.value !== null ? (
+                kpi.isCurrency
+                  ? kpi.value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                  : kpi.value.toLocaleString('pt-BR')
+              ) : '0'}
               {!kpi.isCurrency && kpi.displayValue.includes('%') && '%'}
             </div>
           </div>

@@ -1,27 +1,14 @@
-// Dashboard.jsx v8.3 - HEADER REDESIGN & LAYOUT OPTIMIZATION
-// ✅ Integrated date range into header (no more fighting banner)
-// ✅ Optimized spacing to minimize scrolling
-// ✅ Restored Quick Actions Card
-// ✅ Full dark/light theme support
-//
-// CHANGELOG:
-// v8.3 (2025-11-23): Header redesign & layout optimization
-// v8.2 (2025-11-21): Operating cycles chart integration
-
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
-import { Calendar, CheckCircle2, BarChart3 } from 'lucide-react';
-
-// Components
+import { Calendar, CheckCircle2 } from 'lucide-react';
 import KPICards from '../components/KPICards';
+import OperatingCyclesChart from '../components/OperatingCyclesChart';
+import OperationsKPICards from '../components/OperationsKPICards';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
-import WeatherWidget from '../components/WeatherWidget_API';
+import QuickActionsCard from '../components/QuickActionsCard';
+import WeatherWidget from '../components/WeatherWidget';
 import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import SocialMediaWidget from '../components/SocialMediaWidget';
-import OperatingCyclesChart from '../components/OperatingCyclesChart';
-import QuickActionsCard from '../components/QuickActionsCard';
-
-// Utils
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 
@@ -84,6 +71,13 @@ const Dashboard = (props) => {
     return { business, customers };
   }, [salesData, rfmData]);
 
+  // Handle tab navigation from drill-downs
+  const handleTabChange = (tabId) => {
+    if (props.onNavigate) {
+      props.onNavigate(tabId);
+    }
+  };
+
   if (loading && !salesData.length) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -126,6 +120,8 @@ const Dashboard = (props) => {
   };
 
   const dateRange = getDateRange();
+  const businessMetrics = metrics?.business;
+  const customerMetrics = metrics?.customers;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-8">
@@ -162,9 +158,6 @@ const Dashboard = (props) => {
 
             {/* Date Range + Toggle */}
             <div className="flex items-center gap-3">
-              {/* Desktop Date Range Pill - Hidden on mobile, kept for desktop layout balance if needed, 
-                  but we are integrating it below. Let's keep the toggle. */}
-
               <div className="bg-white/10 rounded-lg p-1 flex items-center backdrop-blur-sm border border-white/10 h-9">
                 <button
                   onClick={() => setViewMode('complete')}
@@ -200,7 +193,7 @@ const Dashboard = (props) => {
             </div>
           </div>
 
-          {/* Date Range Info Bar - Integrated below main header */}
+          {/* Date Range Info Bar */}
           {dateRange && (
             <div className="border-t border-white/10 py-2">
               <div className="flex items-center justify-center gap-2 text-white/90 text-xs">
@@ -231,49 +224,61 @@ const Dashboard = (props) => {
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
-      <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
-        {/* KPI Cards */}
-        {metrics && (
-          <KPICards
-            businessMetrics={metrics.business}
-            customerMetrics={metrics.customers}
-            salesData={salesData}
-            viewMode={viewMode}
-            onNavigate={props.onNavigate}
-          />
-        )}
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden flex flex-col relative z-0">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 space-y-4">
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 2xl:grid-cols-[1fr_440px] gap-4">
-          {/* Operating Cycles Chart */}
-          <OperatingCyclesChart salesData={salesData} />
-
-          {/* Right Column: At-Risk Table + Quick Actions */}
-          <div className="space-y-4">
-            {/* At-Risk Table */}
-            {metrics?.customers && (
-              <AtRiskCustomersTable
-                customerMetrics={metrics.customers}
+            {/* KPI Cards Section */}
+            <div className="w-full">
+              <KPICards
+                businessMetrics={businessMetrics}
+                customerMetrics={customerMetrics}
                 salesData={salesData}
+                viewMode={viewMode}
+                onNavigate={handleTabChange}
               />
-            )}
+            </div>
 
-            {/* Quick Actions Card */}
-            <QuickActionsCard
-              onRefresh={() => window.location.reload()}
-              onExportReport={() => alert('Funcionalidade de exportação em breve!')}
-              onSendCampaign={() => alert('Funcionalidade de campanha em breve!')}
-              onOpenSettings={() => alert('Configurações em breve!')}
-            />
+            {/* Charts Grid - Optimized for height */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Left Column: Operating Cycles */}
+              <div className="w-full h-[400px]">
+                <OperatingCyclesChart salesData={salesData} />
+              </div>
+
+              {/* Right Column: Operations KPIs & Quick Actions */}
+              <div className="space-y-4">
+                <OperationsKPICards salesData={salesData} />
+                <QuickActionsCard
+                  onRefresh={() => window.location.reload()}
+                  onExportReport={() => alert('Funcionalidade de exportação em breve!')}
+                  onSendCampaign={() => alert('Funcionalidade de campanha em breve!')}
+                  onOpenSettings={() => alert('Configurações em breve!')}
+                />
+              </div>
+            </div>
+
+            {/* Bottom Section: At Risk Customers */}
+            <div className="w-full">
+              {/* Consider making this collapsible or moving to a separate tab if it takes too much space */}
+              {/* For now, keep it but ensure it doesn't force scroll too much if not needed */}
+              {metrics?.customers && (
+                <AtRiskCustomersTable
+                  customerMetrics={metrics.customers}
+                  salesData={salesData}
+                />
+              )}
+            </div>
+
           </div>
         </div>
+      </div>
 
-        {/* Footer */}
-        <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
-          Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.3
-        </div>
-      </main>
+      {/* Footer */}
+      <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8 pb-4">
+        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.3
+      </div>
     </div>
   );
 };

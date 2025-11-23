@@ -30,9 +30,10 @@ const MetricExplainerDrilldown = ({ metricType }) => {
                     formula: 'Horas em Uso / (Máquinas × Horas de Funcionamento)',
                     explanation: 'Mede a eficiência do uso do seu equipamento. Baseado em um dia de funcionamento padrão.',
                     benchmarks: [
-                        { label: 'Alta Demanda', value: '> 60%', color: 'text-emerald-600 bg-emerald-50' },
-                        { label: 'Normal', value: '30% - 60%', color: 'text-blue-600 bg-blue-50' },
-                        { label: 'Baixa', value: '< 30%', color: 'text-slate-600 bg-slate-50' }
+                        { label: 'Excelente', value: '> 25%', color: 'text-emerald-600 bg-emerald-50' },
+                        { label: 'Bom', value: '15% - 25%', color: 'text-blue-600 bg-blue-50' },
+                        { label: 'Razoável', value: '10% - 15%', color: 'text-amber-600 bg-amber-50' },
+                        { label: 'Baixo', value: '< 10%', color: 'text-red-600 bg-red-50' }
                     ],
                     tip: 'Utilização muito alta (>80%) pode indicar necessidade de mais máquinas ou perda de clientes por filas.'
                 };
@@ -72,7 +73,7 @@ const MetricExplainerDrilldown = ({ metricType }) => {
                         <Target className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
                         <h3 className="font-semibold text-slate-900 dark:text-white">Benchmarks</h3>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {content.benchmarks.map((bench, idx) => (
                             <div key={idx} className={`p-3 rounded-lg text-center ${bench.color} dark:bg-opacity-10`}>
                                 <div className="text-lg font-bold">{bench.value}</div>
