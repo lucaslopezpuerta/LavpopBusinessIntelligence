@@ -1,3 +1,7 @@
+// CustomerListDrilldown.jsx v2.0 - SMART LISTS
+// ✅ Top 5 limit for brevity
+// ✅ WhatsApp and Call actions
+// ✅ Dynamic sorting based on type
 import React from 'react';
 import { Phone, MessageCircle, User, ArrowRight } from 'lucide-react';
 

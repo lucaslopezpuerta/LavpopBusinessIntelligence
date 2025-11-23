@@ -1,7 +1,11 @@
+// FinancialDrilldown.jsx v2.1 - FIXED & ROBUST
+// ✅ Daily revenue and cycle tracking
+// ✅ Uses shared parseSalesRecords for consistent date handling
+// ✅ Gradient area chart
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Calendar, ArrowRight } from 'lucide-react';
-import { getDailyRevenue } from '../../utils/businessMetrics';
+import { parseSalesRecords } from '../../utils/transactionParser';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) => {
@@ -10,76 +14,55 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
     // Get daily data using shared utility
     const dailyData = useMemo(() => {
         if (!salesData || salesData.length === 0) return [];
-        // getDailyRevenue returns { date: 'YYYY-MM-DD', revenue: number }
-        // We need to adapt it if metricType is 'cycles' or just use it for revenue
 
-        if (metricType === 'revenue') {
-            return getDailyRevenue(salesData, 30);
-        } else {
-            // Custom logic for cycles if getDailyRevenue doesn't support it (it seems it only does revenue)
-            // Let's implement a simple cycle counter here similar to getDailyRevenue structure
-            const today = new Date();
-            const startDate = new Date(today);
-            startDate.setDate(startDate.getDate() - 30);
+        // Use shared parser for consistent date handling
+        const records = parseSalesRecords(salesData);
+        const today = new Date();
+        const startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 30);
+        startDate.setHours(0, 0, 0, 0);
 
-            const dailyMap = {};
+        const dailyMap = {};
 
-            // Initialize map
-            for (let i = 0; i <= 30; i++) {
-                const d = new Date(startDate);
-                d.setDate(d.getDate() + i);
-                const dateKey = d.toISOString().split('T')[0];
-                dailyMap[dateKey] = 0;
-            }
-
-            salesData.forEach(row => {
-                const dateStr = row.Data || row.Data_Hora || row.date;
-                if (!dateStr) return;
-
-                // Parse date (assuming ISO or BR format handled by a helper, but here we need to be careful)
-                // If salesData comes from CSV, it might be DD/MM/YYYY. 
-                // Let's assume standard parsing for now or use the same logic as getDailyRevenue
-                // Actually, getDailyRevenue uses parseSalesRecords internally.
-                // We should probably expose a getDailyCycles function in businessMetrics.js or just do it here.
-
-                // For now, let's rely on the fact that we can just count rows if we parse them correctly.
-                // But to be safe and consistent with "math utils", we should probably add getDailyCycles to businessMetrics.js
-                // However, I cannot edit businessMetrics.js easily right now without context.
-                // Let's use the same logic as getDailyRevenue but count items.
-
-                // ... actually, let's just implement the cycle counting here carefully.
-                let date;
-                if (dateStr.includes('/')) {
-                    const [d, m, y] = dateStr.split('/');
-                    date = new Date(y, m - 1, d);
-                } else {
-                    date = new Date(dateStr);
-                }
-
-                if (date >= startDate && date <= today) {
-                    const dateKey = date.toISOString().split('T')[0];
-                    if (dailyMap[dateKey] !== undefined) {
-                        dailyMap[dateKey] += 1;
-                    }
-                }
-            });
-
-            return Object.keys(dailyMap).sort().map(dateKey => ({
-                date: dateKey,
-                revenue: dailyMap[dateKey] // We use 'revenue' key to keep chart compatible or map it
-            }));
+        // Initialize map for last 30 days
+        for (let i = 0; i <= 30; i++) {
+            const d = new Date(startDate);
+            d.setDate(d.getDate() + i);
+            const dateKey = d.toISOString().split('T')[0];
+            dailyMap[dateKey] = { revenue: 0, cycles: 0 };
         }
-    }, [salesData, metricType]);
+
+        records.forEach(record => {
+            if (record.date >= startDate && record.date <= today) {
+                const dateKey = record.dateStr; // parseSalesRecords provides dateStr as YYYY-MM-DD
+
+                if (dailyMap[dateKey]) {
+                    dailyMap[dateKey].revenue += record.netValue;
+                    dailyMap[dateKey].cycles += record.totalServices; // Count services (cycles)
+                }
+            }
+        });
+
+        return Object.keys(dailyMap).sort().map(dateKey => ({
+            date: dateKey,
+            revenue: Math.round(dailyMap[dateKey].revenue * 100) / 100,
+            cycles: dailyMap[dateKey].cycles
+        }));
+    }, [salesData]);
 
     // Calculate totals and best day
     const stats = useMemo(() => {
         if (dailyData.length === 0) return { total: 0, bestDay: null, bestValue: 0 };
 
-        const total = dailyData.reduce((sum, day) => sum + day.revenue, 0);
+        const total = dailyData.reduce((sum, day) => sum + (metricType === 'revenue' ? day.revenue : day.cycles), 0);
 
-        const best = dailyData.reduce((max, day) =>
-            day.revenue > max.revenue ? day : max
-            , dailyData[0]);
+        const best = dailyData.reduce((max, day) => {
+            const currentVal = metricType === 'revenue' ? day.revenue : day.cycles;
+            const maxVal = metricType === 'revenue' ? max.revenue : max.cycles;
+            return currentVal > maxVal ? day : max;
+        }, dailyData[0]);
+
+        const bestVal = metricType === 'revenue' ? best.revenue : best.cycles;
 
         // Format best day date (YYYY-MM-DD -> DD/MM)
         const [year, month, day] = best.date.split('-');
@@ -88,9 +71,9 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
         return {
             total,
             bestDay: bestDateFormatted,
-            bestValue: best.revenue
+            bestValue: bestVal
         };
-    }, [dailyData]);
+    }, [dailyData, metricType]);
 
     const formatValue = (val) => {
         if (metricType === 'revenue') {
@@ -106,10 +89,10 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
             return {
                 ...d,
                 displayDate: `${day}/${month}`,
-                value: d.revenue
+                value: metricType === 'revenue' ? d.revenue : d.cycles
             };
         });
-    }, [dailyData]);
+    }, [dailyData, metricType]);
 
     const color = metricType === 'revenue' ? '#10b981' : '#3b82f6'; // Emerald vs Blue
     const gradientId = `gradient-${metricType}`;

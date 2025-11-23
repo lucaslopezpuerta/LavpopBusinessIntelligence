@@ -1,3 +1,8 @@
+// Dashboard.jsx v8.5 - FIXED LAYOUT & METRICS
+// ✅ Integrated WeatherWidget_API
+// ✅ Optimized layout spacing
+// ✅ Fixed operations metrics calculation
+// ✅ Fixed AtRiskCustomersTable props
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import { Calendar, CheckCircle2 } from 'lucide-react';
@@ -11,6 +16,7 @@ import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import SocialMediaWidget from '../components/SocialMediaWidget';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
+import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 
 const Dashboard = (props) => {
   const [salesData, setSalesData] = useState([]);
@@ -68,7 +74,8 @@ const Dashboard = (props) => {
     if (!salesData.length) return null;
     const business = calculateBusinessMetrics(salesData);
     const customers = calculateCustomerMetrics(salesData, rfmData);
-    return { business, customers };
+    const operations = calculateOperationsMetrics(salesData);
+    return { business, customers, operations };
   }, [salesData, rfmData]);
 
   // Handle tab navigation from drill-downs
@@ -122,6 +129,7 @@ const Dashboard = (props) => {
   const dateRange = getDateRange();
   const businessMetrics = metrics?.business;
   const customerMetrics = metrics?.customers;
+  const operationsMetrics = metrics?.operations;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-8">
@@ -227,7 +235,7 @@ const Dashboard = (props) => {
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden flex flex-col relative z-0">
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+          <div className="max-w-[1920px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
             {/* KPI Cards Section */}
             <div className="w-full">
@@ -240,35 +248,38 @@ const Dashboard = (props) => {
               />
             </div>
 
-            {/* Charts Grid - Optimized for height */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Left Column: Operating Cycles */}
-              <div className="w-full h-[400px]">
-                <OperatingCyclesChart salesData={salesData} />
+            {/* Charts & Operations Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              {/* Left Column: Operating Cycles (2/3 width) */}
+              <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  Ciclos de Operação
+                </h3>
+                <div className="h-[400px] w-full">
+                  <OperatingCyclesChart salesData={salesData} />
+                </div>
               </div>
 
-              {/* Right Column: Operations KPIs & Quick Actions */}
-              <div className="space-y-4">
-                <OperationsKPICards salesData={salesData} />
-                <QuickActionsCard
-                  onRefresh={() => window.location.reload()}
-                  onExportReport={() => alert('Funcionalidade de exportação em breve!')}
-                  onSendCampaign={() => alert('Funcionalidade de campanha em breve!')}
-                  onOpenSettings={() => alert('Configurações em breve!')}
+              {/* Right Column: Operations KPIs & Quick Actions (1/3 width) */}
+              <div className="space-y-6">
+                <OperationsKPICards
+                  businessMetrics={businessMetrics}
+                  operationsMetrics={operationsMetrics}
+                  previousWeekMetrics={metrics?.business?.previousWeekly}
                 />
+                <QuickActionsCard />
               </div>
             </div>
 
             {/* Bottom Section: At Risk Customers */}
             <div className="w-full">
-              {/* Consider making this collapsible or moving to a separate tab if it takes too much space */}
-              {/* For now, keep it but ensure it doesn't force scroll too much if not needed */}
-              {metrics?.customers && (
-                <AtRiskCustomersTable
-                  customerMetrics={metrics.customers}
-                  salesData={salesData}
-                />
-              )}
+              <AtRiskCustomersTable
+                customerMetrics={customerMetrics}
+                salesData={salesData}
+              />
             </div>
 
           </div>
@@ -277,7 +288,7 @@ const Dashboard = (props) => {
 
       {/* Footer */}
       <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8 pb-4">
-        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.3
+        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.5
       </div>
     </div>
   );

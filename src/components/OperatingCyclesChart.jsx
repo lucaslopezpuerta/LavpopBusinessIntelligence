@@ -1,3 +1,7 @@
+// OperatingCyclesChart.jsx v4.0 - ENHANCED COMPARISON
+// ✅ Previous month comparison lines (dashed)
+// ✅ Gradient bars for visual depth
+// ✅ Mobile responsive adjustments
 import React, { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart, Defs, LinearGradient, Stop } from 'recharts';
 import { WashingMachine, Calendar, TrendingUp } from 'lucide-react';

@@ -1,3 +1,7 @@
+// MetricExplainerDrilldown.jsx v2.0 - BENCHMARKS
+// ✅ Updated utilization benchmarks
+// ✅ Visual formula breakdown
+// ✅ Contextual tips
 import React from 'react';
 import { Info, Calculator, Target } from 'lucide-react';
 
