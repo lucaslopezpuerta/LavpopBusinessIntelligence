@@ -181,7 +181,16 @@ function AppContent() {
                 </h1>
               </motion.div>
               <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-              <WeatherWidget compact showLocation />
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
+                <MapPin className="w-3 h-3 text-lavpop-blue dark:text-blue-400" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Caxias do Sul
+                </span>
+              </div>
+              <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700" />
+              <div className="hidden sm:block">
+                <WeatherWidget compact />
+              </div>
             </div>
 
             {/* Desktop Navigation - Sliding Pill */}
