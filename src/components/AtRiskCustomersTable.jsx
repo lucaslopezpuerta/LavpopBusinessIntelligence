@@ -77,13 +77,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
       return {
         borderColorValue: '#ef4444', // red-500
         badge: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 border-red-300 dark:border-red-600',
-        label: 'Perdendo 💔'
+        label: 'Perdendo'
       };
     }
     return {
       borderColorValue: '#f59e0b', // amber-500
       badge: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 border-amber-300 dark:border-amber-600',
-      label: 'Em Risco ⚠️'
+      label: 'Em Risco'
     };
   };
 
@@ -139,7 +139,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
                       hover:brightness-95 dark:hover:brightness-110
                       ${index < atRiskCustomers.length - 1 ? 'border-b border-slate-200 dark:border-slate-700' : ''}
                       hover:bg-slate-50 dark:hover:bg-slate-700/50
-                      border-l-4
+                      border-l-4 lg:border-l-0
                     `}
                     style={{ borderLeftColor: styles.borderColorValue }}
                     onClick={() => setSelectedCustomer(customer)}
