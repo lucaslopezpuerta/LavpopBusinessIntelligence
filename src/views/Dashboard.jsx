@@ -6,7 +6,7 @@ import OperatingCyclesChart from '../components/OperatingCyclesChart';
 import OperationsKPICards from '../components/OperationsKPICards';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import QuickActionsCard from '../components/QuickActionsCard';
-import WeatherWidget from '../components/WeatherWidget';
+import WeatherWidget from '../components/WeatherWidget_API';
 import GoogleBusinessWidget from '../components/GoogleBusinessWidget';
 import SocialMediaWidget from '../components/SocialMediaWidget';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
