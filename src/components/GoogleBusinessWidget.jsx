@@ -123,15 +123,21 @@ const GoogleBusinessWidget = ({ compact = false }) => {
           hover:bg-slate-200 dark:hover:bg-slate-700
         "
         onClick={() => window.open(GOOGLE_BUSINESS_CONFIG.MAPS_URL, '_blank')}
-        title={`Google Maps • ${businessData.rating?.toFixed(1)} ⭐ • ${businessData.totalReviews} avaliações`}
+        title={`Google Maps • ${businessData.rating?.toFixed(1)} ⭐ • ${businessData.totalReviews} avaliações • ${businessData.isOpen ? 'Aberto' : 'Fechado'}`}
       >
-        {/* Map Pin Icon */}
-        <div className="w-5 h-5 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-          <MapPin className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+        {/* Mobile: Show rating only, Desktop: Show icon + all metrics */}
+        <div className="sm:hidden flex items-center gap-0.5">
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            {businessData.rating?.toFixed(1) || '—'}
+          </span>
+          <Star className="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 fill-amber-500 dark:fill-amber-400" />
         </div>
 
-        {/* Metrics - Hidden on smallest screens */}
+        {/* Desktop: Icon + Full Metrics */}
         <div className="hidden sm:flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+            <MapPin className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+          </div>
           <div className="flex items-center gap-0.5">
             <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
               {businessData.rating?.toFixed(1) || '—'}
