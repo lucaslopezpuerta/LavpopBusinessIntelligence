@@ -3,7 +3,7 @@
 // ✅ Gradient bars for visual depth
 // ✅ Mobile responsive adjustments
 import React, { useMemo, useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart, Defs, LinearGradient, Stop } from 'recharts';
+import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart } from 'recharts';
 import { WashingMachine, Calendar, TrendingUp } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
