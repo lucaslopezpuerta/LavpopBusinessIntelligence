@@ -1,7 +1,10 @@
-// Customers View v2.0 - CUSTOMER INTELLIGENCE HUB
+// Customers View v2.0.1 - CUSTOMER INTELLIGENCE HUB
 // Complete redesign from card-based list to Intelligence Hub
 // 
 // CHANGELOG:
+// v2.0.1 (2025-11-24): Fixed RFM data loading
+//   - FIX: Properly extract data.sales and data.rfm from data object
+//   - FIX: Pass rfm data to calculateCustomerMetrics
 // v2.0 (2025-11-23): Customer Intelligence Hub Implementation
 //   - NEW: Intelligence Dashboard with 4 analytics components
 //     * Retention Pulse (CustomerRetentionScore)
@@ -10,12 +13,8 @@
 //     * Acquisition Context (NewClientsChart)
 //   - NEW: Premium CustomerCard component with dot-style risk badges
 //   - NEW: Glassmorphic FilterBar with enhanced UX
-//   - REFACTOR: Complete Tailwind CSS migration (removed all inline styles)
-//   - REFACTOR: Integrated shared CustomerDetailModal
-//   - ENHANCE: Advanced filtering, sorting, and search capabilities
-//   - ENHANCE: CSV export functionality
-//   - UI: Responsive grid layout (1-4 columns based on screen size)
-//   - UI: Dark mode support throughout
+//   - REFACTOR: Complete Tailwind CSS migration
+//   - UI: Responsive grid layout + dark mode support
 
 import React, { useState, useMemo } from 'react';
 import { Users as UsersIcon } from 'lucide-react';
@@ -38,8 +37,9 @@ const Customers = ({ data }) => {
 
   // 1. Calculate Base Metrics
   const metrics = useMemo(() => {
-    if (!data || data.length === 0) return null;
-    return calculateCustomerMetrics(data, []);
+    if (!data || !data.sales || data.sales.length === 0) return null;
+    // Pass both sales and rfm data to calculateCustomerMetrics
+    return calculateCustomerMetrics(data.sales, data.rfm || []);
   }, [data]);
 
   // 2. Prepare Intelligence Data
@@ -48,7 +48,7 @@ const Customers = ({ data }) => {
     return {
       rfm: getRFMCoordinates(metrics.activeCustomers),
       histogram: getChurnHistogramData(metrics.activeCustomers),
-      retention: getRetentionCohorts(data),
+      retention: getRetentionCohorts(data.sales),
       acquisition: getAcquisitionTrend(metrics.activeCustomers)
     };
   }, [metrics, data]);

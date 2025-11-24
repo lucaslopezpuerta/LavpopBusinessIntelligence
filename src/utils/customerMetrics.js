@@ -89,23 +89,25 @@ function countMachines(str) {
  * @param {Array} rfmData - RFM segmentation rows
  * @returns {Object} Customer metrics and lists
  */
-export function calculateCustomerMetrics(salesData, rfmData) {
+export function calculateCustomerMetrics(salesData, rfmData = []) {
   const customers = {};
   const rfmMap = {};
   const now = new Date();
 
-  // Build RFM lookup
-  rfmData.forEach(row => {
-    const doc = normalizeDoc(row.Doc_Cliente || row.col2 || row.doc || '');
-    if (doc) {
-      rfmMap[doc] = {
-        segment: row.segment || row.col1 || row.Segment || 'Unclassified',
-        name: row['client name'] || row.name || row.Name || row.cliente || null,
-        phone: row['phone number'] || row.phone || row.Phone || null,
-        lastContactDate: row.col5 || row.lastContactDate || null
-      };
-    }
-  });
+  // Build RFM lookup - with safety check
+  if (Array.isArray(rfmData) && rfmData.length > 0) {
+    rfmData.forEach(row => {
+      const doc = normalizeDoc(row.Doc_Cliente || row.col2 || row.doc || '');
+      if (doc) {
+        rfmMap[doc] = {
+          segment: row.segment || row.col1 || row.Segment || 'Unclassified',
+          name: row['client name'] || row.name || row.Name || row.cliente || null,
+          phone: row['phone number'] || row.phone || row.Phone || null,
+          lastContactDate: row.col5 || row.lastContactDate || null
+        };
+      }
+    });
+  }
 
   console.log('RFM map built with', Object.keys(rfmMap).length, 'entries');
   console.log('Sample RFM entry:', Object.values(rfmMap)[0]);
