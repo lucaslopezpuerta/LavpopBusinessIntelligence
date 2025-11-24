@@ -1,12 +1,13 @@
-// App.jsx v4.2 - RELOAD BUTTON ADDED
-// ✅ Added reload data button to header
-// ✅ Mobile menu polish
-// ✅ No logic changes
+// App.jsx v5.0 - ERROR BOUNDARIES + CODE SPLITTING
+// ✅ Added ErrorBoundary for graceful error handling
+// ✅ Implemented lazy loading for tab components
+// ✅ Added Suspense with loading fallback
 //
 // CHANGELOG:
+// v5.0 (2025-11-23): Error boundaries + code splitting
 // v4.2 (2025-11-21): Reload button added
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BarChart3, Users, TrendingUp, Settings, Menu, X, RefreshCw, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -15,12 +16,23 @@ import { loadAllData } from './utils/csvLoader';
 import WeatherWidget from './components/WeatherWidget_API';
 import GoogleBusinessWidget from './components/GoogleBusinessWidget';
 import SocialMediaWidget from './components/SocialMediaWidget';
+import ErrorBoundary from './components/ErrorBoundary';
 
-// Import views
-import Dashboard from './views/Dashboard';
-import Customers from './views/Customers';
-import Operations from './views/Operations';
-import Intelligence from './views/Intelligence';
+// Lazy load tab components for code splitting
+const Dashboard = lazy(() => import('./views/Dashboard'));
+const Customers = lazy(() => import('./views/Customers'));
+const Operations = lazy(() => import('./views/Operations'));
+const Intelligence = lazy(() => import('./views/Intelligence'));
+
+// Loading fallback component
+const TabLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-lavpop-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-slate-600 dark:text-slate-400 font-medium">Carregando...</p>
+    </div>
+  </div>
+);
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -334,12 +346,14 @@ function AppContent() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
           >
-            <ActiveComponent
-              data={data}
-              onNavigate={handleTabChange}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-            />
+            <Suspense fallback={<TabLoadingFallback />}>
+              <ActiveComponent
+                data={data}
+                onNavigate={handleTabChange}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+              />
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>
@@ -358,9 +372,11 @@ function AppContent() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
