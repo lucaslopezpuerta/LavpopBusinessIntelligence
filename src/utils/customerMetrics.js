@@ -1,12 +1,13 @@
-// Customer Metrics Calculator v2.2.0 - INTELLIGENCE HUB ANALYTICS
+// Customer Metrics Calculator v3.0.0 - LAUNDROMAT-OPTIMIZED THRESHOLDS
 // ✅ Brazilian number parsing added (handles comma decimals)
 // ✅ Cashback rate corrected (7.5%)
 // ✅ Cashback start date corrected (June 1, 2024)
-// ✅ NEW: Intelligence Hub analytics functions (v2.2.0 - 2025-11-23)
-//     - getRFMCoordinates: Maps customers to RFM scatter plot coordinates
-//     - getChurnHistogramData: Creates time-to-churn distribution buckets
-//     - getRetentionCohorts: Calculates actual return rates (30/60/90 days)
-//     - getAcquisitionTrend: Tracks new customer acquisition over time
+// ✅ NEW v3.0.0 (2025-11-24): Laundromat-optimized churn thresholds
+//     - Updated LOST_THRESHOLD: 120 → 60 days (realistic for laundromat)
+//     - New DAY_THRESHOLDS: 20/30/45/60 days for risk classification
+//     - Added RISK_LABELS constant for unified Portuguese translations
+// ✅ Intelligence Hub analytics functions (v2.2.0 - 2025-11-23)
+//     - getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend
 
 import { parseBrDate } from './dateUtils';
 
@@ -43,9 +44,31 @@ function normalizeDoc(doc) {
   return cleaned;
 };
 
-const LOST_THRESHOLD = 120; // Days until customer is considered "Lost"
+// LAUNDROMAT-OPTIMIZED THRESHOLDS (v3.0.0)
+// Based on business reality: customers typically visit every 7-14 days
+const LOST_THRESHOLD = 60; // Days until customer is considered "Lost" (was 120)
 const CASHBACK_RATE = 0.075; // 7.5% cashback
 const CASHBACK_START = new Date(2024, 5, 1); // June 1, 2024
+
+// Day-based thresholds for risk classification
+const DAY_THRESHOLDS = {
+  HEALTHY: 20,    // 0-20 days: Normal laundry cycle (weekly/bi-weekly)
+  MONITOR: 30,    // 21-30 days: Slightly overdue, worth monitoring
+  AT_RISK: 45,    // 31-45 days: Missing their cycle, intervention needed
+  CHURNING: 60,   // 46-60 days: Likely found another laundromat
+  LOST: 60        // 60+ days: Definitively churned
+};
+
+// Unified Risk Labels (English keys, Portuguese values)
+// Use this constant across ALL components for consistency
+export const RISK_LABELS = {
+  'Healthy': { pt: 'Saudável', color: 'green', icon: '🟢', bgClass: 'bg-green-100', textClass: 'text-green-700' },
+  'Monitor': { pt: 'Monitorar', color: 'blue', icon: '🔵', bgClass: 'bg-blue-100', textClass: 'text-blue-700' },
+  'At Risk': { pt: 'Em Risco', color: 'amber', icon: '🟠', bgClass: 'bg-amber-100', textClass: 'text-amber-700' },
+  'Churning': { pt: 'Crítico', color: 'red', icon: '🔴', bgClass: 'bg-red-100', textClass: 'text-red-700' },
+  'New Customer': { pt: 'Novo', color: 'purple', icon: '🟣', bgClass: 'bg-purple-100', textClass: 'text-purple-700' },
+  'Lost': { pt: 'Perdido', color: 'slate', icon: '⚪', bgClass: 'bg-slate-100', textClass: 'text-slate-700' }
+};
 
 // RFM segment bonus multipliers for return likelihood
 const SEGMENT_BONUS = {
@@ -60,7 +83,7 @@ const SEGMENT_BONUS = {
   'Unclassified': 1.0
 };
 
-// Risk level thresholds
+// Risk level thresholds (likelihood-based, used in conjunction with day thresholds)
 const RISK_THRESHOLDS = {
   HEALTHY: 60,      // >60% likelihood
   MONITOR: 30,      // >30% likelihood

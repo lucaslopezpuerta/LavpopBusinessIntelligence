@@ -1,7 +1,10 @@
-// CustomerRetentionScore.jsx v2.0 - RETENTION PULSE
+// CustomerRetentionScore.jsx v2.1 - RETENTION PULSE WITH INSIGHTS
 // Simplified survival score visualization
 // 
 // CHANGELOG:
+// v2.1 (2025-11-24): Added actionable insights
+//   - NEW: InsightBox with contextual recommendations
+//   - Insights adapt based on retention rate
 // v2.0 (2025-11-23): Complete redesign for Customer Intelligence Hub
 //   - NEW: Visual "pulse" design with status icon and color
 //   - NEW: Simplified 30/60/90 day retention display
@@ -14,6 +17,7 @@
 
 import React from 'react';
 import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
+import InsightBox from './InsightBox';
 
 const CustomerRetentionScore = ({ data }) => {
   if (!data) return null;
@@ -29,6 +33,19 @@ const CustomerRetentionScore = ({ data }) => {
   };
 
   const status30 = getStatus(rate30);
+
+  // Generate insights based on retention rate
+  const insights = [];
+  if (rate30 >= 70) {
+    insights.push({ type: 'success', text: `✅ ${rate30}% dos clientes retornam em 30 dias - Excelente!` });
+    insights.push({ type: 'action', text: '💡 Meta: Manter acima de 70% com programa de fidelidade' });
+  } else if (rate30 >= 50) {
+    insights.push({ type: 'warning', text: `⚠️ ${100 - rate30}% não retornam - Foco em reengajamento` });
+    insights.push({ type: 'action', text: '💡 Ação: Contatar clientes após 25 dias sem visitar' });
+  } else {
+    insights.push({ type: 'warning', text: `🚨 Apenas ${rate30}% retornam - CRÍTICO!` });
+    insights.push({ type: 'action', text: '💡 Urgente: Implementar campanha de reativação' });
+  }
 
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-sm h-full flex flex-col">
@@ -56,16 +73,18 @@ const CustomerRetentionScore = ({ data }) => {
         <p className="text-xs text-slate-400 mt-1">Retorno em 30 dias</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-          <div className="text-xs text-slate-500 mb-1">60 Dias</div>
+          <div className="text-xs text-slate-400 mb-1">60 Dias</div>
           <div className="text-lg font-bold text-slate-700">{rate60}%</div>
         </div>
         <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-          <div className="text-xs text-slate-500 mb-1">90 Dias</div>
+          <div className="text-xs text-slate-400 mb-1">90 Dias</div>
           <div className="text-lg font-bold text-slate-700">{rate90}%</div>
         </div>
       </div>
+
+      <InsightBox insights={insights} />
     </div>
   );
 };
