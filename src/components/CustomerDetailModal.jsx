@@ -1,12 +1,16 @@
-// CustomerDetailModal.jsx v5.0 - REDESIGN: COMPACT & MOBILE-FRIENDLY
+// CustomerDetailModal.jsx v5.1 - UNIFIED RISK LABELS
 // ✅ Follows Design System v2.0 strictly
 // ✅ Simplified header (no gradient)
 // ✅ More compact layout
 // ✅ Better mobile responsiveness
 // ✅ Cleaner card designs
 // ✅ Optimized spacing
+// ✅ NEW v5.1: Uses unified RISK_LABELS from customerMetrics.js
 //
 // CHANGELOG:
+// v5.1 (2025-11-24): Unified risk labels
+//   - Imports RISK_LABELS from customerMetrics.js
+//   - Consistent Portuguese translations across all components
 // v5.0 (2025-11-22): Complete redesign - compact & mobile-friendly
 // v4.1 (2025-11-21): Branding & design improvements
 // v4.0 (2025-11-20): Tailwind migration & Dark Mode
@@ -26,59 +30,17 @@ import {
   User,
 } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
+import { RISK_LABELS } from '../utils/customerMetrics';
 
+// ✅ UNIFIED: Use RISK_LABELS from customerMetrics.js
 const getRiskTailwind = (riskLevel) => {
-  switch (riskLevel) {
-    case 'Healthy':
-      return {
-        bg: 'bg-emerald-100 dark:bg-emerald-900/40',
-        text: 'text-emerald-700 dark:text-emerald-300',
-        dot: 'bg-emerald-500',
-        label: 'Saudável',
-      };
-    case 'Monitor':
-      return {
-        bg: 'bg-sky-100 dark:bg-sky-900/40',
-        text: 'text-sky-700 dark:text-sky-300',
-        dot: 'bg-sky-500',
-        label: 'Monitorar',
-      };
-    case 'At Risk':
-      return {
-        bg: 'bg-amber-100 dark:bg-amber-900/40',
-        text: 'text-amber-700 dark:text-amber-300',
-        dot: 'bg-amber-500',
-        label: 'Em Risco',
-      };
-    case 'Churning':
-      return {
-        bg: 'bg-red-100 dark:bg-red-900/40',
-        text: 'text-red-700 dark:text-red-300',
-        dot: 'bg-red-500',
-        label: 'Perdendo',
-      };
-    case 'New Customer':
-      return {
-        bg: 'bg-violet-100 dark:bg-violet-900/40',
-        text: 'text-violet-700 dark:text-violet-300',
-        dot: 'bg-violet-500',
-        label: 'Novo',
-      };
-    case 'Lost':
-      return {
-        bg: 'bg-slate-100 dark:bg-slate-800',
-        text: 'text-slate-600 dark:text-slate-400',
-        dot: 'bg-slate-500',
-        label: 'Perdido',
-      };
-    default:
-      return {
-        bg: 'bg-slate-100 dark:bg-slate-800',
-        text: 'text-slate-600 dark:text-slate-400',
-        dot: 'bg-slate-500',
-        label: riskLevel || 'Indefinido',
-      };
-  }
+  const config = RISK_LABELS[riskLevel] || RISK_LABELS['Lost'];
+  return {
+    bg: `${config.bgClass} dark:${config.bgClass.replace('bg-', 'bg-')}/40`,
+    text: `${config.textClass} dark:${config.textClass}`,
+    dot: `bg-${config.color}-500`,
+    label: config.pt,
+  };
 };
 
 const parseMachines = (machineStr) => {

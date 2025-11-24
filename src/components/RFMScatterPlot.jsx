@@ -1,11 +1,12 @@
-// RFMScatterPlot.jsx v1.2 - RISK MAP WITH INSIGHTS
+// RFMScatterPlot.jsx v1.3 - RISK MAP WITH CLEAR EXPLANATION
 // Visual representation of customer value and recency
 // 
 // CHANGELOG:
+// v1.3 (2025-11-24): Added explanation for likelihood-based classification
+//   - NEW: Clear tooltip explaining why healthy customers can be in danger zone
+//   - IMPROVED: Updated insights to mention individual patterns
 // v1.2 (2025-11-24): Added actionable insights
-//   - NEW: InsightBox with high-value customer alerts
 // v1.1 (2025-11-24): Portuguese translations
-//   - FIX: Translated risk status labels
 // v1.0 (2025-11-23): Initial implementation
 
 import React from 'react';
@@ -28,7 +29,7 @@ const RFMScatterPlot = ({ data }) => {
     if (champions > 0) {
         insights.push({ type: 'success', text: `🎯 ${champions} campeões identificados - mantenha o relacionamento` });
     }
-    insights.push({ type: 'action', text: '💰 Foco: Clientes no topo-direita precisam de atenção imediata' });
+    insights.push({ type: 'action', text: '💡 A classificação considera padrões individuais, não apenas dias absolutos' });
 
     // Custom Tooltip
     const CustomTooltip = ({ active, payload }) => {
@@ -80,6 +81,12 @@ const RFMScatterPlot = ({ data }) => {
                     <span className="font-semibold text-green-600">Topo-Esquerda:</span> Campeões |
                     <span className="font-semibold text-red-500 ml-1">Topo-Direita:</span> Em Perigo
                 </p>
+                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-[10px] text-blue-700 dark:text-blue-300 font-medium">
+                        💡 <span className="font-bold">Nota:</span> A classificação considera o padrão individual de cada cliente.
+                        Clientes "saudáveis" podem aparecer à direita se naturalmente visitam com menos frequência.
+                    </p>
+                </div>
             </div>
 
             <div className="flex-1 min-h-[300px]">

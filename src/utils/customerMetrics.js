@@ -238,6 +238,29 @@ export function calculateCustomerMetrics(salesData, rfmData = []) {
       customer.segment = 'Unclassified';
     }
 
+    // ==========================================
+    // CHURN CLASSIFICATION LOGIC (v3.0.0)
+    // ==========================================
+    // This uses a DUAL-THRESHOLD SYSTEM for maximum accuracy:
+    //
+    // 1. DAY-BASED THRESHOLDS (Absolute):
+    //    - 60+ days = "Lost" (regardless of pattern)
+    //    - 1 visit only = "New Customer"
+    //
+    // 2. LIKELIHOOD-BASED (Individual Patterns):
+    //    - Compares daysSinceLastVisit to avgDaysBetween
+    //    - Considers RFM segment bonus
+    //    - Result: Healthy/Monitor/At Risk/Churning
+    //
+    // WHY THIS WORKS:
+    // - Customer A: Visits every 7 days, 14 days late → At Risk ⚠️
+    // - Customer B: Visits every 90 days, 60 days late → Healthy ✅
+    // - Both are 60 days since last visit, but different risk levels!
+    //
+    // This is why "healthy" customers can appear in the "danger zone"
+    // on the RFM scatter plot - they naturally visit less frequently.
+    // ==========================================
+
     // Risk calculation (V2.1 exact algorithm)
     if (daysSinceLastVisit > LOST_THRESHOLD) {
       customer.returnLikelihood = 0;

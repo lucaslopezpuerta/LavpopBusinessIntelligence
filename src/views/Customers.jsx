@@ -54,7 +54,8 @@ const Customers = ({ data }) => {
   const filteredCustomers = useMemo(() => {
     if (!metrics) return [];
 
-    let result = metrics.activeCustomers;
+    // ✅ FIX: Show ALL customers (including Lost), not just active
+    let result = metrics.allCustomers;
 
     // Search
     if (searchTerm) {
@@ -71,7 +72,7 @@ const Customers = ({ data }) => {
       result = result.filter(c => c.segment === selectedSegment);
     }
 
-    // Risk Filter
+    // Risk Filter - ✅ VERIFIED: This works correctly
     if (selectedRisk !== 'all') {
       result = result.filter(c => c.riskLevel === selectedRisk);
     }
@@ -83,7 +84,7 @@ const Customers = ({ data }) => {
         case 'visits': return b.transactions - a.transactions;
         case 'lastVisit': return b.lastVisit - a.lastVisit;
         case 'risk':
-          const riskOrder = { 'Churning': 4, 'At Risk': 3, 'Monitor': 2, 'Healthy': 1, 'New Customer': 0 };
+          const riskOrder = { 'Churning': 4, 'At Risk': 3, 'Monitor': 2, 'Healthy': 1, 'New Customer': 0, 'Lost': -1 };
           return (riskOrder[b.riskLevel] || 0) - (riskOrder[a.riskLevel] || 0);
         default: return 0;
       }
@@ -268,8 +269,8 @@ const Customers = ({ data }) => {
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
                           className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${currentPage === pageNum
-                              ? 'bg-lavpop-blue text-white'
-                              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                            ? 'bg-lavpop-blue text-white'
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                             }`}
                         >
                           {pageNum}

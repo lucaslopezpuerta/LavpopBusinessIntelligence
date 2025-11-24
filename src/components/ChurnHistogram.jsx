@@ -13,16 +13,22 @@ import InsightBox from './InsightBox';
 const ChurnHistogram = ({ data }) => {
     if (!data || data.length === 0) return null;
 
-    // Generate insights
+    // Generate insights - ✅ FIXED: Use correct data property
     const total = data.reduce((sum, d) => sum + d.count, 0);
-    const healthy = data.filter(d => d.range && d.range.includes('0-20')).reduce((sum, d) => sum + d.count, 0);
-    const healthyPct = Math.round((healthy / total) * 100);
+    // Check bins that represent 0-20 days (0-10 and 10-20)
+    const healthy = data.filter(d => {
+        const binStr = d.bin || '';
+        return binStr === '0-10' || binStr === '10-20';
+    }).reduce((sum, d) => sum + d.count, 0);
+    const healthyPct = total > 0 ? Math.round((healthy / total) * 100) : 0;
 
     const insights = [];
     if (healthyPct >= 60) {
         insights.push({ type: 'success', text: `✅ ${healthyPct}% retornam em 0-20 dias (padrão saudável)` });
-    } else {
+    } else if (healthyPct > 0) {
         insights.push({ type: 'warning', text: `⚠️ Apenas ${healthyPct}% retornam em 0-20 dias` });
+    } else {
+        insights.push({ type: 'warning', text: `⚠️ Apenas 0% retornam em 0-20 dias` });
     }
     insights.push({ type: 'warning', text: '⚠️ Pico em 30 dias = ponto crítico de abandono' });
     insights.push({ type: 'action', text: '💡 Ação: Contatar clientes após 25 dias sem visitar' });
