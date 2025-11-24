@@ -1,15 +1,14 @@
-// RFMScatterPlot.jsx v1.0 - RISK MAP VISUALIZATION
+// RFMScatterPlot.jsx v1.1 - RISK MAP VISUALIZATION
 // Visual representation of customer value and recency
 // 
 // CHANGELOG:
+// v1.1 (2025-11-24): Portuguese translations
+//   - FIX: Translated risk status labels (Saudável, Em Risco, Crítico, etc.)
 // v1.0 (2025-11-23): Initial implementation for Customer Intelligence Hub
 //   - Scatter plot with X-axis: Days since last visit (Recency)
 //   - Y-axis: Total spending (Monetary)
-//   - Color-coded by risk status (Healthy/At Risk/Churning)
-//   - Reference line at 30 days (Danger Zone threshold)
+//   - Color-coded by risk status
 //   - Interactive tooltips with customer details
-//   - Tailwind CSS styling with glassmorphism
-//   - Fully responsive design
 
 import React from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
@@ -22,6 +21,20 @@ const RFMScatterPlot = ({ data }) => {
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
+
+            // Translate risk status to Portuguese
+            const getRiskLabel = (status) => {
+                const labels = {
+                    'Healthy': 'Saudável',
+                    'Monitor': 'Monitorar',
+                    'At Risk': 'Em Risco',
+                    'Churning': 'Crítico',
+                    'New Customer': 'Novo',
+                    'Lost': 'Perdido'
+                };
+                return labels[status] || status;
+            };
+
             return (
                 <div className="bg-white/90 backdrop-blur-md p-3 border border-slate-200 rounded-lg shadow-xl text-xs">
                     <p className="font-bold text-slate-800 mb-1">{d.name}</p>
@@ -33,7 +46,7 @@ const RFMScatterPlot = ({ data }) => {
                                 d.status === 'Churning' ? 'bg-red-100 text-red-700' :
                                     'bg-slate-100 text-slate-700'
                         }`}>
-                        {d.status}
+                        {getRiskLabel(d.status)}
                     </div>
                 </div>
             );
@@ -80,7 +93,7 @@ const RFMScatterPlot = ({ data }) => {
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
 
-                        {/* Danger Zone Reference Line (e.g., 30 days) */}
+                        {/* Danger Zone Reference Line */}
                         <ReferenceLine x={30} stroke="#ef4444" strokeDasharray="3 3">
                             <Label value="Zona de Perigo (>30d)" position="insideTopRight" fill="#ef4444" fontSize={10} />
                         </ReferenceLine>
@@ -90,10 +103,10 @@ const RFMScatterPlot = ({ data }) => {
                                 <Cell
                                     key={`cell-${index}`}
                                     fill={
-                                        entry.status === 'Healthy' ? '#10b981' : // Green
-                                            entry.status === 'At Risk' ? '#f59e0b' : // Amber
-                                                entry.status === 'Churning' ? '#ef4444' : // Red
-                                                    '#94a3b8' // Slate (Lost/Other)
+                                        entry.status === 'Healthy' ? '#10b981' :
+                                            entry.status === 'At Risk' ? '#f59e0b' :
+                                                entry.status === 'Churning' ? '#ef4444' :
+                                                    '#94a3b8'
                                     }
                                     fillOpacity={0.6}
                                 />

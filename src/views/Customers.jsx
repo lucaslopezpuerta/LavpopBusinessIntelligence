@@ -1,20 +1,16 @@
-// Customers View v2.0.1 - CUSTOMER INTELLIGENCE HUB
+// Customers View v2.1.0 - CUSTOMER INTELLIGENCE HUB
 // Complete redesign from card-based list to Intelligence Hub
 // 
 // CHANGELOG:
+// v2.1.0 (2025-11-24): Pagination & Portuguese translations
+//   - NEW: Pagination with 25/50/100 items per page
+//   - FIX: Risk Map labels now in Portuguese
 // v2.0.1 (2025-11-24): Fixed RFM data loading
 //   - FIX: Properly extract data.sales and data.rfm from data object
-//   - FIX: Pass rfm data to calculateCustomerMetrics
 // v2.0 (2025-11-23): Customer Intelligence Hub Implementation
 //   - NEW: Intelligence Dashboard with 4 analytics components
-//     * Retention Pulse (CustomerRetentionScore)
-//     * Risk Map (RFMScatterPlot)
-//     * Danger Zone (ChurnHistogram)
-//     * Acquisition Context (NewClientsChart)
-//   - NEW: Premium CustomerCard component with dot-style risk badges
-//   - NEW: Glassmorphic FilterBar with enhanced UX
+//   - NEW: Premium CustomerCard + Glassmorphic FilterBar
 //   - REFACTOR: Complete Tailwind CSS migration
-//   - UI: Responsive grid layout + dark mode support
 
 import React, { useState, useMemo } from 'react';
 import { Users as UsersIcon } from 'lucide-react';
@@ -34,11 +30,12 @@ const Customers = ({ data }) => {
   const [selectedRisk, setSelectedRisk] = useState('all');
   const [sortBy, setSortBy] = useState('spending');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // 1. Calculate Base Metrics
   const metrics = useMemo(() => {
     if (!data || !data.sales || data.sales.length === 0) return null;
-    // Pass both sales and rfm data to calculateCustomerMetrics
     return calculateCustomerMetrics(data.sales, data.rfm || []);
   }, [data]);
 
@@ -102,6 +99,19 @@ const Customers = ({ data }) => {
     return ['all', ...Array.from(segs)];
   }, [metrics]);
 
+  // Pagination
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const paginatedCustomers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredCustomers.slice(startIndex, endIndex);
+  }, [filteredCustomers, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedSegment, selectedRisk, sortBy]);
+
   // Export Handler
   const handleExport = () => {
     if (!filteredCustomers.length) return;
@@ -157,15 +167,12 @@ const Customers = ({ data }) => {
 
       {/* Intelligence Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Row 1: Retention & Risk Map */}
         <div className="h-full">
           <CustomerRetentionScore data={intelligence.retention} />
         </div>
         <div className="h-full">
           <RFMScatterPlot data={intelligence.rfm} />
         </div>
-
-        {/* Row 2: Behavioral Patterns */}
         <div className="h-full">
           <ChurnHistogram data={intelligence.histogram} />
         </div>
@@ -196,26 +203,97 @@ const Customers = ({ data }) => {
         />
 
         {filteredCustomers.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filteredCustomers.slice(0, 100).map(customer => (
-              <CustomerCard
-                key={customer.doc}
-                customer={customer}
-                onClick={() => setSelectedCustomer(customer)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {paginatedCustomers.map(customer => (
+                <CustomerCard
+                  key={customer.doc}
+                  customer={customer}
+                  onClick={() => setSelectedCustomer(customer)}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                {/* Items per page selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Mostrar:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/20"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">por página</span>
+                </div>
+
+                {/* Page info */}
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredCustomers.length)} de {filteredCustomers.length} clientes
+                </div>
+
+                {/* Page navigation */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Anterior
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors ${currentPage === pageNum
+                              ? 'bg-lavpop-blue text-white'
+                              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
             <UsersIcon className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-slate-600 dark:text-slate-400">Nenhum cliente encontrado</h3>
             <p className="text-slate-400 dark:text-slate-500">Tente ajustar seus filtros de busca</p>
-          </div>
-        )}
-
-        {filteredCustomers.length > 100 && (
-          <div className="text-center py-4 text-slate-400 text-sm">
-            Mostrando 100 de {filteredCustomers.length} clientes. Use a busca para encontrar mais.
           </div>
         )}
       </div>
