@@ -1,17 +1,22 @@
-// AtRiskCustomersTable.jsx v6.1 - MOBILE VIEW OPTIMIZATION
+// AtRiskCustomersTable.jsx v7.0 - UNIFIED RISK LABELS
 // ✅ No horizontal scroll
 // ✅ Mobile: Cliente + Ações only
 // ✅ Desktop: All columns visible
 // ✅ No phone numbers displayed
 // ✅ Row coloring by risk
+// ✅ NEW v7.0: Uses unified RISK_LABELS from customerMetrics.js
 //
 // CHANGELOG:
+// v7.0 (2025-11-24): Unified risk labels
+//   - Imports RISK_LABELS from customerMetrics.js
+//   - Consistent Portuguese translations
 // v6.1 (2025-11-22): Mobile view optimization
 // v6.0 (2025-11-21): No overflow redesign
 
 import React, { useState } from 'react';
 import { Phone, MessageCircle, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import CustomerDetailModal from './CustomerDetailModal';
+import { RISK_LABELS } from '../utils/customerMetrics';
 
 const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -76,19 +81,23 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
   };
 
   const getRiskStyles = (riskLevel) => {
-    if (riskLevel === 'Churning') {
-      return {
-        borderColorValue: '#ef4444', // red-500
-        badge: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
-        dot: 'bg-red-500',
-        label: 'Perdendo'
-      };
-    }
+    const riskConfig = RISK_LABELS[riskLevel] || RISK_LABELS['Lost'];
+
+    // Map color to border color value
+    const colorMap = {
+      'green': '#10b981',
+      'blue': '#3b82f6',
+      'amber': '#f59e0b',
+      'red': '#ef4444',
+      'purple': '#a855f7',
+      'slate': '#64748b'
+    };
+
     return {
-      borderColorValue: '#f59e0b', // amber-500
-      badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
-      dot: 'bg-amber-500',
-      label: 'Em Risco'
+      borderColorValue: colorMap[riskConfig.color] || '#64748b',
+      badge: `${riskConfig.bgClass} dark:${riskConfig.bgClass.replace('bg-', 'bg-')}/40 ${riskConfig.textClass} dark:${riskConfig.textClass}`,
+      dot: `bg-${riskConfig.color}-500`,
+      label: riskConfig.pt
     };
   };
 
