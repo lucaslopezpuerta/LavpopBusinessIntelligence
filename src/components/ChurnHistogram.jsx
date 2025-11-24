@@ -1,20 +1,31 @@
-// ChurnHistogram.jsx v1.0 - DANGER ZONE VISUALIZATION
+// ChurnHistogram.jsx v1.1 - DANGER ZONE WITH INSIGHTS
 // Time-to-churn distribution histogram
 // 
 // CHANGELOG:
-// v1.0 (2025-11-23): Initial implementation for Customer Intelligence Hub
-//   - Histogram showing distribution of "Days Between Visits"
-//   - Color-coded buckets: Green (0-20d), Amber (20-30d), Red (30d+)
-//   - Identifies natural drop-off point for customer retention
-//   - Interactive tooltips with customer counts
-//   - Tailwind CSS styling with glassmorphism
-//   - Fully responsive design
+// v1.1 (2025-11-24): Added actionable insights
+//   - NEW: InsightBox with churn pattern analysis
+// v1.0 (2025-11-23): Initial implementation
 
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import InsightBox from './InsightBox';
 
 const ChurnHistogram = ({ data }) => {
     if (!data || data.length === 0) return null;
+
+    // Generate insights
+    const total = data.reduce((sum, d) => sum + d.count, 0);
+    const healthy = data.filter(d => d.range && d.range.includes('0-20')).reduce((sum, d) => sum + d.count, 0);
+    const healthyPct = Math.round((healthy / total) * 100);
+
+    const insights = [];
+    if (healthyPct >= 60) {
+        insights.push({ type: 'success', text: `✅ ${healthyPct}% retornam em 0-20 dias (padrão saudável)` });
+    } else {
+        insights.push({ type: 'warning', text: `⚠️ Apenas ${healthyPct}% retornam em 0-20 dias` });
+    }
+    insights.push({ type: 'warning', text: '⚠️ Pico em 30 dias = ponto crítico de abandono' });
+    insights.push({ type: 'action', text: '💡 Ação: Contatar clientes após 25 dias sem visitar' });
 
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
@@ -80,6 +91,8 @@ const ChurnHistogram = ({ data }) => {
                     </BarChart>
                 </ResponsiveContainer>
             </div>
+
+            <InsightBox insights={insights} />
         </div>
     );
 };

@@ -1,18 +1,14 @@
-// NewClientsChart.jsx v2.0 - ACQUISITION CONTEXT
+// NewClientsChart.jsx v2.1 - ACQUISITION CONTEXT WITH INSIGHTS
 // Simplified new customer acquisition tracking
 // 
 // CHANGELOG:
+// v2.1 (2025-11-24): Added actionable insights
+//   - NEW: InsightBox with acquisition recommendations
 // v2.0 (2025-11-23): Redesign for Customer Intelligence Hub
-//   - REFACTOR: Data now passed as prop (calculated in parent)
-//   - REFACTOR: Migrated to Tailwind CSS (removed all inline styles)
-//   - SIMPLIFY: Removed internal calculation logic
-//   - UI: Compact stats display (Total/Média)
-//   - UI: Color-coded bars (above/below average)
-//   - UI: Glassmorphism styling
-// v1.0 (2024): Initial implementation with full calculation logic
 
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import InsightBox from './InsightBox';
 
 const NewClientsChart = ({ data }) => {
   if (!data || data.length === 0) return null;
@@ -20,6 +16,12 @@ const NewClientsChart = ({ data }) => {
   // Calculate stats
   const totalNew = data.reduce((sum, d) => sum + d.count, 0);
   const avgNew = Math.round(totalNew / data.length);
+
+  // Generate insights
+  const insights = [];
+  insights.push({ type: 'success', text: `📈 ${totalNew} novos clientes (média ${avgNew}/dia)` });
+  insights.push({ type: 'action', text: '🎯 Meta: Converter 80% em clientes recorrentes' });
+  insights.push({ type: 'action', text: '💡 Próximo passo: Programa de boas-vindas para novos clientes' });
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -89,6 +91,8 @@ const NewClientsChart = ({ data }) => {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      <InsightBox insights={insights} />
     </div>
   );
 };

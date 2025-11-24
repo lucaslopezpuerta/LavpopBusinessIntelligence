@@ -1,21 +1,34 @@
-// RFMScatterPlot.jsx v1.1 - RISK MAP VISUALIZATION
+// RFMScatterPlot.jsx v1.2 - RISK MAP WITH INSIGHTS
 // Visual representation of customer value and recency
 // 
 // CHANGELOG:
+// v1.2 (2025-11-24): Added actionable insights
+//   - NEW: InsightBox with high-value customer alerts
 // v1.1 (2025-11-24): Portuguese translations
-//   - FIX: Translated risk status labels (Saudável, Em Risco, Crítico, etc.)
-// v1.0 (2025-11-23): Initial implementation for Customer Intelligence Hub
-//   - Scatter plot with X-axis: Days since last visit (Recency)
-//   - Y-axis: Total spending (Monetary)
-//   - Color-coded by risk status
-//   - Interactive tooltips with customer details
+//   - FIX: Translated risk status labels
+// v1.0 (2025-11-23): Initial implementation
 
 import React from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
 import { formatCurrency } from '../utils/numberUtils';
+import InsightBox from './InsightBox';
 
 const RFMScatterPlot = ({ data }) => {
     if (!data || data.length === 0) return null;
+
+    // Generate insights
+    const highValueAtRisk = data.filter(d => d.y > 500 && d.x > 30).length;
+    const champions = data.filter(d => d.y > 500 && d.x <= 20).length;
+
+    const insights = [];
+    if (highValueAtRisk > 0) {
+        insights.push({ type: 'warning', text: `⚠️ ${highValueAtRisk} clientes de alto valor (>R$500) estão em risco (>30 dias)` });
+        insights.push({ type: 'action', text: '💡 AÇÃO URGENTE: Contatar esses clientes imediatamente' });
+    }
+    if (champions > 0) {
+        insights.push({ type: 'success', text: `🎯 ${champions} campeões identificados - mantenha o relacionamento` });
+    }
+    insights.push({ type: 'action', text: '💰 Foco: Clientes no topo-direita precisam de atenção imediata' });
 
     // Custom Tooltip
     const CustomTooltip = ({ active, payload }) => {
@@ -42,9 +55,9 @@ const RFMScatterPlot = ({ data }) => {
                     <p className="text-slate-600">Última visita: <span className="font-semibold text-red-500">{d.x} dias atrás</span></p>
                     <p className="text-slate-600">Frequência: <span className="font-semibold text-lavpop-green">{d.r} visitas</span></p>
                     <div className={`mt-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full w-fit ${d.status === 'Healthy' ? 'bg-green-100 text-green-700' :
-                            d.status === 'At Risk' ? 'bg-amber-100 text-amber-700' :
-                                d.status === 'Churning' ? 'bg-red-100 text-red-700' :
-                                    'bg-slate-100 text-slate-700'
+                        d.status === 'At Risk' ? 'bg-amber-100 text-amber-700' :
+                            d.status === 'Churning' ? 'bg-red-100 text-red-700' :
+                                'bg-slate-100 text-slate-700'
                         }`}>
                         {getRiskLabel(d.status)}
                     </div>
@@ -115,6 +128,8 @@ const RFMScatterPlot = ({ data }) => {
                     </ScatterChart>
                 </ResponsiveContainer>
             </div>
+
+            <InsightBox insights={insights} />
         </div>
     );
 };
