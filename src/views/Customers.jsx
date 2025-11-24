@@ -55,7 +55,8 @@ const Customers = ({ data }) => {
     if (!metrics) return [];
 
     // ✅ FIX: Show ALL customers (including Lost), not just active
-    let result = metrics.allCustomers;
+    // IMPORTANT: Spread operator creates new array so React detects sort changes
+    let result = [...metrics.allCustomers];
 
     // Search
     if (searchTerm) {

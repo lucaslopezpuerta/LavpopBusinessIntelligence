@@ -24,12 +24,13 @@ const RFMScatterPlot = ({ data }) => {
     const insights = [];
     if (highValueAtRisk > 0) {
         insights.push({ type: 'warning', text: `⚠️ ${highValueAtRisk} clientes de alto valor (>R$500) estão em risco (>30 dias)` });
-        insights.push({ type: 'action', text: '💡 AÇÃO URGENTE: Contatar esses clientes imediatamente' });
     }
     if (champions > 0) {
         insights.push({ type: 'success', text: `🎯 ${champions} campeões identificados - mantenha o relacionamento` });
     }
-    insights.push({ type: 'action', text: '💡 A classificação considera padrões individuais, não apenas dias absolutos' });
+    if (insights.length === 0) {
+        insights.push({ type: 'success', text: '✅ Nenhum cliente de alto valor em risco no momento' });
+    }
 
     // Custom Tooltip
     const CustomTooltip = ({ active, payload }) => {
