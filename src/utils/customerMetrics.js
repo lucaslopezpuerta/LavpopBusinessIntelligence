@@ -112,28 +112,48 @@ function countMachines(str) {
  * @param {Array} rfmData - RFM segmentation rows
  * @returns {Object} Customer metrics and lists
  */
-export function calculateCustomerMetrics(salesData, rfmData = []) {
+export function calculateCustomerMetrics(salesData, rfmData = [], customerData = []) {
   const customers = {};
   const rfmMap = {};
+  const customerCSVMap = {}; // NEW: For customer.csv data
   const now = new Date();
 
   // Build RFM lookup - with safety check
   if (Array.isArray(rfmData) && rfmData.length > 0) {
     rfmData.forEach(row => {
-      const doc = normalizeDoc(row.Doc_Cliente || row.col2 || row.doc || '');
+      const doc = normalizeDoc(row.Doc_Cliente || row.col2 || row.doc || row.Documento || '');
       if (doc) {
         rfmMap[doc] = {
           segment: row.segment || row.col1 || row.Segment || 'Unclassified',
-          name: row['client name'] || row.name || row.Name || row.cliente || null,
-          phone: row['phone number'] || row.phone || row.Phone || null,
+          name: row['client name'] || row.name || row.Name || row.cliente || row.Nome || null,
+          phone: row['phone number'] || row.phone || row.Phone || row.Telefone || null,
           lastContactDate: row.col5 || row.lastContactDate || null
         };
       }
     });
   }
 
+  // Build customer.csv lookup - NEW: Separate from RFM
+  if (Array.isArray(customerData) && customerData.length > 0) {
+    customerData.forEach(row => {
+      const doc = normalizeDoc(row.Documento || row.Doc_Cliente || row.doc || '');
+      if (doc) {
+        customerCSVMap[doc] = {
+          email: row.Email || null,
+          walletBalance: parseBrNumber(row.Saldo_Carteira || '0'),
+          registrationDate: parseBrDate(row.Data_Cadastro || ''),
+          lastPurchaseDate: parseBrDate(row.Data_Ultima_Compra || ''),
+          totalSpent: parseBrNumber(row.Total_Compras || '0'),
+          purchaseCount: parseInt(row.Quantidade_Compras || '0', 10) || 0
+        };
+      }
+    });
+  }
+
   console.log('RFM map built with', Object.keys(rfmMap).length, 'entries');
+  console.log('Customer CSV map built with', Object.keys(customerCSVMap).length, 'entries');
   console.log('Sample RFM entry:', Object.values(rfmMap)[0]);
+  console.log('Sample CSV entry:', Object.values(customerCSVMap)[0]);
 
   // Process sales data
   salesData.forEach(row => {
@@ -236,6 +256,17 @@ export function calculateCustomerMetrics(salesData, rfmData = []) {
       customer.lastContactDate = rfmInfo.lastContactDate;
     } else {
       customer.segment = 'Unclassified';
+    }
+
+    // NEW: Merge customer.csv data
+    const csvData = customerCSVMap[customer.doc];
+    if (csvData) {
+      customer.email = csvData.email;
+      customer.walletBalance = csvData.walletBalance; // REAL wallet balance from CSV!
+      customer.registrationDate = csvData.registrationDate;
+      customer.lastPurchaseDate = csvData.lastPurchaseDate;
+      customer.totalSpentCSV = csvData.totalSpent; // From CSV (may differ from calculated)
+      customer.purchaseCount = csvData.purchaseCount; // Total purchases (not visits!)
     }
 
     // ==========================================

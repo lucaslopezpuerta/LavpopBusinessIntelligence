@@ -1,21 +1,19 @@
-// Customers View v2.1.0 - CUSTOMER INTELLIGENCE HUB
+// Customers View v2.2.0 - CUSTOMER INTELLIGENCE HUB
 // Complete redesign from card-based list to Intelligence Hub
 // 
 // CHANGELOG:
+// v2.2.0 (2025-11-24): New Customer Profile Modal
+//   - NEW: CustomerProfileModal with 4 tabs and communication logging
+//   - ENHANCED: CustomerCard v3.0 with all personal info and wallet balance
+//   - SEPARATE: Dashboard uses CustomerDetailModal, Customer Directory uses CustomerProfileModal
 // v2.1.0 (2025-11-24): Pagination & Portuguese translations
-//   - NEW: Pagination with 25/50/100 items per page
-//   - FIX: Risk Map labels now in Portuguese
 // v2.0.1 (2025-11-24): Fixed RFM data loading
-//   - FIX: Properly extract data.sales and data.rfm from data object
 // v2.0 (2025-11-23): Customer Intelligence Hub Implementation
-//   - NEW: Intelligence Dashboard with 4 analytics components
-//   - NEW: Premium CustomerCard + Glassmorphic FilterBar
-//   - REFACTOR: Complete Tailwind CSS migration
 
 import React, { useState, useMemo } from 'react';
 import { Users as UsersIcon } from 'lucide-react';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend } from '../utils/customerMetrics';
-import CustomerDetailModal from '../components/CustomerDetailModal';
+import CustomerProfileModal from '../components/CustomerProfileModal';
 import CustomerRetentionScore from '../components/CustomerRetentionScore';
 import RFMScatterPlot from '../components/RFMScatterPlot';
 import ChurnHistogram from '../components/ChurnHistogram';
@@ -36,7 +34,7 @@ const Customers = ({ data }) => {
   // 1. Calculate Base Metrics
   const metrics = useMemo(() => {
     if (!data || !data.sales || data.sales.length === 0) return null;
-    return calculateCustomerMetrics(data.sales, data.rfm || []);
+    return calculateCustomerMetrics(data.sales, data.rfm || [], data.customer || []);
   }, [data]);
 
   // 2. Prepare Intelligence Data
@@ -300,10 +298,11 @@ const Customers = ({ data }) => {
         )}
       </div>
 
-      {/* Detail Modal */}
+      {/* Customer Profile Modal */}
       {selectedCustomer && (
-        <CustomerDetailModal
+        <CustomerProfileModal
           customer={selectedCustomer}
+          sales={data.sales}
           onClose={() => setSelectedCustomer(null)}
         />
       )}

@@ -4,7 +4,6 @@
 // ✅ Fixed operations metrics calculation
 // ✅ Fixed AtRiskCustomersTable props
 import React, { useState, useEffect, useMemo } from 'react';
-import Papa from 'papaparse';
 import KPICards from '../components/KPICards';
 import OperatingCyclesChart from '../components/OperatingCyclesChart';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
@@ -14,64 +13,27 @@ import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 
-const Dashboard = ({ viewMode, setViewMode, ...props }) => {
-  const [salesData, setSalesData] = useState([]);
-  const [rfmData, setRfmData] = useState([]);
-  const [loading, setLoading] = useState(true);
+const Dashboard = ({ data, viewMode, setViewMode, ...props }) => {
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [salesRes, rfmRes] = await Promise.all([
-        fetch('/data/sales.csv'),
-        fetch('/data/rfm.csv')
-      ]);
-
-      if (!salesRes.ok || !rfmRes.ok) {
-        throw new Error('Falha ao carregar arquivos de dados');
-      }
-
-      const salesText = await salesRes.text();
-      const rfmText = await rfmRes.text();
-
-      Papa.parse(salesText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (salesResults) => {
-          Papa.parse(rfmText, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (rfmResults) => {
-              setSalesData(salesResults.data);
-              setRfmData(rfmResults.data);
-              setLastUpdated(new Date());
-              setLoading(false);
-            },
-            error: (err) => console.error('Erro parsing RFM:', err)
-          });
-        },
-        error: (err) => console.error('Erro parsing Sales:', err)
-      });
-    } catch (error) {
-      console.error('Erro ao buscar arquivos:', error);
-      setLoading(false);
-    }
-  };
+  // Extract data from props
+  const salesData = data?.sales || [];
+  const rfmData = data?.rfm || [];
+  const customerData = data?.customer || [];
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    if (data) {
+      setLastUpdated(new Date());
+    }
+  }, [data]);
 
   const metrics = useMemo(() => {
     if (!salesData.length) return null;
     const business = calculateBusinessMetrics(salesData);
-    const customers = calculateCustomerMetrics(salesData, rfmData);
+    const customers = calculateCustomerMetrics(salesData, rfmData, customerData);
     const operations = calculateOperationsMetrics(salesData);
     return { business, customers, operations };
-  }, [salesData, rfmData]);
+  }, [salesData, rfmData, customerData]);
 
   // Handle tab navigation from drill-downs
   const handleTabChange = (tabId) => {
@@ -80,18 +42,7 @@ const Dashboard = ({ viewMode, setViewMode, ...props }) => {
     }
   };
 
-  if (loading && !salesData.length) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-lavpop-blue border-t-transparent rounded-full animate-spin" />
-          <div className="text-slate-500 dark:text-slate-400 font-medium">
-            Carregando dados...
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   // Get date range based on view mode
   const getDateRange = () => {
