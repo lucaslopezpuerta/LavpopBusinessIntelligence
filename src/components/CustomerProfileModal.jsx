@@ -584,22 +584,22 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </div>
                     )}
 
-                    {/* TAB 4: Transaction History - OPTIMIZED */}
+                    {/* TAB 4: Transaction History - ULTRA COMPACT */}
                     {activeTab === 'history' && (
                         <div>
-                            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+                            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-lavpop-blue" />
                                 Últimas 10 Transações
                             </h3>
 
                             {/* Transaction History Table */}
                             <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-                                <table className="w-full text-left text-sm">
+                                <table className="w-full">
                                     <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold">
                                         <tr>
-                                            <th className="px-3 py-2">Data</th>
-                                            <th className="px-3 py-2">Serviços</th>
-                                            <th className="px-3 py-2 text-right">Valor</th>
+                                            <th className="px-3 py-2 text-center">Data</th>
+                                            <th className="px-3 py-2 text-center">Serviços</th>
+                                            <th className="px-3 py-2 text-center">Valor</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -607,33 +607,30 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             transactionHistory.map((tx, i) => (
                                                 <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                                                     <td className="px-3 py-2.5 whitespace-nowrap">
-                                                        <div className="font-medium text-slate-700 dark:text-slate-200">
-                                                            {tx.date.toLocaleDateString('pt-BR')}
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-400">
-                                                            {tx.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                        <div className="font-medium text-slate-700 dark:text-slate-200 text-xs text-center">
+                                                            {tx.date.toLocaleDateString('pt-BR')} {tx.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                         </div>
                                                     </td>
                                                     <td className="px-3 py-2.5">
-                                                        <div className="flex flex-wrap gap-1">
+                                                        <div className="flex flex-wrap gap-1 justify-center">
                                                             {tx.machines.map((m, idx) => (
-                                                                <span key={idx} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.type === 'dry'
-                                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                                                                    : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
+                                                                <span key={idx} className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${m.type === 'dry'
+                                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                                                        : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
                                                                     }`}>
                                                                     {m.code}
                                                                 </span>
                                                             ))}
                                                         </div>
                                                     </td>
-                                                    <td className="px-3 py-2.5 text-right font-bold text-slate-700 dark:text-slate-200">
+                                                    <td className="px-3 py-2.5 text-center font-bold text-slate-700 dark:text-slate-200">
                                                         {formatCurrency(tx.amount)}
                                                     </td>
                                                 </tr>
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan="3" className="px-3 py-8 text-center text-slate-500 dark:text-slate-400 text-xs">
+                                                <td colSpan="3" className="px-3 py-6 text-center text-slate-500 dark:text-slate-400 text-xs">
                                                     Nenhuma transação encontrada
                                                 </td>
                                             </tr>
@@ -645,7 +642,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 
