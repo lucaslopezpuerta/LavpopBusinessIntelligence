@@ -240,7 +240,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                         {/* WhatsApp button - always visible */}
                                         <button
                                             onClick={handleWhatsApp}
-                                            className="flex items-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800 min-h-[44px] sm:min-h-1"
+                                            className="hidden sm:flex items-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800 min-h-[44px] sm:min-h-1"
                                         >
                                             <MessageCircle className="w-4 h-4" />
                                             <span className="hidden min-[500px]:inline">WhatsApp</span>
@@ -373,6 +373,15 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                                     <MessageCircle className="w-4 h-4 text-lavpop-blue" />
                                     Histórico de Comunicação
+                                    {customer.phone && (
+                                        <button
+                                            onClick={handleWhatsApp}
+                                            className="sm:hidden ml-auto flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800"
+                                        >
+                                            <MessageCircle className="w-3 h-3" />
+                                            WhatsApp
+                                        </button>
+                                    )}
                                 </h3>
 
                                 {/* Add New Entry */}
@@ -603,7 +612,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         <div>
                             <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-lavpop-blue" />
-                                Últimas 10 Transações
+                                {isMobile ? 'Últimas 5 Transações' : 'Últimas 10 Transações'}
                             </h3>
 
                             {/* Transaction History Table */}
