@@ -26,10 +26,10 @@ const NewClientsChart = ({ data }) => {
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/90 backdrop-blur-md p-3 border border-slate-200 rounded-lg shadow-xl text-xs">
-          <p className="font-bold text-slate-800 mb-1">{payload[0].payload.displayDate}</p>
-          <p className="text-slate-600">
-            <span className="font-bold text-lavpop-blue text-lg">{payload[0].value}</span> novos clientes
+        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
+          <p className="font-bold text-slate-800 dark:text-white mb-1">{payload[0].payload.displayDate}</p>
+          <p className="text-slate-600 dark:text-slate-300">
+            <span className="font-bold text-lavpop-blue dark:text-blue-400 text-lg">{payload[0].value}</span> novos clientes
           </p>
         </div>
       );
@@ -38,24 +38,24 @@ const NewClientsChart = ({ data }) => {
   };
 
   return (
-    <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-sm h-full flex flex-col">
+    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
       <div className="mb-4">
-        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-blue-500"></span>
           Novos Clientes
         </h3>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Aquisição nos últimos 30 dias.
         </p>
       </div>
 
       <div className="flex items-end gap-4 mb-4">
         <div>
-          <div className="text-3xl font-black text-slate-800">{totalNew}</div>
+          <div className="text-3xl font-black text-slate-800 dark:text-white">{totalNew}</div>
           <div className="text-xs font-bold text-slate-400 uppercase">Total</div>
         </div>
         <div>
-          <div className="text-3xl font-black text-slate-800">{avgNew}</div>
+          <div className="text-3xl font-black text-slate-800 dark:text-white">{avgNew}</div>
           <div className="text-xs font-bold text-slate-400 uppercase">Média/Dia</div>
         </div>
       </div>
@@ -79,7 +79,7 @@ const NewClientsChart = ({ data }) => {
               axisLine={false}
               allowDecimals={false}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
               {data.map((entry, index) => (
                 <Cell

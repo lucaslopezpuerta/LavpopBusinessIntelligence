@@ -51,15 +51,15 @@ const RFMScatterPlot = ({ data }) => {
             };
 
             return (
-                <div className="bg-white/90 backdrop-blur-md p-3 border border-slate-200 rounded-lg shadow-xl text-xs">
-                    <p className="font-bold text-slate-800 mb-1">{d.name}</p>
-                    <p className="text-slate-600">Gasto: <span className="font-semibold text-lavpop-blue">{formatCurrency(d.y)}</span></p>
-                    <p className="text-slate-600">Última visita: <span className="font-semibold text-red-500">{d.x} dias atrás</span></p>
-                    <p className="text-slate-600">Frequência: <span className="font-semibold text-lavpop-green">{d.r} visitas</span></p>
-                    <div className={`mt-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full w-fit ${d.status === 'Healthy' ? 'bg-green-100 text-green-700' :
-                        d.status === 'At Risk' ? 'bg-amber-100 text-amber-700' :
-                            d.status === 'Churning' ? 'bg-red-100 text-red-700' :
-                                'bg-slate-100 text-slate-700'
+                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
+                    <p className="font-bold text-slate-800 dark:text-white mb-1">{d.name}</p>
+                    <p className="text-slate-600 dark:text-slate-300">Gasto: <span className="font-semibold text-lavpop-blue dark:text-blue-400">{formatCurrency(d.y)}</span></p>
+                    <p className="text-slate-600 dark:text-slate-300">Última visita: <span className="font-semibold text-red-500 dark:text-red-400">{d.x} dias atrás</span></p>
+                    <p className="text-slate-600 dark:text-slate-300">Frequência: <span className="font-semibold text-lavpop-green dark:text-emerald-400">{d.r} visitas</span></p>
+                    <div className={`mt-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full w-fit ${d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                        d.status === 'At Risk' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+                            d.status === 'Churning' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                                'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                         }`}>
                         {getRiskLabel(d.status)}
                     </div>
@@ -70,13 +70,13 @@ const RFMScatterPlot = ({ data }) => {
     };
 
     return (
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-sm h-full flex flex-col">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
             <div className="mb-4">
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-lavpop-blue"></span>
                     Mapa de Risco (RFM)
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                     Identifique visualmente onde estão seus clientes de maior valor.
                     <br />
                     <span className="font-semibold text-green-600">Topo-Esquerda:</span> Campeões |

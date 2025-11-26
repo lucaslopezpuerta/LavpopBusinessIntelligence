@@ -36,12 +36,12 @@ const ChurnHistogram = ({ data }) => {
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white/90 backdrop-blur-md p-3 border border-slate-200 rounded-lg shadow-xl text-xs">
-                    <p className="font-bold text-slate-800 mb-1">Intervalo: {label} dias</p>
-                    <p className="text-slate-600">
-                        <span className="font-bold text-lavpop-blue text-lg">{payload[0].value}</span> clientes
+                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
+                    <p className="font-bold text-slate-800 dark:text-white mb-1">Intervalo: {label} dias</p>
+                    <p className="text-slate-600 dark:text-slate-300">
+                        <span className="font-bold text-lavpop-blue dark:text-blue-400 text-lg">{payload[0].value}</span> clientes
                     </p>
-                    <p className="text-slate-500 mt-1 italic">
+                    <p className="text-slate-500 dark:text-slate-400 mt-1 italic">
                         retornam geralmente neste período
                     </p>
                 </div>
@@ -51,14 +51,14 @@ const ChurnHistogram = ({ data }) => {
     };
 
     return (
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-sm h-full flex flex-col">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
             <div className="mb-4">
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-500"></span>
                     Zona de Perigo (Churn)
                 </h3>
-                <p className="text-xs text-slate-500">
-                    Distribuição do tempo de retorno. A maioria dos clientes volta em <span className="font-bold text-slate-700">0-20 dias</span>.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Distribuição do tempo de retorno. A maioria dos clientes volta em <span className="font-bold text-slate-700 dark:text-slate-300">0-20 dias</span>.
                     <br />
                     Após <span className="font-bold text-red-500">30 dias</span>, a chance de retorno cai drasticamente.
                 </p>
@@ -81,7 +81,7 @@ const ChurnHistogram = ({ data }) => {
                             tickLine={false}
                             axisLine={false}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
                         <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                             {data.map((entry, index) => (
                                 <Cell

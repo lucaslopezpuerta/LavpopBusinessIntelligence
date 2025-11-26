@@ -26,10 +26,10 @@ const CustomerRetentionScore = ({ data }) => {
 
   // Helper to determine status color and icon
   const getStatus = (rate) => {
-    if (rate >= 80) return { color: 'text-emerald-500', bg: 'bg-emerald-100', icon: TrendingUp, label: 'Excelente' };
-    if (rate >= 60) return { color: 'text-blue-500', bg: 'bg-blue-100', icon: Activity, label: 'Bom' };
-    if (rate >= 40) return { color: 'text-amber-500', bg: 'bg-amber-100', icon: Activity, label: 'Atenção' };
-    return { color: 'text-red-500', bg: 'bg-red-100', icon: TrendingDown, label: 'Crítico' };
+    if (rate >= 80) return { color: 'text-emerald-500 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/20', icon: TrendingUp, label: 'Excelente' };
+    if (rate >= 60) return { color: 'text-blue-500 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20', icon: Activity, label: 'Bom' };
+    if (rate >= 40) return { color: 'text-amber-500 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/20', icon: Activity, label: 'Atenção' };
+    return { color: 'text-red-500 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/20', icon: TrendingDown, label: 'Crítico' };
   };
 
   const status30 = getStatus(rate30);
@@ -48,13 +48,13 @@ const CustomerRetentionScore = ({ data }) => {
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-sm h-full flex flex-col">
+    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
       <div className="mb-6">
-        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
           Pulso de Retenção
         </h3>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Porcentagem de clientes que retornam após visitar.
         </p>
       </div>
@@ -62,25 +62,25 @@ const CustomerRetentionScore = ({ data }) => {
       <div className="flex-1 flex flex-col justify-center items-center text-center mb-6">
         <div className={`w-24 h-24 rounded-full ${status30.bg} flex items-center justify-center mb-3 relative`}>
           <status30.icon className={`w-10 h-10 ${status30.color}`} />
-          <div className="absolute inset-0 rounded-full border-4 border-white/50"></div>
+          <div className="absolute inset-0 rounded-full border-4 border-white/50 dark:border-slate-700/50"></div>
         </div>
-        <div className="text-4xl font-black text-slate-800 tracking-tight">
+        <div className="text-4xl font-black text-slate-800 dark:text-white tracking-tight">
           {rate30}%
         </div>
         <div className={`text-sm font-bold ${status30.color} uppercase tracking-wide`}>
           {status30.label}
         </div>
-        <p className="text-xs text-slate-400 mt-1">Retorno em 30 dias</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Retorno em 30 dias</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
+        <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center border border-slate-100 dark:border-slate-700">
           <div className="text-xs text-slate-400 mb-1">60 Dias</div>
-          <div className="text-lg font-bold text-slate-700">{rate60}%</div>
+          <div className="text-lg font-bold text-slate-700 dark:text-slate-200">{rate60}%</div>
         </div>
-        <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
+        <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center border border-slate-100 dark:border-slate-700">
           <div className="text-xs text-slate-400 mb-1">90 Dias</div>
-          <div className="text-lg font-bold text-slate-700">{rate90}%</div>
+          <div className="text-lg font-bold text-slate-700 dark:text-slate-200">{rate90}%</div>
         </div>
       </div>
 
