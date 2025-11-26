@@ -123,21 +123,27 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         return null;
     };
 
-    // Helper for parsing machines
+    // Helper for parsing machines - extracts machine codes (e.g., "Lavadora:3" -> "L3")
     const parseMachines = (machineStr) => {
         if (!machineStr || machineStr === 'N/A') return [];
+
         const parts = machineStr.split(',').map((s) => s.trim());
         const machines = [];
+
         parts.forEach((part) => {
-            const match = part.match(/^(.*?):\s*(\d+)$/);
-            if (match) {
-                const type = match[1].trim();
-                const count = parseInt(match[2], 10);
-                for (let i = 0; i < count; i++) machines.push(type);
-            } else if (part) {
-                machines.push(part);
+            const washMatch = part.match(/Lavadora:\s*(\d+)/i);
+            if (washMatch) {
+                machines.push({ code: `L${washMatch[1]}`, type: 'wash' });
+                return;
+            }
+
+            const dryMatch = part.match(/Secadora:\s*(\d+)/i);
+            if (dryMatch) {
+                machines.push({ code: `S${dryMatch[1]}`, type: 'dry' });
+                return;
             }
         });
+
         return machines;
     };
 
@@ -611,11 +617,11 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                                     <td className="px-3 py-2.5">
                                                         <div className="flex flex-wrap gap-1">
                                                             {tx.machines.map((m, idx) => (
-                                                                <span key={idx} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${m.toLowerCase().includes('secadora')
+                                                                <span key={idx} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.type === 'dry'
                                                                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                                                                     : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
                                                                     }`}>
-                                                                    {m.toLowerCase().includes('secadora') ? 'Secar' : 'Lavar'}
+                                                                    {m.code}
                                                                 </span>
                                                             ))}
                                                         </div>

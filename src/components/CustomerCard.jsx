@@ -60,18 +60,12 @@ const CustomerCard = ({ customer, onClick }) => {
                 </div>
             </div>
 
-            {/* Contact Info - Compact */}
+            {/* Contact Info - Compact (No Email) */}
             <div className="space-y-0.5 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
                 {customer.phone && (
                     <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                         <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                         <span className="truncate">{customer.phone}</span>
-                    </div>
-                )}
-                {customer.email && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <span className="text-slate-400 shrink-0">📧</span>
-                        <span className="truncate">{customer.email}</span>
                     </div>
                 )}
                 {customer.registrationDate && (
@@ -82,7 +76,7 @@ const CustomerCard = ({ customer, onClick }) => {
                 )}
             </div>
 
-            {/* Metrics Grid - Compact & Rich */}
+            {/* Metrics Grid - Ultra Compact (Wallet & Freq only) */}
             <div className="grid grid-cols-2 gap-2 mb-3 flex-1">
                 {/* Wallet */}
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-2 border border-green-200 dark:border-green-800 flex flex-col justify-center">
@@ -95,48 +89,28 @@ const CustomerCard = ({ customer, onClick }) => {
                     </div>
                 </div>
 
-                {/* Last Visit & Overdue */}
+                {/* Visit Frequency & Recency Badge */}
                 <div className={`rounded-lg p-2 border flex flex-col justify-center ${customer.daysOverdue > 0
-                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-                    : 'bg-slate-50 dark:bg-slate-700/50 border-slate-100 dark:border-slate-700'
+                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                        : 'bg-slate-50 dark:bg-slate-700/50 border-slate-100 dark:border-slate-700'
                     }`}>
                     <div className="flex items-center justify-between mb-0.5">
                         <div className="flex items-center gap-1">
-                            <Clock className={`w-3 h-3 ${customer.daysOverdue > 0 ? 'text-amber-600' : 'text-slate-400'}`} />
+                            <Activity className={`w-3 h-3 ${customer.daysOverdue > 0 ? 'text-amber-600' : 'text-slate-400'}`} />
                             <span className={`text-[9px] font-bold uppercase ${customer.daysOverdue > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                                Última
+                                Freq.
                             </span>
                         </div>
-                        {customer.daysOverdue > 0 && (
-                            <span className="text-[8px] font-bold text-white bg-amber-500 px-1 rounded-full">
-                                +{customer.daysOverdue}d
-                            </span>
-                        )}
+                        {/* Recency Badge */}
+                        <div className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${customer.daysOverdue > 0
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                : 'bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-300'
+                            }`}>
+                            {customer.daysSinceLastVisit}d atrás
+                        </div>
                     </div>
-                    <div className={`text-sm font-bold ${customer.daysOverdue > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-slate-800 dark:text-white'}`}>
-                        {customer.daysSinceLastVisit}d atrás
-                    </div>
-                </div>
-
-                {/* Visit Frequency (Avg Days) */}
-                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2 border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
-                    <div className="flex items-center gap-1 mb-0.5">
-                        <Activity className="w-3 h-3 text-slate-400" />
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">Freq.</span>
-                    </div>
-                    <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                        {customer.avgDaysBetween ? `${customer.avgDaysBetween} dias` : 'N/A'}
-                    </div>
-                </div>
-
-                {/* Return Probability */}
-                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2 border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
-                    <div className="flex items-center gap-1 mb-0.5">
-                        <AlertCircle className="w-3 h-3 text-slate-400" />
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">Retorno</span>
-                    </div>
-                    <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                        {customer.returnLikelihood}%
+                    <div className={`text-sm font-bold ${customer.daysOverdue > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {customer.avgDaysBetween ? `~${customer.avgDaysBetween} dias` : 'N/A'}
                     </div>
                 </div>
             </div>
