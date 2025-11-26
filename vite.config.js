@@ -11,7 +11,7 @@ export default defineConfig({
       output: {
         // Ensure consistent chunk naming
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['react', 'react-dom'],
           charts: ['recharts'],
           icons: ['lucide-react'],
         },
