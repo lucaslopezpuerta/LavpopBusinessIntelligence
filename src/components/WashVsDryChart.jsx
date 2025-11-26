@@ -1,7 +1,15 @@
-// WashVsDryChart Component v1.1
+// WashVsDryChart Component v2.0.0
 // Comparison of wash vs dry services and revenue
 //
 // CHANGELOG:
+// v2.0.0 (2025-11-26): Design System alignment
+//   - Replaced all inline styles with Tailwind CSS
+//   - Added dark mode support throughout
+//   - Removed COLORS object (using Tailwind classes and theme colors)
+//   - Updated Recharts colors to match design system
+//   - Replaced emoji with Lightbulb icon
+//   - Improved responsive design
+//   - Aligned with Design System v3.0
 // v1.1 (2025-11-15): Added date window display
 //   - Now receives dateWindow prop from parent
 //   - Displays explicit date range in subtitle
@@ -9,28 +17,13 @@
 // v1.0 (Previous): Initial implementation
 
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import { Droplet, Activity } from 'lucide-react';
-
-const COLORS = {
-  primary: '#10306B',
-  accent: '#53be33',
-  wash: '#3b82f6',
-  dry: '#f59e0b',
-  gray: '#6b7280'
-};
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Droplet, Flame, Activity, Lightbulb } from 'lucide-react';
 
 const WashVsDryChart = ({ washVsDry, dateWindow }) => {
   if (!washVsDry) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        border: '1px solid #e5e7eb',
-        textAlign: 'center',
-        color: '#6b7280'
-      }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
         Loading wash vs dry comparison...
       </div>
     );
@@ -47,31 +40,25 @@ const WashVsDryChart = ({ washVsDry, dateWindow }) => {
     }).format(value);
   };
 
-  // Data for charts
+  // Data for charts - using theme colors
   const servicesData = [
-    { name: 'Lavagens', value: wash.services, color: COLORS.wash },
-    { name: 'Secagens', value: dry.services, color: COLORS.dry }
+    { name: 'Lavagens', value: wash.services, color: '#1a5a8e' }, // lavpop-blue
+    { name: 'Secagens', value: dry.services, color: '#f59e0b' }  // amber-500
   ];
 
   const revenueData = [
-    { name: 'Lavagens', value: wash.revenue, color: COLORS.wash },
-    { name: 'Secagens', value: dry.revenue, color: COLORS.dry }
+    { name: 'Lavagens', value: wash.revenue, color: '#1a5a8e' }, // lavpop-blue
+    { name: 'Secagens', value: dry.revenue, color: '#f59e0b' }  // amber-500
   ];
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div style={{
-          background: 'white',
-          padding: '0.75rem',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-        }}>
-          <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: COLORS.primary }}>
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl">
+          <p className="text-sm font-semibold text-slate-900 dark:text-white m-0">
             {label}
           </p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '12px', color: COLORS.gray }}>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 m-0">
             {payload[0].value.toLocaleString('pt-BR')}
           </p>
         </div>
@@ -81,167 +68,84 @@ const WashVsDryChart = ({ washVsDry, dateWindow }) => {
   };
 
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      padding: '1.5rem',
-      border: '1px solid #e5e7eb',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }}>
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
       {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-          <Activity style={{ width: '20px', height: '20px', color: COLORS.primary }} />
-          <h3 style={{ 
-            fontSize: '16px',
-            fontWeight: '600',
-            color: COLORS.primary,
-            margin: 0
-          }}>
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Activity className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">
             Lavagem vs Secagem
           </h3>
         </div>
-        <p style={{
-          fontSize: '12px',
-          color: COLORS.gray,
-          margin: 0
-        }}>
+        <p className="text-xs text-slate-600 dark:text-slate-400">
           Período: {dateWindow?.dateRange || 'Carregando...'}
         </p>
       </div>
 
       {/* Summary Stats */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '1rem',
-        marginBottom: '1.5rem'
-      }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         {/* Wash Stats */}
-        <div style={{
-          padding: '1rem',
-          background: '#eff6ff',
-          borderRadius: '8px',
-          border: '1px solid #dbeafe'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Droplet style={{ width: '16px', height: '16px', color: COLORS.wash }} />
-            <h4 style={{ 
-              fontSize: '13px',
-              fontWeight: '600',
-              color: COLORS.wash,
-              margin: 0
-            }}>
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center gap-2 mb-2">
+            <Droplet className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h4 className="text-sm font-semibold text-blue-600 dark:text-blue-400">
               Lavagens
             </h4>
           </div>
-          <div style={{ 
-            fontSize: '24px',
-            fontWeight: '700',
-            color: COLORS.wash,
-            marginBottom: '0.25rem'
-          }}>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">
             {wash.services}
           </div>
-          <div style={{ 
-            fontSize: '12px',
-            color: COLORS.gray,
-            marginBottom: '0.5rem'
-          }}>
+          <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
             {wash.percentOfServices.toFixed(1)}% dos serviços
           </div>
-          <div style={{ 
-            fontSize: '14px',
-            fontWeight: '600',
-            color: COLORS.primary
-          }}>
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">
             {formatCurrency(wash.revenue)}
           </div>
-          <div style={{ 
-            fontSize: '11px',
-            color: COLORS.gray
-          }}>
+          <div className="text-[10px] text-slate-600 dark:text-slate-400">
             {formatCurrency(wash.avgPerService)}/serviço
           </div>
         </div>
 
         {/* Dry Stats */}
-        <div style={{
-          padding: '1rem',
-          background: '#fffbeb',
-          borderRadius: '8px',
-          border: '1px solid #fef3c7'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Activity style={{ width: '16px', height: '16px', color: COLORS.dry }} />
-            <h4 style={{ 
-              fontSize: '13px',
-              fontWeight: '600',
-              color: COLORS.dry,
-              margin: 0
-            }}>
+        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <div className="flex items-center gap-2 mb-2">
+            <Flame className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <h4 className="text-sm font-semibold text-amber-600 dark:text-amber-400">
               Secagens
             </h4>
           </div>
-          <div style={{ 
-            fontSize: '24px',
-            fontWeight: '700',
-            color: COLORS.dry,
-            marginBottom: '0.25rem'
-          }}>
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 mb-1">
             {dry.services}
           </div>
-          <div style={{ 
-            fontSize: '12px',
-            color: COLORS.gray,
-            marginBottom: '0.5rem'
-          }}>
+          <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
             {dry.percentOfServices.toFixed(1)}% dos serviços
           </div>
-          <div style={{ 
-            fontSize: '14px',
-            fontWeight: '600',
-            color: COLORS.primary
-          }}>
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">
             {formatCurrency(dry.revenue)}
           </div>
-          <div style={{ 
-            fontSize: '11px',
-            color: COLORS.gray
-          }}>
+          <div className="text-[10px] text-slate-600 dark:text-slate-400">
             {formatCurrency(dry.avgPerService)}/serviço
           </div>
         </div>
       </div>
 
       {/* Charts */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '1rem'
-      }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Services Chart */}
         <div>
-          <h5 style={{
-            fontSize: '12px',
-            fontWeight: '600',
-            color: COLORS.gray,
-            textTransform: 'uppercase',
-            marginBottom: '0.75rem',
-            letterSpacing: '0.5px'
-          }}>
+          <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">
             Volume de Serviços
           </h5>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={servicesData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fontSize: 11, fill: COLORS.gray }}
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-slate-700" />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11, fill: '#6b7280' }}
                 axisLine={{ stroke: '#e5e7eb' }}
               />
-              <YAxis 
-                tick={{ fontSize: 11, fill: COLORS.gray }}
+              <YAxis
+                tick={{ fontSize: 11, fill: '#6b7280' }}
                 axisLine={{ stroke: '#e5e7eb' }}
               />
               <Tooltip content={<CustomTooltip />} />
@@ -256,30 +160,23 @@ const WashVsDryChart = ({ washVsDry, dateWindow }) => {
 
         {/* Revenue Chart */}
         <div>
-          <h5 style={{
-            fontSize: '12px',
-            fontWeight: '600',
-            color: COLORS.gray,
-            textTransform: 'uppercase',
-            marginBottom: '0.75rem',
-            letterSpacing: '0.5px'
-          }}>
+          <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-3">
             Receita Gerada
           </h5>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fontSize: 11, fill: COLORS.gray }}
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-slate-700" />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11, fill: '#6b7280' }}
                 axisLine={{ stroke: '#e5e7eb' }}
               />
-              <YAxis 
-                tick={{ fontSize: 11, fill: COLORS.gray }}
+              <YAxis
+                tick={{ fontSize: 11, fill: '#6b7280' }}
                 axisLine={{ stroke: '#e5e7eb' }}
                 tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
               />
-              <Tooltip 
+              <Tooltip
                 content={<CustomTooltip />}
                 formatter={(value) => formatCurrency(value)}
               />
@@ -294,17 +191,15 @@ const WashVsDryChart = ({ washVsDry, dateWindow }) => {
       </div>
 
       {/* Insight */}
-      <div style={{
-        marginTop: '1rem',
-        padding: '0.75rem',
-        background: '#f9fafb',
-        borderRadius: '8px',
-        fontSize: '12px',
-        color: COLORS.gray
-      }}>
-        💡 <strong>Análise:</strong> {wash.avgPerService > dry.avgPerService 
-          ? 'Lavagens geram mais receita por serviço'
-          : 'Secagens geram mais receita por serviço'}. Considere ajustar a estratégia de preços.
+      <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
+          <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <span>
+            <strong className="text-slate-900 dark:text-white">Análise:</strong> {wash.avgPerService > dry.avgPerService
+              ? 'Lavagens geram mais receita por serviço'
+              : 'Secagens geram mais receita por serviço'}. Considere ajustar a estratégia de preços.
+          </span>
+        </div>
       </div>
     </div>
   );
