@@ -1,9 +1,18 @@
-// OPERATIONS TAB V3.1.1
+// OPERATIONS TAB V4.0.0
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
+// ✅ Tailwind CSS styling (Design System v3.0)
+// ✅ Dark mode support
+// ✅ Responsive grid layout
 //
 // CHANGELOG:
+// v4.0 (2025-11-26): Design System alignment
+//   - Replaced all inline styles with Tailwind CSS
+//   - Added dark mode support
+//   - Removed styled-jsx media queries
+//   - Updated responsive breakpoints (lg:)
+//   - Aligned with Design System v3.0
 // v3.1 (2025-11-15): Icons Change, New useMemo Added, Component Call Changed
 // v3.0 (2025-11-15): Unified date filtering system
 //   - Added DateRangeSelector component as single control
@@ -110,13 +119,8 @@ const Operations = ({ data }) => {
 
   if (!businessMetrics || !operationsMetrics) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '400px'
-      }}>
-        <div style={{ color: '#6b7280', fontSize: '16px' }}>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-base text-slate-600 dark:text-slate-400">
           Loading operations metrics...
         </div>
       </div>
@@ -124,25 +128,20 @@ const Operations = ({ data }) => {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1600px', margin: '0 auto' }}>
+    <div className="max-w-[100rem] mx-auto p-6 lg:p-8">
       {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{
-          fontSize: '32px',
-          fontWeight: '700',
-          color: '#10306B',
-          marginBottom: '0.5rem'
-        }}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
           Operações
         </h1>
-        <p style={{ fontSize: '15px', color: '#6b7280' }}>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Eficiência das Máquinas e Análise Operacional
         </p>
       </div>
 
       {/* Centralized Date Filter - Single Source of Truth */}
-      <div style={{ marginBottom: '2rem' }}>
-        <DateRangeSelector 
+      <div className="mb-6">
+        <DateRangeSelector
           value={dateFilter}
           onChange={setDateFilter}
           dateWindow={dateWindow}
@@ -158,37 +157,33 @@ const Operations = ({ data }) => {
       />
 
       {/* Main Grid Layout */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(12, 1fr)',
-        gap: '1.5rem'
-      }}>
+      <div className="grid grid-cols-12 gap-6">
         {/* Full Width: Utilization Heatmap */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <UtilizationHeatmap 
-            salesData={data.sales} 
+        <div className="col-span-12">
+          <UtilizationHeatmap
+            salesData={data.sales}
             dateFilter={dateFilter}
             dateWindow={dateWindow}
           />
         </div>
 
         {/* Row 2: Peak Hours Summary (Full Width) */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <PeakHoursSummary 
+        <div className="col-span-12">
+          <PeakHoursSummary
             peakHours={operationsMetrics.peakHours}
             dateWindow={dateWindow}
           />
         </div>
 
         {/* Row 3: Wash vs Dry Chart + Day of Week Chart */}
-        <div style={{ gridColumn: 'span 6' }}>
-          <WashVsDryChart 
+        <div className="col-span-12 lg:col-span-6">
+          <WashVsDryChart
             washVsDry={operationsMetrics.washVsDry}
             dateWindow={dateWindow}
           />
         </div>
-        <div style={{ gridColumn: 'span 6' }}>
-          <DayOfWeekChart 
+        <div className="col-span-12 lg:col-span-6">
+          <DayOfWeekChart
             dayPatterns={operationsMetrics.dayPatterns}
             dateFilter={dateFilter}
             dateWindow={dateWindow}
@@ -196,8 +191,8 @@ const Operations = ({ data }) => {
         </div>
 
         {/* Row 4: Machine Performance Table (Full Width) */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <MachinePerformanceTable 
+        <div className="col-span-12">
+          <MachinePerformanceTable
             machinePerformance={operationsMetrics.machinePerformance}
             dateFilter={dateFilter}
             dateWindow={dateWindow}
@@ -205,15 +200,6 @@ const Operations = ({ data }) => {
           />
         </div>
       </div>
-
-      {/* Mobile Responsive Override */}
-      <style jsx>{`
-        @media (max-width: 1023px) {
-          div[style*="gridColumn"] {
-            grid-column: 1 / -1 !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
