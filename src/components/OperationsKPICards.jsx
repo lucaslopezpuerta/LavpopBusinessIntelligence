@@ -1,4 +1,8 @@
-// OPERATIONS KPI CARDS V4.2.0 - PRODUCTION READY
+// OPERATIONS KPI CARDS V5.0.0 - DESIGN SYSTEM ALIGNED
+// ✅ Tailwind CSS styling (Design System v3.0)
+// ✅ Dark mode support
+// ✅ Replaced emojis with Lucide React icons
+// ✅ Gradient backgrounds for KPI cards
 // ✅ Business-appropriate icons (Droplet for wash, Flame for dry)
 // ✅ Larger titles with metric names
 // ✅ Adaptive service count labels based on date filter
@@ -6,6 +10,14 @@
 // ✅ Realistic capacity with 20% idle time efficiency factor
 //
 // CHANGELOG:
+// v5.0.0 (2025-11-26): Design System alignment
+//   - Replaced all inline styles with Tailwind CSS
+//   - Added dark mode support throughout
+//   - Removed COLORS object (using Tailwind classes)
+//   - Replaced emoji status indicators with TrendingUp/Down icons
+//   - Replaced emoji insights with BarChart2/Lightbulb icons
+//   - Updated gradient backgrounds per design system
+//   - Improved responsive design
 // v4.2.0 (2025-11-15): Icon + Efficiency Updates
 //   - Changed: Droplet icon for washers (water theme)
 //   - Changed: Flame icon for dryers (heat theme)
@@ -18,24 +30,9 @@
 //   - Fixed: Service count labels adapt to dateWindow selection
 //   - Fixed: Total capacity calculation (sum of washer + dryer, not average)
 //   - Added: dateWindow prop for context-aware labels
-// v4.0.2 (2025-11-15): CRITICAL FIX - Correct data access
-// v4.0.1: Attempted dynamic peak hours (wrong data structure)
-// v4.0: Initial enhanced version (wrong data access)
 
 import React, { useMemo } from 'react';
-import { Droplet, Flame, Gauge } from 'lucide-react';
-
-const COLORS = {
-  primary: '#10306B',
-  accent: '#53be33',
-  wash: '#3b82f6',
-  dry: '#f59e0b',
-  excellent: '#22c55e',
-  good: '#53be33',
-  fair: '#f59e0b',
-  low: '#dc2626',
-  gray: '#6b7280'
-};
+import { Droplet, Flame, Gauge, TrendingUp, TrendingDown, Minus, BarChart2, Lightbulb } from 'lucide-react';
 
 // REALISTIC THRESHOLDS (aligned with 25% profitability target)
 const THRESHOLDS = {
@@ -235,32 +232,72 @@ const OperationsKPICards = ({
 
   if (!currentData) {
     return (
-      <div style={{ color: '#6b7280', padding: '1rem' }}>
+      <div className="text-slate-600 dark:text-slate-400 p-4">
         Loading KPI metrics...
       </div>
     );
   }
 
   const getStatus = (utilization) => {
-    if (utilization >= THRESHOLDS.excellent) return { label: 'Excelente', color: COLORS.excellent, emoji: '🔥' };
-    if (utilization >= THRESHOLDS.good) return { label: 'Bom', color: COLORS.good, emoji: '✅' };
-    if (utilization >= THRESHOLDS.fair) return { label: 'Razoável', color: COLORS.fair, emoji: '⚠️' };
-    return { label: 'Baixo', color: COLORS.low, emoji: '📉' };
+    if (utilization >= THRESHOLDS.excellent) return {
+      label: 'Excelente',
+      colorClass: 'text-emerald-600 dark:text-emerald-400',
+      bgClass: 'bg-emerald-500/20 dark:bg-emerald-500/30',
+      gradientFrom: 'from-emerald-500',
+      gradientTo: 'to-green-600',
+      borderClass: 'border-emerald-500 dark:border-emerald-400'
+    };
+    if (utilization >= THRESHOLDS.good) return {
+      label: 'Bom',
+      colorClass: 'text-green-600 dark:text-green-400',
+      bgClass: 'bg-green-500/20 dark:bg-green-500/30',
+      gradientFrom: 'from-green-500',
+      gradientTo: 'to-emerald-600',
+      borderClass: 'border-green-500 dark:border-green-400'
+    };
+    if (utilization >= THRESHOLDS.fair) return {
+      label: 'Razoável',
+      colorClass: 'text-amber-600 dark:text-amber-400',
+      bgClass: 'bg-amber-500/20 dark:bg-amber-500/30',
+      gradientFrom: 'from-amber-500',
+      gradientTo: 'to-orange-600',
+      borderClass: 'border-amber-500 dark:border-amber-400'
+    };
+    return {
+      label: 'Baixo',
+      colorClass: 'text-red-600 dark:text-red-400',
+      bgClass: 'bg-red-500/20 dark:bg-red-500/30',
+      gradientFrom: 'from-red-500',
+      gradientTo: 'to-rose-600',
+      borderClass: 'border-red-500 dark:border-red-400'
+    };
   };
 
   const getTrendIndicator = (trend) => {
     if (!trend || trend.percent === null || trend.percent === undefined) return null;
-    
+
     const percent = trend.percent;
     if (Math.abs(percent) < 0.1) return null; // Skip if no change
-    
+
     if (percent > 5) {
-      return { icon: '↑', color: COLORS.accent, text: `+${percent.toFixed(0)}%` };
+      return {
+        Icon: TrendingUp,
+        colorClass: 'text-emerald-600 dark:text-emerald-400',
+        text: `+${percent.toFixed(0)}%`
+      };
     }
     if (percent < -5) {
-      return { icon: '↓', color: COLORS.low, text: `${percent.toFixed(0)}%` };
+      return {
+        Icon: TrendingDown,
+        colorClass: 'text-red-600 dark:text-red-400',
+        text: `${percent.toFixed(0)}%`
+      };
     }
-    return { icon: '→', color: COLORS.gray, text: `${percent >= 0 ? '+' : ''}${percent.toFixed(0)}%` };
+    return {
+      Icon: Minus,
+      colorClass: 'text-slate-600 dark:text-slate-400',
+      text: `${percent >= 0 ? '+' : ''}${percent.toFixed(0)}%`
+    };
   };
 
   const formatServiceCount = (current, previous) => {
@@ -286,107 +323,69 @@ const OperationsKPICards = ({
     previousData?.dry.services || 0
   );
 
-  const KPICard = ({ 
+  const KPICard = ({
     title,
-    metricName, // NEW: e.g., "Utilização"
-    icon: Icon, 
-    utilization, 
-    status, 
-    capacity, 
+    metricName,
+    icon: Icon,
+    utilization,
+    status,
+    capacity,
     services,
     trend,
     peakOffPeakData,
-    maxCyclesPerWeek // NEW: use precalculated capacity
+    maxCyclesPerWeek
   }) => {
     const progressWidth = Math.min(utilization, 100);
 
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        border: `2px solid ${status.color}`,
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        transition: 'transform 0.2s, box-shadow 0.2s'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
-      }}
-      >
+      <div className={`
+        bg-white dark:bg-slate-800 rounded-xl p-6
+        border-2 ${status.borderClass}
+        shadow-sm hover:shadow-lg
+        hover:-translate-y-1
+        transition-all duration-200
+      `}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: `${status.color}20`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Icon style={{ width: '20px', height: '20px', color: status.color }} />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className={`
+              w-9 h-9 rounded-lg ${status.bgClass}
+              flex items-center justify-center
+            `}>
+              <Icon className={`w-5 h-5 ${status.colorClass}`} />
             </div>
             <div>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '700',
-                color: COLORS.primary,
-                margin: 0,
-                letterSpacing: '0.3px',
-                lineHeight: '1.2'
-              }}>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-wide leading-tight">
                 {title}
               </h3>
-              <div style={{
-                fontSize: '11px',
-                fontWeight: '600',
-                color: COLORS.gray,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginTop: '2px'
-              }}>
+              <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5">
                 {metricName}
               </div>
             </div>
           </div>
-          <span style={{ fontSize: '24px' }}>{status.emoji}</span>
         </div>
 
         {/* Utilization % + Trend */}
-        <div style={{ marginBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            <span style={{
-              fontSize: '36px',
-              fontWeight: '700',
-              color: status.color
-            }}>
+        <div className="mb-3">
+          <div className="flex items-baseline gap-2">
+            <span className={`text-4xl font-bold ${status.colorClass}`}>
               {utilization.toFixed(0)}%
             </span>
             {trend && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span style={{ fontSize: '20px', color: trend.color }}>{trend.icon}</span>
-                <span style={{ fontSize: '14px', fontWeight: '600', color: trend.color }}>
+              <div className="flex items-center gap-1">
+                <trend.Icon className={`w-5 h-5 ${trend.colorClass}`} />
+                <span className={`text-sm font-semibold ${trend.colorClass}`}>
                   {trend.text}
                 </span>
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-            <span style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: status.color
-            }}>
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`text-sm font-semibold ${status.colorClass}`}>
               {status.label}
             </span>
             {trend && (
-              <span style={{ fontSize: '11px', color: COLORS.gray }}>
+              <span className="text-[10px] text-slate-600 dark:text-slate-400">
                 vs semana passada
               </span>
             )}
@@ -395,32 +394,21 @@ const OperationsKPICards = ({
 
         {/* Peak/Off-Peak Breakdown */}
         {peakOffPeakData && peakOffPeakData.peak > 0 && (
-          <div style={{
-            background: '#f9fafb',
-            borderRadius: '8px',
-            padding: '0.75rem',
-            marginBottom: '0.75rem'
-          }}>
-            <div style={{
-              fontSize: '11px',
-              fontWeight: '600',
-              color: COLORS.primary,
-              marginBottom: '0.5rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              📊 Distribuição da Demanda
+          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 mb-3">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-900 dark:text-white mb-2 uppercase tracking-wider">
+              <BarChart2 className="w-3.5 h-3.5" />
+              Distribuição da Demanda
             </div>
-            <div style={{ fontSize: '12px', color: COLORS.gray, lineHeight: '1.6' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+            <div className="text-xs text-slate-700 dark:text-slate-300 space-y-1">
+              <div className="flex justify-between">
                 <span>├─ Pico ({peakHourLabels}):</span>
-                <strong style={{ color: peakOffPeakData.peak >= 15 ? COLORS.accent : COLORS.gray }}>
+                <strong className={peakOffPeakData.peak >= 15 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}>
                   {peakOffPeakData.peak.toFixed(0)}%
                 </strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="flex justify-between">
                 <span>└─ Fora de pico:</span>
-                <strong style={{ color: COLORS.gray }}>
+                <strong className="text-slate-600 dark:text-slate-400">
                   {peakOffPeakData.offPeak.toFixed(0)}%
                 </strong>
               </div>
@@ -429,27 +417,19 @@ const OperationsKPICards = ({
         )}
 
         {/* Service Counts */}
-        <div style={{
-          background: '#f0f9ff',
-          borderRadius: '8px',
-          padding: '0.75rem',
-          marginBottom: '0.75rem'
-        }}>
-          <div style={{ fontSize: '12px', color: COLORS.gray, lineHeight: '1.6' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-3 border border-blue-200 dark:border-blue-800">
+          <div className="text-xs text-slate-700 dark:text-slate-300 space-y-1">
+            <div className="flex justify-between">
               <span>{serviceLabels.current}:</span>
-              <strong style={{ color: COLORS.primary }}>{services.current} serviços</strong>
+              <strong className="text-slate-900 dark:text-white">{services.current} serviços</strong>
             </div>
             {serviceLabels.showComparison && serviceLabels.previous && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="flex justify-between">
                 <span>{serviceLabels.previous}:</span>
-                <strong style={{ color: COLORS.gray }}>
+                <strong className="text-slate-600 dark:text-slate-400">
                   {services.previous} serviços
                   {services.diff !== 0 && (
-                    <span style={{ 
-                      color: services.diff > 0 ? COLORS.accent : COLORS.low,
-                      marginLeft: '0.25rem'
-                    }}>
+                    <span className={services.diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400 ml-1'}>
                       ({services.text})
                     </span>
                   )}
@@ -461,57 +441,36 @@ const OperationsKPICards = ({
 
         {/* Data-Driven Insight */}
         {peakOffPeakData && peakOffPeakData.peak > 0 && (
-          <div style={{
-            padding: '0.5rem',
-            background: '#fef3c7',
-            borderRadius: '6px',
-            fontSize: '11px',
-            color: COLORS.gray,
-            lineHeight: '1.5'
-          }}>
-            <strong>💡 </strong>
-            {peakOffPeakData.peak - peakOffPeakData.offPeak > 8 ? (
-              <>Demanda concentrada nos picos. Promova fora de pico com desconto.</>
-            ) : peakOffPeakData.peak - peakOffPeakData.offPeak > 3 ? (
-              <>Boa distribuição. Continue monitorando padrões.</>
-            ) : (
-              <>Distribuição equilibrada. Oportunidade de aumentar picos.</>
-            )}
+          <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-[10px] text-slate-700 dark:text-slate-300 leading-relaxed border border-amber-200 dark:border-amber-800">
+            <div className="flex items-start gap-1.5">
+              <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <span>
+                {peakOffPeakData.peak - peakOffPeakData.offPeak > 8 ? (
+                  <>Demanda concentrada nos picos. Promova fora de pico com desconto.</>
+                ) : peakOffPeakData.peak - peakOffPeakData.offPeak > 3 ? (
+                  <>Boa distribuição. Continue monitorando padrões.</>
+                ) : (
+                  <>Distribuição equilibrada. Oportunidade de aumentar picos.</>
+                )}
+              </span>
+            </div>
           </div>
         )}
 
         {/* Capacity Info */}
-        <div style={{
-          marginTop: '0.75rem',
-          paddingTop: '0.75rem',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <div style={{ fontSize: '11px', color: COLORS.gray, marginBottom: '0.5rem' }}>
+        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+          <div className="text-[10px] text-slate-600 dark:text-slate-400 mb-2">
             {capacity} - {Math.round(maxCyclesPerWeek)} ciclos possíveis/semana
           </div>
-          
+
           {/* Progress Bar */}
-          <div style={{
-            width: '100%',
-            height: '8px',
-            background: '#e5e7eb',
-            borderRadius: '4px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              width: `${progressWidth}%`,
-              height: '100%',
-              background: `linear-gradient(90deg, ${status.color}, ${status.color}dd)`,
-              transition: 'width 0.3s ease'
-            }} />
+          <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full bg-gradient-to-r ${status.gradientFrom} ${status.gradientTo} transition-all duration-500`}
+              style={{ width: `${progressWidth}%` }}
+            />
           </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginTop: '0.25rem',
-            fontSize: '10px',
-            color: COLORS.gray
-          }}>
+          <div className="flex justify-between mt-1 text-[9px] text-slate-500 dark:text-slate-500">
             <span>0%</span>
             <span>25%</span>
             <span>50%</span>
@@ -523,12 +482,7 @@ const OperationsKPICards = ({
   };
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-      gap: '1.5rem',
-      marginBottom: '2rem'
-    }}>
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
       {/* Washers KPI */}
       <KPICard
         title="LAVADORAS"

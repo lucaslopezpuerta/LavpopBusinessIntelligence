@@ -1,7 +1,14 @@
-// PEAK HOURS SUMMARY V2.1
+// PEAK HOURS SUMMARY V3.0.0
 // Peak and off-peak hours analysis with self-service recommendations
 //
 // CHANGELOG:
+// v3.0.0 (2025-11-26): Design System alignment
+//   - Replaced all inline styles with Tailwind CSS
+//   - Added dark mode support throughout
+//   - Removed COLORS object (using Tailwind classes)
+//   - Replaced emoji icons with Lucide React icons
+//   - Improved responsive design
+//   - Aligned with Design System v3.0
 // v2.1 (2025-11-15): Added date window display
 //   - Now receives dateWindow prop from parent
 //   - Displays explicit date range in subtitle
@@ -10,27 +17,12 @@
 // v1.0 (Previous): Initial implementation
 
 import React from 'react';
-import { Clock, TrendingUp, TrendingDown } from 'lucide-react';
-
-const COLORS = {
-  primary: '#10306B',
-  accent: '#53be33',
-  red: '#dc2626',
-  gray: '#6b7280',
-  amber: '#f59e0b'
-};
+import { Clock, TrendingUp, TrendingDown, Flame, Zap, CheckCircle, Wrench, Lightbulb, Info } from 'lucide-react';
 
 const PeakHoursSummary = ({ peakHours, dateWindow }) => {
   if (!peakHours || !peakHours.peak || !peakHours.offPeak) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        border: '1px solid #e5e7eb',
-        textAlign: 'center',
-        color: '#6b7280'
-      }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
         Loading peak hours data...
       </div>
     );
@@ -53,23 +45,27 @@ const PeakHoursSummary = ({ peakHours, dateWindow }) => {
   const getRecommendation = (util) => {
     if (util >= 50) return {
       text: "Pico crítico - monitore remotamente para problemas",
-      icon: "🔥",
-      color: COLORS.red
+      Icon: Flame,
+      colorClass: "text-red-600 dark:text-red-400",
+      bgClass: "bg-red-50 dark:bg-red-900/20"
     };
     if (util >= 30) return {
       text: "Alta demanda - verifique máquinas antes do período",
-      icon: "⚡",
-      color: COLORS.accent
+      Icon: Zap,
+      colorClass: "text-emerald-600 dark:text-emerald-400",
+      bgClass: "bg-emerald-50 dark:bg-emerald-900/20"
     };
     if (util >= 15) return {
       text: "Fluxo moderado - período de operação normal",
-      icon: "✓",
-      color: COLORS.primary
+      Icon: CheckCircle,
+      colorClass: "text-blue-600 dark:text-blue-400",
+      bgClass: "bg-blue-50 dark:bg-blue-900/20"
     };
     return {
       text: "Baixa demanda - ideal para manutenção preventiva",
-      icon: "🔧",
-      color: COLORS.amber
+      Icon: Wrench,
+      colorClass: "text-amber-600 dark:text-amber-400",
+      bgClass: "bg-amber-50 dark:bg-amber-900/20"
     };
   };
 
@@ -77,60 +73,37 @@ const PeakHoursSummary = ({ peakHours, dateWindow }) => {
   const offPeakRec = getRecommendation(bottomOffPeak[0]?.utilization || 0);
 
   const HourRow = ({ hour, index, isPeak }) => (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0.75rem 1rem',
-      background: index === 0 ? (isPeak ? '#f0fdf4' : '#fef2f2') : 'transparent',
-      borderRadius: '8px',
-      marginBottom: '0.5rem',
-      border: index === 0 ? `1px solid ${isPeak ? '#dcfce7' : '#fee2e2'}` : '1px solid transparent'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-        <div style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: '6px',
-          background: isPeak ? COLORS.accent : COLORS.red,
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '12px',
-          fontWeight: '700'
-        }}>
+    <div className={`
+      flex items-center justify-between px-4 py-3 rounded-lg mb-2
+      ${index === 0
+        ? isPeak
+          ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800'
+          : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+        : 'border border-transparent'
+      }
+    `}>
+      <div className="flex items-center gap-3 flex-1">
+        <div className={`
+          w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white
+          ${isPeak ? 'bg-emerald-500' : 'bg-red-500'}
+        `}>
           {index + 1}
         </div>
         <div>
-          <div style={{ 
-            fontSize: '15px',
-            fontWeight: '600',
-            color: COLORS.primary
-          }}>
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">
             {hour.hourLabel}
           </div>
-          <div style={{ 
-            fontSize: '12px',
-            color: COLORS.gray
-          }}>
+          <div className="text-xs text-slate-600 dark:text-slate-400">
             {hour.avgServices.toFixed(1)} serviços/h
           </div>
         </div>
       </div>
 
-      <div style={{ textAlign: 'right' }}>
-        <div style={{
-          fontSize: '15px',
-          fontWeight: '700',
-          color: isPeak ? COLORS.accent : COLORS.red
-        }}>
+      <div className="text-right">
+        <div className={`text-sm font-bold ${isPeak ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
           {hour.utilization.toFixed(1)}%
         </div>
-        <div style={{ 
-          fontSize: '12px',
-          color: COLORS.gray
-        }}>
+        <div className="text-xs text-slate-600 dark:text-slate-400">
           {formatCurrency(hour.revenue)}
         </div>
       </div>
@@ -138,136 +111,80 @@ const PeakHoursSummary = ({ peakHours, dateWindow }) => {
   );
 
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      padding: '1.5rem',
-      border: '1px solid #e5e7eb',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }}>
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
       {/* Header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-          <Clock style={{ width: '20px', height: '20px', color: COLORS.primary }} />
-          <h3 style={{ 
-            fontSize: '16px',
-            fontWeight: '600',
-            color: COLORS.primary,
-            margin: 0
-          }}>
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Clock className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">
             Melhores e Piores Horários
           </h3>
         </div>
-        <p style={{
-          fontSize: '12px',
-          color: COLORS.gray,
-          margin: 0
-        }}>
+        <p className="text-xs text-slate-600 dark:text-slate-400">
           Período: {dateWindow?.dateRange || 'Carregando...'}
         </p>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '1.5rem',
-        marginBottom: '1.5rem'
-      }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Peak Hours */}
         <div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
-            <TrendingUp style={{ width: '18px', height: '18px', color: COLORS.accent }} />
-            <h4 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: COLORS.accent,
-              margin: 0,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
+            <h4 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
               Horários de Pico
             </h4>
           </div>
-          
+
           {topPeak.map((hour, index) => (
             <HourRow key={hour.hour} hour={hour} index={index} isPeak={true} />
           ))}
-          
-          <div style={{
-            marginTop: '1rem',
-            padding: '0.75rem',
-            background: '#f0fdf4',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: COLORS.gray
-          }}>
-            <div style={{ color: peakRec.color, fontWeight: '600', marginBottom: '0.25rem' }}>
-              {peakRec.icon} {peakRec.text}
+
+          <div className={`mt-4 p-3 ${peakRec.bgClass} rounded-lg border ${peakRec.bgClass.replace('bg-', 'border-').replace('/20', '')}`}>
+            <div className={`flex items-start gap-2 text-xs ${peakRec.colorClass} font-semibold`}>
+              <peakRec.Icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{peakRec.text}</span>
             </div>
           </div>
         </div>
 
         {/* Off-Peak Hours */}
         <div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
-            <TrendingDown style={{ width: '18px', height: '18px', color: COLORS.red }} />
-            <h4 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: COLORS.red,
-              margin: 0,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingDown className="w-4.5 h-4.5 text-red-600 dark:text-red-400" />
+            <h4 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
               Horários de Vale
             </h4>
           </div>
-          
+
           {bottomOffPeak.map((hour, index) => (
             <HourRow key={hour.hour} hour={hour} index={index} isPeak={false} />
           ))}
-          
-          <div style={{
-            marginTop: '1rem',
-            padding: '0.75rem',
-            background: '#fef2f2',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: COLORS.gray
-          }}>
-            <div style={{ color: offPeakRec.color, fontWeight: '600', marginBottom: '0.25rem' }}>
-              {offPeakRec.icon} {offPeakRec.text}
+
+          <div className={`mt-4 p-3 ${offPeakRec.bgClass} rounded-lg border ${offPeakRec.bgClass.replace('bg-', 'border-').replace('/20', '')}`}>
+            <div className={`flex items-start gap-2 text-xs ${offPeakRec.colorClass} font-semibold`}>
+              <offPeakRec.Icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{offPeakRec.text}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Self-Service Strategy Insights */}
-      <div style={{
-        padding: '1rem',
-        background: '#f9fafb',
-        borderRadius: '8px',
-        fontSize: '12px',
-        color: COLORS.gray
-      }}>
-        <div style={{ fontWeight: '600', color: COLORS.primary, marginBottom: '0.5rem' }}>
-          💡 Estratégias para Autosserviço:
+      <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white mb-3">
+          <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          Estratégias para Autosserviço:
         </div>
-        <div style={{ lineHeight: '1.6' }}>
-          <div><strong>Horários de Pico:</strong> Configure alertas remotos para monitorar filas e problemas de máquinas</div>
-          <div><strong>Horários de Vale:</strong> Execute manutenção preventiva, limpeza profunda ou lance promoções via WhatsApp</div>
-          <div style={{ marginTop: '0.5rem', fontSize: '11px', fontStyle: 'italic' }}>
-            ⓘ Receita inclui vendas de crédito (Recarga)
+        <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+          <div>
+            <strong className="text-slate-900 dark:text-white">Horários de Pico:</strong> Configure alertas remotos para monitorar filas e problemas de máquinas
+          </div>
+          <div>
+            <strong className="text-slate-900 dark:text-white">Horários de Vale:</strong> Execute manutenção preventiva, limpeza profunda ou lance promoções via WhatsApp
+          </div>
+          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-200 dark:border-slate-600 text-[10px] text-slate-600 dark:text-slate-400 italic">
+            <Info className="w-3.5 h-3.5" />
+            Receita inclui vendas de crédito (Recarga)
           </div>
         </div>
       </div>
