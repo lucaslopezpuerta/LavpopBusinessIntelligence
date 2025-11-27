@@ -149,3 +149,15 @@ export const lavpopRiskColors = {
   new: '#9333ea',        // risk.new
   lost: '#6b7280',       // risk.lost
 };
+
+// Sequential color scale for utilization heatmap (blue gradient)
+// Used for intensity mapping: low activity → high activity
+// Aligned with Lavpop brand color (#1a5a8e)
+export const lavpopUtilizationScale = [
+  '#f3f4f6', // 0% - gray-100 (no data/empty)
+  '#dbeafe', // 1-20% - blue-100 (very light blue)
+  '#93c5fd', // 21-40% - blue-300 (light blue)
+  '#3b82f6', // 41-60% - blue-500 (medium blue)
+  '#2563eb', // 61-80% - blue-600 (strong blue)
+  '#1a5a8e', // 81-100% - lavpop-blue (dark blue - brand color)
+];
