@@ -1,8 +1,14 @@
-//MACHINE PERFORMANCE TABLE V3.0.1
-// ✅ Uses centralized date filtering (no individual dropdown)
-// ✅ Fixed periodLabels reference error
+// MachinePerformanceTable Component v4.0.0
+// Machine-level performance tracking with revenue reconciliation
 //
 // CHANGELOG:
+// v4.0.0 (2025-11-26): Design System alignment
+//   - Replaced all inline styles with Tailwind CSS
+//   - Added dark mode support throughout
+//   - Removed COLORS object (using Tailwind classes)
+//   - Replaced emoji (💡) with Lightbulb icon
+//   - Improved responsive design
+//   - Aligned with Design System v3.0
 // v3.0.1 (2025-11-15): Bug fix release
 //   - Fixed line 526: replaced periodLabels[period] with dateWindow?.label
 //   - Resolves ReferenceError crash in revenue reconciliation section
@@ -17,38 +23,20 @@
 // v1.0 (Previous): Initial implementation with local period control
 
 import React, { useEffect } from 'react';
-import { Droplet, Activity, TrendingUp, Info, DollarSign } from 'lucide-react';
-
-const COLORS = {
-  primary: '#10306B',
-  accent: '#53be33',
-  wash: '#3b82f6',
-  dry: '#f59e0b',
-  gray: '#6b7280',
-  info: '#3b82f6',
-  red: '#dc2626',
-  amber: '#f59e0b'
-};
+import { Droplet, Flame, Activity, TrendingUp, Info, DollarSign, Lightbulb } from 'lucide-react';
 
 const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek', dateWindow, revenueBreakdown }) => {
   useEffect(() => {
-    console.log('🎯 MachinePerformanceTable received:', { 
-      dateFilter, 
+    console.log('🎯 MachinePerformanceTable received:', {
+      dateFilter,
       machines: machinePerformance?.length,
-      revenueBreakdown 
+      revenueBreakdown
     });
   }, [dateFilter, machinePerformance, revenueBreakdown]);
 
   if (!machinePerformance || machinePerformance.length === 0) {
     return (
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        border: '1px solid #e5e7eb',
-        textAlign: 'center',
-        color: '#6b7280'
-      }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
         Loading machine performance data...
       </div>
     );
@@ -84,260 +72,126 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
   const MachineRow = ({ machine, avgUses }) => {
     const isAboveAverage = machine.uses >= avgUses;
     const percentDiff = avgUses > 0 ? ((machine.uses / avgUses - 1) * 100) : 0;
-    
+
     return (
-      <tr style={{
-        borderBottom: '1px solid #f3f4f6',
-        transition: 'background 0.2s'
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-      >
-        <td style={{
-          padding: '0.75rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}>
-          {machine.type === 'wash' ? (
-            <Droplet style={{ width: '16px', height: '16px', color: COLORS.wash }} />
-          ) : (
-            <Activity style={{ width: '16px', height: '16px', color: COLORS.dry }} />
-          )}
-          <span style={{ 
-            fontSize: '13px',
-            fontWeight: '500',
-            color: COLORS.primary
-          }}>
-            {machine.name}
-          </span>
+      <tr className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+        <td className="p-3">
+          <div className="flex items-center gap-2">
+            {machine.type === 'wash' ? (
+              <Droplet className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            ) : (
+              <Flame className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            )}
+            <span className="text-sm font-medium text-slate-900 dark:text-white">
+              {machine.name}
+            </span>
+          </div>
         </td>
-        <td style={{
-          padding: '0.75rem',
-          textAlign: 'center'
-        }}>
-          <span style={{ 
-            fontSize: '14px',
-            fontWeight: '600',
-            color: isAboveAverage ? COLORS.accent : COLORS.gray
-          }}>
-            {machine.uses}
-          </span>
-          {isAboveAverage && (
-            <TrendingUp 
-              style={{ 
-                width: '12px', 
-                height: '12px', 
-                color: COLORS.accent,
-                marginLeft: '4px',
-                display: 'inline'
-              }} 
-            />
-          )}
+        <td className="p-3 text-center">
+          <div className="flex items-center justify-center gap-1">
+            <span className={`text-sm font-semibold ${
+              isAboveAverage
+                ? 'text-lavpop-green dark:text-green-400'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}>
+              {machine.uses}
+            </span>
+            {isAboveAverage && (
+              <TrendingUp className="w-3 h-3 text-lavpop-green dark:text-green-400" />
+            )}
+          </div>
         </td>
-        <td style={{
-          padding: '0.75rem',
-          textAlign: 'right',
-          fontSize: '13px',
-          fontWeight: '500',
-          color: COLORS.primary
-        }}>
+        <td className="p-3 text-right text-sm font-medium text-slate-900 dark:text-white">
           {formatCurrency(machine.revenue)}
         </td>
-        <td style={{
-          padding: '0.75rem',
-          textAlign: 'right',
-          fontSize: '13px',
-          color: COLORS.gray
-        }}>
+        <td className="p-3 text-right text-sm text-slate-600 dark:text-slate-400">
           {formatCurrency(machine.avgRevenuePerUse)}
         </td>
-        <td style={{
-          padding: '0.75rem',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            display: 'inline-block',
-            padding: '0.25rem 0.5rem',
-            borderRadius: '12px',
-            fontSize: '11px',
-            fontWeight: '600',
-            background: percentDiff >= 0 ? '#f0fdf4' : '#fef2f2',
-            color: percentDiff >= 0 ? COLORS.accent : COLORS.red
-          }}>
+        <td className="p-3 text-center">
+          <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+            percentDiff >= 0
+              ? 'bg-green-50 dark:bg-green-900/20 text-lavpop-green dark:text-green-400'
+              : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+          }`}>
             {percentDiff > 0 ? '+' : ''}{percentDiff.toFixed(0)}%
-          </div>
+          </span>
         </td>
       </tr>
     );
   };
 
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: '12px',
-      padding: '1.5rem',
-      border: '1px solid #e5e7eb',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }}>
-      {/* Header with Date Range Display */}
-      <div style={{ 
-        marginBottom: '1.5rem'
-      }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <Activity style={{ width: '20px', height: '20px', color: COLORS.primary }} />
-            <h3 style={{ 
-              fontSize: '16px',
-              fontWeight: '600',
-              color: COLORS.primary,
-              margin: 0
-            }}>
-              Performance por Máquina
-            </h3>
-          </div>
-          <p style={{
-            fontSize: '12px',
-            color: COLORS.gray,
-            margin: 0
-          }}>
-            Período: {dateWindow?.dateRange || 'Carregando...'}
-          </p>
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Activity className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+            Performance por Máquina
+          </h3>
         </div>
+        <p className="text-xs text-slate-600 dark:text-slate-400">
+          Período: {dateWindow?.dateRange || 'Carregando...'}
+        </p>
       </div>
 
       {/* Column Explanation Panel */}
-      <div style={{
-        background: '#f0f9ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: '8px',
-        padding: '1rem',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '0.5rem',
-          marginBottom: '0.75rem'
-        }}>
-          <Info style={{ width: '16px', height: '16px', color: COLORS.info }} />
-          <h4 style={{ 
-            fontSize: '13px',
-            fontWeight: '600',
-            color: COLORS.primary,
-            margin: 0
-          }}>
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
             Como Interpretar
           </h4>
         </div>
-        <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '0.75rem',
-          fontSize: '12px',
-          color: COLORS.gray
-        }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs text-slate-700 dark:text-slate-300">
           <div>
-            <strong style={{ color: COLORS.primary }}>USOS:</strong> Quantas vezes a máquina foi usada (inclui uso com crédito).
+            <strong className="text-slate-900 dark:text-white">USOS:</strong> Quantas vezes a máquina foi usada (inclui uso com crédito).
           </div>
           <div>
-            <strong style={{ color: COLORS.primary }}>RECEITA:</strong> Total arrecadado por esta máquina (R$).
+            <strong className="text-slate-900 dark:text-white">RECEITA:</strong> Total arrecadado por esta máquina (R$).
           </div>
           <div>
-            <strong style={{ color: COLORS.primary }}>R$/USO:</strong> Receita média por uso (Receita ÷ Usos). Identifica máquinas que geram mais valor.
+            <strong className="text-slate-900 dark:text-white">R$/USO:</strong> Receita média por uso (Receita ÷ Usos). Identifica máquinas que geram mais valor.
           </div>
           <div>
-            <strong style={{ color: COLORS.primary }}>vs MÉDIA:</strong> Comparação com a média do seu tipo (lavadora ou secadora).
+            <strong className="text-slate-900 dark:text-white">vs MÉDIA:</strong> Comparação com a média do seu tipo (lavadora ou secadora).
           </div>
         </div>
       </div>
 
       {/* Washers Table */}
       {washers.length > 0 && (
-        <div style={{ marginBottom: '2rem' }}>
-          <h4 style={{
-            fontSize: '13px',
-            fontWeight: '600',
-            color: COLORS.wash,
-            marginBottom: '0.75rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
+        <div className="mb-8">
+          <h4 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-3">
             Lavadoras
           </h4>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
               <thead>
-                <tr style={{
-                  borderBottom: '2px solid #e5e7eb',
-                  background: '#f9fafb'
-                }}>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'left',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                  <th className="p-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Máquina
                   </th>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <th className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Usos
                   </th>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'right',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <th className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Receita
                   </th>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'right',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <th className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     R$/Uso
                   </th>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <th className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     vs Média
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {washers.map(machine => (
-                  <MachineRow 
-                    key={machine.name} 
-                    machine={machine} 
-                    avgUses={avgWashUses} 
+                  <MachineRow
+                    key={machine.name}
+                    machine={machine}
+                    avgUses={avgWashUses}
                   />
                 ))}
               </tbody>
@@ -349,89 +203,36 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
       {/* Dryers Table */}
       {dryers.length > 0 && (
         <div>
-          <h4 style={{
-            fontSize: '13px',
-            fontWeight: '600',
-            color: COLORS.dry,
-            marginBottom: '0.75rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
+          <h4 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-3">
             Secadoras
           </h4>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
               <thead>
-                <tr style={{
-                  borderBottom: '2px solid #e5e7eb',
-                  background: '#f9fafb'
-                }}>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'left',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                  <th className="p-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Máquina
                   </th>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <th className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Usos
                   </th>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'right',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <th className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Receita
                   </th>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'right',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <th className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     R$/Uso
                   </th>
-                  <th style={{
-                    padding: '0.75rem',
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: COLORS.gray,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                  <th className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     vs Média
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {dryers.map(machine => (
-                  <MachineRow 
-                    key={machine.name} 
-                    machine={machine} 
-                    avgUses={avgDryUses} 
+                  <MachineRow
+                    key={machine.name}
+                    machine={machine}
+                    avgUses={avgDryUses}
                   />
                 ))}
               </tbody>
@@ -440,89 +241,59 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
         </div>
       )}
 
-      {/* Revenue Reconciliation Summary - FIXED LINE 526 */}
+      {/* Revenue Reconciliation Summary */}
       {revenueBreakdown && (
-        <div style={{
-          marginTop: '1.5rem',
-          padding: '1rem',
-          background: '#f0fdf4',
-          borderRadius: '8px',
-          border: '1px solid #dcfce7'
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem',
-            marginBottom: '0.75rem'
-          }}>
-            <DollarSign style={{ width: '16px', height: '16px', color: COLORS.accent }} />
-            <h4 style={{ 
-              fontSize: '13px',
-              fontWeight: '600',
-              color: COLORS.primary,
-              margin: 0
-            }}>
+        <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign className="w-4 h-4 text-lavpop-green dark:text-green-400" />
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
               Reconciliação de Receita - {dateWindow?.label || 'Carregando...'}
             </h4>
           </div>
-          
-          <div style={{ 
-            fontSize: '13px', 
-            color: COLORS.gray,
-            lineHeight: '1.8'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+
+          <div className="text-sm text-slate-700 dark:text-slate-300 space-y-2">
+            <div className="flex justify-between">
               <span>Receita de Máquinas (atribuída na tabela acima):</span>
-              <strong style={{ color: COLORS.primary }}>{formatCurrency(totalMachineRevenue)}</strong>
+              <strong className="text-slate-900 dark:text-white">{formatCurrency(totalMachineRevenue)}</strong>
             </div>
-            
+
             {revenueBreakdown.recargaRevenue > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <div className="flex justify-between">
                 <span>Venda de Créditos (Recarga - não atribuída):</span>
-                <strong style={{ color: COLORS.amber }}>+ {formatCurrency(revenueBreakdown.recargaRevenue)}</strong>
+                <strong className="text-amber-600 dark:text-amber-400">+ {formatCurrency(revenueBreakdown.recargaRevenue)}</strong>
               </div>
             )}
-            
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              paddingTop: '0.5rem',
-              borderTop: '2px solid #dcfce7',
-              marginTop: '0.5rem'
-            }}>
-              <span style={{ fontWeight: '600' }}>Receita Total do Período:</span>
-              <strong style={{ color: COLORS.accent, fontSize: '16px' }}>
+
+            <div className="flex justify-between pt-2 border-t-2 border-green-200 dark:border-green-800 mt-2">
+              <span className="font-semibold">Receita Total do Período:</span>
+              <strong className="text-lavpop-green dark:text-green-400 text-base">
                 {formatCurrency(revenueBreakdown.totalRevenue)}
               </strong>
             </div>
           </div>
-          
+
           {revenueBreakdown.recargaRevenue > 0 && (
-            <div style={{
-              marginTop: '0.75rem',
-              padding: '0.5rem',
-              background: '#fefce8',
-              borderRadius: '6px',
-              fontSize: '11px',
-              color: COLORS.gray
-            }}>
-              💡 <strong>Nota:</strong> Receita de Recargas não aparece na tabela por máquina, pois representa prepagamento para uso futuro.
+            <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-xs text-slate-700 dark:text-slate-300">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Nota:</strong> Receita de Recargas não aparece na tabela por máquina, pois representa prepagamento para uso futuro.
+                </span>
+              </div>
             </div>
           )}
         </div>
       )}
 
       {/* Maintenance Insight */}
-      <div style={{
-        marginTop: '1.5rem',
-        padding: '0.75rem',
-        background: '#f9fafb',
-        borderRadius: '8px',
-        fontSize: '12px',
-        color: COLORS.gray
-      }}>
-        💡 <strong>Manutenção:</strong> Máquinas acima da média podem precisar de revisões mais frequentes.
-        Máquinas abaixo da média podem ter problemas técnicos, um posicionamento ruim ou uma utilização baixa.
+      <div className="mt-6 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
+          <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <span>
+            <strong className="text-slate-900 dark:text-white">Manutenção:</strong> Máquinas acima da média podem precisar de revisões mais frequentes.
+            Máquinas abaixo da média podem ter problemas técnicos, um posicionamento ruim ou uma utilização baixa.
+          </span>
+        </div>
       </div>
     </div>
   );
