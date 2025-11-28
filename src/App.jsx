@@ -1,21 +1,23 @@
-// App.jsx v5.0 - ERROR BOUNDARIES + CODE SPLITTING
-// ✅ Added ErrorBoundary for graceful error handling
-// ✅ Implemented lazy loading for tab components
-// ✅ Added Suspense with loading fallback
+// App.jsx v6.0 - SIDEBAR LAYOUT + MINIMALIST DESIGN
+// ✅ Added minimalist icon sidebar with hover expansion
+// ✅ Compact top bar with widgets (50px vs 64px header)
+// ✅ Mobile drawer with backdrop overlay
+// ✅ Maximized horizontal space for data visualizations
 //
 // CHANGELOG:
+// v6.0 (2025-11-27): Sidebar layout implementation
 // v5.0 (2025-11-23): Error boundaries + code splitting
 // v4.2 (2025-11-21): Reload button added
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { BarChart3, Users, TrendingUp, Settings, Menu, X, RefreshCw, MapPin } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
-import ThemeToggle from './components/ThemeToggle';
+import { SidebarProvider } from './contexts/SidebarContext';
 import { loadAllData } from './utils/csvLoader';
-import WeatherWidget from './components/WeatherWidget_API';
-import GoogleBusinessWidget from './components/GoogleBusinessWidget';
-import SocialMediaWidget from './components/SocialMediaWidget';
+import IconSidebar from './components/IconSidebar';
+import Backdrop from './components/Backdrop';
+import MinimalTopBar from './components/MinimalTopBar';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy load tab components for code splitting
@@ -40,7 +42,6 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 7, percent: 0 });
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState('complete');
 
@@ -65,19 +66,18 @@ function AppContent() {
     loadData();
   }, []);
 
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
-    { id: 'customers', label: 'Clientes', icon: Users, component: Customers },
-    { id: 'intelligence', label: 'Inteligência', icon: TrendingUp, component: Intelligence },
-    { id: 'operations', label: 'Operações', icon: Settings, component: Operations }
-  ];
+  // Map tab IDs to components
+  const tabComponents = {
+    dashboard: Dashboard,
+    customers: Customers,
+    intelligence: Intelligence,
+    operations: Operations
+  };
 
-  const activeTabData = tabs.find(t => t.id === activeTab);
-  const ActiveComponent = activeTabData?.component || Dashboard;
+  const ActiveComponent = tabComponents[activeTab] || Dashboard;
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
-    setMobileMenuOpen(false);
   };
 
   const handleRefresh = () => {
@@ -176,168 +176,19 @@ function AppContent() {
   // Main App
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-      {/* Header - Glassmorphism */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm transition-all duration-300">
-        <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-4">
+      {/* Sidebar Navigation */}
+      <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} />
 
-            {/* Logo + Location */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="flex flex-col items-start"
-              >
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-tight">
-                  Lavpop<span className="text-lavpop-blue">BI</span>
-                </h1>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <MapPin className="w-2.5 h-2.5 text-lavpop-blue dark:text-blue-400" />
-                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">
-                    Caxias do Sul
-                  </span>
-                </div>
-              </motion.div>
-              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-              <WeatherWidget compact />
-            </div>
+      {/* Mobile Backdrop */}
+      <Backdrop />
 
-            {/* Desktop Navigation - Sliding Pill */}
-            <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center bg-slate-100/50 dark:bg-slate-800/50 p-1.5 rounded-full border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
-              {tabs.map(tab => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
+      {/* Main Content Area - with sidebar offset */}
+      <div className="lg:pl-[60px] min-h-screen flex flex-col">
+        {/* Top Bar */}
+        <MinimalTopBar refreshing={refreshing} onRefresh={handleRefresh} />
 
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    className={`
-                      relative flex items-center gap-2 px-5 py-2 rounded-full font-medium text-sm
-                      transition-colors duration-200 z-10
-                      ${isActive
-                        ? 'text-white'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                      }
-                    `}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute inset-0 bg-gradient-to-r from-lavpop-blue to-blue-600 rounded-full shadow-md"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                    <span className="relative z-10 flex items-center gap-2">
-                      <Icon className="w-4 h-4" />
-                      {tab.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* Right: Widgets + Controls */}
-            <div className="flex items-center gap-2">
-              {/* Widgets - Google & Social only */}
-              <div className="flex items-center gap-2">
-                <GoogleBusinessWidget compact />
-                <SocialMediaWidget compact />
-                <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700" />
-              </div>
-
-              {/* Reload Button - Hidden on mobile */}
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="hidden sm:flex p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-lavpop-blue dark:hover:text-lavpop-blue transition-all disabled:opacity-50 active:scale-95"
-                title="Atualizar Dados"
-              >
-                <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-              </button>
-
-              <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-
-              {/* Theme Toggle - Hidden on mobile */}
-              <div className="hidden sm:block">
-                <ThemeToggle className="no-print" />
-              </div>
-
-              {/* Mobile Menu Button */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                aria-label="Menu"
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Navigation */}
-          <AnimatePresence>
-            {mobileMenuOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="lg:hidden overflow-hidden border-t border-slate-100 dark:border-slate-800"
-              >
-                <nav className="flex flex-col gap-2 py-4">
-                  {/* Mobile Controls */}
-                  <div className="flex items-center justify-around px-4 py-3 mx-2 mb-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <button
-                      onClick={handleRefresh}
-                      disabled={refreshing}
-                      className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                      title="Atualizar Dados"
-                    >
-                      <RefreshCw className={`w-5 h-5 text-slate-600 dark:text-slate-400 ${refreshing ? 'animate-spin' : ''}`} />
-                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">Atualizar</span>
-                    </button>
-                    <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
-                    <div className="flex flex-col items-center gap-1">
-                      <ThemeToggle />
-                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">Tema</span>
-                    </div>
-                  </div>
-
-                  {/* Navigation Tabs */}
-                  {tabs.map(tab => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => handleTabChange(tab.id)}
-                        className={`
-                          flex items-center gap-3 
-                          px-4 py-3.5 mx-2
-                          rounded-xl font-semibold text-base
-                          transition-all duration-200
-                          ${isActive
-                            ? 'bg-lavpop-blue text-white shadow-lg shadow-blue-500/20'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                          }
-                        `}
-                      >
-                        <Icon className="w-5 h-5" />
-                        <span>{tab.label}</span>
-                        {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
-                      </button>
-                    );
-                  })}
-                </nav>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Main Content */}
+        <main className="flex-1 max-w-[100rem] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -356,16 +207,17 @@ function AppContent() {
             </Suspense>
           </motion.div>
         </AnimatePresence>
-      </main>
+        </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
-        <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-            Powered by <span className="font-semibold text-slate-700 dark:text-slate-300">Nova Lopez Lavanderia Ltd.</span>
-          </p>
-        </div>
-      </footer>
+        {/* Footer */}
+        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto">
+          <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+              Powered by <span className="font-semibold text-slate-700 dark:text-slate-300">Nova Lopez Lavanderia Ltd.</span>
+            </p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
@@ -374,7 +226,9 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <AppContent />
+        <SidebarProvider>
+          <AppContent />
+        </SidebarProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
