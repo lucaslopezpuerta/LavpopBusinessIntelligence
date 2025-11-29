@@ -1,8 +1,11 @@
-// Intelligence.jsx v1.0.0 - Business Intelligence Dashboard
+// Intelligence.jsx v1.1.0 - Business Intelligence Dashboard
 // Modern Tailwind + Nivo charts design
 // 4 Strategic Sections: Profitability, Weather, Growth, Campaigns
 //
 // CHANGELOG:
+// v1.1.0 (2025-11-29): Design System v3.0 compliance
+//   - Removed all emojis from InsightBox titles and text
+//   - Removed emojis from status indicators
 // v1.0.0 (2025-11-18): Complete redesign with Tailwind + Nivo
 //   - Section 1: Rentabilidade (Profitability Analysis)
 //   - Section 2: Impacto do Clima (Weather Impact)
@@ -394,7 +397,7 @@ const Intelligence = ({ data }) => {
                     <p className={`text-xs mt-1 ${
                       profitability.netProfit > 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {profitability.netProfit > 0 ? 'Positivo ✅' : 'Negativo ⚠️'}
+                      {profitability.netProfit > 0 ? 'Positivo' : 'Negativo'}
                     </p>
                   </div>
                   
@@ -536,13 +539,13 @@ const Intelligence = ({ data }) => {
                 {profitability.isAboveBreakEven ? (
                   <InsightBox
                     type="success"
-                    title="Negócio Lucrativo ✅"
+                    title="Negócio Lucrativo"
                     message={`Você está ${formatPercent(Math.abs(profitability.breakEvenBuffer))} acima do ponto de equilíbrio. Margem de lucro de ${formatPercent(profitability.profitMargin)}. Continue mantendo a eficiência operacional!`}
                   />
                 ) : (
                   <InsightBox
                     type="warning"
-                    title="Atenção: Abaixo do Break-Even ⚠️"
+                    title="Atenção: Abaixo do Break-Even"
                     message={`Você precisa de mais ${profitability.breakEvenServices - profitability.actualServices} serviços para atingir o ponto de equilíbrio. Considere lançar promoções urgentes ou revisar custos fixos nas Configurações.`}
                   />
                 )}
@@ -718,7 +721,7 @@ const Intelligence = ({ data }) => {
                 {Math.abs(weatherImpact.rainy.impact) > 20 && (
                   <InsightBox
                     type="warning"
-                    title="Alto Impacto de Chuva Detectado 🌧️"
+                    title="Alto Impacto de Chuva Detectado"
                     message={`Dias chuvosos reduzem sua receita em ${formatPercent(Math.abs(weatherImpact.rainy.impact))}. Recomendação: Quando a previsão indicar chuva, ative uma campanha promocional via WhatsApp para compensar a queda esperada. Exemplo: "CHUVA15" para 15% de desconto.`}
                   />
                 )}
@@ -726,7 +729,7 @@ const Intelligence = ({ data }) => {
                 {Math.abs(weatherImpact.rainy.impact) <= 20 && (
                   <InsightBox
                     type="info"
-                    title="Impacto de Clima Moderado ☁️"
+                    title="Impacto de Clima Moderado"
                     message={`O clima tem impacto moderado no seu negócio (${formatPercent(Math.abs(weatherImpact.rainy.impact))} em dias chuvosos). Isso indica boa resiliência operacional. Continue monitorando para identificar oportunidades de otimização.`}
                   />
                 )}
@@ -988,7 +991,7 @@ const Intelligence = ({ data }) => {
                 {growthTrends.trend === 'increasing' && (
                   <InsightBox
                     type="success"
-                    title="Tendência de Crescimento Positiva 📈"
+                    title="Tendência de Crescimento Positiva"
                     message={`Seu negócio está crescendo consistentemente com média de ${formatPercent(growthTrends.avgGrowth)} ao mês. Continue investindo em marketing e mantendo a qualidade do serviço para sustentar esse crescimento!`}
                   />
                 )}
@@ -996,7 +999,7 @@ const Intelligence = ({ data }) => {
                 {growthTrends.trend === 'decreasing' && (
                   <InsightBox
                     type="warning"
-                    title="Atenção: Tendência de Queda ⚠️"
+                    title="Atenção: Tendência de Queda"
                     message={`Detectamos queda nos últimos meses. Análise recomendada: verifique se houve aumento de concorrência, problemas operacionais ou mudanças sazonais. Considere lançar campanhas agressivas para reverter a tendência.`}
                   />
                 )}
@@ -1004,7 +1007,7 @@ const Intelligence = ({ data }) => {
                 {growthTrends.trend === 'stable' && (
                   <InsightBox
                     type="info"
-                    title="Tendência Estável 📊"
+                    title="Tendência Estável"
                     message={`Seu negócio mantém receita estável. Para crescer, considere: (1) Campanhas de marketing para novos clientes, (2) Programas de fidelidade para aumentar frequência, (3) Horários promocionais em períodos de baixa utilização.`}
                   />
                 )}
@@ -1156,7 +1159,7 @@ const Intelligence = ({ data }) => {
                         {/* Recommendation */}
                         <div className={`p-3 rounded-lg ${badge.bg}`}>
                           <p className={`text-sm font-medium ${badge.text}`}>
-                            💡 Recomendação: {campaign.recommendation}
+                            Recomendação: {campaign.recommendation}
                           </p>
                         </div>
                       </div>

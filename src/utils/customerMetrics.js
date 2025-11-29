@@ -61,13 +61,14 @@ const DAY_THRESHOLDS = {
 
 // Unified Risk Labels (English keys, Portuguese values)
 // Use this constant across ALL components for consistency
+// Design System v3.0: Added borderColor hex values, removed emoji icons
 export const RISK_LABELS = {
-  'Healthy': { pt: 'Saudável', color: 'green', icon: '🟢', bgClass: 'bg-green-100', textClass: 'text-green-700' },
-  'Monitor': { pt: 'Monitorar', color: 'blue', icon: '🔵', bgClass: 'bg-blue-100', textClass: 'text-blue-700' },
-  'At Risk': { pt: 'Em Risco', color: 'amber', icon: '🟠', bgClass: 'bg-amber-100', textClass: 'text-amber-700' },
-  'Churning': { pt: 'Crítico', color: 'red', icon: '🔴', bgClass: 'bg-red-100', textClass: 'text-red-700' },
-  'New Customer': { pt: 'Novo', color: 'purple', icon: '🟣', bgClass: 'bg-purple-100', textClass: 'text-purple-700' },
-  'Lost': { pt: 'Perdido', color: 'slate', icon: '⚪', bgClass: 'bg-slate-100', textClass: 'text-slate-700' }
+  'Healthy': { pt: 'Saudável', color: 'green', borderColor: '#10b981', bgClass: 'bg-green-100', textClass: 'text-green-700' },
+  'Monitor': { pt: 'Monitorar', color: 'blue', borderColor: '#3b82f6', bgClass: 'bg-blue-100', textClass: 'text-blue-700' },
+  'At Risk': { pt: 'Em Risco', color: 'amber', borderColor: '#f59e0b', bgClass: 'bg-amber-100', textClass: 'text-amber-700' },
+  'Churning': { pt: 'Crítico', color: 'red', borderColor: '#ef4444', bgClass: 'bg-red-100', textClass: 'text-red-700' },
+  'New Customer': { pt: 'Novo', color: 'purple', borderColor: '#a855f7', bgClass: 'bg-purple-100', textClass: 'text-purple-700' },
+  'Lost': { pt: 'Perdido', color: 'slate', borderColor: '#64748b', bgClass: 'bg-slate-100', textClass: 'text-slate-700' }
 };
 
 // RFM segment bonus multipliers for return likelihood

@@ -1,7 +1,9 @@
-// NewClientsChart.jsx v2.1 - ACQUISITION CONTEXT WITH INSIGHTS
+// NewClientsChart.jsx v2.2 - ACQUISITION CONTEXT WITH INSIGHTS
 // Simplified new customer acquisition tracking
-// 
+//
 // CHANGELOG:
+// v2.2 (2025-11-29): Design System v3.0 compliance
+//   - Removed emojis from insight text strings
 // v2.1 (2025-11-24): Added actionable insights
 //   - NEW: InsightBox with acquisition recommendations
 // v2.0 (2025-11-23): Redesign for Customer Intelligence Hub
@@ -19,9 +21,9 @@ const NewClientsChart = ({ data }) => {
 
   // Generate insights
   const insights = [];
-  insights.push({ type: 'success', text: `📈 ${totalNew} novos clientes (média ${avgNew}/dia)` });
-  insights.push({ type: 'action', text: '🎯 Meta: Converter 80% em clientes recorrentes' });
-  insights.push({ type: 'action', text: '💡 Próximo passo: Programa de boas-vindas para novos clientes' });
+  insights.push({ type: 'success', text: `${totalNew} novos clientes (média ${avgNew}/dia)` });
+  insights.push({ type: 'action', text: 'Meta: Converter 80% em clientes recorrentes' });
+  insights.push({ type: 'action', text: 'Próximo passo: Programa de boas-vindas para novos clientes' });
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {

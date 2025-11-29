@@ -1,31 +1,40 @@
-// OperatingCyclesChart.jsx v4.0 - ENHANCED COMPARISON
+// OperatingCyclesChart.jsx v4.1 - ENHANCED COMPARISON
 // ✅ Previous month comparison lines (dashed)
 // ✅ Gradient bars for visual depth
 // ✅ Mobile responsive adjustments
+// ✅ v4.1: Design System v3.0 - removed COLORS object, theme-aware inline colors
+//
+// CHANGELOG:
+// v4.1 (2025-11-29): Design System v3.0 compliance
+//   - Removed COLORS object, using theme-aware inline colors
+//   - Chart colors documented with Tailwind equivalents
+// v4.0: Previous implementation
 import React, { useMemo, useState, useEffect } from 'react';
 import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart } from 'recharts';
-import { WashingMachine, Calendar, TrendingUp } from 'lucide-react';
+import { WashingMachine, TrendingUp, Calendar } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
 
-const COLORS = {
-  wash: {
-    light: '#1a5a8e',
-    dark: '#3b82f6',
-    gradientStart: '#3b82f6',
-    gradientEnd: '#1d4ed8'
-  },
-  dry: {
-    light: '#55b03b',
-    dark: '#55b03b',
-    gradientStart: '#4ade80',
-    gradientEnd: '#16a34a'
-  },
-  comparison: {
-    stroke: '#94a3b8',
-    strokeDark: '#64748b'
-  }
-};
+// Chart colors (hex values required for SVG/Recharts)
+// Documented with Tailwind equivalents for reference
+const getChartColors = (isDark) => ({
+  // Wash: blue-500 (#3b82f6) to blue-700 (#1d4ed8)
+  washGradientStart: '#3b82f6',
+  washGradientEnd: '#1d4ed8',
+  // Dry: green-400 (#4ade80) to green-600 (#16a34a)
+  dryGradientStart: '#4ade80',
+  dryGradientEnd: '#16a34a',
+  // Comparison lines: blue-300, orange-300
+  prevWashLine: '#93c5fd',
+  prevDryLine: '#fdba74',
+  // Grid & axis colors
+  grid: isDark ? '#1e293b' : '#f1f5f9',        // slate-800 / slate-100
+  axisLine: isDark ? '#334155' : '#e2e8f0',    // slate-700 / slate-200
+  tickText: isDark ? '#94a3b8' : '#64748b',    // slate-400 / slate-500
+  labelText: isDark ? '#e2e8f0' : '#1e293b',   // slate-200 / slate-800
+  yAxisLabel: isDark ? '#cbd5e1' : '#475569',  // slate-300 / slate-600
+  cursorFill: isDark ? '#1e293b40' : '#f1f5f940'
+});
 
 function countMachines(str) {
   if (!str) return { wash: 0, dry: 0 };
@@ -52,6 +61,7 @@ const OperatingCyclesChart = ({
   year = null
 }) => {
   const { isDark } = useTheme();
+  const colors = getChartColors(isDark);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -163,10 +173,6 @@ const OperatingCyclesChart = ({
     return { chartData: displayData, periodInfo: info };
   }, [salesData, month, year, isMobile]);
 
-  const washColor = isDark ? COLORS.wash.dark : COLORS.wash.light;
-  const dryColor = isDark ? COLORS.dry.dark : COLORS.dry.light;
-  const comparisonColor = isDark ? COLORS.comparison.strokeDark : COLORS.comparison.stroke;
-
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -223,7 +229,7 @@ const OperatingCyclesChart = ({
       <text
         x={x + width / 2}
         y={y - 5}
-        fill={isDark ? '#e2e8f0' : '#1e293b'}
+        fill={colors.labelText}
         textAnchor="middle"
         fontSize={10}
         fontWeight={600}
@@ -293,34 +299,34 @@ const OperatingCyclesChart = ({
           >
             <defs>
               <linearGradient id="washGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={COLORS.wash.gradientStart} stopOpacity={1} />
-                <stop offset="100%" stopColor={COLORS.wash.gradientEnd} stopOpacity={1} />
+                <stop offset="0%" stopColor={colors.washGradientStart} stopOpacity={1} />
+                <stop offset="100%" stopColor={colors.washGradientEnd} stopOpacity={1} />
               </linearGradient>
               <linearGradient id="dryGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={COLORS.dry.gradientStart} stopOpacity={1} />
-                <stop offset="100%" stopColor={COLORS.dry.gradientEnd} stopOpacity={1} />
+                <stop offset="0%" stopColor={colors.dryGradientStart} stopOpacity={1} />
+                <stop offset="100%" stopColor={colors.dryGradientEnd} stopOpacity={1} />
               </linearGradient>
             </defs>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke={isDark ? '#1e293b' : '#f1f5f9'}
+              stroke={colors.grid}
               vertical={false}
             />
             <XAxis
               dataKey="day"
               tick={{
                 fontSize: 11,
-                fill: isDark ? '#94a3b8' : '#64748b',
+                fill: colors.tickText,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
               }}
-              axisLine={{ stroke: isDark ? '#334155' : '#e2e8f0' }}
+              axisLine={{ stroke: colors.axisLine }}
               tickLine={false}
               dy={10}
             />
             <YAxis
               tick={{
                 fontSize: 11,
-                fill: isDark ? '#94a3b8' : '#64748b',
+                fill: colors.tickText,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
               }}
               axisLine={false}
@@ -332,19 +338,19 @@ const OperatingCyclesChart = ({
                 offset: 0,
                 style: {
                   fontSize: 12,
-                  fill: isDark ? '#cbd5e1' : '#475569',
+                  fill: colors.yAxisLabel,
                   fontWeight: 600,
                 }
               }}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? '#1e293b40' : '#f1f5f940' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: colors.cursorFill }} />
 
             {/* Previous Month Wash Trend */}
             <Line
               type="monotone"
               dataKey="PrevWash"
               name="Lavagens (Mês Anterior)"
-              stroke="#93c5fd" // Light blue
+              stroke={colors.prevWashLine}
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}
@@ -355,7 +361,7 @@ const OperatingCyclesChart = ({
               type="monotone"
               dataKey="PrevDry"
               name="Secagens (Mês Anterior)"
-              stroke="#fdba74" // Light orange
+              stroke={colors.prevDryLine}
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}

@@ -1,7 +1,9 @@
-// ChurnHistogram.jsx v1.1 - DANGER ZONE WITH INSIGHTS
+// ChurnHistogram.jsx v1.2 - DANGER ZONE WITH INSIGHTS
 // Time-to-churn distribution histogram
-// 
+//
 // CHANGELOG:
+// v1.2 (2025-11-29): Design System v3.0 compliance
+//   - Removed emojis from insight text strings
 // v1.1 (2025-11-24): Added actionable insights
 //   - NEW: InsightBox with churn pattern analysis
 // v1.0 (2025-11-23): Initial implementation
@@ -24,14 +26,14 @@ const ChurnHistogram = ({ data }) => {
 
     const insights = [];
     if (healthyPct >= 60) {
-        insights.push({ type: 'success', text: `✅ ${healthyPct}% retornam em 0-20 dias (padrão saudável)` });
+        insights.push({ type: 'success', text: `${healthyPct}% retornam em 0-20 dias (padrão saudável)` });
     } else if (healthyPct > 0) {
-        insights.push({ type: 'warning', text: `⚠️ Apenas ${healthyPct}% retornam em 0-20 dias` });
+        insights.push({ type: 'warning', text: `Apenas ${healthyPct}% retornam em 0-20 dias` });
     } else {
-        insights.push({ type: 'warning', text: `⚠️ Apenas 0% retornam em 0-20 dias` });
+        insights.push({ type: 'warning', text: `Apenas 0% retornam em 0-20 dias` });
     }
-    insights.push({ type: 'warning', text: '⚠️ Pico em 30 dias = ponto crítico de abandono' });
-    insights.push({ type: 'action', text: '💡 Ação: Contatar clientes após 25 dias sem visitar' });
+    insights.push({ type: 'warning', text: 'Pico em 30 dias = ponto crítico de abandono' });
+    insights.push({ type: 'action', text: 'Ação: Contatar clientes após 25 dias sem visitar' });
 
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {

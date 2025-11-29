@@ -1,8 +1,11 @@
-// CustomerProfileModal.jsx v1.0 - CUSTOMER PROFILE & CRM MODAL
+// CustomerProfileModal.jsx v1.1 - CUSTOMER PROFILE & CRM MODAL
 // Comprehensive customer profile modal for Customer Directory
 // Separate from Dashboard's CustomerDetailModal
 //
 // CHANGELOG:
+// v1.1 (2025-11-29): Design System v3.0 compliance
+//   - Replaced emojis with lucide-react icons in communication log
+//   - Removed emojis from select options
 // v1.0 (2025-11-24): Initial implementation
 //   - Tab 1: Profile & Contact (personal info, wallet, communication log)
 //   - Tab 2: Financial Summary (lifetime value, revenue breakdown)
@@ -392,10 +395,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             onChange={(e) => setNoteMethod(e.target.value)}
                                             className="px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 flex-shrink-0"
                                         >
-                                            <option value="call">📞 Ligação</option>
-                                            <option value="whatsapp">💬 WhatsApp</option>
-                                            <option value="email">📧 Email</option>
-                                            <option value="note">📝 Nota</option>
+                                            <option value="call">Ligação</option>
+                                            <option value="whatsapp">WhatsApp</option>
+                                            <option value="email">Email</option>
+                                            <option value="note">Nota</option>
                                         </select>
                                         <input
                                             type="text"
@@ -427,11 +430,11 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             <div key={idx} className="bg-white dark:bg-slate-700 rounded-lg p-2 border border-slate-200 dark:border-slate-600">
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex items-start gap-2">
-                                                        <div className="text-base">
-                                                            {entry.method === 'call' && '📞'}
-                                                            {entry.method === 'whatsapp' && '💬'}
-                                                            {entry.method === 'email' && '📧'}
-                                                            {entry.method === 'note' && '📝'}
+                                                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-600">
+                                                            {entry.method === 'call' && <Phone className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
+                                                            {entry.method === 'whatsapp' && <MessageCircle className="w-3 h-3 text-green-600 dark:text-green-400" />}
+                                                            {entry.method === 'email' && <Mail className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
+                                                            {entry.method === 'note' && <FileText className="w-3 h-3 text-slate-600 dark:text-slate-400" />}
                                                         </div>
                                                         <div>
                                                             <div className="text-xs font-semibold text-slate-800 dark:text-white">

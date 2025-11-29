@@ -1,7 +1,9 @@
-// FilterBar.jsx v2.0 - REDESIGNED & RESPONSIVE
+// FilterBar.jsx v2.1 - REDESIGNED & RESPONSIVE
 // Modern filter interface matching Design System
-// 
+//
 // CHANGELOG:
+// v2.1 (2025-11-29): Design System v3.0 compliance
+//   - Removed emojis from risk level select options
 // v2.0 (2025-11-26): Redesign per Design System
 //   - NEW: "Clear Filters" button
 //   - STYLE: Updated inputs and selects to match dark mode system
@@ -92,12 +94,12 @@ const FilterBar = ({
                             className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/20 cursor-pointer transition-all shadow-sm"
                         >
                             <option value="all">Todos Riscos</option>
-                            <option value="Healthy">Saudável 🟢</option>
-                            <option value="Monitor">Monitorar 🔵</option>
-                            <option value="At Risk">Em Risco 🟠</option>
-                            <option value="Churning">Crítico 🔴</option>
-                            <option value="New Customer">Novo 🟣</option>
-                            <option value="Lost">Perdido ⚪</option>
+                            <option value="Healthy">Saudável</option>
+                            <option value="Monitor">Monitorar</option>
+                            <option value="At Risk">Em Risco</option>
+                            <option value="Churning">Crítico</option>
+                            <option value="New Customer">Novo</option>
+                            <option value="Lost">Perdido</option>
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
                     </div>

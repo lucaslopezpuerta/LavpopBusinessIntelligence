@@ -1,7 +1,10 @@
-// IconSidebar.jsx v1.0
+// IconSidebar.jsx v1.1
 // Minimalist icon-only sidebar with hover-to-expand functionality
 //
 // CHANGELOG:
+// v1.1 (2025-11-27): Added Lavpop logo
+//   - Integrated LogoNoBackground.svg in header
+//   - Logo adapts to collapsed/expanded states
 // v1.0 (2025-11-27): Initial implementation
 //   - Icon-only sidebar (60px collapsed, 240px expanded on hover)
 //   - Smooth transitions with Framer Motion
@@ -10,8 +13,8 @@
 //   - Dark mode support
 //   - Tooltip fallback for collapsed state
 
-import React from 'react';
 import { BarChart3, Users, TrendingUp, Settings } from 'lucide-react';
+import LogoNoBackground from '../assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
 
@@ -45,13 +48,15 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
       {/* Logo */}
       <div className="h-16 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
         <motion.div
-          className="flex items-center gap-2 overflow-hidden"
+          className="flex items-center gap-2 overflow-hidden px-2"
           initial={false}
           animate={{ justifyContent: isHovered ? 'flex-start' : 'center' }}
         >
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-lavpop-blue to-blue-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">L</span>
-          </div>
+          <img
+            src={LogoNoBackground}
+            alt="Lavpop"
+            className="w-10 h-10 object-contain flex-shrink-0"
+          />
           <AnimatePresence>
             {isHovered && (
               <motion.div
@@ -132,9 +137,11 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
           {/* Logo */}
           <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-lavpop-blue to-blue-600 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">L</span>
-              </div>
+              <img
+                src={LogoNoBackground}
+                alt="Lavpop"
+                className="w-10 h-10 object-contain"
+              />
               <span className="text-lg font-bold text-slate-900 dark:text-white">
                 Lavpop<span className="text-lavpop-blue">BI</span>
               </span>

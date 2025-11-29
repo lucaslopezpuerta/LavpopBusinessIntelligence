@@ -1,9 +1,10 @@
-// KPICards.jsx v6.2 - FIXED SYNTAX & TOOLTIPS
+// KPICards.jsx v6.3 - FIXED SYNTAX & TOOLTIPS
 // ✅ Premium gradients and depth
 // ✅ Count-up animations with react-countup
 // ✅ Card lift hover effects
 // ✅ Improved mobile sizing
 // ✅ Fixed Tooltip & Icon positioning
+// ✅ v6.3: Replaced emoji with AlertCircle icon in error state
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
@@ -137,8 +138,9 @@ const KPICards = ({ businessMetrics, customerMetrics, salesData, viewMode = 'com
 
   if (!metricsSource) {
     return (
-      <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
-        ⚠️ Erro ao carregar métricas.
+      <div className="p-4 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 flex items-center gap-2">
+        <AlertCircle className="w-4 h-4" />
+        Erro ao carregar métricas.
       </div>
     );
   }

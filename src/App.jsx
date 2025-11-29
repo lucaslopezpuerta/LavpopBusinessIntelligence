@@ -1,16 +1,19 @@
-// App.jsx v6.0 - SIDEBAR LAYOUT + MINIMALIST DESIGN
+// App.jsx v6.1 - SIDEBAR LAYOUT + MINIMALIST DESIGN
 // ✅ Added minimalist icon sidebar with hover expansion
 // ✅ Compact top bar with widgets (50px vs 64px header)
 // ✅ Mobile drawer with backdrop overlay
 // ✅ Maximized horizontal space for data visualizations
+// ✅ Integrated Lavpop logo in loading and error screens
 //
 // CHANGELOG:
+// v6.1 (2025-11-27): Added Lavpop logo to loading/error screens
 // v6.0 (2025-11-27): Sidebar layout implementation
 // v5.0 (2025-11-23): Error boundaries + code splitting
 // v4.2 (2025-11-21): Reload button added
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, XCircle } from 'lucide-react';
+import LogoNoBackground from './assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SidebarProvider } from './contexts/SidebarContext';
@@ -100,14 +103,17 @@ function AppContent() {
             transition={{ duration: 0.5 }}
             className="mb-8 inline-block"
           >
-            <div className="w-24 h-24 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-5xl font-bold shadow-2xl border border-white/20">
-              <motion.span
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                L
-              </motion.span>
-            </div>
+            <motion.div
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-24 h-24 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 p-3"
+            >
+              <img
+                src={LogoNoBackground}
+                alt="Lavpop"
+                className="w-full h-full object-contain"
+              />
+            </motion.div>
           </motion.div>
 
           <h2 className="text-3xl font-bold mb-8 tracking-tight">Carregando Lavpop BI</h2>
@@ -140,8 +146,17 @@ function AppContent() {
           className="text-center max-w-md w-full"
         >
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-100 dark:border-slate-700">
+            {/* Logo */}
+            <div className="w-16 h-16 mx-auto mb-4">
+              <img
+                src={LogoNoBackground}
+                alt="Lavpop"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
             <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <X className="w-10 h-10 text-red-500 dark:text-red-400" />
+              <XCircle className="w-10 h-10 text-red-500 dark:text-red-400" />
             </div>
 
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">

@@ -1,12 +1,15 @@
-// AtRiskCustomersTable.jsx v7.0 - UNIFIED RISK LABELS
+// AtRiskCustomersTable.jsx v7.1 - UNIFIED RISK LABELS
 // ✅ No horizontal scroll
 // ✅ Mobile: Cliente + Ações only
 // ✅ Desktop: All columns visible
 // ✅ No phone numbers displayed
 // ✅ Row coloring by risk
-// ✅ NEW v7.0: Uses unified RISK_LABELS from customerMetrics.js
+// ✅ Uses unified RISK_LABELS from customerMetrics.js
 //
 // CHANGELOG:
+// v7.1 (2025-11-29): Design System v3.0 compliance
+//   - Removed colorMap, uses borderColor from RISK_LABELS
+//   - Centralized color configuration
 // v7.0 (2025-11-24): Unified risk labels
 //   - Imports RISK_LABELS from customerMetrics.js
 //   - Consistent Portuguese translations
@@ -83,18 +86,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
   const getRiskStyles = (riskLevel) => {
     const riskConfig = RISK_LABELS[riskLevel] || RISK_LABELS['Lost'];
 
-    // Map color to border color value
-    const colorMap = {
-      'green': '#10b981',
-      'blue': '#3b82f6',
-      'amber': '#f59e0b',
-      'red': '#ef4444',
-      'purple': '#a855f7',
-      'slate': '#64748b'
-    };
-
     return {
-      borderColorValue: colorMap[riskConfig.color] || '#64748b',
+      borderColorValue: riskConfig.borderColor,
       badge: `${riskConfig.bgClass} dark:${riskConfig.bgClass.replace('bg-', 'bg-')}/40 ${riskConfig.textClass} dark:${riskConfig.textClass}`,
       dot: `bg-${riskConfig.color}-500`,
       label: riskConfig.pt

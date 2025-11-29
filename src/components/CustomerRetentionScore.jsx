@@ -1,7 +1,9 @@
-// CustomerRetentionScore.jsx v2.1 - RETENTION PULSE WITH INSIGHTS
+// CustomerRetentionScore.jsx v2.2 - RETENTION PULSE WITH INSIGHTS
 // Simplified survival score visualization
-// 
+//
 // CHANGELOG:
+// v2.2 (2025-11-29): Design System v3.0 compliance
+//   - Removed emojis from insight text strings
 // v2.1 (2025-11-24): Added actionable insights
 //   - NEW: InsightBox with contextual recommendations
 //   - Insights adapt based on retention rate
@@ -37,14 +39,14 @@ const CustomerRetentionScore = ({ data }) => {
   // Generate insights based on retention rate
   const insights = [];
   if (rate30 >= 70) {
-    insights.push({ type: 'success', text: `✅ ${rate30}% dos clientes retornam em 30 dias - Excelente!` });
-    insights.push({ type: 'action', text: '💡 Meta: Manter acima de 70% com programa de fidelidade' });
+    insights.push({ type: 'success', text: `${rate30}% dos clientes retornam em 30 dias - Excelente!` });
+    insights.push({ type: 'action', text: 'Meta: Manter acima de 70% com programa de fidelidade' });
   } else if (rate30 >= 50) {
-    insights.push({ type: 'warning', text: `⚠️ ${100 - rate30}% não retornam - Foco em reengajamento` });
-    insights.push({ type: 'action', text: '💡 Ação: Contatar clientes após 25 dias sem visitar' });
+    insights.push({ type: 'warning', text: `${100 - rate30}% não retornam - Foco em reengajamento` });
+    insights.push({ type: 'action', text: 'Ação: Contatar clientes após 25 dias sem visitar' });
   } else {
-    insights.push({ type: 'warning', text: `🚨 Apenas ${rate30}% retornam - CRÍTICO!` });
-    insights.push({ type: 'action', text: '💡 Urgente: Implementar campanha de reativação' });
+    insights.push({ type: 'warning', text: `Apenas ${rate30}% retornam - CRÍTICO!` });
+    insights.push({ type: 'action', text: 'Urgente: Implementar campanha de reativação' });
   }
 
   return (
