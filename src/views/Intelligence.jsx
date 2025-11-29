@@ -1,8 +1,12 @@
-// Intelligence.jsx v1.1.0 - Business Intelligence Dashboard
+// Intelligence.jsx v1.2.0 - Business Intelligence Dashboard
 // Modern Tailwind + Nivo charts design
 // 4 Strategic Sections: Profitability, Weather, Growth, Campaigns
 //
 // CHANGELOG:
+// v1.2.0 (2025-11-29): Design System v3.0 - Dark mode & Nivo theme
+//   - Added lavpopNivoTheme for consistent chart styling
+//   - Added dark mode support throughout component
+//   - Using useTheme hook for theme detection
 // v1.1.0 (2025-11-29): Design System v3.0 compliance
 //   - Removed all emojis from InsightBox titles and text
 //   - Removed emojis from status indicators
@@ -35,6 +39,8 @@ import {
 } from 'lucide-react';
 
 import BusinessSettingsModal, { useBusinessSettings } from '../components/BusinessSettingsModal';
+import { useTheme } from '../contexts/ThemeContext';
+import { getLavpopNivoTheme, CHART_COLORS } from '../utils/chartThemes';
 import {
   calculateProfitability,
   calculateWeatherImpact,
@@ -56,21 +62,21 @@ const StatCard = ({ label, value, subtitle, icon: Icon, trend, color = 'blue' })
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-soft p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-soft p-6 border border-gray-100 dark:border-slate-700 hover:shadow-lg transition-shadow">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-2">{label}</p>
-          <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-slate-400 mb-2">{label}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{value}</p>
           {subtitle && (
-            <p className="text-sm text-gray-500">{subtitle}</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{subtitle}</p>
           )}
           {trend && (
             <div className="flex items-center gap-1 mt-2">
               {trend.direction === 'up' && <TrendingUp className="w-4 h-4 text-green-500" />}
               {trend.direction === 'down' && <TrendingDown className="w-4 h-4 text-red-500" />}
               <span className={`text-sm font-medium ${
-                trend.direction === 'up' ? 'text-green-600' : 
-                trend.direction === 'down' ? 'text-red-600' : 'text-gray-600'
+                trend.direction === 'up' ? 'text-green-600 dark:text-green-400' :
+                trend.direction === 'down' ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-slate-400'
               }`}>
                 {trend.value}
               </span>
@@ -90,31 +96,31 @@ const StatCard = ({ label, value, subtitle, icon: Icon, trend, color = 'blue' })
 const InsightBox = ({ type = 'info', title, message, action }) => {
   const styles = {
     success: {
-      bg: 'bg-green-50 border-green-200',
-      icon: 'text-green-600',
-      title: 'text-green-900',
-      message: 'text-green-700',
+      bg: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+      icon: 'text-green-600 dark:text-green-400',
+      title: 'text-green-900 dark:text-green-100',
+      message: 'text-green-700 dark:text-green-300',
       Icon: CheckCircle
     },
     warning: {
-      bg: 'bg-amber-50 border-amber-200',
-      icon: 'text-amber-600',
-      title: 'text-amber-900',
-      message: 'text-amber-700',
+      bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+      icon: 'text-amber-600 dark:text-amber-400',
+      title: 'text-amber-900 dark:text-amber-100',
+      message: 'text-amber-700 dark:text-amber-300',
       Icon: AlertCircle
     },
     error: {
-      bg: 'bg-red-50 border-red-200',
-      icon: 'text-red-600',
-      title: 'text-red-900',
-      message: 'text-red-700',
+      bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+      icon: 'text-red-600 dark:text-red-400',
+      title: 'text-red-900 dark:text-red-100',
+      message: 'text-red-700 dark:text-red-300',
       Icon: AlertCircle
     },
     info: {
-      bg: 'bg-blue-50 border-blue-200',
-      icon: 'text-blue-600',
-      title: 'text-blue-900',
-      message: 'text-blue-700',
+      bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+      icon: 'text-blue-600 dark:text-blue-400',
+      title: 'text-blue-900 dark:text-blue-100',
+      message: 'text-blue-700 dark:text-blue-300',
       Icon: Zap
     }
   };
@@ -146,14 +152,14 @@ const SectionHeader = ({ title, subtitle, icon: Icon, action }) => (
   <div className="flex items-center justify-between mb-6">
     <div className="flex items-center gap-3">
       {Icon && (
-        <div className="p-2 bg-lavpop-blue-100 rounded-lg">
-          <Icon className="w-6 h-6 text-lavpop-primary" />
+        <div className="p-2 bg-lavpop-blue-100 dark:bg-lavpop-blue-900/30 rounded-lg">
+          <Icon className="w-6 h-6 text-lavpop-blue dark:text-blue-400" />
         </div>
       )}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h2>
         {subtitle && (
-          <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
+          <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">{subtitle}</p>
         )}
       </div>
     </div>
@@ -166,6 +172,8 @@ const SectionHeader = ({ title, subtitle, icon: Icon, action }) => (
 const Intelligence = ({ data }) => {
   const [showSettings, setShowSettings] = useState(false);
   const settings = useBusinessSettings();
+  const { isDark } = useTheme();
+  const nivoTheme = useMemo(() => getLavpopNivoTheme(isDark), [isDark]);
 
   // Calculate all metrics
   const profitability = useMemo(() => {
@@ -244,15 +252,15 @@ const Intelligence = ({ data }) => {
 
   if (!data || !data.sales) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="w-16 h-16 bg-lavpop-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Zap className="w-8 h-8 text-lavpop-primary animate-pulse" />
+          <div className="w-16 h-16 bg-lavpop-blue/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Zap className="w-8 h-8 text-lavpop-blue dark:text-blue-400 animate-pulse" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             Carregando Inteligência de Negócio
           </h3>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-slate-400">
             Preparando análises estratégicas...
           </p>
         </div>
@@ -262,35 +270,35 @@ const Intelligence = ({ data }) => {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-slate-900 dark:to-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          
+
           {/* Hero Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="px-3 py-1 bg-gradient-to-r from-lavpop-primary to-lavpop-blue-700 text-white text-xs font-bold uppercase tracking-wide rounded-full">
+                  <span className="px-3 py-1 bg-gradient-to-r from-lavpop-blue to-lavpop-blue-700 text-white text-xs font-bold uppercase tracking-wide rounded-full">
                     Inteligência
                   </span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-slate-400">
                     Análise Estratégica de Negócio
                   </span>
                 </div>
-                <h1 className="text-4xl font-bold text-gray-900">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
                   Business Intelligence
                 </h1>
-                <p className="text-gray-600 mt-2 max-w-2xl">
-                  Insights acionáveis para tomada de decisão: rentabilidade, impacto climático, 
+                <p className="text-gray-600 dark:text-slate-400 mt-2 max-w-2xl">
+                  Insights acionáveis para tomada de decisão: rentabilidade, impacto climático,
                   tendências de crescimento e efetividade de campanhas.
                 </p>
               </div>
               <button
                 onClick={() => setShowSettings(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
               >
-                <Settings className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">
+                <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
                   Configurações
                 </span>
               </button>
@@ -349,7 +357,7 @@ const Intelligence = ({ data }) => {
 
           {/* ==================== SECTION 1: PROFITABILITY ==================== */}
           {profitability && (
-            <div className="bg-white rounded-2xl shadow-soft p-8 mb-8 animate-slide-up">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-soft p-8 mb-8 animate-slide-up">
               <SectionHeader
                 title="Rentabilidade"
                 subtitle="Análise de custos vs receita e ponto de equilíbrio"
@@ -521,17 +529,13 @@ const Intelligence = ({ data }) => {
                         translateX: 120,
                         itemWidth: 100,
                         itemHeight: 20,
-                        itemTextColor: '#666',
                         symbolSize: 12,
                         symbolShape: 'circle'
                       }
                     ]}
                     animate={true}
                     motionConfig="gentle"
-                    theme={{
-                      fontSize: 12,
-                      textColor: '#666'
-                    }}
+                    theme={nivoTheme}
                   />
                 </div>
 
@@ -555,7 +559,7 @@ const Intelligence = ({ data }) => {
 
           {/* ==================== SECTION 2: WEATHER IMPACT ==================== */}
           {weatherImpact && (
-            <div className="bg-white rounded-2xl shadow-soft p-8 mb-8 animate-slide-up">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-soft p-8 mb-8 animate-slide-up">
               <SectionHeader
                 title="Impacto do Clima"
                 subtitle="Como o clima afeta sua receita diária"
@@ -689,10 +693,7 @@ const Intelligence = ({ data }) => {
                     enableGridY={false}
                     animate={true}
                     motionConfig="gentle"
-                    theme={{
-                      fontSize: 13,
-                      textColor: '#666'
-                    }}
+                    theme={nivoTheme}
                   />
                 </div>
 
@@ -739,7 +740,7 @@ const Intelligence = ({ data }) => {
 
           {/* ==================== SECTION 3: GROWTH & TRENDS ==================== */}
           {growthTrends && (
-            <div className="bg-white rounded-2xl shadow-soft p-8 mb-8 animate-slide-up">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-soft p-8 mb-8 animate-slide-up">
               <SectionHeader
                 title="Crescimento & Tendências"
                 subtitle="Análise de crescimento mensal e trajetória de longo prazo"
@@ -907,16 +908,7 @@ const Intelligence = ({ data }) => {
                         ]
                       }
                     ]}
-                    theme={{
-                      fontSize: 12,
-                      textColor: '#666',
-                      grid: {
-                        line: {
-                          stroke: '#e5e7eb',
-                          strokeWidth: 1
-                        }
-                      }
-                    }}
+                    theme={nivoTheme}
                     animate={true}
                     motionConfig="gentle"
                   />
@@ -1017,7 +1009,7 @@ const Intelligence = ({ data }) => {
 
           {/* ==================== SECTION 4: CAMPAIGN EFFECTIVENESS ==================== */}
           {campaignROI && campaignROI.campaigns && campaignROI.campaigns.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-soft p-8 mb-8 animate-slide-up">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-soft p-8 mb-8 animate-slide-up">
               <SectionHeader
                 title="Efetividade de Campanhas"
                 subtitle="ROI e desempenho de cupons de desconto"
@@ -1179,20 +1171,20 @@ const Intelligence = ({ data }) => {
 
           {/* No campaigns message */}
           {campaignROI && (!campaignROI.campaigns || campaignROI.campaigns.length === 0) && (
-            <div className="bg-white rounded-2xl shadow-soft p-8 mb-8">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-soft p-8 mb-8">
               <SectionHeader
                 title="Efetividade de Campanhas"
                 subtitle="ROI e desempenho de cupons de desconto"
                 icon={Target}
               />
               <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Target className="w-8 h-8 text-gray-400" />
+                <div className="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Target className="w-8 h-8 text-gray-400 dark:text-slate-500" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   Nenhuma Campanha Encontrada
                 </h3>
-                <p className="text-gray-600 max-w-md mx-auto">
+                <p className="text-gray-600 dark:text-slate-400 max-w-md mx-auto">
                   Certifique-se de que o arquivo campaigns.csv está disponível e contém dados de cupons.
                 </p>
               </div>
