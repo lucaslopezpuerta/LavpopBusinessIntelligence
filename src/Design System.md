@@ -1,7 +1,8 @@
-# LavpopBI Design System v3.0
+# LavpopBI Design System v3.1
 
-> **Last Updated:** November 2025  
+> **Last Updated:** November 30, 2025
 > **Status:** Active - All components aligned with this system
+> **Audit Completed:** UX/UI and Code Architecture Audit v1.0
 
 ---
 
@@ -414,6 +415,47 @@ h-64 sm:h-80 lg:h-96
 - Include text labels and values
 - Provide alternative data views (tables)
 
+### Chart Tooltip Styling
+
+All chart tooltips (Recharts & Nivo) should follow this pattern:
+
+```jsx
+/* Use the ChartTooltip component from src/components/ui/ChartTooltip.jsx */
+import ChartTooltip from './ui/ChartTooltip';
+
+/* Container Classes */
+bg-white dark:bg-slate-800
+border border-slate-200 dark:border-slate-700
+rounded-lg
+p-3
+shadow-lg
+min-w-[140px]
+
+/* Title */
+text-sm font-semibold text-slate-900 dark:text-white
+
+/* Data Items */
+text-xs
+label: text-slate-600 dark:text-slate-400 font-medium
+value: font-bold text-slate-900 dark:text-white
+
+/* Color Indicator */
+w-2 h-2 rounded-sm (square for bars)
+w-2 h-2 rounded-full (circle for lines)
+```
+
+### Chart Color Utility
+
+Use the centralized chart colors from `src/utils/chartColors.js`:
+
+```javascript
+import { getChartColors, chartGradients, getSeriesColors } from '../utils/chartColors';
+
+// In component
+const { isDark } = useTheme();
+const colors = useMemo(() => getChartColors(isDark), [isDark]);
+```
+
 ---
 
 ## 🎨 Card Color Palette
@@ -461,6 +503,52 @@ bg-gradient-to-br from-green-500 to-emerald-600
 hover:from-green-600 hover:to-emerald-700
 ```
 **Usage:** Achievements, positive trends, goals met
+
+---
+
+## 🎴 KPI Card System
+
+### KPI Card Props Standard
+
+Both Hero and Secondary KPI cards use consistent prop naming:
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | string | Card title |
+| `value` | number | Raw numeric value |
+| `displayValue` | string | Formatted display string |
+| `subtitle` | string | Secondary text |
+| `trend` | TrendData | Trend badge configuration |
+| `icon` | LucideIcon | Icon component |
+| `color` | string | Color key from palette |
+| `onClick` | function | Click handler |
+| `className` | string | Additional classes |
+
+### Secondary KPI Card Color Mapping
+
+| Color Key | Gradient | Use Case |
+|-----------|----------|----------|
+| `cyan` | cyan-500 → blue-600 | Water/Wash metrics |
+| `orange` | orange-500 → red-600 | Heat/Dry metrics |
+| `purple` | purple-500 → violet-600 | New customers |
+| `blue` | blue-500 → indigo-600 | Active customers, general blue |
+| `amber` | amber-500 → yellow-600 | Warnings, attention needed |
+| `red` | red-500 → rose-600 | At-risk, alerts |
+| `green` | green-500 → emerald-600 | Health, positive metrics |
+| `slate` | slate-500 → gray-600 | Neutral/disabled |
+
+### Hero KPI Card Color Mapping (Icon Background)
+
+| Color Key | Background | Use Case |
+|-----------|------------|----------|
+| `blue` | blue-100 / blue-900 | Cycles, operations |
+| `green` | emerald-100 / emerald-900 | Revenue, financial |
+| `purple` | purple-100 / purple-900 | Utilization, percentage |
+| `amber` | amber-100 / amber-900 | Performance, warnings |
+| `red` | red-100 / red-900 | Alerts, critical |
+| `slate` | slate-100 / slate-700 | Neutral |
+
+---
 
 ### Information Cards (Neutral Backgrounds)
 

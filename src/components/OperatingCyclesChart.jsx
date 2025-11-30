@@ -1,10 +1,14 @@
-// OperatingCyclesChart.jsx v4.3 - ENHANCED COMPARISON
+// OperatingCyclesChart.jsx v4.4 - ENHANCED COMPARISON
 // ✅ Previous month comparison lines (dashed)
 // ✅ Gradient bars for visual depth
 // ✅ Mobile responsive adjustments
 // ✅ v4.1: Design System v3.0 - removed COLORS object, theme-aware inline colors
 //
 // CHANGELOG:
+// v4.4 (2025-11-30): Accessibility & UX improvements
+//   - Added accessible legend with shape patterns
+//   - Added mobile indicator for partial data view
+//   - Improved aria-labels for screen readers
 // v4.3 (2025-11-30): Chart memoization for performance
 //   - Memoized colors object to prevent unnecessary repaints
 //   - Memoized CustomTooltip component
@@ -271,22 +275,32 @@ const OperatingCyclesChart = ({
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
+        {/* Legend - Accessible with shapes */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs" role="list" aria-label="Legenda do gráfico">
+          <div className="flex items-center gap-1.5" role="listitem">
+            <div className="w-3 h-3 rounded-sm bg-blue-500" aria-hidden="true"></div>
+            <svg className="w-3 h-3" aria-hidden="true" viewBox="0 0 12 12">
+              <rect width="12" height="12" fill="#3b82f6" rx="2" />
+            </svg>
             <span className="text-slate-600 dark:text-slate-400">Lavagens</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-green-500"></div>
+          <div className="flex items-center gap-1.5" role="listitem">
+            <div className="w-3 h-3 rounded-full bg-green-500" aria-hidden="true"></div>
+            <svg className="w-3 h-3" aria-hidden="true" viewBox="0 0 12 12">
+              <circle cx="6" cy="6" r="6" fill="#22c55e" />
+            </svg>
             <span className="text-slate-600 dark:text-slate-400">Secagens</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-0.5 bg-blue-300 border-t border-dashed border-blue-300"></div>
+          <div className="flex items-center gap-1.5" role="listitem">
+            <svg className="w-4 h-3" aria-hidden="true" viewBox="0 0 16 12">
+              <line x1="0" y1="6" x2="16" y2="6" stroke="#93c5fd" strokeWidth="2" strokeDasharray="4 2" />
+            </svg>
             <span className="text-slate-600 dark:text-slate-400">Lavagens (Mês Ant.)</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-0.5 bg-orange-300 border-t border-dashed border-orange-300"></div>
+          <div className="flex items-center gap-1.5" role="listitem">
+            <svg className="w-4 h-3" aria-hidden="true" viewBox="0 0 16 12">
+              <line x1="0" y1="6" x2="16" y2="6" stroke="#fdba74" strokeWidth="2" strokeDasharray="4 2" />
+            </svg>
             <span className="text-slate-600 dark:text-slate-400">Secagens (Mês Ant.)</span>
           </div>
         </div>
@@ -392,6 +406,13 @@ const OperatingCyclesChart = ({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Mobile indicator for partial data */}
+      {isMobile && (
+        <div className="text-xs text-slate-500 dark:text-slate-400 text-center mt-3 px-2 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          📱 Mostrando últimos 10 dias no gráfico. Totais abaixo são do mês completo.
+        </div>
+      )}
 
       {/* Stats Footer - Always Full Month */}
       <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">

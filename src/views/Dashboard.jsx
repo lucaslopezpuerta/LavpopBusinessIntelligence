@@ -1,10 +1,14 @@
-// Dashboard.jsx v8.6 - NEW KPI LAYOUT
+// Dashboard.jsx v8.7 - NEW KPI LAYOUT
 // ✅ Integrated KPICardsGrid with visual hierarchy
 // ✅ Hero cards for primary metrics
 // ✅ Secondary cards in compact grid
 // ✅ Optimized layout spacing
 //
 // CHANGELOG:
+// v8.7 (2025-11-30): Accessibility & structure improvements
+//   - Added semantic section elements with headings
+//   - Improved screen reader context
+//   - Enhanced footer visibility
 // v8.6 (2025-11-30): KPICardsGrid integration
 //   - Replaced KPICards with KPICardsGrid
 //   - Cleaner visual hierarchy (3 hero + 6 secondary)
@@ -85,7 +89,7 @@ const Dashboard = ({ data, viewMode, setViewMode, ...props }) => {
   const operationsMetrics = metrics?.operations;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Date Control */}
       <DashboardDateControl
         viewMode={viewMode}
@@ -94,38 +98,47 @@ const Dashboard = ({ data, viewMode, setViewMode, ...props }) => {
       />
 
       {/* KPI Cards Section - Hero + Secondary Grid */}
-      <KPICardsGrid
-        businessMetrics={businessMetrics}
-        customerMetrics={customerMetrics}
-        salesData={salesData}
-        viewMode={viewMode}
-        onNavigate={handleTabChange}
-      />
+      <section aria-labelledby="kpi-heading">
+        <h2 id="kpi-heading" className="sr-only">Indicadores Principais de Performance</h2>
+        <KPICardsGrid
+          businessMetrics={businessMetrics}
+          customerMetrics={customerMetrics}
+          salesData={salesData}
+          viewMode={viewMode}
+          onNavigate={handleTabChange}
+        />
+      </section>
 
-      {/* Charts & Operations Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left Column: Operating Cycles (2/3 width) */}
-        <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <div className="w-full">
-            <OperatingCyclesChart salesData={salesData} />
+      {/* Operations & Customers Section */}
+      <section aria-labelledby="operations-heading">
+        <h2 id="operations-heading" className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+          <span className="w-1 h-5 bg-lavpop-blue rounded-full"></span>
+          Operações & Clientes em Risco
+        </h2>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Left Column: Operating Cycles (2/3 width) */}
+          <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <div className="w-full">
+              <OperatingCyclesChart salesData={salesData} />
+            </div>
+          </div>
+
+          {/* Right Column: Table & Quick Actions (1/3 width) */}
+          <div className="space-y-6">
+            <AtRiskCustomersTable
+              customerMetrics={customerMetrics}
+              salesData={salesData}
+              maxRows={5}
+            />
+            <QuickActionsCard />
           </div>
         </div>
-
-        {/* Right Column: Table & Quick Actions (1/3 width) */}
-        <div className="space-y-6">
-          <AtRiskCustomersTable
-            customerMetrics={customerMetrics}
-            salesData={salesData}
-            maxRows={5}
-          />
-          <QuickActionsCard />
-        </div>
-      </div>
+      </section>
 
       {/* Footer */}
-      <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8 pb-4">
-        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.6
-      </div>
+      <footer className="text-center text-xs text-slate-500 dark:text-slate-400 mt-8 pb-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString('pt-BR') : '-'} • Lavpop BI v8.7
+      </footer>
     </div>
   );
 };

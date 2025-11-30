@@ -151,6 +151,16 @@ body {
   background-color: rgba(100, 116, 139, 0.8);
 }
 
+/* Hide scrollbar while keeping scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 /* ============================================
    RECHARTS THEME OVERRIDES
    ============================================ */

@@ -1,7 +1,10 @@
-// FilterBar.jsx v2.1 - REDESIGNED & RESPONSIVE
+// FilterBar.jsx v2.2 - REDESIGNED & RESPONSIVE
 // Modern filter interface matching Design System
 //
 // CHANGELOG:
+// v2.2 (2025-11-30): Accessibility improvements
+//   - Added aria-label to all select elements
+//   - Added aria-label to search input
 // v2.1 (2025-11-29): Design System v3.0 compliance
 //   - Removed emojis from risk level select options
 // v2.0 (2025-11-26): Redesign per Design System
@@ -50,6 +53,7 @@ const FilterBar = ({
                             placeholder="Buscar cliente, telefone ou CPF..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            aria-label="Buscar cliente por nome, telefone ou CPF"
                             className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/50 focus:border-lavpop-blue transition-all shadow-sm"
                         />
                     </div>
@@ -76,6 +80,7 @@ const FilterBar = ({
                         <select
                             value={selectedSegment}
                             onChange={(e) => setSelectedSegment(e.target.value)}
+                            aria-label="Filtrar por segmento de cliente"
                             className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/20 cursor-pointer transition-all shadow-sm"
                         >
                             <option value="all">Todos Segmentos</option>
@@ -91,6 +96,7 @@ const FilterBar = ({
                         <select
                             value={selectedRisk}
                             onChange={(e) => setSelectedRisk(e.target.value)}
+                            aria-label="Filtrar por nível de risco"
                             className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/20 cursor-pointer transition-all shadow-sm"
                         >
                             <option value="all">Todos Riscos</option>
@@ -109,6 +115,7 @@ const FilterBar = ({
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
+                            aria-label="Ordenar resultados por"
                             className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/20 cursor-pointer transition-all shadow-sm"
                         >
                             <option value="spending">Maior Gasto</option>

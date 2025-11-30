@@ -1,8 +1,10 @@
-// HeroKPICard.jsx v1.2
+// HeroKPICard.jsx v1.3
 // Primary KPI card for hero metrics (Revenue, Cycles, etc.)
 // Design System v3.0 compliant - Clean, non-gradient design
 //
 // CHANGELOG:
+// v1.3 (2025-11-30): Prop standardization
+//   - Renamed iconColor to color for consistency with SecondaryKPICard
 // v1.2 (2025-11-30): Color contrast fix
 //   - Changed text-slate-500 to text-slate-600 for WCAG AA compliance (4.5:1 ratio)
 // v1.1 (2025-11-30): Accessibility improvements
@@ -27,12 +29,12 @@ const HeroKPICard = ({
   subtitle,
   trend,
   icon: Icon,
-  iconColor = 'blue',
+  color = 'blue',
   tooltip,
   onClick,
   className = '',
 }) => {
-  const iconColorMap = {
+  const colorMap = {
     blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
     green: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
     purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
@@ -73,7 +75,7 @@ const HeroKPICard = ({
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           {Icon && (
-            <div className={`p-2.5 rounded-lg ${iconColorMap[iconColor]}`}>
+            <div className={`p-2.5 rounded-lg ${colorMap[color]}`}>
               <Icon className="w-5 h-5" />
             </div>
           )}

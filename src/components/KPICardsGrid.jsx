@@ -1,8 +1,11 @@
-// KPICardsGrid.jsx v1.0
+// KPICardsGrid.jsx v1.1
 // Restructured KPI display with visual hierarchy
 // Design System v3.0 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-11-30): Prop standardization & responsive fix
+//   - Changed iconColor to color for consistency
+//   - Improved responsive breakpoints (2→3→4→6 progression)
 // v1.0 (2025-11-30): Initial implementation
 //   - Hero cards for primary metrics (Revenue, Cycles, Utilization)
 //   - Secondary cards in 2-column grid
@@ -197,7 +200,7 @@ const KPICardsGrid = ({
       trend: getTrendData(wow.netRevenue),
       subtitle: getTimeSubtitle(),
       icon: DollarSign,
-      iconColor: 'green',
+      color: 'green',
       drilldownType: 'financial',
       metricType: 'revenue'
     },
@@ -209,7 +212,7 @@ const KPICardsGrid = ({
       trend: getTrendData(wow.totalServices),
       subtitle: getTimeSubtitle(),
       icon: WashingMachine,
-      iconColor: 'blue',
+      color: 'blue',
       drilldownType: 'financial',
       metricType: 'cycles'
     },
@@ -221,7 +224,7 @@ const KPICardsGrid = ({
       trend: getTrendData(wow.utilization),
       subtitle: getTimeSubtitle(),
       icon: Percent,
-      iconColor: 'purple',
+      color: 'purple',
       drilldownType: 'explainer',
       metricType: 'utilization'
     }
@@ -308,14 +311,14 @@ const KPICardsGrid = ({
               subtitle={kpi.subtitle}
               trend={kpi.trend}
               icon={kpi.icon}
-              iconColor={kpi.iconColor}
+              color={kpi.color}
               onClick={() => handleCardClick(kpi)}
             />
           ))}
         </div>
 
         {/* Secondary KPI Cards - Compact Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {secondaryKPIs.map(kpi => (
             <SecondaryKPICard
               key={kpi.id}

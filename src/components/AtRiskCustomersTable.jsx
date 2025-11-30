@@ -1,6 +1,6 @@
-// AtRiskCustomersTable.jsx v7.3 - ACCESSIBILITY IMPROVEMENTS
+// AtRiskCustomersTable.jsx v7.4 - EXPANDABLE MOBILE ROWS
 // ✅ No horizontal scroll
-// ✅ Mobile: Cliente + Ações only
+// ✅ Mobile: Expandable rows showing all details
 // ✅ Desktop: All columns visible
 // ✅ No phone numbers displayed
 // ✅ Row coloring by risk
@@ -9,6 +9,10 @@
 // ✅ Focus-visible states for keyboard users
 //
 // CHANGELOG:
+// v7.4 (2025-11-30): Expandable mobile rows
+//   - Added expandable row details for mobile view
+//   - Shows risk level, total spent, and days since last visit
+//   - Improved mobile UX with tap-to-expand pattern
 // v7.3 (2025-11-30): Focus-visible states
 //   - Added focus-visible ring to action buttons
 //   - Added focus-visible ring to table rows
@@ -28,13 +32,14 @@
 // v6.0 (2025-11-21): No overflow redesign
 
 import React, { useState } from 'react';
-import { Phone, MessageCircle, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
+import { Phone, MessageCircle, AlertTriangle, CheckCircle, ChevronRight, ChevronDown, DollarSign, Clock } from 'lucide-react';
 import CustomerDetailModal from './CustomerDetailModal';
 import { RISK_LABELS } from '../utils/customerMetrics';
 import { formatCurrency } from '../utils/formatters';
 
 const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [expandedRow, setExpandedRow] = useState(null);
 
   if (!customerMetrics?.activeCustomers) {
     return (
@@ -153,120 +158,190 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
             <tbody>
               {atRiskCustomers.map((customer, index) => {
                 const styles = getRiskStyles(customer.riskLevel);
+                const isExpanded = expandedRow === (customer.doc || index);
 
                 const handleRowKeyDown = (e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
+                    // On desktop, open modal; on mobile, toggle expand
+                    if (window.innerWidth >= 1024) {
+                      setSelectedCustomer(customer);
+                    } else {
+                      setExpandedRow(isExpanded ? null : (customer.doc || index));
+                    }
+                  }
+                };
+
+                const handleRowClick = () => {
+                  // On desktop, open modal; on mobile, toggle expand
+                  if (window.innerWidth >= 1024) {
                     setSelectedCustomer(customer);
+                  } else {
+                    setExpandedRow(isExpanded ? null : (customer.doc || index));
                   }
                 };
 
                 return (
-                  <tr
-                    key={customer.doc || index}
-                    tabIndex={0}
-                    className={`
-                      group cursor-pointer
-                      border-b border-slate-100 dark:border-slate-800
-                      hover:bg-slate-50 dark:hover:bg-slate-800/50
-                      hover:shadow-md
-                      transition-all duration-200
-                      border-l-4
-                      focus-visible:outline-none focus-visible:bg-blue-50 dark:focus-visible:bg-blue-900/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
-                    `}
-                    style={{ borderLeftColor: styles.borderColorValue }}
-                    onClick={() => setSelectedCustomer(customer)}
-                    onKeyDown={handleRowKeyDown}
-                  >
-                    {/* Cliente */}
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <div className="font-semibold text-sm text-slate-900 dark:text-white">
-                            {customer.name || 'Sem nome'}
-                          </div>
-                          <div className="lg:hidden flex items-center gap-2 mt-0.5">
-                            <div className="flex items-center gap-1">
-                              <div className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
-                              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                {styles.label}
+                  <React.Fragment key={customer.doc || index}>
+                    <tr
+                      tabIndex={0}
+                      className={`
+                        group cursor-pointer
+                        border-b border-slate-100 dark:border-slate-800
+                        hover:bg-slate-50 dark:hover:bg-slate-800/50
+                        hover:shadow-md
+                        transition-all duration-200
+                        border-l-4
+                        focus-visible:outline-none focus-visible:bg-blue-50 dark:focus-visible:bg-blue-900/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
+                      `}
+                      style={{ borderLeftColor: styles.borderColorValue }}
+                      onClick={handleRowClick}
+                      onKeyDown={handleRowKeyDown}
+                      aria-expanded={isExpanded}
+                    >
+                      {/* Cliente */}
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <div className="font-semibold text-sm text-slate-900 dark:text-white">
+                              {customer.name || 'Sem nome'}
+                            </div>
+                            <div className="lg:hidden flex items-center gap-2 mt-0.5">
+                              <div className="flex items-center gap-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
+                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                  {styles.label}
+                                </span>
+                              </div>
+                              <span className="text-xs text-slate-500 dark:text-slate-500">
+                                {customer.daysSinceLastVisit || 0}d
                               </span>
                             </div>
-                            <span className="text-xs text-slate-500 dark:text-slate-500">
-                              {customer.daysSinceLastVisit || 0}d
-                            </span>
+                          </div>
+                          {/* Mobile: Chevron indicator */}
+                          <div className="lg:hidden">
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-lavpop-blue transition-transform" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+                            )}
                           </div>
                         </div>
-                        <ChevronRight className="lg:hidden w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Risco - Desktop only */}
-                    <td className="hidden lg:table-cell px-4 py-2 text-center">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md ${styles.badge}">
-                        <div className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
-                        <span className="text-xs font-bold">
-                          {styles.label}
+                      {/* Risco - Desktop only */}
+                      <td className="hidden lg:table-cell px-4 py-2 text-center">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md ${styles.badge}">
+                          <div className={`w-1.5 h-1.5 rounded-full ${styles.dot}`} />
+                          <span className="text-xs font-bold">
+                            {styles.label}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Total - Desktop only */}
+                      <td className="hidden lg:table-cell px-4 py-2 text-center font-bold text-sm text-blue-600 dark:text-blue-400">
+                        {formatCurrency(customer.netTotal || 0)}
+                      </td>
+
+                      {/* Dias - Desktop only */}
+                      <td className="hidden lg:table-cell px-4 py-2 text-center">
+                        <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200">
+                          {customer.daysSinceLastVisit || 0}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Total - Desktop only */}
-                    <td className="hidden lg:table-cell px-4 py-2 text-center font-bold text-sm text-blue-600 dark:text-blue-400">
-                      {formatCurrency(customer.netTotal || 0)}
-                    </td>
+                      {/* Ações */}
+                      <td className="px-4 py-2">
+                        <div className="flex items-center justify-center gap-2">
+                          {customer.phone && formatPhone(customer.phone) && (
+                            <>
+                              <button
+                                onClick={(e) => handleCall(e, customer.phone)}
+                                className="
+                                  p-2 rounded-lg
+                                  bg-blue-50 dark:bg-blue-900/20
+                                  text-blue-600 dark:text-blue-400
+                                  hover:bg-blue-100 dark:hover:bg-blue-900/40
+                                  hover:scale-110
+                                  transition-all duration-200
+                                  group-hover:shadow-md
+                                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+                                "
+                                aria-label={`Ligar para ${customer.name || 'cliente'}`}
+                                title="Ligar"
+                              >
+                                <Phone className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                              <button
+                                onClick={(e) => handleWhatsApp(e, customer.phone)}
+                                className="
+                                  p-2 rounded-lg
+                                  bg-green-50 dark:bg-green-900/20
+                                  text-green-600 dark:text-green-400
+                                  hover:bg-green-100 dark:hover:bg-green-900/40
+                                  hover:scale-110
+                                  transition-all duration-200
+                                  group-hover:shadow-md
+                                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2
+                                "
+                                aria-label={`Enviar WhatsApp para ${customer.name || 'cliente'}`}
+                                title="WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
 
-                    {/* Dias - Desktop only */}
-                    <td className="hidden lg:table-cell px-4 py-2 text-center">
-                      <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {customer.daysSinceLastVisit || 0}
-                      </span>
-                    </td>
+                    {/* Mobile Expanded Row Details */}
+                    {isExpanded && (
+                      <tr className="lg:hidden bg-slate-50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-700">
+                        <td colSpan={2} className="px-4 py-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Total Gasto */}
+                            <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-lg">
+                              <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-md">
+                                <DollarSign className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Gasto</div>
+                                <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                  {formatCurrency(customer.netTotal || 0)}
+                                </div>
+                              </div>
+                            </div>
 
-                    {/* Ações */}
-                    <td className="px-4 py-2">
-                      <div className="flex items-center justify-center gap-2">
-                        {customer.phone && formatPhone(customer.phone) && (
-                          <>
-                            <button
-                              onClick={(e) => handleCall(e, customer.phone)}
-                              className="
-                                p-2 rounded-lg
-                                bg-blue-50 dark:bg-blue-900/20
-                                text-blue-600 dark:text-blue-400
-                                hover:bg-blue-100 dark:hover:bg-blue-900/40
-                                hover:scale-110
-                                transition-all duration-200
-                                group-hover:shadow-md
-                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
-                              "
-                              aria-label={`Ligar para ${customer.name || 'cliente'}`}
-                              title="Ligar"
-                            >
-                              <Phone className="w-4 h-4" aria-hidden="true" />
-                            </button>
-                            <button
-                              onClick={(e) => handleWhatsApp(e, customer.phone)}
-                              className="
-                                p-2 rounded-lg
-                                bg-green-50 dark:bg-green-900/20
-                                text-green-600 dark:text-green-400
-                                hover:bg-green-100 dark:hover:bg-green-900/40
-                                hover:scale-110
-                                transition-all duration-200
-                                group-hover:shadow-md
-                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2
-                              "
-                              aria-label={`Enviar WhatsApp para ${customer.name || 'cliente'}`}
-                              title="WhatsApp"
-                            >
-                              <MessageCircle className="w-4 h-4" aria-hidden="true" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                            {/* Dias sem visita */}
+                            <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-lg">
+                              <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-md">
+                                <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">Última visita</div>
+                                <div className="text-sm font-bold text-slate-900 dark:text-white">
+                                  {customer.daysSinceLastVisit || 0} dias
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Ver detalhes button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCustomer(customer);
+                            }}
+                            className="mt-3 w-full py-2 px-4 bg-lavpop-blue hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors"
+                          >
+                            Ver Perfil Completo
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>

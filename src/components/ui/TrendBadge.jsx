@@ -1,8 +1,11 @@
-// TrendBadge.jsx v1.1
+// TrendBadge.jsx v1.2
 // Reusable trend indicator badge
 // Design System v3.0 compliant
 //
 // CHANGELOG:
+// v1.2 (2025-11-30): Accessibility improvements
+//   - Added aria-hidden to decorative icons
+//   - Added aria-label for screen reader context
 // v1.1 (2025-11-30): Added onDarkBg prop for gradient cards
 //   - New onDarkBg prop for white/transparent styling
 //   - Works on gradient backgrounds
@@ -39,18 +42,29 @@ const TrendBadge = ({
     md: 'w-3 h-3',
   };
 
+  // Generate aria-label for screen readers
+  const getAriaLabel = () => {
+    if (isNeutral) return 'Sem variação significativa';
+    const direction = isPositive ? 'aumento' : 'redução';
+    return `${direction} de ${absValue.toFixed(1)} por cento`;
+  };
+
   // Styling for gradient/dark backgrounds
   if (inverted) {
     if (isNeutral) {
       return (
-        <span className={`
-          inline-flex items-center
-          ${sizeClasses[size]}
-          rounded-md font-semibold
-          bg-white/20 text-white/90
-        `}>
-          {showIcon && <Minus className={iconSizes[size]} />}
-          <span>→</span>
+        <span
+          className={`
+            inline-flex items-center
+            ${sizeClasses[size]}
+            rounded-md font-semibold
+            bg-white/20 text-white/90
+          `}
+          aria-label={getAriaLabel()}
+          role="status"
+        >
+          {showIcon && <Minus className={iconSizes[size]} aria-hidden="true" />}
+          <span aria-hidden="true">→</span>
         </span>
       );
     }
@@ -58,17 +72,21 @@ const TrendBadge = ({
     const Icon = isPositive ? TrendingUp : TrendingDown;
 
     return (
-      <span className={`
-        inline-flex items-center
-        ${sizeClasses[size]}
-        rounded-md font-bold
-        ${isPositive
-          ? 'bg-white/25 text-white'
-          : 'bg-black/20 text-white/90'
-        }
-      `}>
-        {showIcon && <Icon className={iconSizes[size]} />}
-        <span>{isPositive ? '↑' : '↓'}{absValue.toFixed(1)}%</span>
+      <span
+        className={`
+          inline-flex items-center
+          ${sizeClasses[size]}
+          rounded-md font-bold
+          ${isPositive
+            ? 'bg-white/25 text-white'
+            : 'bg-black/20 text-white/90'
+          }
+        `}
+        aria-label={getAriaLabel()}
+        role="status"
+      >
+        {showIcon && <Icon className={iconSizes[size]} aria-hidden="true" />}
+        <span aria-hidden="true">{isPositive ? '↑' : '↓'}{absValue.toFixed(1)}%</span>
       </span>
     );
   }
@@ -76,15 +94,19 @@ const TrendBadge = ({
   // Standard styling for light backgrounds
   if (isNeutral) {
     return (
-      <span className={`
-        inline-flex items-center
-        ${sizeClasses[size]}
-        rounded-md font-semibold
-        bg-slate-100 dark:bg-slate-700
-        text-slate-600 dark:text-slate-300
-      `}>
-        {showIcon && <Minus className={iconSizes[size]} />}
-        <span>→</span>
+      <span
+        className={`
+          inline-flex items-center
+          ${sizeClasses[size]}
+          rounded-md font-semibold
+          bg-slate-100 dark:bg-slate-700
+          text-slate-600 dark:text-slate-300
+        `}
+        aria-label={getAriaLabel()}
+        role="status"
+      >
+        {showIcon && <Minus className={iconSizes[size]} aria-hidden="true" />}
+        <span aria-hidden="true">→</span>
       </span>
     );
   }
@@ -92,17 +114,21 @@ const TrendBadge = ({
   const Icon = isPositive ? TrendingUp : TrendingDown;
 
   return (
-    <span className={`
-      inline-flex items-center
-      ${sizeClasses[size]}
-      rounded-md font-bold
-      ${isPositive
-        ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-        : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
-      }
-    `}>
-      {showIcon && <Icon className={iconSizes[size]} />}
-      <span>{isPositive ? '↑' : '↓'}{absValue.toFixed(1)}%</span>
+    <span
+      className={`
+        inline-flex items-center
+        ${sizeClasses[size]}
+        rounded-md font-bold
+        ${isPositive
+          ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+          : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+        }
+      `}
+      aria-label={getAriaLabel()}
+      role="status"
+    >
+      {showIcon && <Icon className={iconSizes[size]} aria-hidden="true" />}
+      <span aria-hidden="true">{isPositive ? '↑' : '↓'}{absValue.toFixed(1)}%</span>
     </span>
   );
 };

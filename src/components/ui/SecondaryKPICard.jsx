@@ -1,8 +1,11 @@
-// SecondaryKPICard.jsx v1.2
+// SecondaryKPICard.jsx v1.3
 // Compact KPI card for secondary metrics
 // Design System v3.0 compliant
 //
 // CHANGELOG:
+// v1.3 (2025-11-30): Color mapping fix
+//   - Fixed blue color mapping (was incorrectly amber/yellow)
+//   - Added explicit amber color option
 // v1.2 (2025-11-30): Accessibility improvements
 //   - Added focus-visible ring for keyboard navigation
 //   - Added role="button" and tabIndex for clickable cards
@@ -54,6 +57,13 @@ const SecondaryKPICard = ({
       subtitle: 'text-white/70',
     },
     blue: {
+      gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700',
+      icon: 'text-white/90',
+      title: 'text-white/80',
+      value: 'text-white',
+      subtitle: 'text-white/70',
+    },
+    amber: {
       gradient: 'bg-gradient-to-br from-amber-500 to-yellow-600 dark:from-amber-600 dark:to-yellow-700',
       icon: 'text-white/90',
       title: 'text-white/80',
