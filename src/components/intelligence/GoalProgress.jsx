@@ -1,8 +1,10 @@
-// GoalProgress.jsx v1.0
+// GoalProgress.jsx v1.1
 // Goal progress tracking for Intelligence tab
-// Design System v3.0 compliant
+// Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-11-30): Accessibility fix
+//   - Changed text-[10px] to text-xs (min 12px font)
 // v1.0 (2025-11-30): Initial implementation
 //   - Visual progress rings for key metrics
 //   - Compares actual vs target from business settings
@@ -136,12 +138,12 @@ const GoalCard = ({
             {formatValue(current)}{suffix}
           </p>
 
-          <p className="text-[10px] sm:text-xs text-gray-600 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5">
             Meta: {formatValue(target)}{suffix}
           </p>
 
           {isAchieved && (
-            <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-[10px] sm:text-xs font-semibold rounded-full">
+            <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs font-semibold rounded-full">
               <Zap className="w-3 h-3" aria-hidden="true" />
               Meta atingida!
             </span>

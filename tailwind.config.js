@@ -121,6 +121,41 @@ export default {
         '88': '22rem',   // 352px
         '112': '28rem',  // 448px
         '128': '32rem',  // 512px
+        // Card spacing tokens
+        'card-sm': '1rem',      // 16px - mobile
+        'card-md': '1.5rem',    // 24px - tablet
+        'card-lg': '2rem',      // 32px - desktop
+      },
+
+      // Animations
+      keyframes: {
+        'slide-up': {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'slide-down': {
+          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'pulse-subtle': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.85' },
+        },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+      },
+      animation: {
+        'slide-up': 'slide-up 0.3s ease-out',
+        'slide-down': 'slide-down 0.3s ease-out',
+        'fade-in': 'fade-in 0.2s ease-out',
+        'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite',
+        'scale-in': 'scale-in 0.2s ease-out',
       },
 
       backgroundImage: {
@@ -153,8 +188,16 @@ export default {
         'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
         'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
         'xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        'lavpop': '0 4px 14px 0 rgba(26, 90, 142, 0.15)', // Branded shadow
-        'lavpop-lg': '0 10px 40px -10px rgba(26, 90, 142, 0.25)', // Large branded shadow
+        'lavpop': '0 4px 14px 0 rgba(26, 90, 142, 0.15)',
+        'lavpop-lg': '0 10px 40px -10px rgba(26, 90, 142, 0.25)',
+        // New soft shadows for cards
+        'soft': '0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 4px 12px -4px rgba(0, 0, 0, 0.04)',
+        'soft-lg': '0 4px 16px -4px rgba(0, 0, 0, 0.1), 0 8px 24px -8px rgba(0, 0, 0, 0.06)',
+        'soft-xl': '0 8px 24px -6px rgba(0, 0, 0, 0.12), 0 12px 32px -8px rgba(0, 0, 0, 0.08)',
+        // Glow effects for emphasis
+        'glow-blue': '0 0 20px rgba(26, 90, 142, 0.15)',
+        'glow-green': '0 0 20px rgba(85, 176, 59, 0.15)',
+        'glow-amber': '0 0 20px rgba(245, 158, 11, 0.15)',
       },
     },
   },

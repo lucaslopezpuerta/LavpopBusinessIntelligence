@@ -23,8 +23,10 @@ import DashboardDateControl from '../components/DashboardDateControl';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
+import { useNavigation } from '../contexts/NavigationContext';
 
-const Dashboard = ({ data, viewMode, setViewMode, ...props }) => {
+const Dashboard = ({ data, viewMode, setViewMode }) => {
+  const { navigateTo } = useNavigation();
   const [lastUpdated, setLastUpdated] = useState(null);
 
   // Extract data from props
@@ -48,9 +50,7 @@ const Dashboard = ({ data, viewMode, setViewMode, ...props }) => {
 
   // Handle tab navigation from drill-downs
   const handleTabChange = (tabId) => {
-    if (props.onNavigate) {
-      props.onNavigate(tabId);
-    }
+    navigateTo(tabId);
   };
 
 
@@ -105,7 +105,6 @@ const Dashboard = ({ data, viewMode, setViewMode, ...props }) => {
           customerMetrics={customerMetrics}
           salesData={salesData}
           viewMode={viewMode}
-          onNavigate={handleTabChange}
         />
       </section>
 

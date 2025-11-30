@@ -1,8 +1,10 @@
-// RevenueForecast.jsx v1.0
+// RevenueForecast.jsx v1.1
 // Revenue projection card for Intelligence tab
-// Design System v3.0 compliant
+// Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-11-30): Accessibility fix
+//   - Changed text-[10px] to text-xs (min 12px font)
 // v1.0 (2025-11-30): Initial implementation
 //   - Projects end-of-month revenue based on daily average
 //   - Confidence indicator based on days elapsed
@@ -87,7 +89,7 @@ const RevenueForecast = ({
           <h3 className="text-sm sm:text-base font-semibold text-indigo-900 dark:text-indigo-100">
             Projeção do Mês
           </h3>
-          <p className="text-[10px] sm:text-xs text-indigo-700 dark:text-indigo-400">
+          <p className="text-xs text-indigo-700 dark:text-indigo-400">
             Baseado em {currentMonth.daysElapsed} dias de dados
           </p>
         </div>
@@ -104,11 +106,10 @@ const RevenueForecast = ({
           </span>
           {previousMonthRevenue > 0 && (
             <span
-              className={`inline-flex items-center gap-1 text-xs sm:text-sm font-semibold ${
-                isGrowthPositive
+              className={`inline-flex items-center gap-1 text-xs sm:text-sm font-semibold ${isGrowthPositive
                   ? 'text-green-600 dark:text-green-400'
                   : 'text-red-600 dark:text-red-400'
-              }`}
+                }`}
             >
               {isGrowthPositive ? (
                 <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" />
@@ -124,7 +125,7 @@ const RevenueForecast = ({
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
         <div className="p-2.5 sm:p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-          <p className="text-[10px] sm:text-xs text-indigo-700 dark:text-indigo-400 mb-0.5">
+          <p className="text-xs text-indigo-700 dark:text-indigo-400 mb-0.5">
             Média Diária
           </p>
           <p className="text-sm sm:text-lg font-bold text-indigo-900 dark:text-indigo-100">
@@ -132,7 +133,7 @@ const RevenueForecast = ({
           </p>
         </div>
         <div className="p-2.5 sm:p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-          <p className="text-[10px] sm:text-xs text-indigo-700 dark:text-indigo-400 mb-0.5">
+          <p className="text-xs text-indigo-700 dark:text-indigo-400 mb-0.5">
             Dias Restantes
           </p>
           <p className="text-sm sm:text-lg font-bold text-indigo-900 dark:text-indigo-100">
@@ -143,7 +144,7 @@ const RevenueForecast = ({
 
       {/* Month Progress */}
       <div className="mb-4">
-        <div className="flex justify-between text-[10px] sm:text-xs text-indigo-700 dark:text-indigo-400 mb-1.5">
+        <div className="flex justify-between text-xs text-indigo-700 dark:text-indigo-400 mb-1.5">
           <span>Progresso do mês</span>
           <span>{monthProgress.toFixed(0)}%</span>
         </div>
@@ -171,7 +172,7 @@ const RevenueForecast = ({
         {confidence.level === 'low' && (
           <div className="flex items-center gap-1 ml-auto">
             <AlertCircle className={`w-3.5 h-3.5 ${confStyle.text}`} aria-hidden="true" />
-            <span className={`text-[10px] sm:text-xs ${confStyle.text}`}>
+            <span className={`text-xs ${confStyle.text}`}>
               Poucos dados
             </span>
           </div>

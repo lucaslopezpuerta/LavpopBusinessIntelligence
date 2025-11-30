@@ -26,6 +26,7 @@ import KPIDetailModal from './modals/KPIDetailModal';
 import FinancialDrilldown from './drilldowns/FinancialDrilldown';
 import CustomerListDrilldown from './drilldowns/CustomerListDrilldown';
 import MetricExplainerDrilldown from './drilldowns/MetricExplainerDrilldown';
+import { useNavigation } from '../contexts/NavigationContext';
 
 // Helper to normalize document
 function normalizeDoc(doc) {
@@ -41,9 +42,9 @@ const KPICardsGrid = ({
   businessMetrics,
   customerMetrics,
   salesData,
-  viewMode = 'complete',
-  onNavigate
+  viewMode = 'complete'
 }) => {
+  const { navigateTo } = useNavigation();
   const [selectedKPI, setSelectedKPI] = useState(null);
 
   // Calculate new clients data
@@ -167,7 +168,7 @@ const KPICardsGrid = ({
 
   const handleNavigate = (tabId) => {
     handleCloseModal();
-    if (onNavigate) onNavigate(tabId);
+    navigateTo(tabId);
   };
 
   // Get customers for drill-down

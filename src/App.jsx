@@ -21,6 +21,7 @@ import LogoNoBackground from './assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SidebarProvider } from './contexts/SidebarContext';
+import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { loadAllData } from './utils/csvLoader';
 import IconSidebar from './components/IconSidebar';
 import Backdrop from './components/Backdrop';
@@ -44,7 +45,7 @@ const TabLoadingFallback = () => (
 );
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { activeTab, navigateTo } = useNavigation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -84,7 +85,7 @@ function AppContent() {
   const ActiveComponent = tabComponents[activeTab] || Dashboard;
 
   const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
+    navigateTo(tabId);
   };
 
   const handleRefresh = () => {
@@ -208,24 +209,24 @@ function AppContent() {
 
         {/* Main Content */}
         <main className="flex-1 max-w-[100rem] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Suspense fallback={<TabLoadingFallback />}>
-              <ActiveComponent
-                data={data}
-                onNavigate={handleTabChange}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-              />
-            </Suspense>
-          </motion.div>
-        </AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Suspense fallback={<TabLoadingFallback />}>
+                <ActiveComponent
+                  data={data}
+                  onNavigate={handleTabChange}
+                  viewMode={viewMode}
+                  setViewMode={setViewMode}
+                />
+              </Suspense>
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         {/* Footer */}
@@ -246,7 +247,9 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <SidebarProvider>
-          <AppContent />
+          <NavigationProvider>
+            <AppContent />
+          </NavigationProvider>
         </SidebarProvider>
       </ThemeProvider>
     </ErrorBoundary>

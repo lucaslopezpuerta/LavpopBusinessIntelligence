@@ -27,26 +27,7 @@ import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 
-// Chart colors (hex values required for SVG/Recharts)
-// Documented with Tailwind equivalents for reference
-const getChartColors = (isDark) => ({
-  // Wash: blue-500 (#3b82f6) to blue-700 (#1d4ed8)
-  washGradientStart: '#3b82f6',
-  washGradientEnd: '#1d4ed8',
-  // Dry: green-400 (#4ade80) to green-600 (#16a34a)
-  dryGradientStart: '#4ade80',
-  dryGradientEnd: '#16a34a',
-  // Comparison lines: blue-300, orange-300
-  prevWashLine: '#93c5fd',
-  prevDryLine: '#fdba74',
-  // Grid & axis colors
-  grid: isDark ? '#1e293b' : '#f1f5f9',        // slate-800 / slate-100
-  axisLine: isDark ? '#334155' : '#e2e8f0',    // slate-700 / slate-200
-  tickText: isDark ? '#94a3b8' : '#64748b',    // slate-400 / slate-500
-  labelText: isDark ? '#e2e8f0' : '#1e293b',   // slate-200 / slate-800
-  yAxisLabel: isDark ? '#cbd5e1' : '#475569',  // slate-300 / slate-600
-  cursorFill: isDark ? '#1e293b40' : '#f1f5f940'
-});
+import { getChartColors } from '../utils/chartColors';
 
 function countMachines(str) {
   if (!str) return { wash: 0, dry: 0 };
@@ -203,12 +184,16 @@ const OperatingCyclesChart = ({
               isPrev = true;
             }
 
+            const color = isPrev
+              ? (entry.dataKey === 'PrevWash' ? colors.info : colors.warning)
+              : (entry.dataKey === 'Lavagens' ? colors.primary : colors.secondary);
+
             return (
               <div key={index} className="flex items-center justify-between gap-3 text-xs mb-1 last:mb-0">
                 <div className="flex items-center gap-2">
                   <div
                     className={`w-2 h-2 ${isPrev ? 'rounded-full' : 'rounded-sm'}`}
-                    style={{ backgroundColor: entry.color }}
+                    style={{ backgroundColor: color }}
                   />
                   <span className="text-slate-600 dark:text-slate-400 font-medium">
                     {labelText}:
@@ -278,28 +263,22 @@ const OperatingCyclesChart = ({
         {/* Legend - Accessible with shapes */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs" role="list" aria-label="Legenda do gráfico">
           <div className="flex items-center gap-1.5" role="listitem">
-            <div className="w-3 h-3 rounded-sm bg-blue-500" aria-hidden="true"></div>
-            <svg className="w-3 h-3" aria-hidden="true" viewBox="0 0 12 12">
-              <rect width="12" height="12" fill="#3b82f6" rx="2" />
-            </svg>
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: colors.primary }} aria-hidden="true"></div>
             <span className="text-slate-600 dark:text-slate-400">Lavagens</span>
           </div>
           <div className="flex items-center gap-1.5" role="listitem">
-            <div className="w-3 h-3 rounded-full bg-green-500" aria-hidden="true"></div>
-            <svg className="w-3 h-3" aria-hidden="true" viewBox="0 0 12 12">
-              <circle cx="6" cy="6" r="6" fill="#22c55e" />
-            </svg>
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: colors.secondary }} aria-hidden="true"></div>
             <span className="text-slate-600 dark:text-slate-400">Secagens</span>
           </div>
           <div className="flex items-center gap-1.5" role="listitem">
             <svg className="w-4 h-3" aria-hidden="true" viewBox="0 0 16 12">
-              <line x1="0" y1="6" x2="16" y2="6" stroke="#93c5fd" strokeWidth="2" strokeDasharray="4 2" />
+              <line x1="0" y1="6" x2="16" y2="6" stroke={colors.info} strokeWidth="2" strokeDasharray="4 2" />
             </svg>
             <span className="text-slate-600 dark:text-slate-400">Lavagens (Mês Ant.)</span>
           </div>
           <div className="flex items-center gap-1.5" role="listitem">
             <svg className="w-4 h-3" aria-hidden="true" viewBox="0 0 16 12">
-              <line x1="0" y1="6" x2="16" y2="6" stroke="#fdba74" strokeWidth="2" strokeDasharray="4 2" />
+              <line x1="0" y1="6" x2="16" y2="6" stroke={colors.warning} strokeWidth="2" strokeDasharray="4 2" />
             </svg>
             <span className="text-slate-600 dark:text-slate-400">Secagens (Mês Ant.)</span>
           </div>
@@ -315,12 +294,12 @@ const OperatingCyclesChart = ({
           >
             <defs>
               <linearGradient id="washGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={colors.washGradientStart} stopOpacity={1} />
-                <stop offset="100%" stopColor={colors.washGradientEnd} stopOpacity={1} />
+                <stop offset="0%" stopColor={colors.primary} stopOpacity={1} />
+                <stop offset="100%" stopColor={colors.primary} stopOpacity={0.8} />
               </linearGradient>
               <linearGradient id="dryGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={colors.dryGradientStart} stopOpacity={1} />
-                <stop offset="100%" stopColor={colors.dryGradientEnd} stopOpacity={1} />
+                <stop offset="0%" stopColor={colors.secondary} stopOpacity={1} />
+                <stop offset="100%" stopColor={colors.secondary} stopOpacity={0.8} />
               </linearGradient>
             </defs>
             <CartesianGrid
@@ -340,11 +319,6 @@ const OperatingCyclesChart = ({
               dy={10}
             />
             <YAxis
-              tick={{
-                fontSize: 11,
-                fill: colors.tickText,
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-              }}
               axisLine={false}
               tickLine={false}
               label={{
@@ -366,7 +340,7 @@ const OperatingCyclesChart = ({
               type="monotone"
               dataKey="PrevWash"
               name="Lavagens (Mês Anterior)"
-              stroke={colors.prevWashLine}
+              stroke={colors.info}
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}
@@ -377,7 +351,7 @@ const OperatingCyclesChart = ({
               type="monotone"
               dataKey="PrevDry"
               name="Secagens (Mês Anterior)"
-              stroke={colors.prevDryLine}
+              stroke={colors.warning}
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}
@@ -431,7 +405,7 @@ const OperatingCyclesChart = ({
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-2xl font-bold" style={{ color: colors.primary }}>
               {periodInfo.totalWash}
             </div>
             <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-1">
@@ -439,7 +413,7 @@ const OperatingCyclesChart = ({
             </div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="text-2xl font-bold" style={{ color: colors.secondary }}>
               {periodInfo.totalDry}
             </div>
             <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-1">

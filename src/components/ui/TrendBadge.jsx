@@ -1,8 +1,10 @@
-// TrendBadge.jsx v1.2
+// TrendBadge.jsx v1.3
 // Reusable trend indicator badge
-// Design System v3.0 compliant
+// Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.3 (2025-11-30): Accessibility fix
+//   - Changed sm size from text-[10px] to text-xs (min 12px)
 // v1.2 (2025-11-30): Accessibility improvements
 //   - Added aria-hidden to decorative icons
 //   - Added aria-label for screen reader context
@@ -33,7 +35,7 @@ const TrendBadge = ({
   const isPositive = flipDirection ? value < 0 : value > 0;
 
   const sizeClasses = {
-    sm: 'text-[10px] px-1.5 py-0.5 gap-0.5',
+    sm: 'text-xs px-1.5 py-0.5 gap-0.5',
     md: 'text-xs px-2 py-1 gap-1',
   };
 
