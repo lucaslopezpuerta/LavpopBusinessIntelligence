@@ -18,15 +18,9 @@
 // v2.4 (2025-11-15): Enhanced cashback handling
 
 import { parseSalesRecords, filterByType, filterWithServices } from './transactionParser';
+import { BUSINESS_PARAMS } from './operationsMetrics';
 
-const BUSINESS_PARAMS = {
-  TOTAL_WASHERS: 3,
-  TOTAL_DRYERS: 5,
-  OPERATING_HOURS: { start: 8, end: 23 }, // 8 AM to 11 PM
-  WASHER_CYCLE_MINUTES: 30,
-  DRYER_CYCLE_MINUTES: 45
-};
-
+// Derived constant for convenience
 const OPERATING_HOURS_PER_DAY = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
 
 /**
@@ -194,39 +188,42 @@ function calculateTotals(records, window) {
 /**
  * Calculate machine utilization using a time-based formula
  * ✅ Based on machine minutes, not service counts
+ * ✅ Uses EFFICIENCY_FACTOR for realistic capacity (matches operationsMetrics.js)
  */
 function calculateUtilization(records, window) {
   const serviceRecords = filterWithServices(records);
-  
+
   const washers = serviceRecords.filter(r => r.washCount > 0);
   const dryers = serviceRecords.filter(r => r.dryCount > 0);
-  
+
   // Calculate machine-minutes
-  const washerMinutesUsed = washers.reduce((sum, r) => 
+  const washerMinutesUsed = washers.reduce((sum, r) =>
     sum + (r.washCount * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES), 0
   );
-  const dryerMinutesUsed = dryers.reduce((sum, r) => 
+  const dryerMinutesUsed = dryers.reduce((sum, r) =>
     sum + (r.dryCount * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES), 0
   );
-  
-  // Calculate available machine-minutes
+
+  // Calculate available machine-minutes WITH EFFICIENCY FACTOR
+  // This accounts for realistic idle time between cycles
   const activeDays = Math.ceil((window.end - window.start) / (1000 * 60 * 60 * 24)) + 1;
   const minutesPerDay = OPERATING_HOURS_PER_DAY * 60;
-  
-  const washerMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * minutesPerDay * activeDays;
-  const dryerMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * minutesPerDay * activeDays;
-  
+  const efficiencyFactor = BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+
+  const washerMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * minutesPerDay * activeDays * efficiencyFactor;
+  const dryerMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * minutesPerDay * activeDays * efficiencyFactor;
+
   // Calculate utilization percentages
   const washerUtilization = (washerMinutesUsed / washerMinutesAvailable) * 100;
   const dryerUtilization = (dryerMinutesUsed / dryerMinutesAvailable) * 100;
-  
+
   // Total utilization (weighted by machine count)
   const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
   const totalUtilization = (
     (washerUtilization * BUSINESS_PARAMS.TOTAL_WASHERS) +
     (dryerUtilization * BUSINESS_PARAMS.TOTAL_DRYERS)
   ) / totalMachines;
-  
+
   return {
     totalUtilization,
     washerUtilization,
@@ -483,7 +480,8 @@ export function getDailyRevenue(salesData, days = 30) {
 
   records.forEach(record => {
     if (record.date >= startDate && record.date <= today) {
-      const dateKey = record.date.toISOString().split('T')[0];
+      // Use record.dateStr for consistent local-timezone grouping (already generated in transactionParser)
+      const dateKey = record.dateStr;
       if (!dailyMap[dateKey]) {
         dailyMap[dateKey] = 0;
       }

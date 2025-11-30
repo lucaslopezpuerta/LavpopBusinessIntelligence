@@ -10,7 +10,7 @@
 
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import InsightBox from './InsightBox';
+import InsightBox from './ui/InsightBox';
 
 const ChurnHistogram = ({ data }) => {
     if (!data || data.length === 0) return null;

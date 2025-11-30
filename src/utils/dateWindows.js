@@ -1,8 +1,13 @@
-// Date Windows Utility v1.1
+// Date Windows Utility v1.2
 // Centralized date calculations for all tabs
 // Week-based system: Sunday-Saturday (Brazilian business standard)
 //
 // CHANGELOG:
+// v1.2 (2025-11-30): Operations-specific options
+//   - Added excludeAllTime parameter to getDateOptions()
+//   - Operations tab excludes "Todo Período" (not actionable for operations)
+// v1.1 (2025-11-15): Added comparison periods
+//   - Added twoWeeksAgo and previous4Weeks for trend comparisons
 // v1.0 (2025-11-15): Initial implementation
 //   - Created centralized date window calculations
 //   - Support for 4 date options: currentWeek, lastWeek, last4Weeks, allTime
@@ -240,9 +245,11 @@ export function getDateWindows(option = 'currentWeek') {
 
 /**
  * Get dropdown options with current dates
+ * @param {Object} options - Configuration options
+ * @param {boolean} options.excludeAllTime - If true, excludes "Todo Período" option (useful for Operations tab)
  */
-export function getDateOptions() {
-  return [
+export function getDateOptions({ excludeAllTime = false } = {}) {
+  const allOptions = [
     {
       value: 'currentWeek',
       label: 'Semana Atual',
@@ -263,7 +270,13 @@ export function getDateOptions() {
       label: 'Todo Período',
       ...getAllTime()
     }
-  ].map(opt => ({
+  ];
+
+  const filtered = excludeAllTime
+    ? allOptions.filter(opt => opt.value !== 'allTime')
+    : allOptions;
+
+  return filtered.map(opt => ({
     ...opt,
     displayLabel: `${opt.label} (${formatDateRange(opt.start, opt.end)})`
   }));

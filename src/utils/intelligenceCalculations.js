@@ -14,7 +14,7 @@
 // v2.0: Initial refactor with Health Score
 
 import { parseSalesRecords, filterWithServices } from './transactionParser';
-import { parseBrDate } from './dateUtils';
+import { parseBrDate, formatDate } from './dateUtils';
 
 /**
  * Parse weather data CSV
@@ -118,15 +118,21 @@ export function calculateProfitability(salesData, businessSettings, dateRange = 
   const netProfit = totalNetRevenue - totalCosts;
   const profitMargin = totalNetRevenue > 0 ? (netProfit / totalNetRevenue) * 100 : 0;
 
-  // Calculate break-even
-  const serviceAfterCashback = businessSettings.servicePrice *
-    (1 - businessSettings.cashbackPercent / 100);
-  const breakEvenServices = Math.ceil(totalCosts / serviceAfterCashback);
+  // Calculate break-even using ACTUAL average price per service (not static config)
+  // This accounts for different service types (wash, dry, combo) at different prices
+  const serviceNetRevenue = sum(serviceRecords, r => r.netValue); // Revenue from services only (excl. Recarga)
+  const actualAvgPricePerService = totalServices > 0
+    ? serviceNetRevenue / totalServices
+    : businessSettings.servicePrice * (1 - businessSettings.cashbackPercent / 100); // Fallback to config
+
+  const breakEvenServices = actualAvgPricePerService > 0
+    ? Math.ceil(totalCosts / actualAvgPricePerService)
+    : 0;
 
   const isAboveBreakEven = totalServices >= breakEvenServices;
-  const breakEvenBuffer = totalServices > 0
+  const breakEvenBuffer = breakEvenServices > 0
     ? ((totalServices - breakEvenServices) / breakEvenServices) * 100
-    : -100;
+    : (totalServices > 0 ? 100 : -100); // If no break-even target but has services, 100% buffer
 
   return {
     // Revenue
@@ -148,6 +154,7 @@ export function calculateProfitability(salesData, businessSettings, dateRange = 
     actualServices: totalServices,
     isAboveBreakEven,
     breakEvenBuffer,
+    actualAvgPricePerService, // Average revenue per service from actual data
 
     // Period context
     daysInPeriod,
@@ -173,10 +180,10 @@ export function calculateWeatherImpact(salesData, weatherData) {
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   const records = allRecords.filter(r => r.date >= ninetyDaysAgo);
 
-  // Create date -> weather map
+  // Create date -> weather map using consistent local-timezone date keys
   const weatherMap = new Map();
   weather.forEach(w => {
-    const dateKey = w.date.toISOString().split('T')[0];
+    const dateKey = formatDate(w.date);
     weatherMap.set(dateKey, w);
   });
 
@@ -188,7 +195,8 @@ export function calculateWeatherImpact(salesData, weatherData) {
   };
 
   records.forEach(record => {
-    const dateKey = record.date.toISOString().split('T')[0];
+    // Use record.dateStr for consistent local-timezone matching
+    const dateKey = record.dateStr;
     const w = weatherMap.get(dateKey);
 
     if (w) {
@@ -233,14 +241,26 @@ export function calculateWeatherImpact(salesData, weatherData) {
   const cloudyAvg = calculateAverage(salesByWeather.cloudy);
   const rainyAvg = calculateAverage(salesByWeather.rainy);
 
-  // Calculate impact percentages
-  const rainyImpact = sunnyAvg.revenue > 0
-    ? ((rainyAvg.revenue - sunnyAvg.revenue) / sunnyAvg.revenue) * 100
-    : 0;
+  // Minimum sample size for reliable comparison (at least 5 days of each type)
+  const MIN_SAMPLE_DAYS = 5;
+  const hasReliableData = sunnyAvg.days >= MIN_SAMPLE_DAYS;
+  const hasReliableRainyData = rainyAvg.days >= MIN_SAMPLE_DAYS;
+  const hasReliableCloudyData = cloudyAvg.days >= MIN_SAMPLE_DAYS;
 
-  const cloudyImpact = sunnyAvg.revenue > 0
+  // Calculate impact percentages (only if baseline is reliable)
+  const rainyImpact = (hasReliableData && hasReliableRainyData && sunnyAvg.revenue > 0)
+    ? ((rainyAvg.revenue - sunnyAvg.revenue) / sunnyAvg.revenue) * 100
+    : null; // null indicates insufficient data
+
+  const cloudyImpact = (hasReliableData && hasReliableCloudyData && sunnyAvg.revenue > 0)
     ? ((cloudyAvg.revenue - sunnyAvg.revenue) / sunnyAvg.revenue) * 100
-    : 0;
+    : null;
+
+  // Calculate average impact only from valid comparisons
+  const validImpacts = [rainyImpact, cloudyImpact].filter(i => i !== null);
+  const averageImpact = validImpacts.length > 0
+    ? validImpacts.reduce((a, b) => a + b, 0) / validImpacts.length
+    : null;
 
   return {
     sunny: { ...sunnyAvg, label: 'Dias de Sol' },
@@ -250,11 +270,20 @@ export function calculateWeatherImpact(salesData, weatherData) {
     // Summary
     worstCaseScenario: rainyAvg.revenue,
     bestCaseScenario: sunnyAvg.revenue,
-    averageImpact: (rainyImpact + cloudyImpact) / 2,
+    averageImpact,
 
-    // Context
+    // Context & reliability
     dataRangeDays: 90,
-    totalDaysAnalyzed: sunnyAvg.days + cloudyAvg.days + rainyAvg.days
+    totalDaysAnalyzed: sunnyAvg.days + cloudyAvg.days + rainyAvg.days,
+    hasReliableData,
+    hasReliableRainyData,
+    hasReliableCloudyData,
+    minSampleDays: MIN_SAMPLE_DAYS,
+    warning: !hasReliableData
+      ? `Dados insuficientes: menos de ${MIN_SAMPLE_DAYS} dias de sol para comparacao`
+      : (!hasReliableRainyData && !hasReliableCloudyData)
+        ? `Dados insuficientes: menos de ${MIN_SAMPLE_DAYS} dias de chuva/nublado para comparacao`
+        : null
   };
 }
 
@@ -283,21 +312,30 @@ export function calculateCampaignROI(salesData, campaignData, businessSettings =
 
   const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
 
-  // Calculate baseline average ticket from non-coupon transactions
-  // This helps us understand what customers would pay without coupons
-  const nonCouponRecords = [];
-  const couponRecords = [];
-
-  salesData.forEach((rawRow, index) => {
+  // ✅ FIXED: Parse records with coupon info together instead of relying on index matching
+  // Create enriched records with coupon data attached during parsing
+  const enrichedRecords = [];
+  salesData.forEach((rawRow) => {
     const coupon = (rawRow.Codigo_Cupom || rawRow.coupon || '').toLowerCase().trim();
-    if (records[index]) {
-      if (coupon && coupon.length > 0) {
-        couponRecords.push(records[index]);
-      } else {
-        nonCouponRecords.push(records[index]);
-      }
-    }
+    const date = parseBrDate(rawRow.Data || rawRow.Data_Hora || rawRow.date || '');
+    if (!date) return; // Skip invalid records (same as parseSalesRecords)
+
+    // Parse this individual row to get the record data
+    const grossValue = parseFloat(String(rawRow.Valor_Venda || rawRow.gross_value || 0).replace(',', '.')) || 0;
+    const netValue = parseFloat(String(rawRow.Valor_Pago || rawRow.net_value || 0).replace(',', '.')) || 0;
+
+    enrichedRecords.push({
+      date,
+      coupon,
+      grossValue,
+      netValue,
+      hasCoupon: coupon.length > 0
+    });
   });
+
+  // Calculate baseline average ticket from non-coupon transactions
+  const nonCouponRecords = enrichedRecords.filter(r => !r.hasCoupon);
+  const couponRecords = enrichedRecords.filter(r => r.hasCoupon);
 
   // Calculate baseline average ticket (what customers pay without coupons)
   const avgTicketBaseline = nonCouponRecords.length > 0
@@ -305,20 +343,13 @@ export function calculateCampaignROI(salesData, campaignData, businessSettings =
     : (businessSettings?.servicePrice || 25); // Fallback to default service price
 
   const campaignPerformance = campaigns.map(campaign => {
-    // Find sales using this coupon
-    const campaignSales = [];
-
-    salesData.forEach((rawRow, index) => {
-      const coupon = (rawRow.Codigo_Cupom || rawRow.coupon || '').toLowerCase().trim();
-      if (coupon === campaign.code) {
-        if (records[index]) {
-          const record = records[index];
-          if (record.date >= campaign.startDate && record.date <= campaign.endDate) {
-            campaignSales.push(record);
-          }
-        }
-      }
-    });
+    // ✅ FIXED: Use enrichedRecords with pre-attached coupon data
+    // No more index-based assumptions that could break if records are filtered
+    const campaignSales = enrichedRecords.filter(record =>
+      record.coupon === campaign.code &&
+      record.date >= campaign.startDate &&
+      record.date <= campaign.endDate
+    );
 
     const totalGrossRevenue = sum(campaignSales, r => r.grossValue);
     const totalDiscount = totalGrossRevenue * (campaign.discountPercent / 100);
@@ -348,11 +379,20 @@ export function calculateCampaignROI(salesData, campaignData, businessSettings =
     // Cost per acquisition
     const costPerRedemption = redemptions > 0 ? totalDiscount / redemptions : 0;
 
-    // ✅ IMPROVED: Status based on incremental ROI and redemption rate
+    // ✅ IMPROVED: Status with STRICTER ROI requirements
+    // ROI is now a hard gatekeeper - significant losses cannot be rated "good" or higher
     let status = 'poor';
-    if (redemptionRate >= 40 && roi > 0) status = 'excellent';
-    else if (redemptionRate >= 25 && roi > -50) status = 'good';
-    else if (redemptionRate >= 10 || roi > -100) status = 'fair';
+    if (roi < -50) {
+      // Significant loss - always poor, regardless of redemption
+      status = 'poor';
+    } else if (redemptionRate >= 40 && roi > 0) {
+      status = 'excellent';
+    } else if (redemptionRate >= 25 && roi > -25) {
+      status = 'good';
+    } else if (redemptionRate >= 10 && roi > -50) {
+      status = 'fair';
+    }
+    // Otherwise remains 'poor'
 
     // Generate recommendation based on analysis
     let recommendation = '';
@@ -363,13 +403,20 @@ export function calculateCampaignROI(salesData, campaignData, businessSettings =
     } else if (status === 'fair') {
       if (redemptionRate < 15) {
         recommendation = 'Baixa adesao. Divulgue mais ou aumente o desconto.';
-      } else if (roi < -50) {
-        recommendation = 'Desconto muito alto para o retorno. Reduza o percentual.';
+      } else if (roi < -25) {
+        recommendation = 'ROI negativo. Reduza o percentual de desconto.';
       } else {
         recommendation = 'Considere ajustar o percentual de desconto para otimizar retorno.';
       }
     } else {
-      recommendation = 'Desempenho fraco. Avalie cancelar ou reformular a campanha.';
+      // Poor status - give specific reason
+      if (roi < -50) {
+        recommendation = `Prejuizo significativo (ROI: ${roi.toFixed(0)}%). Cancele ou reduza drasticamente o desconto.`;
+      } else if (redemptionRate < 10) {
+        recommendation = 'Adesao muito baixa. Melhore a divulgacao ou reconsidere a campanha.';
+      } else {
+        recommendation = 'Desempenho fraco. Avalie cancelar ou reformular a campanha.';
+      }
     }
 
     return {

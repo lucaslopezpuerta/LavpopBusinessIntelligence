@@ -19,7 +19,7 @@
 
 import React from 'react';
 import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
-import InsightBox from './InsightBox';
+import InsightBox from './ui/InsightBox';
 
 const CustomerRetentionScore = ({ data }) => {
   if (!data) return null;

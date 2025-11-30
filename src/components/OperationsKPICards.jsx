@@ -1,147 +1,146 @@
-// OPERATIONS KPI CARDS V5.0.0 - DESIGN SYSTEM ALIGNED
-// ✅ Tailwind CSS styling (Design System v3.0)
-// ✅ Dark mode support
-// ✅ Replaced emojis with Lucide React icons
-// ✅ Gradient backgrounds for KPI cards
-// ✅ Business-appropriate icons (Droplet for wash, Flame for dry)
-// ✅ Larger titles with metric names
-// ✅ Adaptive service count labels based on date filter
-// ✅ Fixed capacity calculation for total
-// ✅ Realistic capacity with 20% idle time efficiency factor
+// OPERATIONS KPI CARDS V6.3.0 - AUDIT FIXES APPLIED
+// ✅ Math: Absolute pp trend change (not relative %)
+// ✅ Math: Capacity adapts to date window (partial week support)
+// ✅ Math: Service diff hidden for currentWeek (partial vs full unfair)
+// ✅ UX: Progress bar scaled to 50% max (25% = excellent visual)
+// ✅ UX: Subtle threshold legend (footnote style)
+// ✅ UX: Simplified card layout (cleaner, less overload)
+// ✅ UX: Comparison label adapts to dateWindow
+// ✅ Design System: Minimum 12px fonts (no text-[9px] or text-[10px])
+// ✅ Mobile: Responsive text sizing with sm: breakpoints
+// ✅ Accessibility: Proper color contrast and touch targets
 //
 // CHANGELOG:
+// v6.3.0 (2025-11-30): Fix partial week comparison display
+//   - Added showServiceDiff flag to periodConfig (false for currentWeek)
+//   - Utilization % trend still shown (normalized by activeDays = fair)
+//   - Service count diff hidden for currentWeek (partial vs full week unfair)
+// v6.2.1 (2025-11-30): Legend spacing + mobile overflow fix
+//   - Added bottom margin to container (mb-4 sm:mb-6) for section separation
+//   - Reduced mobile gap (gap-x-2 sm:gap-x-4) to prevent overflow
+//   - Hide percentage values on mobile (show only labels: Excelente, Bom, etc.)
+//   - Added pb-2 for proper internal spacing
+// v6.2.0 (2025-11-30): Legend layout refinement
+//   - Removed intrusive "Metas:" label with Info icon
+//   - Smaller dot indicators (w-2 → w-1.5)
+//   - Subtle footnote style (text-slate-500, pt-2 spacing)
+//   - Removed redundant font scaling (text-xs only, no sm:text-sm)
+// v6.1.0 (2025-11-30): Threshold unification
+//   - Import UTILIZATION_THRESHOLDS from operationsMetrics.js (single source of truth)
+//   - Removed local THRESHOLDS definition
+// v6.0.0 (2025-11-30): Comprehensive audit fixes
+//   - MATH: Trend now shows absolute percentage point change (+5pp)
+//   - MATH: Capacity calculation adapts to activeDays in date window
+//   - UX: Progress bar uses 50% scale (25% fills half = visually "excellent")
+//   - UX: Added threshold legend below progress bar
+//   - UX: Removed redundant insight box (moved to tooltip on hover)
+//   - UX: Comparison label now dynamic based on dateWindow
+//   - DESIGN: All fonts minimum 12px (text-xs), responsive with sm:text-sm
+//   - MOBILE: Better spacing, readable text, touch-friendly
 // v5.0.0 (2025-11-26): Design System alignment
-//   - Replaced all inline styles with Tailwind CSS
-//   - Added dark mode support throughout
-//   - Removed COLORS object (using Tailwind classes)
-//   - Replaced emoji status indicators with TrendingUp/Down icons
-//   - Replaced emoji insights with BarChart2/Lightbulb icons
-//   - Updated gradient backgrounds per design system
-//   - Improved responsive design
-// v4.2.0 (2025-11-15): Icon + Efficiency Updates
-//   - Changed: Droplet icon for washers (water theme)
-//   - Changed: Flame icon for dryers (heat theme)
-//   - Added: 20% efficiency factor (0.80) for realistic idle time
-//   - Updated: Operating hours confirmed as 15h/day (8 AM - 11 PM)
-//   - Fixed: Capacity calculations now show realistic maximums
-// v4.1.0 (2025-11-15): UI/UX Enhancements + Math Fix
-//   - Changed: Better icons (WashingMachine, Wind, Gauge)
-//   - Enhanced: Larger card titles (16px) with metric name
-//   - Fixed: Service count labels adapt to dateWindow selection
-//   - Fixed: Total capacity calculation (sum of washer + dryer, not average)
-//   - Added: dateWindow prop for context-aware labels
 
 import React, { useMemo } from 'react';
-import { Droplet, Flame, Gauge, TrendingUp, TrendingDown, Minus, BarChart2, Lightbulb } from 'lucide-react';
+import { Droplet, Flame, Gauge, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { BUSINESS_PARAMS, UTILIZATION_THRESHOLDS } from '../utils/operationsMetrics';
 
-// REALISTIC THRESHOLDS (aligned with 25% profitability target)
-const THRESHOLDS = {
-  excellent: 25,
-  good: 15,
-  fair: 10
+// Use shared thresholds from operationsMetrics.js
+const THRESHOLDS = UTILIZATION_THRESHOLDS;
+
+// Progress bar scale - 50% max so 25% fills half the bar (visually "good")
+const PROGRESS_BAR_SCALE = 50;
+
+// Calculate operating hours per day from BUSINESS_PARAMS
+const OPERATING_HOURS_PER_DAY = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
+
+/**
+ * Calculate capacity for a given number of days (not just weekly)
+ */
+const getCapacityForDays = (days) => {
+  const cyclesPerDayWash = BUSINESS_PARAMS.TOTAL_WASHERS *
+    (60 / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) *
+    OPERATING_HOURS_PER_DAY *
+    BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+
+  const cyclesPerDayDry = BUSINESS_PARAMS.TOTAL_DRYERS *
+    (60 / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) *
+    OPERATING_HOURS_PER_DAY *
+    BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+
+  return {
+    washers: Math.round(cyclesPerDayWash * days),
+    dryers: Math.round(cyclesPerDayDry * days),
+    total: Math.round((cyclesPerDayWash + cyclesPerDayDry) * days)
+  };
 };
 
-// MACHINE CONFIGURATION
-// Operating hours: 8 AM - 11 PM = 15 hours/day
-// Efficiency factor: 0.80 (accounts for 20% idle time between customers)
-const MACHINE_CONFIG = {
-  washers: {
-    count: 3,
-    cyclesPerHour: 2,        // 30-minute wash cycle
-    hoursPerDay: 15,         // 8 AM - 11 PM
-    daysPerWeek: 7,
-    efficiencyFactor: 0.80   // 20% idle time
-  },
-  dryers: {
-    count: 5,
-    cyclesPerHour: 1.33,     // 45-minute dry cycle  
-    hoursPerDay: 15,         // 8 AM - 11 PM
-    daysPerWeek: 7,
-    efficiencyFactor: 0.80   // 20% idle time
-  }
-};
-
-// Calculate max REALISTIC capacity per week (with efficiency factor)
-const MAX_CAPACITY = {
-  // Theoretical: 3 × 2 × 15 × 7 = 630, Realistic: 630 × 0.80 = 504
-  washers: Math.round(
-    MACHINE_CONFIG.washers.count * 
-    MACHINE_CONFIG.washers.cyclesPerHour * 
-    MACHINE_CONFIG.washers.hoursPerDay * 
-    MACHINE_CONFIG.washers.daysPerWeek *
-    MACHINE_CONFIG.washers.efficiencyFactor
-  ), // 504 cycles/week
-  
-  // Theoretical: 5 × 1.33 × 15 × 7 = 698, Realistic: 698 × 0.80 = 558
-  dryers: Math.round(
-    MACHINE_CONFIG.dryers.count * 
-    MACHINE_CONFIG.dryers.cyclesPerHour * 
-    MACHINE_CONFIG.dryers.hoursPerDay * 
-    MACHINE_CONFIG.dryers.daysPerWeek *
-    MACHINE_CONFIG.dryers.efficiencyFactor
-  ), // 558 cycles/week
-  
-  get total() { 
-    return this.washers + this.dryers; // 504 + 558 = 1,062 cycles/week
-  }
-};
-
-const OperationsKPICards = ({ 
-  businessMetrics, 
-  operationsMetrics, 
+const OperationsKPICards = ({
+  businessMetrics,
+  operationsMetrics,
   previousWeekMetrics,
-  dateWindow = 'currentWeek' // NEW: for adaptive labels
+  dateWindow = 'currentWeek'
 }) => {
-  console.log('🎯 KPI Cards received:', {
-    hasBusinessMetrics: !!businessMetrics,
-    hasOperationsMetrics: !!operationsMetrics,
-    hasPreviousWeek: !!previousWeekMetrics,
-    currentUtil: operationsMetrics?.utilization,
-    dateWindow
-  });
-
-  // Get adaptive labels for service counts based on date filter
-  const getServiceLabels = (dateWindow) => {
+  // Get adaptive labels and comparison text based on date filter
+  const periodConfig = useMemo(() => {
     switch(dateWindow) {
       case 'currentWeek':
         return {
           current: 'Semana Atual',
           previous: 'Semana Passada',
-          showComparison: true
+          comparison: 'vs sem. passada',
+          showComparison: true,
+          // Service diff hidden: partial week vs full week is unfair
+          // Utilization % still shown (normalized by activeDays)
+          showServiceDiff: false,
+          days: operationsMetrics?.utilization?.activeDays || 7
         };
       case 'lastWeek':
         return {
           current: 'Semana Passada',
           previous: 'Semana Anterior',
-          showComparison: true
+          comparison: 'vs sem. anterior',
+          showComparison: true,
+          showServiceDiff: true,
+          days: 7
         };
       case 'last4Weeks':
         return {
           current: 'Últimas 4 Semanas',
-          previous: '4 Semanas Anteriores',
-          showComparison: true
+          previous: '4 Sem. Anteriores',
+          comparison: 'vs 4 sem. anteriores',
+          showComparison: true,
+          showServiceDiff: true,
+          days: 28
         };
       case 'allTime':
         return {
           current: 'Todo Período',
           previous: null,
-          showComparison: false
+          comparison: null,
+          showComparison: false,
+          showServiceDiff: false,
+          days: operationsMetrics?.utilization?.activeDays || 30
         };
       default:
         return {
           current: 'Período Atual',
           previous: 'Período Anterior',
-          showComparison: true
+          comparison: 'vs período anterior',
+          showComparison: true,
+          showServiceDiff: true,
+          days: 7
         };
     }
-  };
+  }, [dateWindow, operationsMetrics?.utilization?.activeDays]);
 
-  const serviceLabels = getServiceLabels(dateWindow);
+  // Calculate capacity based on actual days in period
+  const capacity = useMemo(() => {
+    return getCapacityForDays(periodConfig.days);
+  }, [periodConfig.days]);
 
-  // Get current week data from operationsMetrics
+  // Get current period data from operationsMetrics
   const currentData = useMemo(() => {
     if (!operationsMetrics?.utilization) return null;
-    
+
     const util = operationsMetrics.utilization;
     return {
       wash: {
@@ -161,43 +160,36 @@ const OperationsKPICards = ({
         services: util.totalServices || 0,
         peak: util.peak?.totalUtilization || 0,
         offPeak: util.offPeak?.totalUtilization || 0
-      }
+      },
+      activeDays: util.activeDays || periodConfig.days
     };
-  }, [operationsMetrics]);
+  }, [operationsMetrics, periodConfig.days]);
 
-  // Get previous week data
+  // Get previous period data
   const previousData = useMemo(() => {
     if (!previousWeekMetrics?.utilization) return null;
-    
+
     const util = previousWeekMetrics.utilization;
     return {
-      wash: {
-        utilization: util.washUtilization || 0,
-        services: util.totalWashServices || 0
-      },
-      dry: {
-        utilization: util.dryUtilization || 0,
-        services: util.totalDryServices || 0
-      },
-      total: {
-        utilization: util.totalUtilization || 0,
-        services: util.totalServices || 0
-      }
+      wash: { utilization: util.washUtilization || 0, services: util.totalWashServices || 0 },
+      dry: { utilization: util.dryUtilization || 0, services: util.totalDryServices || 0 },
+      total: { utilization: util.totalUtilization || 0, services: util.totalServices || 0 }
     };
   }, [previousWeekMetrics]);
 
-  // Calculate trends
+  // Calculate trends with ABSOLUTE percentage point change (not relative %)
   const trends = useMemo(() => {
     if (!currentData || !previousData) return { wash: null, dry: null, total: null };
-    
+
     const calculateTrend = (current, previous) => {
-      if (!previous || previous === 0) return null;
+      if (previous === null || previous === undefined) return null;
+      const absoluteChange = current - previous; // Percentage point change
       return {
-        percent: ((current - previous) / previous) * 100,
-        absolute: current - previous
+        absolutePP: absoluteChange,  // e.g., 25% - 20% = +5pp
+        direction: absoluteChange > 0 ? 'up' : absoluteChange < 0 ? 'down' : 'stable'
       };
     };
-    
+
     return {
       wash: calculateTrend(currentData.wash.utilization, previousData.wash.utilization),
       dry: calculateTrend(currentData.dry.utilization, previousData.dry.utilization),
@@ -205,105 +197,90 @@ const OperationsKPICards = ({
     };
   }, [currentData, previousData]);
 
-  // Get dynamic peak hour labels
-  const peakHourLabels = useMemo(() => {
-    if (!operationsMetrics?.peakHours?.peak || operationsMetrics.peakHours.peak.length === 0) {
-      return '10-12h, 14-15h, 18-19h'; // Fallback
-    }
-    
-    const peakHours = operationsMetrics.peakHours.peak.map(h => h.hour).sort((a, b) => a - b);
-    
-    // Group consecutive hours into ranges
-    const ranges = [];
-    let start = peakHours[0];
-    let prev = peakHours[0];
-    
-    for (let i = 1; i < peakHours.length; i++) {
-      if (peakHours[i] !== prev + 1) {
-        ranges.push(start === prev ? `${start}h` : `${start}-${prev + 1}h`);
-        start = peakHours[i];
-      }
-      prev = peakHours[i];
-    }
-    ranges.push(start === prev ? `${start}h` : `${start}-${prev + 1}h`);
-    
-    return ranges.join(', ');
-  }, [operationsMetrics]);
-
   if (!currentData) {
     return (
-      <div className="text-slate-600 dark:text-slate-400 p-4">
-        Loading KPI metrics...
+      <div className="flex items-center justify-center h-32 text-slate-600 dark:text-slate-400">
+        <div className="animate-pulse">Carregando métricas...</div>
       </div>
     );
   }
 
+  // Status determination with threshold-based styling
   const getStatus = (utilization) => {
     if (utilization >= THRESHOLDS.excellent) return {
       label: 'Excelente',
       colorClass: 'text-emerald-600 dark:text-emerald-400',
-      bgClass: 'bg-emerald-500/20 dark:bg-emerald-500/30',
+      bgClass: 'bg-emerald-100 dark:bg-emerald-900/30',
       gradientFrom: 'from-emerald-500',
-      gradientTo: 'to-green-600',
-      borderClass: 'border-emerald-500 dark:border-emerald-400'
+      gradientTo: 'to-green-500',
+      borderClass: 'border-emerald-400 dark:border-emerald-500'
     };
     if (utilization >= THRESHOLDS.good) return {
       label: 'Bom',
-      colorClass: 'text-green-600 dark:text-green-400',
-      bgClass: 'bg-green-500/20 dark:bg-green-500/30',
-      gradientFrom: 'from-green-500',
-      gradientTo: 'to-emerald-600',
-      borderClass: 'border-green-500 dark:border-green-400'
+      colorClass: 'text-teal-600 dark:text-teal-400',
+      bgClass: 'bg-teal-100 dark:bg-teal-900/30',
+      gradientFrom: 'from-teal-500',
+      gradientTo: 'to-cyan-500',
+      borderClass: 'border-teal-400 dark:border-teal-500'
     };
     if (utilization >= THRESHOLDS.fair) return {
       label: 'Razoável',
       colorClass: 'text-amber-600 dark:text-amber-400',
-      bgClass: 'bg-amber-500/20 dark:bg-amber-500/30',
+      bgClass: 'bg-amber-100 dark:bg-amber-900/30',
       gradientFrom: 'from-amber-500',
-      gradientTo: 'to-orange-600',
-      borderClass: 'border-amber-500 dark:border-amber-400'
+      gradientTo: 'to-orange-500',
+      borderClass: 'border-amber-400 dark:border-amber-500'
     };
     return {
       label: 'Baixo',
       colorClass: 'text-red-600 dark:text-red-400',
-      bgClass: 'bg-red-500/20 dark:bg-red-500/30',
+      bgClass: 'bg-red-100 dark:bg-red-900/30',
       gradientFrom: 'from-red-500',
-      gradientTo: 'to-rose-600',
-      borderClass: 'border-red-500 dark:border-red-400'
+      gradientTo: 'to-rose-500',
+      borderClass: 'border-red-400 dark:border-red-500'
     };
   };
 
+  // Trend indicator with ABSOLUTE pp change display
   const getTrendIndicator = (trend) => {
-    if (!trend || trend.percent === null || trend.percent === undefined) return null;
+    if (!trend) return null;
 
-    const percent = trend.percent;
-    if (Math.abs(percent) < 0.1) return null; // Skip if no change
+    const pp = trend.absolutePP;
+    if (Math.abs(pp) < 0.5) return null; // Skip if negligible change
 
-    if (percent > 5) {
+    const isPositive = pp > 0;
+    const displayText = `${isPositive ? '+' : ''}${pp.toFixed(0)}pp`;
+
+    if (pp > 2) {
       return {
         Icon: TrendingUp,
         colorClass: 'text-emerald-600 dark:text-emerald-400',
-        text: `+${percent.toFixed(0)}%`
+        text: displayText
       };
     }
-    if (percent < -5) {
+    if (pp < -2) {
       return {
         Icon: TrendingDown,
         colorClass: 'text-red-600 dark:text-red-400',
-        text: `${percent.toFixed(0)}%`
+        text: displayText
       };
     }
     return {
       Icon: Minus,
-      colorClass: 'text-slate-600 dark:text-slate-400',
-      text: `${percent >= 0 ? '+' : ''}${percent.toFixed(0)}%`
+      colorClass: 'text-slate-500 dark:text-slate-400',
+      text: displayText
     };
   };
 
-  const formatServiceCount = (current, previous) => {
-    const diff = current - previous;
-    const sign = diff > 0 ? '+' : '';
-    return { current, previous, diff, text: `${sign}${diff}` };
+  // Service count formatter
+  const formatServices = (current, previous) => {
+    const diff = current - (previous || 0);
+    return {
+      current,
+      previous: previous || 0,
+      diff,
+      text: diff !== 0 ? `${diff > 0 ? '+' : ''}${diff}` : null
+    };
   };
 
   const washStatus = getStatus(currentData.wash.utilization);
@@ -314,167 +291,113 @@ const OperationsKPICards = ({
   const dryTrend = getTrendIndicator(trends.dry);
   const totalTrend = getTrendIndicator(trends.total);
 
-  const washServices = formatServiceCount(
-    currentData.wash.services,
-    previousData?.wash.services || 0
-  );
-  const dryServices = formatServiceCount(
-    currentData.dry.services,
-    previousData?.dry.services || 0
-  );
+  const washServices = formatServices(currentData.wash.services, previousData?.wash.services);
+  const dryServices = formatServices(currentData.dry.services, previousData?.dry.services);
 
+  // KPI Card Component (simplified, cleaner)
   const KPICard = ({
     title,
-    metricName,
-    icon: Icon,
+    icon: CardIcon,
     utilization,
     status,
-    capacity,
     services,
     trend,
-    peakOffPeakData,
-    maxCyclesPerWeek
+    maxCapacity,
+    machineCount
   }) => {
-    const progressWidth = Math.min(utilization, 100);
+    // Scale progress to 50% max so 25% = half filled (visually "good")
+    const scaledProgress = Math.min((utilization / PROGRESS_BAR_SCALE) * 100, 100);
 
     return (
       <div className={`
-        bg-white dark:bg-slate-800 rounded-xl p-6
+        bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5
         border-2 ${status.borderClass}
-        shadow-sm hover:shadow-lg
-        hover:-translate-y-1
+        shadow-sm hover:shadow-md
         transition-all duration-200
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className={`
-              w-9 h-9 rounded-lg ${status.bgClass}
-              flex items-center justify-center
-            `}>
-              <Icon className={`w-5 h-5 ${status.colorClass}`} />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-wide leading-tight">
-                {title}
-              </h3>
-              <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5">
-                {metricName}
-              </div>
-            </div>
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`
+            w-10 h-10 sm:w-11 sm:h-11 rounded-lg ${status.bgClass}
+            flex items-center justify-center flex-shrink-0
+          `}>
+            <CardIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${status.colorClass}`} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
+              {title}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {machineCount} máquinas
+            </p>
           </div>
         </div>
 
-        {/* Utilization % + Trend */}
+        {/* Main Metric */}
         <div className="mb-3">
-          <div className="flex items-baseline gap-2">
-            <span className={`text-4xl font-bold ${status.colorClass}`}>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className={`text-3xl sm:text-4xl font-bold ${status.colorClass}`}>
               {utilization.toFixed(0)}%
             </span>
-            {trend && (
-              <div className="flex items-center gap-1">
-                <trend.Icon className={`w-5 h-5 ${trend.colorClass}`} />
-                <span className={`text-sm font-semibold ${trend.colorClass}`}>
-                  {trend.text}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className={`text-sm font-semibold ${status.colorClass}`}>
+            <span className={`text-sm sm:text-base font-semibold ${status.colorClass}`}>
               {status.label}
             </span>
-            {trend && (
-              <span className="text-[10px] text-slate-600 dark:text-slate-400">
-                vs semana passada
+          </div>
+
+          {/* Trend with absolute pp change */}
+          {trend && periodConfig.showComparison && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <trend.Icon className={`w-4 h-4 ${trend.colorClass}`} aria-hidden="true" />
+              <span className={`text-xs sm:text-sm font-medium ${trend.colorClass}`}>
+                {trend.text}
               </span>
-            )}
-          </div>
-        </div>
-
-        {/* Peak/Off-Peak Breakdown */}
-        {peakOffPeakData && peakOffPeakData.peak > 0 && (
-          <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 mb-3">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-900 dark:text-white mb-2 uppercase tracking-wider">
-              <BarChart2 className="w-3.5 h-3.5" />
-              Distribuição da Demanda
-            </div>
-            <div className="text-xs text-slate-700 dark:text-slate-300 space-y-1">
-              <div className="flex justify-between">
-                <span>├─ Pico ({peakHourLabels}):</span>
-                <strong className={peakOffPeakData.peak >= 15 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}>
-                  {peakOffPeakData.peak.toFixed(0)}%
-                </strong>
-              </div>
-              <div className="flex justify-between">
-                <span>└─ Fora de pico:</span>
-                <strong className="text-slate-600 dark:text-slate-400">
-                  {peakOffPeakData.offPeak.toFixed(0)}%
-                </strong>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Service Counts */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-3 border border-blue-200 dark:border-blue-800">
-          <div className="text-xs text-slate-700 dark:text-slate-300 space-y-1">
-            <div className="flex justify-between">
-              <span>{serviceLabels.current}:</span>
-              <strong className="text-slate-900 dark:text-white">{services.current} serviços</strong>
-            </div>
-            {serviceLabels.showComparison && serviceLabels.previous && (
-              <div className="flex justify-between">
-                <span>{serviceLabels.previous}:</span>
-                <strong className="text-slate-600 dark:text-slate-400">
-                  {services.previous} serviços
-                  {services.diff !== 0 && (
-                    <span className={services.diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400 ml-1'}>
-                      ({services.text})
-                    </span>
-                  )}
-                </strong>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Data-Driven Insight */}
-        {peakOffPeakData && peakOffPeakData.peak > 0 && (
-          <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-[10px] text-slate-700 dark:text-slate-300 leading-relaxed border border-amber-200 dark:border-amber-800">
-            <div className="flex items-start gap-1.5">
-              <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <span>
-                {peakOffPeakData.peak - peakOffPeakData.offPeak > 8 ? (
-                  <>Demanda concentrada nos picos. Promova fora de pico com desconto.</>
-                ) : peakOffPeakData.peak - peakOffPeakData.offPeak > 3 ? (
-                  <>Boa distribuição. Continue monitorando padrões.</>
-                ) : (
-                  <>Distribuição equilibrada. Oportunidade de aumentar picos.</>
-                )}
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {periodConfig.comparison}
               </span>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Capacity Info */}
-        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-          <div className="text-[10px] text-slate-600 dark:text-slate-400 mb-2">
-            {capacity} - {Math.round(maxCyclesPerWeek)} ciclos possíveis/semana
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+        {/* Progress Bar with 50% scale */}
+        <div className="mb-2">
+          <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
-              className={`h-full bg-gradient-to-r ${status.gradientFrom} ${status.gradientTo} transition-all duration-500`}
-              style={{ width: `${progressWidth}%` }}
+              className={`h-full bg-gradient-to-r ${status.gradientFrom} ${status.gradientTo} transition-all duration-500 rounded-full`}
+              style={{ width: `${scaledProgress}%` }}
+              role="progressbar"
+              aria-valuenow={utilization}
+              aria-valuemin={0}
+              aria-valuemax={PROGRESS_BAR_SCALE}
             />
           </div>
-          <div className="flex justify-between mt-1 text-[9px] text-slate-500 dark:text-slate-500">
+          {/* Threshold legend - minimum 12px font */}
+          <div className="flex justify-between mt-1 text-xs text-slate-500 dark:text-slate-500">
             <span>0%</span>
-            <span>25%</span>
+            <span className="text-amber-600 dark:text-amber-400">10%</span>
+            <span className="text-teal-600 dark:text-teal-400">15%</span>
+            <span className="text-emerald-600 dark:text-emerald-400">25%+</span>
             <span>50%</span>
-            <span>100%</span>
+          </div>
+        </div>
+
+        {/* Service Counts - simplified */}
+        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+          <div className="flex items-center justify-between text-xs sm:text-sm">
+            <span className="text-slate-600 dark:text-slate-400">
+              {periodConfig.current}:
+            </span>
+            <span className="font-semibold text-slate-900 dark:text-white">
+              {services.current} serviços
+              {services.text && periodConfig.showServiceDiff && (
+                <span className={`ml-1.5 ${services.diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                  ({services.text})
+                </span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+            <span>Capacidade ({periodConfig.days}d):</span>
+            <span>{maxCapacity} ciclos</span>
           </div>
         </div>
       </div>
@@ -482,62 +405,69 @@ const OperationsKPICards = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
-      {/* Washers KPI */}
-      <KPICard
-        title="LAVADORAS"
-        metricName="Utilização"
-        icon={Droplet}
-        utilization={currentData.wash.utilization}
-        status={washStatus}
-        capacity={`${MACHINE_CONFIG.washers.count} máquinas`}
-        services={washServices}
-        trend={washTrend}
-        peakOffPeakData={{
-          peak: currentData.wash.peak,
-          offPeak: currentData.wash.offPeak
-        }}
-        maxCyclesPerWeek={MAX_CAPACITY.washers}
-      />
+    <div className="space-y-4 mb-4 sm:mb-6">
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+        <KPICard
+          title="LAVADORAS"
+          icon={Droplet}
+          utilization={currentData.wash.utilization}
+          status={washStatus}
+          services={washServices}
+          trend={washTrend}
+          maxCapacity={capacity.washers}
+          machineCount={BUSINESS_PARAMS.TOTAL_WASHERS}
+        />
 
-      {/* Dryers KPI */}
-      <KPICard
-        title="SECADORAS"
-        metricName="Utilização"
-        icon={Flame}
-        utilization={currentData.dry.utilization}
-        status={dryStatus}
-        capacity={`${MACHINE_CONFIG.dryers.count} máquinas`}
-        services={dryServices}
-        trend={dryTrend}
-        peakOffPeakData={{
-          peak: currentData.dry.peak,
-          offPeak: currentData.dry.offPeak
-        }}
-        maxCyclesPerWeek={MAX_CAPACITY.dryers}
-      />
+        <KPICard
+          title="SECADORAS"
+          icon={Flame}
+          utilization={currentData.dry.utilization}
+          status={dryStatus}
+          services={dryServices}
+          trend={dryTrend}
+          maxCapacity={capacity.dryers}
+          machineCount={BUSINESS_PARAMS.TOTAL_DRYERS}
+        />
 
-      {/* Total Utilization KPI */}
-      <KPICard
-        title="UTILIZAÇÃO TOTAL"
-        metricName="Combinada"
-        icon={Gauge}
-        utilization={currentData.total.utilization}
-        status={totalStatus}
-        capacity={`${MACHINE_CONFIG.washers.count + MACHINE_CONFIG.dryers.count} máquinas`}
-        services={{
-          current: washServices.current + dryServices.current,
-          previous: washServices.previous + dryServices.previous,
-          diff: washServices.diff + dryServices.diff,
-          text: `${washServices.diff + dryServices.diff >= 0 ? '+' : ''}${washServices.diff + dryServices.diff}`
-        }}
-        trend={totalTrend}
-        peakOffPeakData={{
-          peak: currentData.total.peak,
-          offPeak: currentData.total.offPeak
-        }}
-        maxCyclesPerWeek={MAX_CAPACITY.total}
-      />
+        <KPICard
+          title="UTILIZAÇÃO TOTAL"
+          icon={Gauge}
+          utilization={currentData.total.utilization}
+          status={totalStatus}
+          services={{
+            current: washServices.current + dryServices.current,
+            previous: washServices.previous + dryServices.previous,
+            diff: washServices.diff + dryServices.diff,
+            text: (washServices.diff + dryServices.diff) !== 0
+              ? `${(washServices.diff + dryServices.diff) > 0 ? '+' : ''}${washServices.diff + dryServices.diff}`
+              : null
+          }}
+          trend={totalTrend}
+          maxCapacity={capacity.total}
+          machineCount={BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS}
+        />
+      </div>
+
+      {/* Threshold Legend - Subtle footnote style */}
+      <div className="flex flex-wrap items-center justify-center gap-x-2 sm:gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-500 pt-2 pb-2">
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
+          <span className="hidden sm:inline">≥25%</span> Excelente
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal-500" aria-hidden="true"></span>
+          <span className="hidden sm:inline">≥15%</span> Bom
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" aria-hidden="true"></span>
+          <span className="hidden sm:inline">≥10%</span> Razoável
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true"></span>
+          Baixo
+        </span>
+      </div>
     </div>
   );
 };

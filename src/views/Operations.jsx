@@ -1,12 +1,28 @@
-// OPERATIONS TAB V4.1.0
+// OPERATIONS TAB V5.1.0
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
 // ✅ Tailwind CSS styling (Design System v3.0)
 // ✅ Dark mode support
 // ✅ Responsive grid layout
+// ✅ Actionability-first component order
+// ✅ Operations-optimized date options (no allTime)
 //
 // CHANGELOG:
+// v5.1.0 (2025-11-30): Date range optimization for operations
+//   - Changed default from currentWeek to lastWeek (complete data)
+//   - Removed "Todo Período" option (not actionable for operations)
+//   - Pass excludeAllTime={true} to DateRangeSelector
+// v5.0.0 (2025-11-30): Layout restructure for actionability
+//   - REMOVED: WashVsDryChart (low actionability, informational only)
+//   - MOVED UP: MachinePerformanceTable to position 1 (most actionable)
+//   - PAIRED: PeakHoursSummary + DayOfWeekChart (both time patterns)
+//   - New order: KPIs → Machine Table → Heatmap → Peak+Day paired
+//   - Better space efficiency with paired time-based components
+// v4.2.0 (2025-11-30): Mobile width optimization
+//   - Reduced mobile padding: p-6 → px-3 py-4 (gains ~24px horizontal space)
+//   - Reduced mobile grid gap: gap-6 → gap-4 sm:gap-6
+//   - Keeps comfortable padding for sm+ screens
 // v4.1 (2025-11-30): Production cleanup
 //   - Removed all console.log statements
 //   - Clean error handling without debug output
@@ -30,7 +46,6 @@ import React, { useMemo, useState } from 'react';
 import OperationsKPICards from '../components/OperationsKPICards';
 import UtilizationHeatmap from '../components/UtilizationHeatmap';
 import PeakHoursSummary from '../components/PeakHoursSummary';
-import WashVsDryChart from '../components/WashVsDryChart';
 import DayOfWeekChart from '../components/DayOfWeekChart';
 import MachinePerformanceTable from '../components/MachinePerformanceTable';
 import DateRangeSelector from '../components/DateRangeSelector';
@@ -40,7 +55,8 @@ import { getDateWindows } from '../utils/dateWindows';
 
 const Operations = ({ data }) => {
   // Centralized date filter - single source of truth
-  const [dateFilter, setDateFilter] = useState('currentWeek');
+  // Default to lastWeek for complete data (currentWeek is partial)
+  const [dateFilter, setDateFilter] = useState('lastWeek');
   
   // Calculate date window once
   const dateWindow = useMemo(() => 
@@ -97,7 +113,7 @@ const Operations = ({ data }) => {
   }
 
   return (
-    <div className="max-w-[100rem] mx-auto p-6 lg:p-8">
+    <div className="max-w-[100rem] mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:p-8">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
@@ -114,6 +130,7 @@ const Operations = ({ data }) => {
           value={dateFilter}
           onChange={setDateFilter}
           dateWindow={dateWindow}
+          excludeAllTime={true}
         />
       </div>
 
@@ -125,9 +142,19 @@ const Operations = ({ data }) => {
         dateWindow={dateFilter}
       />
 
-      {/* Main Grid Layout */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Full Width: Utilization Heatmap */}
+      {/* Main Grid Layout - Ordered by Actionability */}
+      <div className="grid grid-cols-12 gap-4 sm:gap-6">
+        {/* Row 1: Machine Performance Table (Most Actionable) */}
+        <div className="col-span-12">
+          <MachinePerformanceTable
+            machinePerformance={operationsMetrics.machinePerformance}
+            dateFilter={dateFilter}
+            dateWindow={dateWindow}
+            revenueBreakdown={operationsMetrics.revenueBreakdown}
+          />
+        </div>
+
+        {/* Row 2: Utilization Heatmap (Patterns Overview) */}
         <div className="col-span-12">
           <UtilizationHeatmap
             salesData={data.sales}
@@ -136,18 +163,10 @@ const Operations = ({ data }) => {
           />
         </div>
 
-        {/* Row 2: Peak Hours Summary (Full Width) */}
-        <div className="col-span-12">
+        {/* Row 3: Time Patterns (Paired for space efficiency) */}
+        <div className="col-span-12 lg:col-span-6">
           <PeakHoursSummary
             peakHours={operationsMetrics.peakHours}
-            dateWindow={dateWindow}
-          />
-        </div>
-
-        {/* Row 3: Wash vs Dry Chart + Day of Week Chart */}
-        <div className="col-span-12 lg:col-span-6">
-          <WashVsDryChart
-            washVsDry={operationsMetrics.washVsDry}
             dateWindow={dateWindow}
           />
         </div>
@@ -156,16 +175,6 @@ const Operations = ({ data }) => {
             dayPatterns={operationsMetrics.dayPatterns}
             dateFilter={dateFilter}
             dateWindow={dateWindow}
-          />
-        </div>
-
-        {/* Row 4: Machine Performance Table (Full Width) */}
-        <div className="col-span-12">
-          <MachinePerformanceTable
-            machinePerformance={operationsMetrics.machinePerformance}
-            dateFilter={dateFilter}
-            dateWindow={dateWindow}
-            revenueBreakdown={operationsMetrics.revenueBreakdown}
           />
         </div>
       </div>

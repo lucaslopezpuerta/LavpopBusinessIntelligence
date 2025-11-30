@@ -10,9 +10,9 @@
 // v1.0 (2025-11-23): Initial implementation
 
 import React from 'react';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
 import { formatCurrency } from '../utils/numberUtils';
-import InsightBox from './InsightBox';
+import InsightBox from './ui/InsightBox'; // Unified component with both single and array API
 
 const RFMScatterPlot = ({ data }) => {
     if (!data || data.length === 0) return null;
@@ -111,6 +111,13 @@ const RFMScatterPlot = ({ data }) => {
                             stroke="#94a3b8"
                             fontSize={10}
                             tickFormatter={(val) => `R$${val}`}
+                        />
+                        {/* ZAxis controls bubble size based on frequency (r = transactions count) */}
+                        <ZAxis
+                            type="number"
+                            dataKey="r"
+                            range={[40, 400]}
+                            name="Frequência"
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
 

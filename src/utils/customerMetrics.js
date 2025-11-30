@@ -9,7 +9,7 @@
 // ✅ Intelligence Hub analytics functions (v2.2.0 - 2025-11-23)
 //     - getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend
 
-import { parseBrDate } from './dateUtils';
+import { parseBrDate, formatDate } from './dateUtils';
 
 /**
  * Parse Brazilian number format (handles comma as decimal separator)
@@ -324,6 +324,13 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
     }
   });
 
+  // MEMORY OPTIMIZATION: Delete dates array after processing
+  // We've already extracted firstVisit, lastVisit, avgDaysBetween, and daysSinceLastVisit
+  // The raw dates array is no longer needed and can consume significant memory
+  Object.values(customers).forEach(customer => {
+    delete customer.dates;
+  });
+
   // Aggregate metrics
   const allCustomers = Object.values(customers);
   const activeCustomers = allCustomers.filter(c => c.riskLevel !== 'Lost');
@@ -484,27 +491,29 @@ export function getRetentionCohorts(salesData) {
     const targetDate = new Date(now);
     targetDate.setDate(targetDate.getDate() - lookbackDays);
 
-    // Window to check for return: Target Date -> Target Date + 30 days
-    const windowEnd = new Date(targetDate);
-    windowEnd.setDate(windowEnd.getDate() + 30);
-
-    // Tolerance for "Active at Target Date": Target Date +/- 15 days
+    // Window to check for return: starts AFTER active window ends
+    // Active window: targetDate - 15 days to targetDate (not overlapping with return window)
     const activeStart = new Date(targetDate);
     activeStart.setDate(activeStart.getDate() - 15);
-    const activeEnd = new Date(targetDate);
-    activeEnd.setDate(activeEnd.getDate() + 15);
+    const activeEnd = new Date(targetDate); // End at target date, not +15 (fixes overlap)
+
+    // Return window: day after targetDate to targetDate + 30 days
+    const returnStart = new Date(targetDate);
+    returnStart.setDate(returnStart.getDate() + 1); // Start day after target
+    const returnEnd = new Date(targetDate);
+    returnEnd.setDate(returnEnd.getDate() + 30);
 
     let eligible = 0;
     let returned = 0;
 
     Object.values(customerVisits).forEach(visits => {
-      // Was customer active around the target date?
+      // Was customer active in the window BEFORE target date?
       const wasActive = visits.some(d => d >= activeStart && d <= activeEnd);
 
       if (wasActive) {
         eligible++;
-        // Did they return AFTER the target date (within 30 days)?
-        const didReturn = visits.some(d => d > targetDate && d <= windowEnd);
+        // Did they return in the non-overlapping window AFTER the target date?
+        const didReturn = visits.some(d => d >= returnStart && d <= returnEnd);
         if (didReturn) returned++;
       }
     });
@@ -534,7 +543,8 @@ export function getAcquisitionTrend(customers, days = 30) {
   for (let i = 0; i <= days; i++) {
     const d = new Date(startDate);
     d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Use formatDate for consistent local-timezone date keys
+    const dateStr = formatDate(d);
     dailyCounts[dateStr] = {
       date: dateStr,
       displayDate: `${d.getDate()}/${d.getMonth() + 1}`,
@@ -545,7 +555,8 @@ export function getAcquisitionTrend(customers, days = 30) {
   // Count new customers
   customers.forEach(c => {
     if (c.firstVisit && c.firstVisit >= startDate) {
-      const dateStr = c.firstVisit.toISOString().split('T')[0];
+      // Use formatDate for consistent local-timezone date keys
+      const dateStr = formatDate(c.firstVisit);
       if (dailyCounts[dateStr]) {
         dailyCounts[dateStr].count++;
       }

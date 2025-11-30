@@ -1,8 +1,14 @@
-// Transaction Parser v1.1 - Shared Utility
+// Transaction Parser v1.2 - Shared Utility
 // Handles all transaction types with proper cashback calculation
 // Used by: businessMetrics.js, operationsMetrics.js, customerMetrics.js
+//
+// CHANGELOG:
+// v1.2 (2025-11-30): Fixed timezone consistency
+//   - Uses formatDate from dateUtils for consistent local-timezone date keys
+//   - Avoids toISOString() which returns UTC and can cause day boundary issues
+// v1.1: Initial version with cashback calculation
 
-import { parseBrDate } from './dateUtils';
+import { parseBrDate, formatDate } from './dateUtils';
 
 // CASHBACK CONFIGURATION
 const CASHBACK_RATE = 0.075; // 7.5%
@@ -111,13 +117,11 @@ export function parseSalesRecords(salesData) {
     }
     
     const machineInfo = countMachines(machineStr);
-    
-    // Create dateStr in LOCAL timezone (for debugging/grouping)
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-    
+
+    // Use formatDate for consistent LOCAL timezone date keys
+    // This avoids toISOString() which returns UTC and can cause day boundary issues
+    const dateStr = formatDate(date);
+
     records.push({
       date,
       dateStr,

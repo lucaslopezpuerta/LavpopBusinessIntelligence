@@ -268,7 +268,7 @@ const Intelligence = ({ data }) => {
                     {healthScore.breakdown && Object.entries(healthScore.breakdown).map(([key, score]) => (
                       <div key={key} className="text-center px-3">
                         <p className="text-lg font-bold text-gray-900 dark:text-white">
-                          {(score * 10).toFixed(0)}
+                          {score.toFixed(1)}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-slate-400 capitalize">
                           {key === 'profitability' ? 'Lucro' :

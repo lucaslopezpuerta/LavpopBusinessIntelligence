@@ -40,13 +40,32 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
     }
   }, [data]);
 
-  const metrics = useMemo(() => {
+  // Split memoization for better performance
+  // Each calculation only recalculates when its specific dependencies change
+  const businessMetricsCalc = useMemo(() => {
     if (!salesData.length) return null;
-    const business = calculateBusinessMetrics(salesData);
-    const customers = calculateCustomerMetrics(salesData, rfmData, customerData);
-    const operations = calculateOperationsMetrics(salesData);
-    return { business, customers, operations };
+    return calculateBusinessMetrics(salesData);
+  }, [salesData]);
+
+  const customerMetricsCalc = useMemo(() => {
+    if (!salesData.length) return null;
+    return calculateCustomerMetrics(salesData, rfmData, customerData);
   }, [salesData, rfmData, customerData]);
+
+  const operationsMetricsCalc = useMemo(() => {
+    if (!salesData.length) return null;
+    return calculateOperationsMetrics(salesData);
+  }, [salesData]);
+
+  // Combined metrics object for backwards compatibility
+  const metrics = useMemo(() => {
+    if (!businessMetricsCalc) return null;
+    return {
+      business: businessMetricsCalc,
+      customers: customerMetricsCalc,
+      operations: operationsMetricsCalc
+    };
+  }, [businessMetricsCalc, customerMetricsCalc, operationsMetricsCalc]);
 
   // Handle tab navigation from drill-downs
   const handleTabChange = (tabId) => {

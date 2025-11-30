@@ -22,13 +22,45 @@
 import { parseSalesRecords, filterWithServices, parseBrNumber } from './transactionParser';
 import { getDateWindows } from './dateWindows';
 
-const BUSINESS_PARAMS = {
+// UNIFIED BUSINESS PARAMS - Single source of truth
+// Export for use in other modules (OperationsKPICards, businessMetrics)
+export const BUSINESS_PARAMS = {
   TOTAL_WASHERS: 3,
   TOTAL_DRYERS: 5,
-  OPERATING_HOURS: { start: 8, end: 23 }, // 8 AM to 11 PM
+  OPERATING_HOURS: { start: 8, end: 23 }, // 8 AM to 11 PM (15 hours)
   WASHER_CYCLE_MINUTES: 30,
   DRYER_CYCLE_MINUTES: 45,
-  PEAK_HOURS: { start: 14, end: 20 } // 2 PM to 8 PM
+  PEAK_HOURS: { start: 14, end: 20 }, // 2 PM to 8 PM
+
+  // Efficiency factor accounts for realistic idle time between cycles
+  // 0.80 = 20% idle time (customer transitions, setup, breaks)
+  // This aligns utilization % with displayed "realistic capacity"
+  EFFICIENCY_FACTOR: 0.80
+};
+
+// UNIFIED UTILIZATION THRESHOLDS - Single source of truth
+// Used by OperationsKPICards, PeakHoursSummary, and other components
+// These thresholds are for OVERALL utilization classification
+export const UTILIZATION_THRESHOLDS = {
+  excellent: 25,  // ≥25% = Excelente (green) - strong profitability
+  good: 15,       // ≥15% = Bom (teal) - healthy operation
+  fair: 10        // ≥10% = Razoável (amber), <10% = Baixo (red)
+};
+
+// HOURLY UTILIZATION THRESHOLDS - For peak hour analysis
+// Higher thresholds since we're measuring specific hours, not overall
+export const HOURLY_THRESHOLDS = {
+  critical: 50,   // ≥50% = Pico crítico - monitor for issues
+  high: 30,       // ≥30% = Alta demanda - check machines before
+  moderate: 15    // ≥15% = Fluxo moderado, <15% = Baixa demanda
+};
+
+// DAILY UTILIZATION THRESHOLDS - For day-of-week analysis
+// Higher thresholds because daily patterns aggregate across all hours
+export const DAILY_THRESHOLDS = {
+  excellent: 60,  // ≥60% = Excelente (green) - very busy day
+  good: 40,       // ≥40% = Bom (blue) - healthy day
+  fair: 25        // ≥25% = Razoável (amber), <25% = Baixo (red)
 };
 
 const DAYS_OF_WEEK = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -87,15 +119,18 @@ export function calculateOverallUtilization(salesData, dateFilter = 'currentWeek
   const peakOperatingMinutes = activeDays * peakHoursPerDay * 60;
   const offPeakOperatingMinutes = activeDays * offPeakHoursPerDay * 60;
   
-  // Calculate maximum possible cycles
-  const maxWashCycles = (totalOperatingMinutes / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_WASHERS;
-  const maxDryCycles = (totalOperatingMinutes / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_DRYERS;
-  
-  const maxPeakWashCycles = (peakOperatingMinutes / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_WASHERS;
-  const maxPeakDryCycles = (peakOperatingMinutes / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_DRYERS;
-  
-  const maxOffPeakWashCycles = (offPeakOperatingMinutes / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_WASHERS;
-  const maxOffPeakDryCycles = (offPeakOperatingMinutes / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_DRYERS;
+  // Calculate maximum possible cycles WITH EFFICIENCY FACTOR
+  // This gives realistic capacity (accounting for idle time between cycles)
+  const efficiencyFactor = BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+
+  const maxWashCycles = (totalOperatingMinutes / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_WASHERS * efficiencyFactor;
+  const maxDryCycles = (totalOperatingMinutes / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_DRYERS * efficiencyFactor;
+
+  const maxPeakWashCycles = (peakOperatingMinutes / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_WASHERS * efficiencyFactor;
+  const maxPeakDryCycles = (peakOperatingMinutes / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_DRYERS * efficiencyFactor;
+
+  const maxOffPeakWashCycles = (offPeakOperatingMinutes / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_WASHERS * efficiencyFactor;
+  const maxOffPeakDryCycles = (offPeakOperatingMinutes / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * BUSINESS_PARAMS.TOTAL_DRYERS * efficiencyFactor;
   
   // Calculate utilization percentages
   const washUtilization = (totalWash / maxWashCycles) * 100;
@@ -205,19 +240,28 @@ export function calculateHourlyPatterns(salesData, dateFilter = 'currentWeek') {
   
   const hoursArray = [];
   const operatingHoursPerDay = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
-  
+
+  // Calculate weights based on machine count (consistent with calculateOverallUtilization)
+  const totalMachinesHourly = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+  const washWeightHourly = BUSINESS_PARAMS.TOTAL_WASHERS / totalMachinesHourly;
+  const dryWeightHourly = BUSINESS_PARAMS.TOTAL_DRYERS / totalMachinesHourly;
+
   for (let hour = BUSINESS_PARAMS.OPERATING_HOURS.start; hour < BUSINESS_PARAMS.OPERATING_HOURS.end; hour++) {
     const uniqueDays = hourCounts[hour].size || 1;
     const avgWash = hourlyData[hour].wash / uniqueDays;
     const avgDry = hourlyData[hour].dry / uniqueDays;
     const avgTotal = hourlyData[hour].total / uniqueDays;
-    
-    const washCapacityPerHour = BUSINESS_PARAMS.TOTAL_WASHERS * 2;
-    const dryCapacityPerHour = BUSINESS_PARAMS.TOTAL_DRYERS * (60 / 45);
-    
+
+    // Apply efficiency factor for realistic hourly capacity
+    const efficiencyFactor = BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+    const washCapacityPerHour = BUSINESS_PARAMS.TOTAL_WASHERS * 2 * efficiencyFactor;
+    const dryCapacityPerHour = BUSINESS_PARAMS.TOTAL_DRYERS * (60 / 45) * efficiencyFactor;
+
     const washUtil = (avgWash / washCapacityPerHour) * 100;
     const dryUtil = (avgDry / dryCapacityPerHour) * 100;
-    
+    // Use weighted average based on machine count (3 washers vs 5 dryers)
+    const totalUtil = (washUtil * washWeightHourly) + (dryUtil * dryWeightHourly);
+
     hoursArray.push({
       hour,
       hourLabel: `${hour}:00`,
@@ -227,7 +271,7 @@ export function calculateHourlyPatterns(salesData, dateFilter = 'currentWeek') {
       avgRevenue: hourlyData[hour].revenue / uniqueDays,
       washUtilization: Math.round(washUtil * 10) / 10,
       dryUtilization: Math.round(dryUtil * 10) / 10,
-      totalUtilization: Math.round(((washUtil + dryUtil) / 2) * 10) / 10,
+      totalUtilization: Math.round(totalUtil * 10) / 10,
       daysInSample: uniqueDays
     });
   }
@@ -304,18 +348,26 @@ export function calculateDayOfWeekPatterns(salesData, dateFilter = 'currentWeek'
   const daysArray = [];
   const operatingHoursPerDay = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
   
+  // Calculate weights based on machine count (consistent with calculateOverallUtilization)
+  const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+  const washWeight = BUSINESS_PARAMS.TOTAL_WASHERS / totalMachines;
+  const dryWeight = BUSINESS_PARAMS.TOTAL_DRYERS / totalMachines;
+
   for (let day = 0; day < 7; day++) {
     const uniqueDays = dayCounts[day].size || 1;
     const avgWash = dayData[day].wash / uniqueDays;
     const avgDry = dayData[day].dry / uniqueDays;
     const avgTotal = dayData[day].total / uniqueDays;
-    
-    const washCapacityPerDay = BUSINESS_PARAMS.TOTAL_WASHERS * 2 * operatingHoursPerDay;
-    const dryCapacityPerDay = BUSINESS_PARAMS.TOTAL_DRYERS * (60 / 45) * operatingHoursPerDay;
-    
+
+    // Apply efficiency factor for realistic daily capacity
+    const efficiencyFactor = BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+    const washCapacityPerDay = BUSINESS_PARAMS.TOTAL_WASHERS * 2 * operatingHoursPerDay * efficiencyFactor;
+    const dryCapacityPerDay = BUSINESS_PARAMS.TOTAL_DRYERS * (60 / 45) * operatingHoursPerDay * efficiencyFactor;
+
     const washUtil = (avgWash / washCapacityPerDay) * 100;
     const dryUtil = (avgDry / dryCapacityPerDay) * 100;
-    const totalUtilization = (washUtil + dryUtil) / 2;
+    // Use weighted average based on machine count (3 washers vs 5 dryers)
+    const totalUtilization = (washUtil * washWeight) + (dryUtil * dryWeight);
     
     daysArray.push({
       day,

@@ -13,7 +13,7 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import InsightBox from './InsightBox';
+import InsightBox from './ui/InsightBox';
 
 const NewClientsChart = ({ data }) => {
   // Memoize stats to prevent recalculation on every render

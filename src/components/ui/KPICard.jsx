@@ -117,7 +117,7 @@ const KPICard = ({
     border border-gray-100 dark:border-slate-700
     shadow-soft
     transition-all duration-200
-    ${onClick ? 'cursor-pointer hover:shadow-soft-lg hover:border-gray-200 dark:hover:border-slate-600 active:scale-[0.98]' : ''}
+    ${onClick ? 'cursor-pointer hover:shadow-soft-lg hover:border-gray-200 dark:hover:border-slate-600 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2 dark:focus:ring-offset-slate-800' : ''}
     ${className}
   `.trim();
 

@@ -1,7 +1,16 @@
-// DayOfWeekChart Component v3.1.0
+// DayOfWeekChart Component v3.3.0
 // Day-of-week utilization patterns with dual-axis chart
 //
 // CHANGELOG:
+// v3.3.0 (2025-11-30): Visual polish
+//   - Bar colors now highlight best (green) and worst (red) days
+//   - Fixed Y-axis formatter: shows "R$ 353" for values < 1000, "R$ 1.4k" for >= 1000
+// v3.2.0 (2025-11-30): Design System audit fixes + threshold unification
+//   - Imported DAILY_THRESHOLDS from operationsMetrics.js (single source of truth)
+//   - Fixed fontSize: 11 → 12 in all Recharts configs (Design System minimum)
+//   - Fixed text-[10px] → text-xs in summary cards
+//   - Fixed mobile padding: p-6 → px-3 py-4 sm:p-6
+//   - Removed redundant insight box (summary cards already show best/worst days)
 // v3.1.0 (2025-11-30): Chart memoization for performance
 //   - Moved getColor outside component (pure function)
 //   - Memoized chartData, sortedDays, bestDay, worstDay
@@ -15,22 +24,19 @@
 //   - Improved responsive design
 //   - Aligned with Design System v3.0
 // v2.0 (2025-11-15): Unified date filtering
-//   - Removed individual period dropdown
-//   - Now receives dateFilter and dateWindow props from parent
-//   - Displays explicit date range in subtitle
-//   - Synchronized with Operations tab DateRangeSelector
 // v1.0 (Previous): Initial implementation with local period control
 
 import React, { useMemo, useCallback } from 'react';
-import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Calendar, Droplet, Flame, Lightbulb } from 'lucide-react';
+import { ComposedChart, Bar, Cell, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Calendar, Droplet, Flame } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
+import { DAILY_THRESHOLDS } from '../utils/operationsMetrics';
 
-// Pure function moved outside component for stability
+// Pure function using unified DAILY_THRESHOLDS
 const getColor = (utilization) => {
-  if (utilization >= 60) return '#10b981'; // emerald-500
-  if (utilization >= 40) return '#1a5a8e'; // lavpop-blue
-  if (utilization >= 25) return '#f59e0b'; // amber-500
+  if (utilization >= DAILY_THRESHOLDS.excellent) return '#10b981'; // emerald-500
+  if (utilization >= DAILY_THRESHOLDS.good) return '#1a5a8e'; // lavpop-blue
+  if (utilization >= DAILY_THRESHOLDS.fair) return '#f59e0b'; // amber-500
   return '#dc2626'; // red-600
 };
 
@@ -96,16 +102,16 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
 
   if (!dayPatterns || dayPatterns.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
+      <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-4 sm:p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
         Loading day of week patterns...
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
       {/* Header with Date Range Display */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-center gap-2 mb-1">
           <Calendar className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">
@@ -130,21 +136,21 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
             {/* Left Y-Axis: Revenue */}
             <YAxis
               yAxisId="left"
-              tick={{ fontSize: 11, fill: '#6b7280' }}
+              tick={{ fontSize: 12, fill: '#6b7280' }}
               axisLine={{ stroke: '#e5e7eb' }}
-              tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+              tickFormatter={(value) => value >= 1000 ? `R$ ${(value / 1000).toFixed(1)}k` : `R$ ${Math.round(value)}`}
               label={{
                 value: 'Receita (R$)',
                 angle: -90,
                 position: 'insideLeft',
-                style: { fontSize: 11, fill: '#6b7280' }
+                style: { fontSize: 12, fill: '#6b7280' }
               }}
             />
             {/* Right Y-Axis: Utilization */}
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: 11, fill: '#6b7280' }}
+              tick={{ fontSize: 12, fill: '#6b7280' }}
               axisLine={{ stroke: '#e5e7eb' }}
               domain={[0, 100]}
               tickFormatter={(value) => `${value}%`}
@@ -152,7 +158,7 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
                 value: 'Utilização (%)',
                 angle: 90,
                 position: 'insideRight',
-                style: { fontSize: 11, fill: '#6b7280' }
+                style: { fontSize: 12, fill: '#6b7280' }
               }}
             />
             <Tooltip content={<CustomTooltip />} />
@@ -164,9 +170,15 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
               yAxisId="left"
               dataKey="revenue"
               name="Receita"
-              fill="#1a5a8e"
               radius={[8, 8, 0, 0]}
-            />
+            >
+              {chartData.map((entry, index) => {
+                let color = '#1a5a8e'; // default lavpop-blue
+                if (entry.name === bestDay?.dayShort) color = '#10b981'; // emerald-500 green
+                if (entry.name === worstDay?.dayShort) color = '#dc2626'; // red-600
+                return <Cell key={`cell-${index}`} fill={color} />;
+              })}
+            </Bar>
             <Line
               yAxisId="right"
               type="monotone"
@@ -181,10 +193,10 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Best Day */}
         <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-          <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+          <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
             Melhor Dia
           </div>
           <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mb-2">
@@ -208,7 +220,7 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
 
         {/* Worst Day */}
         <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-          <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+          <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
             Menor Movimento
           </div>
           <div className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">
@@ -228,17 +240,6 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
               {formatCurrency(worstDay.avgRevenue)}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Self-Service Recommendation */}
-      <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
-        <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
-          <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-          <span>
-            <strong className="text-slate-900 dark:text-white">Recomendação:</strong> Em {bestDay.dayName}, verifique máquinas antes do pico.
-            Em {worstDay.dayName}, agende manutenção preventiva ou oferece promoções para aumentar fluxo.
-          </span>
         </div>
       </div>
     </div>
