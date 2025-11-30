@@ -6,7 +6,9 @@
 
 import React from 'react';
 import { DollarSign, Activity, TrendingUp, Gauge } from 'lucide-react';
+import { formatCurrency, formatNumber, formatPercent } from '../utils/formatters';
 
+// Theme colors for inline styles
 const COLORS = {
   primary: '#1a5a8e',
   accent: '#55b03b',
@@ -18,25 +20,6 @@ const WeeklyPerformanceCards = ({ businessMetrics }) => {
 
   // ✅ FIXED: Using previousWeekly (not previousWeek)
   const { previousWeekly = {}, weekOverWeek = {}, windows = {} } = businessMetrics;
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value || 0);
-  };
-
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat('pt-BR').format(value || 0);
-  };
-
-  const formatPercent = (value) => {
-    if (value === null || value === undefined || isNaN(value)) return '-';
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}%`;
-  };
 
   const getChangeColor = (value) => {
     if (value === null || value === undefined || isNaN(value)) return COLORS.gray;

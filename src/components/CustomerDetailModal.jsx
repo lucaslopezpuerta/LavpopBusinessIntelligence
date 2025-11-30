@@ -1,13 +1,21 @@
-// CustomerDetailModal.jsx v5.1 - UNIFIED RISK LABELS
+// CustomerDetailModal.jsx v5.4 - ACCESSIBILITY IMPROVEMENTS
 // ✅ Follows Design System v2.0 strictly
 // ✅ Simplified header (no gradient)
 // ✅ More compact layout
 // ✅ Better mobile responsiveness
 // ✅ Cleaner card designs
 // ✅ Optimized spacing
-// ✅ NEW v5.1: Uses unified RISK_LABELS from customerMetrics.js
+// ✅ Uses unified RISK_LABELS from customerMetrics.js
+// ✅ Focus-visible states for keyboard users
+// ✅ WCAG AA color contrast compliance
 //
 // CHANGELOG:
+// v5.4 (2025-11-30): Color contrast fix
+//   - Changed text-slate-500 to text-slate-600 for WCAG AA compliance
+// v5.3 (2025-11-30): Accessibility improvements
+//   - Added focus-visible ring to all buttons
+//   - Added aria-labels for icon-only buttons
+// v5.2 (2025-11-30): Centralized formatters
 // v5.1 (2025-11-24): Unified risk labels
 //   - Imports RISK_LABELS from customerMetrics.js
 //   - Consistent Portuguese translations across all components
@@ -31,6 +39,7 @@ import {
 } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { RISK_LABELS } from '../utils/customerMetrics';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 // ✅ UNIFIED: Use RISK_LABELS from customerMetrics.js
 const getRiskTailwind = (riskLevel) => {
@@ -71,7 +80,7 @@ const MachineDisplay = ({ machineStr }) => {
 
   if (machines.length === 0) {
     return (
-      <span className="text-xs text-slate-500 dark:text-slate-400">-</span>
+      <span className="text-xs text-slate-600 dark:text-slate-400">-</span>
     );
   }
 
@@ -120,24 +129,6 @@ const CouponBadge = ({ couponCode }) => {
   );
 };
 
-const formatCurrency = (value) => {
-  if (isNaN(value)) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-};
-
-const formatDate = (date) => {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-    return 'Data inválida';
-  }
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-};
 
 const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   // State for managing which section is expanded (only one at a time)
@@ -257,9 +248,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 sm:p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-800"
+              aria-label="Fechar modal"
             >
-              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -276,12 +268,14 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               shadow-md
               active:scale-[0.98]
               transition-all duration-200
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
               ${customer.phone
-                ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white hover:shadow-blue-500/25'
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white hover:shadow-blue-500/25 focus-visible:ring-blue-400'
                 : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed'}
             `}
+            aria-label={`Ligar para ${customer.name || 'cliente'}`}
           >
-            <Phone className="w-3.5 h-3.5" />
+            <Phone className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Ligar</span>
           </button>
           <button
@@ -294,12 +288,14 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
               shadow-md
               active:scale-[0.98]
               transition-all duration-200
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
               ${customer.phone
-                ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white hover:shadow-green-500/25'
+                ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white hover:shadow-green-500/25 focus-visible:ring-green-400'
                 : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed'}
             `}
+            aria-label={`Enviar WhatsApp para ${customer.name || 'cliente'}`}
           >
-            <MessageCircle className="w-3.5 h-3.5" />
+            <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">WhatsApp</span>
           </button>
         </div>
@@ -310,7 +306,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           <div className="border-b border-slate-200 dark:border-slate-700">
             <button
               onClick={() => toggleSection('financials')}
-              className="w-full flex items-center justify-between px-4 sm:px-6 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors lg:cursor-default"
+              className="w-full flex items-center justify-between px-4 sm:px-6 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors lg:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
             >
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -360,7 +356,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
           <div className="border-b border-slate-200 dark:border-slate-700">
             <button
               onClick={() => toggleSection('behaviour')}
-              className="w-full flex items-center justify-between px-4 sm:px-6 py-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors lg:cursor-default"
+              className="w-full flex items-center justify-between px-4 sm:px-6 py-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors lg:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-500"
             >
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -412,7 +408,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         <div className="border-b border-slate-200 dark:border-slate-700 lg:border-r">
           <button
             onClick={() => toggleSection('preferences')}
-            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50 lg:py-2"
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors sm:px-6 lg:cursor-default lg:hover:bg-slate-50 lg:dark:hover:bg-slate-800/50 lg:py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
           >
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-lavpop-blue dark:text-blue-400" />
@@ -428,7 +424,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
             <div className="px-4 py-3 sm:px-6 lg:py-2">
               <div className="flex gap-6 justify-center">
                 <div className="text-center">
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <div className="text-[10px] text-slate-600 dark:text-slate-400">
                     Lavagens
                   </div>
                   <div className="text-lg font-bold text-lavpop-blue dark:text-blue-300">
@@ -436,7 +432,7 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <div className="text-[10px] text-slate-600 dark:text-slate-400">
                     Secagens
                   </div>
                   <div className="text-lg font-bold text-lavpop-green dark:text-green-300">

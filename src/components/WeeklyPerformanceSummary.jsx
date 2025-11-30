@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
+import { formatCurrency, formatPercent } from '../utils/formatters';
 
 const COLORS = {
   primary: '#10306B',
@@ -38,20 +39,6 @@ const WeeklyPerformanceSummary = ({ businessMetrics }) => {
     );
   }
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  const formatPercent = (value) => {
-    if (value === null || value === undefined || isNaN(value)) return 'N/A';
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}%`;
-  };
 
   const metrics = [
     {

@@ -1,7 +1,11 @@
-// WashVsDryChart Component v2.0.0
+// WashVsDryChart Component v2.1.0
 // Comparison of wash vs dry services and revenue
 //
 // CHANGELOG:
+// v2.1.0 (2025-11-30): Chart memoization for performance
+//   - Memoized servicesData and revenueData arrays
+//   - Memoized CustomTooltip component
+//   - Prevents unnecessary chart repaints
 // v2.0.0 (2025-11-26): Design System alignment
 //   - Replaced all inline styles with Tailwind CSS
 //   - Added dark mode support throughout
@@ -16,42 +20,32 @@
 //   - Synchronized with Operations tab DateRangeSelector
 // v1.0 (Previous): Initial implementation
 
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Droplet, Flame, Activity, Lightbulb } from 'lucide-react';
+import { formatCurrency } from '../utils/formatters';
 
 const WashVsDryChart = ({ washVsDry, dateWindow }) => {
-  if (!washVsDry) {
-    return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
-        Loading wash vs dry comparison...
-      </div>
-    );
-  }
+  // Memoize chart data arrays to prevent new references on every render
+  const { servicesData, revenueData } = useMemo(() => {
+    if (!washVsDry) {
+      return { servicesData: [], revenueData: [] };
+    }
+    const { wash, dry } = washVsDry;
+    return {
+      servicesData: [
+        { name: 'Lavagens', value: wash.services, color: '#1a5a8e' }, // lavpop-blue
+        { name: 'Secagens', value: dry.services, color: '#f59e0b' }  // amber-500
+      ],
+      revenueData: [
+        { name: 'Lavagens', value: wash.revenue, color: '#1a5a8e' }, // lavpop-blue
+        { name: 'Secagens', value: dry.revenue, color: '#f59e0b' }  // amber-500
+      ]
+    };
+  }, [washVsDry]);
 
-  const { wash, dry, total } = washVsDry;
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  // Data for charts - using theme colors
-  const servicesData = [
-    { name: 'Lavagens', value: wash.services, color: '#1a5a8e' }, // lavpop-blue
-    { name: 'Secagens', value: dry.services, color: '#f59e0b' }  // amber-500
-  ];
-
-  const revenueData = [
-    { name: 'Lavagens', value: wash.revenue, color: '#1a5a8e' }, // lavpop-blue
-    { name: 'Secagens', value: dry.revenue, color: '#f59e0b' }  // amber-500
-  ];
-
-  const CustomTooltip = ({ active, payload, label }) => {
+  // Memoize CustomTooltip to prevent recreation on every render
+  const CustomTooltip = useCallback(({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl">
@@ -65,7 +59,17 @@ const WashVsDryChart = ({ washVsDry, dateWindow }) => {
       );
     }
     return null;
-  };
+  }, []);
+
+  if (!washVsDry) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
+        Loading wash vs dry comparison...
+      </div>
+    );
+  }
+
+  const { wash, dry, total } = washVsDry;
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">

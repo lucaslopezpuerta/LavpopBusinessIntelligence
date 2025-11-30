@@ -9,6 +9,7 @@
 
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
+import { formatCurrency, formatNumber } from '../utils/formatters';
 
 const CurrentWeekBanner = ({ businessMetrics }) => {
   if (!businessMetrics?.currentWeek) {
@@ -17,19 +18,6 @@ const CurrentWeekBanner = ({ businessMetrics }) => {
 
   const { currentWeek } = businessMetrics;
   const { window, projection } = currentWeek;
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat('pt-BR').format(value);
-  };
 
   const getTrendIcon = () => {
     if (!projection.canProject) return null;

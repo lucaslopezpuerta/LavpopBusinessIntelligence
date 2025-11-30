@@ -1,4 +1,13 @@
-// KPICards.jsx v6.3 - FIXED SYNTAX & TOOLTIPS
+// KPICards.jsx v6.3 - DEPRECATED
+// ⚠️ DEPRECATED: This component has been replaced by:
+//   - KPICardsGrid.jsx (main component)
+//   - ui/HeroKPICard.jsx (primary metrics)
+//   - ui/SecondaryKPICard.jsx (secondary metrics)
+//
+// This file is kept for reference only. Do not use in new code.
+// Delete after confirming all features work in new components.
+//
+// ORIGINAL DESCRIPTION:
 // ✅ Premium gradients and depth
 // ✅ Count-up animations with react-countup
 // ✅ Card lift hover effects

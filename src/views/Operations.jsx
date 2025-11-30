@@ -1,4 +1,4 @@
-// OPERATIONS TAB V4.0.0
+// OPERATIONS TAB V4.1.0
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
@@ -7,6 +7,9 @@
 // ✅ Responsive grid layout
 //
 // CHANGELOG:
+// v4.1 (2025-11-30): Production cleanup
+//   - Removed all console.log statements
+//   - Clean error handling without debug output
 // v4.0 (2025-11-26): Design System alignment
 //   - Replaced all inline styles with Tailwind CSS
 //   - Added dark mode support
@@ -45,74 +48,40 @@ const Operations = ({ data }) => {
   );
 
   const businessMetrics = useMemo(() => {
-    if (!data?.sales) {
-      console.log('No sales data for operations');
-      return null;
-    }
-    console.log('Calculating business metrics for operations, sales rows:', data.sales.length);
+    if (!data?.sales) return null;
     try {
-      const result = calculateBusinessMetrics(data.sales);
-      console.log('✅ Business metrics (TIME-BASED UTIL):', result);
-      return result;
-    } catch (err) {
-      console.error('Business metrics error:', err);
+      return calculateBusinessMetrics(data.sales);
+    } catch {
       return null;
     }
   }, [data?.sales]);
 
   const operationsMetrics = useMemo(() => {
-    if (!data?.sales) {
-      console.log('No sales data for operations metrics');
-      return null;
-    }
-    console.log('🔄 RECALCULATING operations metrics, sales rows:', data.sales.length, 'filter:', dateFilter);
-    console.log('📅 Date window:', {
-      start: dateWindow.start.toLocaleDateString('pt-BR'),
-      end: dateWindow.end.toLocaleDateString('pt-BR'),
-      label: dateWindow.label
-    });
+    if (!data?.sales) return null;
     try {
-      const result = calculateOperationsMetrics(data.sales, dateFilter);
-      console.log('✅ Operations metrics (v3.2):', {
-        period: result.period,
-        machineCount: result.machinePerformance?.length,
-        revenueBreakdown: result.revenueBreakdown
-      });
-      return result;
-    } catch (err) {
-      console.error('❌ Operations metrics error:', err);
+      return calculateOperationsMetrics(data.sales, dateFilter);
+    } catch {
       return null;
     }
   }, [data?.sales, dateFilter, dateWindow]);
 
   // Calculate previous period metrics for comparison
   const previousWeekMetrics = useMemo(() => {
-    if (!data?.sales || dateFilter === 'allTime') {
-      return null; // No previous period for all-time view
-    }
-    
+    if (!data?.sales || dateFilter === 'allTime') return null;
+
     // Determine which previous period to compare against
-    let comparisonFilter;
-    switch(dateFilter) {
-      case 'currentWeek':
-        comparisonFilter = 'lastWeek'; // Compare current week to last week
-        break;
-      case 'lastWeek':
-        comparisonFilter = 'twoWeeksAgo'; // Compare last week to week before
-        break;
-      case 'last4Weeks':
-        comparisonFilter = 'previous4Weeks'; // Compare last 4 weeks to previous 4 weeks
-        break;
-      default:
-        return null;
-    }
-    
+    const comparisonFilterMap = {
+      currentWeek: 'lastWeek',
+      lastWeek: 'twoWeeksAgo',
+      last4Weeks: 'previous4Weeks',
+    };
+
+    const comparisonFilter = comparisonFilterMap[dateFilter];
+    if (!comparisonFilter) return null;
+
     try {
-      console.log(`📊 Calculating comparison period: ${comparisonFilter} for dateFilter: ${dateFilter}`);
-      const result = calculateOperationsMetrics(data.sales, comparisonFilter);
-      return result;
-    } catch (err) {
-      console.error('❌ Previous period metrics error:', err);
+      return calculateOperationsMetrics(data.sales, comparisonFilter);
+    } catch {
       return null;
     }
   }, [data?.sales, dateFilter]);

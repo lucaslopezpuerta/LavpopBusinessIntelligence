@@ -1,8 +1,10 @@
-// CustomerProfileModal.jsx v1.1 - CUSTOMER PROFILE & CRM MODAL
+// CustomerProfileModal.jsx v1.2 - CUSTOMER PROFILE & CRM MODAL
 // Comprehensive customer profile modal for Customer Directory
 // Separate from Dashboard's CustomerDetailModal
 //
 // CHANGELOG:
+// v1.2 (2025-11-30): Performance improvements
+//   - Replaced window resize listener with useIsMobile hook (matchMedia)
 // v1.1 (2025-11-29): Design System v3.0 compliance
 //   - Replaced emojis with lucide-react icons in communication log
 //   - Removed emojis from select options
@@ -35,6 +37,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
 import { RISK_LABELS } from '../utils/customerMetrics';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
@@ -45,7 +48,8 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     });
     const [newNote, setNewNote] = useState('');
     const [noteMethod, setNoteMethod] = useState('call');
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+    // Use matchMedia hook instead of resize listener
+    const isMobile = useMediaQuery('(max-width: 639px)');
 
     // Save communication log to localStorage
     const saveCommunicationLog = (log) => {
@@ -68,13 +72,6 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         saveCommunicationLog(updated);
         setNewNote('');
     };
-
-    // Handle window resize for mobile detection
-    React.useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 640);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     // Get risk configuration
     const riskConfig = RISK_LABELS[customer.riskLevel] || RISK_LABELS['Lost'];

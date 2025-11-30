@@ -1,7 +1,10 @@
-// MachinePerformanceTable Component v4.0.0
+// MachinePerformanceTable Component v4.1.0
 // Machine-level performance tracking with revenue reconciliation
 //
 // CHANGELOG:
+// v4.1.0 (2025-11-30): Accessibility & production cleanup
+//   - Removed console.log statements
+//   - Added scope="col" to all table headers
 // v4.0.0 (2025-11-26): Design System alignment
 //   - Replaced all inline styles with Tailwind CSS
 //   - Added dark mode support throughout
@@ -22,18 +25,11 @@
 // v2.0 (Previous): Added revenue breakdown display
 // v1.0 (Previous): Initial implementation with local period control
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Droplet, Flame, Activity, TrendingUp, Info, DollarSign, Lightbulb } from 'lucide-react';
+import { formatCurrency } from '../utils/formatters';
 
 const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek', dateWindow, revenueBreakdown }) => {
-  useEffect(() => {
-    console.log('🎯 MachinePerformanceTable received:', {
-      dateFilter,
-      machines: machinePerformance?.length,
-      revenueBreakdown
-    });
-  }, [dateFilter, machinePerformance, revenueBreakdown]);
-
   if (!machinePerformance || machinePerformance.length === 0) {
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
@@ -41,13 +37,6 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
       </div>
     );
   }
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
 
   // CLIENT-SIDE FILTERING: Exclude "Recarga" as backup
   const filteredMachines = machinePerformance.filter(m => {
@@ -169,19 +158,19 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-                  <th className="p-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Máquina
                   </th>
-                  <th className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Usos
                   </th>
-                  <th className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Receita
                   </th>
-                  <th className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     R$/Uso
                   </th>
-                  <th className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     vs Média
                   </th>
                 </tr>
@@ -210,19 +199,19 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
-                  <th className="p-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Máquina
                   </th>
-                  <th className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Usos
                   </th>
-                  <th className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Receita
                   </th>
-                  <th className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     R$/Uso
                   </th>
-                  <th className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th scope="col" className="p-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     vs Média
                   </th>
                 </tr>

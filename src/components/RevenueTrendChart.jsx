@@ -1,11 +1,17 @@
-// RevenueTrendChart_v2.0.jsx
+// RevenueTrendChart_v2.1.jsx
 // ✅ Replaced "Previous Period" and "Last Year" with daily wash/dry cycle counts
 // Shows: Gross Revenue, Net Revenue, Wash Cycles, Dry Cycles
+//
+// CHANGELOG:
+// v2.1 (2025-11-30): Chart memoization for performance
+//   - Memoized CustomTooltip component to prevent unnecessary repaints
+// v2.0: Previous implementation
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
+import { formatCurrency } from '../utils/formatters';
 
 const COLORS = {
   primary: '#10306B',
@@ -141,16 +147,8 @@ const RevenueTrendChart = ({ salesData }) => {
     return dailyData;
   }, [salesData]);
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  const CustomTooltip = ({ active, payload, label }) => {
+  // Memoize CustomTooltip to prevent recreation on every render
+  const CustomTooltip = useCallback(({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div style={{
@@ -160,7 +158,7 @@ const RevenueTrendChart = ({ salesData }) => {
           borderRadius: '8px',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}>
-          <p style={{ 
+          <p style={{
             margin: '0 0 8px 0',
             fontWeight: '600',
             color: COLORS.primary,
@@ -170,12 +168,12 @@ const RevenueTrendChart = ({ salesData }) => {
           </p>
           {payload.map((entry, index) => {
             const isRevenue = entry.dataKey.includes('Revenue');
-            const formattedValue = isRevenue 
+            const formattedValue = isRevenue
               ? formatCurrency(entry.value)
               : `${entry.value} cycles`;
-            
+
             return (
-              <p key={index} style={{ 
+              <p key={index} style={{
                 margin: '4px 0',
                 fontSize: '12px',
                 color: entry.color,
@@ -192,7 +190,7 @@ const RevenueTrendChart = ({ salesData }) => {
       );
     }
     return null;
-  };
+  }, []);
 
   return (
     <div style={{

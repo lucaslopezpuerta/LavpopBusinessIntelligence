@@ -1,7 +1,11 @@
-// DayOfWeekChart Component v3.0.0
+// DayOfWeekChart Component v3.1.0
 // Day-of-week utilization patterns with dual-axis chart
 //
 // CHANGELOG:
+// v3.1.0 (2025-11-30): Chart memoization for performance
+//   - Moved getColor outside component (pure function)
+//   - Memoized chartData, sortedDays, bestDay, worstDay
+//   - Memoized CustomTooltip component
 // v3.0.0 (2025-11-26): Design System alignment
 //   - Replaced all inline styles with Tailwind CSS
 //   - Added dark mode support throughout
@@ -17,58 +21,56 @@
 //   - Synchronized with Operations tab DateRangeSelector
 // v1.0 (Previous): Initial implementation with local period control
 
-import React, { useEffect } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Calendar, Droplet, Flame, Lightbulb } from 'lucide-react';
+import { formatCurrency } from '../utils/formatters';
+
+// Pure function moved outside component for stability
+const getColor = (utilization) => {
+  if (utilization >= 60) return '#10b981'; // emerald-500
+  if (utilization >= 40) return '#1a5a8e'; // lavpop-blue
+  if (utilization >= 25) return '#f59e0b'; // amber-500
+  return '#dc2626'; // red-600
+};
 
 const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow }) => {
-  useEffect(() => {
-    console.log('📊 DayOfWeekChart received dateFilter:', dateFilter, 'days:', dayPatterns?.length);
-  }, [dateFilter, dayPatterns]);
+  // Memoize chart data to prevent new object references on every render
+  const chartData = useMemo(() => {
+    if (!dayPatterns || dayPatterns.length === 0) return [];
+    return dayPatterns.map(day => ({
+      name: day.dayShort,
+      revenue: day.avgRevenue,
+      utilization: day.totalUtilization,
+      wash: day.avgWash,
+      dry: day.avgDry,
+      color: getColor(day.totalUtilization)
+    }));
+  }, [dayPatterns]);
 
-  if (!dayPatterns || dayPatterns.length === 0) {
-    return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
-        Loading day of week patterns...
-      </div>
-    );
-  }
+  // Memoize sorted days and best/worst calculations
+  const { sortedDays, bestDay, worstDay } = useMemo(() => {
+    if (!dayPatterns || dayPatterns.length === 0) {
+      return { sortedDays: [], bestDay: null, worstDay: null };
+    }
+    const sorted = [...dayPatterns].sort((a, b) => b.totalUtilization - a.totalUtilization);
+    return {
+      sortedDays: sorted,
+      bestDay: sorted[0],
+      worstDay: sorted[sorted.length - 1]
+    };
+  }, [dayPatterns]);
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  const getColor = (utilization) => {
-    if (utilization >= 60) return '#10b981'; // emerald-500
-    if (utilization >= 40) return '#1a5a8e'; // lavpop-blue
-    if (utilization >= 25) return '#f59e0b'; // amber-500
-    return '#dc2626'; // red-600
-  };
-
-  // Prepare data for dual-axis chart
-  const chartData = dayPatterns.map(day => ({
-    name: day.dayShort,
-    revenue: day.avgRevenue,
-    utilization: day.totalUtilization,
-    wash: day.avgWash,
-    dry: day.avgDry,
-    color: getColor(day.totalUtilization)
-  }));
-
-  const CustomTooltip = ({ active, payload }) => {
+  // Memoize CustomTooltip to prevent recreation on every render
+  const CustomTooltip = useCallback(({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const dayData = dayPatterns.find(d => d.dayShort === data.name);
+      const dayData = dayPatterns?.find(d => d.dayShort === data.name);
 
       return (
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl min-w-[200px]">
           <p className="text-sm font-semibold text-slate-900 dark:text-white mb-2 m-0">
-            {dayData.dayName}
+            {dayData?.dayName || data.name}
           </p>
           <div className="text-xs text-slate-700 dark:text-slate-300 space-y-1">
             <div className="flex items-center gap-2">
@@ -90,12 +92,15 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
       );
     }
     return null;
-  };
+  }, [dayPatterns]);
 
-  // Find best and worst days
-  const sortedDays = [...dayPatterns].sort((a, b) => b.totalUtilization - a.totalUtilization);
-  const bestDay = sortedDays[0];
-  const worstDay = sortedDays[sortedDays.length - 1];
+  if (!dayPatterns || dayPatterns.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
+        Loading day of week patterns...
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">

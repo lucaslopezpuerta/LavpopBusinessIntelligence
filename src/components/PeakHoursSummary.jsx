@@ -18,6 +18,7 @@
 
 import React from 'react';
 import { Clock, TrendingUp, TrendingDown, Flame, Zap, CheckCircle, Wrench, Lightbulb, Info } from 'lucide-react';
+import { formatCurrency } from '../utils/formatters';
 
 const PeakHoursSummary = ({ peakHours, dateWindow }) => {
   if (!peakHours || !peakHours.peak || !peakHours.offPeak) {
@@ -27,15 +28,6 @@ const PeakHoursSummary = ({ peakHours, dateWindow }) => {
       </div>
     );
   }
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
 
   // Show top 3 peak and bottom 3 off-peak only
   const topPeak = peakHours.peak.slice(0, 3);

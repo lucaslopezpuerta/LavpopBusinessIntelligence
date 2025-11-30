@@ -1,19 +1,27 @@
-// OperatingCyclesChart.jsx v4.1 - ENHANCED COMPARISON
+// OperatingCyclesChart.jsx v4.3 - ENHANCED COMPARISON
 // ✅ Previous month comparison lines (dashed)
 // ✅ Gradient bars for visual depth
 // ✅ Mobile responsive adjustments
 // ✅ v4.1: Design System v3.0 - removed COLORS object, theme-aware inline colors
 //
 // CHANGELOG:
+// v4.3 (2025-11-30): Chart memoization for performance
+//   - Memoized colors object to prevent unnecessary repaints
+//   - Memoized CustomTooltip component
+//   - Memoized renderLabel function
+// v4.2 (2025-11-30): Performance improvements
+//   - Replaced window resize listener with useIsMobile hook (matchMedia)
+//   - More performant responsive detection
 // v4.1 (2025-11-29): Design System v3.0 compliance
 //   - Removed COLORS object, using theme-aware inline colors
 //   - Chart colors documented with Tailwind equivalents
 // v4.0: Previous implementation
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart } from 'recharts';
 import { WashingMachine, TrendingUp, Calendar } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 // Chart colors (hex values required for SVG/Recharts)
 // Documented with Tailwind equivalents for reference
@@ -61,18 +69,10 @@ const OperatingCyclesChart = ({
   year = null
 }) => {
   const { isDark } = useTheme();
-  const colors = getChartColors(isDark);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  // Memoize colors to prevent new object references on every render
+  const colors = useMemo(() => getChartColors(isDark), [isDark]);
 
   const { chartData, periodInfo } = useMemo(() => {
     if (!salesData || salesData.length === 0) {
@@ -173,7 +173,8 @@ const OperatingCyclesChart = ({
     return { chartData: displayData, periodInfo: info };
   }, [salesData, month, year, isMobile]);
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  // Memoize CustomTooltip to prevent recreation on every render
+  const CustomTooltip = useCallback(({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg z-50">
@@ -191,10 +192,10 @@ const OperatingCyclesChart = ({
             let isPrev = false;
 
             if (entry.dataKey === 'PrevWash') {
-              labelText = `Lavagens (${periodInfo.prevMonth})`;
+              labelText = `Lavagens (${periodInfo?.prevMonth || ''})`;
               isPrev = true;
             } else if (entry.dataKey === 'PrevDry') {
-              labelText = `Secagens (${periodInfo.prevMonth})`;
+              labelText = `Secagens (${periodInfo?.prevMonth || ''})`;
               isPrev = true;
             }
 
@@ -219,9 +220,10 @@ const OperatingCyclesChart = ({
       );
     }
     return null;
-  };
+  }, [periodInfo?.prevMonth]);
 
-  const renderLabel = (props) => {
+  // Memoize renderLabel to prevent recreation on every render
+  const renderLabel = useCallback((props) => {
     const { x, y, width, value } = props;
     if (value === 0) return null;
 
@@ -238,7 +240,7 @@ const OperatingCyclesChart = ({
         {value}
       </text>
     );
-  };
+  }, [colors.labelText]);
 
   if (!periodInfo || chartData.length === 0) {
     return (
@@ -398,7 +400,7 @@ const OperatingCyclesChart = ({
             <div className="text-2xl font-bold text-slate-900 dark:text-white">
               {periodInfo.totalCycles}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 flex items-center justify-center gap-1">
+            <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-1 flex items-center justify-center gap-1">
               Total Ciclos
               {periodInfo.totalCycles > periodInfo.totalPrevious ? (
                 <TrendingUp className="w-3 h-3 text-emerald-500" />
@@ -411,7 +413,7 @@ const OperatingCyclesChart = ({
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {periodInfo.totalWash}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
+            <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-1">
               Lavagens
             </div>
           </div>
@@ -419,7 +421,7 @@ const OperatingCyclesChart = ({
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {periodInfo.totalDry}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
+            <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-1">
               Secagens
             </div>
           </div>

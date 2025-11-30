@@ -1,10 +1,17 @@
-// Dashboard.jsx v8.5 - FIXED LAYOUT & METRICS
-// ✅ Integrated WeatherWidget_API
+// Dashboard.jsx v8.6 - NEW KPI LAYOUT
+// ✅ Integrated KPICardsGrid with visual hierarchy
+// ✅ Hero cards for primary metrics
+// ✅ Secondary cards in compact grid
 // ✅ Optimized layout spacing
-// ✅ Fixed operations metrics calculation
-// ✅ Fixed AtRiskCustomersTable props
+//
+// CHANGELOG:
+// v8.6 (2025-11-30): KPICardsGrid integration
+//   - Replaced KPICards with KPICardsGrid
+//   - Cleaner visual hierarchy (3 hero + 6 secondary)
+//   - Non-gradient design per Design System audit
+// v8.5: Fixed layout & metrics
 import React, { useState, useEffect, useMemo } from 'react';
-import KPICards from '../components/KPICards';
+import KPICardsGrid from '../components/KPICardsGrid';
 import OperatingCyclesChart from '../components/OperatingCyclesChart';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import QuickActionsCard from '../components/QuickActionsCard';
@@ -86,16 +93,14 @@ const Dashboard = ({ data, viewMode, setViewMode, ...props }) => {
         dateRange={dateRange}
       />
 
-      {/* KPI Cards Section */}
-      <div className="w-full">
-        <KPICards
-          businessMetrics={businessMetrics}
-          customerMetrics={customerMetrics}
-          salesData={salesData}
-          viewMode={viewMode}
-          onNavigate={handleTabChange}
-        />
-      </div>
+      {/* KPI Cards Section - Hero + Secondary Grid */}
+      <KPICardsGrid
+        businessMetrics={businessMetrics}
+        customerMetrics={customerMetrics}
+        salesData={salesData}
+        viewMode={viewMode}
+        onNavigate={handleTabChange}
+      />
 
       {/* Charts & Operations Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -119,7 +124,7 @@ const Dashboard = ({ data, viewMode, setViewMode, ...props }) => {
 
       {/* Footer */}
       <div className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8 pb-4">
-        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.5
+        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'} • Lavpop BI v8.6
       </div>
     </div>
   );

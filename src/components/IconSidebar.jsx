@@ -1,7 +1,12 @@
-// IconSidebar.jsx v1.1
+// IconSidebar.jsx v1.2
 // Minimalist icon-only sidebar with hover-to-expand functionality
 //
 // CHANGELOG:
+// v1.2 (2025-11-30): UI improvements
+//   - Header height h-[60px] to match top bar exactly
+//   - More prominent active tab indicator (left accent bar)
+//   - Added focus-visible states for accessibility
+//   - Mobile drawer has improved active state
 // v1.1 (2025-11-27): Added Lavpop logo
 //   - Integrated LogoNoBackground.svg in header
 //   - Logo adapts to collapsed/expanded states
@@ -45,8 +50,8 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Logo */}
-      <div className="h-16 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+      {/* Logo - Height matches top bar exactly (60px) */}
+      <div className="h-[60px] flex items-center justify-center border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
         <motion.div
           className="flex items-center gap-2 overflow-hidden px-2"
           initial={false}
@@ -87,15 +92,20 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
                 className={`
-                  relative flex items-center gap-3 h-10 rounded-lg
+                  relative flex items-center gap-3 h-11 rounded-lg
                   transition-all duration-200
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2
                   ${isActive
-                    ? 'bg-lavpop-blue text-white shadow-md'
+                    ? 'bg-gradient-to-r from-lavpop-blue to-blue-600 text-white shadow-lg shadow-lavpop-blue/25'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }
                 `}
                 title={!isHovered ? item.label : undefined}
               >
+                {/* Active indicator - left accent bar when collapsed */}
+                {isActive && !isHovered && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full shadow-md" />
+                )}
                 <div className={`flex items-center justify-center ${isHovered ? 'ml-3' : 'mx-auto'}`}>
                   <Icon className="w-5 h-5" />
                 </div>
@@ -106,15 +116,12 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                       animate={{ opacity: 1, width: 'auto' }}
                       exit={{ opacity: 0, width: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="overflow-hidden whitespace-nowrap text-sm font-medium"
+                      className="overflow-hidden whitespace-nowrap text-sm font-semibold"
                     >
                       {item.label}
                     </motion.span>
                   )}
                 </AnimatePresence>
-                {isActive && !isHovered && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-l-full" />
-                )}
               </button>
             );
           })}
@@ -134,8 +141,8 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
           exit={{ x: -256 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
         >
-          {/* Logo */}
-          <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+          {/* Logo - Height matches mobile top bar (56px = h-14) */}
+          <div className="h-14 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
             <div className="flex items-center gap-2">
               <img
                 src={LogoNoBackground}
@@ -160,17 +167,26 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                     key={item.id}
                     onClick={() => handleNavigate(item.id)}
                     className={`
-                      flex items-center gap-3 px-4 py-3 rounded-lg
-                      transition-all duration-200 text-sm font-medium
+                      relative flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all duration-200 text-sm font-semibold
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue
                       ${isActive
-                        ? 'bg-lavpop-blue text-white shadow-md'
+                        ? 'bg-gradient-to-r from-lavpop-blue to-blue-600 text-white shadow-lg shadow-lavpop-blue/25'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }
                     `}
                   >
+                    {/* Active indicator - left accent bar */}
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />
+                    )}
                     <Icon className="w-5 h-5" />
                     <span>{item.label}</span>
-                    {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
+                    {isActive && (
+                      <div className="ml-auto flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      </div>
+                    )}
                   </button>
                 );
               })}

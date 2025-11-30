@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Crown, Heart, TrendingUp, Award } from 'lucide-react';
 import CustomerDetailModal from './CustomerDetailModal';
+import { formatCurrency } from '../utils/formatters';
 
 const COLORS = {
   primary: '#10306B',
@@ -55,13 +56,6 @@ const TopPerformersSegment = ({ customerMetrics, salesData }) => {
       description: 'Growing customers'
     }
   ];
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
 
   const getTopCustomersBySegment = (segmentName, limit = 5) => {
     return customerMetrics.activeCustomers

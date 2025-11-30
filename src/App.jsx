@@ -1,11 +1,15 @@
-// App.jsx v6.1 - SIDEBAR LAYOUT + MINIMALIST DESIGN
+// App.jsx v6.2 - SIDEBAR LAYOUT + MINIMALIST DESIGN
 // ✅ Added minimalist icon sidebar with hover expansion
-// ✅ Compact top bar with widgets (50px vs 64px header)
+// ✅ Compact top bar with widgets (60px to match sidebar)
 // ✅ Mobile drawer with backdrop overlay
 // ✅ Maximized horizontal space for data visualizations
 // ✅ Integrated Lavpop logo in loading and error screens
+// ✅ Mobile breadcrumb shows current tab
 //
 // CHANGELOG:
+// v6.2 (2025-11-30): Mobile improvements
+//   - Pass activeTab to MinimalTopBar for mobile breadcrumb
+//   - Header height aligned with sidebar (60px)
 // v6.1 (2025-11-27): Added Lavpop logo to loading/error screens
 // v6.0 (2025-11-27): Sidebar layout implementation
 // v5.0 (2025-11-23): Error boundaries + code splitting
@@ -200,7 +204,7 @@ function AppContent() {
       {/* Main Content Area - with sidebar offset */}
       <div className="lg:pl-[60px] min-h-screen flex flex-col">
         {/* Top Bar */}
-        <MinimalTopBar refreshing={refreshing} onRefresh={handleRefresh} />
+        <MinimalTopBar refreshing={refreshing} onRefresh={handleRefresh} activeTab={activeTab} />
 
         {/* Main Content */}
         <main className="flex-1 max-w-[100rem] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">

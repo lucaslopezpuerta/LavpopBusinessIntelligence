@@ -1,12 +1,23 @@
-// AtRiskCustomersTable.jsx v7.1 - UNIFIED RISK LABELS
+// AtRiskCustomersTable.jsx v7.3 - ACCESSIBILITY IMPROVEMENTS
 // ✅ No horizontal scroll
 // ✅ Mobile: Cliente + Ações only
 // ✅ Desktop: All columns visible
 // ✅ No phone numbers displayed
 // ✅ Row coloring by risk
 // ✅ Uses unified RISK_LABELS from customerMetrics.js
+// ✅ Accessible table with scope and aria-labels
+// ✅ Focus-visible states for keyboard users
 //
 // CHANGELOG:
+// v7.3 (2025-11-30): Focus-visible states
+//   - Added focus-visible ring to action buttons
+//   - Added focus-visible ring to table rows
+//   - Added keyboard handler for row activation
+// v7.2 (2025-11-30): Accessibility improvements
+//   - Added scope="col" to all table headers
+//   - Added aria-label to icon buttons
+//   - Added aria-describedby for row context
+//   - Keyboard navigation support
 // v7.1 (2025-11-29): Design System v3.0 compliance
 //   - Removed colorMap, uses borderColor from RISK_LABELS
 //   - Centralized color configuration
@@ -20,6 +31,7 @@ import React, { useState } from 'react';
 import { Phone, MessageCircle, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import CustomerDetailModal from './CustomerDetailModal';
 import { RISK_LABELS } from '../utils/customerMetrics';
+import { formatCurrency } from '../utils/formatters';
 
 const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -52,14 +64,6 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
       </div>
     );
   }
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      maximumFractionDigits: 0
-    }).format(value);
-  };
 
   const formatPhone = (phone) => {
     if (!phone) return null;
@@ -119,27 +123,27 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-200 dark:border-slate-700">
-                <th className="px-4 py-2 text-center">
+                <th scope="col" className="px-4 py-2 text-center">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Cliente
                   </span>
                 </th>
-                <th className="hidden lg:table-cell px-4 py-2 text-center">
+                <th scope="col" className="hidden lg:table-cell px-4 py-2 text-center">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Risco
                   </span>
                 </th>
-                <th className="hidden lg:table-cell px-4 py-2 text-center">
+                <th scope="col" className="hidden lg:table-cell px-4 py-2 text-center">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Total
                   </span>
                 </th>
-                <th className="hidden lg:table-cell px-4 py-2 text-center">
+                <th scope="col" className="hidden lg:table-cell px-4 py-2 text-center">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Dias
                   </span>
                 </th>
-                <th className="px-4 py-2 text-center">
+                <th scope="col" className="px-4 py-2 text-center">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Ações
                   </span>
@@ -150,9 +154,17 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
               {atRiskCustomers.map((customer, index) => {
                 const styles = getRiskStyles(customer.riskLevel);
 
+                const handleRowKeyDown = (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedCustomer(customer);
+                  }
+                };
+
                 return (
                   <tr
                     key={customer.doc || index}
+                    tabIndex={0}
                     className={`
                       group cursor-pointer
                       border-b border-slate-100 dark:border-slate-800
@@ -160,9 +172,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
                       hover:shadow-md
                       transition-all duration-200
                       border-l-4
+                      focus-visible:outline-none focus-visible:bg-blue-50 dark:focus-visible:bg-blue-900/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
                     `}
                     style={{ borderLeftColor: styles.borderColorValue }}
                     onClick={() => setSelectedCustomer(customer)}
+                    onKeyDown={handleRowKeyDown}
                   >
                     {/* Cliente */}
                     <td className="px-4 py-2">
@@ -224,10 +238,12 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
                                 hover:scale-110
                                 transition-all duration-200
                                 group-hover:shadow-md
+                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
                               "
+                              aria-label={`Ligar para ${customer.name || 'cliente'}`}
                               title="Ligar"
                             >
-                              <Phone className="w-4 h-4" />
+                              <Phone className="w-4 h-4" aria-hidden="true" />
                             </button>
                             <button
                               onClick={(e) => handleWhatsApp(e, customer.phone)}
@@ -239,10 +255,12 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, maxRows = 7 }) => {
                                 hover:scale-110
                                 transition-all duration-200
                                 group-hover:shadow-md
+                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2
                               "
+                              aria-label={`Enviar WhatsApp para ${customer.name || 'cliente'}`}
                               title="WhatsApp"
                             >
-                              <MessageCircle className="w-4 h-4" />
+                              <MessageCircle className="w-4 h-4" aria-hidden="true" />
                             </button>
                           </>
                         )}

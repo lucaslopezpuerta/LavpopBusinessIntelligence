@@ -1,31 +1,40 @@
-// NewClientsChart.jsx v2.2 - ACQUISITION CONTEXT WITH INSIGHTS
+// NewClientsChart.jsx v2.3 - ACQUISITION CONTEXT WITH INSIGHTS
 // Simplified new customer acquisition tracking
 //
 // CHANGELOG:
+// v2.3 (2025-11-30): Chart memoization for performance
+//   - Memoized stats, insights, and CustomTooltip
+//   - Prevents unnecessary chart repaints
 // v2.2 (2025-11-29): Design System v3.0 compliance
 //   - Removed emojis from insight text strings
 // v2.1 (2025-11-24): Added actionable insights
 //   - NEW: InsightBox with acquisition recommendations
 // v2.0 (2025-11-23): Redesign for Customer Intelligence Hub
 
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import InsightBox from './InsightBox';
 
 const NewClientsChart = ({ data }) => {
-  if (!data || data.length === 0) return null;
+  // Memoize stats to prevent recalculation on every render
+  const { totalNew, avgNew } = useMemo(() => {
+    if (!data || data.length === 0) return { totalNew: 0, avgNew: 0 };
+    const total = data.reduce((sum, d) => sum + d.count, 0);
+    return {
+      totalNew: total,
+      avgNew: Math.round(total / data.length)
+    };
+  }, [data]);
 
-  // Calculate stats
-  const totalNew = data.reduce((sum, d) => sum + d.count, 0);
-  const avgNew = Math.round(totalNew / data.length);
+  // Memoize insights array to prevent new references on every render
+  const insights = useMemo(() => [
+    { type: 'success', text: `${totalNew} novos clientes (média ${avgNew}/dia)` },
+    { type: 'action', text: 'Meta: Converter 80% em clientes recorrentes' },
+    { type: 'action', text: 'Próximo passo: Programa de boas-vindas para novos clientes' }
+  ], [totalNew, avgNew]);
 
-  // Generate insights
-  const insights = [];
-  insights.push({ type: 'success', text: `${totalNew} novos clientes (média ${avgNew}/dia)` });
-  insights.push({ type: 'action', text: 'Meta: Converter 80% em clientes recorrentes' });
-  insights.push({ type: 'action', text: 'Próximo passo: Programa de boas-vindas para novos clientes' });
-
-  const CustomTooltip = ({ active, payload }) => {
+  // Memoize CustomTooltip to prevent recreation on every render
+  const CustomTooltip = useCallback(({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
@@ -37,7 +46,9 @@ const NewClientsChart = ({ data }) => {
       );
     }
     return null;
-  };
+  }, []);
+
+  if (!data || data.length === 0) return null;
 
   return (
     <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
