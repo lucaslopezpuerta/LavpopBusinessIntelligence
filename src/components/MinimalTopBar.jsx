@@ -1,7 +1,11 @@
-// MinimalTopBar.jsx v1.1
+// MinimalTopBar.jsx v1.2
 // Compact top bar with location, weather, and widgets
 //
 // CHANGELOG:
+// v1.2 (2025-12-01): Header layout reorganization
+//   - Moved Google & Social widgets to left (next to Weather)
+//   - Added Settings and Export icons to right controls
+//   - QuickActionsCard functionality now in header
 // v1.1 (2025-11-30): Mobile improvements
 //   - Header height matches sidebar icon box (h-[60px] on lg, h-14 on mobile)
 //   - Dark mode toggle visible on mobile
@@ -17,7 +21,7 @@
 //   - Glassmorphism backdrop blur
 
 import React from 'react';
-import { MapPin, RefreshCw, Menu, BarChart3, Users, TrendingUp, Settings } from 'lucide-react';
+import { MapPin, RefreshCw, Menu, BarChart3, Users, TrendingUp, Settings, FileDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import WeatherWidget from './WeatherWidget_API';
 import GoogleBusinessWidget from './GoogleBusinessWidget';
@@ -43,7 +47,7 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {
       {/* Height matches sidebar: 60px on desktop (lg:h-[60px]), 56px on mobile (h-14) */}
       <div className="h-14 lg:h-[60px] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
 
-        {/* Left: Mobile breadcrumb OR Location + Weather */}
+        {/* Left: Mobile breadcrumb OR Location + Weather + Widgets */}
         <div className="flex items-center gap-3 flex-shrink-0">
           {/* Mobile: Active tab breadcrumb */}
           <div className="lg:hidden flex items-center gap-2">
@@ -55,7 +59,7 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {
             </span>
           </div>
 
-          {/* Desktop: Location + Weather */}
+          {/* Desktop: Location + Weather + Widgets */}
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -70,18 +74,39 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {
           <div className="hidden lg:block">
             <WeatherWidget compact />
           </div>
-        </div>
-
-        {/* Right: Widgets + Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Widgets - Google & Social (hidden on mobile) */}
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden lg:block h-4 w-px bg-slate-200 dark:bg-slate-700" />
+          {/* Widgets moved to left - hidden on mobile */}
+          <div className="hidden lg:flex items-center gap-2">
             <GoogleBusinessWidget compact />
             <SocialMediaWidget compact />
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
           </div>
+        </div>
 
-          {/* Reload Button - Now visible on mobile */}
+        {/* Right: Controls (Refresh, Export, Settings, Theme, Mobile Menu) */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Export Report Button (hidden on mobile) */}
+          <button
+            onClick={() => window.print()}
+            className="hidden sm:flex p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            title="Exportar Relatório"
+            aria-label="Exportar relatório"
+          >
+            <FileDown className="w-4 h-4" />
+          </button>
+
+          {/* Settings Button (hidden on mobile) */}
+          <button
+            onClick={() => {/* TODO: Open settings modal */}}
+            className="hidden sm:flex p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            title="Configurações"
+            aria-label="Configurações"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+
+          <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-slate-700" />
+
+          {/* Reload Button - Visible on mobile */}
           <button
             onClick={onRefresh}
             disabled={refreshing}
@@ -92,7 +117,7 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
 
-          {/* Theme Toggle - Now visible on mobile */}
+          {/* Theme Toggle - Visible on mobile */}
           <ThemeToggle className="no-print" />
 
           <div className="lg:hidden h-4 w-px bg-slate-200 dark:bg-slate-700" />

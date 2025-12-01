@@ -341,6 +341,8 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
   const atRiskCount = activeCustomers.filter(c => c.riskLevel === 'At Risk').length;
   const churningCount = activeCustomers.filter(c => c.riskLevel === 'Churning').length;
   const newCustomerCount = activeCustomers.filter(c => c.riskLevel === 'New Customer').length;
+  // Combined count for "At Risk" + "Churning" - both need proactive outreach
+  const needsAttentionCount = atRiskCount + churningCount;
 
   const healthRate = activeCustomers.length > 0
     ? (healthyCount / activeCustomers.length) * 100
@@ -355,6 +357,7 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
     monitorCount,
     atRiskCount,
     churningCount,
+    needsAttentionCount, // Combined: At Risk + Churning
     newCustomerCount,
     healthRate,
 

@@ -1,15 +1,32 @@
-// FinancialDrilldown.jsx v2.1 - FIXED & ROBUST
+// FinancialDrilldown.jsx v2.3 - SERVICE BREAKDOWN
 // ✅ Daily revenue and cycle tracking
 // ✅ Uses shared parseSalesRecords for consistent date handling
-// ✅ Gradient area chart
+// ✅ Gradient area chart with centralized colors
+// ✅ Separate wash/dry metric support
+// ✅ Design System v3.1 compliant
+//
+// CHANGELOG:
+// v2.3 (2025-12-01): Design System compliance
+//   - Added Média Diária (daily average) card
+//   - Changed to 3-column grid layout
+//   - Using centralized getChartColors/getSeriesColors
+//   - Fixed font size 10 → 12, border colors
+//   - Removed navigation button
+// v2.2 (2025-12-01): Added wash/dry metric types
+//   - Now tracks washCount and dryCount separately
+//   - metricType can be 'revenue', 'cycles', 'wash', or 'dry'
+//   - Each metric type has distinct color and label
+// v2.1: Fixed & Robust implementation
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Calendar, ArrowRight } from 'lucide-react';
 import { parseSalesRecords } from '../../utils/transactionParser';
 import { useTheme } from '../../contexts/ThemeContext';
+import { getChartColors, getSeriesColors } from '../../utils/chartColors';
 
-const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) => {
+const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
     const { isDark } = useTheme();
+    const chartColors = getChartColors(isDark);
+    const seriesColors = getSeriesColors(isDark);
 
     // Get daily data using shared utility
     const dailyData = useMemo(() => {
@@ -29,7 +46,7 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
             const d = new Date(startDate);
             d.setDate(d.getDate() + i);
             const dateKey = d.toISOString().split('T')[0];
-            dailyMap[dateKey] = { revenue: 0, cycles: 0 };
+            dailyMap[dateKey] = { revenue: 0, cycles: 0, wash: 0, dry: 0 };
         }
 
         records.forEach(record => {
@@ -38,7 +55,9 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
 
                 if (dailyMap[dateKey]) {
                     dailyMap[dateKey].revenue += record.netValue;
-                    dailyMap[dateKey].cycles += record.totalServices; // Count services (cycles)
+                    dailyMap[dateKey].cycles += record.totalServices;
+                    dailyMap[dateKey].wash += record.washCount || 0;
+                    dailyMap[dateKey].dry += record.dryCount || 0;
                 }
             }
         });
@@ -46,23 +65,35 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
         return Object.keys(dailyMap).sort().map(dateKey => ({
             date: dateKey,
             revenue: Math.round(dailyMap[dateKey].revenue * 100) / 100,
-            cycles: dailyMap[dateKey].cycles
+            cycles: dailyMap[dateKey].cycles,
+            wash: dailyMap[dateKey].wash,
+            dry: dailyMap[dateKey].dry
         }));
     }, [salesData]);
 
-    // Calculate totals and best day
-    const stats = useMemo(() => {
-        if (dailyData.length === 0) return { total: 0, bestDay: null, bestValue: 0 };
+    // Helper to get value based on metric type
+    const getMetricValue = (day) => {
+        switch (metricType) {
+            case 'revenue': return day.revenue;
+            case 'wash': return day.wash;
+            case 'dry': return day.dry;
+            case 'cycles':
+            default: return day.cycles;
+        }
+    };
 
-        const total = dailyData.reduce((sum, day) => sum + (metricType === 'revenue' ? day.revenue : day.cycles), 0);
+    // Calculate totals, average, and best day
+    const stats = useMemo(() => {
+        if (dailyData.length === 0) return { total: 0, average: 0, bestDay: null, bestValue: 0 };
+
+        const total = dailyData.reduce((sum, day) => sum + getMetricValue(day), 0);
+        const average = dailyData.length > 0 ? total / dailyData.length : 0;
 
         const best = dailyData.reduce((max, day) => {
-            const currentVal = metricType === 'revenue' ? day.revenue : day.cycles;
-            const maxVal = metricType === 'revenue' ? max.revenue : max.cycles;
-            return currentVal > maxVal ? day : max;
+            return getMetricValue(day) > getMetricValue(max) ? day : max;
         }, dailyData[0]);
 
-        const bestVal = metricType === 'revenue' ? best.revenue : best.cycles;
+        const bestVal = getMetricValue(best);
 
         // Format best day date (YYYY-MM-DD -> DD/MM)
         const [year, month, day] = best.date.split('-');
@@ -70,16 +101,27 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
 
         return {
             total,
+            average,
             bestDay: bestDateFormatted,
             bestValue: bestVal
         };
     }, [dailyData, metricType]);
 
+    // Metric configuration using centralized colors
+    const metricConfig = useMemo(() => ({
+        revenue: { label: 'Receita', unit: '', color: seriesColors[1] },      // Emerald/green
+        cycles: { label: 'Ciclos', unit: ' ciclos', color: seriesColors[0] }, // Primary blue
+        wash: { label: 'Lavagens', unit: ' lavagens', color: seriesColors[5] }, // Cyan
+        dry: { label: 'Secagens', unit: ' secagens', color: seriesColors[3] },  // Amber
+    }), [seriesColors]);
+
+    const config = metricConfig[metricType] || metricConfig.cycles;
+
     const formatValue = (val) => {
         if (metricType === 'revenue') {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
         }
-        return `${val} ciclos`;
+        return `${val}${config.unit}`;
     };
 
     // Chart data formatting
@@ -89,29 +131,34 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
             return {
                 ...d,
                 displayDate: `${day}/${month}`,
-                value: metricType === 'revenue' ? d.revenue : d.cycles
+                value: getMetricValue(d)
             };
         });
     }, [dailyData, metricType]);
 
-    const color = metricType === 'revenue' ? '#10b981' : '#3b82f6'; // Emerald vs Blue
+    const color = config.color;
     const gradientId = `gradient-${metricType}`;
-    const isRevenue = metricType === 'revenue';
 
     return (
         <div className="space-y-6">
-            {/* Summary Stats */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Total (30 dias)</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+            {/* Summary Stats - responsive grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Últimos 30 dias</p>
+                    <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
                         {formatValue(stats.total)}
                     </p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Melhor Dia</p>
-                    <div className="flex items-baseline gap-2">
-                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Média Diária</p>
+                    <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
+                        {formatValue(Math.round(stats.average * 10) / 10)}
+                    </p>
+                </div>
+                <div className="col-span-2 sm:col-span-1 bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Melhor Dia</p>
+                    <div className="flex items-baseline gap-1">
+                        <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                             {stats.bestValue > 0 ? formatValue(stats.bestValue) : '-'}
                         </p>
                         {stats.bestDay && stats.bestValue > 0 && (
@@ -133,24 +180,24 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
                                 <stop offset="95%" stopColor={color} stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.axis} vertical={false} />
                         <XAxis
                             dataKey="displayDate"
-                            tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }}
+                            tick={{ fontSize: 12, fill: chartColors.tickText }}
                             axisLine={false}
                             tickLine={false}
+                            interval="preserveStartEnd"
+                            minTickGap={20}
                         />
-                        <YAxis
-                            hide={true}
-                        />
+                        <YAxis hide={true} />
                         <Tooltip
                             contentStyle={{
-                                backgroundColor: isDark ? '#1e293b' : '#fff',
-                                borderColor: isDark ? '#334155' : '#e2e8f0',
+                                backgroundColor: chartColors.tooltipBg,
+                                borderColor: chartColors.tooltipBorder,
                                 borderRadius: '8px',
                                 fontSize: '12px'
                             }}
-                            formatter={(value) => [formatValue(value), isRevenue ? 'Receita' : 'Ciclos']}
+                            formatter={(value) => [formatValue(value), config.label]}
                             labelFormatter={(label) => `Dia ${label}`}
                         />
                         <Area
@@ -165,16 +212,6 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue', onNavigate }) =
                 </ResponsiveContainer>
             </div>
 
-            {/* Action */}
-            <div className="flex justify-end">
-                <button
-                    onClick={onNavigate}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:opacity-90 transition-opacity"
-                >
-                    Ver Análise Completa
-                    <ArrowRight className="w-4 h-4" />
-                </button>
-            </div>
         </div>
     );
 };

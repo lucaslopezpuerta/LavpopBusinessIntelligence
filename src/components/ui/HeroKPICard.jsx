@@ -1,8 +1,21 @@
-// HeroKPICard.jsx v1.3
+// HeroKPICard.jsx v1.6
 // Primary KPI card for hero metrics (Revenue, Cycles, etc.)
-// Design System v3.0 compliant - Clean, non-gradient design
+// Design System v3.1 compliant - Clean, non-gradient design
 //
 // CHANGELOG:
+// v1.6 (2025-12-01): Mobile layout redesign
+//   - Moved WoW badge to bottom right corner
+//   - Reduced badge font size on mobile
+//   - Restored icons on mobile (smaller size)
+//   - Added shortTitle prop for abbreviated mobile titles
+// v1.5 (2025-12-01): Fixed mobile text overflow
+//   - Added text truncation on title
+//   - Reduced value font to text-base on mobile
+//   - Hide icon on very small screens to save space
+// v1.4 (2025-12-01): Mobile responsive improvements
+//   - Smaller padding on mobile (p-3 sm:p-5)
+//   - Smaller value font on mobile (text-xl sm:text-3xl)
+//   - Tighter margins for 3-column mobile layout
 // v1.3 (2025-11-30): Prop standardization
 //   - Renamed iconColor to color for consistency with SecondaryKPICard
 // v1.2 (2025-11-30): Color contrast fix
@@ -24,6 +37,7 @@ import TrendBadge from './TrendBadge';
 
 const HeroKPICard = ({
   title,
+  shortTitle, // Abbreviated title for mobile
   value,
   displayValue,
   subtitle,
@@ -63,7 +77,7 @@ const HeroKPICard = ({
         bg-white dark:bg-slate-800
         rounded-xl
         border border-slate-200 dark:border-slate-700
-        p-5
+        p-3 sm:p-5
         shadow-sm
         transition-all duration-200
         ${isClickable ? 'cursor-pointer hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2' : ''}
@@ -71,40 +85,42 @@ const HeroKPICard = ({
       `}
       title={tooltip}
     >
-      {/* Header: Icon + Title + Trend */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          {Icon && (
-            <div className={`p-2.5 rounded-lg ${colorMap[color]}`}>
-              <Icon className="w-5 h-5" />
-            </div>
-          )}
-          <div>
-            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-              {title}
-              {isClickable && (
-                <MousePointerClick className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
-              )}
-            </h3>
+      {/* Header: Icon + Title */}
+      <div className="flex items-center gap-1.5 sm:gap-3 mb-1 sm:mb-3">
+        {Icon && (
+          <div className={`p-1 sm:p-2.5 rounded-lg flex-shrink-0 ${colorMap[color]}`}>
+            <Icon className="w-3 h-3 sm:w-5 sm:h-5" />
           </div>
-        </div>
-
-        {trend?.show && (
-          <TrendBadge value={trend.value} size="md" />
         )}
+        <h3 className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 leading-tight">
+          {/* Short title on mobile, full title on desktop */}
+          <span className="sm:hidden">{shortTitle || title}</span>
+          <span className="hidden sm:inline">{title}</span>
+          {isClickable && (
+            <MousePointerClick className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hidden sm:block" />
+          )}
+        </h3>
       </div>
 
       {/* Value */}
-      <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">
+      <div className="text-lg sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-0.5 sm:mb-1">
         {displayValue}
       </div>
 
-      {/* Subtitle */}
-      {subtitle && (
-        <div className="text-sm text-slate-600 dark:text-slate-400">
-          {subtitle}
-        </div>
-      )}
+      {/* Footer: Subtitle + Trend Badge */}
+      <div className="flex items-center justify-between gap-1">
+        {subtitle && (
+          <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+            {subtitle}
+          </div>
+        )}
+        {trend?.show && (
+          <div className="flex-shrink-0 ml-auto">
+            <TrendBadge value={trend.value} size="xs" className="sm:hidden" />
+            <TrendBadge value={trend.value} size="sm" className="hidden sm:flex" />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -1,8 +1,11 @@
-// TrendBadge.jsx v1.3
+// TrendBadge.jsx v1.4
 // Reusable trend indicator badge
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.4 (2025-12-01): Added xs size for compact mobile displays
+//   - New xs size: smaller padding, same text-xs (min 12px compliant)
+//   - Added className prop for responsive visibility control
 // v1.3 (2025-11-30): Accessibility fix
 //   - Changed sm size from text-[10px] to text-xs (min 12px)
 // v1.2 (2025-11-30): Accessibility improvements
@@ -24,7 +27,8 @@ const TrendBadge = ({
   size = 'md',
   showIcon = false,
   inverted = false, // For styling on dark/gradient backgrounds
-  flipDirection = false // For metrics where down is good (e.g., churn rate)
+  flipDirection = false, // For metrics where down is good (e.g., churn rate)
+  className = ''
 }) => {
   if (value === null || value === undefined || isNaN(value)) {
     return null;
@@ -35,11 +39,13 @@ const TrendBadge = ({
   const isPositive = flipDirection ? value < 0 : value > 0;
 
   const sizeClasses = {
+    xs: 'text-xs px-1 py-0.5 gap-0.5',
     sm: 'text-xs px-1.5 py-0.5 gap-0.5',
     md: 'text-xs px-2 py-1 gap-1',
   };
 
   const iconSizes = {
+    xs: 'w-2 h-2',
     sm: 'w-2.5 h-2.5',
     md: 'w-3 h-3',
   };
@@ -61,6 +67,7 @@ const TrendBadge = ({
             ${sizeClasses[size]}
             rounded-md font-semibold
             bg-white/20 text-white/90
+            ${className}
           `}
           aria-label={getAriaLabel()}
           role="status"
@@ -83,6 +90,7 @@ const TrendBadge = ({
             ? 'bg-white/25 text-white'
             : 'bg-black/20 text-white/90'
           }
+          ${className}
         `}
         aria-label={getAriaLabel()}
         role="status"
@@ -103,6 +111,7 @@ const TrendBadge = ({
           rounded-md font-semibold
           bg-slate-100 dark:bg-slate-700
           text-slate-600 dark:text-slate-300
+          ${className}
         `}
         aria-label={getAriaLabel()}
         role="status"
@@ -125,6 +134,7 @@ const TrendBadge = ({
           ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
           : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
         }
+        ${className}
       `}
       aria-label={getAriaLabel()}
       role="status"

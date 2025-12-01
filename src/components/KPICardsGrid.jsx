@@ -1,8 +1,43 @@
-// KPICardsGrid.jsx v1.1
+// KPICardsGrid.jsx v2.2
 // Restructured KPI display with visual hierarchy
-// Design System v3.0 compliant
+// Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.2 (2025-12-01): Optimized modal width for customer lists
+//   - Customer modals use max-w-lg for better desktop density
+//   - Financial/explainer modals keep max-w-2xl
+// v2.1 (2025-12-01): Badge prop for customer modals
+//   - Pass customer count badge to modal header
+//   - Removed onNavigate props (now using pagination)
+// v2.0 (2025-12-01): Metric-specific drilldowns for wash/dry
+//   - Changed wash metricType from 'cycles' to 'wash'
+//   - Changed dry metricType from 'cycles' to 'dry'
+//   - Drilldowns now show service-specific trends
+// v1.9 (2025-12-01): Enhanced modal with metric context
+//   - Pass icon, color, and displayValue to KPIDetailModal
+//   - Modal header now shows visual continuity with KPI card
+// v1.8 (2025-12-01): Simplified desktop layout
+//   - lg+: Unified 12-col grid for all desktop sizes (Option A only)
+//   - Removed xl+ single row layout (Option C) per user feedback
+// v1.7 (2025-12-01): Improved desktop grid distribution
+//   - xl+: All 7 cards in single row (Option C)
+//   - lg: Unified 12-col grid with aligned hero/secondary (Option A)
+//   - Better space utilization on wide screens
+// v1.6 (2025-12-01): Hide WoW badges on partial week
+//   - Trend badges hidden when viewMode is 'current' (partial week)
+//   - Comparing partial week to full week is misleading
+// v1.5 (2025-12-01): Hero card mobile titles
+//   - Added shortTitle prop for abbreviated mobile titles
+//   - "Receita Líquida" → "Receita", "Total de Ciclos" → "Ciclos", etc.
+// v1.4 (2025-12-01): Mobile responsive hero cards
+//   - Changed hero grid to 3 columns on all screens
+//   - Tighter gaps on mobile (gap-2 sm:gap-4)
+// v1.3 (2025-12-01): Utilization source fix
+//   - Uses operationsMetrics.utilization for accurate utilization %
+//   - Previous source (businessMetrics) was calculating differently
+// v1.2 (2025-12-01): Customer cards relocated
+//   - Moved New Clients and Active Clients cards to Customers.jsx
+//   - Reduced secondary KPIs to 4 cards (Wash, Dry, At Risk, Health)
 // v1.1 (2025-11-30): Prop standardization & responsive fix
 //   - Changed iconColor to color for consistency
 //   - Improved responsive breakpoints (2→3→4→6 progression)
@@ -13,96 +48,26 @@
 //   - Reduced cognitive load (visual hierarchy)
 //   - Preserved drill-down functionality
 
-import React, { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   DollarSign, WashingMachine, Percent, Droplet, Flame,
-  UserPlus, TrendingUp, Users, AlertCircle, Heart
+  AlertCircle, Heart
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatPercent, getTrendData } from '../utils/formatters';
-import { parseBrDate } from '../utils/dateUtils';
 import HeroKPICard from './ui/HeroKPICard';
 import SecondaryKPICard from './ui/SecondaryKPICard';
 import KPIDetailModal from './modals/KPIDetailModal';
 import FinancialDrilldown from './drilldowns/FinancialDrilldown';
 import CustomerListDrilldown from './drilldowns/CustomerListDrilldown';
 import MetricExplainerDrilldown from './drilldowns/MetricExplainerDrilldown';
-import { useNavigation } from '../contexts/NavigationContext';
-
-// Helper to normalize document
-function normalizeDoc(doc) {
-  if (!doc) return '';
-  const cleaned = String(doc).replace(/\D/g, '');
-  if (cleaned.length > 0 && cleaned.length <= 11) {
-    return cleaned.padStart(11, '0');
-  }
-  return cleaned;
-}
-
 const KPICardsGrid = ({
   businessMetrics,
   customerMetrics,
+  operationsMetrics,
   salesData,
   viewMode = 'complete'
 }) => {
-  const { navigateTo } = useNavigation();
   const [selectedKPI, setSelectedKPI] = useState(null);
-
-  // Calculate new clients data
-  const newClientsData = useMemo(() => {
-    if (!salesData?.length || !businessMetrics?.windows) {
-      return { count: 0, weekOverWeek: null };
-    }
-
-    const currentWindow = viewMode === 'current' && businessMetrics.windows.currentWeek
-      ? businessMetrics.windows.currentWeek
-      : businessMetrics.windows.weekly;
-
-    const previousWindow = businessMetrics.windows.previousWeekly;
-
-    if (!currentWindow?.start || !currentWindow?.end || !previousWindow?.start || !previousWindow?.end) {
-      return { count: 0, weekOverWeek: null };
-    }
-
-    const customerFirstPurchase = {};
-
-    salesData.forEach(row => {
-      const dateStr = row.Data || row.Data_Hora || row.date;
-      if (!dateStr) return;
-
-      const saleDate = parseBrDate(dateStr);
-      if (!saleDate) return;
-
-      const cpf = normalizeDoc(row.Doc_Cliente || row.document || row.doc);
-      if (!cpf) return;
-
-      if (!customerFirstPurchase[cpf] || saleDate < customerFirstPurchase[cpf]) {
-        customerFirstPurchase[cpf] = saleDate;
-      }
-    });
-
-    let currentPeriodNew = 0;
-    let lastPeriodNew = 0;
-
-    Object.values(customerFirstPurchase).forEach(firstDate => {
-      if (firstDate >= currentWindow.start && firstDate <= currentWindow.end) {
-        currentPeriodNew++;
-      } else if (firstDate >= previousWindow.start && firstDate <= previousWindow.end) {
-        lastPeriodNew++;
-      }
-    });
-
-    let periodOverPeriodChange = null;
-    if (lastPeriodNew > 0) {
-      periodOverPeriodChange = ((currentPeriodNew - lastPeriodNew) / lastPeriodNew) * 100;
-    } else if (currentPeriodNew > 0) {
-      periodOverPeriodChange = 100;
-    }
-
-    return {
-      count: currentPeriodNew,
-      weekOverWeek: periodOverPeriodChange
-    };
-  }, [salesData, businessMetrics?.windows, viewMode]);
 
   // Loading state
   if (!businessMetrics || !customerMetrics) {
@@ -137,8 +102,8 @@ const KPICardsGrid = ({
   }
 
   const wow = businessMetrics.weekOverWeek || {};
-  const activeCount = customerMetrics.activeCount || 0;
-  const atRiskCount = customerMetrics.atRiskCount || 0;
+  // Use combined count (At Risk + Churning) to match drilldown list
+  const needsAttentionCount = customerMetrics.needsAttentionCount || 0;
   const healthRate = customerMetrics.healthRate || 0;
 
   // Service breakdown
@@ -166,11 +131,6 @@ const KPICardsGrid = ({
 
   const handleCloseModal = () => setSelectedKPI(null);
 
-  const handleNavigate = (tabId) => {
-    handleCloseModal();
-    navigateTo(tabId);
-  };
-
   // Get customers for drill-down
   const getDrilldownCustomers = (type) => {
     if (!customerMetrics?.activeCustomers) return [];
@@ -180,25 +140,24 @@ const KPICardsGrid = ({
         return customerMetrics.activeCustomers
           .filter(c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning')
           .sort((a, b) => b.netTotal - a.netTotal);
-      case 'newclients':
-        return customerMetrics.activeCustomers
-          .filter(c => c.totalVisits <= 2)
-          .sort((a, b) => b.netTotal - a.netTotal);
-      case 'active':
       default:
         return customerMetrics.activeCustomers
           .sort((a, b) => b.netTotal - a.netTotal);
     }
   };
 
+  // Only show WoW trends for complete week (not partial/current)
+  const showTrends = viewMode === 'complete';
+
   // Hero KPIs (primary metrics)
   const heroKPIs = [
     {
       id: 'revenue',
       title: 'Receita Líquida',
+      shortTitle: 'Receita',
       value: metricsSource.netRevenue || 0,
       displayValue: formatCurrency(metricsSource.netRevenue),
-      trend: getTrendData(wow.netRevenue),
+      trend: showTrends ? getTrendData(wow.netRevenue) : null,
       subtitle: getTimeSubtitle(),
       icon: DollarSign,
       color: 'green',
@@ -208,9 +167,10 @@ const KPICardsGrid = ({
     {
       id: 'services',
       title: 'Total de Ciclos',
+      shortTitle: 'Ciclos',
       value: metricsSource.totalServices || 0,
       displayValue: formatNumber(metricsSource.totalServices),
-      trend: getTrendData(wow.totalServices),
+      trend: showTrends ? getTrendData(wow.totalServices) : null,
       subtitle: getTimeSubtitle(),
       icon: WashingMachine,
       color: 'blue',
@@ -220,9 +180,10 @@ const KPICardsGrid = ({
     {
       id: 'utilization',
       title: 'Utilização Geral',
-      value: Math.round(metricsSource.totalUtilization || 0),
-      displayValue: formatPercent(metricsSource.totalUtilization),
-      trend: getTrendData(wow.utilization),
+      shortTitle: 'Utiliz.',
+      value: Math.round(operationsMetrics?.utilization?.totalUtilization || 0),
+      displayValue: formatPercent(operationsMetrics?.utilization?.totalUtilization || 0),
+      trend: showTrends ? getTrendData(wow.utilization) : null,
       subtitle: getTimeSubtitle(),
       icon: Percent,
       color: 'purple',
@@ -238,48 +199,27 @@ const KPICardsGrid = ({
       title: 'Lavagens',
       displayValue: formatNumber(washCount),
       subtitle: `${washPercent}% do total`,
-      trend: getTrendData(wow.washServices),
+      trend: showTrends ? getTrendData(wow.washServices) : null,
       icon: Droplet,
       color: 'cyan',
       drilldownType: 'financial',
-      metricType: 'cycles'
+      metricType: 'wash'
     },
     {
       id: 'dry',
       title: 'Secagens',
       displayValue: formatNumber(dryCount),
       subtitle: `${dryPercent}% do total`,
-      trend: getTrendData(wow.dryServices),
+      trend: showTrends ? getTrendData(wow.dryServices) : null,
       icon: Flame,
       color: 'orange',
       drilldownType: 'financial',
-      metricType: 'cycles'
-    },
-    {
-      id: 'newclients',
-      title: 'Novos Clientes',
-      displayValue: formatNumber(newClientsData.count),
-      subtitle: getTimeSubtitle(),
-      trend: getTrendData(newClientsData.weekOverWeek),
-      icon: UserPlus,
-      color: 'purple',
-      drilldownType: 'customer',
-      customerType: 'newclients'
-    },
-    {
-      id: 'active',
-      title: 'Clientes Ativos',
-      displayValue: formatNumber(activeCount),
-      subtitle: 'Não perdidos',
-      icon: Users,
-      color: 'blue',
-      drilldownType: 'customer',
-      customerType: 'active'
+      metricType: 'dry'
     },
     {
       id: 'atrisk',
       title: 'Em Risco',
-      displayValue: formatNumber(atRiskCount),
+      displayValue: formatNumber(needsAttentionCount),
       subtitle: 'Precisam atenção',
       icon: AlertCircle,
       color: 'red',
@@ -300,13 +240,15 @@ const KPICardsGrid = ({
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Hero KPI Cards - Primary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Mobile & Tablet Layout (< lg): Stacked grids */}
+      <div className="lg:hidden space-y-4">
+        {/* Hero cards: 3 columns */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {heroKPIs.map(kpi => (
             <HeroKPICard
               key={kpi.id}
               title={kpi.title}
+              shortTitle={kpi.shortTitle}
               value={kpi.value}
               displayValue={kpi.displayValue}
               subtitle={kpi.subtitle}
@@ -317,9 +259,8 @@ const KPICardsGrid = ({
             />
           ))}
         </div>
-
-        {/* Secondary KPI Cards - Compact Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        {/* Secondary cards: 2 columns on mobile, 3 on sm */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {secondaryKPIs.map(kpi => (
             <SecondaryKPICard
               key={kpi.id}
@@ -335,34 +276,89 @@ const KPICardsGrid = ({
         </div>
       </div>
 
+      {/* Desktop Layout (lg+): Unified 12-column grid */}
+      <div className="hidden lg:block space-y-4">
+        {/* Hero cards: span 4 cols each (3 × 4 = 12) */}
+        <div className="grid grid-cols-12 gap-4">
+          {heroKPIs.map(kpi => (
+            <div key={kpi.id} className="col-span-4">
+              <HeroKPICard
+                title={kpi.title}
+                shortTitle={kpi.shortTitle}
+                value={kpi.value}
+                displayValue={kpi.displayValue}
+                subtitle={kpi.subtitle}
+                trend={kpi.trend}
+                icon={kpi.icon}
+                color={kpi.color}
+                onClick={() => handleCardClick(kpi)}
+              />
+            </div>
+          ))}
+        </div>
+        {/* Secondary cards: span 3 cols each (4 × 3 = 12) */}
+        <div className="grid grid-cols-12 gap-4">
+          {secondaryKPIs.map(kpi => (
+            <div key={kpi.id} className="col-span-3">
+              <SecondaryKPICard
+                title={kpi.title}
+                displayValue={kpi.displayValue}
+                subtitle={kpi.subtitle}
+                trend={kpi.trend}
+                icon={kpi.icon}
+                color={kpi.color}
+                onClick={() => handleCardClick(kpi)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Drill-down Modal */}
-      <KPIDetailModal
-        isOpen={!!selectedKPI}
-        onClose={handleCloseModal}
-        title={selectedKPI?.title}
-      >
-        {selectedKPI?.drilldownType === 'financial' && (
-          <FinancialDrilldown
-            salesData={salesData}
-            metricType={selectedKPI.metricType}
-            onNavigate={() => handleNavigate('intelligence')}
-          />
-        )}
+      {(() => {
+        // Calculate badge for customer drilldowns
+        const customers = selectedKPI?.drilldownType === 'customer'
+          ? getDrilldownCustomers(selectedKPI.customerType)
+          : [];
+        const badge = selectedKPI?.drilldownType === 'customer' && customers.length > 0
+          ? `${customers.length} cliente${customers.length !== 1 ? 's' : ''}`
+          : null;
 
-        {selectedKPI?.drilldownType === 'customer' && (
-          <CustomerListDrilldown
-            customers={getDrilldownCustomers(selectedKPI.customerType)}
-            type={selectedKPI.customerType}
-            onNavigate={() => handleNavigate('customers')}
-          />
-        )}
+        // Customer modals use narrower width for better desktop density
+        const maxWidth = selectedKPI?.drilldownType === 'customer' ? 'max-w-lg' : 'max-w-2xl';
 
-        {selectedKPI?.drilldownType === 'explainer' && (
-          <MetricExplainerDrilldown
-            metricType={selectedKPI.metricType}
-          />
-        )}
-      </KPIDetailModal>
+        return (
+          <KPIDetailModal
+            isOpen={!!selectedKPI}
+            onClose={handleCloseModal}
+            title={selectedKPI?.title}
+            icon={selectedKPI?.icon}
+            color={selectedKPI?.color}
+            badge={badge}
+            maxWidth={maxWidth}
+          >
+            {selectedKPI?.drilldownType === 'financial' && (
+              <FinancialDrilldown
+                salesData={salesData}
+                metricType={selectedKPI.metricType}
+              />
+            )}
+
+            {selectedKPI?.drilldownType === 'customer' && (
+              <CustomerListDrilldown
+                customers={customers}
+                type={selectedKPI.customerType}
+              />
+            )}
+
+            {selectedKPI?.drilldownType === 'explainer' && (
+              <MetricExplainerDrilldown
+                metricType={selectedKPI.metricType}
+              />
+            )}
+          </KPIDetailModal>
+        );
+      })()}
     </>
   );
 };

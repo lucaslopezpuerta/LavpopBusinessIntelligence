@@ -1,10 +1,20 @@
-// Dashboard.jsx v8.7 - NEW KPI LAYOUT
+// Dashboard.jsx v9.0 - NEW KPI LAYOUT
 // ✅ Integrated KPICardsGrid with visual hierarchy
 // ✅ Hero cards for primary metrics
 // ✅ Secondary cards in compact grid
 // ✅ Optimized layout spacing
 //
 // CHANGELOG:
+// v9.0 (2025-12-01): Moved AtRiskCustomersTable to Customers view
+//   - Removed AtRiskCustomersTable from Dashboard
+//   - Simplified Operations section layout
+//   - At-risk customers now accessible via Customers tab
+// v8.9 (2025-12-01): Fixed utilization calculation
+//   - operationsMetrics now recalculates based on viewMode
+//   - Maps viewMode to correct dateFilter (complete→lastWeek, current→currentWeek)
+// v8.8 (2025-12-01): Layout cleanup
+//   - Removed QuickActionsCard (actions moved to header)
+//   - Simplified right column layout
 // v8.7 (2025-11-30): Accessibility & structure improvements
 //   - Added semantic section elements with headings
 //   - Improved screen reader context
@@ -17,8 +27,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import KPICardsGrid from '../components/KPICardsGrid';
 import OperatingCyclesChart from '../components/OperatingCyclesChart';
-import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
-import QuickActionsCard from '../components/QuickActionsCard';
 import DashboardDateControl from '../components/DashboardDateControl';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
@@ -52,10 +60,15 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
     return calculateCustomerMetrics(salesData, rfmData, customerData);
   }, [salesData, rfmData, customerData]);
 
+  // Map viewMode to operationsMetrics dateFilter
+  // 'complete' = last 7 complete days → 'lastWeek'
+  // 'current' = current week so far → 'currentWeek'
+  const operationsDateFilter = viewMode === 'current' ? 'currentWeek' : 'lastWeek';
+
   const operationsMetricsCalc = useMemo(() => {
     if (!salesData.length) return null;
-    return calculateOperationsMetrics(salesData);
-  }, [salesData]);
+    return calculateOperationsMetrics(salesData, operationsDateFilter);
+  }, [salesData, operationsDateFilter]);
 
   // Combined metrics object for backwards compatibility
   const metrics = useMemo(() => {
@@ -122,40 +135,26 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
         <KPICardsGrid
           businessMetrics={businessMetrics}
           customerMetrics={customerMetrics}
+          operationsMetrics={operationsMetrics}
           salesData={salesData}
           viewMode={viewMode}
         />
       </section>
 
-      {/* Operations & Customers Section */}
+      {/* Operations Section */}
       <section aria-labelledby="operations-heading">
         <h2 id="operations-heading" className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
           <span className="w-1 h-5 bg-lavpop-blue rounded-full"></span>
-          Operações & Clientes em Risco
+          Operações
         </h2>
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Left Column: Operating Cycles (2/3 width) */}
-          <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-            <div className="w-full">
-              <OperatingCyclesChart salesData={salesData} />
-            </div>
-          </div>
-
-          {/* Right Column: Table & Quick Actions (1/3 width) */}
-          <div className="space-y-6">
-            <AtRiskCustomersTable
-              customerMetrics={customerMetrics}
-              salesData={salesData}
-              maxRows={5}
-            />
-            <QuickActionsCard />
-          </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+          <OperatingCyclesChart salesData={salesData} />
         </div>
       </section>
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-500 dark:text-slate-400 mt-8 pb-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString('pt-BR') : '-'} • Lavpop BI v8.7
+        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString('pt-BR') : '-'} • Lavpop BI v9.0
       </footer>
     </div>
   );

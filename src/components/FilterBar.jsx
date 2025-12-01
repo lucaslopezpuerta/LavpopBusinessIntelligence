@@ -1,7 +1,10 @@
-// FilterBar.jsx v2.2 - REDESIGNED & RESPONSIVE
+// FilterBar.jsx v2.3 - REDESIGNED & RESPONSIVE
 // Modern filter interface matching Design System
 //
 // CHANGELOG:
+// v2.3 (2025-12-01): Removed sticky behavior
+//   - FilterBar no longer sticks to top when scrolling
+//   - Prevents conflict with CustomerSectionNavigation
 // v2.2 (2025-11-30): Accessibility improvements
 //   - Added aria-label to all select elements
 //   - Added aria-label to search input
@@ -41,7 +44,7 @@ const FilterBar = ({
     };
 
     return (
-        <div className="sticky top-4 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl p-4 mb-6 animate-fade-in">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl p-4 animate-fade-in">
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
 
                 {/* Left: Search & Count */}

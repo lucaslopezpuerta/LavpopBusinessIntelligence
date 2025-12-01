@@ -1,4 +1,16 @@
-// CustomerDetailModal.jsx v5.4 - ACCESSIBILITY IMPROVEMENTS
+// CustomerDetailModal.jsx v5.6 - DEPRECATED
+// ⚠️ DEPRECATED: Use CustomerProfileModal instead
+// This component is kept for backwards compatibility only.
+// CustomerProfileModal provides:
+//   - 4-tab interface (Overview, History, Behavior, Communication)
+//   - Communication logging with localStorage persistence
+//   - Wallet balance display
+//   - More comprehensive customer profile
+//
+// Migration: Replace CustomerDetailModal with CustomerProfileModal
+//   - Change import: import CustomerProfileModal from './CustomerProfileModal';
+//   - Change props: salesData → sales
+//
 // ✅ Follows Design System v2.0 strictly
 // ✅ Simplified header (no gradient)
 // ✅ More compact layout
@@ -8,8 +20,16 @@
 // ✅ Uses unified RISK_LABELS from customerMetrics.js
 // ✅ Focus-visible states for keyboard users
 // ✅ WCAG AA color contrast compliance
+// ✅ Contact tracking (shared across app)
 //
 // CHANGELOG:
+// v5.6 (2025-12-01): DEPRECATED
+//   - Marked as deprecated in favor of CustomerProfileModal
+//   - All uses migrated to CustomerProfileModal
+// v5.5 (2025-12-01): Shared contact tracking
+//   - Added useContactTracking hook for app-wide sync
+//   - Contact indicator in header and action bar
+//   - Auto-mark as contacted on call/WhatsApp
 // v5.4 (2025-11-30): Color contrast fix
 //   - Changed text-slate-500 to text-slate-600 for WCAG AA compliance
 // v5.3 (2025-11-30): Accessibility improvements
@@ -36,10 +56,12 @@ import {
   Clock,
   ChevronDown,
   User,
+  Check,
 } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { RISK_LABELS } from '../utils/customerMetrics';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { useContactTracking } from '../hooks/useContactTracking';
 
 // ✅ UNIFIED: Use RISK_LABELS from customerMetrics.js
 const getRiskTailwind = (riskLevel) => {
@@ -134,8 +156,27 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
   // State for managing which section is expanded (only one at a time)
   const [expandedSection, setExpandedSection] = useState('financials'); // Default to financials
 
+  // ⚠️ DEPRECATION WARNING (logs once per mount in development)
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        '[DEPRECATED] CustomerDetailModal is deprecated. Use CustomerProfileModal instead. ' +
+        'See migration guide in file header.'
+      );
+    }
+  }, []);
+
+  // Shared contact tracking (syncs across app)
+  const { isContacted, toggleContacted } = useContactTracking();
+  const customerId = customer.doc || customer.id;
+  const contacted = isContacted(customerId);
+
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  const handleMarkContacted = () => {
+    toggleContacted(customerId, 'manual');
   };
 
   const transactionHistory = useMemo(() => {
@@ -189,6 +230,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
     if (customer.phone) {
       const cleanPhone = customer.phone.replace(/\D/g, '');
       window.location.href = `tel:+55${cleanPhone}`;
+      // Mark as contacted when calling
+      if (customerId && !contacted) {
+        toggleContacted(customerId, 'phone');
+      }
     }
   };
 
@@ -202,6 +247,10 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
         ? `https://api.whatsapp.com/send?phone=55${cleanPhone}`
         : `https://web.whatsapp.com/send?phone=55${cleanPhone}`;
       window.open(url, '_blank');
+      // Mark as contacted when sending WhatsApp
+      if (customerId && !contacted) {
+        toggleContacted(customerId, 'whatsapp');
+      }
     }
   };
 
@@ -258,6 +307,27 @@ const CustomerDetailModal = ({ customer, onClose, salesData = [] }) => {
 
         {/* COMPACT ACTION BUTTONS */}
         <div className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+          {/* Mark as contacted button */}
+          <button
+            onClick={handleMarkContacted}
+            className={`
+              flex items-center justify-center gap-1.5
+              px-3 py-2 rounded-lg
+              font-semibold text-xs sm:text-sm
+              shadow-md
+              active:scale-[0.98]
+              transition-all duration-200
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+              ${contacted
+                ? 'bg-emerald-500 hover:bg-emerald-600 text-white focus-visible:ring-emerald-400'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 focus-visible:ring-slate-400'}
+            `}
+            aria-label={contacted ? 'Desmarcar contactado' : 'Marcar como contactado'}
+            title={contacted ? 'Desmarcar' : 'Marcar contactado'}
+          >
+            <Check className="w-3.5 h-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">{contacted ? 'Contactado' : 'Marcar'}</span>
+          </button>
           <button
             onClick={handleCall}
             disabled={!customer.phone}

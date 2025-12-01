@@ -1,8 +1,15 @@
-// SecondaryKPICard.jsx v1.3
+// SecondaryKPICard.jsx v1.5
 // Compact KPI card for secondary metrics
-// Design System v3.0 compliant
+// Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.5 (2025-12-01): Relocated WoW badge to bottom right
+//   - Moved TrendBadge from Value row to footer
+//   - Footer layout: subtitle left, badge right
+//   - Consistent with HeroKPICard layout pattern
+// v1.4 (2025-12-01): Design System compliance
+//   - Fixed text-[10px] violations (min 12px = text-xs)
+//   - Changed title and subtitle to text-xs
 // v1.3 (2025-11-30): Color mapping fix
 //   - Fixed blue color mapping (was incorrectly amber/yellow)
 //   - Added explicit amber color option
@@ -127,27 +134,29 @@ const SecondaryKPICard = ({
               <Icon className="w-4 h-4" />
             </div>
           )}
-          <div className={`text-[10px] sm:text-xs font-semibold ${colors.title} uppercase tracking-wider leading-tight`}>
+          <div className={`text-xs font-semibold ${colors.title} uppercase tracking-wider leading-tight`}>
             {title}
           </div>
         </div>
 
-        {/* Value + Trend Row */}
-        <div className="flex items-center justify-between gap-2">
-          <div className={`text-xl sm:text-2xl font-bold ${colors.value}`}>
-            {displayValue}
-          </div>
-          {trend?.show && (
-            <TrendBadge value={trend.value} size="sm" inverted />
-          )}
+        {/* Value */}
+        <div className={`text-xl sm:text-2xl font-bold ${colors.value}`}>
+          {displayValue}
         </div>
 
-        {/* Subtitle */}
-        {subtitle && (
-          <div className={`text-[10px] sm:text-xs ${colors.subtitle} leading-tight`}>
-            {subtitle}
-          </div>
-        )}
+        {/* Footer: Subtitle + Trend Badge */}
+        <div className="flex items-center justify-between gap-1">
+          {subtitle && (
+            <div className={`text-xs ${colors.subtitle} leading-tight`}>
+              {subtitle}
+            </div>
+          )}
+          {trend?.show && (
+            <div className="flex-shrink-0 ml-auto">
+              <TrendBadge value={trend.value} size="xs" inverted />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

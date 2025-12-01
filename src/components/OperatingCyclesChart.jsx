@@ -1,10 +1,16 @@
-// OperatingCyclesChart.jsx v4.4 - ENHANCED COMPARISON
+// OperatingCyclesChart.jsx v4.6 - DATE SELECTOR TABS
 // ✅ Previous month comparison lines (dashed)
 // ✅ Gradient bars for visual depth
 // ✅ Mobile responsive adjustments
-// ✅ v4.1: Design System v3.0 - removed COLORS object, theme-aware inline colors
+// ✅ Design System v3.1 compliant (min font 12px)
 //
 // CHANGELOG:
+// v4.6 (2025-12-01): Design System compliance
+//   - Fixed fontSize: 11 → 12 on XAxis ticks
+// v4.5 (2025-12-01): Date selector tabs
+//   - Added month/year selector tabs in header
+//   - Shows last 4 months for easy navigation
+//   - Uses internal state when props not provided
 // v4.4 (2025-11-30): Accessibility & UX improvements
 //   - Added accessible legend with shape patterns
 //   - Added mobile indicator for partial data view
@@ -20,7 +26,7 @@
 //   - Removed COLORS object, using theme-aware inline colors
 //   - Chart colors documented with Tailwind equivalents
 // v4.0: Previous implementation
-import React, { useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart } from 'recharts';
 import { WashingMachine, TrendingUp, Calendar } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
@@ -50,11 +56,37 @@ function getMonthName(monthIndex) {
 
 const OperatingCyclesChart = ({
   salesData,
-  month = null,
-  year = null
+  month: propMonth = null,
+  year: propYear = null
 }) => {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
+
+  // Generate last 4 months for selector
+  const monthOptions = useMemo(() => {
+    const now = new Date();
+    const options = [];
+    for (let i = 0; i < 4; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      options.push({
+        month: date.getMonth(),
+        year: date.getFullYear(),
+        label: getMonthName(date.getMonth()).slice(0, 3).toUpperCase(),
+        fullLabel: `${getMonthName(date.getMonth())}/${date.getFullYear()}`
+      });
+    }
+    return options;
+  }, []);
+
+  // Internal state for selected month/year (uses props if provided)
+  const [selectedPeriod, setSelectedPeriod] = useState({
+    month: propMonth !== null ? propMonth : monthOptions[0].month,
+    year: propYear !== null ? propYear : monthOptions[0].year
+  });
+
+  // Use props if provided, otherwise use internal state
+  const month = propMonth !== null ? propMonth : selectedPeriod.month;
+  const year = propYear !== null ? propYear : selectedPeriod.year;
 
   // Memoize colors to prevent new object references on every render
   const colors = useMemo(() => getChartColors(isDark), [isDark]);
@@ -247,17 +279,44 @@ const OperatingCyclesChart = ({
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300">
       {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <WashingMachine className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-              Ciclos de Operação
-            </h3>
+      <div className="mb-6 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <WashingMachine className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Ciclos de Operação
+              </h3>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Mês de {periodInfo.month}/{periodInfo.year}
+            </p>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Mês de {periodInfo.month}/{periodInfo.year}
-          </p>
+
+          {/* Month Selector Tabs */}
+          {propMonth === null && (
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+              {monthOptions.map((opt) => {
+                const isSelected = opt.month === month && opt.year === year;
+                return (
+                  <button
+                    key={`${opt.month}-${opt.year}`}
+                    onClick={() => setSelectedPeriod({ month: opt.month, year: opt.year })}
+                    className={`
+                      px-3 py-1.5 rounded-md text-xs font-semibold transition-all
+                      ${isSelected
+                        ? 'bg-white dark:bg-slate-600 text-lavpop-blue dark:text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-600/50'
+                      }
+                    `}
+                    title={opt.fullLabel}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Legend - Accessible with shapes */}
@@ -310,7 +369,7 @@ const OperatingCyclesChart = ({
             <XAxis
               dataKey="day"
               tick={{
-                fontSize: 11,
+                fontSize: 12,
                 fill: colors.tickText,
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
               }}

@@ -1,7 +1,30 @@
-// Customers View v2.2.0 - CUSTOMER INTELLIGENCE HUB
+// Customers View v2.7.1 - CUSTOMER INTELLIGENCE HUB
 // Complete redesign from card-based list to Intelligence Hub
-// 
+//
 // CHANGELOG:
+// v2.7.1 (2025-12-01): Directory container background fix
+//   - Reverted to bg-white (was bg-slate-50 which matched app shell)
+//   - Maintains proper visual separation from page background
+// v2.7.0 (2025-12-01): UX improvements
+//   - Fixed Em Risco card to use needsAttentionCount (At Risk + Churning)
+//   - Added background container to Directory section
+//   - Consistent visual styling with other sections
+// v2.6.0 (2025-12-01): Section navigation and semantic structure
+//   - Added CustomerSectionNavigation sticky bar
+//   - Named sections: Resumo, Ação Imediata, Análise, Diretório
+//   - Semantic <section> elements with proper headings
+//   - Improved UX with quick section jumps
+// v2.5.0 (2025-12-01): Added At-Risk Customers Table
+//   - Moved AtRiskCustomersTable from Dashboard
+//   - Added after KPI cards for quick action on at-risk customers
+//   - Includes shared contact tracking for app-wide sync
+// v2.4.0 (2025-12-01): Fixed New Clients calculation
+//   - Now calculates based on first visit date within last 30 days
+//   - Subtitle shows "Últimos 30 dias" for clarity
+// v2.3.0 (2025-12-01): Customer KPI cards added
+//   - Added KPI cards section with New Clients, Active, At Risk, Health Rate
+//   - Cards relocated from Dashboard KPICardsGrid
+//   - Uses SecondaryKPICard for visual consistency
 // v2.2.0 (2025-11-24): New Customer Profile Modal
 //   - NEW: CustomerProfileModal with 4 tabs and communication logging
 //   - ENHANCED: CustomerCard v3.0 with all personal info and wallet balance
@@ -11,8 +34,10 @@
 // v2.0 (2025-11-23): Customer Intelligence Hub Implementation
 
 import React, { useState, useMemo } from 'react';
-import { Users as UsersIcon } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, AlertTriangle, Heart, BarChart3, LayoutGrid } from 'lucide-react';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend } from '../utils/customerMetrics';
+import SecondaryKPICard from '../components/ui/SecondaryKPICard';
+import { formatNumber, formatPercent } from '../utils/formatters';
 import CustomerProfileModal from '../components/CustomerProfileModal';
 import CustomerRetentionScore from '../components/CustomerRetentionScore';
 import RFMScatterPlot from '../components/RFMScatterPlot';
@@ -20,6 +45,8 @@ import ChurnHistogram from '../components/ChurnHistogram';
 import NewClientsChart from '../components/NewClientsChart';
 import CustomerCard from '../components/CustomerCard';
 import FilterBar from '../components/FilterBar';
+import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
+import CustomerSectionNavigation from '../components/customers/CustomerSectionNavigation';
 
 const Customers = ({ data }) => {
   // State
@@ -47,6 +74,18 @@ const Customers = ({ data }) => {
       acquisition: getAcquisitionTrend(metrics.activeCustomers)
     };
   }, [metrics, data]);
+
+  // 3. Calculate New Clients (last 30 days based on first visit)
+  const newClientsCount = useMemo(() => {
+    if (!metrics?.activeCustomers) return 0;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    return metrics.activeCustomers.filter(c => {
+      if (!c.firstVisit) return false;
+      return c.firstVisit >= thirtyDaysAgo;
+    }).length;
+  }, [metrics]);
 
   // 3. Filter & Sort Customers
   const filteredCustomers = useMemo(() => {
@@ -146,10 +185,10 @@ const Customers = ({ data }) => {
   }
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-8 animate-fade-in">
+    <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 sm:space-y-8 animate-fade-in">
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
             Hub de Inteligência de Clientes
@@ -158,37 +197,121 @@ const Customers = ({ data }) => {
             Visão 360º da sua base de clientes
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-4 py-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-          <UsersIcon className="w-5 h-5 text-lavpop-blue" />
-          <span className="text-2xl font-black text-slate-800 dark:text-white">{metrics.activeCount}</span>
-          <span className="text-xs font-bold text-slate-400 uppercase">Clientes Ativos</span>
-        </div>
-      </div>
+      </header>
 
-      {/* Intelligence Dashboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="h-full">
-          <CustomerRetentionScore data={intelligence.retention} />
-        </div>
-        <div className="h-full">
-          <RFMScatterPlot data={intelligence.rfm} />
-        </div>
-        <div className="h-full">
-          <ChurnHistogram data={intelligence.histogram} />
-        </div>
-        <div className="h-full">
-          <NewClientsChart data={intelligence.acquisition} />
-        </div>
-      </div>
+      {/* Section Navigation - Sticky */}
+      <CustomerSectionNavigation hasAtRisk={metrics.needsAttentionCount > 0} />
 
-      {/* Customer Directory */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-1 h-6 bg-lavpop-blue rounded-full"></div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Diretório de Clientes</h2>
+      {/* Section 1: Resumo - KPI Cards */}
+      <section id="resumo-section" aria-labelledby="resumo-heading">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-lavpop-blue/10 dark:bg-lavpop-blue/20 flex items-center justify-center border-l-4 border-lavpop-blue">
+            <LayoutGrid className="w-5 h-5 text-lavpop-blue" />
+          </div>
+          <div>
+            <h2 id="resumo-heading" className="text-base font-bold text-slate-900 dark:text-white">
+              Resumo de Clientes
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Visão geral da base de clientes
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <SecondaryKPICard
+            title="Novos Clientes"
+            displayValue={formatNumber(newClientsCount)}
+            subtitle="Últimos 30 dias"
+            icon={UserPlus}
+            color="purple"
+          />
+          <SecondaryKPICard
+            title="Clientes Ativos"
+            displayValue={formatNumber(metrics.activeCount)}
+            subtitle="Não perdidos"
+            icon={UsersIcon}
+            color="blue"
+          />
+          <SecondaryKPICard
+            title="Em Risco"
+            displayValue={formatNumber(metrics.needsAttentionCount)}
+            subtitle="Risco + Crítico"
+            icon={AlertTriangle}
+            color="red"
+          />
+          <SecondaryKPICard
+            title="Taxa de Saúde"
+            displayValue={formatPercent(metrics.healthRate)}
+            subtitle="Clientes saudáveis"
+            icon={Heart}
+            color="green"
+          />
+        </div>
+      </section>
+
+      {/* Section 2: Ação Imediata - At-Risk Customers */}
+      {metrics.needsAttentionCount > 0 && (
+        <section id="acao-section" aria-labelledby="acao-heading">
+          <h2 id="acao-heading" className="sr-only">Ação Imediata - Clientes em Risco</h2>
+          <AtRiskCustomersTable
+            customerMetrics={metrics}
+            salesData={data.sales}
+            maxRows={5}
+          />
+        </section>
+      )}
+
+      {/* Section 3: Análise - Intelligence Dashboard */}
+      <section id="analise-section" aria-labelledby="analise-heading">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center border-l-4 border-purple-500">
+            <BarChart3 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <h2 id="analise-heading" className="text-base font-bold text-slate-900 dark:text-white">
+              Análise Comportamental
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Retenção, segmentação e tendências de aquisição
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="h-full">
+            <CustomerRetentionScore data={intelligence.retention} />
+          </div>
+          <div className="h-full">
+            <RFMScatterPlot data={intelligence.rfm} />
+          </div>
+          <div className="h-full">
+            <ChurnHistogram data={intelligence.histogram} />
+          </div>
+          <div className="h-full">
+            <NewClientsChart data={intelligence.acquisition} />
+          </div>
+        </div>
+      </section>
+
+      {/* Section 4: Diretório - Customer Directory */}
+      <section id="diretorio-section" aria-labelledby="diretorio-heading">
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center border-l-4 border-blue-500">
+            <UsersIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h2 id="diretorio-heading" className="text-base font-bold text-slate-900 dark:text-white">
+              Diretório de Clientes
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {filteredCustomers.length} clientes encontrados
+            </p>
+          </div>
         </div>
 
-        <FilterBar
+        {/* Directory Content Container */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+          <FilterBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           selectedSegment={selectedSegment}
@@ -290,13 +413,14 @@ const Customers = ({ data }) => {
             )}
           </>
         ) : (
-          <div className="text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+          <div className="text-center py-16">
             <UsersIcon className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-slate-600 dark:text-slate-400">Nenhum cliente encontrado</h3>
             <p className="text-slate-400 dark:text-slate-500">Tente ajustar seus filtros de busca</p>
           </div>
         )}
-      </div>
+        </div>
+      </section>
 
       {/* Customer Profile Modal */}
       {selectedCustomer && (

@@ -1,7 +1,16 @@
-// CustomerCard.jsx v5.0 - FIXED-SIZE CLICKABLE CARD
+// CustomerCard.jsx v5.2 - ENHANCED CARD DEFINITION
 // Optimized card design with consistent size and full clickability
-// 
+//
 // CHANGELOG:
+// v5.2 (2025-12-01): Improved card visibility
+//   - Upgraded border from slate-200 to slate-300 (light mode)
+//   - Upgraded border from slate-700 to slate-600 (dark mode)
+//   - Better definition against white container background
+// v5.1 (2025-12-01): Unified risk pill styling
+//   - High contrast pills matching CustomerProfileModal
+//   - Solid colors with white text for visibility
+//   - Removed pulsing dot for cleaner look
+//   - Added shadow-sm for consistency
 // v5.0 (2025-11-24): Fixed-size clickable card
 //   - REMOVED: "Ver Perfil Completo" button
 //   - CHANGED: Entire card is now clickable
@@ -16,20 +25,21 @@ import React from 'react';
 import { Phone, MessageCircle, Clock, Wallet, AlertCircle, Calendar, Activity } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
 
-const CustomerCard = ({ customer, onClick }) => {
-    // Risk Badge Logic (Dot Style)
-    const getRiskBadge = (level) => {
-        switch (level) {
-            case 'Healthy': return { color: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50', label: 'Saudável' };
-            case 'Monitor': return { color: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50', label: 'Monitorar' };
-            case 'At Risk': return { color: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', label: 'Em Risco' };
-            case 'Churning': return { color: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', label: 'Crítico' };
-            case 'New Customer': return { color: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-50', label: 'Novo' };
-            default: return { color: 'bg-slate-400', text: 'text-slate-600', bg: 'bg-slate-50', label: 'Perdido' };
-        }
-    };
+// High contrast risk pill styling - matches CustomerProfileModal
+// Colors follow Design System v3.1 Status Indicators:
+//   Info (Monitor) → blue, Warning (At Risk) → amber, Error (Churning) → red
+const RISK_PILL_STYLES = {
+    'Healthy': { bg: 'bg-emerald-500', text: 'text-white', label: 'Saudável' },
+    'Monitor': { bg: 'bg-blue-500', text: 'text-white', label: 'Monitorar' },
+    'At Risk': { bg: 'bg-amber-500', text: 'text-white', label: 'Em Risco' },
+    'Churning': { bg: 'bg-red-600', text: 'text-white', label: 'Crítico' },
+    'New Customer': { bg: 'bg-purple-500', text: 'text-white', label: 'Novo' },
+    'Lost': { bg: 'bg-slate-500', text: 'text-white', label: 'Perdido' },
+};
 
-    const risk = getRiskBadge(customer.riskLevel);
+const CustomerCard = ({ customer, onClick }) => {
+    // Get risk styling with fallback
+    const risk = RISK_PILL_STYLES[customer.riskLevel] || RISK_PILL_STYLES['Lost'];
 
     const handleCall = (e) => {
         e.stopPropagation();
@@ -47,15 +57,14 @@ const CustomerCard = ({ customer, onClick }) => {
     return (
         <div
             onClick={onClick}
-            className="group bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:border-lavpop-blue dark:hover:border-lavpop-blue transition-all duration-200 cursor-pointer h-full flex flex-col"
+            className="group bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-300 dark:border-slate-600 shadow hover:shadow-lg hover:border-lavpop-blue dark:hover:border-lavpop-blue transition-all duration-200 cursor-pointer h-full flex flex-col"
         >
             {/* Header: Name & Risk - Flexible Height */}
             <div className="flex justify-between items-start mb-2 gap-2">
                 <h3 className="font-bold text-slate-800 dark:text-white text-base leading-tight line-clamp-2 flex-1">
                     {customer.name}
                 </h3>
-                <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${risk.bg} ${risk.text} shrink-0`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${risk.color} animate-pulse`} />
+                <div className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide shadow-sm shrink-0 ${risk.bg} ${risk.text}`}>
                     {risk.label}
                 </div>
             </div>

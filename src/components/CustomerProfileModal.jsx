@@ -1,8 +1,26 @@
-// CustomerProfileModal.jsx v1.2 - CUSTOMER PROFILE & CRM MODAL
+// CustomerProfileModal.jsx v1.6 - HIGH CONTRAST BADGES
 // Comprehensive customer profile modal for Customer Directory
-// Separate from Dashboard's CustomerDetailModal
+// Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v1.6 (2025-12-01): Badge redesign for better visibility
+//   - High contrast risk pills with solid colors (RISK_PILL_STYLES)
+//   - Segment displayed as gradient pill matching avatar colors
+//   - Removed pulsing dot from risk pill for cleaner look
+//   - Unified shadow-sm on all header pills
+// v1.5 (2025-12-01): Header UX improvements
+//   - Segment-based avatar icons with color gradients
+//   - Removed redundant "Retorno %" from header (exists in Behavior tab)
+//   - Moved contacted toggle to Communication History section header
+//   - Mobile users can now toggle contacted status
+// v1.4 (2025-12-01): Shared communication logging
+//   - Uses shared communicationLog utility for cross-component sync
+//   - Listens for communicationLogUpdate events from other components
+//   - Communication history updates in real-time when actions happen elsewhere
+// v1.3 (2025-12-01): Shared contact tracking
+//   - Added useContactTracking hook for app-wide sync
+//   - Contact indicator in header
+//   - Auto-mark as contacted on call/WhatsApp/Email
 // v1.2 (2025-11-30): Performance improvements
 //   - Replaced window resize listener with useIsMobile hook (matchMedia)
 // v1.1 (2025-11-29): Design System v3.0 compliance
@@ -16,7 +34,7 @@
 //   - Communication logging via localStorage
 //   - Quick contact actions (Call, WhatsApp, Email)
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     X,
     Phone,
@@ -34,60 +52,111 @@ import {
     BarChart3,
     Target,
     Plus,
+    Check,
+    Crown,
+    Heart,
+    Sparkles,
+    Rocket,
+    Eye,
+    Moon,
+    AlertTriangle,
+    Shield,
+    Pause,
+    UserMinus,
 } from 'lucide-react';
+
+// Segment-based avatar configuration
+// Maps RFM segments to icons and gradient colors for visual recognition
+// Segment names match those from customerMetrics.js SEGMENT_BONUS
+const SEGMENT_AVATARS = {
+    'Champion': { icon: Crown, from: 'from-amber-400', to: 'to-yellow-500', text: 'text-amber-900' },
+    'Loyal': { icon: Heart, from: 'from-blue-500', to: 'to-indigo-600', text: 'text-white' },
+    'Potential': { icon: TrendingUp, from: 'from-cyan-400', to: 'to-blue-500', text: 'text-white' },
+    'New': { icon: Sparkles, from: 'from-purple-500', to: 'to-violet-600', text: 'text-white' },
+    'Promising': { icon: Rocket, from: 'from-emerald-400', to: 'to-green-500', text: 'text-white' },
+    'Need Attention': { icon: Eye, from: 'from-orange-400', to: 'to-amber-500', text: 'text-orange-900' },
+    'About to Sleep': { icon: Moon, from: 'from-slate-400', to: 'to-gray-500', text: 'text-white' },
+    'At Risk': { icon: AlertTriangle, from: 'from-red-500', to: 'to-rose-600', text: 'text-white' },
+    'AtRisk': { icon: AlertTriangle, from: 'from-red-500', to: 'to-rose-600', text: 'text-white' },
+    'Cant Lose': { icon: Shield, from: 'from-rose-500', to: 'to-red-600', text: 'text-white' },
+    'Hibernating': { icon: Pause, from: 'from-gray-400', to: 'to-slate-500', text: 'text-white' },
+    'Lost': { icon: UserMinus, from: 'from-gray-500', to: 'to-slate-600', text: 'text-white' },
+    'Unclassified': { icon: User, from: 'from-slate-400', to: 'to-slate-500', text: 'text-white' },
+    // Default fallback for any unmatched segment
+    'default': { icon: User, from: 'from-lavpop-blue', to: 'to-blue-600', text: 'text-white' },
+};
+
+// High contrast risk pill styling - solid colors with white text for visibility
+// Colors follow Design System v3.1 Status Indicators:
+//   Info (Monitor) → blue, Warning (At Risk) → amber, Error (Churning) → red
+const RISK_PILL_STYLES = {
+    'Healthy': 'bg-emerald-500 text-white',
+    'Monitor': 'bg-blue-500 text-white',
+    'At Risk': 'bg-amber-500 text-white',
+    'Churning': 'bg-red-600 text-white',
+    'New Customer': 'bg-purple-500 text-white',
+    'Lost': 'bg-slate-500 text-white',
+};
 import { formatCurrency } from '../utils/numberUtils';
 import { RISK_LABELS } from '../utils/customerMetrics';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useContactTracking } from '../hooks/useContactTracking';
+import { addCommunicationEntry, getCommunicationLog, getDefaultNotes } from '../utils/communicationLog';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
     const [communicationLog, setCommunicationLog] = useState(() => {
-        // Load from localStorage
-        const saved = localStorage.getItem(`comm_log_${customer.doc}`);
-        return saved ? JSON.parse(saved) : [];
+        // Load from shared utility
+        return getCommunicationLog(customer.doc);
     });
     const [newNote, setNewNote] = useState('');
     const [noteMethod, setNoteMethod] = useState('call');
     // Use matchMedia hook instead of resize listener
     const isMobile = useMediaQuery('(max-width: 639px)');
 
-    // Save communication log to localStorage
-    const saveCommunicationLog = (log) => {
-        localStorage.setItem(`comm_log_${customer.doc}`, JSON.stringify(log));
-        setCommunicationLog(log);
-    };
+    // Shared contact tracking (syncs across app)
+    const { isContacted, toggleContacted } = useContactTracking();
+    const customerId = customer.doc || customer.id;
+    const contacted = isContacted(customerId);
 
-    // Add communication entry
+    // Listen for communication log updates from other components
+    useEffect(() => {
+        const handleLogUpdate = (event) => {
+            // Only update if it's for this customer
+            if (event.detail?.customerId === customer.doc) {
+                setCommunicationLog(getCommunicationLog(customer.doc));
+            }
+        };
+
+        window.addEventListener('communicationLogUpdate', handleLogUpdate);
+        return () => window.removeEventListener('communicationLogUpdate', handleLogUpdate);
+    }, [customer.doc]);
+
+    // Add communication entry (manual form submission)
     const addCommunication = () => {
         if (!newNote.trim()) return;
 
-        const entry = {
-            date: new Date().toISOString(),
-            method: noteMethod,
-            notes: newNote,
-            timestamp: Date.now(),
-        };
-
-        const updated = [entry, ...communicationLog];
-        saveCommunicationLog(updated);
+        // Use shared utility (will dispatch event for sync)
+        addCommunicationEntry(customer.doc, noteMethod, newNote);
+        // Update local state
+        setCommunicationLog(getCommunicationLog(customer.doc));
         setNewNote('');
     };
 
     // Get risk configuration
     const riskConfig = RISK_LABELS[customer.riskLevel] || RISK_LABELS['Lost'];
 
-    // Quick actions
+    // Quick actions - use shared utility for communication logging
     const handleCall = () => {
         if (customer.phone) {
             window.location.href = `tel:${customer.phone}`;
-            // Auto-log call attempt
-            const entry = {
-                date: new Date().toISOString(),
-                method: 'call',
-                notes: 'Ligação realizada',
-                timestamp: Date.now(),
-            };
-            saveCommunicationLog([entry, ...communicationLog]);
+            // Auto-log call attempt (uses shared utility)
+            addCommunicationEntry(customer.doc, 'call', getDefaultNotes('call'));
+            setCommunicationLog(getCommunicationLog(customer.doc));
+            // Mark as contacted (syncs across app)
+            if (customerId && !contacted) {
+                toggleContacted(customerId, 'phone');
+            }
         }
     };
 
@@ -95,29 +164,31 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         if (customer.phone) {
             const cleanPhone = customer.phone.replace(/\D/g, '');
             window.open(`https://wa.me/${cleanPhone}`, '_blank');
-            // Auto-log WhatsApp
-            const entry = {
-                date: new Date().toISOString(),
-                method: 'whatsapp',
-                notes: 'Mensagem WhatsApp enviada',
-                timestamp: Date.now(),
-            };
-            saveCommunicationLog([entry, ...communicationLog]);
+            // Auto-log WhatsApp (uses shared utility)
+            addCommunicationEntry(customer.doc, 'whatsapp', getDefaultNotes('whatsapp'));
+            setCommunicationLog(getCommunicationLog(customer.doc));
+            // Mark as contacted (syncs across app)
+            if (customerId && !contacted) {
+                toggleContacted(customerId, 'whatsapp');
+            }
         }
     };
 
     const handleEmail = () => {
         if (customer.email) {
             window.location.href = `mailto:${customer.email}`;
-            // Auto-log email
-            const entry = {
-                date: new Date().toISOString(),
-                method: 'email',
-                notes: 'Email enviado',
-                timestamp: Date.now(),
-            };
-            saveCommunicationLog([entry, ...communicationLog]);
+            // Auto-log email (uses shared utility)
+            addCommunicationEntry(customer.doc, 'email', getDefaultNotes('email'));
+            setCommunicationLog(getCommunicationLog(customer.doc));
+            // Mark as contacted (syncs across app)
+            if (customerId && !contacted) {
+                toggleContacted(customerId, 'email');
+            }
         }
+    };
+
+    const handleMarkContacted = () => {
+        toggleContacted(customerId, 'manual');
     };
 
     // Helper to parse Brazilian date format (DD/MM/YYYY HH:mm:ss)
@@ -201,60 +272,77 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col">
-                {/* Header - Compact */}
+                {/* Header - Simplified with Segment Avatar */}
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 px-4 py-3 sm:px-5 border-b border-slate-200 dark:border-slate-700">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-lavpop-blue to-blue-600 flex items-center justify-center text-white font-bold text-lg">
-                                {customer.name.charAt(0).toUpperCase()}
-                            </div>
+                            {/* Segment-based Avatar */}
+                            {(() => {
+                                const avatarConfig = SEGMENT_AVATARS[customer.segment] || SEGMENT_AVATARS['default'];
+                                const AvatarIcon = avatarConfig.icon;
+                                return (
+                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarConfig.from} ${avatarConfig.to} flex items-center justify-center ${avatarConfig.text} shadow-md`}>
+                                        <AvatarIcon className="w-5 h-5" />
+                                    </div>
+                                );
+                            })()}
                             <div className="flex-1 min-w-0">
                                 <h2 className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate">
                                     {customer.name}
                                 </h2>
-                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${riskConfig.bgClass} ${riskConfig.textClass}`}>
-                                        <span className={`w-1 h-1 rounded-full bg-${riskConfig.color}-500 animate-pulse`} />
+                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                    {/* Contact status indicator */}
+                                    {contacted && (
+                                        <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-500 text-white shadow-sm">
+                                            <Check className="w-2.5 h-2.5" />
+                                            Contactado
+                                        </div>
+                                    )}
+                                    {/* Risk status pill - high contrast */}
+                                    <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase shadow-sm ${RISK_PILL_STYLES[customer.riskLevel] || 'bg-slate-500 text-white'}`}>
                                         {riskConfig.pt}
                                     </div>
-                                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                        Retorno: {customer.returnLikelihood}%
-                                    </div>
-                                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 truncate">
-                                        {customer.segment}
-                                    </div>
+                                    {/* Segment pill - gradient matching avatar */}
+                                    {(() => {
+                                        const segConfig = SEGMENT_AVATARS[customer.segment] || SEGMENT_AVATARS['default'];
+                                        return (
+                                            <div className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-gradient-to-r ${segConfig.from} ${segConfig.to} ${segConfig.text} shadow-sm`}>
+                                                {customer.segment}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
-                            {/* Quick Actions - Only WhatsApp on mobile, all buttons on desktop */}
-                            <div className="flex gap-2.5">
+                            {/* Quick Actions - desktop only (contacted toggle moved to Communication History) */}
+                            <div className="hidden sm:flex gap-2">
                                 {customer.phone && (
                                     <>
-                                        {/* Call button - hidden on mobile */}
+                                        {/* Call button */}
                                         <button
                                             onClick={handleCall}
-                                            className="hidden sm:flex items-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-lavpop-blue hover:text-white transition-colors text-xs font-semibold border border-slate-200 dark:border-slate-600 min-h-[44px] sm:min-h-0"
+                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-lavpop-blue hover:text-white transition-colors text-xs font-semibold border border-slate-200 dark:border-slate-600"
                                         >
                                             <Phone className="w-3 h-3" />
-                                            <span className="hidden xs:inline">Ligar</span>
+                                            <span className="hidden min-[500px]:inline">Ligar</span>
                                         </button>
-                                        {/* WhatsApp button - always visible */}
+                                        {/* WhatsApp button */}
                                         <button
                                             onClick={handleWhatsApp}
-                                            className="hidden sm:flex items-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800 min-h-[44px] sm:min-h-1"
+                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800"
                                         >
                                             <MessageCircle className="w-4 h-4" />
                                             <span className="hidden min-[500px]:inline">WhatsApp</span>
                                         </button>
                                     </>
                                 )}
-                                {/* Email button - hidden on mobile */}
+                                {/* Email button */}
                                 {customer.email && (
                                     <button
                                         onClick={handleEmail}
-                                        className="hidden sm:flex items-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white transition-colors text-xs font-semibold border border-blue-200 dark:border-blue-800 min-h-[44px] sm:min-h-0"
+                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white transition-colors text-xs font-semibold border border-blue-200 dark:border-blue-800"
                                     >
                                         <Mail className="w-3 h-3" />
-                                        <span className="hidden xs:inline">Email</span>
+                                        <span className="hidden min-[500px]:inline">Email</span>
                                     </button>
                                 )}
                             </div>
@@ -262,7 +350,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
                         <button
                             onClick={onClose}
-                            className="p-1.0 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors ml-1.3 sm:ml-3"
+                            className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors ml-2 sm:ml-3"
                         >
                             <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
                         </button>
@@ -370,19 +458,34 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
                             {/* Communication Log */}
                             <div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <MessageCircle className="w-4 h-4 text-lavpop-blue" />
-                                    Histórico de Comunicação
-                                    {customer.phone && (
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                        <MessageCircle className="w-4 h-4 text-lavpop-blue" />
+                                        Histórico de Comunicação
+                                    </h3>
+                                    <div className="flex items-center gap-2">
+                                        {/* Contacted Toggle - visible on all devices */}
                                         <button
-                                            onClick={handleWhatsApp}
-                                            className="sm:hidden ml-auto flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800"
+                                            onClick={handleMarkContacted}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${contacted
+                                                ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600'
+                                                : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600'
+                                                }`}
                                         >
-                                            <MessageCircle className="w-3 h-3" />
-                                            WhatsApp
+                                            <Check className="w-3 h-3" />
+                                            <span className="hidden min-[400px]:inline">{contacted ? 'Contactado' : 'Marcar contactado'}</span>
                                         </button>
-                                    )}
-                                </h3>
+                                        {/* WhatsApp button for mobile */}
+                                        {customer.phone && (
+                                            <button
+                                                onClick={handleWhatsApp}
+                                                className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800"
+                                            >
+                                                <MessageCircle className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
 
                                 {/* Add New Entry */}
                                 <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 mb-2">
