@@ -1,4 +1,4 @@
-// OPERATIONS TAB V5.1.0
+// OPERATIONS TAB V5.5.0 - CATEGORICAL SECTION HEADERS
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
@@ -7,8 +7,27 @@
 // ✅ Responsive grid layout
 // ✅ Actionability-first component order
 // ✅ Operations-optimized date options (no allTime)
+// ✅ Consistent header matching all views
+// ✅ Sticky date control matching Dashboard
+// ✅ Section headers with icons (Design System v3.1)
+// ✅ Category-level naming for future expansion
 //
 // CHANGELOG:
+// v5.5.0 (2025-12-02): Categorical section header naming
+//   - Renamed sections to general categories for future expansion
+//   - "Desempenho de Máquinas" → "Equipamentos" (allows: maintenance, health)
+//   - "Mapa de Calor" → "Utilização" (allows: capacity, efficiency)
+//   - External headers = Category level, Internal headers = Specific
+// v5.4.0 (2025-12-02): Unified section headers
+//   - Added section headers with icons for all sections
+//   - Consistent with Customers.jsx and Intelligence.jsx
+//   - Uses amber accent color for Operations theme
+// v5.3.0 (2025-12-02): Unified date control
+//   - DateRangeSelector now uses sticky positioning
+//   - Consistent compact style matching DashboardDateControl
+// v5.2.0 (2025-12-02): Unified header design
+//   - Added icon box with left border accent (amber)
+//   - Consistent styling across all app views
 // v5.1.0 (2025-11-30): Date range optimization for operations
 //   - Changed default from currentWeek to lastWeek (complete data)
 //   - Removed "Todo Período" option (not actionable for operations)
@@ -43,6 +62,7 @@
 // v1.0 (Previous): Initial Operations tab
 
 import React, { useMemo, useState } from 'react';
+import { Wrench, Gauge, Grid3X3, Clock } from 'lucide-react';
 import OperationsKPICards from '../components/OperationsKPICards';
 import UtilizationHeatmap from '../components/UtilizationHeatmap';
 import PeakHoursSummary from '../components/PeakHoursSummary';
@@ -115,24 +135,28 @@ const Operations = ({ data }) => {
   return (
     <div className="max-w-[100rem] mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:p-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-          Operações
-        </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Eficiência das Máquinas e Análise Operacional
-        </p>
-      </div>
+      <header className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
+          <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+        </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+            Operações
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Eficiência e análise operacional
+          </p>
+        </div>
+      </header>
 
       {/* Centralized Date Filter - Single Source of Truth */}
-      <div className="mb-6">
-        <DateRangeSelector
-          value={dateFilter}
-          onChange={setDateFilter}
-          dateWindow={dateWindow}
-          excludeAllTime={true}
-        />
-      </div>
+      <DateRangeSelector
+        value={dateFilter}
+        onChange={setDateFilter}
+        dateWindow={dateWindow}
+        excludeAllTime={true}
+        sticky={true}
+      />
 
       {/* Utilization KPI Cards + Revenue Breakdown */}
       <OperationsKPICards 
@@ -142,42 +166,82 @@ const Operations = ({ data }) => {
         dateWindow={dateFilter}
       />
 
-      {/* Main Grid Layout - Ordered by Actionability */}
-      <div className="grid grid-cols-12 gap-4 sm:gap-6">
-        {/* Row 1: Machine Performance Table (Most Actionable) */}
-        <div className="col-span-12">
-          <MachinePerformanceTable
-            machinePerformance={operationsMetrics.machinePerformance}
-            dateFilter={dateFilter}
-            dateWindow={dateWindow}
-            revenueBreakdown={operationsMetrics.revenueBreakdown}
-          />
+      {/* Section 1: Machine Performance (Most Actionable) */}
+      <section id="maquinas-section" aria-labelledby="maquinas-heading" className="mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
+            <Gauge className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <h2 id="maquinas-heading" className="text-base font-bold text-slate-900 dark:text-white">
+              Equipamentos
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Análise de máquinas e equipamentos
+            </p>
+          </div>
         </div>
+        <MachinePerformanceTable
+          machinePerformance={operationsMetrics.machinePerformance}
+          dateFilter={dateFilter}
+          dateWindow={dateWindow}
+          revenueBreakdown={operationsMetrics.revenueBreakdown}
+        />
+      </section>
 
-        {/* Row 2: Utilization Heatmap (Patterns Overview) */}
-        <div className="col-span-12">
-          <UtilizationHeatmap
-            salesData={data.sales}
-            dateFilter={dateFilter}
-            dateWindow={dateWindow}
-          />
+      {/* Section 2: Utilization Heatmap */}
+      <section id="heatmap-section" aria-labelledby="heatmap-heading" className="mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
+            <Grid3X3 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <h2 id="heatmap-heading" className="text-base font-bold text-slate-900 dark:text-white">
+              Utilização
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Ocupação e eficiência operacional
+            </p>
+          </div>
         </div>
+        <UtilizationHeatmap
+          salesData={data.sales}
+          dateFilter={dateFilter}
+          dateWindow={dateWindow}
+        />
+      </section>
 
-        {/* Row 3: Time Patterns (Paired for space efficiency) */}
-        <div className="col-span-12 lg:col-span-6">
-          <PeakHoursSummary
-            peakHours={operationsMetrics.peakHours}
-            dateWindow={dateWindow}
-          />
+      {/* Section 3: Time Patterns */}
+      <section id="padroes-section" aria-labelledby="padroes-heading">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
+            <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <h2 id="padroes-heading" className="text-base font-bold text-slate-900 dark:text-white">
+              Padrões Temporais
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Horários de pico e distribuição semanal
+            </p>
+          </div>
         </div>
-        <div className="col-span-12 lg:col-span-6">
-          <DayOfWeekChart
-            dayPatterns={operationsMetrics.dayPatterns}
-            dateFilter={dateFilter}
-            dateWindow={dateWindow}
-          />
+        <div className="grid grid-cols-12 gap-4 sm:gap-6">
+          <div className="col-span-12 lg:col-span-6">
+            <PeakHoursSummary
+              peakHours={operationsMetrics.peakHours}
+              dateWindow={dateWindow}
+            />
+          </div>
+          <div className="col-span-12 lg:col-span-6">
+            <DayOfWeekChart
+              dayPatterns={operationsMetrics.dayPatterns}
+              dateFilter={dateFilter}
+              dateWindow={dateWindow}
+            />
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

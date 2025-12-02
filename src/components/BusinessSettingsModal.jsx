@@ -1,10 +1,17 @@
-// BusinessSettingsModal.jsx v1.0.0
+// BusinessSettingsModal.jsx v1.1.0
 // Modal for configuring business parameters (costs, pricing, etc.)
 // Uses Tailwind CSS for modern styling
 // Local storage persistence for settings
+//
+// CHANGELOG:
+// v1.1.0 (2025-12-02): Removed static goals
+//   - Removed targetUtilization and targetMonthlyRevenue from settings
+//   - Removed "Metas" section from UI (GoalProgress was deleted)
+//   - Dynamic break-even in ProfitabilitySection replaces static goals
+// v1.0.0: Initial implementation
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, DollarSign, Wrench, TrendingUp, Settings } from 'lucide-react';
+import { X, Save, DollarSign, Wrench, Settings } from 'lucide-react';
 
 const DEFAULT_SETTINGS = {
   // Pricing
@@ -23,10 +30,6 @@ const DEFAULT_SETTINGS = {
   maintenanceIntervalDays: 45,
   maintenanceDowntimeHours: 6,
   maintenanceCostPerSession: 300,
-  
-  // Targets
-  targetUtilization: 25,
-  targetMonthlyRevenue: 8500,
 };
 
 const STORAGE_KEY = 'lavpop_business_settings';
@@ -320,45 +323,6 @@ const BusinessSettingsModal = ({ isOpen, onClose, onSave }) => {
                       type="number"
                       value={settings.maintenanceCostPerSession}
                       onChange={(e) => handleChange('maintenanceCostPerSession', parseFloat(e.target.value))}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavpop-primary focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Targets Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-lavpop-primary">
-                <TrendingUp className="w-5 h-5" />
-                <h3 className="text-lg font-semibold">Metas</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Utilização Alvo (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.targetUtilization}
-                    onChange={(e) => handleChange('targetUtilization', parseFloat(e.target.value))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavpop-primary focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Receita Mensal Alvo
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                      R$
-                    </span>
-                    <input
-                      type="number"
-                      value={settings.targetMonthlyRevenue}
-                      onChange={(e) => handleChange('targetMonthlyRevenue', parseFloat(e.target.value))}
                       className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavpop-primary focus:border-transparent"
                     />
                   </div>

@@ -1,7 +1,11 @@
-// Customers View v2.7.1 - CUSTOMER INTELLIGENCE HUB
+// Customers View v2.8.0 - UNIFIED HEADER
 // Complete redesign from card-based list to Intelligence Hub
 //
 // CHANGELOG:
+// v2.8.0 (2025-12-02): Unified header design
+//   - Added icon box with left border accent (purple)
+//   - Consistent styling across all app views
+//   - Simplified title to "Clientes"
 // v2.7.1 (2025-12-01): Directory container background fix
 //   - Reverted to bg-white (was bg-slate-50 which matched app shell)
 //   - Maintains proper visual separation from page background
@@ -188,12 +192,15 @@ const Customers = ({ data }) => {
     <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 sm:space-y-8 animate-fade-in">
 
       {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center border-l-4 border-purple-500">
+          <UsersIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        </div>
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-            Hub de Inteligência de Clientes
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+            Clientes
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Visão 360º da sua base de clientes
           </p>
         </div>

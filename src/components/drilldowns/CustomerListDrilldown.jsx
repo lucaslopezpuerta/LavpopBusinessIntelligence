@@ -1,4 +1,4 @@
-// CustomerListDrilldown.jsx v3.4 - CONTACT STATUS FIX
+// CustomerListDrilldown.jsx v3.5 - DARK MODE CARD FIX
 // ✅ Pagination with "Ver mais" button
 // ✅ WhatsApp and Call actions
 // ✅ Dynamic sorting with controls
@@ -11,6 +11,9 @@
 // ✅ Design System v3.1 compliant
 //
 // CHANGELOG:
+// v3.5 (2025-12-02): Dark mode card background fix
+//   - Fixed semi-transparent card bg showing swipe actions through
+//   - Changed dark:bg-slate-700/30 to solid dark:bg-slate-700
 // v3.4 (2025-12-01): Contact status fix
 //   - Fixed: Call/WhatsApp buttons now mark customer as contacted
 //   - Consolidated toggleContacted calls in handleCall/handleWhatsApp
@@ -337,7 +340,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                             <div
                                 className={`
                                     relative flex items-center gap-2 p-2.5
-                                    bg-slate-50 dark:bg-slate-700/30
+                                    bg-slate-50 dark:bg-slate-700
                                     border border-slate-200 dark:border-slate-700 rounded-xl
                                     ${contacted ? 'opacity-60' : ''}
                                     transition-transform duration-150 ease-out

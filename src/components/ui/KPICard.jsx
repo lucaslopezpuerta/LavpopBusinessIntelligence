@@ -1,8 +1,11 @@
-// KPICard.jsx v1.0
+// KPICard.jsx v1.1
 // Unified KPI card component for Intelligence dashboard
 // Design System v3.1 compliant - Replaces duplicated patterns
 //
 // CHANGELOG:
+// v1.1 (2025-12-02): Trend position option
+//   - Added trendPosition prop: 'inline' (default) | 'bottom-right'
+//   - bottom-right saves vertical space by positioning trend badge at card bottom
 // v1.0 (2025-11-30): Initial implementation
 //   - Three variants: default, hero, compact
 //   - Unified color system from colorMapping.js
@@ -22,6 +25,7 @@ import { getSemanticColor } from '../../utils/colorMapping';
  * @param {string|number} value - Main display value (formatted)
  * @param {string} subtitle - Optional secondary text
  * @param {object} trend - Optional trend data { value: number, label?: string }
+ * @param {string} trendPosition - Trend badge position: 'inline' (below subtitle) | 'bottom-right' (saves vertical space)
  * @param {React.ComponentType} icon - Optional Lucide icon component
  * @param {string} color - Color theme key (blue, revenue, cost, profit, etc.)
  * @param {string} variant - Card variant: 'default' | 'hero' | 'compact' | 'gradient'
@@ -33,6 +37,7 @@ const KPICard = ({
   value,
   subtitle,
   trend,
+  trendPosition = 'inline',
   icon: Icon,
   color = 'blue',
   variant = 'default',
@@ -123,6 +128,9 @@ const KPICard = ({
 
   const CardElement = onClick ? 'button' : 'div';
 
+  const showInlineTrend = trend && trendPosition === 'inline';
+  const showBottomRightTrend = trend && trendPosition === 'bottom-right';
+
   return (
     <CardElement
       className={cardClasses}
@@ -131,43 +139,62 @@ const KPICard = ({
       aria-label={onClick ? `${label}: ${value}` : undefined}
     >
       <div className="flex items-start justify-between gap-3">
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <p className={`
-            ${v.label} font-medium uppercase tracking-wide mb-1
-            ${isGradient ? colors.textMuted : 'text-gray-500 dark:text-slate-400'}
-          `}>
-            {label}
-          </p>
-          <p className={`
-            ${v.value} font-bold truncate mb-0.5
-            ${isGradient ? colors.text : 'text-gray-900 dark:text-white'}
-          `}>
-            {value}
-          </p>
-          {subtitle && (
+          {/* Content */}
+          <div className="flex-1 min-w-0">
             <p className={`
-              ${v.subtitle} truncate
-              ${isGradient ? colors.textSubtle : 'text-gray-500 dark:text-slate-400'}
+              ${v.label} font-medium uppercase tracking-wide mb-1
+              ${isGradient ? colors.textMuted : 'text-gray-500 dark:text-slate-400'}
             `}>
-              {subtitle}
+              {label}
             </p>
-          )}
-          {trend && (
-            <div className="mt-2">
-              {trend.label ? (
-                <span
-                  className={`text-xs font-medium ${trend.value > 0 ? 'text-emerald-600 dark:text-emerald-400' : trend.value < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400'}`}
-                  role="status"
-                >
-                  {trend.label}
-                </span>
-              ) : (
-                renderTrend()
-              )}
-            </div>
-          )}
-        </div>
+            <p className={`
+              ${v.value} font-bold truncate mb-0.5
+              ${isGradient ? colors.text : 'text-gray-900 dark:text-white'}
+            `}>
+              {value}
+            </p>
+            {/* Subtitle row with inline trend (bottom-right mode) */}
+            {showBottomRightTrend ? (
+              <div className="flex items-baseline gap-2 flex-wrap">
+                {subtitle && (
+                  <span className={`
+                    ${v.subtitle}
+                    ${isGradient ? colors.textSubtle : 'text-gray-500 dark:text-slate-400'}
+                  `}>
+                    {subtitle}
+                  </span>
+                )}
+                {renderTrend()}
+              </div>
+            ) : (
+              <>
+                {/* Standard subtitle */}
+                {subtitle && (
+                  <p className={`
+                    ${v.subtitle} truncate
+                    ${isGradient ? colors.textSubtle : 'text-gray-500 dark:text-slate-400'}
+                  `}>
+                    {subtitle}
+                  </p>
+                )}
+                {/* Inline trend below subtitle */}
+                {showInlineTrend && (
+                  <div className="mt-2">
+                    {trend.label ? (
+                      <span
+                        className={`text-xs font-medium ${trend.value > 0 ? 'text-emerald-600 dark:text-emerald-400' : trend.value < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400'}`}
+                        role="status"
+                      >
+                        {trend.label}
+                      </span>
+                    ) : (
+                      renderTrend()
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
         {/* Icon */}
         {Icon && (

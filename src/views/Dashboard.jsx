@@ -1,10 +1,15 @@
-// Dashboard.jsx v9.0 - NEW KPI LAYOUT
+// Dashboard.jsx v9.1 - UNIFIED HEADER
 // ✅ Integrated KPICardsGrid with visual hierarchy
 // ✅ Hero cards for primary metrics
 // ✅ Secondary cards in compact grid
 // ✅ Optimized layout spacing
+// ✅ Consistent header matching all views
 //
 // CHANGELOG:
+// v9.1 (2025-12-02): Unified header design
+//   - Added header with icon box and left border accent
+//   - Consistent styling across all app views
+//   - Title: "Visão Geral" with subtitle
 // v9.0 (2025-12-01): Moved AtRiskCustomersTable to Customers view
 //   - Removed AtRiskCustomersTable from Dashboard
 //   - Simplified Operations section layout
@@ -25,6 +30,7 @@
 //   - Non-gradient design per Design System audit
 // v8.5: Fixed layout & metrics
 import React, { useState, useEffect, useMemo } from 'react';
+import { LayoutDashboard } from 'lucide-react';
 import KPICardsGrid from '../components/KPICardsGrid';
 import OperatingCyclesChart from '../components/OperatingCyclesChart';
 import DashboardDateControl from '../components/DashboardDateControl';
@@ -121,7 +127,22 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
   const operationsMetrics = metrics?.operations;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
+      {/* Header */}
+      <header className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-lavpop-blue/10 dark:bg-lavpop-blue/20 flex items-center justify-center border-l-4 border-lavpop-blue">
+          <LayoutDashboard className="w-5 h-5 text-lavpop-blue" />
+        </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+            Visão Geral
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Métricas principais do seu negócio
+          </p>
+        </div>
+      </header>
+
       {/* Date Control */}
       <DashboardDateControl
         viewMode={viewMode}

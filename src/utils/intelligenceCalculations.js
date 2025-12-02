@@ -1,4 +1,4 @@
-// intelligenceCalculations.js v3.0 - AUDIT FIXES
+// intelligenceCalculations.js v3.1 - WEIGHTED PROJECTION
 // ✅ Uses existing transactionParser.js for consistent data handling
 // ✅ Uses existing businessMetrics.js patterns
 // ✅ Reuses proven math instead of reinventing
@@ -6,6 +6,10 @@
 // Profitability, Weather Impact, Campaign ROI, Growth Analysis
 //
 // CHANGELOG:
+// v3.1 (2025-12-02): Weighted revenue projection
+//   - Added calculateTemperatureCorrelation() for temp-revenue relationship
+//   - Added calculateWeightedProjection() combining day-of-week + temperature
+//   - More accurate projections for seasonal laundromat business
 // v3.0 (2025-11-30): Audit fixes
 //   - Fixed avgGrowth to properly exclude null values
 //   - Added date range filtering (90 days weather, 12 months growth, 6 months campaigns)
@@ -848,5 +852,273 @@ export function calculateRevenueForecast(currentMonth) {
     monthProgress: (currentMonth.daysElapsed / daysInMonth) * 100,
     confidence,
     confidenceLevel,
+  };
+}
+
+/**
+ * Calculate temperature-revenue correlation from all historical data
+ * Uses ALL available data to find: "X% revenue change per 1°C temperature change"
+ *
+ * @param {Array} salesData - Sales records
+ * @param {Array} weatherData - Weather records with temperature
+ * @returns {object} Correlation data
+ */
+export function calculateTemperatureCorrelation(salesData, weatherData) {
+  const records = parseSalesRecords(salesData);
+  const weather = parseWeatherData(weatherData);
+
+  if (records.length === 0 || weather.length === 0) {
+    return { correlation: 0, percentPerDegree: 0, hasEnoughData: false };
+  }
+
+  // Create date -> weather map
+  const weatherMap = new Map();
+  weather.forEach(w => {
+    const dateKey = formatDate(w.date);
+    weatherMap.set(dateKey, w);
+  });
+
+  // Group sales by date and join with temperature
+  const dailyData = new Map();
+
+  records.forEach(record => {
+    const dateKey = record.dateStr;
+    const w = weatherMap.get(dateKey);
+
+    if (w && w.temperature > 0) { // Only include days with valid temperature
+      if (!dailyData.has(dateKey)) {
+        dailyData.set(dateKey, { revenue: 0, temperature: w.temperature });
+      }
+      dailyData.get(dateKey).revenue += record.netValue;
+    }
+  });
+
+  const dataPoints = Array.from(dailyData.values());
+
+  if (dataPoints.length < 30) {
+    return {
+      correlation: 0,
+      percentPerDegree: 0,
+      hasEnoughData: false,
+      daysAnalyzed: dataPoints.length,
+      message: 'Menos de 30 dias com dados de temperatura'
+    };
+  }
+
+  // Calculate means
+  const n = dataPoints.length;
+  const meanRevenue = dataPoints.reduce((s, d) => s + d.revenue, 0) / n;
+  const meanTemp = dataPoints.reduce((s, d) => s + d.temperature, 0) / n;
+
+  // Calculate Pearson correlation and regression slope
+  let sumXY = 0, sumX2 = 0, sumY2 = 0;
+
+  dataPoints.forEach(d => {
+    const xDiff = d.temperature - meanTemp;
+    const yDiff = d.revenue - meanRevenue;
+    sumXY += xDiff * yDiff;
+    sumX2 += xDiff * xDiff;
+    sumY2 += yDiff * yDiff;
+  });
+
+  // Pearson correlation coefficient (-1 to 1)
+  const correlation = sumX2 > 0 && sumY2 > 0
+    ? sumXY / Math.sqrt(sumX2 * sumY2)
+    : 0;
+
+  // Regression slope: revenue change per 1°C
+  const slope = sumX2 > 0 ? sumXY / sumX2 : 0;
+
+  // Convert to percentage: X% change per 1°C
+  const percentPerDegree = meanRevenue > 0
+    ? (slope / meanRevenue) * 100
+    : 0;
+
+  // Temperature range in data
+  const temps = dataPoints.map(d => d.temperature);
+  const minTemp = Math.min(...temps);
+  const maxTemp = Math.max(...temps);
+
+  return {
+    correlation: Math.round(correlation * 100) / 100,
+    percentPerDegree: Math.round(percentPerDegree * 100) / 100,
+    slope: Math.round(slope * 100) / 100, // R$ per 1°C
+    meanRevenue: Math.round(meanRevenue),
+    meanTemperature: Math.round(meanTemp * 10) / 10,
+    temperatureRange: { min: minTemp, max: maxTemp },
+    daysAnalyzed: n,
+    hasEnoughData: true,
+    // Interpretation
+    interpretation: correlation < -0.3
+      ? 'Forte correlação negativa: dias frios = mais receita'
+      : correlation < -0.1
+        ? 'Correlação negativa moderada: frio tende a aumentar receita'
+        : correlation > 0.1
+          ? 'Correlação positiva: calor tende a aumentar receita'
+          : 'Sem correlação significativa com temperatura'
+  };
+}
+
+/**
+ * Calculate weighted revenue projection combining:
+ * 1. Day-of-week patterns (from current month)
+ * 2. Temperature adjustment (from all historical data)
+ *
+ * @param {Array} salesData - Sales records
+ * @param {Array} weatherData - Weather records
+ * @param {object} currentMonth - Current month metrics
+ * @returns {object} Weighted projection data
+ */
+export function calculateWeightedProjection(salesData, weatherData, currentMonth) {
+  if (!currentMonth || !currentMonth.daysElapsed || currentMonth.daysElapsed === 0) {
+    return null;
+  }
+
+  const records = parseSalesRecords(salesData);
+  const weather = parseWeatherData(weatherData);
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysRemaining = daysInMonth - currentMonth.daysElapsed;
+
+  // --- 1. Calculate day-of-week averages from current month ---
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const currentMonthRecords = records.filter(r => r.date >= startOfMonth);
+
+  // Group by day of week (0=Sunday, 6=Saturday)
+  const dayOfWeekRevenue = Array(7).fill(null).map(() => ({ total: 0, days: 0 }));
+  const dayMap = new Map();
+
+  currentMonthRecords.forEach(record => {
+    const dateKey = record.dateStr;
+    if (!dayMap.has(dateKey)) {
+      dayMap.set(dateKey, { revenue: 0, dayOfWeek: record.date.getDay() });
+    }
+    dayMap.get(dateKey).revenue += record.netValue;
+  });
+
+  dayMap.forEach(day => {
+    dayOfWeekRevenue[day.dayOfWeek].total += day.revenue;
+    dayOfWeekRevenue[day.dayOfWeek].days += 1;
+  });
+
+  // Calculate averages per day of week
+  const dayOfWeekAvg = dayOfWeekRevenue.map((d, i) => ({
+    dayOfWeek: i,
+    average: d.days > 0 ? d.total / d.days : 0,
+    sampleDays: d.days
+  }));
+
+  // Fallback: if a day-of-week has no data, use overall daily average
+  const overallDailyAvg = currentMonth.revenue / currentMonth.daysElapsed;
+  dayOfWeekAvg.forEach(d => {
+    if (d.average === 0) d.average = overallDailyAvg;
+  });
+
+  // --- 2. Calculate temperature correlation ---
+  const tempCorr = calculateTemperatureCorrelation(salesData, weatherData);
+
+  // --- 3. Calculate current month's average temperature ---
+  const weatherMap = new Map();
+  weather.forEach(w => {
+    const dateKey = formatDate(w.date);
+    weatherMap.set(dateKey, w);
+  });
+
+  let currentMonthTempSum = 0, currentMonthTempDays = 0;
+  dayMap.forEach((_, dateKey) => {
+    const w = weatherMap.get(dateKey);
+    if (w && w.temperature > 0) {
+      currentMonthTempSum += w.temperature;
+      currentMonthTempDays++;
+    }
+  });
+
+  const currentMonthAvgTemp = currentMonthTempDays > 0
+    ? currentMonthTempSum / currentMonthTempDays
+    : tempCorr.meanTemperature || 20;
+
+  // --- 4. Project remaining days ---
+  // For each remaining day, get its day-of-week and apply the average
+  let dayOfWeekProjection = 0;
+  const remainingDaysBreakdown = [];
+
+  for (let i = 1; i <= daysRemaining; i++) {
+    const futureDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const dow = futureDate.getDay();
+    const dayAvg = dayOfWeekAvg[dow].average;
+    dayOfWeekProjection += dayAvg;
+    remainingDaysBreakdown.push({
+      date: futureDate,
+      dayOfWeek: dow,
+      projected: dayAvg
+    });
+  }
+
+  // Base projection (day-of-week weighted)
+  const baseProjection = currentMonth.revenue + dayOfWeekProjection;
+
+  // --- 5. Apply temperature adjustment ---
+  // Assume remaining days have similar temp to current month average
+  // Compare to historical mean to get adjustment
+  let temperatureAdjustment = 1; // Default: no adjustment
+  let tempAdjustmentPercent = 0;
+
+  if (tempCorr.hasEnoughData && tempCorr.percentPerDegree !== 0) {
+    // Temperature difference from historical mean
+    const tempDiff = currentMonthAvgTemp - tempCorr.meanTemperature;
+    // Apply correlation: if negative correlation (cold=more revenue)
+    // and current month is colder than average, we boost projection
+    tempAdjustmentPercent = tempDiff * tempCorr.percentPerDegree;
+    temperatureAdjustment = 1 + (tempAdjustmentPercent / 100);
+  }
+
+  // Final weighted projection
+  const weightedProjection = baseProjection * temperatureAdjustment;
+
+  // Simple linear projection for comparison
+  const linearProjection = currentMonth.revenue + (overallDailyAvg * daysRemaining);
+
+  // Confidence level
+  let confidence, confidenceLevel;
+  if (currentMonth.daysElapsed >= 20 && tempCorr.hasEnoughData) {
+    confidence = 85;
+    confidenceLevel = 'high';
+  } else if (currentMonth.daysElapsed >= 10) {
+    confidence = 65;
+    confidenceLevel = 'medium';
+  } else {
+    confidence = 45;
+    confidenceLevel = 'low';
+  }
+
+  return {
+    // Main projections
+    weightedProjection: Math.round(weightedProjection),
+    linearProjection: Math.round(linearProjection),
+    projectionDifference: Math.round(weightedProjection - linearProjection),
+
+    // Day-of-week breakdown
+    dayOfWeekAverages: dayOfWeekAvg,
+    dayOfWeekProjection: Math.round(dayOfWeekProjection),
+
+    // Temperature factors
+    temperatureCorrelation: tempCorr,
+    currentMonthAvgTemp: Math.round(currentMonthAvgTemp * 10) / 10,
+    temperatureAdjustment: Math.round((temperatureAdjustment - 1) * 1000) / 10, // As percentage
+    tempAdjustmentPercent: Math.round(tempAdjustmentPercent * 10) / 10,
+
+    // Context
+    daysElapsed: currentMonth.daysElapsed,
+    daysRemaining,
+    daysInMonth,
+    monthProgress: Math.round((currentMonth.daysElapsed / daysInMonth) * 100),
+    confidence,
+    confidenceLevel,
+
+    // Methodology
+    methodology: tempCorr.hasEnoughData
+      ? 'Ponderado (dia da semana + temperatura)'
+      : 'Ponderado (dia da semana)',
+    hasTemperatureData: tempCorr.hasEnoughData
   };
 }

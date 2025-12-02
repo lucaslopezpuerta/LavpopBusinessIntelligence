@@ -1,10 +1,14 @@
-// DashboardDateControl.jsx v1.1 - FLOATING DATE TOGGLE
+// DashboardDateControl.jsx v1.2 - UNIFIED DATE CONTROL
 // ✅ Compact toggle for Complete/Current week
 // ✅ Date range display
 // ✅ Glassmorphism styling
 // ✅ Fixed sticky positioning (below header)
+// ✅ Consistent styling with DateRangeSelector
 //
 // CHANGELOG:
+// v1.2 (2025-12-02): Unified design consistency
+//   - Matched visual structure with DateRangeSelector v3.0
+//   - Consistent card styling across app
 // v1.1 (2025-12-01): Sticky and label fixes
 //   - Fixed sticky top position to account for header height
 //   - Changed labels from "Anterior/Atual" to "Completa/Parcial" for clarity

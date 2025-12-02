@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v8.2 - MOBILE RESPONSIVE FIX
+// AtRiskCustomersTable.jsx v8.3 - DARK MODE CARD FIX
 // ✅ No horizontal scroll
 // ✅ Mobile: Card layout with swipe actions (like CustomerListDrilldown)
 // ✅ Desktop: Table with all columns visible
@@ -14,6 +14,9 @@
 // ✅ Design System v3.1 compliant header
 //
 // CHANGELOG:
+// v8.3 (2025-12-02): Dark mode card background fix
+//   - Fixed semi-transparent card bg showing swipe actions through
+//   - Changed dark:bg-slate-700/30 to solid dark:bg-slate-700
 // v8.2 (2025-12-01): Mobile responsive fix
 //   - Reduced container padding on mobile (p-4 sm:p-6)
 //   - Smart pagination (max 5 pages shown, slides with current)
@@ -323,7 +326,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                 <div
                   className={`
                     relative flex items-center gap-3 p-3
-                    bg-slate-50 dark:bg-slate-700/30
+                    bg-slate-50 dark:bg-slate-700
                     border-l-4 rounded-xl
                     ${contacted ? 'opacity-60' : ''}
                     transition-transform duration-150 ease-out

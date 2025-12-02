@@ -1,8 +1,41 @@
-// Intelligence.jsx v3.1.0 - Business Intelligence Dashboard
+// Intelligence.jsx v3.8.0 - IMPROVED LAYOUT
 // Refactored with unified components and Health Score
 // Design System v3.1 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.8.0 (2025-12-02): Layout improvements
+//   - RevenueForecast now full-width (removed max-w-xl constraint)
+//   - Better horizontal space usage on desktop screens
+//   - RevenueForecast component redesigned with two-column lg layout
+// v3.7.0 (2025-12-02): Removed GoalProgress component
+//   - GoalProgress was redundant (ProfitabilitySection has dynamic break-even)
+//   - Static goals (from settings) less useful than dynamic break-even
+//   - Cleaner layout, less visual clutter
+// v3.6.0 (2025-12-02): Weighted projection integration
+//   - Imports calculateWeightedProjection from intelligenceCalculations
+//   - Calculates weighted projection using sales + weather data
+//   - Passes weightedProjection to RevenueForecast component
+//   - Enables day-of-week + temperature-adjusted revenue forecasting
+// v3.5.0 (2025-12-02): Quick Stats KPI refinements
+//   - Moved MoM trend badge to bottom-right (saves vertical space)
+//   - Fixed "Ticket Médio" subtitle: shows comparison vs previous month
+//   - Differentiated subtitles: no longer duplicate with Ciclos/Dia
+// v3.4.0 (2025-12-02): Quick Stats KPI audit fixes
+//   - Added MoM trend indicator to "Receita do Mês" (compares daily averages)
+//   - Fixed "Mês Anterior" subtitle: shows month name instead of cycles
+//   - Added current month name to "Receita do Mês" subtitle
+//   - Fixed "Ciclos/Dia" subtitle: shows total cycles context
+//   - Fair MoM comparison: daily averages account for partial months
+// v3.3.0 (2025-12-02): Consistent layout with other views
+//   - Moved SectionNavigation below header (like Customers.jsx)
+//   - Removed gradient background wrapper
+//   - Using same container pattern as other views (max-w-[1600px])
+//   - Removed redundant margin classes (parent space-y handles it)
+// v3.2.0 (2025-12-02): Unified header design
+//   - Simplified header to match other views
+//   - Added icon box with left border accent (emerald)
+//   - Removed elaborate badge system
+//   - Settings button hidden label on mobile
 // v3.1.0 (2025-11-30): Audit fixes
 //   - Removed redundant Quick Stats (MoM, Status) - Health Score covers these
 //   - Added Ticket Médio and Ciclos/Dia to Quick Stats (unique metrics)
@@ -25,7 +58,7 @@
 // v1.0.0 (2025-11-18): Complete redesign with Tailwind + Nivo
 
 import React, { useState, useMemo } from 'react';
-import { Settings, Calendar, TrendingUp, Zap, DollarSign } from 'lucide-react';
+import { Settings, Calendar, TrendingUp, Zap, DollarSign, Lightbulb } from 'lucide-react';
 
 // Business logic
 import BusinessSettingsModal, { useBusinessSettings } from '../components/BusinessSettingsModal';
@@ -38,7 +71,8 @@ import {
   calculateCampaignROI,
   calculateHealthScore,
   getCurrentMonthMetrics,
-  getPreviousMonthMetrics
+  getPreviousMonthMetrics,
+  calculateWeightedProjection
 } from '../utils/intelligenceCalculations';
 
 // UI components
@@ -53,7 +87,6 @@ import CampaignROISection from '../components/intelligence/CampaignROISection';
 
 // UX Enhancement components
 import RevenueForecast from '../components/intelligence/RevenueForecast';
-import GoalProgress from '../components/intelligence/GoalProgress';
 import SectionNavigation from '../components/intelligence/SectionNavigation';
 
 // ==================== MAIN COMPONENT ====================
@@ -136,6 +169,17 @@ const Intelligence = ({ data }) => {
     }
   }, [profitability, growthTrends, currentMonth, previousMonth]);
 
+  // Weighted Projection - Combines day-of-week patterns + temperature correlation
+  const weightedProjection = useMemo(() => {
+    if (!data?.sales || !data?.weather || !currentMonth) return null;
+    try {
+      return calculateWeightedProjection(data.sales, data.weather, currentMonth);
+    } catch (error) {
+      console.error('Weighted projection calculation error:', error);
+      return null;
+    }
+  }, [data?.sales, data?.weather, currentMonth]);
+
   // Format helpers
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -155,6 +199,12 @@ const Intelligence = ({ data }) => {
     return <IntelligenceLoadingSkeleton />;
   }
 
+  // Month names in Portuguese
+  const MONTH_NAMES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
   // Calculate derived metrics for Quick Stats
   const avgTicket = currentMonth && currentMonth.services > 0
     ? currentMonth.revenue / currentMonth.services
@@ -163,52 +213,68 @@ const Intelligence = ({ data }) => {
     ? currentMonth.services / currentMonth.daysElapsed
     : 0;
 
+  // Get month names for display
+  const now = new Date();
+  const currentMonthName = MONTH_NAMES[now.getMonth()];
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonthName = MONTH_NAMES[prevMonthDate.getMonth()];
+  const daysInPreviousMonth = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0).getDate();
+
+  // Calculate MoM trend based on daily averages (fair comparison for partial month)
+  const currentDailyAvg = currentMonth && currentMonth.daysElapsed > 0
+    ? currentMonth.revenue / currentMonth.daysElapsed
+    : 0;
+  const previousDailyAvg = previousMonth && daysInPreviousMonth > 0
+    ? previousMonth.revenue / daysInPreviousMonth
+    : 0;
+  const momTrend = previousDailyAvg > 0
+    ? ((currentDailyAvg - previousDailyAvg) / previousDailyAvg) * 100
+    : null;
+
+  // Calculate previous month's average ticket for comparison
+  const prevAvgTicket = previousMonth && previousMonth.services > 0
+    ? previousMonth.revenue / previousMonth.services
+    : 0;
+
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-slate-900 dark:to-slate-800">
-        {/* Section Navigation - Sticky below app header */}
-        <SectionNavigation />
+      <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 sm:space-y-8 animate-fade-in">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-
-          {/* Hero Header - Mobile responsive */}
-          <header className="mb-6 sm:mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                  <span className="px-2.5 sm:px-3 py-1 bg-gradient-to-r from-lavpop-blue to-lavpop-blue-700 text-white text-xs font-bold uppercase tracking-wide rounded-full">
-                    Inteligência
-                  </span>
-                  <span className="text-xs sm:text-sm text-gray-500 dark:text-slate-400">
-                    Análise Estratégica de Negócio
-                  </span>
-                </div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-                  Business Intelligence
+          {/* Header */}
+          <header className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center border-l-4 border-emerald-500">
+                <Lightbulb className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                  Inteligência
                 </h1>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-slate-400 mt-1.5 sm:mt-2 max-w-2xl">
-                  Insights acionáveis para tomada de decisão: rentabilidade, impacto climático,
-                  tendências de crescimento e efetividade de campanhas.
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Análise estratégica de negócio
                 </p>
               </div>
-
-              {/* Header Actions */}
-              <button
-                onClick={() => setShowSettings(true)}
-                className="self-start flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-                aria-label="Abrir configurações de negócio"
-              >
-                <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" aria-hidden="true" />
-                <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Configurações
-                </span>
-              </button>
             </div>
+
+            {/* Header Actions */}
+            <button
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+              aria-label="Abrir configurações de negócio"
+            >
+              <Settings className="w-4 h-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:inline">
+                Configurações
+              </span>
+            </button>
           </header>
+
+          {/* Section Navigation - Sticky */}
+          <SectionNavigation />
 
           {/* Health Score Hero Card */}
           {healthScore && (
-            <section aria-labelledby="health-score-heading" className="mb-6 sm:mb-8">
+            <section aria-labelledby="health-score-heading">
               <h2 id="health-score-heading" className="sr-only">Saúde do Negócio</h2>
               <div className={`
                 p-5 sm:p-6 rounded-2xl border shadow-soft
@@ -284,54 +350,48 @@ const Intelligence = ({ data }) => {
           )}
 
           {/* Quick Stats Overview - Contextual metrics (Health Score handles derived insights) */}
-          <section aria-labelledby="quick-stats-heading" className="mb-6 sm:mb-8">
+          <section aria-labelledby="quick-stats-heading">
             <h2 id="quick-stats-heading" className="sr-only">Resumo rápido de métricas</h2>
             <KPIGrid columns={4}>
               <KPICard
                 label="Receita do Mês"
                 value={formatCurrency(currentMonth?.revenue || 0)}
-                subtitle={`${currentMonth?.daysElapsed || 0} dias decorridos`}
+                subtitle={`${currentMonthName} • ${currentMonth?.daysElapsed || 0} dias`}
+                trend={momTrend !== null ? { value: momTrend } : undefined}
+                trendPosition="bottom-right"
                 icon={Calendar}
                 color="blue"
               />
               <KPICard
                 label="Mês Anterior"
                 value={formatCurrency(previousMonth?.revenue || 0)}
-                subtitle={`${previousMonth?.services || 0} ciclos no total`}
+                subtitle={previousMonthName}
                 icon={TrendingUp}
                 color="neutral"
               />
               <KPICard
                 label="Ticket Médio"
                 value={formatCurrency(avgTicket)}
-                subtitle={`${currentMonth?.services || 0} ciclos este mês`}
+                subtitle={prevAvgTicket > 0 ? `vs ${formatCurrency(prevAvgTicket)} anterior` : `${currentMonth?.services || 0} ciclos`}
                 icon={DollarSign}
                 color="revenue"
               />
               <KPICard
                 label="Ciclos/Dia"
                 value={dailyCycles.toFixed(1)}
-                subtitle="Média diária atual"
+                subtitle={`${currentMonth?.services || 0} ciclos total`}
                 icon={Zap}
                 color="profit"
               />
             </KPIGrid>
           </section>
 
-          {/* Revenue Forecast & Goal Progress Row */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <RevenueForecast
-              currentMonth={currentMonth}
-              previousMonth={previousMonth}
-              formatCurrency={formatCurrency}
-            />
-            <GoalProgress
-              currentMonth={currentMonth}
-              settings={settings}
-              formatCurrency={formatCurrency}
-              className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-6 shadow-soft border border-gray-100 dark:border-slate-700"
-            />
-          </section>
+          {/* Revenue Forecast */}
+          <RevenueForecast
+            currentMonth={currentMonth}
+            weightedProjection={weightedProjection}
+            formatCurrency={formatCurrency}
+          />
 
           {/* Section 1: Profitability */}
           <ProfitabilitySection
@@ -364,7 +424,6 @@ const Intelligence = ({ data }) => {
             formatPercent={formatPercent}
           />
 
-        </div>
       </div>
 
       {/* Settings Modal */}

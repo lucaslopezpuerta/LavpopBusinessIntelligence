@@ -1,8 +1,10 @@
-// CampaignROISection.jsx v2.0
+// CampaignROISection.jsx v2.1
 // Campaign ROI analysis section for Intelligence tab
 // Design System v3.1 compliant - Refactored with unified components
 //
 // CHANGELOG:
+// v2.1 (2025-12-02): Unified section header
+//   - Added color="emerald" for consistent styling with Intelligence tab
 // v2.0 (2025-11-30): Major refactor
 //   - Uses unified KPICard component
 //   - Uses semantic colors from colorMapping
@@ -150,6 +152,7 @@ const CampaignROISection = ({ campaignROI, formatCurrency, formatPercent }) => {
       subtitle={`ROI incremental e desempenho de cupons • Ativas + últimos 6 meses (${campaignROI.totalCampaigns} de ${campaignROI.totalCampaignsInSystem || campaignROI.totalCampaigns})`}
       icon={Target}
       id="campaigns-section"
+      color="emerald"
     >
       {hasCampaigns ? (
         <div className="space-y-5 sm:space-y-6">

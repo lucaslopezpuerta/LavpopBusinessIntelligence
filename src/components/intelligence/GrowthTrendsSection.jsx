@@ -1,8 +1,14 @@
-// GrowthTrendsSection.jsx v2.0
+// GrowthTrendsSection.jsx v2.2
 // Growth & trends analysis section for Intelligence tab
 // Design System v3.1 compliant - Refactored with unified components
 //
 // CHANGELOG:
+// v2.2 (2025-12-02): Fixed Nivo chart NaN crash
+//   - Guard against empty monthly data arrays
+//   - Require minimum 2 data points for line chart
+//   - Conditional render: skip chart when no valid data
+// v2.1 (2025-12-02): Unified section header
+//   - Added color="emerald" for consistent styling with Intelligence tab
 // v2.0 (2025-11-30): Major refactor
 //   - Uses unified KPICard component
 //   - InsightBox moved to top for visibility
@@ -29,15 +35,18 @@ const GrowthTrendsSection = ({
   const isMobile = useIsMobile();
   const isDesktop = useIsDesktop();
 
-  // Memoize chart data
+  // Memoize chart data - guard against empty arrays
   const chartData = useMemo(() => {
-    if (!growthTrends) return null;
+    if (!growthTrends?.monthly?.length) return null;
+    const dataPoints = growthTrends.monthly.slice(-12).map((m) => ({
+      x: m.month,
+      y: m.revenue || 0
+    }));
+    // Nivo crashes with empty data arrays - need at least 2 points for a line
+    if (dataPoints.length < 2) return null;
     return [{
       id: 'Receita Mensal',
-      data: growthTrends.monthly.slice(-12).map((m) => ({
-        x: m.month,
-        y: m.revenue
-      }))
+      data: dataPoints
     }];
   }, [growthTrends?.monthly]);
 
@@ -76,10 +85,11 @@ const GrowthTrendsSection = ({
 
   return (
     <SectionCard
-      title="Crescimento & Tendencias"
-      subtitle={`Analise de crescimento mensal e trajetoria • Últimos ${growthTrends.displayedMonths} meses`}
+      title="Crescimento & Tendências"
+      subtitle={`Análise de crescimento mensal e trajetória • Últimos ${growthTrends.displayedMonths} meses`}
       icon={TrendingUp}
       id="growth-section"
+      color="emerald"
     >
       <div className="space-y-5 sm:space-y-6">
         {/* Actionable Insight First */}
@@ -141,7 +151,8 @@ const GrowthTrendsSection = ({
           />
         </KPIGrid>
 
-        {/* Line Chart */}
+        {/* Line Chart - only render if we have valid data */}
+        {chartData && (
         <div>
           <p id="growth-chart-desc" className="sr-only">
             Grafico de linha mostrando a evolucao da receita mensal nos ultimos 12 meses, com
@@ -221,14 +232,14 @@ const GrowthTrendsSection = ({
                 symbolShape: 'circle'
               }]}
               theme={nivoTheme}
-              animate={true}
-              motionConfig="gentle"
+              animate={false}
             />
           </div>
 
           {/* Mobile Legend */}
           {isMobile && <ChartLegend items={legendItems} />}
         </div>
+        )}
 
         {/* Mobile: Card view for monthly data */}
         <div className="block lg:hidden space-y-2">

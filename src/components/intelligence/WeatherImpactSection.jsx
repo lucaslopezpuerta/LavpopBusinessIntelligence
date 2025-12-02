@@ -1,8 +1,13 @@
-// WeatherImpactSection.jsx v2.0
+// WeatherImpactSection.jsx v2.2
 // Weather impact analysis section for Intelligence tab
 // Design System v3.1 compliant - Refactored with unified components
 //
 // CHANGELOG:
+// v2.2 (2025-12-02): Fixed Nivo chart NaN crash
+//   - Guard against empty/zero revenue data
+//   - Conditional render: skip chart when no valid data
+// v2.1 (2025-12-02): Unified section header
+//   - Added color="emerald" for consistent styling with Intelligence tab
 // v2.0 (2025-11-30): Major refactor
 //   - Uses unified KPICard component
 //   - Uses semantic weather colors from colorMapping
@@ -79,23 +84,28 @@ const WeatherImpactSection = ({
 }) => {
   const isMobile = useIsMobile();
 
-  // Memoize chart data
+  // Memoize chart data - guard against invalid values
   const chartData = useMemo(() => {
     if (!weatherImpact) return null;
+    // Check if we have valid revenue data (not all zeros/NaN)
+    const hasValidData = (weatherImpact.sunny.revenue || 0) > 0 ||
+                         (weatherImpact.cloudy.revenue || 0) > 0 ||
+                         (weatherImpact.rainy.revenue || 0) > 0;
+    if (!hasValidData) return null;
     return [
       {
         type: 'Dias de Sol',
-        'Receita Media': weatherImpact.sunny.revenue,
+        'Receita Media': weatherImpact.sunny.revenue || 0,
         color: semanticColors.sunny.chartColor
       },
       {
         type: 'Dias Nublados',
-        'Receita Media': weatherImpact.cloudy.revenue,
+        'Receita Media': weatherImpact.cloudy.revenue || 0,
         color: semanticColors.cloudy.chartColor
       },
       {
         type: 'Dias Chuvosos',
-        'Receita Media': weatherImpact.rainy.revenue,
+        'Receita Media': weatherImpact.rainy.revenue || 0,
         color: semanticColors.rainy.chartColor
       }
     ];
@@ -122,9 +132,10 @@ const WeatherImpactSection = ({
   return (
     <SectionCard
       title="Impacto do Clima"
-      subtitle={`Como o clima afeta sua receita diaria • Últimos 90 dias (${weatherImpact.totalDaysAnalyzed} dias analisados)`}
+      subtitle={`Como o clima afeta sua receita diária • Últimos 90 dias (${weatherImpact.totalDaysAnalyzed} dias analisados)`}
       icon={Cloud}
       id="weather-section"
+      color="emerald"
     >
       <div className="space-y-5 sm:space-y-6">
         {/* Actionable Insight First */}
@@ -204,7 +215,8 @@ const WeatherImpactSection = ({
           </div>
         </div>
 
-        {/* Chart */}
+        {/* Chart - only render if we have valid data */}
+        {chartData && (
         <div>
           <p id="weather-chart-desc" className="sr-only">
             Grafico de barras horizontal comparando receita media por tipo de clima: Sol{' '}
@@ -237,8 +249,7 @@ const WeatherImpactSection = ({
               }}
               labelTextColor="white"
               enableGridY={false}
-              animate={true}
-              motionConfig="gentle"
+              animate={false}
               theme={nivoTheme}
             />
           </div>
@@ -246,6 +257,7 @@ const WeatherImpactSection = ({
           {/* Mobile Legend */}
           {isMobile && <ChartLegend items={legendItems} />}
         </div>
+        )}
       </div>
     </SectionCard>
   );

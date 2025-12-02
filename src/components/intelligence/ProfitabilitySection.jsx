@@ -1,8 +1,14 @@
-// ProfitabilitySection.jsx v2.0
+// ProfitabilitySection.jsx v2.2
 // Profitability analysis section for Intelligence tab
 // Design System v3.1 compliant - Refactored with unified components
 //
 // CHANGELOG:
+// v2.2 (2025-12-02): Fixed Nivo chart NaN crash
+//   - Guard against empty/zero revenue/cost data
+//   - Fixed division by zero in maintenance % calculation
+//   - Conditional render: skip chart when no valid data
+// v2.1 (2025-12-02): Unified section header
+//   - Added color="emerald" for consistent styling with Intelligence tab
 // v2.0 (2025-11-30): Major refactor
 //   - Uses unified KPICard, ChartSection, ProgressBar components
 //   - InsightBox moved to top for visibility
@@ -29,14 +35,18 @@ const ProfitabilitySection = ({
 }) => {
   const isMobile = useIsMobile();
 
-  // Memoize chart data to prevent re-renders
+  // Memoize chart data to prevent re-renders - guard against invalid values
   const chartData = useMemo(() => {
     if (!profitability) return null;
+    // Check if we have valid data (not all zeros/NaN)
+    const hasValidData = (profitability.totalRevenue || 0) > 0 ||
+                         (profitability.totalCosts || 0) > 0;
+    if (!hasValidData) return null;
     return [{
       category: 'Analise',
-      Receita: profitability.totalRevenue,
-      Custos: profitability.totalCosts,
-      Lucro: Math.max(0, profitability.netProfit)
+      Receita: profitability.totalRevenue || 0,
+      Custos: profitability.totalCosts || 0,
+      Lucro: Math.max(0, profitability.netProfit || 0)
     }];
   }, [profitability?.totalRevenue, profitability?.totalCosts, profitability?.netProfit]);
 
@@ -68,9 +78,10 @@ const ProfitabilitySection = ({
   return (
     <SectionCard
       title="Rentabilidade"
-      subtitle={`Analise de custos vs receita e ponto de equilibrio • Mês atual (${profitability.daysInPeriod} dias)`}
+      subtitle={`Análise de custos vs receita e ponto de equilíbrio • Mês atual (${profitability.daysInPeriod} dias)`}
       icon={DollarSign}
       id="profitability-section"
+      color="emerald"
     >
       <div className="space-y-5 sm:space-y-6">
         {/* Critical Insight First - Most important info at top */}
@@ -193,14 +204,17 @@ const ProfitabilitySection = ({
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 dark:text-slate-400">% do Total:</span>
                 <span className="font-bold text-gray-900 dark:text-white">
-                  {formatPercent((profitability.maintenanceCosts / profitability.totalCosts) * 100)}
+                  {formatPercent(profitability.totalCosts > 0
+                    ? (profitability.maintenanceCosts / profitability.totalCosts) * 100
+                    : 0)}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Chart */}
+        {/* Chart - only render if we have valid data */}
+        {chartData && (
         <div>
           <p id="profitability-chart-desc" className="sr-only">
             Grafico de barras mostrando receita de {formatCurrency(profitability.totalRevenue)},
@@ -238,8 +252,7 @@ const ProfitabilitySection = ({
                 symbolSize: 12,
                 symbolShape: 'circle'
               }]}
-              animate={true}
-              motionConfig="gentle"
+              animate={false}
               theme={nivoTheme}
             />
           </div>
@@ -247,6 +260,7 @@ const ProfitabilitySection = ({
           {/* Mobile Legend - Uses unified component */}
           {isMobile && <ChartLegend items={legendItems} />}
         </div>
+        )}
       </div>
     </SectionCard>
   );
