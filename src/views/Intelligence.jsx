@@ -67,6 +67,7 @@ import { getLavpopNivoTheme } from '../utils/chartThemes';
 import {
   calculateProfitability,
   calculateWeatherImpact,
+  calculateComfortWeatherImpact,
   calculateGrowthTrends,
   calculateCampaignROI,
   calculateHealthScore,
@@ -114,6 +115,17 @@ const Intelligence = ({ data }) => {
       return calculateWeatherImpact(data.sales, data.weather);
     } catch (error) {
       console.error('Weather impact calculation error:', error);
+      return null;
+    }
+  }, [data?.sales, data?.weather]);
+
+  // Comfort-based weather impact (heat index classification)
+  const comfortWeatherImpact = useMemo(() => {
+    if (!data?.sales || !data?.weather) return null;
+    try {
+      return calculateComfortWeatherImpact(data.sales, data.weather);
+    } catch (error) {
+      console.error('Comfort weather impact calculation error:', error);
       return null;
     }
   }, [data?.sales, data?.weather]);
@@ -401,12 +413,12 @@ const Intelligence = ({ data }) => {
             nivoTheme={nivoTheme}
           />
 
-          {/* Section 2: Weather Impact */}
+          {/* Section 2: Weather Impact (Comfort-based) */}
           <WeatherImpactSection
             weatherImpact={weatherImpact}
+            comfortWeatherImpact={comfortWeatherImpact}
             formatCurrency={formatCurrency}
             formatPercent={formatPercent}
-            nivoTheme={nivoTheme}
           />
 
           {/* Section 3: Growth & Trends */}

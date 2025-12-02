@@ -1,4 +1,4 @@
-// intelligenceCalculations.js v3.1 - WEIGHTED PROJECTION
+// intelligenceCalculations.js v3.4 - CAXIAS DO SUL CLIMATE THRESHOLDS
 // ✅ Uses existing transactionParser.js for consistent data handling
 // ✅ Uses existing businessMetrics.js patterns
 // ✅ Reuses proven math instead of reinventing
@@ -6,6 +6,24 @@
 // Profitability, Weather Impact, Campaign ROI, Growth Analysis
 //
 // CHANGELOG:
+// v3.4 (2025-12-02): Location-specific weather thresholds for Caxias do Sul
+//   - Adjusted thresholds based on actual climate data analysis:
+//     * Caxias do Sul: subtropical highland, 800m elevation, avg 16.5°C
+//     * Temperature range: 1.1°C to 26.5°C (never reaches old "hot" threshold of 28°C)
+//   - New thresholds based on local percentiles:
+//     * Hot: ≥23°C (was ≥28°C) - captures warmest ~10% of days
+//     * Cold: ≤10°C (was ≤12°C) - captures coldest ~10% of days
+//     * Muggy: heat index ≥27°C (was ≥32°C) - adjusted for local conditions
+// v3.3 (2025-12-02): Fixed baseline selection bug
+//   - Baseline was incorrectly showing 'hot' even when 'mild' had data
+//   - Root cause: object reference comparison after spread operator
+//   - Fix: Track baselineKey as string, not object reference
+//   - Improved fallback: if mild has no data, use category with most samples
+// v3.2 (2025-12-02): Adaptive weather analysis window
+//   - calculateComfortWeatherImpact now uses 90-day primary window
+//   - Extends to 180-day window for categories with <3 sample days
+//   - Tracks which categories used extended window for transparency
+//   - Best of both: seasonal relevance + sufficient samples for rare conditions
 // v3.1 (2025-12-02): Weighted revenue projection
 //   - Added calculateTemperatureCorrelation() for temp-revenue relationship
 //   - Added calculateWeightedProjection() combining day-of-week + temperature
@@ -956,6 +974,368 @@ export function calculateTemperatureCorrelation(salesData, weatherData) {
         : correlation > 0.1
           ? 'Correlação positiva: calor tende a aumentar receita'
           : 'Sem correlação significativa com temperatura'
+  };
+}
+
+/**
+ * Calculate heat index (feels-like temperature)
+ * Simplified Steadman formula for heat index
+ * @param {number} T - Temperature in Celsius
+ * @param {number} RH - Relative humidity in percent
+ * @returns {number} Heat index in Celsius
+ */
+function calculateHeatIndex(T, RH) {
+  // Heat index only applies when T >= 27°C and RH >= 40%
+  if (T < 27 || RH < 40) return T;
+
+  // Rothfusz regression (converted to Celsius)
+  // Original formula is for Fahrenheit, so we convert
+  const TF = T * 9/5 + 32;
+
+  const HI_F = -42.379 + 2.04901523 * TF + 10.14333127 * RH
+    - 0.22475541 * TF * RH - 0.00683783 * TF * TF
+    - 0.05481717 * RH * RH + 0.00122874 * TF * TF * RH
+    + 0.00085282 * TF * RH * RH - 0.00000199 * TF * TF * RH * RH;
+
+  // Convert back to Celsius
+  return (HI_F - 32) * 5/9;
+}
+
+/**
+ * Classify weather condition by thermal comfort
+ * Thresholds calibrated for Caxias do Sul, RS, Brazil:
+ * - Subtropical highland climate (Cfb), elevation ~800m
+ * - Average temperature: 16.5°C, range: 1.1°C to 26.5°C
+ * - Thresholds based on local percentile analysis (P10/P90)
+ *
+ * @param {object} weather - Weather data point with temp, humidity, precipitation
+ * @returns {string} Comfort category: 'muggy' | 'hot' | 'cold' | 'mild' | 'humid' | 'rainy'
+ */
+function classifyComfortCondition(weather) {
+  const { temperature, humidity, precipitation } = weather;
+
+  // Rain trumps all other conditions
+  if (precipitation > 5) return 'rainy';
+
+  // Calculate heat index for hot conditions
+  const heatIndex = calculateHeatIndex(temperature, humidity);
+
+  // Classify by thermal comfort (priority order matters)
+  // Thresholds adjusted for Caxias do Sul climate:
+  if (heatIndex >= 27) return 'muggy';      // Abafado: feels >= 27°C (local: rarely reaches 32°C)
+  if (temperature >= 23) return 'hot';       // Quente: >= 23°C (local P90, was 28°C)
+  if (temperature <= 10) return 'cold';      // Frio: <= 10°C (local P10, was 12°C)
+  if (humidity >= 80 && precipitation > 0) return 'humid';  // Úmido: high humidity + some precip
+  return 'mild';                             // Ameno: 10-23°C comfortable baseline
+}
+
+/**
+ * Calculate humidity-revenue correlation
+ * @param {Array} salesData - Sales records
+ * @param {Array} weatherData - Weather records
+ * @returns {object} Humidity correlation data
+ */
+export function calculateHumidityCorrelation(salesData, weatherData) {
+  const records = parseSalesRecords(salesData);
+  const weather = parseWeatherData(weatherData);
+
+  if (records.length === 0 || weather.length === 0) {
+    return { correlation: 0, percentPerPercent: 0, hasEnoughData: false };
+  }
+
+  // Create date -> weather map
+  const weatherMap = new Map();
+  weather.forEach(w => {
+    const dateKey = formatDate(w.date);
+    weatherMap.set(dateKey, w);
+  });
+
+  // Group sales by date and join with humidity
+  const dailyData = new Map();
+
+  records.forEach(record => {
+    const dateKey = record.dateStr;
+    const w = weatherMap.get(dateKey);
+
+    if (w && w.humidity > 0) {
+      if (!dailyData.has(dateKey)) {
+        dailyData.set(dateKey, { revenue: 0, humidity: w.humidity });
+      }
+      dailyData.get(dateKey).revenue += record.netValue;
+    }
+  });
+
+  const dataPoints = Array.from(dailyData.values());
+
+  if (dataPoints.length < 30) {
+    return {
+      correlation: 0,
+      percentPerPercent: 0,
+      hasEnoughData: false,
+      daysAnalyzed: dataPoints.length
+    };
+  }
+
+  // Calculate means
+  const n = dataPoints.length;
+  const meanRevenue = dataPoints.reduce((s, d) => s + d.revenue, 0) / n;
+  const meanHumidity = dataPoints.reduce((s, d) => s + d.humidity, 0) / n;
+
+  // Calculate Pearson correlation
+  let sumXY = 0, sumX2 = 0, sumY2 = 0;
+
+  dataPoints.forEach(d => {
+    const xDiff = d.humidity - meanHumidity;
+    const yDiff = d.revenue - meanRevenue;
+    sumXY += xDiff * yDiff;
+    sumX2 += xDiff * xDiff;
+    sumY2 += yDiff * yDiff;
+  });
+
+  const correlation = sumX2 > 0 && sumY2 > 0
+    ? sumXY / Math.sqrt(sumX2 * sumY2)
+    : 0;
+
+  const slope = sumX2 > 0 ? sumXY / sumX2 : 0;
+  const percentPerPercent = meanRevenue > 0
+    ? (slope / meanRevenue) * 100
+    : 0;
+
+  return {
+    correlation: Math.round(correlation * 100) / 100,
+    percentPerPercent: Math.round(percentPerPercent * 100) / 100,
+    meanHumidity: Math.round(meanHumidity),
+    daysAnalyzed: n,
+    hasEnoughData: true,
+    interpretation: correlation > 0.15
+      ? 'Correlação positiva: umidade alta tende a aumentar receita'
+      : correlation < -0.15
+        ? 'Correlação negativa: umidade alta tende a reduzir receita'
+        : 'Sem correlação significativa com umidade'
+  };
+}
+
+/**
+ * Calculate comfort-based weather impact on business
+ * Uses heat index classification instead of just precipitation
+ * ✅ Replaces simple sunny/cloudy/rainy with thermal comfort categories
+ * ✅ ADAPTIVE WINDOW: 90 days default, extends to 180 days for rare conditions
+ *
+ * @param {Array} salesData - Sales records
+ * @param {Array} weatherData - Weather records
+ * @returns {object} Comfort weather impact data
+ */
+export function calculateComfortWeatherImpact(salesData, weatherData) {
+  const allRecords = parseSalesRecords(salesData);
+  const weather = parseWeatherData(weatherData);
+
+  const MIN_SAMPLE_DAYS = 3;
+  const PRIMARY_WINDOW_DAYS = 90;
+  const EXTENDED_WINDOW_DAYS = 180;
+
+  // Create date -> weather map
+  const weatherMap = new Map();
+  weather.forEach(w => {
+    const dateKey = formatDate(w.date);
+    weatherMap.set(dateKey, w);
+  });
+
+  // Helper: Categorize records within a date range
+  const categorizeRecords = (records, weatherMap) => {
+    const salesByComfort = {
+      muggy: [], hot: [], cold: [], mild: [], humid: [], rainy: []
+    };
+    const weatherByComfort = {
+      muggy: [], hot: [], cold: [], mild: [], humid: [], rainy: []
+    };
+
+    records.forEach(record => {
+      const dateKey = record.dateStr;
+      const w = weatherMap.get(dateKey);
+
+      if (w) {
+        const condition = classifyComfortCondition(w);
+        salesByComfort[condition].push(record);
+
+        // Track unique days with weather data
+        if (!weatherByComfort[condition].some(d => formatDate(d.date) === dateKey)) {
+          weatherByComfort[condition].push(w);
+        }
+      }
+    });
+
+    return { salesByComfort, weatherByComfort };
+  };
+
+  // Helper: Calculate category averages
+  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+
+  const calculateCategoryAverage = (salesArray, weatherArray) => {
+    if (salesArray.length === 0) return { revenue: 0, services: 0, days: 0, avgTemp: 0, avgHumidity: 0 };
+
+    // Group by date
+    const dayMap = new Map();
+    salesArray.forEach(record => {
+      const dateKey = record.dateStr;
+      if (!dayMap.has(dateKey)) {
+        dayMap.set(dateKey, { revenue: 0, services: 0 });
+      }
+      const day = dayMap.get(dateKey);
+      day.revenue += record.netValue;
+      if (!record.isRecarga) {
+        day.services += record.totalServices;
+      }
+    });
+
+    const days = dayMap.size;
+    const totalRevenue = sum(Array.from(dayMap.values()), d => d.revenue);
+    const totalServices = sum(Array.from(dayMap.values()), d => d.services);
+
+    // Calculate average weather for this category
+    const avgTemp = weatherArray.length > 0
+      ? weatherArray.reduce((s, w) => s + w.temperature, 0) / weatherArray.length
+      : 0;
+    const avgHumidity = weatherArray.length > 0
+      ? weatherArray.reduce((s, w) => s + w.humidity, 0) / weatherArray.length
+      : 0;
+
+    return {
+      revenue: days > 0 ? totalRevenue / days : 0,
+      services: days > 0 ? totalServices / days : 0,
+      days,
+      avgTemp: Math.round(avgTemp * 10) / 10,
+      avgHumidity: Math.round(avgHumidity)
+    };
+  };
+
+  // --- PASS 1: Primary window (90 days) ---
+  const primaryCutoff = new Date();
+  primaryCutoff.setDate(primaryCutoff.getDate() - PRIMARY_WINDOW_DAYS);
+  const primaryRecords = allRecords.filter(r => r.date >= primaryCutoff);
+  const { salesByComfort: primarySales, weatherByComfort: primaryWeather } = categorizeRecords(primaryRecords, weatherMap);
+
+  // Calculate primary categories
+  const categoryKeys = ['muggy', 'hot', 'cold', 'mild', 'humid', 'rainy'];
+  const categories = {};
+  const extendedWindowUsed = {};
+
+  categoryKeys.forEach(key => {
+    categories[key] = calculateCategoryAverage(primarySales[key], primaryWeather[key]);
+    extendedWindowUsed[key] = false;
+  });
+
+  // --- PASS 2: Extended window (180 days) for categories with insufficient data ---
+  const extendedCutoff = new Date();
+  extendedCutoff.setDate(extendedCutoff.getDate() - EXTENDED_WINDOW_DAYS);
+  const extendedRecords = allRecords.filter(r => r.date >= extendedCutoff);
+  const { salesByComfort: extendedSales, weatherByComfort: extendedWeather } = categorizeRecords(extendedRecords, weatherMap);
+
+  categoryKeys.forEach(key => {
+    if (categories[key].days < MIN_SAMPLE_DAYS) {
+      const extendedResult = calculateCategoryAverage(extendedSales[key], extendedWeather[key]);
+      // Only use extended if it actually provides more data
+      if (extendedResult.days > categories[key].days) {
+        categories[key] = extendedResult;
+        extendedWindowUsed[key] = true;
+      }
+    }
+  });
+
+  // Determine baseline: prefer 'mild', then find category with most data
+  let baselineKey = 'mild';
+  if (categories.mild.days < MIN_SAMPLE_DAYS || categories.mild.revenue === 0) {
+    // Find category with most sample days as fallback
+    const fallbackKey = categoryKeys
+      .filter(k => categories[k].days >= MIN_SAMPLE_DAYS && categories[k].revenue > 0)
+      .sort((a, b) => categories[b].days - categories[a].days)[0];
+    baselineKey = fallbackKey || 'mild';
+  }
+  const baselineRevenue = categories[baselineKey].revenue;
+
+  // Calculate impact percentages relative to baseline
+  const calculateImpact = (cat) => {
+    if (cat.days < MIN_SAMPLE_DAYS || baselineRevenue === 0) return null;
+    return ((cat.revenue - baselineRevenue) / baselineRevenue) * 100;
+  };
+
+  // Add impact to each category
+  Object.keys(categories).forEach(key => {
+    categories[key].impact = calculateImpact(categories[key]);
+    categories[key].hasEnoughData = categories[key].days >= MIN_SAMPLE_DAYS;
+  });
+
+  // Find best and worst conditions
+  const validCategories = Object.entries(categories)
+    .filter(([_, cat]) => cat.hasEnoughData)
+    .sort((a, b) => b[1].revenue - a[1].revenue);
+
+  const bestCondition = validCategories.length > 0 ? validCategories[0][0] : 'mild';
+  const worstCondition = validCategories.length > 0 ? validCategories[validCategories.length - 1][0] : 'rainy';
+
+  // Calculate temperature and humidity correlations
+  const tempCorrelation = calculateTemperatureCorrelation(salesData, weatherData);
+  const humidityCorrelation = calculateHumidityCorrelation(salesData, weatherData);
+
+  // Total days analyzed
+  const totalDaysAnalyzed = Object.values(categories).reduce((s, c) => s + c.days, 0);
+
+  // Labels and emojis for UI
+  // Descriptions reflect Caxias do Sul-specific thresholds
+  const categoryLabels = {
+    muggy: { label: 'Abafado', emoji: '🥵', description: 'Quente e úmido (sensação ≥27°C)' },
+    hot: { label: 'Quente', emoji: '☀️', description: 'Temperatura ≥23°C' },
+    cold: { label: 'Frio', emoji: '❄️', description: 'Temperatura ≤10°C' },
+    mild: { label: 'Ameno', emoji: '😌', description: 'Temperatura 10-23°C' },
+    humid: { label: 'Úmido', emoji: '💧', description: 'Alta umidade (≥80%)' },
+    rainy: { label: 'Chuvoso', emoji: '🌧️', description: 'Precipitação >5mm' }
+  };
+
+  // Enrich categories with labels and extended window flag
+  Object.keys(categories).forEach(key => {
+    categories[key] = {
+      ...categories[key],
+      ...categoryLabels[key],
+      extendedWindow: extendedWindowUsed[key]
+    };
+  });
+
+  // Count how many categories used extended window
+  const extendedCategories = Object.entries(extendedWindowUsed)
+    .filter(([_, used]) => used)
+    .map(([key]) => categoryLabels[key]?.label || key);
+
+  return {
+    // Comfort-based categories
+    categories,
+
+    // Best/worst conditions
+    bestCondition,
+    worstCondition,
+    bestCaseScenario: categories[bestCondition]?.revenue || 0,
+    worstCaseScenario: categories[worstCondition]?.revenue || 0,
+
+    // Correlations
+    temperatureCorrelation: tempCorrelation,
+    humidityCorrelation,
+
+    // Context
+    primaryWindowDays: PRIMARY_WINDOW_DAYS,
+    extendedWindowDays: EXTENDED_WINDOW_DAYS,
+    totalDaysAnalyzed,
+    minSampleDays: MIN_SAMPLE_DAYS,
+    baselineCondition: baselineKey,
+
+    // Adaptive window info
+    extendedWindowUsed: extendedCategories.length > 0,
+    extendedCategories,
+
+    // Data quality
+    hasEnoughData: totalDaysAnalyzed >= 30,
+    warning: totalDaysAnalyzed < 30
+      ? `Dados limitados: apenas ${totalDaysAnalyzed} dias analisados nos últimos 90 dias`
+      : extendedCategories.length > 0
+        ? `${extendedCategories.join(', ')}: janela estendida (180 dias) por dados insuficientes`
+        : null
   };
 }
 
