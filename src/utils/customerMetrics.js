@@ -1,8 +1,19 @@
-// Customer Metrics Calculator v3.0.0 - LAUNDROMAT-OPTIMIZED THRESHOLDS
+// Customer Metrics Calculator v3.2.1 - NAME MERGE FIX
 // ✅ Brazilian number parsing added (handles comma decimals)
 // ✅ Cashback rate corrected (7.5%)
 // ✅ Cashback start date corrected (June 1, 2024)
-// ✅ NEW v3.0.0 (2025-11-24): Laundromat-optimized churn thresholds
+// ✅ FIX v3.2.1 (2025-12-03): Customer name from customer.csv
+//     - Fixed: Name was not being extracted from customer.csv
+//     - Now merges name when auto-generated "Customer XXXX" is detected
+// ✅ v3.2.0 (2025-12-03): Unified CPF utilities
+//     - Uses shared cpfUtils.js for consistent normalization
+//     - CPF padding/validation applied at data load time
+//     - Eliminates duplicate implementations
+// ✅ v3.1.0 (2025-12-03): Phone validation & CPF standardization
+//     - Added Brazilian mobile phone validation (WhatsApp-ready)
+//     - Standardized CPF column lookups across all CSV formats
+//     - Added hasValidPhone flag for campaign targeting
+// ✅ v3.0.0 (2025-11-24): Laundromat-optimized churn thresholds
 //     - Updated LOST_THRESHOLD: 120 → 60 days (realistic for laundromat)
 //     - New DAY_THRESHOLDS: 20/30/45/60 days for risk classification
 //     - Added RISK_LABELS constant for unified Portuguese translations
@@ -10,6 +21,8 @@
 //     - getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend
 
 import { parseBrDate, formatDate } from './dateUtils';
+import { normalizePhone, isValidBrazilianMobile } from './phoneUtils';
+import { normalizeCpf, extractCpf, isValidCpf } from './cpfUtils';
 
 /**
  * Parse Brazilian number format (handles comma as decimal separator)
@@ -34,15 +47,60 @@ function parseBrNumber(value) {
   return parseFloat(str) || 0;
 }
 
-// Normalize document number (CPF) - pad to 11 digits
-function normalizeDoc(doc) {
-  if (!doc) return '';
-  const cleaned = String(doc).replace(/\D/g, '');
-  if (cleaned.length > 0 && cleaned.length <= 11) {
-    return cleaned.padStart(11, '0');
+// CPF normalization and extraction now handled by cpfUtils.js
+// See: normalizeCpf(), extractCpf(), isValidCpf()
+const CPF_COLUMNS = ['Doc_Cliente', 'Documento', 'doc', 'document', 'CPF', 'cpf', 'col2'];
+
+/**
+ * Extract CPF from a CSV row using all known column name variations
+ * Wrapper around cpfUtils.extractCpf for backward compatibility
+ */
+function extractCPF(row) {
+  return extractCpf(row, CPF_COLUMNS);
+}
+
+/**
+ * Extract phone from a CSV row using all known column name variations
+ */
+function extractPhone(row) {
+  const phoneColumns = [
+    'phone number',     // rfm.csv
+    'Telefone',         // customer.csv
+    'phone',            // generic
+    'Phone',            // capitalized
+    'tel',              // abbreviated
+    'celular',          // portuguese
+    'mobile',           // english
+  ];
+
+  for (const col of phoneColumns) {
+    if (row[col]) {
+      return row[col];
+    }
   }
-  return cleaned;
-};
+  return null;
+}
+
+/**
+ * Extract name from a CSV row using all known column name variations
+ */
+function extractName(row) {
+  const nameColumns = [
+    'client name',      // rfm.csv
+    'Nome',             // customer.csv
+    'name',             // generic
+    'Name',             // capitalized
+    'Cliente',          // portuguese
+    'cliente',          // lowercase
+  ];
+
+  for (const col of nameColumns) {
+    if (row[col]) {
+      return row[col];
+    }
+  }
+  return null;
+}
 
 // LAUNDROMAT-OPTIMIZED THRESHOLDS (v3.0.0)
 // Based on business reality: customers typically visit every 7-14 days
@@ -122,12 +180,17 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
   // Build RFM lookup - with safety check
   if (Array.isArray(rfmData) && rfmData.length > 0) {
     rfmData.forEach(row => {
-      const doc = normalizeDoc(row.Doc_Cliente || row.col2 || row.doc || row.Documento || '');
+      const doc = extractCPF(row);
       if (doc) {
+        const rawPhone = extractPhone(row);
+        const validatedPhone = normalizePhone(rawPhone);
+
         rfmMap[doc] = {
           segment: row.segment || row.col1 || row.Segment || 'Unclassified',
-          name: row['client name'] || row.name || row.Name || row.cliente || row.Nome || null,
-          phone: row['phone number'] || row.phone || row.Phone || row.Telefone || null,
+          name: extractName(row),
+          phone: validatedPhone,           // Normalized and validated
+          rawPhone: rawPhone,              // Original for debugging
+          hasValidPhone: !!validatedPhone, // Flag for filtering
           lastContactDate: row.col5 || row.lastContactDate || null
         };
       }
@@ -137,11 +200,18 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
   // Build customer.csv lookup - NEW: Separate from RFM
   if (Array.isArray(customerData) && customerData.length > 0) {
     customerData.forEach(row => {
-      const doc = normalizeDoc(row.Documento || row.Doc_Cliente || row.doc || '');
+      const doc = extractCPF(row);
       if (doc) {
+        const rawPhone = extractPhone(row);
+        const validatedPhone = normalizePhone(rawPhone);
+
         customerCSVMap[doc] = {
-          email: row.Email || null,
-          walletBalance: parseBrNumber(row.Saldo_Carteira || '0'),
+          name: extractName(row),          // Customer name from CSV
+          email: row.Email || row.email || null,
+          phone: validatedPhone,           // Normalized and validated
+          rawPhone: rawPhone,              // Original for debugging
+          hasValidPhone: !!validatedPhone, // Flag for filtering
+          walletBalance: parseBrNumber(row.Saldo_Carteira || row.saldo || '0'),
           registrationDate: parseBrDate(row.Data_Cadastro || ''),
           lastPurchaseDate: parseBrDate(row.Data_Ultima_Compra || ''),
           totalSpent: parseBrNumber(row.Total_Compras || '0'),
@@ -157,9 +227,16 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
   console.log('Sample CSV entry:', Object.values(customerCSVMap)[0]);
 
   // Process sales data
+  let skippedInvalidCpf = 0;
   salesData.forEach(row => {
-    const doc = normalizeDoc(row.Doc_Cliente || row.document || row.doc || '');
+    const doc = extractCPF(row);
     if (!doc) return;
+
+    // Skip invalid CPF patterns (all same digit)
+    if (!isValidCpf(doc)) {
+      skippedInvalidCpf++;
+      return;
+    }
 
     const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
     if (!date) return;
@@ -178,7 +255,7 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
     if (!customers[doc]) {
       customers[doc] = {
         doc,
-        name: row.Nome || row.Cliente || row.name || `Customer ${doc.slice(-4)}`,
+        name: extractName(row) || `Customer ${doc.slice(-4)}`,
         transactions: 0,
         netTotal: 0,
         grossTotal: 0,
@@ -190,6 +267,8 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
         washRevenue: 0,
         dryRevenue: 0,
         phone: null,
+        rawPhone: null,
+        hasValidPhone: false,
         lastContactDate: null
       };
     }
@@ -209,6 +288,11 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
       customer.dryRevenue += (netValue * machineInfo.dry) / machineInfo.total;
     }
   });
+
+  console.log(`Processed ${Object.keys(customers).length} unique customers from sales`);
+  if (skippedInvalidCpf > 0) {
+    console.log(`⚠️ Skipped ${skippedInvalidCpf} sales with invalid CPF patterns`);
+  }
 
   // Calculate risk levels (V2.1 algorithm)
   Object.values(customers).forEach(customer => {
@@ -253,7 +337,10 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
       if (customer.name.includes('Customer') && rfmInfo.name) {
         customer.name = rfmInfo.name;
       }
+      // Use validated phone from RFM
       customer.phone = rfmInfo.phone;
+      customer.rawPhone = rfmInfo.rawPhone;
+      customer.hasValidPhone = rfmInfo.hasValidPhone;
       customer.lastContactDate = rfmInfo.lastContactDate;
     } else {
       customer.segment = 'Unclassified';
@@ -262,12 +349,23 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
     // NEW: Merge customer.csv data
     const csvData = customerCSVMap[customer.doc];
     if (csvData) {
+      // Use name from customer.csv if current name is auto-generated
+      if (customer.name.includes('Customer') && csvData.name) {
+        customer.name = csvData.name;
+      }
       customer.email = csvData.email;
       customer.walletBalance = csvData.walletBalance; // REAL wallet balance from CSV!
       customer.registrationDate = csvData.registrationDate;
       customer.lastPurchaseDate = csvData.lastPurchaseDate;
       customer.totalSpentCSV = csvData.totalSpent; // From CSV (may differ from calculated)
       customer.purchaseCount = csvData.purchaseCount; // Total purchases (not visits!)
+
+      // If no phone from RFM, try to get from customer.csv
+      if (!customer.phone && csvData.phone) {
+        customer.phone = csvData.phone;
+        customer.rawPhone = csvData.rawPhone;
+        customer.hasValidPhone = csvData.hasValidPhone;
+      }
     }
 
     // ==========================================
@@ -344,6 +442,10 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
   // Combined count for "At Risk" + "Churning" - both need proactive outreach
   const needsAttentionCount = atRiskCount + churningCount;
 
+  // Phone validation counts (for campaign targeting)
+  const validPhoneCount = allCustomers.filter(c => c.hasValidPhone).length;
+  const activeWithPhone = activeCustomers.filter(c => c.hasValidPhone).length;
+
   const healthRate = activeCustomers.length > 0
     ? (healthyCount / activeCustomers.length) * 100
     : 0;
@@ -361,10 +463,19 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
     newCustomerCount,
     healthRate,
 
+    // Phone validation counts (for campaigns)
+    validPhoneCount,        // Total customers with valid WhatsApp numbers
+    activeWithPhone,        // Active customers with valid WhatsApp numbers
+    phoneValidationRate: allCustomers.length > 0
+      ? Math.round((validPhoneCount / allCustomers.length) * 100)
+      : 0,
+
     // Lists
     allCustomers,
     activeCustomers,
-    lostCustomers
+    lostCustomers,
+    // Campaign-ready lists
+    campaignReady: activeCustomers.filter(c => c.hasValidPhone)
   };
 }
 
@@ -476,7 +587,7 @@ export function getRetentionCohorts(salesData) {
 
   // Helper to parse date from row
   const getRowDate = (row) => parseBrDate(row.Data || row.Data_Hora || row.date || '');
-  const getRowDoc = (row) => normalizeDoc(row.Doc_Cliente || row.document || row.doc || '');
+  const getRowDoc = (row) => extractCPF(row);
 
   // Group visits by customer
   const customerVisits = {};

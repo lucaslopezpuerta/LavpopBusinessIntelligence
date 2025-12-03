@@ -12,7 +12,7 @@ permissions:
 jobs:
   fetch-data:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,27 +20,33 @@ jobs:
           # Use PERSONAL_ACCESS_TOKEN if available, fallback to GITHUB_TOKEN
           # PAT is needed to trigger other workflows automatically
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Install dependencies for data fetch
         run: npm install googleapis csv-writer date-fns-tz
-      
+
       - name: Fetch data from Google Sheets
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
           SALES_FILE_ID: ${{ secrets.SALES_FILE_ID }}
-          RFM_FILE_ID: ${{ secrets.RFM_FILE_ID }}
+          # RFM_FILE_ID is no longer used - RFM is now calculated locally
+          # RFM_FILE_ID: ${{ secrets.RFM_FILE_ID }}
           CUSTOMER_FILE_ID: ${{ secrets.CUSTOMER_FILE_ID }}
           BLACKLIST_FILE_ID: ${{ secrets.BLACKLIST_FILE_ID }}
           TWILIO_FILE_ID: ${{ secrets.TWILIO_FILE_ID }}
           WEATHER_SHEET_ID: ${{ secrets.WEATHER_SHEET_ID }}
           CAMPAIGNS_SHEET_ID: ${{ secrets.CAMPAIGNS_SHEET_ID }}
         run: node .github/scripts/fetch-sheets.cjs
-      
+
+      - name: Process RFM Segmentation
+        run: |
+          echo "🔄 Running RFM calculation..."
+          node .github/scripts/process-rfm.cjs
+
       - name: Copy data for React app
         run: |
           mkdir -p public/data

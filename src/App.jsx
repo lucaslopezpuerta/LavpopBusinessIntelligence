@@ -31,6 +31,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 // Lazy load tab components for code splitting
 const Dashboard = lazy(() => import('./views/Dashboard'));
 const Customers = lazy(() => import('./views/Customers'));
+const Campaigns = lazy(() => import('./views/Campaigns'));
 const Operations = lazy(() => import('./views/Operations'));
 const Intelligence = lazy(() => import('./views/Intelligence'));
 
@@ -78,6 +79,7 @@ function AppContent() {
   const tabComponents = {
     dashboard: Dashboard,
     customers: Customers,
+    campaigns: Campaigns,
     intelligence: Intelligence,
     operations: Operations
   };

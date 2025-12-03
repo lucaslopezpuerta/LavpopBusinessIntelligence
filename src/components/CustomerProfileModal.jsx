@@ -1,8 +1,13 @@
-// CustomerProfileModal.jsx v1.6 - HIGH CONTRAST BADGES
+// CustomerProfileModal.jsx v1.7 - PHONE VALIDATION
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v1.7 (2025-12-03): Phone validation for WhatsApp
+//   - Added Brazilian mobile validation before WhatsApp actions
+//   - Shows warning indicator for invalid phone numbers
+//   - Disables WhatsApp buttons when phone is invalid
+//   - Tooltip explains validation error
 // v1.6 (2025-12-01): Badge redesign for better visibility
 //   - High contrast risk pills with solid colors (RISK_PILL_STYLES)
 //   - Segment displayed as gradient pill matching avatar colors
@@ -102,6 +107,7 @@ import { RISK_LABELS } from '../utils/customerMetrics';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { addCommunicationEntry, getCommunicationLog, getDefaultNotes } from '../utils/communicationLog';
+import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
@@ -118,6 +124,14 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const { isContacted, toggleContacted } = useContactTracking();
     const customerId = customer.doc || customer.id;
     const contacted = isContacted(customerId);
+
+    // Phone validation for WhatsApp
+    const hasValidPhone = customer.hasValidPhone !== undefined
+        ? customer.hasValidPhone
+        : (customer.phone && isValidBrazilianMobile(customer.phone));
+    const phoneError = !hasValidPhone && customer.phone
+        ? getPhoneValidationError(customer.phone)
+        : null;
 
     // Listen for communication log updates from other components
     useEffect(() => {
@@ -161,9 +175,11 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     };
 
     const handleWhatsApp = () => {
-        if (customer.phone) {
+        if (hasValidPhone && customer.phone) {
             const cleanPhone = customer.phone.replace(/\D/g, '');
-            window.open(`https://wa.me/${cleanPhone}`, '_blank');
+            // Ensure country code for WhatsApp
+            const whatsappPhone = cleanPhone.length === 11 ? '55' + cleanPhone : cleanPhone;
+            window.open(`https://wa.me/${whatsappPhone}`, '_blank');
             // Auto-log WhatsApp (uses shared utility)
             addCommunicationEntry(customer.doc, 'whatsapp', getDefaultNotes('whatsapp'));
             setCommunicationLog(getCommunicationLog(customer.doc));
@@ -325,10 +341,16 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             <Phone className="w-3 h-3" />
                                             <span className="hidden min-[500px]:inline">Ligar</span>
                                         </button>
-                                        {/* WhatsApp button */}
+                                        {/* WhatsApp button - disabled if phone is invalid */}
                                         <button
                                             onClick={handleWhatsApp}
-                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800"
+                                            disabled={!hasValidPhone}
+                                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                                                hasValidPhone
+                                                    ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white border-green-200 dark:border-green-800 cursor-pointer'
+                                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 cursor-not-allowed'
+                                            }`}
+                                            title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido para WhatsApp')}
                                         >
                                             <MessageCircle className="w-4 h-4" />
                                             <span className="hidden min-[500px]:inline">WhatsApp</span>
@@ -419,7 +441,14 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
                                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Telefone</div>
-                                        <div className="text-xs font-semibold text-slate-800 dark:text-white">{customer.phone || 'N/A'}</div>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-xs font-semibold text-slate-800 dark:text-white">{customer.phone || 'N/A'}</span>
+                                            {customer.phone && !hasValidPhone && (
+                                                <span title={phoneError || 'Número inválido para WhatsApp'}>
+                                                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
                                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Email</div>
@@ -475,11 +504,17 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             <Check className="w-3 h-3" />
                                             <span className="hidden min-[400px]:inline">{contacted ? 'Contactado' : 'Marcar contactado'}</span>
                                         </button>
-                                        {/* WhatsApp button for mobile */}
+                                        {/* WhatsApp button for mobile - disabled if phone is invalid */}
                                         {customer.phone && (
                                             <button
                                                 onClick={handleWhatsApp}
-                                                className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors text-xs font-semibold border border-green-200 dark:border-green-800"
+                                                disabled={!hasValidPhone}
+                                                className={`sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                                                    hasValidPhone
+                                                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white border-green-200 dark:border-green-800'
+                                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 cursor-not-allowed'
+                                                }`}
+                                                title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido')}
                                             >
                                                 <MessageCircle className="w-3 h-3" />
                                             </button>

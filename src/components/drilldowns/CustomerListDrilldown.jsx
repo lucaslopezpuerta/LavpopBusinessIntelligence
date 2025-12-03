@@ -1,4 +1,4 @@
-// CustomerListDrilldown.jsx v3.5 - DARK MODE CARD FIX
+// CustomerListDrilldown.jsx v3.6 - PHONE VALIDATION
 // ✅ Pagination with "Ver mais" button
 // ✅ WhatsApp and Call actions
 // ✅ Dynamic sorting with controls
@@ -9,8 +9,13 @@
 // ✅ Contact tracking (shared across app)
 // ✅ Communication logging (syncs with CustomerProfileModal)
 // ✅ Design System v3.1 compliant
+// ✅ Brazilian mobile phone validation for WhatsApp
 //
 // CHANGELOG:
+// v3.6 (2025-12-03): Phone validation for WhatsApp
+//   - Added Brazilian mobile validation before WhatsApp actions
+//   - Disables WhatsApp swipe/buttons for invalid numbers
+//   - Uses shared phoneUtils for consistent validation
 // v3.5 (2025-12-02): Dark mode card background fix
 //   - Fixed semi-transparent card bg showing swipe actions through
 //   - Changed dark:bg-slate-700/30 to solid dark:bg-slate-700
@@ -49,6 +54,7 @@ import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Phone, MessageCircle, Check, ChevronDown, ArrowUpDown, PartyPopper } from 'lucide-react';
 import { useContactTracking } from '../../hooks/useContactTracking';
 import { addCommunicationEntry, getDefaultNotes } from '../../utils/communicationLog';
+import { isValidBrazilianMobile, normalizePhone } from '../../utils/phoneUtils';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -85,6 +91,11 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         if (!phone) return null;
         const cleaned = String(phone).replace(/\D/g, '');
         return cleaned.length >= 10 ? cleaned : null;
+    };
+
+    // Check if phone is valid for WhatsApp (Brazilian mobile only)
+    const hasValidWhatsApp = (phone) => {
+        return phone && isValidBrazilianMobile(phone);
     };
 
     const formatCurrency = (value) => {
@@ -161,12 +172,16 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
 
     const handleWhatsApp = (e, phone, customerId) => {
         e?.stopPropagation();
-        const cleaned = formatPhone(phone);
-        if (!cleaned) return;
+        // Validate Brazilian mobile before sending
+        if (!hasValidWhatsApp(phone)) return;
+        const normalized = normalizePhone(phone);
+        if (!normalized) return;
+        // Remove + for WhatsApp URL
+        const whatsappNumber = normalized.replace('+', '');
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const url = isMobile
-            ? `https://api.whatsapp.com/send?phone=55${cleaned}`
-            : `https://web.whatsapp.com/send?phone=55${cleaned}`;
+            ? `https://api.whatsapp.com/send?phone=${whatsappNumber}`
+            : `https://web.whatsapp.com/send?phone=${whatsappNumber}`;
         window.open(url, '_blank');
         // Log to communication history (syncs with CustomerProfileModal)
         if (customerId) {
@@ -214,7 +229,8 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         }
 
         // Trigger call/WhatsApp (handlers also log and mark as contacted)
-        if (swipeState.direction === 'right') {
+        // WhatsApp only works for valid Brazilian mobiles
+        if (swipeState.direction === 'right' && hasValidWhatsApp(customer.phone)) {
             handleWhatsApp(null, customer.phone, customerId);
         } else if (swipeState.direction === 'left') {
             handleCall(null, customer.phone, customerId);
@@ -314,6 +330,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                     const customerId = customer.doc || `idx-${index}`;
                     const contacted = isContacted(customerId);
                     const hasPhone = customer.phone && formatPhone(customer.phone);
+                    const canWhatsApp = hasValidWhatsApp(customer.phone);
                     const isSwipingThis = swipeState.id === customerId;
                     const tertiaryInfo = getTertiaryInfo(customer);
 
@@ -325,10 +342,12 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                             {/* Swipe action backgrounds (mobile only, hide when contacted) */}
                             {hasPhone && !contacted && (
                                 <>
-                                    {/* WhatsApp (swipe right) */}
-                                    <div className="md:hidden absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
-                                        <MessageCircle className="w-5 h-5 text-white" />
-                                    </div>
+                                    {/* WhatsApp (swipe right) - only for valid Brazilian mobiles */}
+                                    {canWhatsApp && (
+                                        <div className="md:hidden absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
+                                            <MessageCircle className="w-5 h-5 text-white" />
+                                        </div>
+                                    )}
                                     {/* Call (swipe left) */}
                                     <div className="md:hidden absolute inset-y-0 right-0 w-16 bg-blue-500 flex items-center justify-center">
                                         <Phone className="w-5 h-5 text-white" />
@@ -416,11 +435,16 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                             >
                                                 <Phone className="w-4 h-4" />
                                             </button>
-                                            {/* WhatsApp button - hidden on mobile (use swipe) */}
+                                            {/* WhatsApp button - hidden on mobile (use swipe), disabled for invalid numbers */}
                                             <button
                                                 onClick={(e) => handleWhatsApp(e, customer.phone, customerId)}
-                                                className="hidden md:flex w-11 h-11 items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-lavpop-green border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                                                title="WhatsApp"
+                                                disabled={!canWhatsApp}
+                                                className={`hidden md:flex w-11 h-11 items-center justify-center rounded-lg border transition-colors ${
+                                                    canWhatsApp
+                                                        ? 'bg-white dark:bg-slate-800 text-lavpop-green border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
+                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                                                }`}
+                                                title={canWhatsApp ? 'WhatsApp' : 'Número inválido para WhatsApp'}
                                             >
                                                 <MessageCircle className="w-4 h-4" />
                                             </button>
@@ -448,7 +472,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
             {/* Swipe hint for mobile */}
             {customers.length > 0 && customers.some(c => c.phone && formatPhone(c.phone)) && (
                 <p className="md:hidden text-center text-xs text-slate-400 dark:text-slate-500 py-1">
-                    Deslize para ligar ou enviar WhatsApp
+                    Deslize ← para ligar{customers.some(c => hasValidWhatsApp(c.phone)) ? ' ou → para WhatsApp' : ''}
                 </p>
             )}
 

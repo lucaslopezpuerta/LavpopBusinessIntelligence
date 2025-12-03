@@ -16,11 +16,13 @@ const FILES_CONFIG = [
     fileId: process.env.SALES_FILE_ID || 'YOUR_SALES_FILE_ID',
     outputFile: 'sales.csv'
   },
-  {
-    type: 'csv',
-    fileId: process.env.RFM_FILE_ID || 'YOUR_RFM_FILE_ID',
-    outputFile: 'rfm.csv'
-  },
+  // RFM is now calculated locally by process-rfm.cjs
+  // No longer fetched from Google Drive
+  // {
+  //   type: 'csv',
+  //   fileId: process.env.RFM_FILE_ID || 'YOUR_RFM_FILE_ID',
+  //   outputFile: 'rfm.csv'
+  // },
   {
     type: 'csv',
     fileId: process.env.CUSTOMER_FILE_ID || 'YOUR_CUSTOMER_FILE_ID',

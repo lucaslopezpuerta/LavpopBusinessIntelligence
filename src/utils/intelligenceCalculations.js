@@ -567,29 +567,8 @@ export function calculateGrowthTrends(salesData) {
   // ✅ FILTER: Only return last 12 months for display
   const monthlyWithGrowth = allMonthlyWithGrowth.slice(-12);
 
-  // ✅ FIXED: Calculate average growth rate properly excluding nulls
-  const last6Months = allMonthlyWithGrowth.slice(-6);
-  const validGrowthMonths = last6Months.filter(m => m.momGrowth !== null);
-  const avgGrowth = validGrowthMonths.length > 0
-    ? validGrowthMonths.reduce((s, m) => s + m.momGrowth, 0) / validGrowthMonths.length
-    : 0;
-
-  // ✅ IMPROVED: Identify trend using 2-of-3 majority rule (not strict all-or-nothing)
-  const recentValidGrowth = last6Months.slice(-3).filter(m => m.momGrowth !== null);
-  let trend = 'stable';
-  if (recentValidGrowth.length >= 2) {
-    const positiveCount = recentValidGrowth.filter(m => m.momGrowth > 0).length;
-    const negativeCount = recentValidGrowth.filter(m => m.momGrowth < 0).length;
-    // Majority rule: 2+ of 3 in same direction = trend
-    if (positiveCount >= 2) {
-      trend = 'increasing';
-    } else if (negativeCount >= 2) {
-      trend = 'decreasing';
-    }
-    // Otherwise stays 'stable'
-  }
-
-  // ✅ FIXED: Detect current month for partial month handling
+  // ✅ FIXED: Detect current month for partial month handling FIRST
+  // This must happen before avgGrowth/trend calculations to exclude partial data
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const daysElapsed = now.getDate();
@@ -603,6 +582,35 @@ export function calculateGrowthTrends(salesData) {
     m.daysElapsed = m.isCurrentMonth ? daysElapsed : null;
     m.daysInMonth = m.isCurrentMonth ? daysInCurrentMonth : null;
   });
+
+  // Also mark in allMonthlyWithGrowth for calculations
+  allMonthlyWithGrowth.forEach(m => {
+    m.isPartial = m.month === currentMonthKey && isCurrentMonthPartial;
+  });
+
+  // ✅ FIXED: Calculate average growth rate excluding partial months
+  // Partial months always show negative growth (comparing partial to full month)
+  const last6Months = allMonthlyWithGrowth.slice(-6);
+  const validGrowthMonths = last6Months.filter(m => m.momGrowth !== null && !m.isPartial);
+  const avgGrowth = validGrowthMonths.length > 0
+    ? validGrowthMonths.reduce((s, m) => s + m.momGrowth, 0) / validGrowthMonths.length
+    : 0;
+
+  // ✅ IMPROVED: Identify trend using 2-of-3 majority rule, excluding partial months
+  // A partial month's negative growth shouldn't determine the trend direction
+  const recentValidGrowth = last6Months.slice(-3).filter(m => m.momGrowth !== null && !m.isPartial);
+  let trend = 'stable';
+  if (recentValidGrowth.length >= 2) {
+    const positiveCount = recentValidGrowth.filter(m => m.momGrowth > 0).length;
+    const negativeCount = recentValidGrowth.filter(m => m.momGrowth < 0).length;
+    // Majority rule: 2+ of 3 in same direction = trend
+    if (positiveCount >= 2) {
+      trend = 'increasing';
+    } else if (negativeCount >= 2) {
+      trend = 'decreasing';
+    }
+    // Otherwise stays 'stable'
+  }
 
   // Best/worst from displayed 12 months only
   const bestMonth = monthlyWithGrowth.length > 0

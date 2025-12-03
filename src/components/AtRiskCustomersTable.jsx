@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v8.3 - DARK MODE CARD FIX
+// AtRiskCustomersTable.jsx v8.4 - PHONE VALIDATION
 // ✅ No horizontal scroll
 // ✅ Mobile: Card layout with swipe actions (like CustomerListDrilldown)
 // ✅ Desktop: Table with all columns visible
@@ -12,8 +12,13 @@
 // ✅ Pagination (5 items per page with smart navigation)
 // ✅ Sorting controls (by value, by days absent, by name)
 // ✅ Design System v3.1 compliant header
+// ✅ Brazilian mobile phone validation for WhatsApp
 //
 // CHANGELOG:
+// v8.4 (2025-12-03): Phone validation for WhatsApp
+//   - Added Brazilian mobile validation before WhatsApp actions
+//   - Disables WhatsApp swipe/buttons for invalid numbers
+//   - Uses shared phoneUtils for consistent validation
 // v8.3 (2025-12-02): Dark mode card background fix
 //   - Fixed semi-transparent card bg showing swipe actions through
 //   - Changed dark:bg-slate-700/30 to solid dark:bg-slate-700
@@ -75,6 +80,7 @@ import { RISK_LABELS } from '../utils/customerMetrics';
 import { formatCurrency } from '../utils/formatters';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { addCommunicationEntry, getDefaultNotes } from '../utils/communicationLog';
+import { isValidBrazilianMobile, normalizePhone } from '../utils/phoneUtils';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -156,10 +162,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     );
   }
 
+  // Check if phone is valid for calling (any 10+ digit number)
   const formatPhone = (phone) => {
     if (!phone) return null;
     const cleaned = String(phone).replace(/\D/g, '');
     return cleaned.length >= 10 ? cleaned : null;
+  };
+
+  // Check if phone is valid for WhatsApp (Brazilian mobile only)
+  const hasValidWhatsApp = (phone) => {
+    return phone && isValidBrazilianMobile(phone);
   };
 
   const handleCall = (e, phone, customerId) => {
@@ -180,11 +192,18 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
 
   const handleWhatsApp = (e, phone, customerId) => {
     e?.stopPropagation();
-    const cleaned = formatPhone(phone);
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const url = isMobile
-      ? `https://api.whatsapp.com/send?phone=55${cleaned}`
-      : `https://web.whatsapp.com/send?phone=55${cleaned}`;
+    // Only proceed if phone is a valid Brazilian mobile
+    if (!hasValidWhatsApp(phone)) return;
+
+    const normalized = normalizePhone(phone);
+    if (!normalized) return;
+
+    // Remove the + prefix for WhatsApp URL
+    const whatsappNumber = normalized.replace('+', '');
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const url = isMobileDevice
+      ? `https://api.whatsapp.com/send?phone=${whatsappNumber}`
+      : `https://web.whatsapp.com/send?phone=${whatsappNumber}`;
     window.open(url, '_blank');
     // Log to communication history (syncs with CustomerProfileModal)
     if (customerId) {
@@ -232,9 +251,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     }
 
     // Trigger call/WhatsApp (handlers also log and mark as contacted)
-    if (swipeState.direction === 'right') {
+    if (swipeState.direction === 'right' && hasValidWhatsApp(customer.phone)) {
+      // Only trigger WhatsApp for valid Brazilian mobile
       handleWhatsApp(null, customer.phone, customerId);
     } else if (swipeState.direction === 'left') {
+      // Call works for any valid phone
       handleCall(null, customer.phone, customerId);
     }
 
@@ -301,6 +322,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
             const customerId = customer.doc || `idx-${index}`;
             const contacted = isContacted(customerId);
             const hasPhone = customer.phone && formatPhone(customer.phone);
+            const canWhatsApp = hasValidWhatsApp(customer.phone);
             const isSwipingThis = swipeState.id === customerId;
 
             return (
@@ -311,11 +333,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                 {/* Swipe action backgrounds (mobile only, hide when contacted) */}
                 {hasPhone && !contacted && (
                   <>
-                    {/* WhatsApp (swipe right) */}
-                    <div className="absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
-                      <MessageCircle className="w-5 h-5 text-white" />
-                    </div>
-                    {/* Call (swipe left) */}
+                    {/* WhatsApp (swipe right) - only if valid Brazilian mobile */}
+                    {canWhatsApp && (
+                      <div className="absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-white" />
+                      </div>
+                    )}
+                    {/* Call (swipe left) - any valid phone */}
                     <div className="absolute inset-y-0 right-0 w-16 bg-blue-500 flex items-center justify-center">
                       <Phone className="w-5 h-5 text-white" />
                     </div>
@@ -407,7 +431,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
           {/* Swipe hint for mobile */}
           {paginatedCustomers.some(c => c.phone && formatPhone(c.phone)) && (
             <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1">
-              Deslize para ligar ou enviar WhatsApp
+              Deslize ← para ligar{paginatedCustomers.some(c => hasValidWhatsApp(c.phone)) ? ' ou → para WhatsApp' : ''}
             </p>
           )}
         </div>
@@ -542,23 +566,40 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                             >
                               <Phone className="w-4 h-4" aria-hidden="true" />
                             </button>
-                            <button
-                              onClick={(e) => handleWhatsApp(e, customer.phone, customerId)}
-                              className="
-                                p-2 rounded-lg
-                                bg-green-50 dark:bg-green-900/20
-                                text-green-600 dark:text-green-400
-                                hover:bg-green-100 dark:hover:bg-green-900/40
-                                hover:scale-110
-                                transition-all duration-200
-                                group-hover:shadow-md
-                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2
-                              "
-                              aria-label={`Enviar WhatsApp para ${customer.name || 'cliente'}`}
-                              title="WhatsApp"
-                            >
-                              <MessageCircle className="w-4 h-4" aria-hidden="true" />
-                            </button>
+                            {/* WhatsApp button - only for valid Brazilian mobile */}
+                            {hasValidWhatsApp(customer.phone) ? (
+                              <button
+                                onClick={(e) => handleWhatsApp(e, customer.phone, customerId)}
+                                className="
+                                  p-2 rounded-lg
+                                  bg-green-50 dark:bg-green-900/20
+                                  text-green-600 dark:text-green-400
+                                  hover:bg-green-100 dark:hover:bg-green-900/40
+                                  hover:scale-110
+                                  transition-all duration-200
+                                  group-hover:shadow-md
+                                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2
+                                "
+                                aria-label={`Enviar WhatsApp para ${customer.name || 'cliente'}`}
+                                title="WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                            ) : (
+                              <button
+                                disabled
+                                className="
+                                  p-2 rounded-lg
+                                  bg-slate-100 dark:bg-slate-700
+                                  text-slate-400 dark:text-slate-500
+                                  cursor-not-allowed
+                                "
+                                aria-label="WhatsApp indisponível - número inválido"
+                                title="Número inválido para WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                            )}
                           </>
                         )}
                       </div>

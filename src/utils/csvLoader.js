@@ -1,10 +1,13 @@
 /**
  * CSV Loader - Fetches and parses CSV files from /data folder
  * Uses PapaParse for robust CSV parsing
- * 
- * VERSION: 2.1
- * 
+ *
+ * VERSION: 2.2
+ *
  * CHANGELOG:
+ * v2.2 (2025-12-03): Unified CPF handling via cpfUtils
+ *     - normalizeDoc now re-exports normalizeCpf from cpfUtils
+ *     - Ensures consistent CPF normalization across codebase
  * v2.1 (2025-11-23): Migrated to IndexedDB (async cache)
  * v2.0 (2025-11-23): Added localStorage caching for performance
  * v1.2 (2025-11-15): Added auto-delimiter detection
@@ -14,6 +17,7 @@
 
 import Papa from 'papaparse';
 import { getCachedData, setCachedData } from './dataCache';
+import { normalizeCpf } from './cpfUtils';
 
 /**
  * Load a single CSV file
@@ -127,15 +131,9 @@ export const loadAllData = async (onProgress, skipCache = false) => {
 
 /**
  * Normalize document (CPF) format
+ * Re-exports normalizeCpf from cpfUtils for backward compatibility
  */
-export const normalizeDoc = (doc) => {
-  if (!doc) return '';
-  const cleaned = String(doc).replace(/\D/g, '');
-  if (cleaned.length > 0 && cleaned.length <= 11) {
-    return cleaned.padStart(11, '0');
-  }
-  return cleaned;
-};
+export const normalizeDoc = normalizeCpf;
 
 /**
  * Count machines from string

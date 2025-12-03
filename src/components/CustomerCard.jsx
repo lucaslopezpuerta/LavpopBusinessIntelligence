@@ -1,7 +1,12 @@
-// CustomerCard.jsx v5.2 - ENHANCED CARD DEFINITION
+// CustomerCard.jsx v5.3 - PHONE VALIDATION SUPPORT
 // Optimized card design with consistent size and full clickability
 //
 // CHANGELOG:
+// v5.3 (2025-12-03): Phone validation indicators
+//   - Added Brazilian mobile phone validation
+//   - Shows warning icon for invalid/missing phones
+//   - Disables WhatsApp button for invalid numbers
+//   - Tooltip explains why WhatsApp is unavailable
 // v5.2 (2025-12-01): Improved card visibility
 //   - Upgraded border from slate-200 to slate-300 (light mode)
 //   - Upgraded border from slate-700 to slate-600 (dark mode)
@@ -22,8 +27,9 @@
 // v1.0 (2025-11-23): Initial implementation
 
 import React from 'react';
-import { Phone, MessageCircle, Clock, Wallet, AlertCircle, Calendar, Activity } from 'lucide-react';
+import { Phone, MessageCircle, Clock, Wallet, AlertCircle, Calendar, Activity, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
+import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
 
 // High contrast risk pill styling - matches CustomerProfileModal
 // Colors follow Design System v3.1 Status Indicators:
@@ -41,6 +47,15 @@ const CustomerCard = ({ customer, onClick }) => {
     // Get risk styling with fallback
     const risk = RISK_PILL_STYLES[customer.riskLevel] || RISK_PILL_STYLES['Lost'];
 
+    // Check phone validity - use pre-computed flag if available, otherwise validate
+    const hasValidPhone = customer.hasValidPhone !== undefined
+        ? customer.hasValidPhone
+        : (customer.phone && isValidBrazilianMobile(customer.phone));
+
+    const phoneError = !hasValidPhone && customer.phone
+        ? getPhoneValidationError(customer.phone)
+        : null;
+
     const handleCall = (e) => {
         e.stopPropagation();
         if (customer.phone) window.location.href = `tel:${customer.phone}`;
@@ -48,9 +63,11 @@ const CustomerCard = ({ customer, onClick }) => {
 
     const handleWhatsApp = (e) => {
         e.stopPropagation();
-        if (customer.phone) {
+        if (hasValidPhone && customer.phone) {
             const cleanPhone = customer.phone.replace(/\D/g, '');
-            window.open(`https://wa.me/${cleanPhone}`, '_blank');
+            // Ensure country code for WhatsApp
+            const whatsappPhone = cleanPhone.length === 11 ? '55' + cleanPhone : cleanPhone;
+            window.open(`https://wa.me/${whatsappPhone}`, '_blank');
         }
     };
 
@@ -71,10 +88,23 @@ const CustomerCard = ({ customer, onClick }) => {
 
             {/* Contact Info - Compact (No Email) */}
             <div className="space-y-0.5 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700">
-                {customer.phone && (
+                {customer.phone ? (
                     <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                        <Phone className={`w-3 h-3 shrink-0 ${hasValidPhone ? 'text-slate-400' : 'text-amber-500'}`} />
                         <span className="truncate">{customer.phone}</span>
+                        {!hasValidPhone && (
+                            <span
+                                className="shrink-0"
+                                title={phoneError || 'Número inválido para WhatsApp'}
+                            >
+                                <AlertTriangle className="w-3 h-3 text-amber-500" />
+                            </span>
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+                        <Phone className="w-3 h-3 shrink-0" />
+                        <span className="italic">Sem telefone</span>
                     </div>
                 )}
                 {customer.registrationDate && (
@@ -137,8 +167,13 @@ const CustomerCard = ({ customer, onClick }) => {
                     </button>
                     <button
                         onClick={handleWhatsApp}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white transition-colors font-semibold text-xs"
-                        title="WhatsApp"
+                        disabled={!hasValidPhone}
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg font-semibold text-xs transition-colors ${
+                            hasValidPhone
+                                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white cursor-pointer'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                        }`}
+                        title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido para WhatsApp')}
                     >
                         <MessageCircle className="w-3 h-3" />
                         <span>WhatsApp</span>
