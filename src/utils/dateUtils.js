@@ -195,6 +195,69 @@ export const formatDateRange = (start, end) => {
 };
 
 /**
+ * Format month key (YYYY-MM) to user-friendly Portuguese format
+ * @param {string} monthKey - Month in YYYY-MM format (e.g., "2024-11")
+ * @param {string} format - 'tiny' (N24), 'short' (Nov 24), 'medium' (Nov 2024), 'long' (Novembro 2024)
+ * @returns {string} Formatted month string
+ */
+export const formatMonthKey = (monthKey, format = 'medium') => {
+  if (!monthKey || typeof monthKey !== 'string') return monthKey;
+
+  const [year, month] = monthKey.split('-').map(Number);
+  if (!year || !month) return monthKey;
+
+  const date = new Date(year, month - 1, 1);
+
+  switch (format) {
+    case 'tiny':
+      // "N24" - Single letter month + 2-digit year (for charts with many data points)
+      const monthLetters = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+      return `${monthLetters[month - 1]}${String(year).slice(-2)}`;
+    case 'short':
+      // "Nov 24"
+      return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '').replace(' de ', ' ');
+    case 'long':
+      // "Novembro 2024"
+      return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    case 'medium':
+    default:
+      // "Nov 2024"
+      return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '');
+  }
+};
+
+/**
+ * Check if a month key represents the current month
+ * @param {string} monthKey - Month in YYYY-MM format
+ * @returns {boolean} True if current month
+ */
+export const isCurrentMonth = (monthKey) => {
+  if (!monthKey) return false;
+  const now = new Date();
+  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return monthKey === currentKey;
+};
+
+/**
+ * Get days elapsed in current month (for partial month detection)
+ * @returns {number} Days elapsed in current month
+ */
+export const getDaysElapsedInMonth = () => {
+  return new Date().getDate();
+};
+
+/**
+ * Get total days in a month
+ * @param {string} monthKey - Month in YYYY-MM format
+ * @returns {number} Total days in the month
+ */
+export const getDaysInMonth = (monthKey) => {
+  if (!monthKey) return 30;
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Date(year, month, 0).getDate();
+};
+
+/**
  * Get days between two dates
  */
 export const daysBetween = (date1, date2) => {

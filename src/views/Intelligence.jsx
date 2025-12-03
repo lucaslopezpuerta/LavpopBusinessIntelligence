@@ -426,7 +426,6 @@ const Intelligence = ({ data }) => {
             growthTrends={growthTrends}
             formatCurrency={formatCurrency}
             formatPercent={formatPercent}
-            nivoTheme={nivoTheme}
           />
 
           {/* Section 4: Campaign Effectiveness */}

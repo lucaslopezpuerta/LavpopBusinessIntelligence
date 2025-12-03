@@ -574,20 +574,47 @@ export function calculateGrowthTrends(salesData) {
     ? validGrowthMonths.reduce((s, m) => s + m.momGrowth, 0) / validGrowthMonths.length
     : 0;
 
-  // Identify trend (only from months with valid growth data)
+  // ✅ IMPROVED: Identify trend using 2-of-3 majority rule (not strict all-or-nothing)
   const recentValidGrowth = last6Months.slice(-3).filter(m => m.momGrowth !== null);
-  const trend = recentValidGrowth.length >= 2
-    ? (recentValidGrowth.every(m => m.momGrowth > 0) ? 'increasing' :
-       recentValidGrowth.every(m => m.momGrowth < 0) ? 'decreasing' : 'stable')
-    : 'stable';
+  let trend = 'stable';
+  if (recentValidGrowth.length >= 2) {
+    const positiveCount = recentValidGrowth.filter(m => m.momGrowth > 0).length;
+    const negativeCount = recentValidGrowth.filter(m => m.momGrowth < 0).length;
+    // Majority rule: 2+ of 3 in same direction = trend
+    if (positiveCount >= 2) {
+      trend = 'increasing';
+    } else if (negativeCount >= 2) {
+      trend = 'decreasing';
+    }
+    // Otherwise stays 'stable'
+  }
+
+  // ✅ FIXED: Detect current month for partial month handling
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const daysElapsed = now.getDate();
+  const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const isCurrentMonthPartial = daysElapsed < daysInCurrentMonth;
+
+  // Mark current month as partial if applicable
+  monthlyWithGrowth.forEach(m => {
+    m.isCurrentMonth = m.month === currentMonthKey;
+    m.isPartial = m.month === currentMonthKey && isCurrentMonthPartial;
+    m.daysElapsed = m.isCurrentMonth ? daysElapsed : null;
+    m.daysInMonth = m.isCurrentMonth ? daysInCurrentMonth : null;
+  });
 
   // Best/worst from displayed 12 months only
   const bestMonth = monthlyWithGrowth.length > 0
     ? monthlyWithGrowth.reduce((best, month) => month.revenue > best.revenue ? month : best, monthlyWithGrowth[0])
     : null;
-  const worstMonth = monthlyWithGrowth.length > 0
-    ? monthlyWithGrowth.reduce((worst, month) => month.revenue < worst.revenue ? month : worst, monthlyWithGrowth[0])
-    : null;
+
+  // ✅ FIXED: Exclude current partial month from worst classification
+  // A partial month with only a few days will always look like the worst
+  const completedMonths = monthlyWithGrowth.filter(m => !m.isPartial);
+  const worstMonth = completedMonths.length > 0
+    ? completedMonths.reduce((worst, month) => month.revenue < worst.revenue ? month : worst, completedMonths[0])
+    : (monthlyWithGrowth.length > 0 ? monthlyWithGrowth[monthlyWithGrowth.length - 1] : null);
 
   return {
     monthly: monthlyWithGrowth,

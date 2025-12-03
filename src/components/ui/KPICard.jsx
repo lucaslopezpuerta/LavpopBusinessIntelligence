@@ -1,8 +1,17 @@
-// KPICard.jsx v1.1
+// KPICard.jsx v1.3
 // Unified KPI card component for Intelligence dashboard
 // Design System v3.1 compliant - Replaces duplicated patterns
 //
 // CHANGELOG:
+// v1.3 (2025-12-03): Responsive label/subtitle props
+//   - Added mobileLabel prop: shorter label for mobile screens
+//   - Added mobileSubtitle prop: shorter subtitle for mobile screens
+//   - Uses sm:hidden/hidden sm:inline for responsive text switching
+// v1.2 (2025-12-03): Mobile truncation fixes
+//   - Removed truncate from value - values must always be fully visible
+//   - Subtitle now wraps on mobile instead of truncating
+//   - Reduced padding on mobile for more content space
+//   - Label uses single line with text-ellipsis only when truly needed
 // v1.1 (2025-12-02): Trend position option
 //   - Added trendPosition prop: 'inline' (default) | 'bottom-right'
 //   - bottom-right saves vertical space by positioning trend badge at card bottom
@@ -21,9 +30,11 @@ import { getSemanticColor } from '../../utils/colorMapping';
 /**
  * Unified KPI Card Component
  *
- * @param {string} label - Card label/title
+ * @param {string} label - Card label/title (or use mobileLabel for responsive)
+ * @param {string} mobileLabel - Optional shorter label for mobile screens
  * @param {string|number} value - Main display value (formatted)
  * @param {string} subtitle - Optional secondary text
+ * @param {string} mobileSubtitle - Optional shorter subtitle for mobile screens
  * @param {object} trend - Optional trend data { value: number, label?: string }
  * @param {string} trendPosition - Trend badge position: 'inline' (below subtitle) | 'bottom-right' (saves vertical space)
  * @param {React.ComponentType} icon - Optional Lucide icon component
@@ -34,8 +45,10 @@ import { getSemanticColor } from '../../utils/colorMapping';
  */
 const KPICard = ({
   label,
+  mobileLabel,
   value,
   subtitle,
+  mobileSubtitle,
   trend,
   trendPosition = 'inline',
   icon: Icon,
@@ -46,29 +59,29 @@ const KPICard = ({
 }) => {
   const colors = getSemanticColor(color);
 
-  // Variant-specific styling
+  // Variant-specific styling - reduced mobile padding for more content space
   const variants = {
     default: {
-      container: 'p-4 sm:p-5 bg-white dark:bg-slate-800',
-      value: 'text-xl sm:text-2xl',
+      container: 'p-3 sm:p-5 bg-white dark:bg-slate-800',
+      value: 'text-lg sm:text-2xl',
       label: 'text-xs',
       subtitle: 'text-xs',
     },
     hero: {
-      container: 'p-5 sm:p-6 bg-white dark:bg-slate-800',
-      value: 'text-2xl sm:text-3xl lg:text-4xl',
+      container: 'p-4 sm:p-6 bg-white dark:bg-slate-800',
+      value: 'text-xl sm:text-3xl lg:text-4xl',
       label: 'text-xs sm:text-sm',
       subtitle: 'text-xs sm:text-sm',
     },
     compact: {
-      container: 'p-3 sm:p-4 bg-white dark:bg-slate-800',
-      value: 'text-lg sm:text-xl',
+      container: 'p-2.5 sm:p-4 bg-white dark:bg-slate-800',
+      value: 'text-base sm:text-xl',
       label: 'text-xs',
       subtitle: 'text-xs',
     },
     gradient: {
-      container: `p-4 sm:p-5 ${colors.bgGradient}`,
-      value: 'text-xl sm:text-2xl',
+      container: `p-3 sm:p-5 ${colors.bgGradient}`,
+      value: 'text-lg sm:text-2xl',
       label: 'text-xs',
       subtitle: 'text-xs',
     },
@@ -138,17 +151,23 @@ const KPICard = ({
       type={onClick ? 'button' : undefined}
       aria-label={onClick ? `${label}: ${value}` : undefined}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
           {/* Content */}
           <div className="flex-1 min-w-0">
+            {/* Responsive label: show mobileLabel on small screens, full label on larger */}
             <p className={`
-              ${v.label} font-medium uppercase tracking-wide mb-1
+              ${v.label} font-medium uppercase tracking-wide mb-0.5 sm:mb-1 leading-tight
               ${isGradient ? colors.textMuted : 'text-gray-500 dark:text-slate-400'}
             `}>
-              {label}
+              {mobileLabel ? (
+                <>
+                  <span className="sm:hidden">{mobileLabel}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </>
+              ) : label}
             </p>
             <p className={`
-              ${v.value} font-bold truncate mb-0.5
+              ${v.value} font-bold mb-0.5 leading-tight break-words
               ${isGradient ? colors.text : 'text-gray-900 dark:text-white'}
             `}>
               {value}
@@ -156,30 +175,40 @@ const KPICard = ({
             {/* Subtitle row with inline trend (bottom-right mode) */}
             {showBottomRightTrend ? (
               <div className="flex items-baseline gap-2 flex-wrap">
-                {subtitle && (
+                {(subtitle || mobileSubtitle) && (
                   <span className={`
-                    ${v.subtitle}
+                    ${v.subtitle} leading-tight
                     ${isGradient ? colors.textSubtle : 'text-gray-500 dark:text-slate-400'}
                   `}>
-                    {subtitle}
+                    {mobileSubtitle ? (
+                      <>
+                        <span className="sm:hidden">{mobileSubtitle}</span>
+                        <span className="hidden sm:inline">{subtitle}</span>
+                      </>
+                    ) : subtitle}
                   </span>
                 )}
                 {renderTrend()}
               </div>
             ) : (
               <>
-                {/* Standard subtitle */}
-                {subtitle && (
+                {/* Standard subtitle - responsive with mobile variant */}
+                {(subtitle || mobileSubtitle) && (
                   <p className={`
-                    ${v.subtitle} truncate
+                    ${v.subtitle} leading-tight
                     ${isGradient ? colors.textSubtle : 'text-gray-500 dark:text-slate-400'}
                   `}>
-                    {subtitle}
+                    {mobileSubtitle ? (
+                      <>
+                        <span className="sm:hidden">{mobileSubtitle}</span>
+                        <span className="hidden sm:inline">{subtitle}</span>
+                      </>
+                    ) : subtitle}
                   </p>
                 )}
                 {/* Inline trend below subtitle */}
                 {showInlineTrend && (
-                  <div className="mt-2">
+                  <div className="mt-1.5 sm:mt-2">
                     {trend.label ? (
                       <span
                         className={`text-xs font-medium ${trend.value > 0 ? 'text-emerald-600 dark:text-emerald-400' : trend.value < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400'}`}
@@ -196,14 +225,14 @@ const KPICard = ({
             )}
           </div>
 
-        {/* Icon */}
+        {/* Icon - smaller on mobile */}
         {Icon && (
           <div className={`
-            p-2 sm:p-2.5 rounded-lg flex-shrink-0
+            p-1.5 sm:p-2.5 rounded-lg flex-shrink-0
             ${isGradient ? colors.iconBg : `bg-gradient-to-br ${colors.gradient}`}
           `}>
             <Icon
-              className={`w-5 h-5 sm:w-6 sm:h-6 ${isGradient ? colors.icon : 'text-white'}`}
+              className={`w-4 h-4 sm:w-6 sm:h-6 ${isGradient ? colors.icon : 'text-white'}`}
               aria-hidden="true"
             />
           </div>
