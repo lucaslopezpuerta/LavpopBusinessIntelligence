@@ -23,6 +23,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { loadAllData } from './utils/csvLoader';
+import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
 import Backdrop from './components/Backdrop';
 import MinimalTopBar from './components/MinimalTopBar';
