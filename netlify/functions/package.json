@@ -1,8 +1,0 @@
-{
-  "name": "lavpop-netlify-functions",
-  "version": "1.0.0",
-  "description": "Netlify functions for Lavpop BI",
-  "dependencies": {
-    "@supabase/supabase-js": "^2.38.0"
-  }
-}
