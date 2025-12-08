@@ -1,5 +1,13 @@
-// netlify/functions/twilio-whatsapp.js
+// netlify/functions/twilio-whatsapp.js v1.1
 // Twilio WhatsApp Business API integration for campaign messaging
+//
+// CHANGELOG:
+// v1.1 (2025-12-08): Added fetch_messages action for blacklist sync
+//   - Fetches message logs from Twilio API
+//   - Identifies opt-out messages (inbound with keywords)
+//   - Identifies undelivered/blocked numbers (error 63024)
+//   - Supports pagination for large message volumes
+// v1.0: Initial implementation with send_message, send_bulk, check_status
 //
 // Environment variables required:
 // - TWILIO_ACCOUNT_SID: Your Twilio Account SID
@@ -56,11 +64,14 @@ exports.handler = async (event, context) => {
       case 'check_status':
         return await checkMessageStatus(body, ACCOUNT_SID, AUTH_TOKEN, headers);
 
+      case 'fetch_messages':
+        return await fetchMessages(body, ACCOUNT_SID, AUTH_TOKEN, headers);
+
       default:
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Invalid action. Use: send_message, send_bulk, check_status' })
+          body: JSON.stringify({ error: 'Invalid action. Use: send_message, send_bulk, check_status, fetch_messages' })
         };
     }
   } catch (error) {
@@ -283,6 +294,139 @@ async function checkMessageStatus(body, accountSid, authToken, headers) {
     };
   } catch (error) {
     throw new Error(`Status check failed: ${error.message}`);
+  }
+}
+
+/**
+ * Fetch message logs from Twilio for blacklist processing
+ * Retrieves both inbound (opt-outs) and outbound (undelivered) messages
+ */
+async function fetchMessages(body, accountSid, authToken, headers) {
+  const { dateSentAfter, pageSize = 100, pageToken } = body;
+
+  // Default to last 7 days if no date specified
+  const startDate = dateSentAfter || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+  try {
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('PageSize', Math.min(pageSize, 1000).toString());
+    params.append('DateSent>', startDate);
+
+    if (pageToken) {
+      params.append('PageToken', pageToken);
+    }
+
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json?${params.toString()}`;
+
+    const response = await fetch(twilioUrl, {
+      headers: {
+        'Authorization': `Basic ${credentials}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        statusCode: response.status,
+        headers,
+        body: JSON.stringify({
+          error: 'Twilio API error',
+          code: data.code,
+          message: data.message
+        })
+      };
+    }
+
+    // Process messages to identify blacklist candidates
+    const blacklistCandidates = {
+      optOuts: [],      // Inbound messages with opt-out keywords
+      undelivered: [],  // Outbound messages that failed
+      allMessages: []   // Raw message data for debugging
+    };
+
+    const optOutKeywords = ['parar', 'quero', 'stop', 'pare', 'cancelar', 'sair'];
+    const normalizeText = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    for (const msg of data.messages || []) {
+      const direction = (msg.direction || '').toLowerCase();
+      const status = (msg.status || '').toLowerCase();
+      const errorCode = msg.error_code;
+      const body = normalizeText(msg.body);
+      const from = (msg.from || '').replace(/^whatsapp:/, '');
+      const to = (msg.to || '').replace(/^whatsapp:/, '');
+
+      // Check for opt-outs (inbound messages with keywords)
+      if (direction === 'inbound') {
+        const hasOptOutKeyword = optOutKeywords.some(kw => body.includes(kw));
+        if (hasOptOutKeyword) {
+          blacklistCandidates.optOuts.push({
+            phone: from,
+            body: msg.body,
+            dateSent: msg.date_sent,
+            messageSid: msg.sid,
+            reason: 'opt-out'
+          });
+        }
+      }
+
+      // Check for undelivered outbound messages
+      if (direction.startsWith('outbound') && (status === 'undelivered' || status === 'failed' || errorCode === 63024)) {
+        blacklistCandidates.undelivered.push({
+          phone: to,
+          status: status,
+          errorCode: errorCode,
+          errorMessage: msg.error_message,
+          dateSent: msg.date_sent,
+          messageSid: msg.sid,
+          reason: errorCode === 63024 ? 'number-blocked' : 'undelivered'
+        });
+      }
+
+      // Store all messages for optional debugging
+      blacklistCandidates.allMessages.push({
+        sid: msg.sid,
+        direction: direction,
+        status: status,
+        from: from,
+        to: to,
+        errorCode: errorCode,
+        dateSent: msg.date_sent
+      });
+    }
+
+    // Get next page token if available
+    let nextPageToken = null;
+    if (data.next_page_uri) {
+      const nextUrl = new URL(`https://api.twilio.com${data.next_page_uri}`);
+      nextPageToken = nextUrl.searchParams.get('PageToken');
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        blacklistCandidates,
+        pagination: {
+          pageSize: data.page_size,
+          currentPage: data.page,
+          hasMore: !!data.next_page_uri,
+          nextPageToken
+        },
+        summary: {
+          totalFetched: data.messages?.length || 0,
+          optOutsFound: blacklistCandidates.optOuts.length,
+          undeliveredFound: blacklistCandidates.undelivered.length,
+          startDate
+        }
+      })
+    };
+  } catch (error) {
+    throw new Error(`Fetch messages failed: ${error.message}`);
   }
 }
 

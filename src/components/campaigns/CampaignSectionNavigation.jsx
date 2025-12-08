@@ -1,9 +1,12 @@
-// CampaignSectionNavigation.jsx v1.0
+// CampaignSectionNavigation.jsx v1.1
 // Tab navigation for Campaigns view
 // Design System v3.1 compliant
+//
+// CHANGELOG:
+// v1.1 (2025-12-08): Added Blacklist section
 
 import React from 'react';
-import { Target, Zap, Users, MessageSquare, History } from 'lucide-react';
+import { Target, Zap, Users, MessageSquare, History, ShieldOff } from 'lucide-react';
 
 const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
   const sections = [
@@ -11,6 +14,7 @@ const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
     { id: 'automations', label: 'Automações', icon: Zap, mobileLabel: 'Auto' },
     { id: 'audience', label: 'Audiência', icon: Users, mobileLabel: 'Público' },
     { id: 'templates', label: 'Mensagens', icon: MessageSquare, mobileLabel: 'Msgs' },
+    { id: 'blacklist', label: 'Blacklist', icon: ShieldOff, mobileLabel: 'Block' },
     { id: 'history', label: 'Histórico', icon: History, mobileLabel: 'Hist' }
   ];
 

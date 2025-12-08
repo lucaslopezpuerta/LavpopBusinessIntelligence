@@ -1,8 +1,11 @@
-// Campaigns.jsx v1.0.0
+// Campaigns.jsx v1.1.0
 // Customer Messaging & Campaign Management Tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.1.0 (2025-12-08): Added Blacklist management
+//   - New BlacklistManager section for opt-out and undelivered tracking
+//   - Twilio sync integration for automatic blacklist updates
 // v1.0.0 (2025-12-03): Initial implementation
 //   - Campaign overview with KPI summary
 //   - Moved CampaignROISection from Intelligence tab
@@ -40,6 +43,7 @@ import AudienceSelector from '../components/campaigns/AudienceSelector';
 import MessageComposer from '../components/campaigns/MessageComposer';
 import AutomationRules from '../components/campaigns/AutomationRules';
 import CampaignSectionNavigation from '../components/campaigns/CampaignSectionNavigation';
+import BlacklistManager from '../components/campaigns/BlacklistManager';
 
 // Business logic
 import { calculateCampaignROI } from '../utils/intelligenceCalculations';
@@ -250,6 +254,13 @@ const Campaigns = ({ data }) => {
         <MessageComposer
           selectedAudience={selectedAudience}
           audienceSegments={audienceSegments}
+        />
+      )}
+
+      {/* Blacklist Manager Section */}
+      {activeSection === 'blacklist' && (
+        <BlacklistManager
+          customerData={customerMetrics?.allCustomers || []}
         />
       )}
 

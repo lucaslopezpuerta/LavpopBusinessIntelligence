@@ -1,7 +1,12 @@
-// campaignService.js v1.1
+// campaignService.js v1.2
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 //
+// CHANGELOG:
+// v1.2 (2025-12-08): Added blacklist integration
+//   - validateCampaignAudience now filters blacklisted numbers
+//   - Exports isBlacklisted for component use
+//   - Supports opt-out, undelivered, and manually blocked numbers
 // v1.1 (2025-12-03): Added Brazilian mobile phone validation
 //   - Validates phone numbers before sending to avoid Twilio errors
 //   - Uses shared phoneUtils for consistent validation across app
@@ -444,23 +449,41 @@ export {
   getCampaignRecipients
 } from './phoneUtils';
 
+// Import blacklist utilities
+import { isBlacklisted, filterBlacklistedRecipients } from './blacklistService';
+
 /**
  * Validate a list of customers for campaign readiness
  * Returns stats and filtered lists for UI preview
+ * Now includes blacklist filtering (v1.1)
  *
  * @param {Array<object>} customers - Customer list
- * @returns {object} { ready, invalid, stats }
+ * @returns {object} { ready, invalid, blacklisted, stats }
  */
 export function validateCampaignAudience(customers) {
   const { valid, invalid, stats } = getCampaignRecipients(customers);
 
+  // Filter blacklisted from valid recipients
+  const { allowed, blocked, stats: blacklistStats } = filterBlacklistedRecipients(valid);
+
   return {
-    ready: valid,           // Customers ready for WhatsApp
-    invalid: invalid,       // Customers with invalid phones
+    ready: allowed,           // Customers ready for WhatsApp (valid phone, not blacklisted)
+    invalid: invalid,         // Customers with invalid phones
+    blacklisted: blocked,     // Customers with valid phones but blacklisted
     stats: {
       ...stats,
-      readyCount: valid.length,
-      invalidCount: invalid.length
+      readyCount: allowed.length,
+      invalidCount: invalid.length,
+      blacklistedCount: blocked.length,
+      blacklistedByOptOut: blacklistStats.blockedByOptOut,
+      blacklistedByUndelivered: blacklistStats.blockedByUndelivered
     }
   };
 }
+
+/**
+ * Check if a single phone is blacklisted
+ * @param {string} phone - Phone number
+ * @returns {boolean} True if blacklisted
+ */
+export { isBlacklisted };

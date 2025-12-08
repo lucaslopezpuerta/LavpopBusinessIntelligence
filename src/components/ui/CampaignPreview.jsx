@@ -1,8 +1,12 @@
-// CampaignPreview.jsx v1.0
+// CampaignPreview.jsx v1.1
 // Shows campaign audience validation stats before sending
 // Displays valid/invalid phone counts with detailed breakdown
 //
 // CHANGELOG:
+// v1.1 (2025-12-08): Added blacklist filtering
+//   - Shows blacklisted customers separately from invalid phones
+//   - Displays opt-out and undelivered reasons
+//   - Excludes blacklisted from send count
 // v1.0 (2025-12-03): Initial implementation
 //   - Validates phone numbers before campaign send
 //   - Shows ready/invalid customer counts
@@ -17,7 +21,9 @@ import {
   Phone,
   MessageCircle,
   Users,
-  XCircle
+  XCircle,
+  ShieldOff,
+  MessageSquareOff
 } from 'lucide-react';
 import { validateCampaignAudience } from '../../utils/campaignService';
 
@@ -29,14 +35,16 @@ const CampaignPreview = ({
   isLoading = false
 }) => {
   const [showInvalid, setShowInvalid] = useState(false);
+  const [showBlacklisted, setShowBlacklisted] = useState(false);
 
   // Validate all customers
   const validation = useMemo(() => {
     return validateCampaignAudience(customers);
   }, [customers]);
 
-  const { ready, invalid, stats } = validation;
+  const { ready, invalid, blacklisted = [], stats } = validation;
   const hasInvalid = invalid.length > 0;
+  const hasBlacklisted = blacklisted.length > 0;
   const hasReady = ready.length > 0;
 
   return (
@@ -58,7 +66,7 @@ const CampaignPreview = ({
         </div>
 
         {/* Validation Results */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {/* Ready to Send */}
           <div className={`rounded-lg p-3 border ${
             hasReady
@@ -75,7 +83,7 @@ const CampaignPreview = ({
               {stats.readyCount}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              {stats.validRate}% da audiência
+              Receberão mensagem
             </div>
           </div>
 
@@ -95,7 +103,27 @@ const CampaignPreview = ({
               {stats.invalidCount}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              Não receberão WhatsApp
+              Telefone inválido
+            </div>
+          </div>
+
+          {/* Blacklisted */}
+          <div className={`rounded-lg p-3 border ${
+            hasBlacklisted
+              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+              : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700'
+          }`}>
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldOff className={`w-4 h-4 ${hasBlacklisted ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`} />
+              <span className={`text-xs font-semibold uppercase ${hasBlacklisted ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}>
+                Bloqueados
+              </span>
+            </div>
+            <div className={`text-2xl font-bold ${hasBlacklisted ? 'text-red-700 dark:text-red-300' : 'text-slate-500'}`}>
+              {stats.blacklistedCount || 0}
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Na blacklist
             </div>
           </div>
         </div>
@@ -145,6 +173,53 @@ const CampaignPreview = ({
           </div>
         )}
 
+        {/* Blacklisted List (Expandable) */}
+        {hasBlacklisted && (
+          <div className="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setShowBlacklisted(!showBlacklisted)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            >
+              <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                Ver clientes na blacklist
+              </span>
+              {showBlacklisted ? (
+                <ChevronUp className="w-4 h-4 text-red-600" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-red-600" />
+              )}
+            </button>
+
+            {showBlacklisted && (
+              <div className="max-h-48 overflow-y-auto divide-y divide-red-100 dark:divide-red-900/30">
+                {blacklisted.slice(0, 20).map((customer, idx) => (
+                  <div
+                    key={customer.doc || idx}
+                    className="px-3 py-2 flex items-center justify-between text-sm"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MessageSquareOff className="w-3 h-3 text-red-500 shrink-0" />
+                      <span className="truncate text-slate-700 dark:text-slate-300">
+                        {customer.name || `Cliente ${customer.doc?.slice(-4) || idx}`}
+                      </span>
+                    </div>
+                    <span className="text-xs text-red-600 dark:text-red-400 shrink-0 ml-2">
+                      {customer.blacklistReason === 'opt-out' ? 'Opt-out' :
+                       customer.blacklistReason === 'undelivered' ? 'Não entregue' :
+                       customer.blacklistReason === 'number-blocked' ? 'Bloqueado' : 'Blacklist'}
+                    </span>
+                  </div>
+                ))}
+                {blacklisted.length > 20 && (
+                  <div className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 text-center">
+                    +{blacklisted.length - 20} outros clientes
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* No Valid Recipients Warning */}
         {!hasReady && (
           <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -161,10 +236,14 @@ const CampaignPreview = ({
         )}
 
         {/* Info Note */}
-        {hasReady && hasInvalid && (
+        {hasReady && (hasInvalid || hasBlacklisted) && (
           <p className="text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
             <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
-            Apenas clientes com celular brasileiro válido (formato: 55 + DDD + 9 + 8 dígitos) receberão a mensagem.
+            {hasInvalid && hasBlacklisted
+              ? 'Clientes com telefone inválido ou na blacklist não receberão a mensagem.'
+              : hasInvalid
+                ? 'Apenas clientes com celular brasileiro válido receberão a mensagem.'
+                : 'Clientes na blacklist (opt-out ou não entregues) não receberão a mensagem.'}
           </p>
         )}
       </div>
