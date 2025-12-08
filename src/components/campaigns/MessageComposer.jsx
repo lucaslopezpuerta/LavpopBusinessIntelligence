@@ -1,4 +1,4 @@
-// MessageComposer.jsx v1.1
+// MessageComposer.jsx v1.2
 // WhatsApp message composer with Meta-compliant templates
 // Design System v3.1 compliant
 //
@@ -10,24 +10,28 @@
 // - Buttons: quick reply or CTA (max 3)
 //
 // CHANGELOG:
+// v1.2 (2025-12-08): Personalized preview with real customer data
+//   - Preview shows real customer names and data from selected audience
+//   - Sample customer selector to cycle through audience
+//   - Realistic message preview based on actual customer values
 // v1.1 (2025-12-03): Added CampaignPreview integration
 //   - Shows validation stats before sending
 //   - Filters invalid phone numbers with detailed breakdown
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   MessageSquare,
   Send,
-  Eye,
   Smartphone,
   AlertCircle,
   CheckCircle2,
-  Copy,
   Sparkles,
   Heart,
   Gift,
-  Clock,
-  Wallet
+  Wallet,
+  ChevronLeft,
+  ChevronRight,
+  User
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import CampaignPreview from '../ui/CampaignPreview';
@@ -145,7 +149,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
   const [showCampaignPreview, setShowCampaignPreview] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState(null);
-  const [customVariables, setCustomVariables] = useState({});
+  const [sampleCustomerIndex, setSampleCustomerIndex] = useState(0);
 
   // Filter templates by selected audience
   const filteredTemplates = selectedAudience
@@ -158,6 +162,25 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
     if (selectedAudience === 'all') return audienceSegments.withPhone || [];
     return audienceSegments[selectedAudience]?.filter(c => c.phone) || [];
   }, [audienceSegments, selectedAudience]);
+
+  // Get sample customer for preview (prioritize customers with names)
+  const sampleCustomers = useMemo(() => {
+    // Prioritize customers with names for better preview
+    const withNames = audienceCustomers.filter(c => c.name && c.name.trim());
+    const sorted = [...withNames, ...audienceCustomers.filter(c => !c.name || !c.name.trim())];
+    return sorted.slice(0, 10); // Keep top 10 for cycling
+  }, [audienceCustomers]);
+
+  const currentSampleCustomer = sampleCustomers[sampleCustomerIndex] || null;
+
+  // Navigate sample customers
+  const nextSampleCustomer = useCallback(() => {
+    setSampleCustomerIndex(prev => (prev + 1) % Math.max(1, sampleCustomers.length));
+  }, [sampleCustomers.length]);
+
+  const prevSampleCustomer = useCallback(() => {
+    setSampleCustomerIndex(prev => (prev - 1 + sampleCustomers.length) % Math.max(1, sampleCustomers.length));
+  }, [sampleCustomers.length]);
 
   // Get audience count
   const getAudienceCount = () => {
@@ -232,17 +255,44 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
     setSendResult(null);
   };
 
-  // Format template preview with sample data
-  const formatPreview = (template) => {
+  // Format currency for display
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value || 0);
+  };
+
+  // Get first name from full name
+  const getFirstName = (fullName) => {
+    if (!fullName) return 'Cliente';
+    const parts = fullName.trim().split(' ');
+    // Capitalize first letter
+    const firstName = parts[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+  };
+
+  // Format template preview with real customer data
+  const formatPreview = (template, customer = currentSampleCustomer) => {
     let body = template.body;
-    const sampleData = {
-      '{{1}}': 'Maria',
-      '{{2}}': selectedAudience === 'withWallet' ? 'R$ 45,00' : '20',
+    const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR');
+
+    // Use real customer data when available
+    const customerName = customer?.name ? getFirstName(customer.name) : 'Cliente';
+    const customerWallet = customer?.walletBalance || 0;
+    const customerCashback = customer?.cashback || 5;
+
+    // Replace template variables with real data
+    const replacements = {
+      '{{1}}': customerName,
+      '{{2}}': selectedAudience === 'withWallet' ? formatCurrency(customerWallet) : '20',
       '{{3}}': 'VOLTE20',
-      '{{4}}': new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')
+      '{{4}}': validade
     };
 
-    Object.entries(sampleData).forEach(([key, value]) => {
+    Object.entries(replacements).forEach(([key, value]) => {
       body = body.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
     });
 
@@ -401,6 +451,51 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                 </button>
               </div>
             </div>
+
+            {/* Sample Customer Selector */}
+            {showPreview && sampleCustomers.length > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-600 dark:text-blue-400">Visualizando como:</p>
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        {currentSampleCustomer?.name ? getFirstName(currentSampleCustomer.name) : 'Cliente'}
+                        {currentSampleCustomer?.walletBalance > 0 && (
+                          <span className="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
+                            (Saldo: {formatCurrency(currentSampleCustomer.walletBalance)})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  {sampleCustomers.length > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={prevSampleCustomer}
+                        className="p-1.5 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                        title="Cliente anterior"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs text-blue-600 dark:text-blue-400 min-w-[3rem] text-center">
+                        {sampleCustomerIndex + 1} / {sampleCustomers.length}
+                      </span>
+                      <button
+                        onClick={nextSampleCustomer}
+                        className="p-1.5 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                        title="Próximo cliente"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Phone Preview */}
             {showPreview && (

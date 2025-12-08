@@ -1,57 +1,34 @@
-// blacklistService.js v1.0
+// blacklistService.js v2.0
 // WhatsApp blacklist management service
 // Integrates with Twilio API for automatic opt-out and undelivered detection
+// Now supports Supabase backend with localStorage fallback
 //
 // CHANGELOG:
+// v2.0 (2025-12-08): Added Supabase backend support
+//   - Primary storage in Supabase database
+//   - Falls back to localStorage when backend unavailable
+//   - Async-aware API for backend operations
+// v1.1 (2025-12-08): Consolidated phone normalization
+//   - Now uses normalizePhone from phoneUtils (single source of truth)
+//   - Removed duplicate normalizeBlacklistPhone function
 // v1.0 (2025-12-08): Initial implementation
 //   - Syncs with Twilio message logs via Netlify function
 //   - Detects opt-outs and undelivered/blocked numbers
 //   - Local storage persistence with customer name merging
 //   - Manual add/remove capabilities
 
-// Note: phoneUtils normalizePhone not used here - we have our own normalization for blacklist format
+import { normalizePhone } from './phoneUtils';
+import { api, isBackendAvailable } from './apiService';
 
 const TWILIO_FUNCTION_URL = '/.netlify/functions/twilio-whatsapp';
 const BLACKLIST_STORAGE_KEY = 'lavpop_blacklist';
 const BLACKLIST_SYNC_KEY = 'lavpop_blacklist_last_sync';
 
-// ==================== PHONE NORMALIZATION ====================
+// Re-export normalizePhone as normalizeBlacklistPhone for backwards compatibility
+export const normalizeBlacklistPhone = normalizePhone;
 
-/**
- * Normalize phone number for blacklist storage
- * Handles various Brazilian formats: +55, 55, DDD+number
- * @param {string} phone - Phone number in any format
- * @returns {string|null} Normalized phone (+55XXXXXXXXXXX) or null if invalid
- */
-export function normalizeBlacklistPhone(phone) {
-  if (!phone) return null;
-
-  // Remove whatsapp: prefix if present
-  const withoutPrefix = (phone || '').replace(/^whatsapp:/, '');
-  const d = withoutPrefix.replace(/\D/g, '');
-
-  // 13 digits starting with 55: already full format
-  if (d.length === 13 && d.startsWith('55')) {
-    return '+55' + d.slice(2);
-  }
-
-  // 11 digits: DDD (2) + 9 + number (8) = local mobile
-  if (d.length === 11) {
-    return '+55' + d;
-  }
-
-  // 10 digits: DDD (2) + number (8) = old format, add 9
-  if (d.length === 10) {
-    return '+55' + d.substring(0, 2) + '9' + d.substring(2);
-  }
-
-  // 12 digits starting with 55: missing the 9
-  if (d.length === 12 && d.startsWith('55')) {
-    return '+55' + d.substring(2, 4) + '9' + d.substring(4);
-  }
-
-  return null;
-}
+// Cache for backend availability check
+let useBackend = null;
 
 // ==================== BLACKLIST STORAGE ====================
 
@@ -485,4 +462,167 @@ export function getBlacklistStats() {
     },
     lastSync: getLastSyncTime()
   };
+}
+
+// ==================== ASYNC BACKEND OPERATIONS ====================
+// These functions use Supabase backend with localStorage fallback
+
+/**
+ * Check if backend is available (cached)
+ */
+async function shouldUseBackend() {
+  if (useBackend === null) {
+    useBackend = await isBackendAvailable();
+  }
+  return useBackend;
+}
+
+/**
+ * Reset backend cache (call after config changes)
+ */
+export function resetBackendCache() {
+  useBackend = null;
+}
+
+/**
+ * Get blacklist from backend with localStorage fallback
+ * @returns {Promise<Array>} Array of blacklist entries
+ */
+export async function getBlacklistAsync() {
+  try {
+    if (await shouldUseBackend()) {
+      const entries = await api.blacklist.getAll();
+      return entries.map(e => ({
+        phone: e.phone,
+        name: e.customer_name || '',
+        reason: e.reason || '',
+        addedAt: e.added_at || '',
+        source: e.source || 'manual'
+      }));
+    }
+  } catch (error) {
+    console.warn('Backend fetch failed, using localStorage:', error.message);
+  }
+
+  // Fallback to localStorage
+  return getBlacklistArray();
+}
+
+/**
+ * Add to blacklist using backend with localStorage fallback
+ * @param {string} phone - Phone number
+ * @param {object} data - { name, reason, source }
+ * @returns {Promise<boolean>} Success
+ */
+export async function addToBlacklistAsync(phone, data = {}) {
+  const normalized = normalizeBlacklistPhone(phone);
+  if (!normalized) return false;
+
+  try {
+    if (await shouldUseBackend()) {
+      await api.blacklist.add(normalized, {
+        customer_name: data.name,
+        reason: data.reason || 'manual',
+        source: data.source || 'manual',
+        error_code: data.errorCode
+      });
+      return true;
+    }
+  } catch (error) {
+    console.warn('Backend add failed, using localStorage:', error.message);
+  }
+
+  // Fallback to localStorage
+  return addToBlacklist(phone, data);
+}
+
+/**
+ * Remove from blacklist using backend with localStorage fallback
+ * @param {string} phone - Phone number
+ * @returns {Promise<boolean>} Success
+ */
+export async function removeFromBlacklistAsync(phone) {
+  const normalized = normalizeBlacklistPhone(phone);
+  if (!normalized) return false;
+
+  try {
+    if (await shouldUseBackend()) {
+      await api.blacklist.remove(normalized);
+      return true;
+    }
+  } catch (error) {
+    console.warn('Backend remove failed, using localStorage:', error.message);
+  }
+
+  // Fallback to localStorage
+  return removeFromBlacklist(phone);
+}
+
+/**
+ * Check if phone is blacklisted using backend with localStorage fallback
+ * @param {string} phone - Phone number
+ * @returns {Promise<boolean>} Is blacklisted
+ */
+export async function isBlacklistedAsync(phone) {
+  const normalized = normalizeBlacklistPhone(phone);
+  if (!normalized) return false;
+
+  try {
+    if (await shouldUseBackend()) {
+      return await api.blacklist.check(normalized);
+    }
+  } catch (error) {
+    console.warn('Backend check failed, using localStorage:', error.message);
+  }
+
+  // Fallback to localStorage
+  return isBlacklisted(phone);
+}
+
+/**
+ * Get blacklist stats from backend with localStorage fallback
+ * @returns {Promise<object>} Stats
+ */
+export async function getBlacklistStatsAsync() {
+  try {
+    if (await shouldUseBackend()) {
+      return await api.blacklist.getStats();
+    }
+  } catch (error) {
+    console.warn('Backend stats failed, using localStorage:', error.message);
+  }
+
+  // Fallback to localStorage
+  return getBlacklistStats();
+}
+
+/**
+ * Import blacklist to backend with localStorage fallback
+ * @param {Array} entries - Array of { phone, name, reason }
+ * @param {boolean} merge - Merge with existing
+ * @returns {Promise<object>} Import results
+ */
+export async function importBlacklistAsync(entries, merge = true) {
+  const normalizedEntries = entries
+    .map(e => ({
+      phone: normalizeBlacklistPhone(e.phone),
+      customer_name: e.name,
+      reason: e.reason || 'csv-import'
+    }))
+    .filter(e => e.phone);
+
+  try {
+    if (await shouldUseBackend()) {
+      return await api.blacklist.import(normalizedEntries, merge);
+    }
+  } catch (error) {
+    console.warn('Backend import failed, using localStorage:', error.message);
+  }
+
+  // Fallback: convert to CSV format and use existing function
+  const csvLines = ['client name,phone number,reason'];
+  for (const e of normalizedEntries) {
+    csvLines.push(`"${e.customer_name || ''}",${e.phone},${e.reason}`);
+  }
+  return importBlacklistCSV(csvLines.join('\n'), merge);
 }

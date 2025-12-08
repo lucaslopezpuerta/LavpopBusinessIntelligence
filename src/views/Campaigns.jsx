@@ -1,8 +1,11 @@
-// Campaigns.jsx v1.1.0
+// Campaigns.jsx v1.2.0
 // Customer Messaging & Campaign Management Tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.2.0 (2025-12-08): Added Nova Campanha wizard
+//   - New campaign creation modal with step-by-step wizard
+//   - Audience selection, template selection, preview, and send
 // v1.1.0 (2025-12-08): Added Blacklist management
 //   - New BlacklistManager section for opt-out and undelivered tracking
 //   - Twilio sync integration for automatic blacklist updates
@@ -14,19 +17,14 @@
 //   - Automation rules for win-back and welcome series
 //   - Message template library (Meta-compliant)
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   MessageSquare,
   Target,
   Users,
-  Send,
   Zap,
-  Clock,
-  CheckCircle2,
   AlertTriangle,
-  Plus,
-  Filter,
-  Search
+  Plus
 } from 'lucide-react';
 
 // UI components
@@ -44,6 +42,7 @@ import MessageComposer from '../components/campaigns/MessageComposer';
 import AutomationRules from '../components/campaigns/AutomationRules';
 import CampaignSectionNavigation from '../components/campaigns/CampaignSectionNavigation';
 import BlacklistManager from '../components/campaigns/BlacklistManager';
+import NewCampaignModal from '../components/campaigns/NewCampaignModal';
 
 // Business logic
 import { calculateCampaignROI } from '../utils/intelligenceCalculations';
@@ -272,6 +271,13 @@ const Campaigns = ({ data }) => {
           formatPercent={formatPercent}
         />
       )}
+
+      {/* New Campaign Modal */}
+      <NewCampaignModal
+        isOpen={showNewCampaign}
+        onClose={() => setShowNewCampaign(false)}
+        audienceSegments={audienceSegments}
+      />
 
     </div>
   );

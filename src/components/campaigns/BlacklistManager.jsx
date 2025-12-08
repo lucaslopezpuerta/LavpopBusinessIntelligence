@@ -1,15 +1,19 @@
-// BlacklistManager.jsx v1.0
+// BlacklistManager.jsx v1.1
 // WhatsApp blacklist management UI component
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-12-08): Added pagination
+//   - Configurable items per page (25, 50, 100)
+//   - Page navigation controls
+//   - Page info display
 // v1.0 (2025-12-08): Initial implementation
 //   - Displays blacklist with reason badges
 //   - Manual add/remove functionality
 //   - Twilio sync button with progress
 //   - CSV import/export
 
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   ShieldOff,
   RefreshCw,
@@ -22,10 +26,12 @@ import {
   AlertTriangle,
   MessageSquareOff,
   UserX,
-  CheckCircle2,
-  XCircle,
   Clock,
-  Info
+  Info,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import InsightBox from '../ui/InsightBox';
@@ -41,6 +47,8 @@ import {
   getLastSyncTime
 } from '../../utils/blacklistService';
 
+const ITEMS_PER_PAGE_OPTIONS = [25, 50, 100];
+
 const BlacklistManager = ({ customerData }) => {
   const [blacklist, setBlacklist] = useState(() => getBlacklistArray());
   const [stats, setStats] = useState(() => getBlacklistStats());
@@ -53,10 +61,15 @@ const BlacklistManager = ({ customerData }) => {
   const [syncResult, setSyncResult] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
   // Refresh blacklist data
   const refreshData = useCallback(() => {
     setBlacklist(getBlacklistArray());
     setStats(getBlacklistStats());
+    setCurrentPage(1); // Reset to first page on refresh
   }, []);
 
   // Filter blacklist by search
@@ -70,6 +83,27 @@ const BlacklistManager = ({ customerData }) => {
       (entry.reason || '').toLowerCase().includes(query)
     );
   }, [blacklist, searchQuery]);
+
+  // Reset to page 1 when search changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredBlacklist.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredBlacklist.length);
+  const paginatedBlacklist = filteredBlacklist.slice(startIndex, endIndex);
+
+  // Pagination handlers
+  const goToPage = useCallback((page) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  }, [totalPages]);
+
+  const handleItemsPerPageChange = useCallback((newValue) => {
+    setItemsPerPage(newValue);
+    setCurrentPage(1);
+  }, []);
 
   // Handle Twilio sync
   const handleSync = async () => {
@@ -366,14 +400,14 @@ const BlacklistManager = ({ customerData }) => {
               </tr>
             </thead>
             <tbody>
-              {filteredBlacklist.length === 0 ? (
+              {paginatedBlacklist.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-12 text-slate-500 dark:text-slate-400">
                     {searchQuery ? 'Nenhum resultado encontrado' : 'Blacklist vazia'}
                   </td>
                 </tr>
               ) : (
-                filteredBlacklist.map((entry, index) => {
+                paginatedBlacklist.map((entry, index) => {
                   const badge = getReasonBadge(entry.reason);
                   const BadgeIcon = badge.icon;
 
@@ -426,11 +460,103 @@ const BlacklistManager = ({ customerData }) => {
           </table>
         </div>
 
-        {/* Pagination info */}
+        {/* Pagination Controls */}
         {filteredBlacklist.length > 0 && (
-          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-            Mostrando {filteredBlacklist.length} de {blacklist.length} entradas
-          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            {/* Items per page selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Mostrar</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                className="px-2 py-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                {ITEMS_PER_PAGE_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <span className="text-xs text-slate-500 dark:text-slate-400">por página</span>
+            </div>
+
+            {/* Page info */}
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Mostrando {startIndex + 1}-{endIndex} de {filteredBlacklist.length} entradas
+              {filteredBlacklist.length !== blacklist.length && (
+                <span className="text-slate-400 dark:text-slate-500"> (filtrado de {blacklist.length})</span>
+              )}
+            </div>
+
+            {/* Page navigation */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => goToPage(1)}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Primeira página"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Página anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1 mx-2">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={`
+                          w-8 h-8 rounded-lg text-sm font-medium transition-colors
+                          ${currentPage === pageNum
+                            ? 'bg-purple-600 text-white'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }
+                        `}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Próxima página"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => goToPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Última página"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Add Modal */}

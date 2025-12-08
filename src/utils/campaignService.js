@@ -1,8 +1,13 @@
-// campaignService.js v1.2
+// campaignService.js v2.0
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
+// Now supports Supabase backend for scheduled campaigns
 //
 // CHANGELOG:
+// v2.0 (2025-12-08): Added Supabase backend support
+//   - Scheduled campaigns now stored in database
+//   - Backend executor runs scheduled campaigns automatically
+//   - Async API with localStorage fallback
 // v1.2 (2025-12-08): Added blacklist integration
 //   - validateCampaignAudience now filters blacklisted numbers
 //   - Exports isBlacklisted for component use
@@ -17,8 +22,22 @@ import {
   getPhoneValidationError,
   getCampaignRecipients
 } from './phoneUtils';
+import { api, isBackendAvailable } from './apiService';
 
 const TWILIO_FUNCTION_URL = '/.netlify/functions/twilio-whatsapp';
+
+// Storage keys
+const SCHEDULED_CAMPAIGNS_KEY = 'lavpop_scheduled_campaigns';
+
+// Backend availability cache
+let useBackend = null;
+
+async function shouldUseBackend() {
+  if (useBackend === null) {
+    useBackend = await isBackendAvailable();
+  }
+  return useBackend;
+}
 
 // ==================== WHATSAPP MESSAGING ====================
 
@@ -487,3 +506,194 @@ export function validateCampaignAudience(customers) {
  * @returns {boolean} True if blacklisted
  */
 export { isBlacklisted };
+
+// ==================== SCHEDULED CAMPAIGNS ====================
+
+/**
+ * Get scheduled campaigns from localStorage
+ * @returns {Array} Scheduled campaigns
+ */
+export function getScheduledCampaigns() {
+  try {
+    const stored = localStorage.getItem(SCHEDULED_CAMPAIGNS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Save scheduled campaign to localStorage
+ * @param {object} campaign - Campaign data
+ * @returns {object} Saved campaign
+ */
+export function saveScheduledCampaign(campaign) {
+  const campaigns = getScheduledCampaigns();
+  const newCampaign = {
+    ...campaign,
+    id: `SCHED_${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    status: 'scheduled'
+  };
+  campaigns.push(newCampaign);
+  localStorage.setItem(SCHEDULED_CAMPAIGNS_KEY, JSON.stringify(campaigns));
+  return newCampaign;
+}
+
+/**
+ * Cancel a scheduled campaign
+ * @param {string} id - Campaign ID
+ * @returns {boolean} Success
+ */
+export function cancelScheduledCampaign(id) {
+  const campaigns = getScheduledCampaigns();
+  const index = campaigns.findIndex(c => c.id === id && c.status === 'scheduled');
+  if (index === -1) return false;
+
+  campaigns[index].status = 'cancelled';
+  localStorage.setItem(SCHEDULED_CAMPAIGNS_KEY, JSON.stringify(campaigns));
+  return true;
+}
+
+// ==================== ASYNC BACKEND OPERATIONS ====================
+// These functions use Supabase backend with localStorage fallback
+
+/**
+ * Get scheduled campaigns with backend support
+ * @returns {Promise<Array>} Scheduled campaigns
+ */
+export async function getScheduledCampaignsAsync() {
+  try {
+    if (await shouldUseBackend()) {
+      return await api.scheduled.getAll();
+    }
+  } catch (error) {
+    console.warn('Backend fetch failed, using localStorage:', error.message);
+  }
+  return getScheduledCampaigns();
+}
+
+/**
+ * Create scheduled campaign with backend support
+ * @param {object} campaignData - Campaign data
+ * @returns {Promise<object>} Created campaign
+ */
+export async function createScheduledCampaignAsync(campaignData) {
+  try {
+    if (await shouldUseBackend()) {
+      return await api.scheduled.create({
+        templateId: campaignData.templateId,
+        audience: campaignData.audience,
+        messageBody: campaignData.messageBody,
+        recipients: campaignData.recipients,
+        scheduledFor: campaignData.scheduledFor
+      });
+    }
+  } catch (error) {
+    console.warn('Backend create failed, using localStorage:', error.message);
+  }
+  return saveScheduledCampaign(campaignData);
+}
+
+/**
+ * Cancel scheduled campaign with backend support
+ * @param {string} id - Campaign ID
+ * @returns {Promise<boolean>} Success
+ */
+export async function cancelScheduledCampaignAsync(id) {
+  try {
+    if (await shouldUseBackend()) {
+      await api.scheduled.cancel(id);
+      return true;
+    }
+  } catch (error) {
+    console.warn('Backend cancel failed, using localStorage:', error.message);
+  }
+  return cancelScheduledCampaign(id);
+}
+
+/**
+ * Get campaigns with backend support
+ * @returns {Promise<Array>} Campaigns
+ */
+export async function getCampaignsAsync() {
+  try {
+    if (await shouldUseBackend()) {
+      return await api.campaigns.getAll();
+    }
+  } catch (error) {
+    console.warn('Backend fetch failed, using localStorage:', error.message);
+  }
+  return getCampaigns();
+}
+
+/**
+ * Create campaign with backend support
+ * @param {object} campaignData - Campaign data
+ * @returns {Promise<object>} Created campaign
+ */
+export async function createCampaignAsync(campaignData) {
+  try {
+    if (await shouldUseBackend()) {
+      return await api.campaigns.create(campaignData);
+    }
+  } catch (error) {
+    console.warn('Backend create failed, using localStorage:', error.message);
+  }
+  return saveCampaign(campaignData);
+}
+
+/**
+ * Record campaign send with backend support
+ * @param {string} campaignId - Campaign ID
+ * @param {object} sendData - Send details
+ * @returns {Promise<void>}
+ */
+export async function recordCampaignSendAsync(campaignId, sendData) {
+  try {
+    if (await shouldUseBackend()) {
+      await api.sends.record({
+        campaignId,
+        recipients: sendData.recipients,
+        successCount: sendData.successCount,
+        failedCount: sendData.failedCount
+      });
+      return;
+    }
+  } catch (error) {
+    console.warn('Backend record failed, using localStorage:', error.message);
+  }
+  recordCampaignSend(campaignId, sendData);
+}
+
+/**
+ * Get automation rules with backend support
+ * @returns {Promise<Array>} Automation rules
+ */
+export async function getAutomationRulesAsync() {
+  try {
+    if (await shouldUseBackend()) {
+      return await api.automation.getAll();
+    }
+  } catch (error) {
+    console.warn('Backend fetch failed, using localStorage:', error.message);
+  }
+  return getAutomationRules();
+}
+
+/**
+ * Save automation rules with backend support
+ * @param {Array} rules - Rules to save
+ * @returns {Promise<void>}
+ */
+export async function saveAutomationRulesAsync(rules) {
+  try {
+    if (await shouldUseBackend()) {
+      await api.automation.save(rules);
+      return;
+    }
+  } catch (error) {
+    console.warn('Backend save failed, using localStorage:', error.message);
+  }
+  saveAutomationRules(rules);
+}

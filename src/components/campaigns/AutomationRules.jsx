@@ -1,13 +1,17 @@
-// AutomationRules.jsx v1.1
+// AutomationRules.jsx v1.2
 // Automation rules configuration for campaigns
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.2 (2025-12-08): Fixed persistence bug
+//   - Rules now persist to localStorage via campaignService
+//   - Save button is functional with confirmation feedback
+//   - State loads from localStorage on mount
 // v1.1 (2025-12-03): Added Brazilian mobile phone validation
 //   - Counts only customers with valid WhatsApp numbers
 //   - Uses isValidBrazilianMobile from phoneUtils
 
-import React, { useState, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Zap,
   Clock,
@@ -15,16 +19,16 @@ import {
   Sparkles,
   Wallet,
   Calendar,
-  ToggleLeft,
-  ToggleRight,
-  Settings,
   Play,
   Pause,
-  Info
+  Info,
+  Check,
+  Save
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import InsightBox from '../ui/InsightBox';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
+import { getAutomationRules, saveAutomationRules } from '../../utils/campaignService';
 
 // Predefined automation rules
 const AUTOMATION_RULES = [
@@ -130,16 +134,56 @@ const AUTOMATION_RULES = [
   }
 ];
 
-const AutomationRules = ({ audienceSegments, formatCurrency }) => {
-  const [rules, setRules] = useState(AUTOMATION_RULES);
+const AutomationRules = ({ audienceSegments }) => {
+  const [rules, setRules] = useState(() => {
+    // Initialize from localStorage, merging with defaults for any new rules
+    const savedRules = getAutomationRules();
+    const savedMap = new Map(savedRules.map(r => [r.id, r]));
+
+    return AUTOMATION_RULES.map(defaultRule => {
+      const saved = savedMap.get(defaultRule.id);
+      return saved ? { ...defaultRule, enabled: saved.enabled } : defaultRule;
+    });
+  });
   const [expandedRule, setExpandedRule] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Toggle rule enabled state
-  const toggleRule = (ruleId) => {
+  const toggleRule = useCallback((ruleId) => {
     setRules(prev => prev.map(rule =>
       rule.id === ruleId ? { ...rule, enabled: !rule.enabled } : rule
     ));
-  };
+    setHasChanges(true);
+    setSaveSuccess(false);
+  }, []);
+
+  // Save rules to localStorage
+  const handleSave = useCallback(() => {
+    setIsSaving(true);
+
+    // Save the rules configuration
+    const rulesToSave = rules.map(r => ({
+      id: r.id,
+      name: r.name,
+      enabled: r.enabled,
+      trigger: r.trigger,
+      action: r.action
+    }));
+
+    saveAutomationRules(rulesToSave);
+
+    // Show success feedback
+    setTimeout(() => {
+      setIsSaving(false);
+      setSaveSuccess(true);
+      setHasChanges(false);
+
+      // Hide success message after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000);
+    }, 300);
+  }, [rules]);
 
   // Helper: filter customers with valid WhatsApp phones
   const withValidPhone = (customers) => {
@@ -374,12 +418,45 @@ const AutomationRules = ({ audienceSegments, formatCurrency }) => {
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-4">
+          {/* Success Message */}
+          {saveSuccess && (
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 animate-fade-in">
+              <Check className="w-5 h-5" />
+              <span className="text-sm font-medium">Configurações salvas!</span>
+            </div>
+          )}
+
+          {/* Unsaved Changes Indicator */}
+          {hasChanges && !saveSuccess && (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              Alterações não salvas
+            </span>
+          )}
+
           <button
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/25 transition-all active:scale-[0.98]"
+            onClick={handleSave}
+            disabled={isSaving || (!hasChanges && !enabledCount)}
+            className={`
+              flex items-center gap-2 px-6 py-3 font-semibold rounded-xl shadow-lg transition-all active:scale-[0.98]
+              ${hasChanges
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-500/25'
+                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-500/25'
+              }
+              disabled:opacity-50 disabled:cursor-not-allowed
+            `}
           >
-            <Settings className="w-4 h-4" />
-            Salvar Configurações
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                {hasChanges ? 'Salvar Alterações' : 'Salvar Configurações'}
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -9,8 +9,15 @@
  *   - Mobile prefix: always 9
  *   - Number: 8 digits
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @since 2025-12-03
+ *
+ * CHANGELOG:
+ * v1.1.0 (2025-12-08): Added legacy format support
+ *   - Handles 10-digit numbers (adds missing 9 prefix)
+ *   - Handles 12-digit numbers with 55 prefix (adds missing 9)
+ *   - Handles whatsapp: prefix from Twilio
+ *   - normalizePhoneStrict() added for validation-only use
  */
 
 // Brazilian mobile phone pattern: 55 + [1-9][1-9] + 9 + 8 digits
@@ -18,12 +25,15 @@ const BR_MOBILE_PATTERN = /^55[1-9]{2}9\d{8}$/;
 
 /**
  * Normalize a phone number to digits only
+ * Handles whatsapp: prefix from Twilio
  * @param {string} phone - Raw phone input
  * @returns {string} Digits only
  */
 export function cleanPhone(phone) {
   if (!phone) return '';
-  return String(phone).replace(/\D/g, '');
+  // Remove whatsapp: prefix if present (from Twilio)
+  const withoutPrefix = String(phone).replace(/^whatsapp:/i, '');
+  return withoutPrefix.replace(/\D/g, '');
 }
 
 /**
@@ -44,26 +54,61 @@ export function isValidBrazilianMobile(phone) {
 
 /**
  * Normalize phone to +55XXXXXXXXXXX format
+ * Handles legacy formats by adding missing 9 prefix when needed
  * Returns null if invalid
  *
  * @param {string} phone - Raw phone input
+ * @param {boolean} strict - If true, don't add missing 9 prefix (default: false)
  * @returns {string|null} Normalized phone or null if invalid
  *
  * @example
  * normalizePhone("54996923504")     // "+5554996923504"
  * normalizePhone("5554996923504")   // "+5554996923504"
  * normalizePhone("+5554996923504")  // "+5554996923504"
- * normalizePhone("5408123456")      // null (landline, no 9 prefix)
+ * normalizePhone("5496923504")      // "+5554996923504" (adds 9 prefix)
+ * normalizePhone("555496923504")    // "+5554996923504" (adds 9 prefix)
+ * normalizePhone("whatsapp:+5554996923504") // "+5554996923504"
  * normalizePhone("5509912345678")   // null (invalid area code)
  */
-export function normalizePhone(phone) {
+export function normalizePhone(phone, strict = false) {
   if (!phone) return null;
 
   let digits = cleanPhone(phone);
 
-  // If 11 digits (AA9NNNNNNNN), prepend country code 55
-  if (digits.length === 11) {
-    digits = '55' + digits;
+  // Handle different length formats
+  switch (digits.length) {
+    case 13:
+      // Already full format: 55 AA 9 NNNNNNNN
+      if (!digits.startsWith('55')) return null;
+      break;
+
+    case 12:
+      // 55 AA NNNNNNNN - missing 9 prefix
+      if (digits.startsWith('55') && !strict) {
+        // Insert 9 after area code: 55 AA -> 55 AA 9
+        digits = digits.slice(0, 4) + '9' + digits.slice(4);
+      } else {
+        return null;
+      }
+      break;
+
+    case 11:
+      // AA 9 NNNNNNNN - missing country code
+      digits = '55' + digits;
+      break;
+
+    case 10:
+      // AA NNNNNNNN - missing country code AND 9 prefix
+      if (!strict) {
+        // Add 55 and insert 9: AA -> 55 AA 9
+        digits = '55' + digits.slice(0, 2) + '9' + digits.slice(2);
+      } else {
+        return null;
+      }
+      break;
+
+    default:
+      return null;
   }
 
   // Validate against Brazilian mobile pattern
@@ -72,6 +117,17 @@ export function normalizePhone(phone) {
   }
 
   return '+' + digits;
+}
+
+/**
+ * Strict version of normalizePhone - only accepts already valid formats
+ * Does NOT add missing 9 prefix
+ *
+ * @param {string} phone - Raw phone input
+ * @returns {string|null} Normalized phone or null if invalid
+ */
+export function normalizePhoneStrict(phone) {
+  return normalizePhone(phone, true);
 }
 
 /**
