@@ -1,8 +1,19 @@
-// NewCampaignModal.jsx v1.1
+// NewCampaignModal.jsx v3.1
 // Campaign creation wizard modal
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v3.1 (2025-12-08): Centralized template configuration
+//   - Templates imported from config/messageTemplates.js
+//   - Consistent with MessageComposer templates
+//   - Better variable handling
+// v3.0 (2025-12-08): Campaign effectiveness tracking
+//   - Uses sendCampaignWithTracking for contact outcome tracking
+//   - Records contacts in contact_tracking + campaign_contacts tables
+//   - Stores message_body and target_segments for analytics
+// v2.0 (2025-12-08): Supabase backend integration
+//   - Uses async functions to save campaigns to backend
+//   - Falls back to localStorage if backend unavailable
 // v1.1 (2025-12-08): Added campaign scheduling
 //   - Option to schedule campaigns for future send
 //   - Date/time picker for scheduled campaigns
@@ -30,139 +41,27 @@ import {
   AlertCircle,
   Smartphone,
   Clock,
-  Calendar
+  Calendar,
+  Sun
 } from 'lucide-react';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import {
   sendBulkWhatsApp,
-  saveCampaign,
-  recordCampaignSend,
-  validateCampaignAudience
+  validateCampaignAudience,
+  createScheduledCampaignAsync,
+  createCampaignAsync,
+  sendCampaignWithTracking
 } from '../../utils/campaignService';
+import { MESSAGE_TEMPLATES, getTemplatesByAudience } from '../../config/messageTemplates';
 
-// Storage key for scheduled campaigns
-const SCHEDULED_CAMPAIGNS_KEY = 'lavpop_scheduled_campaigns';
-
-/**
- * Save a scheduled campaign to localStorage
- */
-function saveScheduledCampaign(campaign) {
-  try {
-    const stored = localStorage.getItem(SCHEDULED_CAMPAIGNS_KEY);
-    const campaigns = stored ? JSON.parse(stored) : [];
-    campaigns.push({
-      ...campaign,
-      id: `SCHED_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      status: 'scheduled'
-    });
-    localStorage.setItem(SCHEDULED_CAMPAIGNS_KEY, JSON.stringify(campaigns));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Get all scheduled campaigns
- */
-export function getScheduledCampaigns() {
-  try {
-    const stored = localStorage.getItem(SCHEDULED_CAMPAIGNS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-// Message templates (same as MessageComposer)
-const MESSAGE_TEMPLATES = [
-  {
-    id: 'winback_30days',
-    name: 'Win-back 30 dias',
-    category: 'MARKETING',
-    icon: Heart,
-    color: 'amber',
-    description: 'Para clientes que não visitam há 30+ dias',
-    audience: 'atRisk',
-    header: 'Sentimos sua falta! 🧺',
-    body: `Olá {{nome}}!
-
-Faz tempo que não nos vemos. Sabemos que a vida fica corrida, mas suas roupas merecem o melhor cuidado!
-
-Volte à Lavpop e aproveite nossa oferta especial:
-🎁 *20% de desconto* no seu próximo ciclo
-
-Use o cupom *VOLTE20* até {{validade}}.
-
-Esperamos você! 💙`,
-    footer: 'Lavpop - Lavanderia Self-Service'
-  },
-  {
-    id: 'welcome_new',
-    name: 'Boas-vindas',
-    category: 'MARKETING',
-    icon: Sparkles,
-    color: 'purple',
-    description: 'Para novos clientes (primeira visita)',
-    audience: 'newCustomers',
-    header: 'Bem-vindo à Lavpop! 🎉',
-    body: `Olá {{nome}}!
-
-Obrigado por escolher a Lavpop! Esperamos que sua primeira experiência tenha sido incrível.
-
-Aqui estão algumas dicas:
-✨ Horários de menor movimento: 7h-9h e 14h-16h
-💳 Você ganhou cashback na sua carteira digital
-📱 Baixe nosso app para acompanhar suas lavagens
-
-Na sua próxima visita, use o cupom *BEMVINDO10* e ganhe 10% OFF!
-
-Qualquer dúvida, estamos aqui. 💙`,
-    footer: 'Lavpop - Lavanderia Self-Service'
-  },
-  {
-    id: 'wallet_reminder',
-    name: 'Lembrete de Saldo',
-    category: 'UTILITY',
-    icon: Wallet,
-    color: 'blue',
-    description: 'Para clientes com saldo na carteira',
-    audience: 'withWallet',
-    header: 'Você tem créditos! 💰',
-    body: `Olá {{nome}}!
-
-Você sabia que tem *{{saldo}}* de crédito na sua carteira Lavpop?
-
-Não deixe seu saldo parado! Use seus créditos na próxima lavagem e economize.
-
-🕐 Funcionamos das 7h às 21h, todos os dias.
-
-Te esperamos! 💙`,
-    footer: 'Lavpop - Lavanderia Self-Service'
-  },
-  {
-    id: 'promo_seasonal',
-    name: 'Promoção Geral',
-    category: 'MARKETING',
-    icon: Gift,
-    color: 'emerald',
-    description: 'Para campanhas promocionais gerais',
-    audience: 'all',
-    header: '🎁 Promoção Especial!',
-    body: `Olá {{nome}}!
-
-Temos uma novidade especial para você:
-
-*Promoção de Fim de Ano*
-
-🎯 20% de desconto em todos os serviços
-📅 Válido até 31/12
-
-Aproveite! 💙`,
-    footer: 'Lavpop - Lavanderia Self-Service'
-  }
-];
+// Icon mapping for templates
+const ICON_MAP = {
+  Heart,
+  Sparkles,
+  Wallet,
+  Gift,
+  Sun
+};
 
 // Audience options
 const AUDIENCES = [
@@ -257,24 +156,55 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
     return customers.filter(c => isValidBrazilianMobile(c.phone)).length;
   };
 
+  // Format currency helper
+  const formatCurrency = (value) => {
+    return `R$ ${(value || 0).toFixed(2).replace('.', ',')}`;
+  };
+
+  // Get first name from full name
+  const getFirstName = (fullName) => {
+    if (!fullName) return 'Cliente';
+    const parts = fullName.trim().split(' ');
+    const firstName = parts[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+  };
+
   // Format message preview with sample data
   const formatPreview = (template, customer = null) => {
     if (!template) return '';
 
     let body = template.body;
-    const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR');
+    const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const customerName = customer?.name ? getFirstName(customer.name) : 'Cliente';
+    const customerWallet = customer?.walletBalance || 0;
 
-    // Use real customer data if available, otherwise sample
-    const replacements = {
-      '{{nome}}': customer?.name || 'Cliente',
-      '{{saldo}}': customer?.walletBalance
-        ? `R$ ${customer.walletBalance.toFixed(2).replace('.', ',')}`
-        : 'R$ 45,00',
-      '{{validade}}': validade
-    };
+    // Build replacements based on template variables
+    const replacements = {};
+    template.variables?.forEach(v => {
+      const pos = v.position;
+      switch (v.key) {
+        case 'customerName':
+          replacements[`{{${pos}}}`] = customerName;
+          break;
+        case 'discount':
+          replacements[`{{${pos}}}`] = v.fallback || '20';
+          break;
+        case 'couponCode':
+          replacements[`{{${pos}}}`] = v.fallback || 'LAVPOP20';
+          break;
+        case 'expirationDate':
+          replacements[`{{${pos}}}`] = validade;
+          break;
+        case 'walletBalance':
+          replacements[`{{${pos}}}`] = formatCurrency(customerWallet);
+          break;
+        default:
+          replacements[`{{${pos}}}`] = v.fallback || '';
+      }
+    });
 
     Object.entries(replacements).forEach(([key, value]) => {
-      body = body.replace(new RegExp(key, 'g'), value);
+      body = body.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
     });
 
     return body;
@@ -305,33 +235,34 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
 
       setIsSending(true);
 
-      // Save scheduled campaign
-      const saved = saveScheduledCampaign({
-        name: selectedTemplate.name,
-        templateId: selectedTemplate.id,
-        audience: selectedAudience,
-        audienceCount: validationStats.ready.length,
-        scheduledFor: scheduledDateTime.toISOString(),
-        messageBody: formatPreview(selectedTemplate),
-        recipients: validationStats.ready.map(c => ({
-          phone: c.phone,
-          name: c.name
-        }))
-      });
+      try {
+        // Save scheduled campaign using backend
+        await createScheduledCampaignAsync({
+          name: selectedTemplate.name,
+          templateId: selectedTemplate.id,
+          audience: selectedAudience,
+          audienceCount: validationStats.ready.length,
+          scheduledFor: scheduledDateTime.toISOString(),
+          messageBody: formatPreview(selectedTemplate),
+          recipients: validationStats.ready.map(c => ({
+            phone: c.phone,
+            name: c.name
+          }))
+        });
 
-      setIsSending(false);
-
-      if (saved) {
         setSendResult({
           success: true,
           scheduled: true,
           scheduledFor: scheduledDateTime
         });
-      } else {
+      } catch (error) {
+        console.error('Error scheduling campaign:', error);
         setSendResult({
           success: false,
           error: 'Erro ao agendar campanha'
         });
+      } finally {
+        setIsSending(false);
       }
       return;
     }
@@ -343,31 +274,40 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
     try {
       const messageBody = formatPreview(selectedTemplate);
 
-      const result = await sendBulkWhatsApp(
-        validationStats.ready,
-        messageBody,
-        selectedTemplate.id
-      );
-
-      // Save campaign record
-      const campaign = saveCampaign({
+      // Create campaign record with full details for analytics
+      const campaign = await createCampaignAsync({
         name: selectedTemplate.name,
         templateId: selectedTemplate.id,
         audience: selectedAudience,
-        audienceCount: validationStats.ready.length
+        audienceCount: validationStats.ready.length,
+        messageBody: messageBody,
+        contactMethod: 'whatsapp',
+        targetSegments: {
+          segments: [selectedAudience],
+          walletMin: selectedAudience === 'withWallet' ? audienceSegments?.walletThreshold || 10 : null
+        }
       });
 
-      // Record send event
-      recordCampaignSend(campaign.id, {
-        recipients: validationStats.ready.length,
-        successCount: result.results?.success?.length || validationStats.ready.length,
-        failedCount: result.results?.failed?.length || 0
+      // Prepare recipients with customerId for effectiveness tracking
+      const recipientsForTracking = validationStats.ready.map(c => ({
+        customerId: c.doc || c.cpf || c.id,
+        customerName: c.name,
+        phone: c.phone,
+        walletBalance: c.walletBalance
+      }));
+
+      // Send campaign with effectiveness tracking
+      // This records contacts in contact_tracking + campaign_contacts
+      const result = await sendCampaignWithTracking(campaign.id, recipientsForTracking, {
+        messageBody: messageBody,
+        skipWhatsApp: false // Set to true for testing without sending
       });
 
       setSendResult({
         success: true,
-        sent: result.results?.success?.length || validationStats.ready.length,
-        failed: result.results?.failed?.length || 0
+        sent: result.successCount,
+        failed: result.failedCount,
+        tracked: result.trackedContacts
       });
 
     } catch (error) {
@@ -546,7 +486,7 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
 
               <div className="space-y-3">
                 {MESSAGE_TEMPLATES.map((template) => {
-                  const Icon = template.icon;
+                  const Icon = ICON_MAP[template.icon] || Gift;
                   const isSelected = selectedTemplate?.id === template.id;
 
                   return (

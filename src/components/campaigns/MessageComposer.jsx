@@ -1,4 +1,4 @@
-// MessageComposer.jsx v1.2
+// MessageComposer.jsx v3.0
 // WhatsApp message composer with Meta-compliant templates
 // Design System v3.1 compliant
 //
@@ -10,6 +10,13 @@
 // - Buttons: quick reply or CTA (max 3)
 //
 // CHANGELOG:
+// v3.0 (2025-12-08): Centralized template configuration
+//   - Templates imported from config/messageTemplates.js
+//   - Consistent with NewCampaignModal templates
+//   - Better variable handling with formatTemplateBody
+// v2.0 (2025-12-08): Supabase backend integration
+//   - Uses async functions to save campaigns to backend
+//   - Falls back to localStorage if backend unavailable
 // v1.2 (2025-12-08): Personalized preview with real customer data
 //   - Preview shows real customer names and data from selected audience
 //   - Sample customer selector to cycle through audience
@@ -31,117 +38,22 @@ import {
   Wallet,
   ChevronLeft,
   ChevronRight,
-  User
+  User,
+  Sun
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import CampaignPreview from '../ui/CampaignPreview';
-import { sendBulkWhatsApp, recordCampaignSend, saveCampaign } from '../../utils/campaignService';
+import { sendBulkWhatsApp, createCampaignAsync, recordCampaignSendAsync } from '../../utils/campaignService';
+import { MESSAGE_TEMPLATES, getTemplatesByAudience } from '../../config/messageTemplates';
 
-// Meta-compliant message templates for laundromat
-const MESSAGE_TEMPLATES = [
-  {
-    id: 'winback_30days',
-    name: 'Win-back 30 dias',
-    category: 'MARKETING',
-    icon: Heart,
-    color: 'amber',
-    description: 'Para clientes que não visitam há 30+ dias',
-    audience: 'atRisk',
-    header: 'Sentimos sua falta! 🧺',
-    body: `Olá {{1}}!
-
-Faz tempo que não nos vemos. Sabemos que a vida fica corrida, mas suas roupas merecem o melhor cuidado!
-
-Volte à Lavpop e aproveite nossa oferta especial:
-🎁 *{{2}}% de desconto* no seu próximo ciclo
-
-Use o cupom *{{3}}* até {{4}}.
-
-Esperamos você! 💙`,
-    footer: 'Lavpop - Lavanderia Self-Service',
-    buttons: [
-      { type: 'QUICK_REPLY', text: 'Quero usar!' },
-      { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
-    ],
-    variables: ['nome_cliente', 'desconto', 'cupom', 'data_validade']
-  },
-  {
-    id: 'welcome_new',
-    name: 'Boas-vindas',
-    category: 'MARKETING',
-    icon: Sparkles,
-    color: 'purple',
-    description: 'Para novos clientes (primeira visita)',
-    audience: 'newCustomers',
-    header: 'Bem-vindo à Lavpop! 🎉',
-    body: `Olá {{1}}!
-
-Obrigado por escolher a Lavpop! Esperamos que sua primeira experiência tenha sido incrível.
-
-Aqui estão algumas dicas:
-✨ Horários de menor movimento: 7h-9h e 14h-16h
-💳 Você ganhou *{{2}}* de cashback na sua carteira digital
-📱 Baixe nosso app para acompanhar suas lavagens
-
-Na sua próxima visita, use o cupom *BEMVINDO10* e ganhe 10% OFF!
-
-Qualquer dúvida, estamos aqui. 💙`,
-    footer: 'Lavpop - Lavanderia Self-Service',
-    buttons: [
-      { type: 'QUICK_REPLY', text: 'Obrigado!' }
-    ],
-    variables: ['nome_cliente', 'cashback']
-  },
-  {
-    id: 'wallet_reminder',
-    name: 'Lembrete de Saldo',
-    category: 'UTILITY',
-    icon: Wallet,
-    color: 'blue',
-    description: 'Para clientes com saldo na carteira',
-    audience: 'withWallet',
-    header: 'Você tem créditos! 💰',
-    body: `Olá {{1}}!
-
-Você sabia que tem *{{2}}* de crédito na sua carteira Lavpop?
-
-Não deixe seu saldo parado! Use seus créditos na próxima lavagem e economize.
-
-🕐 Funcionamos das 7h às 21h, todos os dias.
-
-Te esperamos! 💙`,
-    footer: 'Lavpop - Lavanderia Self-Service',
-    buttons: [
-      { type: 'URL', text: 'Ver minha carteira', url: 'https://lavpop.com.br/carteira' }
-    ],
-    variables: ['nome_cliente', 'saldo']
-  },
-  {
-    id: 'promo_seasonal',
-    name: 'Promoção Sazonal',
-    category: 'MARKETING',
-    icon: Gift,
-    color: 'emerald',
-    description: 'Para campanhas promocionais gerais',
-    audience: 'all',
-    header: '🎁 Promoção Especial!',
-    body: `Olá {{1}}!
-
-Temos uma novidade especial para você:
-
-*{{2}}*
-
-🎯 {{3}}
-📅 Válido até {{4}}
-
-Aproveite! 💙`,
-    footer: 'Lavpop - Lavanderia Self-Service',
-    buttons: [
-      { type: 'QUICK_REPLY', text: 'Quero saber mais!' }
-    ],
-    variables: ['nome_cliente', 'titulo_promo', 'descricao', 'data_validade']
-  }
-];
+// Icon mapping for templates
+const ICON_MAP = {
+  Heart,
+  Sparkles,
+  Wallet,
+  Gift,
+  Sun
+};
 
 const MessageComposer = ({ selectedAudience, audienceSegments }) => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -153,7 +65,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
 
   // Filter templates by selected audience
   const filteredTemplates = selectedAudience
-    ? MESSAGE_TEMPLATES.filter(t => t.audience === selectedAudience || t.audience === 'all')
+    ? getTemplatesByAudience(selectedAudience)
     : MESSAGE_TEMPLATES;
 
   // Get audience customers array
@@ -211,16 +123,16 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
         selectedTemplate.id
       );
 
-      // Save campaign record
-      const campaign = saveCampaign({
+      // Save campaign record using backend
+      const campaign = await createCampaignAsync({
         name: selectedTemplate.name,
         templateId: selectedTemplate.id,
         audience: selectedAudience,
         audienceCount: validCustomers.length
       });
 
-      // Record send event
-      recordCampaignSend(campaign.id, {
+      // Record send event using backend
+      await recordCampaignSendAsync(campaign.id, {
         recipients: validCustomers.length,
         successCount: result.results?.success?.length || 0,
         failedCount: result.results?.failed?.length || 0
@@ -277,20 +189,36 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
   // Format template preview with real customer data
   const formatPreview = (template, customer = currentSampleCustomer) => {
     let body = template.body;
-    const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR');
+    const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
     // Use real customer data when available
     const customerName = customer?.name ? getFirstName(customer.name) : 'Cliente';
     const customerWallet = customer?.walletBalance || 0;
-    const customerCashback = customer?.cashback || 5;
 
-    // Replace template variables with real data
-    const replacements = {
-      '{{1}}': customerName,
-      '{{2}}': selectedAudience === 'withWallet' ? formatCurrency(customerWallet) : '20',
-      '{{3}}': 'VOLTE20',
-      '{{4}}': validade
-    };
+    // Build replacements based on template variables
+    const replacements = {};
+    template.variables?.forEach(v => {
+      const pos = v.position;
+      switch (v.key) {
+        case 'customerName':
+          replacements[`{{${pos}}}`] = customerName;
+          break;
+        case 'discount':
+          replacements[`{{${pos}}}`] = v.fallback || '20';
+          break;
+        case 'couponCode':
+          replacements[`{{${pos}}}`] = v.fallback || 'LAVPOP20';
+          break;
+        case 'expirationDate':
+          replacements[`{{${pos}}}`] = validade;
+          break;
+        case 'walletBalance':
+          replacements[`{{${pos}}}`] = formatCurrency(customerWallet);
+          break;
+        default:
+          replacements[`{{${pos}}}`] = v.fallback || '';
+      }
+    });
 
     Object.entries(replacements).forEach(([key, value]) => {
       body = body.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
@@ -347,8 +275,9 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
         {/* Template Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredTemplates.map((template) => {
-            const Icon = template.icon;
+            const Icon = ICON_MAP[template.icon] || Gift;
             const isSelected = selectedTemplate?.id === template.id;
+            const headerText = typeof template.header === 'object' ? template.header.text : template.header;
 
             return (
               <div
@@ -409,7 +338,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                 {/* Preview */}
                 <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
                   <p className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    {template.header}
+                    {headerText}
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-3">
                     {template.body.substring(0, 150)}...
@@ -519,7 +448,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                     <div className="p-4 min-h-[300px]">
                       <div className="bg-white rounded-lg p-3 shadow-sm max-w-[85%]">
                         <p className="text-sm font-medium text-slate-900 mb-2">
-                          {selectedTemplate.header}
+                          {typeof selectedTemplate.header === 'object' ? selectedTemplate.header.text : selectedTemplate.header}
                         </p>
                         <p className="text-sm text-slate-700 whitespace-pre-line">
                           {formatPreview(selectedTemplate)}

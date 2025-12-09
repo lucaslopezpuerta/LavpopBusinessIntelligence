@@ -1,8 +1,11 @@
-// Campaigns.jsx v1.2.0
+// Campaigns.jsx v1.3.0
 // Customer Messaging & Campaign Management Tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.3.0 (2025-12-08): Added Campaign Effectiveness metrics
+//   - CampaignEffectiveness component in overview tab
+//   - Shows contact return rates, revenue recovered, method comparison
 // v1.2.0 (2025-12-08): Added Nova Campanha wizard
 //   - New campaign creation modal with step-by-step wizard
 //   - Audience selection, template selection, preview, and send
@@ -43,6 +46,7 @@ import AutomationRules from '../components/campaigns/AutomationRules';
 import CampaignSectionNavigation from '../components/campaigns/CampaignSectionNavigation';
 import BlacklistManager from '../components/campaigns/BlacklistManager';
 import NewCampaignModal from '../components/campaigns/NewCampaignModal';
+import CampaignEffectiveness from '../components/campaigns/CampaignEffectiveness';
 
 // Business logic
 import { calculateCampaignROI } from '../utils/intelligenceCalculations';
@@ -224,11 +228,14 @@ const Campaigns = ({ data }) => {
 
       {/* Campaign ROI Section (moved from Intelligence) */}
       {activeSection === 'overview' && (
-        <CampaignROISection
-          campaignROI={campaignROI}
-          formatCurrency={formatCurrency}
-          formatPercent={formatPercent}
-        />
+        <>
+          <CampaignEffectiveness className="mb-6" />
+          <CampaignROISection
+            campaignROI={campaignROI}
+            formatCurrency={formatCurrency}
+            formatPercent={formatPercent}
+          />
+        </>
       )}
 
       {/* Automation Rules Section */}

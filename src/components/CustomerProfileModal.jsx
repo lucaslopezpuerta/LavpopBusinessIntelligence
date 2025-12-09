@@ -1,8 +1,12 @@
-// CustomerProfileModal.jsx v1.7 - PHONE VALIDATION
+// CustomerProfileModal.jsx v1.8 - CONTACT CONTEXT TRACKING
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v1.8 (2025-12-08): Contact context tracking
+//   - Passes customer name and risk level when marking as contacted
+//   - Uses markContacted for proper effectiveness tracking
+//   - Supports campaign effectiveness metrics
 // v1.7 (2025-12-03): Phone validation for WhatsApp
 //   - Added Brazilian mobile validation before WhatsApp actions
 //   - Shows warning indicator for invalid phone numbers
@@ -120,10 +124,16 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     // Use matchMedia hook instead of resize listener
     const isMobile = useMediaQuery('(max-width: 639px)');
 
-    // Shared contact tracking (syncs across app)
-    const { isContacted, toggleContacted } = useContactTracking();
+    // Shared contact tracking (syncs across app with effectiveness tracking)
+    const { isContacted, toggleContacted, markContacted } = useContactTracking();
     const customerId = customer.doc || customer.id;
     const contacted = isContacted(customerId);
+
+    // Customer context for effectiveness tracking
+    const customerContext = {
+        customerName: customer.name || null,
+        riskLevel: customer.riskLevel || null
+    };
 
     // Phone validation for WhatsApp
     const hasValidPhone = customer.hasValidPhone !== undefined
@@ -167,9 +177,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
             // Auto-log call attempt (uses shared utility)
             addCommunicationEntry(customer.doc, 'call', getDefaultNotes('call'));
             setCommunicationLog(getCommunicationLog(customer.doc));
-            // Mark as contacted (syncs across app)
+            // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
-                toggleContacted(customerId, 'phone');
+                markContacted(customerId, 'call', customerContext);
             }
         }
     };
@@ -183,9 +193,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
             // Auto-log WhatsApp (uses shared utility)
             addCommunicationEntry(customer.doc, 'whatsapp', getDefaultNotes('whatsapp'));
             setCommunicationLog(getCommunicationLog(customer.doc));
-            // Mark as contacted (syncs across app)
+            // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
-                toggleContacted(customerId, 'whatsapp');
+                markContacted(customerId, 'whatsapp', customerContext);
             }
         }
     };
@@ -196,15 +206,19 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
             // Auto-log email (uses shared utility)
             addCommunicationEntry(customer.doc, 'email', getDefaultNotes('email'));
             setCommunicationLog(getCommunicationLog(customer.doc));
-            // Mark as contacted (syncs across app)
+            // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
-                toggleContacted(customerId, 'email');
+                markContacted(customerId, 'email', customerContext);
             }
         }
     };
 
     const handleMarkContacted = () => {
-        toggleContacted(customerId, 'manual');
+        if (contacted) {
+            toggleContacted(customerId);
+        } else {
+            markContacted(customerId, 'manual', customerContext);
+        }
     };
 
     // Helper to parse Brazilian date format (DD/MM/YYYY HH:mm:ss)

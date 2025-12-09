@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v8.4 - PHONE VALIDATION
+// AtRiskCustomersTable.jsx v8.5 - CAMPAIGN CONTEXT TRACKING
 // ✅ No horizontal scroll
 // ✅ Mobile: Card layout with swipe actions (like CustomerListDrilldown)
 // ✅ Desktop: Table with all columns visible
@@ -7,14 +7,19 @@
 // ✅ Uses unified RISK_LABELS from customerMetrics.js
 // ✅ Accessible table with scope and aria-labels
 // ✅ Focus-visible states for keyboard users
-// ✅ Contact tracking (shared across app)
+// ✅ Contact tracking (shared across app with backend support)
 // ✅ Uses CustomerProfileModal (consolidated from CustomerDetailModal)
 // ✅ Pagination (5 items per page with smart navigation)
 // ✅ Sorting controls (by value, by days absent, by name)
 // ✅ Design System v3.1 compliant header
 // ✅ Brazilian mobile phone validation for WhatsApp
+// ✅ Passes customer context for effectiveness tracking
 //
 // CHANGELOG:
+// v8.5 (2025-12-08): Campaign context tracking
+//   - Passes customer name and risk level when marking as contacted
+//   - Enables auto-detect returns via useContactTracking
+//   - Supports campaign effectiveness metrics
 // v8.4 (2025-12-03): Phone validation for WhatsApp
 //   - Added Brazilian mobile validation before WhatsApp actions
 //   - Disables WhatsApp swipe/buttons for invalid numbers
@@ -100,9 +105,6 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
   const [swipeState, setSwipeState] = useState({ id: null, direction: null, offset: 0 });
   const touchStartRef = useRef({ x: 0, y: 0 });
 
-  // Shared contact tracking (syncs across app)
-  const { isContacted, toggleContacted } = useContactTracking();
-
   // Get all at-risk customers
   const allAtRiskCustomers = useMemo(() => {
     if (!customerMetrics?.activeCustomers) return [];
@@ -110,6 +112,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
       c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning'
     );
   }, [customerMetrics]);
+
+  // Shared contact tracking (syncs across app, enables auto-detect returns)
+  const { isContacted, toggleContacted, markContacted } = useContactTracking({
+    customers: allAtRiskCustomers
+  });
 
   // Sort customers based on selected option
   const sortedCustomers = useMemo(() => {
@@ -174,7 +181,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     return phone && isValidBrazilianMobile(phone);
   };
 
-  const handleCall = (e, phone, customerId) => {
+  // Helper to get customer context for tracking
+  const getCustomerContext = useCallback((customerId) => {
+    const customer = allAtRiskCustomers.find(c => c.doc === customerId);
+    return {
+      customerName: customer?.name || null,
+      riskLevel: customer?.riskLevel || null
+    };
+  }, [allAtRiskCustomers]);
+
+  const handleCall = useCallback((e, phone, customerId) => {
     e?.stopPropagation();
     const cleaned = formatPhone(phone);
     if (cleaned) {
@@ -183,14 +199,14 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
       if (customerId) {
         addCommunicationEntry(customerId, 'call', getDefaultNotes('call'));
       }
-      // Mark as contacted when calling
+      // Mark as contacted when calling (with context for effectiveness tracking)
       if (customerId && !isContacted(customerId)) {
-        toggleContacted(customerId, 'phone');
+        markContacted(customerId, 'call', getCustomerContext(customerId));
       }
     }
-  };
+  }, [isContacted, markContacted, getCustomerContext]);
 
-  const handleWhatsApp = (e, phone, customerId) => {
+  const handleWhatsApp = useCallback((e, phone, customerId) => {
     e?.stopPropagation();
     // Only proceed if phone is a valid Brazilian mobile
     if (!hasValidWhatsApp(phone)) return;
@@ -209,16 +225,22 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     if (customerId) {
       addCommunicationEntry(customerId, 'whatsapp', getDefaultNotes('whatsapp'));
     }
-    // Mark as contacted when sending WhatsApp
+    // Mark as contacted when sending WhatsApp (with context for effectiveness tracking)
     if (customerId && !isContacted(customerId)) {
-      toggleContacted(customerId, 'whatsapp');
+      markContacted(customerId, 'whatsapp', getCustomerContext(customerId));
     }
-  };
+  }, [isContacted, markContacted, getCustomerContext]);
 
-  const handleMarkContacted = (e, customerId) => {
+  const handleMarkContacted = useCallback((e, customerId) => {
     e.stopPropagation();
-    toggleContacted(customerId, 'manual');
-  };
+    if (isContacted(customerId)) {
+      // Use toggleContacted for unmarking
+      toggleContacted(customerId);
+    } else {
+      // Use markContacted with context for marking
+      markContacted(customerId, 'manual', getCustomerContext(customerId));
+    }
+  }, [isContacted, toggleContacted, markContacted, getCustomerContext]);
 
   // Touch handlers for swipe (mobile)
   const handleTouchStart = useCallback((e, customerId) => {
@@ -250,7 +272,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
       return;
     }
 
-    // Trigger call/WhatsApp (handlers also log and mark as contacted)
+    // Trigger call/WhatsApp (handlers also log and mark as contacted with context)
     if (swipeState.direction === 'right' && hasValidWhatsApp(customer.phone)) {
       // Only trigger WhatsApp for valid Brazilian mobile
       handleWhatsApp(null, customer.phone, customerId);
@@ -260,7 +282,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     }
 
     setSwipeState({ id: null, direction: null, offset: 0 });
-  }, [swipeState.direction]);
+  }, [swipeState.direction, handleWhatsApp, handleCall]);
 
   const getRiskStyles = (riskLevel) => {
     const riskConfig = RISK_LABELS[riskLevel] || RISK_LABELS['Lost'];

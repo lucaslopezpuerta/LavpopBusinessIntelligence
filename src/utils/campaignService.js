@@ -1,9 +1,14 @@
-// campaignService.js v2.0
+// campaignService.js v3.0
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
-// Now supports Supabase backend for scheduled campaigns
+// Now supports Supabase backend for scheduled campaigns and effectiveness tracking
 //
 // CHANGELOG:
+// v3.0 (2025-12-08): Added campaign effectiveness tracking
+//   - recordCampaignContact links campaigns to contact_tracking
+//   - getCampaignPerformance retrieves effectiveness metrics
+//   - getCampaignContacts shows individual contact outcomes
+//   - New campaign_contacts table bridges campaigns ↔ contact_tracking
 // v2.0 (2025-12-08): Added Supabase backend support
 //   - Scheduled campaigns now stored in database
 //   - Backend executor runs scheduled campaigns automatically
@@ -696,4 +701,232 @@ export async function saveAutomationRulesAsync(rules) {
     console.warn('Backend save failed, using localStorage:', error.message);
   }
   saveAutomationRules(rules);
+}
+
+// ==================== CAMPAIGN EFFECTIVENESS TRACKING ====================
+// These functions link campaigns to contact_tracking for measuring return rates
+
+/**
+ * Record a campaign contact for effectiveness tracking
+ * Creates entries in both contact_tracking and campaign_contacts tables
+ * @param {string} campaignId - Campaign ID
+ * @param {object} contactData - { customerId, customerName, phone, contactMethod }
+ * @returns {Promise<object>} Created records
+ */
+export async function recordCampaignContact(campaignId, contactData) {
+  const { customerId, customerName, phone, contactMethod = 'whatsapp' } = contactData;
+
+  try {
+    if (await shouldUseBackend()) {
+      // Get campaign name for the contact_tracking record
+      const campaign = await api.campaigns.getById(campaignId);
+      const campaignName = campaign?.name || campaignId;
+
+      // Create contact_tracking record
+      const { data: trackingData, error: trackingError } = await api.supabase
+        .from('contact_tracking')
+        .insert([{
+          customer_id: customerId,
+          customer_name: customerName,
+          contact_method: contactMethod,
+          campaign_id: campaignId,
+          campaign_name: campaignName,
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        }])
+        .select()
+        .single();
+
+      if (trackingError) throw trackingError;
+
+      // Create campaign_contacts link
+      const { data: contactRecord, error: contactError } = await api.supabase
+        .from('campaign_contacts')
+        .insert([{
+          campaign_id: campaignId,
+          contact_tracking_id: trackingData.id,
+          customer_id: customerId,
+          customer_name: customerName,
+          phone: phone,
+          delivery_status: 'pending'
+        }])
+        .select()
+        .single();
+
+      if (contactError) throw contactError;
+
+      console.log(`[CampaignService] Recorded contact for campaign ${campaignId}: ${customerId}`);
+      return { tracking: trackingData, contact: contactRecord };
+    }
+  } catch (error) {
+    console.warn('[CampaignService] Failed to record campaign contact:', error.message);
+  }
+
+  // Fallback: store in localStorage
+  const sends = JSON.parse(localStorage.getItem(CAMPAIGN_SENDS_KEY) || '[]');
+  const localRecord = {
+    id: Date.now(),
+    campaign_id: campaignId,
+    customer_id: customerId,
+    customer_name: customerName,
+    phone: phone,
+    contact_method: contactMethod,
+    sent_at: new Date().toISOString(),
+    status: 'pending'
+  };
+  sends.push(localRecord);
+  localStorage.setItem(CAMPAIGN_SENDS_KEY, JSON.stringify(sends.slice(-500)));
+
+  return { tracking: null, contact: localRecord };
+}
+
+/**
+ * Get campaign performance metrics with effectiveness data
+ * @param {string} campaignId - Optional specific campaign ID
+ * @returns {Promise<Array|object>} Performance metrics
+ */
+export async function getCampaignPerformance(campaignId = null) {
+  try {
+    if (await shouldUseBackend()) {
+      let query = api.supabase
+        .from('campaign_performance')
+        .select('*');
+
+      if (campaignId) {
+        const { data, error } = await query.eq('id', campaignId).single();
+        if (error) throw error;
+        return data;
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
+
+      console.log(`[CampaignService] Loaded performance for ${data.length} campaigns`);
+      return data;
+    }
+  } catch (error) {
+    console.warn('[CampaignService] Could not load campaign performance:', error.message);
+  }
+
+  // Fallback: return basic campaign data
+  const campaigns = getCampaigns();
+  if (campaignId) {
+    return campaigns.find(c => c.id === campaignId) || null;
+  }
+  return campaigns;
+}
+
+/**
+ * Get contacts for a specific campaign with their tracking outcomes
+ * @param {string} campaignId - Campaign ID
+ * @returns {Promise<Array>} Contacts with outcomes
+ */
+export async function getCampaignContacts(campaignId) {
+  try {
+    if (await shouldUseBackend()) {
+      const { data, error } = await api.supabase
+        .from('campaign_contacts')
+        .select(`
+          *,
+          contact_tracking (
+            status,
+            returned_at,
+            days_to_return,
+            return_revenue
+          )
+        `)
+        .eq('campaign_id', campaignId)
+        .order('sent_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    }
+  } catch (error) {
+    console.warn('[CampaignService] Could not load campaign contacts:', error.message);
+  }
+
+  // Fallback: return sends from localStorage
+  const sends = JSON.parse(localStorage.getItem(CAMPAIGN_SENDS_KEY) || '[]');
+  return sends.filter(s => s.campaign_id === campaignId);
+}
+
+/**
+ * Send campaign and record contacts for effectiveness tracking
+ * Enhanced version that links to contact_tracking
+ * @param {string} campaignId - Campaign ID
+ * @param {Array} recipients - Array of { customerId, customerName, phone, ... }
+ * @param {object} options - { messageBody, dryRun, skipWhatsApp }
+ * @returns {Promise<object>} Send result with tracking info
+ */
+export async function sendCampaignWithTracking(campaignId, recipients, options = {}) {
+  const { messageBody, dryRun = false, skipWhatsApp = false } = options;
+
+  const result = {
+    campaignId,
+    totalRecipients: recipients.length,
+    successCount: 0,
+    failedCount: 0,
+    skippedCount: 0,
+    trackedContacts: 0,
+    errors: []
+  };
+
+  // Get campaign for message body
+  const campaign = await getCampaignsAsync().then(c => c.find(x => x.id === campaignId));
+  const message = messageBody || campaign?.messageBody;
+
+  for (const recipient of recipients) {
+    const { customerId, customerName, phone, name } = recipient;
+    const recipientName = customerName || name;
+
+    if (!phone) {
+      result.skippedCount++;
+      result.errors.push({ customerId, error: 'No phone number' });
+      continue;
+    }
+
+    try {
+      // Record contact for tracking (before sending WhatsApp)
+      if (!dryRun) {
+        await recordCampaignContact(campaignId, {
+          customerId,
+          customerName: recipientName,
+          phone,
+          contactMethod: 'whatsapp'
+        });
+        result.trackedContacts++;
+      }
+
+      // Send WhatsApp if not skipped
+      if (!skipWhatsApp && !dryRun && message) {
+        const personalizedMessage = message
+          .replace(/\{\{nome\}\}/gi, recipientName || 'Cliente')
+          .replace(/\{\{name\}\}/gi, recipientName || 'Cliente');
+
+        await sendWhatsAppMessage(phone, personalizedMessage);
+      }
+
+      result.successCount++;
+    } catch (error) {
+      result.failedCount++;
+      result.errors.push({ customerId, error: error.message });
+    }
+  }
+
+  // Update campaign stats
+  if (!dryRun && result.successCount > 0) {
+    await recordCampaignSendAsync(campaignId, {
+      recipients: result.totalRecipients,
+      successCount: result.successCount,
+      failedCount: result.failedCount
+    });
+  }
+
+  console.log(`[CampaignService] Campaign ${campaignId} sent with tracking:`, {
+    success: result.successCount,
+    tracked: result.trackedContacts,
+    failed: result.failedCount
+  });
+
+  return result;
 }

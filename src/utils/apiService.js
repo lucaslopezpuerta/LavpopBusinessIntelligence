@@ -220,11 +220,93 @@ export const api = {
     }
   },
 
+  // ==================== CONTACT TRACKING ====================
+  contacts: {
+    async getAll(filters = {}) {
+      const result = await apiRequest('contacts.getAll', filters);
+      return result.contacts || [];
+    },
+
+    async getPending(customerId = null) {
+      const filters = { status: 'pending' };
+      if (customerId) filters.customer_id = customerId;
+      const result = await apiRequest('contacts.getAll', filters);
+      return result.contacts || [];
+    },
+
+    async create(contactData) {
+      const result = await apiRequest('contacts.create', {
+        data: contactData
+      });
+      return result.contact;
+    },
+
+    async update(id, updates) {
+      return await apiRequest('contacts.update', {
+        id,
+        data: updates
+      });
+    },
+
+    async markReturned(customerId, returnDate, revenue) {
+      return await apiRequest('contacts.markReturned', {
+        customer_id: customerId,
+        return_date: returnDate,
+        revenue
+      });
+    },
+
+    async clear(customerId) {
+      return await apiRequest('contacts.clear', {
+        customer_id: customerId
+      });
+    },
+
+    async expire() {
+      return await apiRequest('contacts.expire');
+    },
+
+    async getEffectiveness(options = {}) {
+      const result = await apiRequest('contacts.effectiveness', options);
+      return result;
+    },
+
+    async getHistory(customerId, limit = 10) {
+      const result = await apiRequest('contacts.history', {
+        customer_id: customerId,
+        limit
+      });
+      return result.contacts || [];
+    }
+  },
+
   // ==================== MIGRATION ====================
   migrate: {
     async importFromLocalStorage(data) {
       return await apiRequest('migrate.import', { data });
     }
+  },
+
+  // ==================== GENERIC METHODS ====================
+  // For direct table access (used by services)
+  async get(table, filters = {}) {
+    const result = await apiRequest(`${table}.getAll`, filters);
+    return result[table] || result.data || [];
+  },
+
+  async post(table, data) {
+    const result = await apiRequest(`${table}.create`, { data });
+    return result[table] || result.data || result;
+  },
+
+  async patch(table, data, filters = {}) {
+    const result = await apiRequest(`${table}.update`, { data, filters });
+    return result;
+  },
+
+  async rpc(functionName, params = {}) {
+    const result = await apiRequest(`rpc.${functionName}`, params);
+    return result.data || result;
   }
 };
 

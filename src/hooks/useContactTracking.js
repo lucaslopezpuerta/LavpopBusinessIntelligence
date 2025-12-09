@@ -1,15 +1,25 @@
-// useContactTracking.js v1.0
+// useContactTracking.js v2.0
 // Shared hook for tracking contacted customers across the app
-// Persists to localStorage and syncs across components
+// Now with backend support and campaign effectiveness tracking
 //
 // CHANGELOG:
+// v2.0 (2025-12-08): Backend integration + outcome tracking
+//   - Uses contactTrackingService for backend persistence
+//   - Tracks campaign context for attribution
+//   - Supports outcome tracking (returned, expired, cleared)
+//   - Auto-detect returns when customer data changes
 // v1.0 (2025-12-01): Initial implementation
 //   - localStorage persistence with weekly expiry
 //   - Cross-component sync via storage events
-//   - Custom event dispatch for same-window updates
-//   - Functions: isContacted, markContacted, toggleContacted, clearExpired
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import {
+  createContactRecord,
+  getAllPendingContacts,
+  clearContactStatus,
+  autoDetectReturns,
+  expireOldContacts
+} from '../utils/contactTrackingService';
 
 const STORAGE_KEY = 'lavpop_contacted_customers';
 const CUSTOM_EVENT = 'contactTrackingUpdate';
@@ -19,7 +29,6 @@ const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Get the current week identifier (ISO week)
- * Used to auto-clear contacts at the start of each week
  */
 const getCurrentWeekId = () => {
   const now = new Date();
@@ -30,8 +39,7 @@ const getCurrentWeekId = () => {
 };
 
 /**
- * Load contacted customers from localStorage
- * Filters out expired entries
+ * Load contacted customers from localStorage (for immediate UI)
  */
 const loadFromStorage = () => {
   try {
@@ -70,18 +78,78 @@ const saveToStorage = (data) => {
 };
 
 /**
- * Hook for tracking contacted customers
- * Syncs across all components using this hook
- *
+ * Hook for tracking contacted customers with campaign effectiveness
+ * @param {Object} [options] - Options
+ * @param {Array} [options.customers] - Customer data for auto-detecting returns
  * @returns {Object} Contact tracking utilities
- * @property {Function} isContacted - Check if customer was contacted this week
- * @property {Function} markContacted - Mark a customer as contacted
- * @property {Function} toggleContacted - Toggle contact status
- * @property {Function} getContactedCount - Get total contacted count
- * @property {Set} contactedIds - Set of currently contacted customer IDs
  */
-export function useContactTracking() {
+export function useContactTracking(options = {}) {
+  const { customers } = options;
   const [contactedData, setContactedData] = useState(loadFromStorage);
+  const [isLoading, setIsLoading] = useState(true);
+  const [backendData, setBackendData] = useState({});
+  const hasLoadedBackend = useRef(false);
+
+  // Load from backend on mount
+  useEffect(() => {
+    const loadBackendData = async () => {
+      try {
+        const pending = await getAllPendingContacts();
+        setBackendData(pending);
+
+        // Merge backend data into local state
+        const merged = { ...contactedData };
+        Object.entries(pending).forEach(([id, record]) => {
+          if (!merged[id]) {
+            merged[id] = {
+              timestamp: new Date(record.contacted_at).getTime(),
+              method: record.contact_method,
+              week: getCurrentWeekId(),
+              campaignId: record.campaign_id,
+              campaignName: record.campaign_name,
+              riskLevel: record.risk_level
+            };
+          }
+        });
+
+        setContactedData(merged);
+        saveToStorage(merged);
+        hasLoadedBackend.current = true;
+      } catch (error) {
+        console.warn('Failed to load backend contact data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadBackendData();
+    // Run expiration on load
+    expireOldContacts().catch(() => {});
+  }, []);
+
+  // Auto-detect returns when customer data changes
+  useEffect(() => {
+    if (customers && customers.length > 0 && hasLoadedBackend.current) {
+      autoDetectReturns(customers).then(result => {
+        if (result.updated > 0) {
+          console.log(`Auto-detected ${result.updated} customer returns`);
+          // Reload backend data
+          getAllPendingContacts().then(pending => {
+            setBackendData(pending);
+            // Update local state - remove customers who returned
+            const newData = { ...contactedData };
+            Object.keys(newData).forEach(id => {
+              if (!pending[id]) {
+                delete newData[id];
+              }
+            });
+            setContactedData(newData);
+            saveToStorage(newData);
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [customers]);
 
   // Listen for storage changes (cross-tab sync)
   useEffect(() => {
@@ -121,32 +189,62 @@ export function useContactTracking() {
   }, [contactedIds]);
 
   /**
-   * Mark a customer as contacted
+   * Mark a customer as contacted with full tracking
    * @param {string} customerId - Customer doc/ID
    * @param {string} [method] - Contact method (phone, whatsapp, etc.)
+   * @param {Object} [context] - Additional context
+   * @param {string} [context.customerName] - Customer name
+   * @param {string} [context.riskLevel] - Customer risk level
+   * @param {string} [context.campaignId] - Campaign ID if from campaign
+   * @param {string} [context.campaignName] - Campaign name
    */
-  const markContacted = useCallback((customerId, method = 'unknown') => {
+  const markContacted = useCallback(async (customerId, method = 'unknown', context = {}) => {
     if (!customerId) return;
 
     const id = String(customerId);
+    const {
+      customerName = null,
+      riskLevel = null,
+      campaignId = null,
+      campaignName = null
+    } = context;
+
+    // Update local state immediately for UI responsiveness
     const newData = {
       ...contactedData,
       [id]: {
         timestamp: Date.now(),
         method,
-        week: getCurrentWeekId()
+        week: getCurrentWeekId(),
+        campaignId,
+        campaignName,
+        riskLevel
       }
     };
 
     setContactedData(newData);
     saveToStorage(newData);
+
+    // Save to backend asynchronously
+    try {
+      await createContactRecord({
+        customerId: id,
+        customerName,
+        riskLevel,
+        contactMethod: method,
+        campaignId,
+        campaignName
+      });
+    } catch (error) {
+      console.warn('Failed to save contact to backend:', error);
+    }
   }, [contactedData]);
 
   /**
    * Remove contacted status from a customer
    * @param {string} customerId - Customer doc/ID
    */
-  const unmarkContacted = useCallback((customerId) => {
+  const unmarkContacted = useCallback(async (customerId) => {
     if (!customerId) return;
 
     const id = String(customerId);
@@ -155,15 +253,23 @@ export function useContactTracking() {
 
     setContactedData(newData);
     saveToStorage(newData);
+
+    // Update backend
+    try {
+      await clearContactStatus(id);
+    } catch (error) {
+      console.warn('Failed to clear contact in backend:', error);
+    }
   }, [contactedData]);
 
   /**
    * Toggle contact status for a customer
    * @param {string} customerId - Customer doc/ID
    * @param {string} [method] - Contact method if marking as contacted
+   * @param {Object} [context] - Additional context for tracking
    * @returns {boolean} - New contacted status
    */
-  const toggleContacted = useCallback((customerId, method = 'unknown') => {
+  const toggleContacted = useCallback((customerId, method = 'unknown', context = {}) => {
     if (!customerId) return false;
 
     const id = String(customerId);
@@ -173,7 +279,7 @@ export function useContactTracking() {
       unmarkContacted(id);
       return false;
     } else {
-      markContacted(id, method);
+      markContacted(id, method, context);
       return true;
     }
   }, [contactedIds, markContacted, unmarkContacted]);
@@ -199,7 +305,7 @@ export function useContactTracking() {
   /**
    * Clear all expired entries (manual cleanup)
    */
-  const clearExpired = useCallback(() => {
+  const clearExpired = useCallback(async () => {
     const now = Date.now();
     const filtered = {};
 
@@ -211,6 +317,9 @@ export function useContactTracking() {
 
     setContactedData(filtered);
     saveToStorage(filtered);
+
+    // Also expire in backend
+    await expireOldContacts();
   }, [contactedData]);
 
   return {
@@ -221,7 +330,8 @@ export function useContactTracking() {
     getContactInfo,
     getContactedCount,
     clearExpired,
-    contactedIds
+    contactedIds,
+    isLoading
   };
 }
 

@@ -1,8 +1,12 @@
-// AutomationRules.jsx v1.2
+// AutomationRules.jsx v2.0
 // Automation rules configuration for campaigns
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.0 (2025-12-08): Supabase backend integration
+//   - Uses async functions to fetch/save from backend
+//   - Falls back to localStorage if backend unavailable
+//   - Added loading state for initial data fetch
 // v1.2 (2025-12-08): Fixed persistence bug
 //   - Rules now persist to localStorage via campaignService
 //   - Save button is functional with confirmation feedback
@@ -11,7 +15,7 @@
 //   - Counts only customers with valid WhatsApp numbers
 //   - Uses isValidBrazilianMobile from phoneUtils
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Zap,
   Clock,
@@ -23,12 +27,13 @@ import {
   Pause,
   Info,
   Check,
-  Save
+  Save,
+  Loader2
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import InsightBox from '../ui/InsightBox';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
-import { getAutomationRules, saveAutomationRules } from '../../utils/campaignService';
+import { getAutomationRules, saveAutomationRules, getAutomationRulesAsync, saveAutomationRulesAsync } from '../../utils/campaignService';
 
 // Predefined automation rules
 const AUTOMATION_RULES = [
@@ -135,20 +140,41 @@ const AUTOMATION_RULES = [
 ];
 
 const AutomationRules = ({ audienceSegments }) => {
-  const [rules, setRules] = useState(() => {
-    // Initialize from localStorage, merging with defaults for any new rules
-    const savedRules = getAutomationRules();
-    const savedMap = new Map(savedRules.map(r => [r.id, r]));
-
-    return AUTOMATION_RULES.map(defaultRule => {
-      const saved = savedMap.get(defaultRule.id);
-      return saved ? { ...defaultRule, enabled: saved.enabled } : defaultRule;
-    });
-  });
+  const [rules, setRules] = useState(AUTOMATION_RULES);
+  const [isLoading, setIsLoading] = useState(true);
   const [expandedRule, setExpandedRule] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Load rules on mount
+  useEffect(() => {
+    const loadRules = async () => {
+      setIsLoading(true);
+      try {
+        const savedRules = await getAutomationRulesAsync();
+        const savedMap = new Map(savedRules.map(r => [r.id, r]));
+
+        setRules(AUTOMATION_RULES.map(defaultRule => {
+          const saved = savedMap.get(defaultRule.id);
+          return saved ? { ...defaultRule, enabled: saved.enabled } : defaultRule;
+        }));
+      } catch (error) {
+        console.error('Error loading automation rules:', error);
+        // Fallback to localStorage
+        const savedRules = getAutomationRules();
+        const savedMap = new Map(savedRules.map(r => [r.id, r]));
+
+        setRules(AUTOMATION_RULES.map(defaultRule => {
+          const saved = savedMap.get(defaultRule.id);
+          return saved ? { ...defaultRule, enabled: saved.enabled } : defaultRule;
+        }));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadRules();
+  }, []);
 
   // Toggle rule enabled state
   const toggleRule = useCallback((ruleId) => {
@@ -159,8 +185,8 @@ const AutomationRules = ({ audienceSegments }) => {
     setSaveSuccess(false);
   }, []);
 
-  // Save rules to localStorage
-  const handleSave = useCallback(() => {
+  // Save rules to backend
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
 
     // Save the rules configuration
@@ -172,17 +198,21 @@ const AutomationRules = ({ audienceSegments }) => {
       action: r.action
     }));
 
-    saveAutomationRules(rulesToSave);
+    try {
+      await saveAutomationRulesAsync(rulesToSave);
+    } catch (error) {
+      console.error('Error saving automation rules:', error);
+      // Fallback to localStorage
+      saveAutomationRules(rulesToSave);
+    }
 
     // Show success feedback
-    setTimeout(() => {
-      setIsSaving(false);
-      setSaveSuccess(true);
-      setHasChanges(false);
+    setIsSaving(false);
+    setSaveSuccess(true);
+    setHasChanges(false);
 
-      // Hide success message after 3 seconds
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }, 300);
+    // Hide success message after 3 seconds
+    setTimeout(() => setSaveSuccess(false), 3000);
   }, [rules]);
 
   // Helper: filter customers with valid WhatsApp phones
@@ -224,12 +254,22 @@ const AutomationRules = ({ audienceSegments }) => {
       id="automation-rules"
     >
       <div className="space-y-6">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+            <span className="ml-3 text-slate-500 dark:text-slate-400">Carregando automações...</span>
+          </div>
+        )}
+
         {/* Status Banner */}
-        <div className={`p-4 rounded-xl border ${
-          enabledCount > 0
-            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-            : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'
-        }`}>
+        {!isLoading && (
+          <>
+            <div className={`p-4 rounded-xl border ${
+              enabledCount > 0
+                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'
+            }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {enabledCount > 0 ? (
@@ -459,6 +499,8 @@ const AutomationRules = ({ audienceSegments }) => {
             )}
           </button>
         </div>
+          </>
+        )}
       </div>
     </SectionCard>
   );

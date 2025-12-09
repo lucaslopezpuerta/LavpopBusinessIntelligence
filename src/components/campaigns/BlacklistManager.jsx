@@ -1,8 +1,12 @@
-// BlacklistManager.jsx v1.1
+// BlacklistManager.jsx v2.0
 // WhatsApp blacklist management UI component
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.0 (2025-12-08): Supabase backend integration
+//   - Uses async functions to fetch from backend
+//   - Falls back to localStorage if backend unavailable
+//   - Loading states for initial data fetch
 // v1.1 (2025-12-08): Added pagination
 //   - Configurable items per page (25, 50, 100)
 //   - Page navigation controls
@@ -13,7 +17,7 @@
 //   - Twilio sync button with progress
 //   - CSV import/export
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   ShieldOff,
   RefreshCw,
@@ -31,18 +35,21 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Loader2
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import InsightBox from '../ui/InsightBox';
 import {
   getBlacklistArray,
   getBlacklistStats,
-  addToBlacklist,
-  removeFromBlacklist,
+  getBlacklistAsync,
+  getBlacklistStatsAsync,
+  addToBlacklistAsync,
+  removeFromBlacklistAsync,
   syncWithTwilio,
   exportBlacklistCSV,
-  importBlacklistCSV,
+  importBlacklistAsync,
   buildCustomerNameMap,
   getLastSyncTime
 } from '../../utils/blacklistService';
@@ -50,8 +57,9 @@ import {
 const ITEMS_PER_PAGE_OPTIONS = [25, 50, 100];
 
 const BlacklistManager = ({ customerData }) => {
-  const [blacklist, setBlacklist] = useState(() => getBlacklistArray());
-  const [stats, setStats] = useState(() => getBlacklistStats());
+  const [blacklist, setBlacklist] = useState([]);
+  const [stats, setStats] = useState({ total: 0, byReason: {}, bySource: {} });
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPhone, setNewPhone] = useState('');
@@ -65,12 +73,33 @@ const BlacklistManager = ({ customerData }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
-  // Refresh blacklist data
-  const refreshData = useCallback(() => {
-    setBlacklist(getBlacklistArray());
-    setStats(getBlacklistStats());
-    setCurrentPage(1); // Reset to first page on refresh
+  // Refresh blacklist data (async)
+  const refreshData = useCallback(async () => {
+    try {
+      const [entries, statsData] = await Promise.all([
+        getBlacklistAsync(),
+        getBlacklistStatsAsync()
+      ]);
+      setBlacklist(entries);
+      setStats(statsData);
+      setCurrentPage(1); // Reset to first page on refresh
+    } catch (error) {
+      console.error('Error fetching blacklist:', error);
+      // Fallback to localStorage
+      setBlacklist(getBlacklistArray());
+      setStats(getBlacklistStats());
+    }
   }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      await refreshData();
+      setIsLoading(false);
+    };
+    loadData();
+  }, [refreshData]);
 
   // Filter blacklist by search
   const filteredBlacklist = useMemo(() => {
@@ -119,7 +148,7 @@ const BlacklistManager = ({ customerData }) => {
       });
 
       setSyncResult(result);
-      refreshData();
+      await refreshData();
     } catch (error) {
       setSyncResult({
         success: false,
@@ -131,10 +160,10 @@ const BlacklistManager = ({ customerData }) => {
   };
 
   // Handle add to blacklist
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newPhone.trim()) return;
 
-    const success = addToBlacklist(newPhone, {
+    const success = await addToBlacklistAsync(newPhone, {
       name: newName.trim(),
       reason: newReason,
       source: 'manual'
@@ -145,15 +174,15 @@ const BlacklistManager = ({ customerData }) => {
       setNewName('');
       setNewReason('manual');
       setShowAddModal(false);
-      refreshData();
+      await refreshData();
     }
   };
 
   // Handle remove from blacklist
-  const handleRemove = (phone) => {
+  const handleRemove = async (phone) => {
     if (window.confirm(`Remover ${phone} da blacklist?`)) {
-      removeFromBlacklist(phone);
-      refreshData();
+      await removeFromBlacklistAsync(phone);
+      await refreshData();
     }
   };
 
@@ -177,11 +206,34 @@ const BlacklistManager = ({ customerData }) => {
     setIsImporting(true);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = importBlacklistCSV(e.target.result, true);
-      alert(`Importado: ${result.imported} entradas\nIgnorado: ${result.skipped}`);
-      refreshData();
-      setIsImporting(false);
+    reader.onload = async (e) => {
+      try {
+        // Parse CSV to entries array
+        const lines = e.target.result.split('\n').filter(l => l.trim());
+        const entries = [];
+
+        // Skip header row if present
+        const startIndex = lines[0]?.toLowerCase().includes('phone') ? 1 : 0;
+
+        for (let i = startIndex; i < lines.length; i++) {
+          const parts = lines[i].split(',');
+          if (parts.length >= 2) {
+            entries.push({
+              name: parts[0]?.replace(/"/g, '').trim() || '',
+              phone: parts[1]?.replace(/"/g, '').trim() || '',
+              reason: parts[2]?.replace(/"/g, '').trim() || 'csv-import'
+            });
+          }
+        }
+
+        const result = await importBlacklistAsync(entries, true);
+        alert(`Importado: ${result.imported || entries.length} entradas`);
+        await refreshData();
+      } catch (error) {
+        alert('Erro ao importar: ' + error.message);
+      } finally {
+        setIsImporting(false);
+      }
     };
     reader.onerror = () => {
       alert('Erro ao ler arquivo');
@@ -251,42 +303,52 @@ const BlacklistManager = ({ customerData }) => {
       id="blacklist-manager"
     >
       <div className="space-y-6">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+            <span className="ml-3 text-slate-500 dark:text-slate-400">Carregando blacklist...</span>
+          </div>
+        )}
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2 mb-1">
-              <ShieldOff className="w-4 h-4 text-slate-500" />
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Total</span>
-            </div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
-          </div>
+        {!isLoading && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldOff className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Total</span>
+                </div>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
+              </div>
 
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-            <div className="flex items-center gap-2 mb-1">
-              <MessageSquareOff className="w-4 h-4 text-red-500" />
-              <span className="text-xs font-medium text-red-600 dark:text-red-400">Opt-outs</span>
-            </div>
-            <p className="text-2xl font-bold text-red-700 dark:text-red-300">{stats.byReason?.optOut || 0}</p>
-          </div>
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageSquareOff className="w-4 h-4 text-red-500" />
+                  <span className="text-xs font-medium text-red-600 dark:text-red-400">Opt-outs</span>
+                </div>
+                <p className="text-2xl font-bold text-red-700 dark:text-red-300">{stats.byReason?.optOut || 0}</p>
+              </div>
 
-          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Não entregues</span>
-            </div>
-            <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">
-              {(stats.byReason?.undelivered || 0) + (stats.byReason?.numberBlocked || 0)}
-            </p>
-          </div>
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Não entregues</span>
+                </div>
+                <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                  {(stats.byReason?.undelivered || 0) + (stats.byReason?.numberBlocked || 0)}
+                </p>
+              </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2 mb-1">
-              <UserX className="w-4 h-4 text-slate-500" />
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Manual</span>
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <UserX className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Manual</span>
+                </div>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.byReason?.manual || 0}</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.byReason?.manual || 0}</p>
-          </div>
-        </div>
 
         {/* Sync Status & Actions */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -628,6 +690,8 @@ const BlacklistManager = ({ customerData }) => {
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </SectionCard>

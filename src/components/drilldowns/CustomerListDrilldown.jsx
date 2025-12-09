@@ -1,4 +1,4 @@
-// CustomerListDrilldown.jsx v3.6 - PHONE VALIDATION
+// CustomerListDrilldown.jsx v3.7 - CONTACT CONTEXT TRACKING
 // ✅ Pagination with "Ver mais" button
 // ✅ WhatsApp and Call actions
 // ✅ Dynamic sorting with controls
@@ -6,12 +6,17 @@
 // ✅ Customer initials avatar
 // ✅ Swipe actions on mobile
 // ✅ Enhanced empty state
-// ✅ Contact tracking (shared across app)
+// ✅ Contact tracking (shared across app with effectiveness tracking)
 // ✅ Communication logging (syncs with CustomerProfileModal)
 // ✅ Design System v3.1 compliant
 // ✅ Brazilian mobile phone validation for WhatsApp
+// ✅ Passes customer context for effectiveness tracking
 //
 // CHANGELOG:
+// v3.7 (2025-12-08): Contact context tracking
+//   - Passes customer name and risk level when marking as contacted
+//   - Uses markContacted for proper effectiveness tracking
+//   - Supports campaign effectiveness metrics
 // v3.6 (2025-12-03): Phone validation for WhatsApp
 //   - Added Brazilian mobile validation before WhatsApp actions
 //   - Disables WhatsApp swipe/buttons for invalid numbers
@@ -71,8 +76,17 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
     const [swipeState, setSwipeState] = useState({ id: null, direction: null, offset: 0 });
     const touchStartRef = useRef({ x: 0, y: 0 });
 
-    // Shared contact tracking (syncs across app)
-    const { isContacted, toggleContacted } = useContactTracking();
+    // Shared contact tracking (syncs across app with effectiveness tracking)
+    const { isContacted, toggleContacted, markContacted } = useContactTracking();
+
+    // Helper to get customer context for effectiveness tracking
+    const getCustomerContext = useCallback((customerId) => {
+        const customer = customers.find(c => c.doc === customerId);
+        return {
+            customerName: customer?.name || null,
+            riskLevel: customer?.riskLevel || null
+        };
+    }, [customers]);
 
     // Format date for display
     const formatDate = (date) => {
@@ -154,7 +168,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         }
     }, [customers, sortBy]);
 
-    const handleCall = (e, phone, customerId) => {
+    const handleCall = useCallback((e, phone, customerId) => {
         e?.stopPropagation();
         const cleaned = formatPhone(phone);
         if (cleaned) {
@@ -162,15 +176,15 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
             // Log to communication history (syncs with CustomerProfileModal)
             if (customerId) {
                 addCommunicationEntry(customerId, 'call', getDefaultNotes('call'));
-                // Mark as contacted when calling
+                // Mark as contacted with context (for effectiveness tracking)
                 if (!isContacted(customerId)) {
-                    toggleContacted(customerId, 'phone');
+                    markContacted(customerId, 'call', getCustomerContext(customerId));
                 }
             }
         }
-    };
+    }, [isContacted, markContacted, getCustomerContext]);
 
-    const handleWhatsApp = (e, phone, customerId) => {
+    const handleWhatsApp = useCallback((e, phone, customerId) => {
         e?.stopPropagation();
         // Validate Brazilian mobile before sending
         if (!hasValidWhatsApp(phone)) return;
@@ -178,25 +192,29 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         if (!normalized) return;
         // Remove + for WhatsApp URL
         const whatsappNumber = normalized.replace('+', '');
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const url = isMobile
+        const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const url = isMobileDevice
             ? `https://api.whatsapp.com/send?phone=${whatsappNumber}`
             : `https://web.whatsapp.com/send?phone=${whatsappNumber}`;
         window.open(url, '_blank');
         // Log to communication history (syncs with CustomerProfileModal)
         if (customerId) {
             addCommunicationEntry(customerId, 'whatsapp', getDefaultNotes('whatsapp'));
-            // Mark as contacted when sending WhatsApp
+            // Mark as contacted with context (for effectiveness tracking)
             if (!isContacted(customerId)) {
-                toggleContacted(customerId, 'whatsapp');
+                markContacted(customerId, 'whatsapp', getCustomerContext(customerId));
             }
         }
-    };
+    }, [isContacted, markContacted, getCustomerContext]);
 
-    const handleMarkContacted = (e, customerId, method = 'manual') => {
+    const handleMarkContacted = useCallback((e, customerId) => {
         e?.stopPropagation();
-        toggleContacted(customerId, method);
-    };
+        if (isContacted(customerId)) {
+            toggleContacted(customerId);
+        } else {
+            markContacted(customerId, 'manual', getCustomerContext(customerId));
+        }
+    }, [isContacted, toggleContacted, markContacted, getCustomerContext]);
 
     // Touch handlers for swipe
     const handleTouchStart = useCallback((e, customerId) => {
@@ -228,7 +246,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
             return;
         }
 
-        // Trigger call/WhatsApp (handlers also log and mark as contacted)
+        // Trigger call/WhatsApp (handlers also log and mark as contacted with context)
         // WhatsApp only works for valid Brazilian mobiles
         if (swipeState.direction === 'right' && hasValidWhatsApp(customer.phone)) {
             handleWhatsApp(null, customer.phone, customerId);
@@ -237,7 +255,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         }
 
         setSwipeState({ id: null, direction: null, offset: 0 });
-    }, [swipeState.direction]);
+    }, [swipeState.direction, handleWhatsApp, handleCall]);
 
     // Get type-specific secondary info
     const getSecondaryInfo = (customer) => {
