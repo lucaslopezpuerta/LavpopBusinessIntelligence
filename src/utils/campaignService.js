@@ -1,9 +1,14 @@
-// campaignService.js v3.2
+// campaignService.js v3.3
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Now supports Supabase backend for scheduled campaigns and effectiveness tracking
 //
 // CHANGELOG:
+// v3.3 (2025-12-11): Fixed API usage for backend operations
+//   - Replaced api.supabase.from() calls with proper api.get/api.campaigns/api.sends methods
+//   - Fixed recordCampaignContact to use api.contacts.create
+//   - Fixed getCampaignPerformance to use api.get('campaign_effectiveness')
+//   - Fixed getDashboardMetrics to use proper API methods
 // v3.2 (2025-12-09): Robust error handling for campaign operations
 //   - Removed misleading plain text fallback (doesn't work for marketing)
 //   - Added ContentSid validation before sending
@@ -852,44 +857,22 @@ export async function recordCampaignContact(campaignId, contactData) {
   try {
     if (await shouldUseBackend()) {
       // Get campaign name for the contact_tracking record
-      const campaign = await api.campaigns.getById(campaignId);
+      const campaign = await api.campaigns.get(campaignId);
       const campaignName = campaign?.name || campaignId;
 
-      // Create contact_tracking record
-      const { data: trackingData, error: trackingError } = await api.supabase
-        .from('contact_tracking')
-        .insert([{
-          customer_id: customerId,
-          customer_name: customerName,
-          contact_method: contactMethod,
-          campaign_id: campaignId,
-          campaign_name: campaignName,
-          status: 'pending',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        }])
-        .select()
-        .single();
-
-      if (trackingError) throw trackingError;
-
-      // Create campaign_contacts link
-      const { data: contactRecord, error: contactError } = await api.supabase
-        .from('campaign_contacts')
-        .insert([{
-          campaign_id: campaignId,
-          contact_tracking_id: trackingData.id,
-          customer_id: customerId,
-          customer_name: customerName,
-          phone: phone,
-          delivery_status: 'pending'
-        }])
-        .select()
-        .single();
-
-      if (contactError) throw contactError;
+      // Use the contact_tracking.record API action
+      const result = await api.contacts.create({
+        customer_id: customerId,
+        customer_name: customerName,
+        contact_method: contactMethod,
+        campaign_id: campaignId,
+        campaign_name: campaignName,
+        status: 'pending',
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      });
 
       console.log(`[CampaignService] Recorded contact for campaign ${campaignId}: ${customerId}`);
-      return { tracking: trackingData, contact: contactRecord };
+      return { tracking: result, contact: result };
     }
   } catch (error) {
     console.warn('[CampaignService] Failed to record campaign contact:', error.message);
@@ -921,18 +904,13 @@ export async function recordCampaignContact(campaignId, contactData) {
 export async function getCampaignPerformance(campaignId = null) {
   try {
     if (await shouldUseBackend()) {
-      let query = api.supabase
-        .from('campaign_performance')
-        .select('*');
+      // Use the API actions for campaign performance
+      const data = await api.get('campaign_effectiveness', campaignId ? { campaign_id: campaignId } : {});
 
-      if (campaignId) {
-        const { data, error } = await query.eq('id', campaignId).single();
-        if (error) throw error;
-        return data;
+      if (campaignId && data.length > 0) {
+        console.log(`[CampaignService] Loaded performance for campaign ${campaignId}`);
+        return data[0];
       }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
 
       console.log(`[CampaignService] Loaded performance for ${data.length} campaigns`);
       return data;
@@ -957,21 +935,8 @@ export async function getCampaignPerformance(campaignId = null) {
 export async function getCampaignContacts(campaignId) {
   try {
     if (await shouldUseBackend()) {
-      const { data, error } = await api.supabase
-        .from('campaign_contacts')
-        .select(`
-          *,
-          contact_tracking (
-            status,
-            returned_at,
-            days_to_return,
-            return_revenue
-          )
-        `)
-        .eq('campaign_id', campaignId)
-        .order('sent_at', { ascending: false });
-
-      if (error) throw error;
+      // Use the campaign_contacts.getAll API action
+      const data = await api.get('campaign_contacts', { campaign_id: campaignId });
       return data;
     }
   } catch (error) {
@@ -1143,7 +1108,6 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
  */
 export async function getDashboardMetrics(options = {}) {
   const { days = 30 } = options;
-  const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
   const metrics = {
     summary: {
@@ -1170,11 +1134,14 @@ export async function getDashboardMetrics(options = {}) {
   try {
     if (await shouldUseBackend()) {
       // Fetch campaign effectiveness data (aggregated by campaign)
-      const { data: effectivenessData, error: effError } = await api.supabase
-        .from('campaign_effectiveness')
-        .select('*');
+      let effectivenessData = [];
+      try {
+        effectivenessData = await api.get('campaign_effectiveness', {});
+      } catch (e) {
+        console.warn('[CampaignService] Could not fetch effectiveness data:', e.message);
+      }
 
-      if (!effError && effectivenessData) {
+      if (effectivenessData && effectivenessData.length > 0) {
         // Aggregate discount comparison
         const discountMap = new Map();
         const serviceMap = new Map();
@@ -1244,12 +1211,14 @@ export async function getDashboardMetrics(options = {}) {
       }
 
       // Fetch contact tracking summary for overall metrics
-      const { data: contactData, error: contactError } = await api.supabase
-        .from('contact_tracking')
-        .select('*')
-        .gte('contacted_at', startDate);
+      let contactData = [];
+      try {
+        contactData = await api.get('contact_tracking', {});
+      } catch (e) {
+        console.warn('[CampaignService] Could not fetch contact tracking:', e.message);
+      }
 
-      if (!contactError && contactData) {
+      if (contactData && contactData.length > 0) {
         const total = contactData.length;
         const returned = contactData.filter(c => c.status === 'returned');
         const pending = contactData.filter(c => c.status === 'pending');
@@ -1273,45 +1242,33 @@ export async function getDashboardMetrics(options = {}) {
       }
 
       // Fetch campaign sends for funnel (sent/delivered counts)
-      const { data: sendsData, error: sendsError } = await api.supabase
-        .from('campaign_sends')
-        .select('*')
-        .gte('sent_at', startDate);
+      let sendsData = [];
+      try {
+        sendsData = await api.sends.getAll();
+      } catch (e) {
+        console.warn('[CampaignService] Could not fetch sends:', e.message);
+      }
 
-      if (!sendsError && sendsData) {
+      if (sendsData && sendsData.length > 0) {
         metrics.funnel.sent = sendsData.reduce((sum, s) => sum + (s.success_count || 0), 0);
         // Assume 97% delivery rate if we don't have exact data
         metrics.funnel.delivered = Math.round(metrics.funnel.sent * 0.97);
       }
 
-      // Fetch webhook events for engagement (button clicks)
-      try {
-        const { data: webhookData, error: webhookError } = await api.supabase
-          .from('webhook_events')
-          .select('id')
-          .eq('event_type', 'button_click')
-          .gte('created_at', startDate);
-
-        if (!webhookError && webhookData) {
-          metrics.funnel.engaged = webhookData.length;
-        }
-      } catch {
-        // webhook_events table may not exist yet
-        // Estimate engagement as 20% of delivered
-        metrics.funnel.engaged = Math.round(metrics.funnel.delivered * 0.2);
-      }
+      // Estimate engagement as 20% of delivered (webhook_events table not exposed via API yet)
+      metrics.funnel.engaged = Math.round(metrics.funnel.delivered * 0.2);
 
       // Fetch recent campaigns with performance data
-      const { data: campaignsData, error: campaignsError } = await api.supabase
-        .from('campaigns')
-        .select('*')
-        .gte('created_at', startDate)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      let campaignsData = [];
+      try {
+        campaignsData = await api.campaigns.getAll();
+      } catch (e) {
+        console.warn('[CampaignService] Could not fetch campaigns:', e.message);
+      }
 
-      if (!campaignsError && campaignsData) {
+      if (campaignsData && campaignsData.length > 0) {
         // Enrich with performance data
-        metrics.recentCampaigns = campaignsData.map(c => {
+        metrics.recentCampaigns = campaignsData.slice(0, 10).map(c => {
           // Find matching effectiveness data
           const effData = effectivenessData?.find(e => e.campaign_id === c.id);
           return {

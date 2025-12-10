@@ -2,6 +2,10 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 2.1 (2025-12-11) - Added missing contact tracking actions
+//   - Added contact_tracking.getAll, contact_tracking.create, contact_tracking.update
+//   - Added rpc.expire_old_contacts, rpc.mark_customer_returned
+//
 // Version: 2.0 (2025-12-10) - Security hardening
 //
 // Environment variables required:
@@ -204,11 +208,27 @@ exports.handler = async (event, context) => {
         return await getCampaignPerformance(supabase, params.campaign_id || id, headers);
 
       // ==================== CONTACT TRACKING ====================
+      case 'contact_tracking.getAll':
+        return await getContactTracking(supabase, body, headers);
+
+      case 'contact_tracking.create':
+        return await createContactTracking(supabase, data, headers);
+
+      case 'contact_tracking.update':
+        return await updateContactTracking(supabase, body, headers);
+
       case 'contact_tracking.record':
         return await recordContactTracking(supabase, data, headers);
 
       case 'contact_tracking.markReturned':
         return await markContactReturned(supabase, data, headers);
+
+      // ==================== RPC FUNCTIONS ====================
+      case 'rpc.expire_old_contacts':
+        return await expireOldContacts(supabase, headers);
+
+      case 'rpc.mark_customer_returned':
+        return await markCustomerReturnedRpc(supabase, body, headers);
 
       // ==================== DATA MIGRATION ====================
       case 'migrate.import':
@@ -229,7 +249,9 @@ exports.handler = async (event, context) => {
               'automation.getAll', 'automation.save',
               'campaign_effectiveness.getAll', 'contact_effectiveness_summary.getAll',
               'campaign_contacts.getAll', 'campaign_performance.get',
+              'contact_tracking.getAll', 'contact_tracking.create', 'contact_tracking.update',
               'contact_tracking.record', 'contact_tracking.markReturned',
+              'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
               'migrate.import'
             ]
           })
@@ -1158,5 +1180,192 @@ async function markContactReturned(supabase, data, headers) {
     statusCode: 200,
     headers,
     body: JSON.stringify({ success: true, tracking: updated })
+  };
+}
+
+// ==================== CONTACT TRACKING CRUD ====================
+
+async function getContactTracking(supabase, params, headers) {
+  let query = supabase
+    .from('contact_tracking')
+    .select('*')
+    .order('contacted_at', { ascending: false });
+
+  // Apply filters
+  if (params.customer_id) {
+    query = query.eq('customer_id', params.customer_id);
+  }
+  if (params.status) {
+    query = query.eq('status', params.status);
+  }
+  if (params.campaign_id) {
+    query = query.eq('campaign_id', params.campaign_id);
+  }
+  if (params.limit) {
+    query = query.limit(parseInt(params.limit));
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    // If table doesn't exist, return empty array
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ contact_tracking: [] })
+      };
+    }
+    throw error;
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ contact_tracking: data || [] })
+  };
+}
+
+async function createContactTracking(supabase, data, headers) {
+  const { data: created, error } = await supabase
+    .from('contact_tracking')
+    .insert(data)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ contact_tracking: created })
+  };
+}
+
+async function updateContactTracking(supabase, body, headers) {
+  const { data: updateData, filters } = body;
+
+  let query = supabase
+    .from('contact_tracking')
+    .update(updateData);
+
+  // Apply filters
+  if (filters?.customer_id) {
+    query = query.eq('customer_id', filters.customer_id);
+  }
+  if (filters?.status) {
+    query = query.eq('status', filters.status);
+  }
+  if (filters?.id) {
+    query = query.eq('id', filters.id);
+  }
+
+  const { data, error } = await query.select();
+
+  if (error) throw error;
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ success: true, updated: data?.length || 0 })
+  };
+}
+
+// ==================== RPC FUNCTIONS ====================
+
+async function expireOldContacts(supabase, headers) {
+  const now = new Date().toISOString();
+
+  // Update all pending contacts where expires_at has passed
+  const { data, error } = await supabase
+    .from('contact_tracking')
+    .update({ status: 'expired' })
+    .eq('status', 'pending')
+    .lt('expires_at', now)
+    .select();
+
+  if (error) {
+    // If table doesn't exist, return 0
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ data: 0 })
+      };
+    }
+    throw error;
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ data: data?.length || 0 })
+  };
+}
+
+async function markCustomerReturnedRpc(supabase, body, headers) {
+  const { p_customer_id, p_return_date, p_revenue } = body;
+
+  if (!p_customer_id) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'customerId required' })
+    };
+  }
+
+  // Find pending contacts for this customer that were created before the return date
+  const { data: pending, error: findError } = await supabase
+    .from('contact_tracking')
+    .select('*')
+    .eq('customer_id', p_customer_id)
+    .eq('status', 'pending')
+    .lt('contacted_at', p_return_date);
+
+  if (findError) {
+    if (findError.code === 'PGRST116' || findError.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ data: 0 })
+      };
+    }
+    throw findError;
+  }
+
+  if (!pending || pending.length === 0) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ data: 0 })
+    };
+  }
+
+  // Update all matching records
+  let updated = 0;
+  for (const record of pending) {
+    const contactedAt = new Date(record.contacted_at);
+    const returnDate = new Date(p_return_date);
+    const daysToReturn = Math.floor((returnDate - contactedAt) / (24 * 60 * 60 * 1000));
+
+    const { error: updateError } = await supabase
+      .from('contact_tracking')
+      .update({
+        status: 'returned',
+        returned_at: p_return_date,
+        days_to_return: daysToReturn,
+        return_revenue: (record.return_revenue || 0) + (p_revenue || 0)
+      })
+      .eq('id', record.id);
+
+    if (!updateError) {
+      updated++;
+    }
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ data: updated })
   };
 }
