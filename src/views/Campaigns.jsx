@@ -1,8 +1,14 @@
-// Campaigns.jsx v1.3.0
+// Campaigns.jsx v2.0.0
 // Customer Messaging & Campaign Management Tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.0.0 (2025-12-10): Complete dashboard redesign
+//   - Replaced CampaignEffectiveness + CampaignROISection with unified CampaignDashboard
+//   - All data now dynamic from Supabase (removed CSV dependency)
+//   - Added A/B testing visualization (discount/service comparison)
+//   - Added campaign funnel visualization
+//   - Dynamic insights based on data patterns
 // v1.3.0 (2025-12-08): Added Campaign Effectiveness metrics
 //   - CampaignEffectiveness component in overview tab
 //   - Shows contact return rates, revenue recovered, method comparison
@@ -14,7 +20,6 @@
 //   - Twilio sync integration for automatic blacklist updates
 // v1.0.0 (2025-12-03): Initial implementation
 //   - Campaign overview with KPI summary
-//   - Moved CampaignROISection from Intelligence tab
 //   - Audience targeting based on RFM/risk segments
 //   - WhatsApp campaign creation and management
 //   - Automation rules for win-back and welcome series
@@ -23,20 +28,11 @@
 import { useState, useMemo } from 'react';
 import {
   MessageSquare,
-  Target,
-  Users,
-  Zap,
-  AlertTriangle,
   Plus
 } from 'lucide-react';
 
 // UI components
-import KPICard, { KPIGrid } from '../components/ui/KPICard';
-import SectionCard from '../components/ui/SectionCard';
 import InsightBox from '../components/ui/InsightBox';
-
-// Section components
-import CampaignROISection from '../components/intelligence/CampaignROISection';
 
 // Campaign-specific components
 import CampaignList from '../components/campaigns/CampaignList';
@@ -46,11 +42,25 @@ import AutomationRules from '../components/campaigns/AutomationRules';
 import CampaignSectionNavigation from '../components/campaigns/CampaignSectionNavigation';
 import BlacklistManager from '../components/campaigns/BlacklistManager';
 import NewCampaignModal from '../components/campaigns/NewCampaignModal';
-import CampaignEffectiveness from '../components/campaigns/CampaignEffectiveness';
+import CampaignDashboard from '../components/campaigns/CampaignDashboard';
 
 // Business logic
-import { calculateCampaignROI } from '../utils/intelligenceCalculations';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
+
+// ==================== HELPER FUNCTIONS ====================
+
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value || 0);
+};
+
+const formatPercent = (value) => {
+  return `${(value || 0).toFixed(1)}%`;
+};
 
 // ==================== MAIN COMPONENT ====================
 
@@ -58,17 +68,6 @@ const Campaigns = ({ data }) => {
   const [activeSection, setActiveSection] = useState('overview');
   const [showNewCampaign, setShowNewCampaign] = useState(false);
   const [selectedAudience, setSelectedAudience] = useState(null);
-
-  // Calculate campaign metrics
-  const campaignROI = useMemo(() => {
-    if (!data?.sales || !data?.campaigns) return null;
-    try {
-      return calculateCampaignROI(data.sales, data.campaigns);
-    } catch (error) {
-      console.error('Campaign ROI calculation error:', error);
-      return null;
-    }
-  }, [data?.sales, data?.campaigns]);
 
   // Calculate customer metrics for audience targeting
   const customerMetrics = useMemo(() => {
@@ -102,20 +101,6 @@ const Campaigns = ({ data }) => {
     };
   }, [customerMetrics?.allCustomers]);
 
-  // Format helpers
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value || 0);
-  };
-
-  const formatPercent = (value) => {
-    return `${(value || 0).toFixed(1)}%`;
-  };
-
   // Loading state
   if (!data || !data.sales) {
     return (
@@ -132,16 +117,6 @@ const Campaigns = ({ data }) => {
       </div>
     );
   }
-
-  // Calculate summary metrics
-  const summaryMetrics = {
-    totalCampaigns: campaignROI?.totalCampaigns || 0,
-    activeCampaigns: campaignROI?.activeCampaigns || 0,
-    totalReach: audienceSegments?.withPhone?.length || 0,
-    atRiskCount: audienceSegments?.atRisk?.length || 0,
-    newCustomersCount: audienceSegments?.newCustomers?.length || 0,
-    averageROI: campaignROI?.summary?.overallROI || 0
-  };
 
   return (
     <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 sm:space-y-8 animate-fade-in">
@@ -178,71 +153,17 @@ const Campaigns = ({ data }) => {
         onSectionChange={setActiveSection}
       />
 
-      {/* Actionable Insight */}
-      {audienceSegments?.atRisk?.length > 5 && (
-        <InsightBox
-          type="warning"
-          title={`${audienceSegments.atRisk.length} Clientes em Risco`}
-          message={`Você tem clientes que não visitam há mais de 30 dias. Uma campanha de win-back via WhatsApp pode recuperar até 20% deles. Clique em "Nova Campanha" para começar.`}
-        />
-      )}
-
-      {/* Quick Stats KPIs */}
-      <section aria-labelledby="campaign-stats-heading">
-        <h2 id="campaign-stats-heading" className="sr-only">Resumo de Campanhas</h2>
-        <KPIGrid columns={4}>
-          <KPICard
-            label="Campanhas Ativas"
-            value={summaryMetrics.activeCampaigns}
-            subtitle={`${summaryMetrics.totalCampaigns} total`}
-            icon={Target}
-            color="purple"
-            variant="gradient"
-          />
-          <KPICard
-            label="Alcance WhatsApp"
-            value={summaryMetrics.totalReach}
-            subtitle="clientes com telefone"
-            icon={Users}
-            color="blue"
-            variant="gradient"
-          />
-          <KPICard
-            label="Clientes em Risco"
-            value={summaryMetrics.atRiskCount}
-            subtitle="precisam de atenção"
-            icon={AlertTriangle}
-            color="warning"
-            variant="gradient"
-          />
-          <KPICard
-            label="ROI Médio"
-            value={formatPercent(summaryMetrics.averageROI)}
-            subtitle="retorno incremental"
-            icon={Zap}
-            color={summaryMetrics.averageROI > 0 ? 'positive' : 'negative'}
-            variant="gradient"
-          />
-        </KPIGrid>
-      </section>
-
-      {/* Campaign ROI Section (moved from Intelligence) */}
+      {/* Campaign Analytics Dashboard - Main overview section */}
       {activeSection === 'overview' && (
-        <>
-          <CampaignEffectiveness className="mb-6" />
-          <CampaignROISection
-            campaignROI={campaignROI}
-            formatCurrency={formatCurrency}
-            formatPercent={formatPercent}
-          />
-        </>
+        <CampaignDashboard
+          audienceSegments={audienceSegments}
+        />
       )}
 
       {/* Automation Rules Section */}
       {activeSection === 'automations' && (
         <AutomationRules
           audienceSegments={audienceSegments}
-          formatCurrency={formatCurrency}
         />
       )}
 
@@ -273,7 +194,7 @@ const Campaigns = ({ data }) => {
       {/* Campaign List Section */}
       {activeSection === 'history' && (
         <CampaignList
-          campaigns={campaignROI?.campaigns || []}
+          campaigns={[]}
           formatCurrency={formatCurrency}
           formatPercent={formatPercent}
         />

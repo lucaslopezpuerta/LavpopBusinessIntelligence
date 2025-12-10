@@ -114,6 +114,26 @@ exports.handler = async (event, context) => {
       case 'automation.save':
         return await saveAutomationRules(supabase, data, headers);
 
+      // ==================== CAMPAIGN EFFECTIVENESS ====================
+      case 'campaign_effectiveness.getAll':
+        return await getCampaignEffectiveness(supabase, params, headers);
+
+      case 'contact_effectiveness_summary.getAll':
+        return await getContactEffectivenessSummary(supabase, headers);
+
+      case 'campaign_contacts.getAll':
+        return await getCampaignContacts(supabase, params.campaign_id, headers);
+
+      case 'campaign_performance.get':
+        return await getCampaignPerformance(supabase, params.campaign_id || id, headers);
+
+      // ==================== CONTACT TRACKING ====================
+      case 'contact_tracking.record':
+        return await recordContactTracking(supabase, data, headers);
+
+      case 'contact_tracking.markReturned':
+        return await markContactReturned(supabase, data, headers);
+
       // ==================== DATA MIGRATION ====================
       case 'migrate.import':
         return await migrateFromLocalStorage(supabase, data, headers);
@@ -131,6 +151,9 @@ exports.handler = async (event, context) => {
               'scheduled.getAll', 'scheduled.create', 'scheduled.cancel',
               'logs.getAll', 'logs.add', 'logs.getByPhone',
               'automation.getAll', 'automation.save',
+              'campaign_effectiveness.getAll', 'contact_effectiveness_summary.getAll',
+              'campaign_contacts.getAll', 'campaign_performance.get',
+              'contact_tracking.record', 'contact_tracking.markReturned',
               'migrate.import'
             ]
           })
@@ -333,7 +356,15 @@ async function createCampaign(supabase, campaignData, headers) {
     sends: 0,
     delivered: 0,
     opened: 0,
-    converted: 0
+    converted: 0,
+    // Store full campaign details for analytics
+    message_body: campaignData.messageBody || null,
+    contact_method: campaignData.contactMethod || 'whatsapp',
+    target_segments: campaignData.targetSegments || null,
+    // A/B Testing fields for discount effectiveness analysis
+    discount_percent: campaignData.discountPercent || null,
+    coupon_code: campaignData.couponCode || null,
+    service_type: campaignData.serviceType || null
   };
 
   const { data, error } = await supabase
@@ -810,5 +841,247 @@ async function migrateFromLocalStorage(supabase, data, headers) {
       success: true,
       results
     })
+  };
+}
+
+// ==================== CAMPAIGN EFFECTIVENESS FUNCTIONS ====================
+
+async function getCampaignEffectiveness(supabase, params, headers) {
+  // Query the campaign_effectiveness view
+  let query = supabase
+    .from('campaign_effectiveness')
+    .select('*');
+
+  if (params.campaign_id) {
+    query = query.eq('campaign_id', params.campaign_id);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    // If view doesn't exist, return empty array (graceful fallback)
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([])
+      };
+    }
+    throw error;
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify(data || [])
+  };
+}
+
+async function getContactEffectivenessSummary(supabase, headers) {
+  // Query the contact_effectiveness_summary view
+  const { data, error } = await supabase
+    .from('contact_effectiveness_summary')
+    .select('*');
+
+  if (error) {
+    // If view doesn't exist, return empty array (graceful fallback)
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([])
+      };
+    }
+    throw error;
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify(data || [])
+  };
+}
+
+async function getCampaignContacts(supabase, campaignId, headers) {
+  if (!campaignId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'campaign_id required' })
+    };
+  }
+
+  // Get campaign contacts with their tracking status
+  const { data, error } = await supabase
+    .from('campaign_contacts')
+    .select(`
+      id,
+      campaign_id,
+      customer_id,
+      customer_name,
+      phone,
+      sent_at,
+      contact_tracking (
+        status,
+        return_date,
+        return_revenue,
+        days_to_return
+      )
+    `)
+    .eq('campaign_id', campaignId)
+    .order('sent_at', { ascending: false });
+
+  if (error) {
+    // If table doesn't exist, return empty array
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([])
+      };
+    }
+    throw error;
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify(data || [])
+  };
+}
+
+async function getCampaignPerformance(supabase, campaignId, headers) {
+  if (!campaignId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'campaign_id required' })
+    };
+  }
+
+  // Get campaign performance from the view
+  const { data, error } = await supabase
+    .from('campaign_performance')
+    .select('*')
+    .eq('id', campaignId)
+    .single();
+
+  if (error) {
+    // If view doesn't exist or campaign not found, return null
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(null)
+      };
+    }
+    throw error;
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify(data)
+  };
+}
+
+// ==================== CONTACT TRACKING FUNCTIONS ====================
+
+async function recordContactTracking(supabase, trackingData, headers) {
+  const { customerId, campaignId, customerName, phone, contactMethod } = trackingData;
+
+  if (!customerId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'customerId required' })
+    };
+  }
+
+  // Insert into contact_tracking
+  const { data: tracking, error: trackingError } = await supabase
+    .from('contact_tracking')
+    .upsert({
+      customer_id: customerId,
+      contact_method: contactMethod || 'whatsapp',
+      status: 'pending',
+      contacted_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    }, { onConflict: 'customer_id' })
+    .select()
+    .single();
+
+  if (trackingError) throw trackingError;
+
+  // If campaign, also insert into campaign_contacts
+  if (campaignId) {
+    await supabase
+      .from('campaign_contacts')
+      .insert({
+        campaign_id: campaignId,
+        customer_id: customerId,
+        customer_name: customerName,
+        phone: phone
+      });
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ success: true, tracking })
+  };
+}
+
+async function markContactReturned(supabase, data, headers) {
+  const { customerId, revenue } = data;
+
+  if (!customerId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'customerId required' })
+    };
+  }
+
+  // Find the contact tracking record
+  const { data: existing, error: findError } = await supabase
+    .from('contact_tracking')
+    .select('*')
+    .eq('customer_id', customerId)
+    .eq('status', 'pending')
+    .single();
+
+  if (findError || !existing) {
+    return {
+      statusCode: 404,
+      headers,
+      body: JSON.stringify({ error: 'No pending contact found for customer' })
+    };
+  }
+
+  // Calculate days to return
+  const contactedAt = new Date(existing.contacted_at);
+  const now = new Date();
+  const daysToReturn = Math.floor((now - contactedAt) / (24 * 60 * 60 * 1000));
+
+  // Update the record
+  const { data: updated, error: updateError } = await supabase
+    .from('contact_tracking')
+    .update({
+      status: 'returned',
+      return_date: now.toISOString(),
+      return_revenue: revenue || 0,
+      days_to_return: daysToReturn
+    })
+    .eq('id', existing.id)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ success: true, tracking: updated })
   };
 }

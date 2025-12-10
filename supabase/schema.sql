@@ -58,10 +58,19 @@ CREATE TABLE IF NOT EXISTS campaigns (
   recipient_snapshot JSONB,         -- Store recipient details at send time
   created_by TEXT,                  -- Who created the campaign
   error_message TEXT,               -- Error tracking for failed campaigns
+  -- A/B Testing fields for discount effectiveness analysis
+  discount_percent NUMERIC(5,2),    -- Discount % offered (e.g., 20.00)
+  coupon_code TEXT,                 -- POS coupon code used (e.g., 'VOLTE20')
+  service_type TEXT,                -- 'wash', 'dry', 'both' - what service the discount applies to
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ,
   last_sent_at TIMESTAMPTZ
 );
+
+-- Add columns if they don't exist (for migration)
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5,2);
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS coupon_code TEXT;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS service_type TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
 CREATE INDEX IF NOT EXISTS idx_campaigns_created_at ON campaigns(created_at DESC);
@@ -203,6 +212,11 @@ CREATE TABLE IF NOT EXISTS automation_rules (
 );
 
 -- ==================== VIEWS ====================
+-- Drop existing views first to allow column changes
+-- (CREATE OR REPLACE VIEW cannot rename columns)
+DROP VIEW IF EXISTS contact_effectiveness_summary CASCADE;
+DROP VIEW IF EXISTS campaign_effectiveness CASCADE;
+DROP VIEW IF EXISTS campaign_performance CASCADE;
 
 -- Campaign performance view with effectiveness metrics
 CREATE OR REPLACE VIEW campaign_performance AS
@@ -234,26 +248,51 @@ LEFT JOIN contact_tracking ct ON cc.contact_tracking_id = ct.id
 GROUP BY c.id, c.name, c.audience, c.status, c.contact_method, c.sends, c.delivered, c.created_at, c.last_sent_at;
 
 -- Campaign effectiveness summary view (grouped by campaign)
+-- Enhanced with A/B testing metrics for discount effectiveness analysis
 CREATE OR REPLACE VIEW campaign_effectiveness AS
 SELECT
-  campaign_id,
-  campaign_name,
-  contact_method,
+  ct.campaign_id,
+  ct.campaign_name,
+  ct.contact_method,
+  -- Contact metrics
   COUNT(*) as total_contacts,
-  COUNT(*) FILTER (WHERE status = 'returned') as returned_count,
-  COUNT(*) FILTER (WHERE status = 'expired') as expired_count,
-  COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
-  COUNT(*) FILTER (WHERE status = 'cleared') as cleared_count,
+  COUNT(*) FILTER (WHERE ct.status = 'returned') as returned_count,
+  COUNT(*) FILTER (WHERE ct.status = 'expired') as expired_count,
+  COUNT(*) FILTER (WHERE ct.status = 'pending') as pending_count,
+  COUNT(*) FILTER (WHERE ct.status = 'cleared') as cleared_count,
   ROUND(
-    100.0 * COUNT(*) FILTER (WHERE status = 'returned') / NULLIF(COUNT(*), 0),
+    100.0 * COUNT(*) FILTER (WHERE ct.status = 'returned') / NULLIF(COUNT(*), 0),
     1
   ) as return_rate,
-  ROUND(AVG(days_to_return) FILTER (WHERE status = 'returned'), 1) as avg_days_to_return,
-  COALESCE(SUM(return_revenue) FILTER (WHERE status = 'returned'), 0) as total_return_revenue,
-  MIN(contacted_at) as first_contact,
-  MAX(contacted_at) as last_contact
-FROM contact_tracking
-GROUP BY campaign_id, campaign_name, contact_method;
+  ROUND(AVG(ct.days_to_return) FILTER (WHERE ct.status = 'returned'), 1) as avg_days_to_return,
+  -- Revenue metrics
+  COALESCE(SUM(ct.return_revenue) FILTER (WHERE ct.status = 'returned'), 0) as total_return_revenue,
+  -- A/B Testing metrics (from campaigns table)
+  c.discount_percent,
+  c.coupon_code,
+  c.service_type,
+  -- Net Return Value = Revenue - Discount Cost
+  -- Discount cost = Revenue * (discount_percent / 100)
+  ROUND(
+    COALESCE(SUM(ct.return_revenue) FILTER (WHERE ct.status = 'returned'), 0) *
+    (1 - COALESCE(c.discount_percent, 0) / 100),
+    2
+  ) as net_return_value,
+  -- ROI metrics
+  ROUND(
+    CASE
+      WHEN COUNT(*) FILTER (WHERE ct.status = 'returned') > 0
+      THEN COALESCE(SUM(ct.return_revenue) FILTER (WHERE ct.status = 'returned'), 0) /
+           COUNT(*) FILTER (WHERE ct.status = 'returned')
+      ELSE 0
+    END,
+    2
+  ) as avg_revenue_per_return,
+  MIN(ct.contacted_at) as first_contact,
+  MAX(ct.contacted_at) as last_contact
+FROM contact_tracking ct
+LEFT JOIN campaigns c ON ct.campaign_id = c.id
+GROUP BY ct.campaign_id, ct.campaign_name, ct.contact_method, c.discount_percent, c.coupon_code, c.service_type;
 
 -- Overall effectiveness (all contacts, with and without campaigns)
 CREATE OR REPLACE VIEW contact_effectiveness_summary AS

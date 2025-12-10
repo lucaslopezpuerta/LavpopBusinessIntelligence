@@ -1,8 +1,19 @@
-// NewCampaignModal.jsx v3.1
+// NewCampaignModal.jsx v4.1
 // Campaign creation wizard modal
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v4.1 (2025-12-09): Robust error handling for campaign sends
+//   - ContentSid validation before sending (required for marketing)
+//   - Detailed error breakdown display (by error type)
+//   - Partial success handling with clear messaging
+//   - Retryable error indicators for user guidance
+// v4.0 (2025-12-09): A/B Testing with dynamic discount/coupon selection
+//   - Added discount percentage selector (15%, 20%, 25%, 30%)
+//   - Added service type selector (Todos, Só Lavagem, Só Secagem)
+//   - Dynamic coupon code lookup from couponConfig.js
+//   - Real-time coupon preview in campaign creation
+//   - Enhanced tracking for discount effectiveness analysis
 // v3.1 (2025-12-08): Centralized template configuration
 //   - Templates imported from config/messageTemplates.js
 //   - Consistent with MessageComposer templates
@@ -52,7 +63,15 @@ import {
   createCampaignAsync,
   sendCampaignWithTracking
 } from '../../utils/campaignService';
-import { MESSAGE_TEMPLATES, getTemplatesByAudience } from '../../config/messageTemplates';
+import {
+  MESSAGE_TEMPLATES,
+  getTemplatesByAudience,
+  SERVICE_TYPE_LABELS,
+  getDiscountOptionsForTemplate,
+  getServiceOptionsForTemplate,
+  getCouponForTemplate
+} from '../../config/messageTemplates';
+import { TEMPLATE_CAMPAIGN_TYPE_MAP } from '../../config/couponConfig';
 
 // Icon mapping for templates
 const ICON_MAP = {
@@ -117,6 +136,10 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
   const [sendResult, setSendResult] = useState(null);
   const [showPhonePreview, setShowPhonePreview] = useState(false);
 
+  // Discount and service type selection for A/B testing
+  const [selectedDiscount, setSelectedDiscount] = useState(null);
+  const [selectedServiceType, setSelectedServiceType] = useState(null);
+
   // Scheduling state
   const [sendMode, setSendMode] = useState('now'); // 'now' or 'scheduled'
   const [scheduledDate, setScheduledDate] = useState('');
@@ -141,6 +164,30 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
     if (!audienceCustomers.length) return null;
     return validateCampaignAudience(audienceCustomers);
   }, [audienceCustomers]);
+
+  // Get discount options for selected template
+  const discountOptions = useMemo(() => {
+    if (!selectedTemplate) return [];
+    return getDiscountOptionsForTemplate(selectedTemplate.id);
+  }, [selectedTemplate]);
+
+  // Get service type options for selected template
+  const serviceOptions = useMemo(() => {
+    if (!selectedTemplate) return [];
+    return getServiceOptionsForTemplate(selectedTemplate.id);
+  }, [selectedTemplate]);
+
+  // Get the selected coupon based on discount and service type
+  const selectedCoupon = useMemo(() => {
+    if (!selectedTemplate || selectedDiscount === null || !selectedServiceType) return null;
+    return getCouponForTemplate(selectedTemplate.id, selectedDiscount, selectedServiceType);
+  }, [selectedTemplate, selectedDiscount, selectedServiceType]);
+
+  // Check if this template has coupon/discount configuration
+  const hasCouponConfig = useMemo(() => {
+    if (!selectedTemplate) return false;
+    return selectedTemplate.campaignType !== null;
+  }, [selectedTemplate]);
 
   // Get audience count for each segment
   const getAudienceCount = (audienceId) => {
@@ -178,6 +225,10 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
     const customerName = customer?.name ? getFirstName(customer.name) : 'Cliente';
     const customerWallet = customer?.walletBalance || 0;
 
+    // Use selected values if available, otherwise fallback to template defaults
+    const effectiveDiscount = selectedDiscount || template.discountDefaults?.discountPercent || 20;
+    const effectiveCoupon = selectedCoupon?.code || template.discountDefaults?.couponCode || 'LAVPOP20';
+
     // Build replacements based on template variables
     const replacements = {};
     template.variables?.forEach(v => {
@@ -187,10 +238,10 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
           replacements[`{{${pos}}}`] = customerName;
           break;
         case 'discount':
-          replacements[`{{${pos}}}`] = v.fallback || '20';
+          replacements[`{{${pos}}}`] = String(effectiveDiscount);
           break;
         case 'couponCode':
-          replacements[`{{${pos}}}`] = v.fallback || 'LAVPOP20';
+          replacements[`{{${pos}}}`] = effectiveCoupon;
           break;
         case 'expirationDate':
           replacements[`{{${pos}}}`] = validade;
@@ -235,8 +286,21 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
 
       setIsSending(true);
 
+      // Build content variables for scheduled send
+      const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+      const scheduledContentVars = {
+        '1': '{{nome}}',
+        '2': selectedTemplate.id === 'wallet_reminder'
+          ? '{{saldo}}'
+          : String(selectedDiscount || selectedTemplate.discountDefaults?.discountPercent || '20'),
+        '3': selectedCoupon?.code || selectedTemplate.discountDefaults?.couponCode || '',
+        '4': validade
+      };
+
       try {
-        // Save scheduled campaign using backend
+        // Save scheduled campaign using backend with ContentSid
         await createScheduledCampaignAsync({
           name: selectedTemplate.name,
           templateId: selectedTemplate.id,
@@ -244,9 +308,16 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
           audienceCount: validationStats.ready.length,
           scheduledFor: scheduledDateTime.toISOString(),
           messageBody: formatPreview(selectedTemplate),
+          // Meta-approved template configuration
+          contentSid: selectedTemplate.twilioContentSid,
+          contentVariables: scheduledContentVars,
+          discountPercent: selectedDiscount || selectedTemplate.discountDefaults?.discountPercent,
+          couponCode: selectedCoupon?.code || selectedTemplate.discountDefaults?.couponCode,
           recipients: validationStats.ready.map(c => ({
             phone: c.phone,
-            name: c.name
+            name: c.name,
+            walletBalance: c.walletBalance,
+            customerId: c.doc || c.cpf || c.id
           }))
         });
 
@@ -275,6 +346,11 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
       const messageBody = formatPreview(selectedTemplate);
 
       // Create campaign record with full details for analytics
+      // Use selected discount/coupon values for A/B testing analysis
+      const effectiveDiscount = selectedDiscount || selectedTemplate.discountDefaults?.discountPercent || null;
+      const effectiveCoupon = selectedCoupon?.code || selectedTemplate.discountDefaults?.couponCode || null;
+      const effectiveServiceType = selectedServiceType || selectedTemplate.discountDefaults?.serviceType || null;
+
       const campaign = await createCampaignAsync({
         name: selectedTemplate.name,
         templateId: selectedTemplate.id,
@@ -285,7 +361,11 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
         targetSegments: {
           segments: [selectedAudience],
           walletMin: selectedAudience === 'withWallet' ? audienceSegments?.walletThreshold || 10 : null
-        }
+        },
+        // A/B Testing fields for discount effectiveness analysis
+        discountPercent: effectiveDiscount,
+        couponCode: effectiveCoupon,
+        serviceType: effectiveServiceType
       });
 
       // Prepare recipients with customerId for effectiveness tracking
@@ -296,25 +376,63 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
         walletBalance: c.walletBalance
       }));
 
-      // Send campaign with effectiveness tracking
+      // Build content variables for Meta template
+      // Variables: {{1}}=name, {{2}}=discount/wallet, {{3}}=coupon, {{4}}=expiration
+      const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+      const contentVariables = {
+        '1': '{{nome}}', // Will be personalized per recipient
+        '2': selectedTemplate.id === 'wallet_reminder'
+          ? '{{saldo}}' // Wallet balance - personalized per recipient
+          : String(effectiveDiscount || selectedTemplate.discountDefaults?.discountPercent || '20'),
+        '3': effectiveCoupon || selectedTemplate.discountDefaults?.couponCode || '',
+        '4': validade
+      };
+
+      // Validate template has ContentSid before sending
+      if (!selectedTemplate.twilioContentSid) {
+        setSendResult({
+          success: false,
+          error: `Template "${selectedTemplate.name}" não possui ContentSid configurado. Configure o template no Twilio antes de enviar.`,
+          errorType: 'MISSING_CONTENT_SID'
+        });
+        setIsSending(false);
+        return;
+      }
+
+      // Send campaign with effectiveness tracking using Meta-approved template
       // This records contacts in contact_tracking + campaign_contacts
       const result = await sendCampaignWithTracking(campaign.id, recipientsForTracking, {
-        messageBody: messageBody,
+        contentSid: selectedTemplate.twilioContentSid, // Use Meta-approved template (REQUIRED)
+        contentVariables: contentVariables,
+        templateId: selectedTemplate.id, // For error messages
         skipWhatsApp: false // Set to true for testing without sending
       });
 
+      // Check if campaign had any success
+      const hasSuccess = result.successCount > 0;
+      const hasFailed = result.failedCount > 0;
+
       setSendResult({
-        success: true,
+        success: hasSuccess,
+        partial: hasSuccess && hasFailed,
         sent: result.successCount,
         failed: result.failedCount,
-        tracked: result.trackedContacts
+        tracked: result.trackedContacts,
+        sentVia: result.sentVia,
+        // Include detailed error breakdown from summary
+        summary: result.summary,
+        errors: result.errors
       });
 
     } catch (error) {
       console.error('Campaign send error:', error);
       setSendResult({
         success: false,
-        error: error.message || 'Erro ao enviar campanha'
+        error: error.userMessage || error.message || 'Erro ao enviar campanha',
+        errorType: error.type || 'UNKNOWN',
+        retryable: error.retryable || false
       });
     } finally {
       setIsSending(false);
@@ -348,6 +466,8 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
     setCurrentStep(0);
     setSelectedAudience(null);
     setSelectedTemplate(null);
+    setSelectedDiscount(null);
+    setSelectedServiceType(null);
     setSendResult(null);
     setIsSending(false);
     setSendMode('now');
@@ -492,7 +612,14 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
                   return (
                     <button
                       key={template.id}
-                      onClick={() => setSelectedTemplate(template)}
+                      onClick={() => {
+                        setSelectedTemplate(template);
+                        // Reset discount/service selections when template changes
+                        // Set defaults based on template
+                        const defaults = template.discountDefaults || {};
+                        setSelectedDiscount(defaults.discountPercent || null);
+                        setSelectedServiceType(defaults.serviceType || null);
+                      }}
                       className={`
                         w-full p-4 rounded-xl border-2 text-left transition-all
                         ${isSelected
@@ -546,6 +673,101 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
                   );
                 })}
               </div>
+
+              {/* Discount & Service Configuration (A/B Testing) */}
+              {selectedTemplate && hasCouponConfig && (
+                <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                  <h4 className="text-sm font-semibold text-purple-900 dark:text-purple-200 mb-3 flex items-center gap-2">
+                    <Gift className="w-4 h-4" />
+                    Configuração do Cupom
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Discount Percentage Selector */}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                        Desconto
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {discountOptions.map((discount) => (
+                          <button
+                            key={discount}
+                            onClick={() => setSelectedDiscount(discount)}
+                            className={`
+                              px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                              ${selectedDiscount === discount
+                                ? 'bg-purple-600 text-white shadow-md'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500'
+                              }
+                            `}
+                          >
+                            {discount}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Service Type Selector */}
+                    {serviceOptions.length > 1 && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                          Válido para
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {serviceOptions.map((service) => (
+                            <button
+                              key={service}
+                              onClick={() => setSelectedServiceType(service)}
+                              className={`
+                                px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                                ${selectedServiceType === service
+                                  ? 'bg-indigo-600 text-white shadow-md'
+                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-500'
+                                }
+                              `}
+                            >
+                              {SERVICE_TYPE_LABELS[service]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Coupon Code Preview */}
+                  {selectedCoupon && (
+                    <div className="mt-4 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Código do cupom:</p>
+                          <p className="text-lg font-bold text-purple-700 dark:text-purple-300 font-mono">
+                            {selectedCoupon.code}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Desconto:</p>
+                          <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                            {selectedCoupon.discountPercent}% OFF
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                        {selectedCoupon.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Warning if no coupon found */}
+                  {selectedDiscount && selectedServiceType && !selectedCoupon && (
+                    <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        Esta combinação de desconto e serviço não tem cupom configurado no POS.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -636,49 +858,97 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
             <div className="space-y-6">
               {sendResult ? (
                 /* Result Display */
-                <div className={`p-6 rounded-xl text-center ${
+                <div className={`p-6 rounded-xl ${
                   sendResult.success
                     ? sendResult.scheduled
                       ? 'bg-blue-50 dark:bg-blue-900/20'
-                      : 'bg-emerald-50 dark:bg-emerald-900/20'
+                      : sendResult.partial
+                        ? 'bg-amber-50 dark:bg-amber-900/20'
+                        : 'bg-emerald-50 dark:bg-emerald-900/20'
                     : 'bg-red-50 dark:bg-red-900/20'
                 }`}>
-                  {sendResult.success ? (
-                    sendResult.scheduled ? (
-                      <>
-                        <Calendar className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-                        <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
-                          Campanha Agendada!
-                        </h3>
-                        <p className="text-blue-600 dark:text-blue-400">
-                          Será enviada em {sendResult.scheduledFor.toLocaleDateString('pt-BR')} às {sendResult.scheduledFor.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                        <p className="text-sm text-blue-500 dark:text-blue-400 mt-2">
-                          {validationStats?.stats?.readyCount || 0} clientes receberão a mensagem
-                        </p>
-                      </>
+                  <div className="text-center">
+                    {sendResult.success ? (
+                      sendResult.scheduled ? (
+                        <>
+                          <Calendar className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+                          <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
+                            Campanha Agendada!
+                          </h3>
+                          <p className="text-blue-600 dark:text-blue-400">
+                            Será enviada em {sendResult.scheduledFor.toLocaleDateString('pt-BR')} às {sendResult.scheduledFor.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          <p className="text-sm text-blue-500 dark:text-blue-400 mt-2">
+                            {validationStats?.stats?.readyCount || 0} clientes receberão a mensagem
+                          </p>
+                        </>
+                      ) : sendResult.partial ? (
+                        <>
+                          <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                          <h3 className="text-xl font-bold text-amber-800 dark:text-amber-200 mb-2">
+                            Campanha Parcialmente Enviada
+                          </h3>
+                          <p className="text-amber-600 dark:text-amber-400">
+                            ✅ {sendResult.sent} enviadas • ❌ {sendResult.failed} falharam
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+                          <h3 className="text-xl font-bold text-emerald-800 dark:text-emerald-200 mb-2">
+                            Campanha Enviada!
+                          </h3>
+                          <p className="text-emerald-600 dark:text-emerald-400">
+                            {sendResult.sent} mensagens enviadas com sucesso
+                          </p>
+                        </>
+                      )
                     ) : (
                       <>
-                        <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-                        <h3 className="text-xl font-bold text-emerald-800 dark:text-emerald-200 mb-2">
-                          Campanha Enviada!
+                        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold text-red-800 dark:text-red-200 mb-2">
+                          Erro ao Enviar
                         </h3>
-                        <p className="text-emerald-600 dark:text-emerald-400">
-                          {sendResult.sent} mensagens enviadas com sucesso
-                          {sendResult.failed > 0 && `, ${sendResult.failed} falharam`}
+                        <p className="text-red-600 dark:text-red-400">
+                          {sendResult.error}
                         </p>
+                        {sendResult.retryable && (
+                          <p className="text-sm text-red-500 dark:text-red-400 mt-2">
+                            Este erro pode ser temporário. Tente novamente em alguns minutos.
+                          </p>
+                        )}
                       </>
-                    )
-                  ) : (
-                    <>
-                      <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold text-red-800 dark:text-red-200 mb-2">
-                        Erro ao Enviar
-                      </h3>
-                      <p className="text-red-600 dark:text-red-400">
-                        {sendResult.error}
+                    )}
+                  </div>
+
+                  {/* Detailed Error Breakdown */}
+                  {sendResult.summary?.errorsByType && Object.keys(sendResult.summary.errorsByType).length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Detalhes das falhas:
                       </p>
-                    </>
+                      <div className="space-y-2">
+                        {Object.entries(sendResult.summary.errorsByType).map(([type, data]) => (
+                          <div
+                            key={type}
+                            className="flex items-center justify-between text-sm bg-white/50 dark:bg-slate-800/50 p-2 rounded-lg"
+                          >
+                            <span className="text-slate-600 dark:text-slate-400">
+                              {data.message}
+                            </span>
+                            <span className="font-medium text-slate-900 dark:text-slate-200">
+                              {data.count}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      {sendResult.summary.hasRetryableErrors && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Alguns erros podem ser temporários. Considere reenviar mais tarde.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : (

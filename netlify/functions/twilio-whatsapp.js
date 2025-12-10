@@ -1,7 +1,13 @@
-// netlify/functions/twilio-whatsapp.js v1.1
+// netlify/functions/twilio-whatsapp.js v1.2
 // Twilio WhatsApp Business API integration for campaign messaging
 //
 // CHANGELOG:
+// v1.2 (2025-12-09): Added Meta-approved template support via ContentSid
+//   - sendMessage now accepts contentSid + contentVariables for template mode
+//   - sendBulkMessages supports contentSid for bulk template sends
+//   - Added personalizeContentVariables for recipient-specific variable mapping
+//   - Plain text Body mode retained as fallback
+//   - Response includes sentVia field ('template' or 'plaintext')
 // v1.1 (2025-12-08): Added fetch_messages action for blacklist sync
 //   - Fetches message logs from Twilio API
 //   - Identifies opt-out messages (inbound with keywords)
@@ -86,15 +92,22 @@ exports.handler = async (event, context) => {
 
 /**
  * Send a single WhatsApp message
+ *
+ * Supports two modes:
+ * 1. Template mode (Meta-approved): Uses ContentSid + ContentVariables
+ * 2. Plain text mode (fallback): Uses Body parameter
+ *
+ * For Meta WhatsApp Business API compliance, always prefer template mode.
  */
 async function sendMessage(body, accountSid, authToken, from, headers) {
-  const { to, message, templateName, templateVariables } = body;
+  const { to, message, templateName, templateVariables, contentSid, contentVariables } = body;
 
-  if (!to || (!message && !templateName)) {
+  // Validate: need either contentSid (template) or message/templateName (plain text)
+  if (!to || (!message && !templateName && !contentSid)) {
     return {
       statusCode: 400,
       headers,
-      body: JSON.stringify({ error: 'Missing required fields: to, message or templateName' })
+      body: JSON.stringify({ error: 'Missing required fields: to, and one of: contentSid, message, or templateName' })
     };
   }
 
@@ -108,12 +121,6 @@ async function sendMessage(body, accountSid, authToken, from, headers) {
     };
   }
 
-  // Prepare message body
-  let messageBody = message;
-  if (templateName && templateVariables) {
-    messageBody = formatTemplate(templateName, templateVariables);
-  }
-
   // Call Twilio API
   const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
   const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
@@ -121,7 +128,26 @@ async function sendMessage(body, accountSid, authToken, from, headers) {
   const params = new URLSearchParams();
   params.append('From', `whatsapp:${from}`);
   params.append('To', `whatsapp:${toNumber}`);
-  params.append('Body', messageBody);
+
+  // Use ContentSid for Meta-approved templates (preferred method)
+  if (contentSid) {
+    params.append('ContentSid', contentSid);
+
+    // ContentVariables must be a JSON string with numbered keys: {"1": "value1", "2": "value2"}
+    if (contentVariables) {
+      const varsJson = typeof contentVariables === 'string'
+        ? contentVariables
+        : JSON.stringify(contentVariables);
+      params.append('ContentVariables', varsJson);
+    }
+  } else {
+    // Fallback to plain text Body (not recommended for marketing messages)
+    let messageBody = message;
+    if (templateName && templateVariables) {
+      messageBody = formatTemplate(templateName, templateVariables);
+    }
+    params.append('Body', messageBody);
+  }
 
   try {
     const response = await fetch(twilioUrl, {
@@ -155,7 +181,10 @@ async function sendMessage(body, accountSid, authToken, from, headers) {
         messageSid: data.sid,
         status: data.status,
         to: toNumber,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // Include metadata about how message was sent
+        sentVia: contentSid ? 'template' : 'plaintext',
+        contentSid: contentSid || null
       })
     };
   } catch (error) {
@@ -165,9 +194,18 @@ async function sendMessage(body, accountSid, authToken, from, headers) {
 
 /**
  * Send bulk WhatsApp messages (with rate limiting)
+ *
+ * Supports two modes:
+ * 1. Template mode: Pass contentSid + contentVariables for each recipient
+ * 2. Plain text mode: Pass message or templateName + templateVariables
+ *
+ * For template mode, each recipient object can include:
+ * - phone: Phone number
+ * - name: Customer name
+ * - contentVariables: Object with {"1": "value1", "2": "value2", ...}
  */
 async function sendBulkMessages(body, accountSid, authToken, from, headers) {
-  const { recipients, message, templateName, templateVariables } = body;
+  const { recipients, message, templateName, templateVariables, contentSid } = body;
 
   if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
     return {
@@ -199,13 +237,28 @@ async function sendBulkMessages(body, accountSid, authToken, from, headers) {
   // Send messages with 100ms delay between each (Twilio rate limit)
   for (const recipient of recipients) {
     try {
+      // Build message payload
+      const messagePayload = {
+        to: recipient.phone
+      };
+
+      // Use ContentSid if provided (Meta-approved template mode)
+      if (contentSid) {
+        messagePayload.contentSid = contentSid;
+        // Personalize content variables for this recipient
+        messagePayload.contentVariables = personalizeContentVariables(
+          recipient.contentVariables || templateVariables,
+          recipient
+        );
+      } else {
+        // Plain text mode (fallback)
+        messagePayload.message = personalizeMessage(message, recipient);
+        messagePayload.templateName = templateName;
+        messagePayload.templateVariables = personalizeVariables(templateVariables, recipient);
+      }
+
       const result = await sendMessage(
-        {
-          to: recipient.phone,
-          message: personalizeMessage(message, recipient),
-          templateName,
-          templateVariables: personalizeVariables(templateVariables, recipient)
-        },
+        messagePayload,
         accountSid,
         authToken,
         from,
@@ -218,7 +271,8 @@ async function sendBulkMessages(body, accountSid, authToken, from, headers) {
         results.success.push({
           phone: recipient.phone,
           name: recipient.name,
-          messageSid: resultBody.messageSid
+          messageSid: resultBody.messageSid,
+          sentVia: resultBody.sentVia
         });
       } else {
         results.failed.push({
@@ -248,7 +302,8 @@ async function sendBulkMessages(body, accountSid, authToken, from, headers) {
       summary: {
         sent: results.success.length,
         failed: results.failed.length,
-        total: results.total
+        total: results.total,
+        sentVia: contentSid ? 'template' : 'plaintext'
       }
     })
   };
@@ -550,6 +605,36 @@ function personalizeVariables(variables, recipient) {
   }
   if (personalized.saldo !== undefined) {
     personalized.saldo = formatCurrency(recipient.wallet);
+  }
+
+  return personalized;
+}
+
+/**
+ * Personalize content variables for Meta templates
+ *
+ * ContentVariables format: {"1": "value1", "2": "value2", ...}
+ * Maps to template placeholders {{1}}, {{2}}, etc.
+ *
+ * Common variable mappings:
+ * - "1" = Customer name
+ * - "2" = Discount % or wallet balance
+ * - "3" = Coupon code
+ * - "4" = Expiration date (DD/MM)
+ */
+function personalizeContentVariables(baseVariables, recipient) {
+  if (!baseVariables) return null;
+
+  const personalized = { ...baseVariables };
+
+  // Variable 1 is typically customer name
+  if (personalized['1'] === undefined || personalized['1'] === '{{nome}}') {
+    personalized['1'] = recipient.name || 'Cliente';
+  }
+
+  // If variable 2 is a wallet balance placeholder
+  if (personalized['2'] === '{{saldo}}' && recipient.wallet !== undefined) {
+    personalized['2'] = formatCurrency(recipient.wallet);
   }
 
   return personalized;

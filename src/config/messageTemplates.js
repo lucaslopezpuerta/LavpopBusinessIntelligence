@@ -1,9 +1,9 @@
-// messageTemplates.js v1.0
+// messageTemplates.js v2.0
 // Centralized WhatsApp message templates configuration
 // Meta Business API compliant with {{1}}, {{2}} placeholder format
 //
 // These templates are designed to work with Lavpop POS coupon system:
-// - Discount percentage coupons
+// - Discount percentage coupons (see couponConfig.js for full list)
 // - Valid for: Lavadoras, Secadoras, or both
 // - Prerequisite: None, Lavou, Secou, Lavou e Secou
 // - Per-customer and total cycle limits
@@ -11,6 +11,29 @@
 //
 // IMPORTANT: Templates must be submitted to Meta WhatsApp Business Manager
 // for approval before use. Use the exact text from 'metaSubmission' field.
+
+// Import coupon configuration for dynamic discount/coupon selection
+import {
+  CAMPAIGN_TYPES,
+  SERVICE_TYPES,
+  SERVICE_TYPE_LABELS,
+  getDiscountOptionsForTemplate,
+  getServiceOptionsForTemplate,
+  getCouponForTemplate,
+  getDefaultCouponForTemplate,
+  TEMPLATE_CAMPAIGN_TYPE_MAP
+} from './couponConfig.js';
+
+// Re-export for convenience
+export {
+  CAMPAIGN_TYPES,
+  SERVICE_TYPES,
+  SERVICE_TYPE_LABELS,
+  getDiscountOptionsForTemplate,
+  getServiceOptionsForTemplate,
+  getCouponForTemplate,
+  getDefaultCouponForTemplate
+};
 
 // Icons for UI (imported where used)
 // Heart, Sparkles, Wallet, Gift, Calendar, Clock from 'lucide-react'
@@ -32,6 +55,7 @@ export const MESSAGE_TEMPLATES = [
     id: 'winback_discount',
     name: 'Win-back com Desconto',
     category: 'MARKETING',
+    campaignType: CAMPAIGN_TYPES.WINBACK,
     icon: 'Heart',
     color: 'amber',
     description: 'Para clientes que não visitam há 30+ dias',
@@ -39,6 +63,7 @@ export const MESSAGE_TEMPLATES = [
 
     // Meta template name (must match what's registered in Business Manager)
     metaTemplateName: 'lavpop_winback_desconto',
+    twilioContentSid: 'HX58267edb5948cfa0fb5c3ba73ea1d767',
 
     // Template structure
     header: {
@@ -87,6 +112,13 @@ Te esperamos! 💙`,
       permitidoPara: 'Lavadoras e Secadoras',
       ciclosPorCliente: 1,
       validoSomenteSe: null // No prerequisite
+    },
+
+    // A/B Testing defaults (stored with campaign for analysis)
+    discountDefaults: {
+      discountPercent: 20,
+      couponCode: 'VOLTE20',
+      serviceType: 'both' // 'wash', 'dry', or 'both'
     }
   },
 
@@ -94,12 +126,14 @@ Te esperamos! 💙`,
     id: 'winback_wash_only',
     name: 'Win-back Lavagem',
     category: 'MARKETING',
+    campaignType: CAMPAIGN_TYPES.WINBACK,
     icon: 'Heart',
     color: 'blue',
     description: 'Desconto apenas para lavagem (mais margem)',
     audience: 'atRisk',
 
     metaTemplateName: 'lavpop_winback_lavagem',
+    twilioContentSid: 'HX6d31e447e8af840368b1167573ec9d6f',
 
     header: {
       type: 'TEXT',
@@ -128,14 +162,15 @@ Esperamos você! 💙`,
     ],
 
     buttons: [
-      { type: 'QUICK_REPLY', text: 'Vou aproveitar!' }
+      { type: 'QUICK_REPLY', text: 'Vou aproveitar!' },
+      { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
     ],
 
     metaSubmission: {
       header: 'Oferta especial em lavagem! 🧺',
       body: 'Olá {{1}}!\n\nSentimos sua falta! Temos uma oferta especial de *lavagem* para você:\n\n🎁 *{{2}}% OFF* na sua próxima lavagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Oferta válida apenas para lavadoras.\n\nEsperamos você! 💙',
       footer: 'Lavpop - Lavanderia Self-Service',
-      buttons: ['Vou aproveitar!']
+      buttons: ['Vou aproveitar!', 'Não tenho interesse']
     },
 
     posCouponConfig: {
@@ -143,6 +178,77 @@ Esperamos você! 💙`,
       permitidoPara: 'Lavadoras',
       ciclosPorCliente: 1,
       validoSomenteSe: null
+    },
+
+    discountDefaults: {
+      discountPercent: 25,
+      couponCode: 'LAVA25',
+      serviceType: 'wash'
+    }
+  },
+
+  {
+    id: 'winback_dry_only',
+    name: 'Win-back Secagem',
+    category: 'MARKETING',
+    campaignType: CAMPAIGN_TYPES.WINBACK,
+    icon: 'Sun',
+    color: 'orange',
+    description: 'Desconto apenas para secagem (mais margem)',
+    audience: 'atRisk',
+
+    metaTemplateName: 'lavpop_winback_secagem',
+    twilioContentSid: 'HX8c3003c64f58c33aaf4c3cbef308cefd',
+
+    header: {
+      type: 'TEXT',
+      text: 'Oferta especial em secagem! ☀️'
+    },
+
+    body: `Olá {{1}}!
+
+Sentimos sua falta! Temos uma oferta especial de *secagem* para você:
+
+🎁 *{{2}}% OFF* na sua próxima secagem
+📋 Cupom: *{{3}}*
+📅 Válido até {{4}}
+
+*Oferta válida apenas para secadoras.
+
+Esperamos você! 💙`,
+
+    footer: 'Lavpop - Lavanderia Self-Service',
+
+    variables: [
+      { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
+      { position: 2, key: 'discount', label: 'Desconto (%)', source: 'campaign.discount', fallback: '25' },
+      { position: 3, key: 'couponCode', label: 'Código do cupom', source: 'campaign.couponCode', required: true },
+      { position: 4, key: 'expirationDate', label: 'Data de validade', source: 'campaign.expirationDate', format: 'DD/MM' }
+    ],
+
+    buttons: [
+      { type: 'QUICK_REPLY', text: 'Vou aproveitar!' },
+      { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
+    ],
+
+    metaSubmission: {
+      header: 'Oferta especial em secagem! ☀️',
+      body: 'Olá {{1}}!\n\nSentimos sua falta! Temos uma oferta especial de *secagem* para você:\n\n🎁 *{{2}}% OFF* na sua próxima secagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Oferta válida apenas para secadoras.\n\nEsperamos você! 💙',
+      footer: 'Lavpop - Lavanderia Self-Service',
+      buttons: ['Vou aproveitar!', 'Não tenho interesse']
+    },
+
+    posCouponConfig: {
+      tipo: 'Cupom Desconto',
+      permitidoPara: 'Secadoras',
+      ciclosPorCliente: 1,
+      validoSomenteSe: null
+    },
+
+    discountDefaults: {
+      discountPercent: 25,
+      couponCode: 'SECA25',
+      serviceType: 'dry'
     }
   },
 
@@ -153,12 +259,14 @@ Esperamos você! 💙`,
     id: 'welcome_new',
     name: 'Boas-vindas',
     category: 'MARKETING',
+    campaignType: CAMPAIGN_TYPES.WELCOME,
     icon: 'Sparkles',
     color: 'purple',
     description: 'Para novos clientes após primeira visita',
     audience: 'newCustomers',
 
     metaTemplateName: 'lavpop_boasvindas',
+    twilioContentSid: 'HX2ae8ce2a72d92866fd28516aca9d76c3',
 
     header: {
       type: 'TEXT',
@@ -183,20 +291,21 @@ Qualquer dúvida, estamos aqui! 💙`,
 
     variables: [
       { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
-      { position: 2, key: 'couponCode', label: 'Código do cupom', source: 'campaign.couponCode', fallback: 'BEMVINDO10' },
+      { position: 2, key: 'couponCode', label: 'Código do cupom', source: 'campaign.couponCode', fallback: 'BEM10' },
       { position: 3, key: 'discount', label: 'Desconto (%)', source: 'campaign.discount', fallback: '10' },
       { position: 4, key: 'expirationDate', label: 'Data de validade', source: 'campaign.expirationDate', format: 'DD/MM' }
     ],
 
     buttons: [
-      { type: 'QUICK_REPLY', text: 'Obrigado!' }
+      { type: 'QUICK_REPLY', text: 'Obrigado!' },
+      { type: 'QUICK_REPLY', text: 'Não quero receber' }
     ],
 
     metaSubmission: {
       header: 'Bem-vindo à Lavpop! 🎉',
       body: 'Olá {{1}}!\n\nObrigado por escolher a Lavpop! Esperamos que sua experiência tenha sido incrível.\n\n🎁 Na sua próxima visita, use o cupom *{{2}}* e ganhe *{{3}}% OFF*!\n\n📅 Válido até {{4}}\n\nDicas:\n✨ Horários tranquilos: 7h-9h e 14h-16h\n📱 Acompanhe suas lavagens pelo app\n\nQualquer dúvida, estamos aqui! 💙',
       footer: 'Lavpop - Lavanderia Self-Service',
-      buttons: ['Obrigado!']
+      buttons: ['Obrigado!', 'Não quero receber']
     },
 
     posCouponConfig: {
@@ -205,6 +314,12 @@ Qualquer dúvida, estamos aqui! 💙`,
       ciclosPorCliente: 1,
       totalCiclos: 0, // Unlimited for welcome
       validoSomenteSe: 'Lavou e Secou' // Must have completed first visit
+    },
+
+    discountDefaults: {
+      discountPercent: 10,
+      couponCode: 'BEM10',
+      serviceType: 'both'
     }
   },
 
@@ -215,12 +330,14 @@ Qualquer dúvida, estamos aqui! 💙`,
     id: 'wallet_reminder',
     name: 'Lembrete de Saldo',
     category: 'UTILITY',
+    campaignType: null, // No coupon - wallet reminder only
     icon: 'Wallet',
     color: 'emerald',
     description: 'Para clientes com saldo na carteira digital',
     audience: 'withWallet',
 
     metaTemplateName: 'lavpop_saldo_carteira',
+    twilioContentSid: 'HXa1f6a3f3c586acd36cb25a2d98a766fc',
 
     header: {
       type: 'TEXT',
@@ -245,17 +362,24 @@ Te esperamos! 💙`,
     ],
 
     buttons: [
-      { type: 'QUICK_REPLY', text: 'Vou usar!' }
+      { type: 'QUICK_REPLY', text: 'Vou usar!' },
+      { type: 'QUICK_REPLY', text: 'Não quero receber' }
     ],
 
     metaSubmission: {
       header: 'Você tem créditos! 💰',
       body: 'Olá {{1}}!\n\nVocê tem *{{2}}* de crédito na sua carteira Lavpop!\n\nNão deixe seu saldo parado. Use na sua próxima lavagem e economize.\n\n🕐 Funcionamos das 7h às 21h, todos os dias.\n\nTe esperamos! 💙',
       footer: 'Lavpop - Lavanderia Self-Service',
-      buttons: ['Vou usar!']
+      buttons: ['Vou usar!', 'Não quero receber']
     },
 
-    posCouponConfig: null // No coupon needed - uses wallet balance
+    posCouponConfig: null, // No coupon needed - uses wallet balance
+
+    discountDefaults: {
+      discountPercent: 0, // No discount - reminder only
+      couponCode: null,
+      serviceType: null
+    }
   },
 
   // ============================================================
@@ -265,12 +389,14 @@ Te esperamos! 💙`,
     id: 'promo_general',
     name: 'Promoção Geral',
     category: 'MARKETING',
+    campaignType: CAMPAIGN_TYPES.PROMO,
     icon: 'Gift',
     color: 'rose',
     description: 'Promoção para todos os clientes',
     audience: 'all',
 
     metaTemplateName: 'lavpop_promocao',
+    twilioContentSid: 'HX32e16980d7a2e88895bdddd9cd029f90',
 
     header: {
       type: 'TEXT',
@@ -297,14 +423,15 @@ Aproveite! 💙`,
     ],
 
     buttons: [
-      { type: 'QUICK_REPLY', text: 'Quero aproveitar!' }
+      { type: 'QUICK_REPLY', text: 'Quero aproveitar!' },
+      { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
     ],
 
     metaSubmission: {
       header: '🎁 Promoção Especial!',
       body: 'Olá {{1}}!\n\nTemos uma promoção especial para você:\n\n🎁 *{{2}}% de desconto*\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\nAproveite! 💙',
       footer: 'Lavpop - Lavanderia Self-Service',
-      buttons: ['Quero aproveitar!']
+      buttons: ['Quero aproveitar!', 'Não tenho interesse']
     },
 
     posCouponConfig: {
@@ -312,6 +439,12 @@ Aproveite! 💙`,
       permitidoPara: 'Lavadoras e Secadoras',
       ciclosPorCliente: 1,
       validoSomenteSe: null
+    },
+
+    discountDefaults: {
+      discountPercent: 15,
+      couponCode: 'PROMO15',
+      serviceType: 'both'
     }
   },
 
@@ -319,12 +452,14 @@ Aproveite! 💙`,
     id: 'promo_secagem',
     name: 'Promoção Secagem',
     category: 'MARKETING',
+    campaignType: CAMPAIGN_TYPES.PROMO,
     icon: 'Gift',
     color: 'orange',
     description: 'Desconto apenas para secagem',
     audience: 'all',
 
     metaTemplateName: 'lavpop_promo_secagem',
+    twilioContentSid: 'HXb7e5791f7738f73741b99ef39363deb9',
 
     header: {
       type: 'TEXT',
@@ -353,14 +488,15 @@ Aproveite! 💙`,
     ],
 
     buttons: [
-      { type: 'QUICK_REPLY', text: 'Vou aproveitar!' }
+      { type: 'QUICK_REPLY', text: 'Vou aproveitar!' },
+      { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
     ],
 
     metaSubmission: {
       header: '☀️ Promoção de Secagem!',
       body: 'Olá {{1}}!\n\nPromoção especial de *secagem*:\n\n🎁 *{{2}}% OFF* na secadora\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Válido apenas para secadoras.\n\nAproveite! 💙',
       footer: 'Lavpop - Lavanderia Self-Service',
-      buttons: ['Vou aproveitar!']
+      buttons: ['Vou aproveitar!', 'Não tenho interesse']
     },
 
     posCouponConfig: {
@@ -368,6 +504,12 @@ Aproveite! 💙`,
       permitidoPara: 'Secadoras',
       ciclosPorCliente: 1,
       validoSomenteSe: null
+    },
+
+    discountDefaults: {
+      discountPercent: 20,
+      couponCode: 'PSEC20',
+      serviceType: 'dry'
     }
   },
 
@@ -378,12 +520,14 @@ Aproveite! 💙`,
     id: 'upsell_secagem',
     name: 'Complete com Secagem',
     category: 'MARKETING',
+    campaignType: CAMPAIGN_TYPES.UPSELL,
     icon: 'Gift',
     color: 'sky',
     description: 'Para clientes que só lavaram (incentivar secagem)',
     audience: 'all', // Filtered manually by behavior
 
     metaTemplateName: 'lavpop_complete_secagem',
+    twilioContentSid: 'HX0b7b6d4c5de6f842f0c72a0802452b40',
 
     header: {
       type: 'TEXT',
@@ -410,14 +554,15 @@ Roupas secas em minutos, sem preocupação! 💙`,
     ],
 
     buttons: [
-      { type: 'QUICK_REPLY', text: 'Quero secar!' }
+      { type: 'QUICK_REPLY', text: 'Quero secar!' },
+      { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
     ],
 
     metaSubmission: {
       header: 'Complete seu ciclo! ☀️',
       body: 'Olá {{1}}!\n\nVimos que você lavou suas roupas conosco. Que tal completar o ciclo com nossa secagem profissional?\n\n🎁 *{{2}}% OFF* na secagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\nRoupas secas em minutos, sem preocupação! 💙',
       footer: 'Lavpop - Lavanderia Self-Service',
-      buttons: ['Quero secar!']
+      buttons: ['Quero secar!', 'Não tenho interesse']
     },
 
     posCouponConfig: {
@@ -425,6 +570,12 @@ Roupas secas em minutos, sem preocupação! 💙`,
       permitidoPara: 'Secadoras',
       ciclosPorCliente: 1,
       validoSomenteSe: 'Lavou' // Must have washed first
+    },
+
+    discountDefaults: {
+      discountPercent: 15,
+      couponCode: 'SEQUE15',
+      serviceType: 'dry'
     }
   }
 ];
