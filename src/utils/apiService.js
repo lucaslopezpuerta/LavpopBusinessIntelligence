@@ -1,6 +1,10 @@
-// apiService.js v1.0
+// apiService.js v2.0
 // Unified API service for Supabase backend communication
 // Provides fallback to localStorage when backend is unavailable
+//
+// Version: 2.0 (2025-12-10) - Security hardening
+//   - Added API key authentication (X-Api-Key header)
+//   - Key read from VITE_API_KEY environment variable
 //
 // Usage:
 //   import { api, isBackendAvailable } from './apiService';
@@ -8,10 +12,22 @@
 
 const API_URL = '/.netlify/functions/supabase-api';
 
+// API key for authentication (set in Netlify environment variables)
+const API_KEY = import.meta.env.VITE_API_KEY || '';
+
 // Track backend availability
 let backendAvailable = null;
 let lastCheck = 0;
 const CHECK_INTERVAL = 60000; // Re-check every minute
+
+// Build headers with API key for authentication
+function getHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  if (API_KEY) {
+    headers['X-Api-Key'] = API_KEY;
+  }
+  return headers;
+}
 
 /**
  * Check if the Supabase backend is available
@@ -27,7 +43,7 @@ export async function isBackendAvailable(forceCheck = false) {
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify({ action: 'blacklist.stats' })
     });
 
@@ -48,13 +64,13 @@ export async function isBackendAvailable(forceCheck = false) {
 }
 
 /**
- * Make API request with error handling
+ * Make API request with error handling and authentication
  */
 async function apiRequest(action, data = {}, method = 'POST') {
   try {
     const options = {
       method,
-      headers: { 'Content-Type': 'application/json' }
+      headers: getHeaders()
     };
 
     if (method === 'POST') {

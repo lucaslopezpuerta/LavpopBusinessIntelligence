@@ -2,12 +2,74 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 2.0 (2025-12-10) - Security hardening
+//
 // Environment variables required:
 // - SUPABASE_URL: Your Supabase project URL
 // - SUPABASE_SERVICE_KEY: Your Supabase service role key (for server-side)
-// - SUPABASE_ANON_KEY: Your Supabase anon key (for client-side, optional)
+// - API_SECRET_KEY: Secret key for API authentication
+//
+// SECURITY FEATURES:
+// - API key authentication required for all requests
+// - CORS restricted to production domain + localhost dev
+// - Sanitized error messages (no internal details exposed)
 
 const { createClient } = require('@supabase/supabase-js');
+
+// ==================== SECURITY CONFIGURATION ====================
+
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://bilavnova.com',
+  'https://www.bilavnova.com',
+  'http://localhost:5173',  // Vite dev server
+  'http://localhost:3000'   // Alt dev server
+];
+
+// Get CORS origin (only allow whitelisted domains)
+function getCorsOrigin(event) {
+  const origin = event.headers.origin || event.headers.Origin || '';
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    return origin;
+  }
+  // Default to production domain for security
+  return 'https://bilavnova.com';
+}
+
+// Validate API key from request header
+function validateApiKey(event) {
+  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
+  const API_SECRET = process.env.API_SECRET_KEY;
+
+  // If no secret configured server-side, warn but allow (for initial setup only)
+  if (!API_SECRET) {
+    console.warn('⚠️ WARNING: API_SECRET_KEY not configured. API is unprotected!');
+    return true;
+  }
+
+  return apiKey === API_SECRET;
+}
+
+// Sanitize error message (don't expose internal details to client)
+function sanitizeError(error) {
+  const safeMessages = [
+    'Phone number required',
+    'campaign_id required',
+    'customerId required',
+    'Invalid action',
+    'No pending contact found for customer'
+  ];
+
+  if (safeMessages.includes(error.message)) {
+    return error.message;
+  }
+
+  // Log full error server-side for debugging
+  console.error('API Error:', error);
+
+  // Return generic message to client
+  return 'An error occurred processing your request';
+}
 
 // Initialize Supabase client
 function getSupabase() {
@@ -15,23 +77,37 @@ function getSupabase() {
   const key = process.env.SUPABASE_SERVICE_KEY;
 
   if (!url || !key) {
-    throw new Error('Supabase credentials not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY.');
+    throw new Error('Database configuration error');
   }
 
   return createClient(url, key);
 }
 
+// ==================== MAIN HANDLER ====================
+
 exports.handler = async (event, context) => {
+  const corsOrigin = getCorsOrigin(event);
+
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Max-Age': '86400'
   };
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
+  }
+
+  // ==================== AUTHENTICATION CHECK ====================
+  if (!validateApiKey(event)) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
   try {
@@ -160,11 +236,10 @@ exports.handler = async (event, context) => {
         };
     }
   } catch (error) {
-    console.error('Supabase API error:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({ error: sanitizeError(error) })
     };
   }
 };
