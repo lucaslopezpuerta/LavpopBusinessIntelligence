@@ -1,11 +1,19 @@
-// intelligenceCalculations.js v3.4 - CAXIAS DO SUL CLIMATE THRESHOLDS
+// intelligenceCalculations.js v3.6 - TIMEZONE-INDEPENDENT CALCULATIONS
 // ✅ Uses existing transactionParser.js for consistent data handling
 // ✅ Uses existing businessMetrics.js patterns
 // ✅ Reuses proven math instead of reinventing
+// ✅ Timezone-independent calculations using date.brazil/dateStr
 // Strategic business intelligence calculations
 // Profitability, Weather Impact, Campaign ROI, Growth Analysis
 //
 // CHANGELOG:
+// v3.6 (2025-12-10): CRITICAL FIX - Timezone-independent monthly aggregation
+//   - calculateGrowthTrends uses record.dateStr.slice(0,7) for month key
+//   - Fixes revenue discrepancy caused by browser timezone affecting month boundaries
+//   - Also includes v3.5 day-of-week fix for calculateWeightedProjection
+// v3.5 (2025-12-10): CRITICAL FIX - Timezone-independent day-of-week
+//   - calculateWeightedProjection uses date.brazil for day-of-week
+//   - Ensures correct projections regardless of viewer's browser timezone
 // v3.4 (2025-12-02): Location-specific weather thresholds for Caxias do Sul
 //   - Adjusted thresholds based on actual climate data analysis:
 //     * Caxias do Sul: subtropical highland, 800m elevation, avg 16.5°C
@@ -510,10 +518,13 @@ export function calculateGrowthTrends(salesData) {
   const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
 
   // Group by month
+  // Use record.dateStr (YYYY-MM-DD) which is already timezone-independent
+  // This ensures consistent monthly aggregation regardless of viewer's browser timezone
   const monthlyData = new Map();
 
   records.forEach(record => {
-    const monthKey = `${record.date.getFullYear()}-${String(record.date.getMonth() + 1).padStart(2, '0')}`;
+    // Extract YYYY-MM from dateStr (which uses date.brazil components)
+    const monthKey = record.dateStr.slice(0, 7);
 
     if (!monthlyData.has(monthKey)) {
       monthlyData.set(monthKey, {
@@ -1406,7 +1417,12 @@ export function calculateWeightedProjection(salesData, weatherData, currentMonth
   currentMonthRecords.forEach(record => {
     const dateKey = record.dateStr;
     if (!dayMap.has(dateKey)) {
-      dayMap.set(dateKey, { revenue: 0, dayOfWeek: record.date.getDay() });
+      dayMap.set(dateKey, {
+        revenue: 0,
+        dayOfWeek: record.date.brazil
+          ? new Date(record.date.brazil.year, record.date.brazil.month - 1, record.date.brazil.day).getDay()
+          : record.date.getDay()
+      });
     }
     dayMap.get(dateKey).revenue += record.netValue;
   });

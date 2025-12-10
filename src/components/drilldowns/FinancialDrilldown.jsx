@@ -1,4 +1,4 @@
-// FinancialDrilldown.jsx v2.3 - SERVICE BREAKDOWN
+// FinancialDrilldown.jsx v2.4 - SERVICE BREAKDOWN
 // ✅ Daily revenue and cycle tracking
 // ✅ Uses shared parseSalesRecords for consistent date handling
 // ✅ Gradient area chart with centralized colors
@@ -6,6 +6,9 @@
 // ✅ Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.4 (2025-12-10): Fixed date key mismatch (UTC vs local timezone)
+//   - Changed dailyMap initialization from toISOString() to formatDate()
+//   - Ensures consistent local timezone keys matching record.dateStr
 // v2.3 (2025-12-01): Design System compliance
 //   - Added Média Diária (daily average) card
 //   - Changed to 3-column grid layout
@@ -20,6 +23,7 @@
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { parseSalesRecords } from '../../utils/transactionParser';
+import { formatDate } from '../../utils/dateUtils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getChartColors, getSeriesColors } from '../../utils/chartColors';
 
@@ -42,10 +46,11 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
         const dailyMap = {};
 
         // Initialize map for last 30 days
+        // Use formatDate for consistent LOCAL timezone keys (matches record.dateStr)
         for (let i = 0; i <= 30; i++) {
             const d = new Date(startDate);
             d.setDate(d.getDate() + i);
-            const dateKey = d.toISOString().split('T')[0];
+            const dateKey = formatDate(d); // LOCAL timezone: YYYY-MM-DD
             dailyMap[dateKey] = { revenue: 0, cycles: 0, wash: 0, dry: 0 };
         }
 

@@ -1,8 +1,12 @@
-// Campaigns.jsx v2.0.0
+// Campaigns.jsx v2.1.0
 // Customer Messaging & Campaign Management Tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.1.0 (2025-12-10): Portuguese RFM segment integration
+//   - Updated audience segments to use Portuguese Churn Risk Levels (Em Risco, Crítico, Novo, Saudável)
+//   - Added RFM segment audiences (VIP, Frequente, Promissor, Esfriando, Inativo)
+//   - Now supports both retention-focused (Churn Risk) and marketing-focused (RFM) targeting
 // v2.0.0 (2025-12-10): Complete dashboard redesign
 //   - Replaced CampaignEffectiveness + CampaignROISection with unified CampaignDashboard
 //   - All data now dynamic from Supabase (removed CSV dependency)
@@ -84,15 +88,25 @@ const Campaigns = ({ data }) => {
   const MIN_WALLET_BALANCE = 10;
 
   // Audience segments for targeting
+  // Uses Portuguese Churn Risk Levels: Saudável, Monitorar, Em Risco, Crítico, Novo, Perdido
+  // RFM Segments available in c.segment: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
   const audienceSegments = useMemo(() => {
     if (!customerMetrics?.allCustomers) return null;
 
     const customers = customerMetrics.allCustomers;
 
     return {
-      atRisk: customers.filter(c => ['At Risk', 'Churning'].includes(c.riskLevel)),
-      newCustomers: customers.filter(c => c.riskLevel === 'New Customer'),
-      healthy: customers.filter(c => c.riskLevel === 'Healthy'),
+      // Churn Risk Level based segments (retention focus)
+      atRisk: customers.filter(c => ['Em Risco', 'Crítico'].includes(c.riskLevel)),
+      newCustomers: customers.filter(c => c.riskLevel === 'Novo'),
+      healthy: customers.filter(c => c.riskLevel === 'Saudável'),
+      // RFM Segment based segments (marketing focus)
+      vip: customers.filter(c => c.segment === 'VIP'),
+      frequent: customers.filter(c => c.segment === 'Frequente'),
+      promising: customers.filter(c => c.segment === 'Promissor'),
+      cooling: customers.filter(c => c.segment === 'Esfriando'),
+      inactive: customers.filter(c => c.segment === 'Inativo'),
+      // Other segments
       withWallet: customers.filter(c => (c.walletBalance || 0) >= MIN_WALLET_BALANCE),
       withPhone: customers.filter(c => c.phone && c.phone.length >= 10),
       all: customers,

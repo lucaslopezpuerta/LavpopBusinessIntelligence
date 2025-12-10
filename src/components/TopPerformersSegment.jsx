@@ -1,5 +1,8 @@
-// TopPerformersSegment_v2.0.jsx
-// ✅ Integrated CustomerDetailModal
+// TopPerformersSegment_v2.1.jsx
+// ✅ v2.1 (2025-12-10): Portuguese RFM segment names
+//     - Updated to use VIP, Frequente, Promissor (distinct from Churn Risk Levels)
+//     - Translated UI text to Portuguese
+// ✅ v2.0: Integrated CustomerDetailModal
 // ✅ Verified RFM data merge (names already in customerMetrics.activeCustomers)
 // ✅ Added click-to-view-details functionality
 
@@ -33,27 +36,28 @@ const TopPerformersSegment = ({ customerMetrics, salesData }) => {
     );
   }
 
+  // Portuguese RFM segment names (distinct from Churn Risk Levels)
   const segments = [
     {
-      name: 'Champion',
+      name: 'VIP',
       icon: Crown,
       color: '#eab308',
       bgColor: '#fef3c7',
-      description: 'Best customers'
+      description: 'Melhores clientes'
     },
     {
-      name: 'Loyal',
+      name: 'Frequente',
       icon: Heart,
-      color: '#dc2626',
-      bgColor: '#fee2e2',
-      description: 'Regular visitors'
+      color: '#3b82f6',
+      bgColor: '#dbeafe',
+      description: 'Visitantes regulares'
     },
     {
-      name: 'Potential',
+      name: 'Promissor',
       icon: TrendingUp,
-      color: '#10306B',
-      bgColor: '#e3f2fd',
-      description: 'Growing customers'
+      color: '#06b6d4',
+      bgColor: '#cffafe',
+      description: 'Clientes em crescimento'
     }
   ];
 
@@ -77,13 +81,13 @@ const TopPerformersSegment = ({ customerMetrics, salesData }) => {
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <Award style={{ width: '20px', height: '20px', color: COLORS.primary }} />
-            <h3 style={{ 
+            <h3 style={{
               fontSize: '16px',
               fontWeight: '600',
               color: COLORS.primary,
               margin: 0
             }}>
-              Top Performers by Segment
+              Melhores por Segmento RFM
             </h3>
           </div>
           <p style={{
@@ -91,7 +95,7 @@ const TopPerformersSegment = ({ customerMetrics, salesData }) => {
             color: COLORS.gray,
             margin: 0
           }}>
-            Top 5 customers in each key segment • Click for details
+            Top 5 clientes em cada segmento • Clique para detalhes
           </p>
         </div>
 
@@ -241,7 +245,7 @@ const TopPerformersSegment = ({ customerMetrics, salesData }) => {
                     color: COLORS.gray,
                     fontSize: '13px'
                   }}>
-                    No customers in this segment
+                    Nenhum cliente neste segmento
                   </div>
                 )}
 

@@ -1,8 +1,25 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 2.0 (2025-12-08)
+-- Version: 3.2 (2025-12-10)
+--
+-- v3.2: Cleanup deprecated items
+--   - Removed risk_level column from customers (now computed client-side)
+--   - Removed classify_customer_risk() function
+--   - Updated customer_summary view without risk_level
+--   - RFM segments: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
+--
+-- v3.1: RFM Segmentation with Portuguese names
+--   - Added r_score, f_score, m_score, recent_monetary_90d columns to customers
+--   - New calculate_rfm_segment() function for proper RFM classification
+--   - Updated refresh_customer_metrics() to compute RFM scores
 --
 -- Tables:
+-- CORE DATA (NEW in v3.0):
+-- - transactions: POS sales data (replaces sales.csv)
+-- - customers: Customer master data (replaces customer.csv)
+-- - coupon_redemptions: Links coupon usage to campaigns
+--
+-- CAMPAIGN MANAGEMENT:
 -- - blacklist: WhatsApp opt-outs and undelivered numbers
 -- - campaigns: Campaign definitions and stats (enhanced with effectiveness fields)
 -- - campaign_sends: Individual send events
@@ -16,6 +33,121 @@
 -- - campaign_performance: Campaign metrics with return rates
 -- - campaign_effectiveness: Aggregated by campaign for effectiveness metrics
 -- - contact_effectiveness_summary: Overall contact tracking summary
+-- - customer_summary: Customer metrics computed from transactions (NEW in v3.0)
+
+-- ==================== TRANSACTIONS TABLE (NEW v3.0) ====================
+-- Stores POS sales data (replaces sales.csv)
+-- Each row = one machine cycle or wallet top-up (Recarga)
+--
+-- Transaction Types:
+-- TYPE_1: Machine + Card payment (Valor_Venda > 0, Valor_Pago = 0)
+-- TYPE_2: Machine + Wallet payment (Valor_Venda = 0, Meio_de_Pagamento = 'Saldo da carteira')
+-- TYPE_3: Recarga / wallet top-up (Maquinas = 'Recarga', Valor_Pago > 0)
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- Raw POS fields (exactly as exported from POS)
+  data_hora TIMESTAMPTZ NOT NULL,           -- DD/MM/YYYY HH:mm:ss → parsed to timestamp
+  valor_venda DECIMAL(10,2) DEFAULT 0,      -- Gross sale value (17,90 → 17.90)
+  valor_pago DECIMAL(10,2) DEFAULT 0,       -- Amount paid (0 for card, > 0 for wallet/recarga)
+  meio_de_pagamento TEXT,                   -- 'Cartão de débito', 'Pix', 'Saldo da carteira'
+  comprovante_cartao TEXT,                  -- Card receipt (may be URL-encoded)
+  bandeira_cartao TEXT,                     -- VISA, MASTERCARD, ELO, PIX, n/d
+  loja TEXT,                                -- Store name (for future multi-store support)
+  nome_cliente TEXT,                        -- Customer name
+  doc_cliente TEXT NOT NULL,                -- CPF (will be normalized to 11 digits)
+  telefone TEXT,                            -- Phone number (will be normalized)
+  maquinas TEXT,                            -- 'Lavadora: 1', 'Secadora: 2', 'Recarga'
+  usou_cupom BOOLEAN DEFAULT false,         -- 'Sim' → true, 'Não' → false
+  codigo_cupom TEXT,                        -- 'n/d' → NULL, actual code otherwise
+
+  -- Computed fields (calculated during import)
+  transaction_type TEXT,                    -- TYPE_1, TYPE_2, TYPE_3
+  is_recarga BOOLEAN DEFAULT false,         -- true if Maquinas = 'Recarga'
+  wash_count INTEGER DEFAULT 0,             -- Count of Lavadora machines
+  dry_count INTEGER DEFAULT 0,              -- Count of Secadora machines
+  total_services INTEGER DEFAULT 0,         -- wash_count + dry_count
+  net_value DECIMAL(10,2) DEFAULT 0,        -- After cashback deduction
+  cashback_amount DECIMAL(10,2) DEFAULT 0,  -- 7.5% cashback (from June 2024)
+
+  -- Deduplication and import tracking
+  import_hash TEXT,                         -- Hash of key fields for deduplication
+  imported_at TIMESTAMPTZ DEFAULT NOW(),
+  source_file TEXT,                         -- Original CSV filename
+
+  -- Constraints
+  CONSTRAINT transactions_hash_unique UNIQUE (import_hash)
+);
+
+-- Indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_transactions_data_hora ON transactions(data_hora DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_doc_cliente ON transactions(doc_cliente);
+CREATE INDEX IF NOT EXISTS idx_transactions_cupom ON transactions(codigo_cupom) WHERE codigo_cupom IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(transaction_type);
+-- Note: DATE(data_hora) index removed - DATE() on TIMESTAMPTZ is not IMMUTABLE
+-- Use idx_transactions_data_hora for date-based queries instead
+
+-- ==================== CUSTOMERS TABLE (NEW v3.0) ====================
+-- Customer master data (replaces customer.csv)
+-- Updated by triggers when transactions are inserted
+
+CREATE TABLE IF NOT EXISTS customers (
+  doc TEXT PRIMARY KEY,                     -- CPF normalized to 11 digits with leading zeros
+
+  -- Raw POS fields
+  nome TEXT,
+  telefone TEXT,                            -- Will be normalized to +55...
+  email TEXT,
+  data_cadastro TIMESTAMPTZ,
+  saldo_carteira DECIMAL(10,2) DEFAULT 0,   -- Wallet balance from POS
+
+  -- Computed from transactions (updated by trigger or batch job)
+  first_visit DATE,                         -- MIN(data_hora) from transactions
+  last_visit DATE,                          -- MAX(data_hora) from transactions
+  transaction_count INTEGER DEFAULT 0,      -- COUNT of non-recarga transactions
+  total_spent DECIMAL(10,2) DEFAULT 0,      -- SUM of net_value
+  total_services INTEGER DEFAULT 0,         -- SUM of total_services
+  avg_days_between DECIMAL(5,1),            -- Average days between visits
+  days_since_last_visit INTEGER,            -- Computed: TODAY - last_visit
+
+  -- RFM classification (computed by refresh_customer_metrics)
+  r_score INTEGER,                          -- Recency score (1-5)
+  f_score INTEGER,                          -- Frequency score (1-5)
+  m_score INTEGER,                          -- Monetary score (1-5)
+  recent_monetary_90d DECIMAL(10,2) DEFAULT 0, -- Total spending in last 90 days
+  rfm_segment TEXT,                         -- RFM segment: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
+  -- NOTE: risk_level removed in v3.2 - Churn risk now computed client-side in customerMetrics.js
+
+  -- Metadata
+  imported_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  source TEXT DEFAULT 'pos_import'          -- pos_import, manual, api
+);
+
+-- Indexes for customer queries
+CREATE INDEX IF NOT EXISTS idx_customers_rfm_segment ON customers(rfm_segment);
+CREATE INDEX IF NOT EXISTS idx_customers_last_visit ON customers(last_visit DESC);
+CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(telefone) WHERE telefone IS NOT NULL;
+
+-- ==================== COUPON REDEMPTIONS TABLE (NEW v3.0) ====================
+-- Links coupon usage in transactions to campaigns for attribution
+
+CREATE TABLE IF NOT EXISTS coupon_redemptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE,
+  codigo_cupom TEXT NOT NULL,
+  campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL,  -- NULL if coupon not from a campaign
+  customer_doc TEXT REFERENCES customers(doc) ON DELETE SET NULL,
+  redeemed_at TIMESTAMPTZ NOT NULL,
+  discount_value DECIMAL(10,2),             -- Calculated discount amount
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for coupon analysis
+CREATE INDEX IF NOT EXISTS idx_coupon_redemptions_cupom ON coupon_redemptions(codigo_cupom);
+CREATE INDEX IF NOT EXISTS idx_coupon_redemptions_campaign ON coupon_redemptions(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_coupon_redemptions_date ON coupon_redemptions(redeemed_at DESC);
 
 -- ==================== BLACKLIST TABLE ====================
 -- Stores phone numbers that should not receive WhatsApp messages
@@ -217,6 +349,7 @@ CREATE TABLE IF NOT EXISTS automation_rules (
 DROP VIEW IF EXISTS contact_effectiveness_summary CASCADE;
 DROP VIEW IF EXISTS campaign_effectiveness CASCADE;
 DROP VIEW IF EXISTS campaign_performance CASCADE;
+DROP VIEW IF EXISTS customer_summary CASCADE;
 
 -- Campaign performance view with effectiveness metrics
 CREATE OR REPLACE VIEW campaign_performance AS
@@ -312,6 +445,78 @@ WHERE contacted_at >= NOW() - INTERVAL '30 days'
 GROUP BY
   COALESCE(contact_method, 'unknown'),
   CASE WHEN campaign_id IS NOT NULL THEN 'campaign' ELSE 'manual' END;
+
+-- Customer summary view (aggregated from transactions) - v3.2 (removed risk_level)
+CREATE VIEW customer_summary AS
+SELECT
+  c.doc,
+  c.nome,
+  c.telefone,
+  c.email,
+  c.saldo_carteira,
+  c.rfm_segment,
+  c.r_score,
+  c.f_score,
+  c.m_score,
+  c.recent_monetary_90d,
+  -- Transaction stats
+  COUNT(t.id) FILTER (WHERE NOT t.is_recarga) as transaction_count,
+  COUNT(t.id) FILTER (WHERE t.is_recarga) as recarga_count,
+  COALESCE(SUM(t.net_value) FILTER (WHERE NOT t.is_recarga), 0) as total_spent,
+  COALESCE(SUM(t.total_services), 0) as total_services,
+  COALESCE(SUM(t.wash_count), 0) as total_washes,
+  COALESCE(SUM(t.dry_count), 0) as total_drys,
+  COALESCE(SUM(t.cashback_amount), 0) as total_cashback,
+  -- Date stats
+  MIN(t.data_hora)::DATE as first_visit,
+  MAX(t.data_hora)::DATE as last_visit,
+  (CURRENT_DATE - MAX(t.data_hora)::DATE) as days_since_last_visit,
+  -- Coupon usage
+  COUNT(t.id) FILTER (WHERE t.usou_cupom) as coupon_uses,
+  -- Average ticket
+  ROUND(
+    COALESCE(SUM(t.net_value) FILTER (WHERE NOT t.is_recarga), 0) /
+    NULLIF(COUNT(t.id) FILTER (WHERE NOT t.is_recarga), 0),
+    2
+  ) as avg_ticket
+FROM customers c
+LEFT JOIN transactions t ON c.doc = t.doc_cliente
+GROUP BY c.doc, c.nome, c.telefone, c.email, c.saldo_carteira, c.rfm_segment, c.r_score, c.f_score, c.m_score, c.recent_monetary_90d;
+
+-- Coupon effectiveness view (for A/B testing analysis) - NEW v3.0
+CREATE OR REPLACE VIEW coupon_effectiveness AS
+SELECT
+  cr.codigo_cupom,
+  c.name as campaign_name,
+  c.discount_percent,
+  c.service_type,
+  COUNT(DISTINCT cr.transaction_id) as redemptions,
+  COUNT(DISTINCT cr.customer_doc) as unique_customers,
+  COALESCE(SUM(t.net_value), 0) as total_revenue,
+  ROUND(AVG(t.net_value), 2) as avg_ticket,
+  MIN(cr.redeemed_at) as first_redemption,
+  MAX(cr.redeemed_at) as last_redemption
+FROM coupon_redemptions cr
+LEFT JOIN campaigns c ON cr.campaign_id = c.id
+LEFT JOIN transactions t ON cr.transaction_id = t.id
+GROUP BY cr.codigo_cupom, c.name, c.discount_percent, c.service_type;
+
+-- Daily revenue summary view - NEW v3.0
+CREATE OR REPLACE VIEW daily_revenue AS
+SELECT
+  DATE(data_hora) as date,
+  COUNT(*) FILTER (WHERE NOT is_recarga) as transactions,
+  COUNT(*) FILTER (WHERE is_recarga) as recargas,
+  SUM(total_services) as total_services,
+  SUM(wash_count) as washes,
+  SUM(dry_count) as drys,
+  COALESCE(SUM(net_value) FILTER (WHERE NOT is_recarga), 0) as service_revenue,
+  COALESCE(SUM(valor_pago) FILTER (WHERE is_recarga), 0) as recarga_revenue,
+  COALESCE(SUM(cashback_amount), 0) as cashback_given,
+  COUNT(*) FILTER (WHERE usou_cupom) as coupon_uses
+FROM transactions
+GROUP BY DATE(data_hora)
+ORDER BY date DESC;
 
 -- ==================== HELPER FUNCTIONS ====================
 
@@ -479,6 +684,239 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ==================== RFM SEGMENTATION (v3.2) ====================
+-- RFM Segments (Portuguese - Marketing Focus):
+-- These names are DISTINCT from Churn Risk Levels to avoid confusion.
+--
+-- Segments:
+-- - VIP: Champion (R=5, F≥4, M≥4) - Best customers, top tier
+-- - Frequente: Loyal (R≥4, F≥3, M≥3) - Regular visitors
+-- - Promissor: Potential (R≥3, F≥2, M≥2) - Growing customers
+-- - Novato: New (registered ≤30 days AND ≤2 transactions) - Newcomers
+-- - Esfriando: At Risk (R=2, F=2 OR M=2) - Cooling off, needs attention
+-- - Inativo: Lost - No recent engagement
+--
+-- Scoring Thresholds (laundromat-optimized):
+-- Recency (days since last visit): 5=≤21d, 4=≤45d, 3=≤90d, 2=≤180d, 1=>180d
+-- Frequency (transaction count): 5=≥10, 4=≥6, 3=≥3, 2=2, 1=1
+-- Monetary (90-day spending R$): 5=≥250, 4=≥150, 3=≥75, 2=≥36, 1=<36
+--
+-- Note: Churn Risk Levels (Saudável, Monitorar, Em Risco, Crítico, Perdido, Novo)
+-- are computed client-side in customerMetrics.js using personalized patterns.
+-- These are DIFFERENT from RFM segments!
+
+-- Function to calculate RFM scores and segment (Portuguese names)
+CREATE OR REPLACE FUNCTION calculate_rfm_segment(
+  p_recency_days INTEGER,
+  p_frequency INTEGER,
+  p_monetary_90d DECIMAL,
+  p_registration_days INTEGER
+)
+RETURNS TABLE (
+  r_score INTEGER,
+  f_score INTEGER,
+  m_score INTEGER,
+  segment TEXT
+) AS $$
+DECLARE
+  v_r_score INTEGER;
+  v_f_score INTEGER;
+  v_m_score INTEGER;
+  v_segment TEXT;
+BEGIN
+  -- Recency Score (R): Days since last purchase
+  v_r_score := CASE
+    WHEN p_recency_days IS NULL THEN 1
+    WHEN p_recency_days <= 21 THEN 5
+    WHEN p_recency_days <= 45 THEN 4
+    WHEN p_recency_days <= 90 THEN 3
+    WHEN p_recency_days <= 180 THEN 2
+    ELSE 1
+  END;
+
+  -- Frequency Score (F): Number of transactions
+  v_f_score := CASE
+    WHEN p_frequency >= 10 THEN 5
+    WHEN p_frequency >= 6 THEN 4
+    WHEN p_frequency >= 3 THEN 3
+    WHEN p_frequency = 2 THEN 2
+    ELSE 1
+  END;
+
+  -- Monetary Score (M): Recent 90-day spending (R$)
+  v_m_score := CASE
+    WHEN p_monetary_90d >= 250 THEN 5
+    WHEN p_monetary_90d >= 150 THEN 4
+    WHEN p_monetary_90d >= 75 THEN 3
+    WHEN p_monetary_90d >= 36 THEN 2
+    ELSE 1
+  END;
+
+  -- Segment Assignment (Portuguese marketing names - distinct from Churn Risk Levels)
+  IF p_registration_days IS NOT NULL AND p_registration_days <= 30 AND p_frequency <= 2 THEN
+    v_segment := 'Novato';      -- Newcomer (not "Novo" which is a Churn Risk Level)
+  ELSIF v_r_score = 5 AND v_f_score >= 4 AND v_m_score >= 4 THEN
+    v_segment := 'VIP';         -- Champion - top tier customers
+  ELSIF v_r_score >= 4 AND v_f_score >= 3 AND v_m_score >= 3 THEN
+    v_segment := 'Frequente';   -- Loyal - regular visitors
+  ELSIF v_r_score >= 3 AND v_f_score >= 2 AND v_m_score >= 2 THEN
+    v_segment := 'Promissor';   -- Potential - growing customers
+  ELSIF v_r_score = 2 AND (v_f_score = 2 OR v_m_score = 2) THEN
+    v_segment := 'Esfriando';   -- Cooling off (not "Em Risco" which is a Churn Risk Level)
+  ELSE
+    v_segment := 'Inativo';     -- Inactive (not "Perdido" which is a Churn Risk Level)
+  END IF;
+
+  RETURN QUERY SELECT v_r_score, v_f_score, v_m_score, v_segment;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- Function to update customer metrics from transactions
+-- Computes RFM scores and segment (Portuguese names)
+CREATE OR REPLACE FUNCTION refresh_customer_metrics(p_customer_doc TEXT DEFAULT NULL)
+RETURNS INT AS $$
+DECLARE
+  v_updated INT := 0;
+BEGIN
+  UPDATE customers c
+  SET
+    first_visit = sub.first_visit,
+    last_visit = sub.last_visit,
+    transaction_count = sub.transaction_count,
+    total_spent = sub.total_spent,
+    total_services = sub.total_services,
+    days_since_last_visit = sub.days_since_last_visit,
+    recent_monetary_90d = sub.recent_monetary_90d,
+    r_score = rfm.r_score,
+    f_score = rfm.f_score,
+    m_score = rfm.m_score,
+    rfm_segment = rfm.segment,
+    updated_at = NOW()
+  FROM (
+    SELECT
+      t.doc_cliente,
+      MIN(t.data_hora)::DATE as first_visit,
+      MAX(t.data_hora)::DATE as last_visit,
+      COUNT(*) FILTER (WHERE NOT t.is_recarga) as transaction_count,
+      COALESCE(SUM(t.net_value) FILTER (WHERE NOT t.is_recarga), 0) as total_spent,
+      COALESCE(SUM(t.total_services), 0) as total_services,
+      CURRENT_DATE - MAX(t.data_hora)::DATE as days_since_last_visit,
+      COALESCE(SUM(t.net_value) FILTER (
+        WHERE NOT t.is_recarga AND t.data_hora >= CURRENT_DATE - INTERVAL '90 days'
+      ), 0) as recent_monetary_90d,
+      CURRENT_DATE - c2.data_cadastro::DATE as registration_days
+    FROM transactions t
+    LEFT JOIN customers c2 ON c2.doc = t.doc_cliente
+    WHERE p_customer_doc IS NULL OR t.doc_cliente = p_customer_doc
+    GROUP BY t.doc_cliente, c2.data_cadastro
+  ) sub
+  CROSS JOIN LATERAL calculate_rfm_segment(
+    sub.days_since_last_visit,
+    sub.transaction_count::INTEGER,
+    sub.recent_monetary_90d,
+    sub.registration_days
+  ) rfm
+  WHERE c.doc = sub.doc_cliente;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  RETURN v_updated;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to match coupon code to campaign
+-- Returns campaign_id if found, NULL otherwise
+CREATE OR REPLACE FUNCTION find_campaign_by_coupon(p_coupon_code TEXT)
+RETURNS TEXT AS $$
+BEGIN
+  RETURN (
+    SELECT id FROM campaigns
+    WHERE LOWER(coupon_code) = LOWER(p_coupon_code)
+    ORDER BY created_at DESC
+    LIMIT 1
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to process coupon redemption from a transaction
+-- Creates coupon_redemptions record and links to campaign if found
+CREATE OR REPLACE FUNCTION process_coupon_redemption(
+  p_transaction_id UUID,
+  p_coupon_code TEXT,
+  p_customer_doc TEXT,
+  p_redeemed_at TIMESTAMPTZ,
+  p_discount_value DECIMAL DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+  v_campaign_id TEXT;
+  v_redemption_id UUID;
+BEGIN
+  -- Skip if no coupon
+  IF p_coupon_code IS NULL OR LOWER(p_coupon_code) = 'n/d' THEN
+    RETURN NULL;
+  END IF;
+
+  -- Find matching campaign
+  v_campaign_id := find_campaign_by_coupon(p_coupon_code);
+
+  -- Insert redemption record
+  INSERT INTO coupon_redemptions (
+    transaction_id, codigo_cupom, campaign_id, customer_doc,
+    redeemed_at, discount_value
+  ) VALUES (
+    p_transaction_id, p_coupon_code, v_campaign_id, p_customer_doc,
+    p_redeemed_at, p_discount_value
+  )
+  RETURNING id INTO v_redemption_id;
+
+  RETURN v_redemption_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to upsert a customer record
+-- Used during import to create or update customer
+CREATE OR REPLACE FUNCTION upsert_customer(
+  p_doc TEXT,
+  p_nome TEXT,
+  p_telefone TEXT DEFAULT NULL,
+  p_email TEXT DEFAULT NULL,
+  p_data_cadastro TIMESTAMPTZ DEFAULT NULL,
+  p_saldo_carteira DECIMAL DEFAULT 0
+)
+RETURNS TEXT AS $$
+BEGIN
+  INSERT INTO customers (doc, nome, telefone, email, data_cadastro, saldo_carteira, source)
+  VALUES (p_doc, p_nome, p_telefone, p_email, p_data_cadastro, p_saldo_carteira, 'pos_import')
+  ON CONFLICT (doc) DO UPDATE SET
+    nome = COALESCE(EXCLUDED.nome, customers.nome),
+    telefone = COALESCE(EXCLUDED.telefone, customers.telefone),
+    email = COALESCE(EXCLUDED.email, customers.email),
+    saldo_carteira = EXCLUDED.saldo_carteira,
+    updated_at = NOW();
+
+  RETURN p_doc;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to generate import hash for deduplication
+-- Hash = MD5(data_hora + doc_cliente + valor_venda + maquinas)
+CREATE OR REPLACE FUNCTION generate_transaction_hash(
+  p_data_hora TIMESTAMPTZ,
+  p_doc_cliente TEXT,
+  p_valor_venda DECIMAL,
+  p_maquinas TEXT
+)
+RETURNS TEXT AS $$
+BEGIN
+  RETURN MD5(
+    COALESCE(p_data_hora::TEXT, '') ||
+    COALESCE(p_doc_cliente, '') ||
+    COALESCE(p_valor_venda::TEXT, '0') ||
+    COALESCE(p_maquinas, '')
+  );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 -- ==================== TRIGGERS ====================
 
 DROP TRIGGER IF EXISTS update_blacklist_updated_at ON blacklist;
@@ -502,6 +940,12 @@ CREATE TRIGGER update_automation_rules_updated_at
 DROP TRIGGER IF EXISTS update_contact_tracking_updated_at ON contact_tracking;
 CREATE TRIGGER update_contact_tracking_updated_at
   BEFORE UPDATE ON contact_tracking
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_customers_updated_at ON customers;
+CREATE TRIGGER update_customers_updated_at
+  BEFORE UPDATE ON customers
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
@@ -542,6 +986,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON automation_rules TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON contact_tracking TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON campaign_contacts TO authenticated;
 
+-- NEW v3.0: Core data tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON transactions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON customers TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON coupon_redemptions TO authenticated;
+
 GRANT USAGE, SELECT ON SEQUENCE campaign_sends_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE comm_logs_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE contact_tracking_id_seq TO authenticated;
@@ -551,6 +1000,10 @@ GRANT USAGE, SELECT ON SEQUENCE campaign_contacts_id_seq TO authenticated;
 GRANT SELECT ON campaign_performance TO authenticated;
 GRANT SELECT ON campaign_effectiveness TO authenticated;
 GRANT SELECT ON contact_effectiveness_summary TO authenticated;
+-- NEW v3.0: Data views
+GRANT SELECT ON customer_summary TO authenticated;
+GRANT SELECT ON coupon_effectiveness TO authenticated;
+GRANT SELECT ON daily_revenue TO authenticated;
 
 -- Grant execute on functions
 GRANT EXECUTE ON FUNCTION update_updated_at_column TO authenticated;
@@ -560,3 +1013,10 @@ GRANT EXECUTE ON FUNCTION record_campaign_contact TO authenticated;
 GRANT EXECUTE ON FUNCTION update_campaign_stats TO authenticated;
 GRANT EXECUTE ON FUNCTION mark_customer_returned TO authenticated;
 GRANT EXECUTE ON FUNCTION expire_old_contacts TO authenticated;
+-- NEW v3.0: Data functions
+GRANT EXECUTE ON FUNCTION refresh_customer_metrics TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_rfm_segment TO authenticated;
+GRANT EXECUTE ON FUNCTION find_campaign_by_coupon TO authenticated;
+GRANT EXECUTE ON FUNCTION process_coupon_redemption TO authenticated;
+GRANT EXECUTE ON FUNCTION upsert_customer TO authenticated;
+GRANT EXECUTE ON FUNCTION generate_transaction_hash TO authenticated;

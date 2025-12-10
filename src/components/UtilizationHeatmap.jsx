@@ -1,7 +1,10 @@
-// UtilizationHeatmap Component v4.3.0
+// UtilizationHeatmap Component v4.4.0
 // Hour x Day heatmap showing average service utilization patterns
 //
 // CHANGELOG:
+// v4.4.0 (2025-12-10): Timezone-independent hour/day extraction
+//   - Uses date.brazil components instead of getHours()/getDay()
+//   - Ensures correct heatmap regardless of viewer's browser timezone
 // v4.3.0 (2025-11-30): Mobile width optimization
 //   - Reduced mobile padding: p-4 → px-2 py-3 (gains ~24px horizontal space)
 //   - Keeps sm:p-6 for desktop
@@ -116,15 +119,21 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
       const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
       if (!date || date < startDate || date > endDate) return;
 
-      const hour = date.getHours();
-      const dayOfWeek = date.getDay();
+      // Use date.brazil components for timezone-independent hour/day extraction
+      // This ensures correct categorization regardless of viewer's browser timezone
+      const hour = date.brazil?.hour ?? date.getHours();
+      const dayOfWeek = date.brazil
+        ? new Date(date.brazil.year, date.brazil.month - 1, date.brazil.day).getDay()
+        : date.getDay();
 
       if (hour >= HOUR_START && hour < HOUR_END) {
         const machineInfo = countMachines(row.Maquinas || row.machine || '');
         grid[hour][dayOfWeek].services += machineInfo.total;
 
-        // Use formatDate to avoid UTC timezone issues
-        const dateStr = formatDate(date);
+        // Use Brazil date components for consistent date key
+        const dateStr = date.brazil
+          ? `${date.brazil.year}-${String(date.brazil.month).padStart(2, '0')}-${String(date.brazil.day).padStart(2, '0')}`
+          : formatDate(date);
         daysSeen[hour][dayOfWeek].add(dateStr);
       }
     });

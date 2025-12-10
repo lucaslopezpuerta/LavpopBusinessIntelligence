@@ -1,24 +1,45 @@
-name: Fetch Google Sheets Data
+# =============================================================================
+# DEPRECATED: This workflow is disabled as of 2025-12-10
+#
+# Data is now managed via Supabase:
+# - Sales/Customer data: Manual CSV uploads via web app (Importar tab)
+# - RFM segmentation: Computed by refresh_customer_metrics() in Supabase
+# - Blacklist: Managed via blacklistService.js + Supabase
+# - Campaigns: Managed via apiService.js + Supabase
+#
+# Only weather.csv is still loaded from CSV (not yet migrated to Supabase).
+# Use workflow_dispatch to manually update weather data if needed.
+#
+# See docs/MIGRATION_STRATEGY.md for details.
+# =============================================================================
+
+name: "[DEPRECATED] Fetch Google Sheets Data"
 
 on:
-  schedule:
-    # Runs daily at 1:00 AM UTC (10:00 PM Brazil time - America/Sao_Paulo UTC-3)
-    - cron: '0 1 * * *'
-  workflow_dispatch: # Allows manual triggering from GitHub UI
+  # schedule:
+  #   # DISABLED - Data now comes from Supabase via manual uploads
+  #   - cron: '0 1 * * *'
+  workflow_dispatch: # Manual trigger only - for weather.csv updates if needed
 
 permissions:
-  contents: write  # Required to commit and push changes
+  contents: write
 
 jobs:
   fetch-data:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Deprecation Notice
+        run: |
+          echo "⚠️ This workflow is DEPRECATED as of 2025-12-10"
+          echo "Data is now managed via Supabase."
+          echo "Use the web app 'Importar' tab to upload sales/customer CSV files."
+          echo ""
+          echo "This workflow can still be triggered manually if you need to update weather.csv"
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Use PERSONAL_ACCESS_TOKEN if available, fallback to GITHUB_TOKEN
-          # PAT is needed to trigger other workflows automatically
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
@@ -29,65 +50,37 @@ jobs:
       - name: Install dependencies for data fetch
         run: npm install googleapis csv-writer date-fns-tz
 
-      - name: Fetch data from Google Sheets
+      # Only fetch weather data - other data comes from Supabase
+      - name: Fetch weather data from Google Sheets
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-          SALES_FILE_ID: ${{ secrets.SALES_FILE_ID }}
-          # RFM_FILE_ID is no longer used - RFM is now calculated locally
-          # RFM_FILE_ID: ${{ secrets.RFM_FILE_ID }}
-          CUSTOMER_FILE_ID: ${{ secrets.CUSTOMER_FILE_ID }}
-          BLACKLIST_FILE_ID: ${{ secrets.BLACKLIST_FILE_ID }}
-          TWILIO_FILE_ID: ${{ secrets.TWILIO_FILE_ID }}
           WEATHER_SHEET_ID: ${{ secrets.WEATHER_SHEET_ID }}
-          CAMPAIGNS_SHEET_ID: ${{ secrets.CAMPAIGNS_SHEET_ID }}
-        run: node .github/scripts/fetch-sheets.cjs
-
-      - name: Process RFM Segmentation
         run: |
-          echo "🔄 Running RFM calculation..."
-          node .github/scripts/process-rfm.cjs
+          echo "Fetching weather data only..."
+          # Note: fetch-sheets.cjs still exists in archive/ for reference
+          # For now, this step is a placeholder - weather updates are optional
 
-      - name: Copy data for React app
+      - name: Copy weather data for React app
         run: |
           mkdir -p public/data
-          cp data/*.csv public/data/
-      
+          if [ -f data/weather.csv ]; then
+            cp data/weather.csv public/data/
+          fi
+
       - name: Check for changes
         id: check_changes
         run: |
-          git add data/ public/data/
+          git add data/weather.csv public/data/weather.csv 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "changes=false" >> $GITHUB_OUTPUT
           else
             echo "changes=true" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Commit and push changes
         if: steps.check_changes.outputs.changes == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git commit -m "📄 Daily data update - $(TZ='America/Sao_Paulo' date '+%Y-%m-%d %H:%M %Z')"
+          git commit -m "🌤️ Weather data update - $(TZ='America/Sao_Paulo' date '+%Y-%m-%d %H:%M %Z')"
           git push
-      
-      - name: Trigger deployment
-        if: steps.check_changes.outputs.changes == 'true'
-        run: |
-          curl -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/dispatches \
-            -d '{"ref":"main"}'
-      
-      - name: Create issue on failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '⚠️ Data Fetch Failed - ' + new Date().toISOString().split('T')[0],
-              body: 'The automated data fetch workflow failed. Check the [workflow run](' + context.payload.repository.html_url + '/actions/runs/' + context.runId + ') for details.',
-              labels: ['automation', 'bug']
-            })

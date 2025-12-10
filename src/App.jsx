@@ -22,7 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
-import { loadAllData } from './utils/csvLoader';
+import { loadAllData } from './utils/supabaseLoader';
 import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
 import Backdrop from './components/Backdrop';
@@ -35,6 +35,7 @@ const Customers = lazy(() => import('./views/Customers'));
 const Campaigns = lazy(() => import('./views/Campaigns'));
 const Operations = lazy(() => import('./views/Operations'));
 const Intelligence = lazy(() => import('./views/Intelligence'));
+const DataUploadView = lazy(() => import('./views/DataUploadView'));
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -82,7 +83,8 @@ function AppContent() {
     customers: Customers,
     campaigns: Campaigns,
     intelligence: Intelligence,
-    operations: Operations
+    operations: Operations,
+    upload: DataUploadView
   };
 
   const ActiveComponent = tabComponents[activeTab] || Dashboard;

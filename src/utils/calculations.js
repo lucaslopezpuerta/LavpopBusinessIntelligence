@@ -1,6 +1,12 @@
 /**
- * Core Business Calculations
+ * Core Business Calculations v1.1
  * Ported from Calculate_Metrics.js
+ *
+ * CHANGELOG:
+ * v1.1 (2025-12-10): CRITICAL FIX - Timezone-independent calculations
+ *   - dayOfWeek, hour, isWeekend now use date.brazil components
+ *   - Ensures correct values regardless of viewer's browser timezone
+ * v1.0: Initial port from Calculate_Metrics.js
  */
 
 import { parseBrDate, isWithinRange, daysBetween } from './dateUtils';
@@ -66,9 +72,14 @@ export const processSales = (salesData, dateRange = { start: null, end: null }) 
       value,
       machines,
       doc,
-      dayOfWeek: date.getDay(),
-      hour: date.getHours(),
-      isWeekend: date.getDay() === 0 || date.getDay() === 6
+      dayOfWeek: date.brazil
+        ? new Date(date.brazil.year, date.brazil.month - 1, date.brazil.day).getDay()
+        : date.getDay(),
+      hour: date.brazil?.hour ?? date.getHours(),
+      isWeekend: date.brazil
+        ? (new Date(date.brazil.year, date.brazil.month - 1, date.brazil.day).getDay() === 0 ||
+           new Date(date.brazil.year, date.brazil.month - 1, date.brazil.day).getDay() === 6)
+        : (date.getDay() === 0 || date.getDay() === 6)
     };
   });
   
@@ -254,19 +265,25 @@ export const calculateCustomerMetrics = (salesData, customerDoc) => {
  * Calculate risk score (exponential decay with RFM bonus)
  */
 export const calculateRiskScore = (daysSinceLast, rfmSegment) => {
-  // RFM bonus multipliers
+  // RFM bonus multipliers (Portuguese and English segment names)
+  // Portuguese names are DISTINCT from Churn Risk Level names
   const rfmBonus = {
+    // Portuguese RFM segments (v3.4.0 - current)
+    'VIP': 0.5,           // Champion - best customers
+    'Frequente': 0.6,     // Loyal - regular visitors
+    'Promissor': 0.7,     // Potential - growing customers
+    'Novato': 0.8,        // New - newcomers
+    'Esfriando': 1.5,     // At Risk - cooling off
+    'Inativo': 2.0,       // Lost - inactive
+    // English legacy support
     'Champion': 0.5,
     'Loyal': 0.6,
     'Potential': 0.7,
     'New': 0.8,
-    'Promising': 0.75,
-    'Need Attention': 1.2,
     'At Risk': 1.5,
-    'Cant Lose': 1.8,
     'Lost': 2.0
   };
-  
+
   const multiplier = rfmBonus[rfmSegment] || 1.0;
   
   // Exponential decay: risk increases exponentially with days inactive

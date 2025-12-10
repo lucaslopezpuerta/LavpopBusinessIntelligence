@@ -1,8 +1,12 @@
-// CustomerProfileModal.jsx v1.8 - CONTACT CONTEXT TRACKING
+// CustomerProfileModal.jsx v1.9 - SHARED DATE UTILITIES
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v1.9 (2025-12-10): Use shared dateUtils for consistent timezone handling
+//   - Removed duplicate parseBrDate function
+//   - Now imports parseBrDate from dateUtils.js
+//   - Ensures Brazil timezone consistency across all components
 // v1.8 (2025-12-08): Contact context tracking
 //   - Passes customer name and risk level when marking as contacted
 //   - Uses markContacted for proper effectiveness tracking
@@ -76,19 +80,23 @@ import {
 
 // Segment-based avatar configuration
 // Maps RFM segments to icons and gradient colors for visual recognition
-// Segment names match those from customerMetrics.js SEGMENT_BONUS
+// Portuguese segment names (VIP, Frequente, Promissor, Novato, Esfriando, Inativo)
+// These are DISTINCT from Churn Risk Level names to avoid confusion
 const SEGMENT_AVATARS = {
+    // Portuguese RFM segments (v3.4.0 - current)
+    'VIP': { icon: Crown, from: 'from-amber-400', to: 'to-yellow-500', text: 'text-amber-900' },
+    'Frequente': { icon: Heart, from: 'from-blue-500', to: 'to-indigo-600', text: 'text-white' },
+    'Promissor': { icon: TrendingUp, from: 'from-cyan-400', to: 'to-blue-500', text: 'text-white' },
+    'Novato': { icon: Sparkles, from: 'from-purple-500', to: 'to-violet-600', text: 'text-white' },
+    'Esfriando': { icon: Eye, from: 'from-orange-400', to: 'to-amber-500', text: 'text-orange-900' },
+    'Inativo': { icon: UserMinus, from: 'from-gray-500', to: 'to-slate-600', text: 'text-white' },
+    // English legacy support
     'Champion': { icon: Crown, from: 'from-amber-400', to: 'to-yellow-500', text: 'text-amber-900' },
     'Loyal': { icon: Heart, from: 'from-blue-500', to: 'to-indigo-600', text: 'text-white' },
     'Potential': { icon: TrendingUp, from: 'from-cyan-400', to: 'to-blue-500', text: 'text-white' },
     'New': { icon: Sparkles, from: 'from-purple-500', to: 'to-violet-600', text: 'text-white' },
-    'Promising': { icon: Rocket, from: 'from-emerald-400', to: 'to-green-500', text: 'text-white' },
-    'Need Attention': { icon: Eye, from: 'from-orange-400', to: 'to-amber-500', text: 'text-orange-900' },
-    'About to Sleep': { icon: Moon, from: 'from-slate-400', to: 'to-gray-500', text: 'text-white' },
     'At Risk': { icon: AlertTriangle, from: 'from-red-500', to: 'to-rose-600', text: 'text-white' },
     'AtRisk': { icon: AlertTriangle, from: 'from-red-500', to: 'to-rose-600', text: 'text-white' },
-    'Cant Lose': { icon: Shield, from: 'from-rose-500', to: 'to-red-600', text: 'text-white' },
-    'Hibernating': { icon: Pause, from: 'from-gray-400', to: 'to-slate-500', text: 'text-white' },
     'Lost': { icon: UserMinus, from: 'from-gray-500', to: 'to-slate-600', text: 'text-white' },
     'Unclassified': { icon: User, from: 'from-slate-400', to: 'to-slate-500', text: 'text-white' },
     // Default fallback for any unmatched segment
@@ -112,6 +120,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { addCommunicationEntry, getCommunicationLog, getDefaultNotes } from '../utils/communicationLog';
 import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
+import { parseBrDate } from '../utils/dateUtils';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
@@ -221,16 +230,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         }
     };
 
-    // Helper to parse Brazilian date format (DD/MM/YYYY HH:mm:ss)
-    const parseBrDate = (dateStr) => {
-        if (!dateStr) return null;
-        const parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2}):(\d{2}))?/);
-        if (parts) {
-            const [, day, month, year, hour = '00', minute = '00', second = '00'] = parts;
-            return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
-        }
-        return null;
-    };
+    // parseBrDate now imported from dateUtils.js for consistent timezone handling
 
     // Helper for parsing machines - extracts machine codes (e.g., "Lavadora:3" -> "L3")
     const parseMachines = (machineStr) => {

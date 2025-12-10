@@ -1,8 +1,12 @@
-// Transaction Parser v1.2 - Shared Utility
+// Transaction Parser v1.3 - Shared Utility
 // Handles all transaction types with proper cashback calculation
 // Used by: businessMetrics.js, operationsMetrics.js, customerMetrics.js
 //
 // CHANGELOG:
+// v1.3 (2025-12-10): Timezone-independent hour extraction
+//   - Uses date.brazil.hour for actual recorded Brazil hour
+//   - Uses date.brazil components for dateStr to ensure consistency
+//   - Critical fix: hour is now correct regardless of viewer's timezone
 // v1.2 (2025-11-30): Fixed timezone consistency
 //   - Uses formatDate from dateUtils for consistent local-timezone date keys
 //   - Avoids toISOString() which returns UTC and can cause day boundary issues
@@ -118,14 +122,21 @@ export function parseSalesRecords(salesData) {
     
     const machineInfo = countMachines(machineStr);
 
-    // Use formatDate for consistent LOCAL timezone date keys
-    // This avoids toISOString() which returns UTC and can cause day boundary issues
-    const dateStr = formatDate(date);
+    // Use date.brazil components for timezone-independent date key
+    // This ensures the date is based on the ACTUAL recorded Brazil time,
+    // not the viewer's browser timezone
+    const { year, month, day, hour } = date.brazil || {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: date.getHours()
+    };
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     records.push({
       date,
       dateStr,
-      hour: date.getHours(),
+      hour, // Uses date.brazil.hour - the ACTUAL recorded Brazil hour
       type,
       isRecarga,
       machineStr,         // Store original machine string

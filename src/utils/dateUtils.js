@@ -1,55 +1,88 @@
 /**
  * Brazilian Date Utilities
- * Timezone: America/Sao_Paulo
+ * Timezone-independent for BI analytics
  * Format: DD/MM/YYYY or DD-MM-YYYY
+ *
+ * IMPORTANT: All timestamps in this BI tool represent Brazil business time.
+ * The raw time values (hour, day, month) are preserved exactly as recorded,
+ * regardless of the viewer's browser timezone.
  */
-
-export const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
 
 /**
  * Parse Brazilian date format (DD/MM/YYYY HH:mm:ss)
- * CRITICAL: Creates date in LOCAL timezone to avoid UTC conversion issues
+ *
+ * Returns a Date object with an additional `brazil` property containing
+ * the RAW time components for timezone-independent calculations.
+ *
+ * USAGE:
+ * - For display: use date.brazil.hour, date.brazil.day, etc.
+ * - For sorting/comparison: use the Date object directly
+ * - For peak hour analysis: use date.brazil.hour (NOT date.getHours())
+ *
+ * @param {string} str - Date string in DD/MM/YYYY HH:mm:ss format
+ * @returns {Date} Date object with .brazil property containing raw components
  */
 export const parseBrDate = (str) => {
-  if (!str) return new Date('1970-01-01');
+  const fallbackDate = new Date('1970-01-01');
+  fallbackDate.brazil = { year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0 };
+
+  if (!str) return fallbackDate;
 
   try {
+    let year, month, day, hour = 0, minute = 0, second = 0;
+
     // Handle DD/MM/YYYY format
     if (str.includes('/')) {
       const [datePart, timePart = '00:00:00'] = str.split(' ');
-      const [day, month, year] = datePart.split('/').map(Number);
-      
-      if (day && month && year) {
-        const fullYear = year < 100 ? 2000 + year : year;
-        const [hour = 0, minute = 0, second = 0] = timePart.split(':').map(Number);
-        
-        // Create in LOCAL timezone (not UTC)
-        return new Date(fullYear, month - 1, day, hour, minute, second);
-      }
+      [day, month, year] = datePart.split('/').map(Number);
+      [hour = 0, minute = 0, second = 0] = timePart.split(':').map(Number);
+
+      if (!day || !month || !year) return fallbackDate;
+      year = year < 100 ? 2000 + year : year;
     }
-    
     // Handle DD-MM-YYYY format (RFM CSV)
-    if (str.includes('-') && !str.match(/^\d{4}/)) {
-      const [day, month, year] = str.split('-').map(Number);
-      if (day && month && year) {
-        const fullYear = year < 100 ? 2000 + year : year;
-        return new Date(fullYear, month - 1, day);
+    else if (str.includes('-') && !str.match(/^\d{4}/)) {
+      [day, month, year] = str.split('-').map(Number);
+      if (!day || !month || !year) return fallbackDate;
+      year = year < 100 ? 2000 + year : year;
+    }
+    // Handle ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss)
+    else if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
+      const match = str.match(/(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}):(\d{2}))?/);
+      if (match) {
+        [, year, month, day, hour, minute, second] = match.map(v => Number(v) || 0);
+      } else {
+        return fallbackDate;
       }
     }
-    
-    // Handle ISO format (YYYY-MM-DD)
-    if (str.includes('-') && str.match(/^\d{4}-\d{2}-\d{2}/)) {
-      const [year, month, day] = str.split(/[-T]/).map(Number);
-      return new Date(year, month - 1, day);
+    else {
+      // Fallback
+      const directParse = new Date(str);
+      if (!isNaN(directParse.getTime())) {
+        directParse.brazil = {
+          year: directParse.getFullYear(),
+          month: directParse.getMonth() + 1,
+          day: directParse.getDate(),
+          hour: directParse.getHours(),
+          minute: directParse.getMinutes(),
+          second: directParse.getSeconds()
+        };
+        return directParse;
+      }
+      return fallbackDate;
     }
 
-    // Fallback
-    const directParse = new Date(str);
-    if (!isNaN(directParse.getTime())) return directParse;
+    // Create Date object for sorting/comparison
+    // Uses local timezone but we'll use .brazil for actual values
+    const date = new Date(year, month - 1, day, hour, minute, second);
 
-    return new Date('1970-01-01');
+    // Attach RAW Brazil time components for timezone-independent calculations
+    // These are the ACTUAL recorded values, not browser-adjusted
+    date.brazil = { year, month, day, hour, minute, second };
+
+    return date;
   } catch (e) {
-    return new Date('1970-01-01');
+    return fallbackDate;
   }
 };
 

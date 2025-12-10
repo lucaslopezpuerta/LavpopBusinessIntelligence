@@ -1,7 +1,13 @@
-// Customer Metrics Calculator v3.2.1 - NAME MERGE FIX
+// Customer Metrics Calculator v3.4.0 - DISTINCT PORTUGUESE RFM SEGMENTS
 // ✅ Brazilian number parsing added (handles comma decimals)
 // ✅ Cashback rate corrected (7.5%)
 // ✅ Cashback start date corrected (June 1, 2024)
+// ✅ v3.4.0 (2025-12-10): Distinct Portuguese RFM segment names
+//     - RFM segments: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
+//     - Names are DISTINCT from Churn Risk Levels to avoid confusion
+//     - Churn Risk: Saudável, Monitorar, Em Risco, Crítico, Novo, Perdido
+//     - RFM computed in Supabase, churn risk computed client-side
+// ✅ v3.3.0 (2025-12-10): Portuguese RFM segment support
 // ✅ FIX v3.2.1 (2025-12-03): Customer name from customer.csv
 //     - Fixed: Name was not being extracted from customer.csv
 //     - Now merges name when auto-generated "Customer XXXX" is detected
@@ -130,16 +136,39 @@ export const RISK_LABELS = {
 };
 
 // RFM segment bonus multipliers for return likelihood
+// Supports Portuguese (current) and English (legacy) segment names
+// Portuguese names are DISTINCT from Churn Risk Level names
 const SEGMENT_BONUS = {
+  // Portuguese RFM segment names (from Supabase - v3.4.0)
+  'VIP': 1.2,           // Champion - best customers, top tier
+  'Frequente': 1.1,     // Loyal - regular visitors
+  'Promissor': 1.0,     // Potential - growing customers
+  'Novato': 0.9,        // New customer - newcomers
+  'Esfriando': 0.8,     // At Risk - cooling off, needs attention
+  'Inativo': 0.5,       // Lost - no recent engagement
+
+  // English segment names (legacy compatibility)
   'Champion': 1.2,
   'Loyal': 1.1,
   'Potential': 1.0,
+  'New': 0.9,
   'At Risk': 0.8,
   'Need Attention': 0.8,
   'AtRisk': 0.8,
   'Lost': 0.5,
-  'New': 0.9,
   'Unclassified': 1.0
+};
+
+// RFM Segment Labels (Portuguese marketing names - DISTINCT from Churn Risk Levels)
+// Used for display in UI components
+// Names: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
+export const RFM_SEGMENT_LABELS = {
+  'VIP': { en: 'Champion', color: 'amber', bgClass: 'bg-amber-100', textClass: 'text-amber-700', borderColor: '#f59e0b' },
+  'Frequente': { en: 'Loyal', color: 'blue', bgClass: 'bg-blue-100', textClass: 'text-blue-700', borderColor: '#3b82f6' },
+  'Promissor': { en: 'Potential', color: 'cyan', bgClass: 'bg-cyan-100', textClass: 'text-cyan-700', borderColor: '#06b6d4' },
+  'Novato': { en: 'New', color: 'purple', bgClass: 'bg-purple-100', textClass: 'text-purple-700', borderColor: '#a855f7' },
+  'Esfriando': { en: 'At Risk', color: 'orange', bgClass: 'bg-orange-100', textClass: 'text-orange-700', borderColor: '#f97316' },
+  'Inativo': { en: 'Lost', color: 'slate', bgClass: 'bg-slate-100', textClass: 'text-slate-700', borderColor: '#64748b' }
 };
 
 // Risk level thresholds (likelihood-based, used in conjunction with day thresholds)

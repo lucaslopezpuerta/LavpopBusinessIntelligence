@@ -1,8 +1,10 @@
-// CampaignList.jsx v2.1
+// CampaignList.jsx v2.2
 // Campaign list and history display with backend integration
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.2 (2025-12-10): Added RFM segment audience labels
+//   - Updated getAudienceLabel with VIP, Frequentes, Promissores, Esfriando, Inativos
 // v2.1 (2025-12-08): Added campaign details modal
 //   - Click campaign to view individual contact outcomes
 //   - Shows pending/returned/expired contacts per campaign
@@ -120,9 +122,17 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
 
   const getAudienceLabel = (audience) => {
     switch (audience) {
-      case 'atRisk': return 'Em Risco';
-      case 'newCustomers': return 'Novos';
+      // Churn Risk Level audiences
+      case 'atRisk': return 'Em Risco / Crítico';
+      case 'newCustomers': return 'Novos Clientes';
       case 'healthy': return 'Saudáveis';
+      // RFM Segment audiences
+      case 'vip': return 'VIP';
+      case 'frequent': return 'Frequentes';
+      case 'promising': return 'Promissores';
+      case 'cooling': return 'Esfriando';
+      case 'inactive': return 'Inativos';
+      // Other audiences
       case 'withWallet': return 'Com Saldo';
       case 'all': return 'Todos';
       default: return audience || '-';

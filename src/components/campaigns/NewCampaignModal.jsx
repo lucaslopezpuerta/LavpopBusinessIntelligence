@@ -1,8 +1,12 @@
-// NewCampaignModal.jsx v4.1
+// NewCampaignModal.jsx v4.2
 // Campaign creation wizard modal
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v4.2 (2025-12-10): Added RFM segment audiences
+//   - Added VIP, Frequentes, Promissores, Esfriando, Inativos audiences
+//   - Organized audiences by category (Retention vs Marketing)
+//   - Updated Portuguese terminology
 // v4.1 (2025-12-09): Robust error handling for campaign sends
 //   - ContentSid validation before sending (required for marketing)
 //   - Detailed error breakdown display (by error type)
@@ -53,7 +57,11 @@ import {
   Smartphone,
   Clock,
   Calendar,
-  Sun
+  Sun,
+  Crown,
+  TrendingUp,
+  Snowflake,
+  Moon
 } from 'lucide-react';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import {
@@ -73,51 +81,107 @@ import {
 } from '../../config/messageTemplates';
 import { TEMPLATE_CAMPAIGN_TYPE_MAP } from '../../config/couponConfig';
 
-// Icon mapping for templates
+// Icon mapping for templates and audiences
 const ICON_MAP = {
   Heart,
   Sparkles,
   Wallet,
   Gift,
-  Sun
+  Sun,
+  Crown,
+  TrendingUp,
+  Snowflake,
+  Moon,
+  AlertTriangle,
+  Users
 };
 
-// Audience options
+// Audience options - organized by category
+// Retention: Based on Churn Risk Levels (Em Risco, Novo, Saudável)
+// Marketing: Based on RFM Segments (VIP, Frequente, Promissor, Esfriando, Inativo)
 const AUDIENCES = [
+  // Retention-focused (Churn Risk)
   {
     id: 'atRisk',
-    label: 'Em Risco',
-    description: 'Clientes que não visitam há 30+ dias',
+    label: 'Em Risco / Crítico',
+    description: 'Clientes que precisam de atenção urgente',
     icon: AlertTriangle,
-    color: 'amber'
+    color: 'amber',
+    category: 'retention'
   },
   {
     id: 'newCustomers',
     label: 'Novos Clientes',
-    description: 'Clientes com primeira visita recente',
+    description: 'Clientes recém-cadastrados',
     icon: Sparkles,
-    color: 'purple'
+    color: 'purple',
+    category: 'retention'
   },
   {
     id: 'healthy',
-    label: 'Clientes Saudáveis',
-    description: 'Clientes ativos e frequentes',
+    label: 'Saudáveis',
+    description: 'Clientes ativos com boa frequência',
     icon: Heart,
-    color: 'emerald'
+    color: 'emerald',
+    category: 'retention'
   },
+  // Marketing-focused (RFM Segments)
+  {
+    id: 'vip',
+    label: 'VIP',
+    description: 'Melhores clientes - alto valor',
+    icon: Crown,
+    color: 'yellow',
+    category: 'marketing'
+  },
+  {
+    id: 'frequent',
+    label: 'Frequentes',
+    description: 'Visitantes regulares e fiéis',
+    icon: Heart,
+    color: 'blue',
+    category: 'marketing'
+  },
+  {
+    id: 'promising',
+    label: 'Promissores',
+    description: 'Clientes em crescimento',
+    icon: TrendingUp,
+    color: 'cyan',
+    category: 'marketing'
+  },
+  {
+    id: 'cooling',
+    label: 'Esfriando',
+    description: 'Precisam de reengajamento',
+    icon: Snowflake,
+    color: 'slate',
+    category: 'marketing'
+  },
+  {
+    id: 'inactive',
+    label: 'Inativos',
+    description: 'Sem engajamento recente - win-back',
+    icon: Moon,
+    color: 'gray',
+    category: 'marketing'
+  },
+  // Other
   {
     id: 'withWallet',
     label: 'Com Saldo na Carteira',
     description: 'Clientes com saldo ≥ R$ 10',
     icon: Wallet,
-    color: 'blue'
+    color: 'green',
+    category: 'other'
   },
   {
     id: 'all',
     label: 'Todos os Clientes',
     description: 'Todos os clientes com WhatsApp válido',
     icon: Users,
-    color: 'slate'
+    color: 'slate',
+    category: 'other'
   }
 ];
 

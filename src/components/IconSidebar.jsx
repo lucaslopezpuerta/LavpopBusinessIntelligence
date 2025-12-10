@@ -18,7 +18,7 @@
 //   - Dark mode support
 //   - Tooltip fallback for collapsed state
 
-import { BarChart3, Users, TrendingUp, Settings, MessageSquare } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload } from 'lucide-react';
 import LogoNoBackground from '../assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -31,7 +31,8 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
     { id: 'customers', label: 'Clientes', icon: Users },
     { id: 'campaigns', label: 'Campanhas', icon: MessageSquare },
     { id: 'intelligence', label: 'Inteligência', icon: TrendingUp },
-    { id: 'operations', label: 'Operações', icon: Settings }
+    { id: 'operations', label: 'Operações', icon: Settings },
+    { id: 'upload', label: 'Importar', icon: Upload }
   ];
 
   const handleNavigate = (tabId) => {

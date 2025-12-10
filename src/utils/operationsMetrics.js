@@ -1,12 +1,15 @@
-// Operations Metrics Calculator v3.6
+// Operations Metrics Calculator v3.7
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ Uses centralized dateWindows.js for date calculations
 // ✅ Includes Recarga in total revenue (Day of Week, Hourly)
 // ✅ Excludes Recarga from machine-specific metrics (Wash vs Dry, Machine Performance)
 // ✅ TIME-BASED utilization formula (machine-minutes)
-// ✅ FIXED v3.6: Machine performance bug (r.machines → r.machineStr)
+// ✅ FIXED v3.7: Timezone-independent day-of-week calculation
 //
 // CHANGELOG:
+// v3.7 (2025-12-10): CRITICAL FIX - Timezone-independent day-of-week
+//   - calculateDayOfWeekPatterns uses date.brazil components
+//   - Ensures correct day-of-week regardless of viewer's browser timezone
 // v3.6 (2025-11-15): CRITICAL BUG FIX - Machine Performance Table
 //   - Fixed calculateMachinePerformance to use r.machineStr instead of r.machines
 //   - Was causing 0 machines to be detected
@@ -329,19 +332,23 @@ export function calculateDayOfWeekPatterns(salesData, dateFilter = 'currentWeek'
   }
   
   windowRecords.forEach(r => {
-    const dayOfWeek = r.date.getDay();
-    
+    // Use date.brazil components for timezone-independent day-of-week
+    // This ensures correct day categorization regardless of viewer's browser timezone
+    const dayOfWeek = r.date.brazil
+      ? new Date(r.date.brazil.year, r.date.brazil.month - 1, r.date.brazil.day).getDay()
+      : r.date.getDay();
+
     // Services (exclude Recarga)
     if (!r.isRecarga) {
       dayData[dayOfWeek].wash += r.washCount;
       dayData[dayOfWeek].dry += r.dryCount;
       dayData[dayOfWeek].total += r.totalServices;
     }
-    
+
     // Revenue (include ALL)
     dayData[dayOfWeek].revenue += r.netValue;
     dayData[dayOfWeek].transactions += 1;
-    
+
     dayCounts[dayOfWeek].add(r.dateStr);
   });
   
