@@ -1,8 +1,14 @@
-// AudienceSelector.jsx v2.0
+// AudienceSelector.jsx v3.0
 // Audience targeting component for campaign creation
-// Design System v3.1 compliant
+// Design System v4.0 compliant - Enhanced UX
 //
 // CHANGELOG:
+// v3.0 (2025-12-11): Complete UX redesign
+//   - Stats dashboard header with gradient backgrounds
+//   - Gradient icons matching AutomationRules design
+//   - Mobile-first responsive layout
+//   - Improved card interactions and hover states
+//   - Better visual hierarchy and typography
 // v2.0 (2025-12-10): Portuguese RFM segment integration
 //   - Added RFM-based segments (VIP, Frequente, Promissor, Esfriando, Inativo)
 //   - Updated Portuguese terminology for all segments
@@ -24,7 +30,9 @@ import {
   TrendingUp,
   Snowflake,
   Moon,
-  Target
+  Target,
+  UserCheck,
+  Filter
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
@@ -59,6 +67,29 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
   // Total customers with valid WhatsApp
   const totalValidCount = validCounts.all || 0;
 
+  // Calculate stats for header
+  const stats = useMemo(() => {
+    const retentionCount = (validCounts.atRisk || 0) + (validCounts.newCustomers || 0) + (validCounts.healthy || 0);
+    const marketingCount = (validCounts.vip || 0) + (validCounts.frequent || 0) + (validCounts.promising || 0) + (validCounts.cooling || 0) + (validCounts.inactive || 0);
+    // Attention: only atRisk and cooling (not inactive - they need win-back, not attention)
+    const needAttention = (validCounts.atRisk || 0) + (validCounts.cooling || 0);
+
+    return {
+      total: totalValidCount,
+      retention: retentionCount,
+      marketing: marketingCount,
+      needAttention
+    };
+  }, [validCounts, totalValidCount]);
+
+  // Clear selection when filter changes
+  const handleFilterChange = (filterId) => {
+    setCategoryFilter(filterId);
+    if (selectedAudience) {
+      onSelectAudience(null);
+    }
+  };
+
   if (!audienceSegments) {
     return (
       <SectionCard
@@ -68,6 +99,9 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
         color="purple"
       >
         <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+            <Users className="w-6 h-6 text-slate-400 animate-pulse" />
+          </div>
           Carregando dados de clientes...
         </div>
       </SectionCard>
@@ -79,44 +113,47 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
     {
       id: 'atRisk',
       label: 'Em Risco / Crítico',
-      description: 'Clientes que precisam de atenção urgente',
+      shortDesc: 'Precisam de atenção urgente',
+      description: 'Clientes inativos há 30+ dias que podem estar abandonando',
       icon: AlertTriangle,
       count: validCounts.atRisk || 0,
-      color: 'amber',
       priority: 'Alta',
       category: 'retention',
-      bgGradient: 'from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20',
+      gradient: 'from-amber-500 to-orange-500',
+      bgLight: 'bg-amber-50',
+      bgDark: 'dark:bg-amber-900/20',
       borderColor: 'border-amber-200 dark:border-amber-800',
-      iconBg: 'bg-amber-100 dark:bg-amber-900/40',
-      iconColor: 'text-amber-600 dark:text-amber-400'
+      ringColor: 'ring-amber-500'
     },
     {
       id: 'newCustomers',
       label: 'Novos Clientes',
-      description: 'Clientes recém-cadastrados',
+      shortDesc: 'Cadastrados recentemente',
+      description: 'Clientes com primeira compra nos últimos 30 dias',
       icon: Sparkles,
       count: validCounts.newCustomers || 0,
-      color: 'purple',
       priority: 'Média',
       category: 'retention',
-      bgGradient: 'from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20',
+      gradient: 'from-purple-500 to-indigo-500',
+      bgLight: 'bg-purple-50',
+      bgDark: 'dark:bg-purple-900/20',
       borderColor: 'border-purple-200 dark:border-purple-800',
-      iconBg: 'bg-purple-100 dark:bg-purple-900/40',
-      iconColor: 'text-purple-600 dark:text-purple-400'
+      ringColor: 'ring-purple-500'
     },
     {
       id: 'healthy',
       label: 'Saudáveis',
-      description: 'Clientes ativos com boa frequência',
+      shortDesc: 'Ativos com boa frequência',
+      description: 'Clientes que visitam regularmente e estão engajados',
       icon: Heart,
       count: validCounts.healthy || 0,
-      color: 'emerald',
       priority: 'Baixa',
       category: 'retention',
-      bgGradient: 'from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20',
+      gradient: 'from-emerald-500 to-teal-500',
+      bgLight: 'bg-emerald-50',
+      bgDark: 'dark:bg-emerald-900/20',
       borderColor: 'border-emerald-200 dark:border-emerald-800',
-      iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
-      iconColor: 'text-emerald-600 dark:text-emerald-400'
+      ringColor: 'ring-emerald-500'
     }
   ];
 
@@ -125,72 +162,77 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
     {
       id: 'vip',
       label: 'VIP',
-      description: 'Melhores clientes - alto valor',
+      shortDesc: 'Melhores clientes',
+      description: 'Alto valor, alta frequência - seus clientes mais importantes',
       icon: Crown,
       count: validCounts.vip || 0,
-      color: 'yellow',
       priority: 'Premium',
       category: 'marketing',
-      bgGradient: 'from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20',
+      gradient: 'from-yellow-500 to-amber-500',
+      bgLight: 'bg-yellow-50',
+      bgDark: 'dark:bg-yellow-900/20',
       borderColor: 'border-yellow-200 dark:border-yellow-800',
-      iconBg: 'bg-yellow-100 dark:bg-yellow-900/40',
-      iconColor: 'text-yellow-600 dark:text-yellow-400'
+      ringColor: 'ring-yellow-500'
     },
     {
       id: 'frequent',
       label: 'Frequentes',
-      description: 'Visitantes regulares e fiéis',
+      shortDesc: 'Visitantes regulares',
+      description: 'Visitam com frequência consistente',
       icon: Heart,
       count: validCounts.frequent || 0,
-      color: 'blue',
       priority: 'Alta',
       category: 'marketing',
-      bgGradient: 'from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20',
+      gradient: 'from-blue-500 to-indigo-500',
+      bgLight: 'bg-blue-50',
+      bgDark: 'dark:bg-blue-900/20',
       borderColor: 'border-blue-200 dark:border-blue-800',
-      iconBg: 'bg-blue-100 dark:bg-blue-900/40',
-      iconColor: 'text-blue-600 dark:text-blue-400'
+      ringColor: 'ring-blue-500'
     },
     {
       id: 'promising',
       label: 'Promissores',
-      description: 'Clientes em crescimento',
+      shortDesc: 'Em crescimento',
+      description: 'Mostram potencial para se tornarem frequentes',
       icon: TrendingUp,
       count: validCounts.promising || 0,
-      color: 'cyan',
       priority: 'Média',
       category: 'marketing',
-      bgGradient: 'from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20',
+      gradient: 'from-cyan-500 to-teal-500',
+      bgLight: 'bg-cyan-50',
+      bgDark: 'dark:bg-cyan-900/20',
       borderColor: 'border-cyan-200 dark:border-cyan-800',
-      iconBg: 'bg-cyan-100 dark:bg-cyan-900/40',
-      iconColor: 'text-cyan-600 dark:text-cyan-400'
+      ringColor: 'ring-cyan-500'
     },
     {
       id: 'cooling',
       label: 'Esfriando',
-      description: 'Precisam de reengajamento',
+      shortDesc: 'Precisam reengajar',
+      description: 'Diminuíram a frequência recentemente',
       icon: Snowflake,
       count: validCounts.cooling || 0,
-      color: 'slate',
       priority: 'Alta',
       category: 'marketing',
-      bgGradient: 'from-slate-50 to-blue-50 dark:from-slate-800/50 dark:to-blue-900/20',
+      gradient: 'from-slate-500 to-blue-500',
+      bgLight: 'bg-slate-50',
+      bgDark: 'dark:bg-slate-800/50',
       borderColor: 'border-slate-200 dark:border-slate-700',
-      iconBg: 'bg-slate-100 dark:bg-slate-700',
-      iconColor: 'text-slate-600 dark:text-slate-400'
+      ringColor: 'ring-slate-500'
     },
     {
       id: 'inactive',
       label: 'Inativos',
-      description: 'Sem engajamento recente',
+      shortDesc: 'Sem engajamento',
+      description: 'Não visitam há muito tempo',
       icon: Moon,
       count: validCounts.inactive || 0,
-      color: 'gray',
       priority: 'Win-back',
       category: 'marketing',
-      bgGradient: 'from-gray-50 to-slate-50 dark:from-gray-800/50 dark:to-slate-800/50',
+      gradient: 'from-gray-500 to-slate-500',
+      bgLight: 'bg-gray-50',
+      bgDark: 'dark:bg-gray-800/50',
       borderColor: 'border-gray-200 dark:border-gray-700',
-      iconBg: 'bg-gray-100 dark:bg-gray-700',
-      iconColor: 'text-gray-600 dark:text-gray-400'
+      ringColor: 'ring-gray-500'
     }
   ];
 
@@ -198,31 +240,33 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
   const otherAudiences = [
     {
       id: 'withWallet',
-      label: 'Com Saldo na Carteira',
-      description: `Clientes com saldo ≥ R$ ${audienceSegments?.walletThreshold || 10}`,
+      label: 'Com Saldo',
+      shortDesc: `Saldo ≥ R$ ${audienceSegments?.walletThreshold || 10}`,
+      description: 'Clientes com crédito na carteira digital',
       icon: Wallet,
       count: validCounts.withWallet || 0,
-      color: 'green',
       priority: 'Média',
       category: 'other',
-      bgGradient: 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20',
+      gradient: 'from-green-500 to-emerald-500',
+      bgLight: 'bg-green-50',
+      bgDark: 'dark:bg-green-900/20',
       borderColor: 'border-green-200 dark:border-green-800',
-      iconBg: 'bg-green-100 dark:bg-green-900/40',
-      iconColor: 'text-green-600 dark:text-green-400'
+      ringColor: 'ring-green-500'
     },
     {
       id: 'all',
-      label: 'Todos os Clientes',
+      label: 'Todos',
+      shortDesc: 'Base completa',
       description: 'Todos os clientes com WhatsApp válido',
       icon: Users,
       count: validCounts.all || 0,
-      color: 'slate',
       priority: '',
       category: 'other',
-      bgGradient: 'from-slate-50 to-gray-50 dark:from-slate-800/50 dark:to-gray-800/50',
+      gradient: 'from-slate-500 to-gray-500',
+      bgLight: 'bg-slate-50',
+      bgDark: 'dark:bg-slate-800/50',
       borderColor: 'border-slate-200 dark:border-slate-700',
-      iconBg: 'bg-slate-100 dark:bg-slate-700',
-      iconColor: 'text-slate-600 dark:text-slate-400'
+      ringColor: 'ring-slate-500'
     }
   ];
 
@@ -234,6 +278,18 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       ? [...retentionAudiences, ...otherAudiences]
       : [...marketingAudiences, ...otherAudiences];
 
+  // Get priority badge color
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'Premium': return 'bg-gradient-to-r from-yellow-400 to-amber-400 text-yellow-900';
+      case 'Alta': return 'bg-gradient-to-r from-amber-400 to-orange-400 text-amber-900';
+      case 'Média': return 'bg-gradient-to-r from-blue-400 to-indigo-400 text-white';
+      case 'Baixa': return 'bg-gradient-to-r from-emerald-400 to-teal-400 text-emerald-900';
+      case 'Win-back': return 'bg-gradient-to-r from-purple-400 to-pink-400 text-white';
+      default: return 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+    }
+  };
+
   return (
     <SectionCard
       title="Selecionar Audiência"
@@ -242,56 +298,80 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       color="purple"
       id="audience-selector"
     >
-      <div className="space-y-4">
-        {/* Info Banner */}
-        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-          <div className="flex items-start gap-3">
-            <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                Apenas clientes com celular brasileiro válido
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                {totalValidCount} clientes disponíveis para mensagens WhatsApp
-                {audienceSegments?.withPhone?.length > totalValidCount && (
-                  <span className="text-amber-600 dark:text-amber-400">
-                    {' '}({audienceSegments.withPhone.length - totalValidCount} com telefone inválido)
-                  </span>
-                )}
-              </p>
+      <div className="space-y-5">
+        {/* Stats Dashboard Header */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Total Disponível */}
+          <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg">
+            <div className="flex items-center gap-2 mb-1">
+              <Phone className="w-4 h-4 opacity-80" />
+              <span className="text-xs font-medium opacity-90">WhatsApp</span>
             </div>
+            <p className="text-xl sm:text-2xl font-bold">{stats.total.toLocaleString()}</p>
+            <p className="text-[10px] sm:text-xs opacity-75">clientes disponíveis</p>
+          </div>
+
+          {/* Precisam Atenção */}
+          <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-4 h-4 opacity-80" />
+              <span className="text-xs font-medium opacity-90">Atenção</span>
+            </div>
+            <p className="text-xl sm:text-2xl font-bold">{stats.needAttention.toLocaleString()}</p>
+            <p className="text-[10px] sm:text-xs opacity-75">precisam ação</p>
           </div>
         </div>
 
+        {/* Discrete Info Hint */}
+        <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <Phone className="w-3 h-3" />
+          Apenas celulares brasileiros válidos
+          {audienceSegments?.withPhone?.length > totalValidCount && (
+            <span className="text-amber-500 dark:text-amber-400">
+              · {audienceSegments.withPhone.length - totalValidCount} filtrados
+            </span>
+          )}
+        </p>
+
         {/* Category Filter */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">
-            Filtrar:
-          </span>
+          <div className="flex items-center gap-1.5 mr-2">
+            <Filter className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Filtrar:
+            </span>
+          </div>
           {[
-            { id: 'all', label: 'Todos', icon: Users },
-            { id: 'retention', label: 'Retenção', icon: AlertTriangle },
-            { id: 'marketing', label: 'Marketing (RFM)', icon: Target }
-          ].map(({ id, label, icon: Icon }) => (
+            { id: 'all', label: 'Todos', icon: Users, count: allAudiences.length },
+            { id: 'retention', label: 'Retenção', icon: UserCheck, count: retentionAudiences.length + otherAudiences.length },
+            { id: 'marketing', label: 'Marketing', icon: Target, count: marketingAudiences.length + otherAudiences.length }
+          ].map(({ id, label, icon: Icon, count }) => (
             <button
               key={id}
-              onClick={() => setCategoryFilter(id)}
+              onClick={() => handleFilterChange(id)}
               className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200
                 ${categoryFilter === id
-                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/25'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-sm'
                 }
               `}
             >
               <Icon className="w-3.5 h-3.5" />
               {label}
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${
+                categoryFilter === id
+                  ? 'bg-white/20'
+                  : 'bg-slate-100 dark:bg-slate-700'
+              }`}>
+                {count}
+              </span>
             </button>
           ))}
         </div>
 
         {/* Audience Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {audiences.map((audience) => {
             const Icon = audience.icon;
             const isSelected = selectedAudience === audience.id;
@@ -303,11 +383,11 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
                 onClick={() => hasCustomers && onSelectAudience(audience.id)}
                 disabled={!hasCustomers}
                 className={`
-                  relative p-4 rounded-xl border-2 text-left transition-all duration-200
+                  relative p-4 rounded-xl border-2 text-left transition-all duration-200 group
                   ${isSelected
-                    ? `bg-gradient-to-br ${audience.bgGradient} ${audience.borderColor} shadow-md ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-slate-900`
+                    ? `${audience.bgLight} ${audience.bgDark} ${audience.borderColor} shadow-lg ring-2 ${audience.ringColor} ring-offset-2 dark:ring-offset-slate-900`
                     : hasCustomers
-                      ? `bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-sm`
+                      ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md'
                       : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
                   }
                 `}
@@ -315,46 +395,49 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
                 {/* Selected Indicator */}
                 {isSelected && (
                   <div className="absolute top-3 right-3">
-                    <CheckCircle2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg">
+                      <CheckCircle2 className="w-4 h-4 text-white" />
+                    </div>
                   </div>
                 )}
 
                 {/* Priority Badge */}
                 {audience.priority && !isSelected && (
                   <span className={`
-                    absolute top-3 right-3 px-2 py-0.5 text-[10px] font-semibold rounded-full
-                    ${audience.priority === 'Premium' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300' :
-                      audience.priority === 'Alta' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' :
-                      audience.priority === 'Média' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' :
-                      audience.priority === 'Baixa' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' :
-                      audience.priority === 'Win-back' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' :
-                      'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}
+                    absolute top-3 right-3 px-2 py-0.5 text-[10px] font-bold rounded-full shadow-sm
+                    ${getPriorityColor(audience.priority)}
                   `}>
                     {audience.priority}
                   </span>
                 )}
 
-                {/* Icon */}
-                <div className={`w-10 h-10 rounded-xl ${audience.iconBg} flex items-center justify-center mb-3`}>
-                  <Icon className={`w-5 h-5 ${audience.iconColor}`} />
+                {/* Icon with Gradient */}
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${audience.gradient} flex items-center justify-center mb-3 shadow-lg group-hover:scale-105 transition-transform`}>
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
 
                 {/* Content */}
-                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-0.5">
                   {audience.label}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                  {audience.description}
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
+                  {audience.shortDesc}
                 </p>
 
                 {/* Count */}
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {audience.count}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                    {audience.count.toLocaleString()}
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     clientes
                   </span>
+                  {/* Hover hint - inline to avoid overlap */}
+                  {hasCustomers && !isSelected && (
+                    <span className="ml-auto text-[10px] text-purple-600 dark:text-purple-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                      Selecionar →
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -363,14 +446,28 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
 
         {/* Selected Summary */}
         {selectedAudience && (
-          <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl">
-            <p className="text-sm text-purple-800 dark:text-purple-200">
-              <span className="font-semibold">Audiência selecionada:</span>{' '}
-              {allAudiences.find(a => a.id === selectedAudience)?.label} ({allAudiences.find(a => a.id === selectedAudience)?.count} clientes)
-            </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-              Clique em "Nova Campanha" ou vá para a aba "Mensagens" para enviar
-            </p>
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-purple-800 dark:text-purple-200">
+                    {allAudiences.find(a => a.id === selectedAudience)?.label}
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400">
+                    {allAudiences.find(a => a.id === selectedAudience)?.count.toLocaleString()} clientes selecionados
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => onSelectAudience(null)}
+                className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 font-medium"
+              >
+                Limpar
+              </button>
+            </div>
           </div>
         )}
       </div>

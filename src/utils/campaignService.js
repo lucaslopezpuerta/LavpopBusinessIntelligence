@@ -1,9 +1,13 @@
-// campaignService.js v3.3
+// campaignService.js v3.4
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Now supports Supabase backend for scheduled campaigns and effectiveness tracking
 //
 // CHANGELOG:
+// v3.4 (2025-12-11): Real delivery metrics from Twilio webhook
+//   - getDashboardMetrics now fetches real delivery/read rates from webhook_events
+//   - Fallback to 97% estimate only when no real data available
+//   - Added hasRealDeliveryData, deliveryRate, readRate to metrics
 // v3.3 (2025-12-11): Fixed API usage for backend operations
 //   - Replaced api.supabase.from() calls with proper api.get/api.campaigns/api.sends methods
 //   - Fixed recordCampaignContact to use api.contacts.create
@@ -453,28 +457,49 @@ function getDefaultAutomationRules() {
       name: 'Win-back 30 dias',
       enabled: false,
       trigger: { type: 'days_since_visit', value: 30 },
-      action: { template: 'winback_30days', channel: 'whatsapp' }
+      action: { template: 'winback_discount', channel: 'whatsapp' },
+      cooldown_days: 30,
+      coupon_code: 'VOLTE20',
+      discount_percent: 20,
+      coupon_validity_days: 7
     },
     {
       id: 'winback_45',
       name: 'Win-back Crítico',
       enabled: false,
       trigger: { type: 'days_since_visit', value: 45 },
-      action: { template: 'winback_critical', channel: 'whatsapp' }
+      action: { template: 'winback_critical', channel: 'whatsapp' },
+      cooldown_days: 21,
+      coupon_code: 'VOLTE30',
+      discount_percent: 30,
+      coupon_validity_days: 7
     },
     {
       id: 'welcome_new',
       name: 'Boas-vindas',
       enabled: false,
       trigger: { type: 'first_purchase', value: 1 },
-      action: { template: 'welcome_new', channel: 'whatsapp' }
+      action: { template: 'welcome_new', channel: 'whatsapp' },
+      cooldown_days: 365,
+      coupon_code: 'BEM10',
+      discount_percent: 10,
+      coupon_validity_days: 14
     },
     {
       id: 'wallet_reminder',
       name: 'Lembrete de Saldo',
       enabled: false,
       trigger: { type: 'wallet_balance', value: 20 },
-      action: { template: 'wallet_reminder', channel: 'whatsapp' }
+      action: { template: 'wallet_reminder', channel: 'whatsapp' },
+      cooldown_days: 14
+    },
+    {
+      id: 'post_visit',
+      name: 'Pós-Visita',
+      enabled: false,
+      trigger: { type: 'hours_after_visit', value: 24 },
+      action: { template: 'post_visit_thanks', channel: 'whatsapp' },
+      cooldown_days: 7
     }
   ];
 }
@@ -1251,12 +1276,31 @@ export async function getDashboardMetrics(options = {}) {
 
       if (sendsData && sendsData.length > 0) {
         metrics.funnel.sent = sendsData.reduce((sum, s) => sum + (s.success_count || 0), 0);
-        // Assume 97% delivery rate if we don't have exact data
-        metrics.funnel.delivered = Math.round(metrics.funnel.sent * 0.97);
       }
 
-      // Estimate engagement as 20% of delivered (webhook_events table not exposed via API yet)
-      metrics.funnel.engaged = Math.round(metrics.funnel.delivered * 0.2);
+      // Fetch real delivery stats from Twilio webhook events
+      try {
+        const deliveryStats = await api.delivery.getStats(days);
+        if (deliveryStats.hasRealData) {
+          // Use real delivery data from webhook events
+          metrics.funnel.delivered = deliveryStats.totalDelivered;
+          metrics.funnel.engaged = deliveryStats.stats.read; // "read" status indicates engagement
+          metrics.deliveryRate = deliveryStats.deliveryRate;
+          metrics.readRate = deliveryStats.readRate;
+          metrics.hasRealDeliveryData = true;
+        } else {
+          // Fallback to estimates if no real data yet
+          metrics.funnel.delivered = Math.round(metrics.funnel.sent * 0.97);
+          metrics.funnel.engaged = Math.round(metrics.funnel.delivered * 0.2);
+          metrics.hasRealDeliveryData = false;
+        }
+      } catch (e) {
+        console.warn('[CampaignService] Could not fetch delivery stats:', e.message);
+        // Fallback to estimates
+        metrics.funnel.delivered = Math.round(metrics.funnel.sent * 0.97);
+        metrics.funnel.engaged = Math.round(metrics.funnel.delivered * 0.2);
+        metrics.hasRealDeliveryData = false;
+      }
 
       // Fetch recent campaigns with performance data
       let campaignsData = [];

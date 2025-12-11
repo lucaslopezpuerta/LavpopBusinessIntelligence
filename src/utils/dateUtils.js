@@ -307,3 +307,178 @@ export const isWithinRange = (date, start, end) => {
   if (end && date > end) return false;
   return true;
 };
+
+// ============================================
+// BRAZIL TIMEZONE UTILITIES
+// For scheduling and time-sensitive operations
+// ============================================
+
+/**
+ * Brazil timezone identifier
+ * São Paulo is the reference timezone for business operations
+ */
+export const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
+
+/**
+ * Create a Date object representing a specific Brazil time
+ * Converts user-selected date/time (intended as Brazil time) to UTC for storage
+ *
+ * @param {string} dateStr - Date in YYYY-MM-DD format
+ * @param {string} timeStr - Time in HH:mm format
+ * @returns {Date} Date object representing the specified Brazil time
+ *
+ * USAGE:
+ * - User selects "2025-12-15" and "10:00" meaning 10:00 AM Brazil time
+ * - This function creates a Date that, when displayed in Brazil, shows 10:00 AM
+ * - When stored as ISO, it will have the correct UTC offset
+ */
+export const createBrazilDateTime = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+
+  // Parse the date/time components
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hour, minute] = timeStr.split(':').map(Number);
+
+  // Create a date string with explicit Brazil timezone
+  // Format: "2025-12-15T10:00:00" interpreted in Brazil timezone
+  const brazilDateStr = `${dateStr}T${timeStr}:00`;
+
+  // Use Intl.DateTimeFormat to get the timezone offset for Brazil at that moment
+  // This handles daylight saving time automatically
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: BRAZIL_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+
+  // Create a temporary date to calculate the offset
+  // We'll use a date calculation approach that works across browsers
+  const tempDate = new Date(year, month - 1, day, hour, minute, 0);
+
+  // Get the Brazil time representation of this UTC date
+  const brazilParts = formatter.formatToParts(tempDate);
+  const getPart = (type) => {
+    const part = brazilParts.find(p => p.type === type);
+    return part ? parseInt(part.value, 10) : 0;
+  };
+
+  const brazilHour = getPart('hour');
+  const brazilMinute = getPart('minute');
+  const brazilDay = getPart('day');
+
+  // Calculate the offset in minutes
+  const localMinutes = tempDate.getHours() * 60 + tempDate.getMinutes();
+  const brazilMinutes = brazilHour * 60 + brazilMinute;
+
+  // Account for day difference if timezone crosses midnight
+  let offsetMinutes = localMinutes - brazilMinutes;
+  if (brazilDay !== tempDate.getDate()) {
+    // Day is different, adjust by 24 hours
+    if (brazilDay < tempDate.getDate()) {
+      offsetMinutes -= 24 * 60;
+    } else {
+      offsetMinutes += 24 * 60;
+    }
+  }
+
+  // Create the final date by applying the offset
+  // We want the date that, when displayed in Brazil, shows the user's input
+  const finalDate = new Date(year, month - 1, day, hour, minute, 0);
+  finalDate.setMinutes(finalDate.getMinutes() + offsetMinutes);
+
+  return finalDate;
+};
+
+/**
+ * Format a Date to Brazil timezone for display
+ *
+ * @param {Date} date - Date object (in any timezone)
+ * @param {object} options - Intl.DateTimeFormat options
+ * @returns {string} Formatted date/time string in Brazil timezone
+ */
+export const formatBrazilTime = (date, options = {}) => {
+  if (!date || isNaN(date.getTime())) return '';
+
+  const defaultOptions = {
+    timeZone: BRAZIL_TIMEZONE,
+    ...options
+  };
+
+  return new Intl.DateTimeFormat('pt-BR', defaultOptions).format(date);
+};
+
+/**
+ * Format a Date to Brazil timezone with date and time
+ *
+ * @param {Date} date - Date object
+ * @returns {object} { date: 'DD/MM/YYYY', time: 'HH:mm' }
+ */
+export const formatBrazilDateTime = (date) => {
+  if (!date || isNaN(date.getTime())) return { date: '', time: '' };
+
+  const dateStr = formatBrazilTime(date, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+
+  const timeStr = formatBrazilTime(date, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  return { date: dateStr, time: timeStr };
+};
+
+/**
+ * Get current time in Brazil timezone
+ *
+ * @returns {object} { date: 'YYYY-MM-DD', time: 'HH:mm', display: 'DD/MM/YYYY HH:mm' }
+ */
+export const getBrazilNow = () => {
+  const now = new Date();
+
+  // Get parts in Brazil timezone
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BRAZIL_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(now);
+
+  const getPart = (type) => parts.find(p => p.type === type)?.value || '';
+
+  const date = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+  const time = `${getPart('hour')}:${getPart('minute')}`;
+  const display = formatBrazilTime(now, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  return { date, time, display };
+};
+
+/**
+ * Check if a Brazil datetime is in the future
+ *
+ * @param {string} dateStr - Date in YYYY-MM-DD format
+ * @param {string} timeStr - Time in HH:mm format
+ * @returns {boolean} True if the Brazil time is in the future
+ */
+export const isBrazilTimeFuture = (dateStr, timeStr) => {
+  const scheduledDate = createBrazilDateTime(dateStr, timeStr);
+  if (!scheduledDate) return false;
+  return scheduledDate > new Date();
+};

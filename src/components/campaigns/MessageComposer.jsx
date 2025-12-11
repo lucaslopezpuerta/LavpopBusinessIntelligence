@@ -1,6 +1,6 @@
-// MessageComposer.jsx v3.0
-// WhatsApp message composer with Meta-compliant templates
-// Design System v3.1 compliant
+// MessageComposer.jsx v5.0
+// WhatsApp message template browser and preview
+// Design System v4.0 compliant - Enhanced UX
 //
 // Meta WhatsApp Business API Template Rules:
 // - Templates must be pre-approved by Meta
@@ -10,6 +10,17 @@
 // - Buttons: quick reply or CTA (max 3)
 //
 // CHANGELOG:
+// v5.0 (2025-12-11): Complete UX redesign
+//   - Stats dashboard header with gradient backgrounds
+//   - Gradient icons matching AutomationRules design
+//   - Mobile-first responsive layout
+//   - Improved template cards with better visual hierarchy
+//   - Enhanced preview section with phone mockup
+// v4.0 (2025-12-11): Removed send functionality (now handled by wizard)
+//   - Removed sendBulkWhatsApp and direct sending capability
+//   - Added "Usar este template" button that triggers onUseTemplate callback
+//   - This tab is now for browsing/previewing templates only
+//   - All campaign sending goes through Nova Campanha wizard
 // v3.0 (2025-12-08): Centralized template configuration
 //   - Templates imported from config/messageTemplates.js
 //   - Consistent with NewCampaignModal templates
@@ -28,7 +39,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   MessageSquare,
-  Send,
   Smartphone,
   AlertCircle,
   CheckCircle2,
@@ -39,11 +49,14 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
-  Sun
+  Sun,
+  Wand2,
+  Users,
+  Eye,
+  EyeOff,
+  FileText
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
-import CampaignPreview from '../ui/CampaignPreview';
-import { sendBulkWhatsApp, createCampaignAsync, recordCampaignSendAsync } from '../../utils/campaignService';
 import { MESSAGE_TEMPLATES, getTemplatesByAudience } from '../../config/messageTemplates';
 
 // Icon mapping for templates
@@ -55,12 +68,25 @@ const ICON_MAP = {
   Sun
 };
 
-const MessageComposer = ({ selectedAudience, audienceSegments }) => {
+// Template category colors
+const CATEGORY_STYLES = {
+  MARKETING: {
+    gradient: 'from-purple-500 to-indigo-500',
+    bg: 'bg-purple-100 dark:bg-purple-900/40',
+    text: 'text-purple-700 dark:text-purple-300',
+    border: 'border-purple-200 dark:border-purple-800'
+  },
+  UTILITY: {
+    gradient: 'from-blue-500 to-cyan-500',
+    bg: 'bg-blue-100 dark:bg-blue-900/40',
+    text: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-200 dark:border-blue-800'
+  }
+};
+
+const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [showCampaignPreview, setShowCampaignPreview] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [sendResult, setSendResult] = useState(null);
   const [sampleCustomerIndex, setSampleCustomerIndex] = useState(0);
 
   // Filter templates by selected audience
@@ -99,72 +125,12 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
     return audienceCustomers.length;
   };
 
-  // Handle send button click - show preview first
-  const handleSendClick = () => {
-    if (!selectedTemplate || audienceCustomers.length === 0) return;
-    setShowCampaignPreview(true);
-    setSendResult(null);
-  };
-
-  // Handle confirm from CampaignPreview
-  const handleConfirmSend = async (validCustomers) => {
-    if (!selectedTemplate || validCustomers.length === 0) return;
-
-    setIsSending(true);
-
-    try {
-      // Format message with sample data for now (in production, personalize per customer)
-      const messageBody = formatPreview(selectedTemplate);
-
-      // Send bulk WhatsApp
-      const result = await sendBulkWhatsApp(
-        validCustomers,
-        messageBody,
-        selectedTemplate.id
-      );
-
-      // Save campaign record using backend
-      const campaign = await createCampaignAsync({
-        name: selectedTemplate.name,
-        templateId: selectedTemplate.id,
-        audience: selectedAudience,
-        audienceCount: validCustomers.length
-      });
-
-      // Record send event using backend
-      await recordCampaignSendAsync(campaign.id, {
-        recipients: validCustomers.length,
-        successCount: result.results?.success?.length || 0,
-        failedCount: result.results?.failed?.length || 0
-      });
-
-      setSendResult({
-        success: true,
-        sent: result.results?.success?.length || validCustomers.length,
-        failed: result.results?.failed?.length || 0
-      });
-
-      // Close preview after short delay
-      setTimeout(() => {
-        setShowCampaignPreview(false);
-        setSelectedTemplate(null);
-      }, 3000);
-
-    } catch (error) {
-      console.error('Failed to send campaign:', error);
-      setSendResult({
-        success: false,
-        error: error.message || 'Erro ao enviar campanha'
-      });
-    } finally {
-      setIsSending(false);
+  // Handle "Usar este template" button - opens wizard with template pre-selected
+  const handleUseTemplate = () => {
+    if (!selectedTemplate) return;
+    if (onUseTemplate) {
+      onUseTemplate(selectedTemplate, selectedAudience);
     }
-  };
-
-  // Handle cancel from CampaignPreview
-  const handleCancelSend = () => {
-    setShowCampaignPreview(false);
-    setSendResult(null);
   };
 
   // Format currency for display
@@ -227,6 +193,19 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
     return body;
   };
 
+  // Stats for header
+  const stats = useMemo(() => {
+    const marketingCount = MESSAGE_TEMPLATES.filter(t => t.category === 'MARKETING').length;
+    const utilityCount = MESSAGE_TEMPLATES.filter(t => t.category === 'UTILITY').length;
+    return {
+      total: MESSAGE_TEMPLATES.length,
+      filtered: filteredTemplates.length,
+      marketing: marketingCount,
+      utility: utilityCount,
+      audience: getAudienceCount()
+    };
+  }, [filteredTemplates.length, audienceCustomers.length]);
+
   return (
     <SectionCard
       title="Mensagens & Templates"
@@ -235,39 +214,60 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
       color="purple"
       id="message-composer"
     >
-      <div className="space-y-6">
-        {/* Meta Compliance Notice */}
-        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                Templates Meta WhatsApp Business
-              </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Estes templates seguem as diretrizes da Meta e devem ser submetidos para aprovação antes do primeiro envio.
-                Após aprovação, podem ser usados para campanhas em massa.
-              </p>
+      <div className="space-y-5">
+        {/* Stats Dashboard Header */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Templates Disponíveis */}
+          <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg">
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="w-4 h-4 opacity-80" />
+              <span className="text-xs font-medium opacity-90">Templates</span>
             </div>
+            <p className="text-xl sm:text-2xl font-bold">{stats.filtered}</p>
+            <p className="text-[10px] sm:text-xs opacity-75">
+              {selectedAudience ? 'compatíveis' : 'disponíveis'}
+            </p>
+          </div>
+
+          {/* Destinatários */}
+          <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="w-4 h-4 opacity-80" />
+              <span className="text-xs font-medium opacity-90">Audiência</span>
+            </div>
+            <p className="text-xl sm:text-2xl font-bold">{stats.audience.toLocaleString()}</p>
+            <p className="text-[10px] sm:text-xs opacity-75">destinatários</p>
           </div>
         </div>
 
+        {/* Discrete Meta Compliance Hint */}
+        <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <AlertCircle className="w-3 h-3" />
+          Templates pré-aprovados pela Meta para WhatsApp Business
+        </p>
+
         {/* Audience Summary */}
         {selectedAudience && (
-          <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                Audiência selecionada
-              </p>
-              <p className="text-xs text-purple-600 dark:text-purple-400">
-                {getAudienceCount()} clientes receberão esta mensagem
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-                {getAudienceCount()}
-              </p>
-              <p className="text-xs text-purple-500">destinatários</p>
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg">
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-purple-800 dark:text-purple-200">
+                    Audiência selecionada
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400">
+                    {getAudienceCount().toLocaleString()} clientes receberão esta mensagem
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                  {getAudienceCount().toLocaleString()}
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -278,15 +278,16 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
             const Icon = ICON_MAP[template.icon] || Gift;
             const isSelected = selectedTemplate?.id === template.id;
             const headerText = typeof template.header === 'object' ? template.header.text : template.header;
+            const categoryStyle = CATEGORY_STYLES[template.category] || CATEGORY_STYLES.MARKETING;
 
             return (
               <div
                 key={template.id}
                 className={`
-                  relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200
+                  relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group
                   ${isSelected
-                    ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 shadow-md'
-                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700'
+                    ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 shadow-lg ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-slate-900'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md'
                   }
                 `}
                 onClick={() => setSelectedTemplate(template)}
@@ -294,36 +295,24 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                 {/* Selected Indicator */}
                 {isSelected && (
                   <div className="absolute top-3 right-3">
-                    <CheckCircle2 className="w-5 h-5 text-purple-600" />
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg">
+                      <CheckCircle2 className="w-4 h-4 text-white" />
+                    </div>
                   </div>
                 )}
 
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-3">
-                  <div className={`
-                    w-10 h-10 rounded-xl flex items-center justify-center
-                    ${template.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40' :
-                      template.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/40' :
-                      template.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40' :
-                      'bg-emerald-100 dark:bg-emerald-900/40'}
-                  `}>
-                    <Icon className={`
-                      w-5 h-5
-                      ${template.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
-                        template.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
-                        template.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                        'text-emerald-600 dark:text-emerald-400'}
-                    `} />
+                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${categoryStyle.gradient} flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
+                    <Icon className="w-5 h-5 text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                       {template.name}
                     </h3>
                     <span className={`
-                      text-[10px] font-medium px-1.5 py-0.5 rounded
-                      ${template.category === 'MARKETING'
-                        ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                        : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'}
+                      inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full
+                      ${categoryStyle.bg} ${categoryStyle.text}
                     `}>
                       {template.category}
                     </span>
@@ -331,27 +320,27 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                 </div>
 
                 {/* Description */}
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
                   {template.description}
                 </p>
 
                 {/* Preview */}
-                <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
-                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     {headerText}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-3">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
                     {template.body.substring(0, 150)}...
                   </p>
                 </div>
 
                 {/* Buttons Preview */}
                 {template.buttons && (
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     {template.buttons.map((btn, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-[10px] font-medium text-slate-600 dark:text-slate-300"
+                        className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
                       >
                         {btn.text}
                       </span>
@@ -366,32 +355,50 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
         {/* Selected Template Preview */}
         {selectedTemplate && (
           <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Preview: {selectedTemplate.name}
-              </h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowPreview(!showPreview)}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                >
-                  <Smartphone className="w-4 h-4" />
-                  {showPreview ? 'Ocultar Preview' : 'Ver no Celular'}
-                </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${CATEGORY_STYLES[selectedTemplate.category]?.gradient || 'from-purple-500 to-indigo-500'} flex items-center justify-center shadow-lg`}>
+                  {(() => {
+                    const Icon = ICON_MAP[selectedTemplate.icon] || Gift;
+                    return <Icon className="w-5 h-5 text-white" />;
+                  })()}
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    {selectedTemplate.name}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Preview da mensagem
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => setShowPreview(!showPreview)}
+                className={`
+                  flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+                  ${showPreview
+                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }
+                `}
+              >
+                {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <Smartphone className="w-4 h-4" />
+                {showPreview ? 'Ocultar' : 'Ver no Celular'}
+              </button>
             </div>
 
             {/* Sample Customer Selector */}
             {showPreview && sampleCustomers.length > 0 && (
-              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+              <div className="mb-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+                      <User className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs text-blue-600 dark:text-blue-400">Visualizando como:</p>
-                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Visualizando como:</p>
+                      <p className="text-sm font-bold text-blue-800 dark:text-blue-200">
                         {currentSampleCustomer?.name ? getFirstName(currentSampleCustomer.name) : 'Cliente'}
                         {currentSampleCustomer?.walletBalance > 0 && (
                           <span className="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
@@ -405,17 +412,17 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={prevSampleCustomer}
-                        className="p-1.5 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                        className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                         title="Cliente anterior"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
-                      <span className="text-xs text-blue-600 dark:text-blue-400 min-w-[3rem] text-center">
+                      <span className="text-xs text-blue-600 dark:text-blue-400 min-w-[3rem] text-center font-medium">
                         {sampleCustomerIndex + 1} / {sampleCustomers.length}
                       </span>
                       <button
                         onClick={nextSampleCustomer}
-                        className="p-1.5 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                        className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                         title="Próximo cliente"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -429,7 +436,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
             {/* Phone Preview */}
             {showPreview && (
               <div className="flex justify-center">
-                <div className="w-[320px] bg-slate-900 rounded-[36px] p-3 shadow-2xl">
+                <div className="w-full max-w-[320px] bg-slate-900 rounded-[36px] p-3 shadow-2xl">
                   {/* Phone Notch */}
                   <div className="w-20 h-6 bg-slate-900 rounded-full mx-auto mb-2" />
 
@@ -437,7 +444,9 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                   <div className="bg-[#e5ddd5] rounded-2xl overflow-hidden">
                     {/* WhatsApp Header */}
                     <div className="bg-[#075e54] px-4 py-3 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-white/20" />
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <span className="text-white text-sm font-bold">L</span>
+                      </div>
                       <div>
                         <p className="text-white font-medium text-sm">Lavpop</p>
                         <p className="text-white/70 text-xs">Online</p>
@@ -447,10 +456,10 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                     {/* Message */}
                     <div className="p-4 min-h-[300px]">
                       <div className="bg-white rounded-lg p-3 shadow-sm max-w-[85%]">
-                        <p className="text-sm font-medium text-slate-900 mb-2">
+                        <p className="text-sm font-semibold text-slate-900 mb-2">
                           {typeof selectedTemplate.header === 'object' ? selectedTemplate.header.text : selectedTemplate.header}
                         </p>
-                        <p className="text-sm text-slate-700 whitespace-pre-line">
+                        <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
                           {formatPreview(selectedTemplate)}
                         </p>
                         <p className="text-[10px] text-slate-400 mt-2">
@@ -463,7 +472,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
                             {selectedTemplate.buttons.map((btn, idx) => (
                               <button
                                 key={idx}
-                                className="w-full py-2 text-[#075e54] font-medium text-sm border border-[#075e54] rounded-lg"
+                                className="w-full py-2 text-[#075e54] font-medium text-sm border border-[#075e54] rounded-lg hover:bg-[#075e54]/5 transition-colors"
                               >
                                 {btn.text}
                               </button>
@@ -482,69 +491,24 @@ const MessageComposer = ({ selectedAudience, audienceSegments }) => {
               </div>
             )}
 
-            {/* Send Button */}
-            <div className="flex justify-end mt-6">
+            {/* Action Button */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+              {/* Info about wizard */}
+              <div className="flex-1 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl">
+                <p className="text-xs text-purple-700 dark:text-purple-300">
+                  <strong>Dica:</strong> Clique em "Usar este template" para abrir o assistente onde você poderá configurar desconto, cupom e agendar o envio.
+                </p>
+              </div>
+
+              {/* Use Template Button */}
               <button
-                onClick={handleSendClick}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all active:scale-[0.98]"
-                disabled={!selectedAudience || isSending}
+                onClick={handleUseTemplate}
+                disabled={!onUseTemplate}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/25 transition-all active:scale-[0.98] disabled:from-slate-400 disabled:to-slate-500 disabled:shadow-none whitespace-nowrap"
               >
-                <Send className="w-4 h-4" />
-                Enviar para {getAudienceCount()} clientes
+                <Wand2 className="w-4 h-4" />
+                Usar este template
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Campaign Preview Modal */}
-        {showCampaignPreview && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-lg animate-fade-in">
-              {/* Send Result Overlay */}
-              {sendResult && (
-                <div className={`mb-4 p-4 rounded-xl border ${
-                  sendResult.success
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    {sendResult.success ? (
-                      <>
-                        <CheckCircle2 className="w-6 h-6 text-green-600" />
-                        <div>
-                          <p className="font-semibold text-green-800 dark:text-green-200">
-                            Campanha enviada com sucesso!
-                          </p>
-                          <p className="text-sm text-green-600 dark:text-green-400">
-                            {sendResult.sent} mensagens enviadas
-                            {sendResult.failed > 0 && `, ${sendResult.failed} falharam`}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="w-6 h-6 text-red-600" />
-                        <div>
-                          <p className="font-semibold text-red-800 dark:text-red-200">
-                            Erro ao enviar
-                          </p>
-                          <p className="text-sm text-red-600 dark:text-red-400">
-                            {sendResult.error}
-                          </p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <CampaignPreview
-                customers={audienceCustomers}
-                onConfirm={handleConfirmSend}
-                onCancel={handleCancelSend}
-                campaignName={selectedTemplate?.name || 'Campanha'}
-                isLoading={isSending}
-              />
             </div>
           </div>
         )}

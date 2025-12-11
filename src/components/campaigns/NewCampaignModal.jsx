@@ -1,8 +1,23 @@
-// NewCampaignModal.jsx v4.2
+// NewCampaignModal.jsx v4.5
 // Campaign creation wizard modal
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v4.5 (2025-12-11): Template filtering by audience
+//   - Templates in Step 2 now filtered by selected audience
+//   - Matches same filtering behavior as Messages tab
+//   - Shows "Templates recomendados" message when filtered
+// v4.4 (2025-12-11): Pre-selection support and header bug fix
+//   - Fixed: header rendering bug (was object, now extracts .text)
+//   - Added initialTemplate/initialAudience props for pre-population
+//   - Auto-advances to Step 2 when template is pre-selected
+//   - Supports "Usar este template" flow from Messages tab
+// v4.3 (2025-12-11): Design System v3.1 compliance fixes
+//   - Added modal border per Design System spec
+//   - Fixed close button touch target (44px minimum)
+//   - Fixed date/time inputs (text-base for iOS, h-12, rounded-xl)
+//   - Added footer background color
+//   - Matched audience card colors to AudienceSelector component
 // v4.2 (2025-12-10): Added RFM segment audiences
 //   - Added VIP, Frequentes, Promissores, Esfriando, Inativos audiences
 //   - Organized audiences by category (Retention vs Marketing)
@@ -38,7 +53,7 @@
 //   - Audience selection, template selection, preview, and send
 //   - Integrates with campaignService for sending
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   X,
   ChevronLeft,
@@ -65,7 +80,12 @@ import {
 } from 'lucide-react';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import {
-  sendBulkWhatsApp,
+  createBrazilDateTime,
+  isBrazilTimeFuture,
+  formatBrazilTime,
+  getBrazilNow
+} from '../../utils/dateUtils';
+import {
   validateCampaignAudience,
   createScheduledCampaignAsync,
   createCampaignAsync,
@@ -73,11 +93,11 @@ import {
 } from '../../utils/campaignService';
 import {
   MESSAGE_TEMPLATES,
-  getTemplatesByAudience,
   SERVICE_TYPE_LABELS,
   getDiscountOptionsForTemplate,
   getServiceOptionsForTemplate,
-  getCouponForTemplate
+  getCouponForTemplate,
+  getTemplatesByAudience
 } from '../../config/messageTemplates';
 import { TEMPLATE_CAMPAIGN_TYPE_MAP } from '../../config/couponConfig';
 
@@ -192,7 +212,13 @@ const STEPS = [
   { id: 'send', label: 'Enviar', icon: Send }
 ];
 
-const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
+const NewCampaignModal = ({
+  isOpen,
+  onClose,
+  audienceSegments,
+  initialTemplate = null,
+  initialAudience = null
+}) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedAudience, setSelectedAudience] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -208,6 +234,26 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
   const [sendMode, setSendMode] = useState('now'); // 'now' or 'scheduled'
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+
+  // Handle initial values when modal opens with pre-selection
+  useEffect(() => {
+    if (isOpen) {
+      // Pre-select audience if provided
+      if (initialAudience) {
+        setSelectedAudience(initialAudience);
+      }
+      // Pre-select template if provided
+      if (initialTemplate) {
+        setSelectedTemplate(initialTemplate);
+        // Set discount/service defaults from template
+        const defaults = initialTemplate.discountDefaults || {};
+        setSelectedDiscount(defaults.discountPercent || null);
+        setSelectedServiceType(defaults.serviceType || null);
+        // Auto-advance to step 2 if audience is also set, otherwise step 1
+        setCurrentStep(initialAudience ? 1 : 0);
+      }
+    }
+  }, [isOpen, initialTemplate, initialAudience]);
 
   // Get audience customers with valid phones
   const audienceCustomers = useMemo(() => {
@@ -241,6 +287,12 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
     return getServiceOptionsForTemplate(selectedTemplate.id);
   }, [selectedTemplate]);
 
+  // Filter templates by selected audience (same as Messages tab)
+  const filteredTemplates = useMemo(() => {
+    if (!selectedAudience) return MESSAGE_TEMPLATES;
+    return getTemplatesByAudience(selectedAudience);
+  }, [selectedAudience]);
+
   // Get the selected coupon based on discount and service type
   const selectedCoupon = useMemo(() => {
     if (!selectedTemplate || selectedDiscount === null || !selectedServiceType) return null;
@@ -270,6 +322,12 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
   // Format currency helper
   const formatCurrency = (value) => {
     return `R$ ${(value || 0).toFixed(2).replace('.', ',')}`;
+  };
+
+  // Extract header text (header can be string or {type, text} object)
+  const getHeaderText = (header) => {
+    if (!header) return '';
+    return typeof header === 'object' ? header.text : header;
   };
 
   // Get first name from full name
@@ -339,11 +397,12 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
         return;
       }
 
-      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
-      if (scheduledDateTime <= new Date()) {
+      // Create datetime in Brazil timezone (user input is always Brazil time)
+      const scheduledDateTime = createBrazilDateTime(scheduledDate, scheduledTime);
+      if (!scheduledDateTime || !isBrazilTimeFuture(scheduledDate, scheduledTime)) {
         setSendResult({
           success: false,
-          error: 'A data de agendamento deve ser no futuro'
+          error: 'A data de agendamento deve ser no futuro (horário de Brasília)'
         });
         return;
       }
@@ -544,7 +603,7 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+      <div className="w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -552,7 +611,7 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
           </h2>
           <button
             onClick={handleClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="p-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -627,11 +686,15 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
                         <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-purple-600" />
                       )}
                       <div className={`
-                        w-8 h-8 rounded-lg flex items-center justify-center mb-2
+                        w-8 h-8 rounded-xl flex items-center justify-center mb-2
                         ${audience.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40' :
                           audience.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/40' :
                           audience.color === 'emerald' ? 'bg-emerald-100 dark:bg-emerald-900/40' :
                           audience.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40' :
+                          audience.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/40' :
+                          audience.color === 'cyan' ? 'bg-cyan-100 dark:bg-cyan-900/40' :
+                          audience.color === 'green' ? 'bg-green-100 dark:bg-green-900/40' :
+                          audience.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700' :
                           'bg-slate-100 dark:bg-slate-700'
                         }
                       `}>
@@ -641,6 +704,10 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
                             audience.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
                             audience.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
                             audience.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                            audience.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
+                            audience.color === 'cyan' ? 'text-cyan-600 dark:text-cyan-400' :
+                            audience.color === 'green' ? 'text-green-600 dark:text-green-400' :
+                            audience.color === 'gray' ? 'text-gray-600 dark:text-gray-400' :
                             'text-slate-600 dark:text-slate-400'
                           }
                         `} />
@@ -665,11 +732,14 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
           {currentStep === 1 && (
             <div className="space-y-4">
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Escolha o template da mensagem:
+                {selectedAudience && filteredTemplates.length < MESSAGE_TEMPLATES.length
+                  ? `Templates recomendados para esta audiência (${filteredTemplates.length} de ${MESSAGE_TEMPLATES.length}):`
+                  : 'Escolha o template da mensagem:'
+                }
               </p>
 
               <div className="space-y-3">
-                {MESSAGE_TEMPLATES.map((template) => {
+                {filteredTemplates.map((template) => {
                   const Icon = ICON_MAP[template.icon] || Gift;
                   const isSelected = selectedTemplate?.id === template.id;
 
@@ -887,7 +957,7 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
                       <div className="p-3 min-h-[200px]">
                         <div className="bg-white rounded-lg p-2.5 shadow-sm max-w-[90%]">
                           <p className="text-xs font-medium text-slate-900 mb-1">
-                            {selectedTemplate.header}
+                            {getHeaderText(selectedTemplate.header)}
                           </p>
                           <p className="text-[11px] text-slate-700 whitespace-pre-line leading-relaxed">
                             {formatPreview(selectedTemplate)}
@@ -904,7 +974,7 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
                 /* Text Preview */
                 <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
                   <p className="text-sm font-medium text-slate-900 dark:text-white mb-2">
-                    {selectedTemplate.header}
+                    {getHeaderText(selectedTemplate.header)}
                   </p>
                   <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">
                     {formatPreview(selectedTemplate)}
@@ -940,7 +1010,10 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
                             Campanha Agendada!
                           </h3>
                           <p className="text-blue-600 dark:text-blue-400">
-                            Será enviada em {sendResult.scheduledFor.toLocaleDateString('pt-BR')} às {sendResult.scheduledFor.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            Será enviada em {formatBrazilTime(sendResult.scheduledFor, { day: '2-digit', month: '2-digit', year: 'numeric' })} às {formatBrazilTime(sendResult.scheduledFor, { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                            (Horário de Brasília)
                           </p>
                           <p className="text-sm text-blue-500 dark:text-blue-400 mt-2">
                             {validationStats?.stats?.readyCount || 0} clientes receberão a mensagem
@@ -1097,36 +1170,41 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
 
                     {/* Scheduling Inputs */}
                     {sendMode === 'scheduled' && (
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-                            Data
-                          </label>
-                          <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                              type="date"
-                              value={scheduledDate}
-                              onChange={(e) => setScheduledDate(e.target.value)}
-                              min={new Date().toISOString().split('T')[0]}
-                              className="w-full pl-10 pr-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                      <div className="mt-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                              Data
+                            </label>
+                            <div className="relative">
+                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <input
+                                type="date"
+                                value={scheduledDate}
+                                onChange={(e) => setScheduledDate(e.target.value)}
+                                min={getBrazilNow().date}
+                                className="w-full h-12 pl-10 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                              Hora
+                            </label>
+                            <div className="relative">
+                              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <input
+                                type="time"
+                                value={scheduledTime}
+                                onChange={(e) => setScheduledTime(e.target.value)}
+                                className="w-full h-12 pl-10 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-                            Hora
-                          </label>
-                          <div className="relative">
-                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                              type="time"
-                              value={scheduledTime}
-                              onChange={(e) => setScheduledTime(e.target.value)}
-                              className="w-full pl-10 pr-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                        </div>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 text-center">
+                          ⏰ Horário de Brasília (São Paulo)
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1172,7 +1250,7 @@ const NewCampaignModal = ({ isOpen, onClose, audienceSegments }) => {
         </div>
 
         {/* Footer Navigation */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
           <button
             onClick={currentStep === 0 ? handleClose : handleBack}
             disabled={isSending}

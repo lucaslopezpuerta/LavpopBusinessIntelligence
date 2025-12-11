@@ -1,10 +1,18 @@
-// Campaigns.jsx v2.1.0
+// Campaigns.jsx v2.2.0
 // Customer Messaging & Campaign Management Tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
-// v2.1.0 (2025-12-10): Portuguese RFM segment integration
-//   - Updated audience segments to use Portuguese Churn Risk Levels (Em Risco, Crítico, Novo, Saudável)
+// v2.2.0 (2025-12-11): Unified campaign creation flow
+//   - Messages tab now only browses templates (no direct send)
+//   - "Usar este template" opens wizard with template pre-selected
+//   - All campaign sending goes through Nova Campanha wizard
+// v2.1.1 (2025-12-11): Fixed audience segment filters
+//   - Fixed atRisk filter to use English riskLevel keys ('At Risk', 'Churning') not Portuguese
+//   - Fixed newCustomers filter to use 'New Customer' key
+//   - Fixed healthy filter to use 'Healthy' key
+//   - riskLevel is stored as English key, not Portuguese display name
+// v2.1.0 (2025-12-10): RFM segment integration
 //   - Added RFM segment audiences (VIP, Frequente, Promissor, Esfriando, Inativo)
 //   - Now supports both retention-focused (Churn Risk) and marketing-focused (RFM) targeting
 // v2.0.0 (2025-12-10): Complete dashboard redesign
@@ -72,6 +80,8 @@ const Campaigns = ({ data }) => {
   const [activeSection, setActiveSection] = useState('overview');
   const [showNewCampaign, setShowNewCampaign] = useState(false);
   const [selectedAudience, setSelectedAudience] = useState(null);
+  // Pre-selection for wizard (when "Usar este template" is clicked in Messages tab)
+  const [initialTemplate, setInitialTemplate] = useState(null);
 
   // Calculate customer metrics for audience targeting
   const customerMetrics = useMemo(() => {
@@ -88,7 +98,8 @@ const Campaigns = ({ data }) => {
   const MIN_WALLET_BALANCE = 10;
 
   // Audience segments for targeting
-  // Uses Portuguese Churn Risk Levels: Saudável, Monitorar, Em Risco, Crítico, Novo, Perdido
+  // Churn Risk Levels stored as English keys: Healthy, Monitor, At Risk, Churning, New Customer, Lost
+  // Display names (Portuguese): Saudável, Monitorar, Em Risco, Crítico, Novo, Perdido
   // RFM Segments available in c.segment: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
   const audienceSegments = useMemo(() => {
     if (!customerMetrics?.allCustomers) return null;
@@ -97,9 +108,10 @@ const Campaigns = ({ data }) => {
 
     return {
       // Churn Risk Level based segments (retention focus)
-      atRisk: customers.filter(c => ['Em Risco', 'Crítico'].includes(c.riskLevel)),
-      newCustomers: customers.filter(c => c.riskLevel === 'Novo'),
-      healthy: customers.filter(c => c.riskLevel === 'Saudável'),
+      // Note: riskLevel values are English keys (At Risk, Churning), not Portuguese display names
+      atRisk: customers.filter(c => ['At Risk', 'Churning'].includes(c.riskLevel)),
+      newCustomers: customers.filter(c => c.riskLevel === 'New Customer'),
+      healthy: customers.filter(c => c.riskLevel === 'Healthy'),
       // RFM Segment based segments (marketing focus)
       vip: customers.filter(c => c.segment === 'VIP'),
       frequent: customers.filter(c => c.segment === 'Frequente'),
@@ -114,6 +126,25 @@ const Campaigns = ({ data }) => {
       walletThreshold: MIN_WALLET_BALANCE
     };
   }, [customerMetrics?.allCustomers]);
+
+  // Handle "Usar este template" from Messages tab
+  const handleUseTemplate = (template, audience) => {
+    setInitialTemplate(template);
+    // Also set the audience if provided
+    if (audience) {
+      setSelectedAudience(audience);
+    }
+    setShowNewCampaign(true);
+  };
+
+  // Handle modal close - reset initial template
+  const handleCloseModal = () => {
+    setShowNewCampaign(false);
+    // Reset initial values after a brief delay (to avoid flicker)
+    setTimeout(() => {
+      setInitialTemplate(null);
+    }, 300);
+  };
 
   // Loading state
   if (!data || !data.sales) {
@@ -195,6 +226,7 @@ const Campaigns = ({ data }) => {
         <MessageComposer
           selectedAudience={selectedAudience}
           audienceSegments={audienceSegments}
+          onUseTemplate={handleUseTemplate}
         />
       )}
 
@@ -208,7 +240,6 @@ const Campaigns = ({ data }) => {
       {/* Campaign List Section */}
       {activeSection === 'history' && (
         <CampaignList
-          campaigns={[]}
           formatCurrency={formatCurrency}
           formatPercent={formatPercent}
         />
@@ -217,8 +248,10 @@ const Campaigns = ({ data }) => {
       {/* New Campaign Modal */}
       <NewCampaignModal
         isOpen={showNewCampaign}
-        onClose={() => setShowNewCampaign(false)}
+        onClose={handleCloseModal}
         audienceSegments={audienceSegments}
+        initialTemplate={initialTemplate}
+        initialAudience={selectedAudience}
       />
 
     </div>

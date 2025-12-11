@@ -2,6 +2,10 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 2.2 (2025-12-11) - Added webhook events for delivery metrics
+//   - Added webhook_events.getDeliveryStats for real delivery rates
+//   - Added webhook_events.getAll for debugging
+//
 // Version: 2.1 (2025-12-11) - Added missing contact tracking actions
 //   - Added contact_tracking.getAll, contact_tracking.create, contact_tracking.update
 //   - Added rpc.expire_old_contacts, rpc.mark_customer_returned
@@ -223,6 +227,13 @@ exports.handler = async (event, context) => {
       case 'contact_tracking.markReturned':
         return await markContactReturned(supabase, data, headers);
 
+      // ==================== WEBHOOK EVENTS (Delivery Metrics) ====================
+      case 'webhook_events.getDeliveryStats':
+        return await getDeliveryStats(supabase, params, headers);
+
+      case 'webhook_events.getAll':
+        return await getWebhookEvents(supabase, params, headers);
+
       // ==================== RPC FUNCTIONS ====================
       case 'rpc.expire_old_contacts':
         return await expireOldContacts(supabase, headers);
@@ -251,6 +262,7 @@ exports.handler = async (event, context) => {
               'campaign_contacts.getAll', 'campaign_performance.get',
               'contact_tracking.getAll', 'contact_tracking.create', 'contact_tracking.update',
               'contact_tracking.record', 'contact_tracking.markReturned',
+              'webhook_events.getDeliveryStats', 'webhook_events.getAll',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
               'migrate.import'
             ]
@@ -762,21 +774,49 @@ function getDefaultAutomationRules() {
       name: 'Win-back 30 dias',
       enabled: false,
       trigger: { type: 'days_since_visit', value: 30 },
-      action: { template: 'winback_30days', channel: 'whatsapp' }
+      action: { template: 'winback_discount', channel: 'whatsapp' },
+      cooldown_days: 30,
+      coupon_code: 'VOLTE20',
+      discount_percent: 20,
+      coupon_validity_days: 7
+    },
+    {
+      id: 'winback_45',
+      name: 'Win-back Crítico',
+      enabled: false,
+      trigger: { type: 'days_since_visit', value: 45 },
+      action: { template: 'winback_critical', channel: 'whatsapp' },
+      cooldown_days: 21,
+      coupon_code: 'VOLTE30',
+      discount_percent: 30,
+      coupon_validity_days: 7
     },
     {
       id: 'welcome_new',
       name: 'Boas-vindas',
       enabled: false,
       trigger: { type: 'first_purchase', value: 1 },
-      action: { template: 'welcome_new', channel: 'whatsapp' }
+      action: { template: 'welcome_new', channel: 'whatsapp' },
+      cooldown_days: 365,
+      coupon_code: 'BEM10',
+      discount_percent: 10,
+      coupon_validity_days: 14
     },
     {
       id: 'wallet_reminder',
       name: 'Lembrete de saldo',
       enabled: false,
       trigger: { type: 'wallet_balance', value: 20 },
-      action: { template: 'wallet_reminder', channel: 'whatsapp' }
+      action: { template: 'wallet_reminder', channel: 'whatsapp' },
+      cooldown_days: 14
+    },
+    {
+      id: 'post_visit',
+      name: 'Pós-Visita',
+      enabled: false,
+      trigger: { type: 'hours_after_visit', value: 24 },
+      action: { template: 'post_visit_thanks', channel: 'whatsapp' },
+      cooldown_days: 7
     }
   ];
 }
@@ -1367,5 +1407,129 @@ async function markCustomerReturnedRpc(supabase, body, headers) {
     statusCode: 200,
     headers,
     body: JSON.stringify({ data: updated })
+  };
+}
+
+// ==================== WEBHOOK EVENTS FUNCTIONS ====================
+
+/**
+ * Get delivery statistics from webhook_events
+ * Used to calculate real delivery rates instead of estimates
+ */
+async function getDeliveryStats(supabase, params, headers) {
+  const days = parseInt(params.days) || 30;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  try {
+    // Get all delivery status events in the time range
+    const { data, error } = await supabase
+      .from('webhook_events')
+      .select('payload, created_at')
+      .eq('event_type', 'delivery_status')
+      .gte('created_at', startDate.toISOString());
+
+    if (error) {
+      // Graceful fallback if table doesn't exist
+      if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            stats: { sent: 0, delivered: 0, read: 0, failed: 0, undelivered: 0 },
+            deliveryRate: 0,
+            readRate: 0,
+            hasRealData: false
+          })
+        };
+      }
+      throw error;
+    }
+
+    // Count status occurrences (payload stores the status: sent, delivered, read, failed, undelivered)
+    const stats = {
+      sent: 0,
+      queued: 0,
+      delivered: 0,
+      read: 0,
+      failed: 0,
+      undelivered: 0
+    };
+
+    (data || []).forEach(event => {
+      const status = (event.payload || '').toLowerCase();
+      if (stats.hasOwnProperty(status)) {
+        stats[status]++;
+      }
+    });
+
+    // Calculate rates
+    const totalSent = stats.sent + stats.queued + stats.delivered + stats.read + stats.failed + stats.undelivered;
+    const totalDelivered = stats.delivered + stats.read; // read implies delivered
+    const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0;
+    const readRate = totalDelivered > 0 ? (stats.read / totalDelivered) * 100 : 0;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        stats,
+        totalSent,
+        totalDelivered,
+        deliveryRate: Math.round(deliveryRate * 10) / 10,
+        readRate: Math.round(readRate * 10) / 10,
+        hasRealData: totalSent > 0
+      })
+    };
+  } catch (error) {
+    console.error('[getDeliveryStats] Error:', error);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        stats: { sent: 0, delivered: 0, read: 0, failed: 0, undelivered: 0 },
+        deliveryRate: 0,
+        readRate: 0,
+        hasRealData: false,
+        error: 'Failed to fetch delivery stats'
+      })
+    };
+  }
+}
+
+/**
+ * Get raw webhook events for debugging/analysis
+ */
+async function getWebhookEvents(supabase, params, headers) {
+  const limit = Math.min(parseInt(params.limit) || 100, 500);
+  const eventType = params.event_type;
+
+  let query = supabase
+    .from('webhook_events')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (eventType) {
+    query = query.eq('event_type', eventType);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ events: [], message: 'webhook_events table not found' })
+      };
+    }
+    throw error;
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ events: data || [] })
   };
 }

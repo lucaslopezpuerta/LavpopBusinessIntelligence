@@ -26,6 +26,7 @@ export const semanticColors = {
     iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
     gradient: 'from-emerald-500 to-emerald-600',
     ring: 'ring-emerald-500',
+    solidGradient: 'bg-gradient-to-br from-emerald-500 to-teal-600',
   },
   cost: {
     bg: 'bg-red-50 dark:bg-red-900/20',
@@ -64,6 +65,7 @@ export const semanticColors = {
     iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
     gradient: 'from-emerald-500 to-emerald-600',
     ring: 'ring-emerald-500',
+    solidGradient: 'bg-gradient-to-br from-emerald-500 to-green-600',
   },
   negative: {
     bg: 'bg-red-50 dark:bg-red-900/20',
@@ -88,6 +90,7 @@ export const semanticColors = {
     iconBg: 'bg-slate-100 dark:bg-slate-700',
     gradient: 'from-slate-500 to-slate-600',
     ring: 'ring-slate-500',
+    solidGradient: 'bg-gradient-to-br from-slate-500 to-slate-600',
   },
   warning: {
     bg: 'bg-amber-50 dark:bg-amber-900/20',
@@ -100,6 +103,7 @@ export const semanticColors = {
     iconBg: 'bg-amber-100 dark:bg-amber-900/40',
     gradient: 'from-amber-500 to-amber-600',
     ring: 'ring-amber-500',
+    solidGradient: 'bg-gradient-to-br from-amber-500 to-orange-600',
   },
 
   // Weather-specific (semantic colors for weather conditions)
@@ -246,6 +250,22 @@ export const semanticColors = {
     iconBg: 'bg-indigo-100 dark:bg-indigo-900/40',
     gradient: 'from-indigo-500 to-indigo-600',
     ring: 'ring-indigo-500',
+    // Solid gradient for hero cards (white text)
+    solidGradient: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
+  },
+  purple: {
+    bg: 'bg-purple-50 dark:bg-purple-900/20',
+    bgGradient: 'bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20',
+    border: 'border-purple-200 dark:border-purple-800',
+    text: 'text-purple-900 dark:text-purple-100',
+    textMuted: 'text-purple-700 dark:text-purple-300',
+    textSubtle: 'text-purple-600 dark:text-purple-400',
+    icon: 'text-purple-600 dark:text-purple-400',
+    iconBg: 'bg-purple-100 dark:bg-purple-900/40',
+    gradient: 'from-purple-500 to-purple-600',
+    ring: 'ring-purple-500',
+    // Solid gradient for hero cards (white text)
+    solidGradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
   },
 
   // Confidence levels

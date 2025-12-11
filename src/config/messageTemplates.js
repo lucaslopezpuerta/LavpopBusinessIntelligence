@@ -18,6 +18,7 @@ import {
   SERVICE_TYPES,
   SERVICE_TYPE_LABELS,
   getDiscountOptionsForTemplate,
+  getDefaultDiscountForTemplate,
   getServiceOptionsForTemplate,
   getCouponForTemplate,
   getDefaultCouponForTemplate,
@@ -30,6 +31,7 @@ export {
   SERVICE_TYPES,
   SERVICE_TYPE_LABELS,
   getDiscountOptionsForTemplate,
+  getDefaultDiscountForTemplate,
   getServiceOptionsForTemplate,
   getCouponForTemplate,
   getDefaultCouponForTemplate
@@ -68,7 +70,7 @@ export const MESSAGE_TEMPLATES = [
     // Template structure
     header: {
       type: 'TEXT',
-      text: 'Sentimos sua falta! 🧺'
+      text: 'Sentimos sua falta!'
     },
 
     body: `Olá {{1}}!
@@ -82,7 +84,7 @@ Use o cupom *{{3}}* até {{4}}.
 
 Te esperamos! 💙`,
 
-    footer: 'Lavpop - Lavanderia Self-Service',
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
 
     // Variables configuration
     variables: [
@@ -100,9 +102,9 @@ Te esperamos! 💙`,
 
     // For Meta submission - exact text to copy
     metaSubmission: {
-      header: 'Sentimos sua falta! 🧺',
+      header: 'Sentimos sua falta!',
       body: 'Olá {{1}}!\n\nFaz tempo que não nos vemos na Lavpop. Suas roupas merecem o melhor cuidado!\n\nPreparamos uma oferta especial para você:\n🎁 *{{2}}% de desconto* no seu próximo ciclo\n\nUse o cupom *{{3}}* até {{4}}.\n\nTe esperamos! 💙',
-      footer: 'Lavpop - Lavanderia Self-Service',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
       buttons: ['Quero usar!', 'Não tenho interesse']
     },
 
@@ -137,12 +139,12 @@ Te esperamos! 💙`,
 
     header: {
       type: 'TEXT',
-      text: 'Oferta especial em lavagem! 🧺'
+      text: 'Oferta especial em lavagem!'
     },
 
     body: `Olá {{1}}!
 
-Sentimos sua falta! Temos uma oferta especial de *lavagem* para você:
+Sentimos sua falta! Temos uma oferta especial para você:
 
 🎁 *{{2}}% OFF* na sua próxima lavagem
 📋 Cupom: *{{3}}*
@@ -150,9 +152,9 @@ Sentimos sua falta! Temos uma oferta especial de *lavagem* para você:
 
 *Oferta válida apenas para lavadoras.
 
-Esperamos você! 💙`,
+Te esperamos! 💙`,
 
-    footer: 'Lavpop - Lavanderia Self-Service',
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
 
     variables: [
       { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
@@ -167,9 +169,9 @@ Esperamos você! 💙`,
     ],
 
     metaSubmission: {
-      header: 'Oferta especial em lavagem! 🧺',
-      body: 'Olá {{1}}!\n\nSentimos sua falta! Temos uma oferta especial de *lavagem* para você:\n\n🎁 *{{2}}% OFF* na sua próxima lavagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Oferta válida apenas para lavadoras.\n\nEsperamos você! 💙',
-      footer: 'Lavpop - Lavanderia Self-Service',
+      header: 'Oferta especial em lavagem!',
+      body: 'Olá {{1}}!\n\nSentimos sua falta! Temos uma oferta especial para você:\n\n🎁 *{{2}}% OFF* na sua próxima lavagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Oferta válida apenas para lavadoras.\n\nTe esperamos! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
       buttons: ['Vou aproveitar!', 'Não tenho interesse']
     },
 
@@ -215,9 +217,9 @@ Sentimos sua falta! Temos uma oferta especial de *secagem* para você:
 
 *Oferta válida apenas para secadoras.
 
-Esperamos você! 💙`,
+Te esperamos! 💙`,
 
-    footer: 'Lavpop - Lavanderia Self-Service',
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
 
     variables: [
       { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
@@ -233,8 +235,8 @@ Esperamos você! 💙`,
 
     metaSubmission: {
       header: 'Oferta especial em secagem! ☀️',
-      body: 'Olá {{1}}!\n\nSentimos sua falta! Temos uma oferta especial de *secagem* para você:\n\n🎁 *{{2}}% OFF* na sua próxima secagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Oferta válida apenas para secadoras.\n\nEsperamos você! 💙',
-      footer: 'Lavpop - Lavanderia Self-Service',
+      body: 'Olá {{1}}!\n\nSentimos sua falta! Temos uma oferta especial de *secagem* para você:\n\n🎁 *{{2}}% OFF* na sua próxima secagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Oferta válida apenas para secadoras.\n\nTe esperamos! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
       buttons: ['Vou aproveitar!', 'Não tenho interesse']
     },
 
@@ -249,6 +251,75 @@ Esperamos você! 💙`,
       discountPercent: 25,
       couponCode: 'SECA25',
       serviceType: 'dry'
+    }
+  },
+
+  // ============================================================
+  // WIN-BACK CRITICAL (45+ dias - Urgente)
+  // ============================================================
+  {
+    id: 'winback_critical',
+    name: 'Win-back Urgente (45 dias)',
+    category: 'MARKETING',
+    campaignType: CAMPAIGN_TYPES.WINBACK,
+    icon: 'AlertTriangle',
+    color: 'red',
+    description: 'Alerta urgente para clientes prestes a churnar (45+ dias)',
+    audience: 'atRisk',
+
+    // Meta template name (must match what's registered in Business Manager)
+    metaTemplateName: 'lavpop_winback_urgente',
+    twilioContentSid: 'HXd4e8e8b1588f01c549446c0e157154bb',
+
+    header: {
+      type: 'TEXT',
+      text: 'Sentimos muito sua falta!'
+    },
+
+    body: `Ola {{1}}!
+
+Ja faz {{2}} dias desde sua ultima visita na Lavpop. Queremos muito te ver de volta!
+
+Preparamos uma oferta ESPECIAL so para voce:
+🎁 *{{3}}% de desconto* em qualquer servico
+
+Use o cupom *{{4}}* ate {{5}}.
+
+Nao deixe essa oportunidade passar! 💙`,
+
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosservico',
+
+    variables: [
+      { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
+      { position: 2, key: 'daysAway', label: 'Dias sem visita', source: 'customer.daysSinceLastVisit', fallback: '45' },
+      { position: 3, key: 'discount', label: 'Desconto (%)', source: 'campaign.discount', fallback: '30' },
+      { position: 4, key: 'couponCode', label: 'Codigo do cupom', source: 'campaign.couponCode', required: true },
+      { position: 5, key: 'expirationDate', label: 'Data de validade', source: 'campaign.expirationDate', format: 'DD/MM' }
+    ],
+
+    buttons: [
+      { type: 'QUICK_REPLY', text: 'Quero voltar!' },
+      { type: 'QUICK_REPLY', text: 'Nao tenho interesse' }
+    ],
+
+    metaSubmission: {
+      header: 'Sentimos muito sua falta!',
+      body: 'Ola {{1}}!\n\nJa faz {{2}} dias desde sua ultima visita na Lavpop. Queremos muito te ver de volta!\n\nPreparamos uma oferta ESPECIAL so para voce:\n🎁 *{{3}}% de desconto* em qualquer servico\n\nUse o cupom *{{4}}* ate {{5}}.\n\nNao deixe essa oportunidade passar! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosservico',
+      buttons: ['Quero voltar!', 'Nao tenho interesse']
+    },
+
+    posCouponConfig: {
+      tipo: 'Cupom Desconto',
+      permitidoPara: 'Lavadoras e Secadoras',
+      ciclosPorCliente: 1,
+      validoSomenteSe: null
+    },
+
+    discountDefaults: {
+      discountPercent: 30,
+      couponCode: 'VOLTE30',
+      serviceType: 'both'
     }
   },
 
@@ -281,13 +352,10 @@ Obrigado por escolher a Lavpop! Esperamos que sua experiência tenha sido incrí
 
 📅 Válido até {{4}}
 
-Dicas:
-✨ Horários tranquilos: 7h-9h e 14h-16h
-📱 Acompanhe suas lavagens pelo app
+Qualquer dúvida, estamos aqui! 💙
++55 54 98120-0363`,
 
-Qualquer dúvida, estamos aqui! 💙`,
-
-    footer: 'Lavpop - Lavanderia Self-Service',
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
 
     variables: [
       { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
@@ -303,8 +371,8 @@ Qualquer dúvida, estamos aqui! 💙`,
 
     metaSubmission: {
       header: 'Bem-vindo à Lavpop! 🎉',
-      body: 'Olá {{1}}!\n\nObrigado por escolher a Lavpop! Esperamos que sua experiência tenha sido incrível.\n\n🎁 Na sua próxima visita, use o cupom *{{2}}* e ganhe *{{3}}% OFF*!\n\n📅 Válido até {{4}}\n\nDicas:\n✨ Horários tranquilos: 7h-9h e 14h-16h\n📱 Acompanhe suas lavagens pelo app\n\nQualquer dúvida, estamos aqui! 💙',
-      footer: 'Lavpop - Lavanderia Self-Service',
+      body: 'Olá {{1}}!\n\nObrigado por escolher a Lavpop! Esperamos que sua experiência tenha sido incrível.\n\n🎁 Na sua próxima visita, use o cupom *{{2}}* e ganhe *{{3}}% OFF*!\n\n📅 Válido até {{4}}\n\nQualquer dúvida, estamos aqui! 💙\n+55 54 98120-0363',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
       buttons: ['Obrigado!', 'Não quero receber']
     },
 
@@ -341,20 +409,20 @@ Qualquer dúvida, estamos aqui! 💙`,
 
     header: {
       type: 'TEXT',
-      text: 'Você tem créditos! 💰'
+      text: 'Você tem saldo!'
     },
 
     body: `Olá {{1}}!
 
-Você tem *{{2}}* de crédito na sua carteira Lavpop!
+Você tem R\${{2}} de saldo na sua carteira Lavpop!
 
-Não deixe seu saldo parado. Use na sua próxima lavagem e economize.
+Não deixe seu saldo parado. Use na sua próxima visita e economize.
 
-🕐 Funcionamos das 7h às 21h, todos os dias.
+🕐 Funcionamos das 8h às 23h, todos os dias.
 
 Te esperamos! 💙`,
 
-    footer: 'Lavpop - Lavanderia Self-Service',
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
 
     variables: [
       { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
@@ -367,9 +435,9 @@ Te esperamos! 💙`,
     ],
 
     metaSubmission: {
-      header: 'Você tem créditos! 💰',
-      body: 'Olá {{1}}!\n\nVocê tem *{{2}}* de crédito na sua carteira Lavpop!\n\nNão deixe seu saldo parado. Use na sua próxima lavagem e economize.\n\n🕐 Funcionamos das 7h às 21h, todos os dias.\n\nTe esperamos! 💙',
-      footer: 'Lavpop - Lavanderia Self-Service',
+      header: 'Você tem saldo!',
+      body: 'Olá {{1}}!\n\nVocê tem R${{2}} de saldo na sua carteira Lavpop!\n\nNão deixe seu saldo parado. Use na sua próxima visita e economize.\n\n🕐 Funcionamos das 8h às 23h, todos os dias.\n\nTe esperamos! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
       buttons: ['Vou usar!', 'Não quero receber']
     },
 
@@ -411,9 +479,11 @@ Temos uma promoção especial para você:
 📋 Cupom: *{{3}}*
 📅 Válido até {{4}}
 
+Funcionamos das 8h às 23h, todos os dias.
+
 Aproveite! 💙`,
 
-    footer: 'Lavpop - Lavanderia Self-Service',
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
 
     variables: [
       { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
@@ -423,15 +493,15 @@ Aproveite! 💙`,
     ],
 
     buttons: [
-      { type: 'QUICK_REPLY', text: 'Quero aproveitar!' },
+      { type: 'QUICK_REPLY', text: 'Vou aproveitar!' },
       { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
     ],
 
     metaSubmission: {
       header: '🎁 Promoção Especial!',
-      body: 'Olá {{1}}!\n\nTemos uma promoção especial para você:\n\n🎁 *{{2}}% de desconto*\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\nAproveite! 💙',
-      footer: 'Lavpop - Lavanderia Self-Service',
-      buttons: ['Quero aproveitar!', 'Não tenho interesse']
+      body: 'Olá {{1}}!\n\nTemos uma promoção especial para você:\n\n🎁 *{{2}}% de desconto*\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\nFuncionamos das 8h às 23h, todos os dias.\n\nAproveite! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+      buttons: ['Vou aproveitar!', 'Não tenho interesse']
     },
 
     posCouponConfig: {
@@ -468,17 +538,19 @@ Aproveite! 💙`,
 
     body: `Olá {{1}}!
 
-Promoção especial de *secagem*:
+Temos uma oferta especial para você:
 
-🎁 *{{2}}% OFF* na secadora
+🎁 *{{2}}% OFF* na sua próxima secagem
 📋 Cupom: *{{3}}*
 📅 Válido até {{4}}
 
-*Válido apenas para secadoras.
+*Oferta válida apenas para secadoras.
+
+Funcionamos das 8h às 23h, todos os dias.
 
 Aproveite! 💙`,
 
-    footer: 'Lavpop - Lavanderia Self-Service',
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
 
     variables: [
       { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
@@ -494,8 +566,8 @@ Aproveite! 💙`,
 
     metaSubmission: {
       header: '☀️ Promoção de Secagem!',
-      body: 'Olá {{1}}!\n\nPromoção especial de *secagem*:\n\n🎁 *{{2}}% OFF* na secadora\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Válido apenas para secadoras.\n\nAproveite! 💙',
-      footer: 'Lavpop - Lavanderia Self-Service',
+      body: 'Olá {{1}}!\n\nTemos uma oferta especial para você:\n\n🎁 *{{2}}% OFF* na sua próxima secagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\n*Oferta válida apenas para secadoras.\n\nFuncionamos das 8h às 23h, todos os dias.\n\nAproveite! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
       buttons: ['Vou aproveitar!', 'Não tenho interesse']
     },
 
@@ -531,7 +603,7 @@ Aproveite! 💙`,
 
     header: {
       type: 'TEXT',
-      text: 'Complete seu ciclo! ☀️'
+      text: 'Complete seu ciclo!'
     },
 
     body: `Olá {{1}}!
@@ -544,7 +616,7 @@ Vimos que você lavou suas roupas conosco. Que tal completar o ciclo com nossa s
 
 Roupas secas em minutos, sem preocupação! 💙`,
 
-    footer: 'Lavpop - Lavanderia Self-Service',
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
 
     variables: [
       { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
@@ -554,15 +626,15 @@ Roupas secas em minutos, sem preocupação! 💙`,
     ],
 
     buttons: [
-      { type: 'QUICK_REPLY', text: 'Quero secar!' },
+      { type: 'QUICK_REPLY', text: 'Vou secar!' },
       { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
     ],
 
     metaSubmission: {
-      header: 'Complete seu ciclo! ☀️',
+      header: 'Complete seu ciclo!',
       body: 'Olá {{1}}!\n\nVimos que você lavou suas roupas conosco. Que tal completar o ciclo com nossa secagem profissional?\n\n🎁 *{{2}}% OFF* na secagem\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\nRoupas secas em minutos, sem preocupação! 💙',
-      footer: 'Lavpop - Lavanderia Self-Service',
-      buttons: ['Quero secar!', 'Não tenho interesse']
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+      buttons: ['Vou secar!', 'Não tenho interesse']
     },
 
     posCouponConfig: {
@@ -576,6 +648,67 @@ Roupas secas em minutos, sem preocupação! 💙`,
       discountPercent: 15,
       couponCode: 'SEQUE15',
       serviceType: 'dry'
+    }
+  },
+
+  // ============================================================
+  // POST-VISIT TEMPLATE (Agradecimento e Feedback)
+  // ============================================================
+  {
+    id: 'post_visit_thanks',
+    name: 'Agradecimento Pos-Visita',
+    category: 'UTILITY',
+    campaignType: null, // No coupon - feedback request only
+    icon: 'Star',
+    color: 'emerald',
+    description: 'Agradecer e pedir feedback apos visita (24h)',
+    audience: 'all',
+
+    // Meta template name (must match what's registered in Business Manager)
+    metaTemplateName: 'lavpop_pos_visita',
+    twilioContentSid: 'HX62540533ed5cf7f251377cf3b4adbd8a',
+
+    header: {
+      type: 'TEXT',
+      text: 'Obrigado pela visita!'
+    },
+
+    body: `Ola {{1}}!
+
+Obrigado por visitar a Lavpop! Esperamos que tenha gostado do nosso servico.
+
+Sua opiniao e muito importante para nos. Como foi sua experiencia hoje?
+
+⭐ Avalie no Google: google.com/maps/lavpop
+
+Qualquer duvida, estamos aqui! 💙
++55 54 98120-0363`,
+
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosservico',
+
+    variables: [
+      { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' }
+    ],
+
+    buttons: [
+      { type: 'QUICK_REPLY', text: 'Excelente!' },
+      { type: 'QUICK_REPLY', text: 'Precisa melhorar' },
+      { type: 'QUICK_REPLY', text: 'Nao quero receber' }
+    ],
+
+    metaSubmission: {
+      header: 'Obrigado pela visita!',
+      body: 'Ola {{1}}!\n\nObrigado por visitar a Lavpop! Esperamos que tenha gostado do nosso servico.\n\nSua opiniao e muito importante para nos. Como foi sua experiencia hoje?\n\n⭐ Avalie no Google: google.com/maps/lavpop\n\nQualquer duvida, estamos aqui! 💙\n+55 54 98120-0363',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosservico',
+      buttons: ['Excelente!', 'Precisa melhorar', 'Nao quero receber']
+    },
+
+    posCouponConfig: null, // No coupon needed - feedback only
+
+    discountDefaults: {
+      discountPercent: 0,
+      couponCode: null,
+      serviceType: null
     }
   }
 ];

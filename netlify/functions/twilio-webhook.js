@@ -1,10 +1,17 @@
-// netlify/functions/twilio-webhook.js v1.0
+// netlify/functions/twilio-webhook.js v1.1
 // Twilio WhatsApp Webhook Handler for Button Callbacks
+//
+// CHANGELOG:
+// v1.1 (2025-12-11): Added delivery status tracking
+//   - All status updates (sent, delivered, read, failed) now tracked in webhook_events
+//   - Enables real delivery rate calculation instead of estimates
+//   - Added trackDeliveryStatus function for persistence
+// v1.0: Initial implementation
 //
 // Handles incoming webhooks from Twilio/Meta for:
 // - Quick Reply button clicks (opt-out, engagement tracking)
 // - Inbound messages (potential opt-out keywords)
-// - Delivery status updates
+// - Delivery status updates (now persisted for metrics)
 //
 // To configure:
 // 1. Set this URL in Twilio Console > Messaging > WhatsApp Senders
@@ -182,10 +189,14 @@ async function handleInboundMessage(phone, messageBody, webhookData, headers) {
 
 /**
  * Handle message status updates
+ * Tracks delivery status for real-time campaign metrics
  */
 async function handleStatusUpdate(webhookData, headers) {
   const { MessageSid, MessageStatus, ErrorCode, To } = webhookData;
   const phone = (To || '').replace(/^whatsapp:/, '');
+
+  // Track ALL status updates for delivery metrics
+  await trackDeliveryStatus(MessageSid, phone, MessageStatus, ErrorCode);
 
   // Track failed/undelivered messages for potential blacklisting
   if (MessageStatus === 'failed' || MessageStatus === 'undelivered') {
@@ -203,6 +214,57 @@ async function handleStatusUpdate(webhookData, headers) {
     headers,
     body: '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
   };
+}
+
+/**
+ * Track delivery status for campaign metrics
+ * Stores in webhook_events for real delivery rate calculations
+ */
+async function trackDeliveryStatus(messageSid, phone, status, errorCode = null) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!supabaseUrl || !supabaseKey || !messageSid) {
+    return;
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const normalizedPhone = phone.replace(/\D/g, '');
+
+    // Upsert delivery status (update if message_sid exists)
+    const { error } = await supabase
+      .from('webhook_events')
+      .upsert({
+        message_sid: messageSid,
+        phone: normalizedPhone,
+        event_type: 'delivery_status',
+        payload: status,
+        error_code: errorCode,
+        created_at: new Date().toISOString()
+      }, {
+        onConflict: 'message_sid',
+        ignoreDuplicates: false
+      });
+
+    if (error) {
+      // If upsert fails (no unique constraint), try insert
+      await supabase
+        .from('webhook_events')
+        .insert({
+          message_sid: messageSid,
+          phone: normalizedPhone,
+          event_type: 'delivery_status',
+          payload: status,
+          error_code: errorCode,
+          created_at: new Date().toISOString()
+        });
+    }
+
+    console.log(`[TwilioWebhook] Tracked delivery: ${messageSid} -> ${status}`);
+  } catch (error) {
+    console.error('[TwilioWebhook] Failed to track delivery status:', error);
+  }
 }
 
 /**

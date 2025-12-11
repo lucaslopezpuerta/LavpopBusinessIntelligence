@@ -296,6 +296,38 @@ export const api = {
     }
   },
 
+  // ==================== DELIVERY METRICS ====================
+  delivery: {
+    /**
+     * Get delivery statistics from Twilio webhook events
+     * Returns real delivery/read rates instead of estimates
+     */
+    async getStats(days = 30) {
+      try {
+        const result = await apiRequest('webhook_events.getDeliveryStats', { days }, 'GET');
+        return result;
+      } catch (error) {
+        // Graceful fallback - return empty stats
+        return {
+          stats: { sent: 0, delivered: 0, read: 0, failed: 0, undelivered: 0 },
+          deliveryRate: 0,
+          readRate: 0,
+          hasRealData: false
+        };
+      }
+    },
+
+    /**
+     * Get raw webhook events for debugging
+     */
+    async getEvents(limit = 100, eventType = null) {
+      const params = { limit };
+      if (eventType) params.event_type = eventType;
+      const result = await apiRequest('webhook_events.getAll', params, 'GET');
+      return result.events || [];
+    }
+  },
+
   // ==================== MIGRATION ====================
   migrate: {
     async importFromLocalStorage(data) {

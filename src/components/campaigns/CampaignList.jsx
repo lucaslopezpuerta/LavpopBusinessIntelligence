@@ -1,20 +1,15 @@
-// CampaignList.jsx v2.2
-// Campaign list and history display with backend integration
-// Design System v3.1 compliant
+// CampaignList.jsx v3.0
+// Campaign list and history display - Backend only
+// Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.0 (2025-12-11): Backend-only campaigns (deprecated CSV)
+//   - Removed legacy CSV campaign support
+//   - Simplified component props and data flow
+//   - Cleaned up conditional rendering
 // v2.2 (2025-12-10): Added RFM segment audience labels
-//   - Updated getAudienceLabel with VIP, Frequentes, Promissores, Esfriando, Inativos
 // v2.1 (2025-12-08): Added campaign details modal
-//   - Click campaign to view individual contact outcomes
-//   - Shows pending/returned/expired contacts per campaign
 // v2.0 (2025-12-08): Backend integration + effectiveness metrics
-//   - Fetches campaigns from Supabase via getCampaignPerformance
-//   - Shows return rate, tracked contacts, revenue recovered
-//   - Combines legacy CSV campaigns with new backend campaigns
-//   - Loading state while fetching
-// v1.0 (2025-12-03): Initial implementation
-//   - Display campaigns from props (CSV-based)
 
 import React, { useState, useEffect } from 'react';
 import { Target, Calendar, Users, Search, MessageSquare, TrendingUp, RefreshCw, Eye } from 'lucide-react';
@@ -23,65 +18,51 @@ import ProgressBar from '../ui/ProgressBar';
 import { getCampaignPerformance } from '../../utils/campaignService';
 import CampaignDetailsModal from './CampaignDetailsModal';
 
-const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatPercent }) => {
+const CampaignList = ({ formatCurrency, formatPercent }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // all, active, completed, draft
-  const [backendCampaigns, setBackendCampaigns] = useState([]);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [campaigns, setCampaigns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
 
   // Fetch campaigns from backend on mount
   useEffect(() => {
-    async function fetchCampaigns() {
-      setIsLoading(true);
-      try {
-        const data = await getCampaignPerformance();
-        setBackendCampaigns(data || []);
-      } catch (error) {
-        console.error('Failed to fetch campaigns:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
     fetchCampaigns();
   }, []);
 
-  // Combine legacy (CSV) campaigns with backend campaigns
-  const allCampaigns = [
-    // Backend campaigns first (newer)
-    ...backendCampaigns.map(c => ({
-      id: c.id,
-      code: c.name || c.id,
-      name: c.name,
-      audience: c.audience,
-      status: c.status || 'active',
-      isActive: c.status === 'active',
-      contactMethod: c.contact_method || 'whatsapp',
-      sends: c.sends || 0,
-      delivered: c.delivered || 0,
-      // Effectiveness metrics
-      contactsTracked: c.contacts_tracked || 0,
-      contactsReturned: c.contacts_returned || 0,
-      returnRate: c.return_rate || 0,
-      revenueRecovered: c.total_revenue_recovered || 0,
-      avgDaysToReturn: c.avg_days_to_return || null,
-      // Dates
-      createdAt: c.created_at ? new Date(c.created_at) : null,
-      lastSentAt: c.last_sent_at ? new Date(c.last_sent_at) : null,
-      // Source indicator
-      source: 'backend'
-    })),
-    // Legacy campaigns (from CSV)
-    ...legacyCampaigns.map(c => ({
-      ...c,
-      source: 'legacy',
-      contactsTracked: 0,
-      returnRate: 0
-    }))
-  ];
+  const fetchCampaigns = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getCampaignPerformance();
+      // Transform backend data to display format
+      const transformed = (data || []).map(c => ({
+        id: c.id,
+        code: c.name || c.id,
+        name: c.name,
+        audience: c.audience,
+        status: c.status || 'active',
+        isActive: c.status === 'active',
+        contactMethod: c.contact_method || 'whatsapp',
+        sends: c.sends || 0,
+        delivered: c.delivered || 0,
+        contactsTracked: c.contacts_tracked || 0,
+        contactsReturned: c.contacts_returned || 0,
+        returnRate: c.return_rate || 0,
+        revenueRecovered: c.total_revenue_recovered || 0,
+        avgDaysToReturn: c.avg_days_to_return || null,
+        createdAt: c.created_at ? new Date(c.created_at) : null,
+        lastSentAt: c.last_sent_at ? new Date(c.last_sent_at) : null
+      }));
+      setCampaigns(transformed);
+    } catch (error) {
+      console.error('Failed to fetch campaigns:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter campaigns
-  const filteredCampaigns = allCampaigns.filter(campaign => {
+  const filteredCampaigns = campaigns.filter(campaign => {
     const matchesSearch = (campaign.code || campaign.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' ||
       (filterStatus === 'active' && campaign.isActive) ||
@@ -96,11 +77,6 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
       case 'completed': return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
       case 'draft': return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
       case 'scheduled': return 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
-      // Legacy statuses
-      case 'excellent': return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
-      case 'good': return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
-      case 'fair': return 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
-      case 'poor': return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300';
       default: return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300';
     }
   };
@@ -108,14 +84,9 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
   const getStatusLabel = (status) => {
     switch (status) {
       case 'active': return 'Ativa';
-      case 'completed': return 'Concluída';
+      case 'completed': return 'Concluida';
       case 'draft': return 'Rascunho';
       case 'scheduled': return 'Agendada';
-      // Legacy statuses
-      case 'excellent': return 'Excelente';
-      case 'good': return 'Bom';
-      case 'fair': return 'Regular';
-      case 'poor': return 'Fraco';
       default: return status;
     }
   };
@@ -123,9 +94,9 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
   const getAudienceLabel = (audience) => {
     switch (audience) {
       // Churn Risk Level audiences
-      case 'atRisk': return 'Em Risco / Crítico';
+      case 'atRisk': return 'Em Risco / Critico';
       case 'newCustomers': return 'Novos Clientes';
-      case 'healthy': return 'Saudáveis';
+      case 'healthy': return 'Saudaveis';
       // RFM Segment audiences
       case 'vip': return 'VIP';
       case 'frequent': return 'Frequentes';
@@ -139,29 +110,16 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
     }
   };
 
-  // Refresh campaigns
-  const handleRefresh = async () => {
-    setIsLoading(true);
-    try {
-      const data = await getCampaignPerformance();
-      setBackendCampaigns(data || []);
-    } catch (error) {
-      console.error('Failed to refresh campaigns:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <SectionCard
-      title="Histórico de Campanhas"
-      subtitle={`${filteredCampaigns.length} campanhas ${backendCampaigns.length > 0 ? `(${backendCampaigns.length} do backend)` : ''}`}
+      title="Historico de Campanhas"
+      subtitle={`${filteredCampaigns.length} campanhas`}
       icon={Target}
       color="purple"
       id="campaign-history"
       action={
         <button
-          onClick={handleRefresh}
+          onClick={fetchCampaigns}
           disabled={isLoading}
           className="p-2 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
           title="Atualizar campanhas"
@@ -190,7 +148,7 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
             {[
               { key: 'all', label: 'Todas' },
               { key: 'active', label: 'Ativas' },
-              { key: 'completed', label: 'Concluídas' },
+              { key: 'completed', label: 'Concluidas' },
               { key: 'draft', label: 'Rascunhos' }
             ].map(({ key, label }) => (
               <button
@@ -221,7 +179,7 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
           <div className="space-y-3">
             {filteredCampaigns.map((campaign) => (
               <div
-                key={campaign.id || campaign.code}
+                key={campaign.id}
                 className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md transition-shadow"
               >
                 {/* Header */}
@@ -234,11 +192,6 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(campaign.status)}`}>
                         {getStatusLabel(campaign.status)}
                       </span>
-                      {campaign.source === 'backend' && (
-                        <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[10px] font-medium rounded">
-                          Backend
-                        </span>
-                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                       {campaign.createdAt && (
@@ -261,99 +214,52 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
                       )}
                     </div>
                   </div>
-                  {/* Legacy: Discount display */}
-                  {campaign.discountPercent && (
-                    <div className="text-right">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Desconto</p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white">
-                        {campaign.discountPercent}%
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Metrics Grid - Backend campaigns */}
-                {campaign.source === 'backend' ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Enviados</p>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {campaign.sends || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Rastreados</p>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {campaign.contactsTracked || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Retornaram</p>
-                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                        {campaign.contactsReturned || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Taxa Retorno</p>
-                      <p className={`text-sm font-semibold ${
-                        campaign.returnRate > 15
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : campaign.returnRate > 0
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-slate-600 dark:text-slate-400'
-                      }`}>
-                        {formatPercent(campaign.returnRate)}
-                      </p>
-                    </div>
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Enviados</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {campaign.sends || 0}
+                    </p>
                   </div>
-                ) : (
-                  /* Metrics Grid - Legacy campaigns */
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Resgates</p>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {campaign.redemptions}/{campaign.totalCyclesAvailable}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Conversão</p>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {formatPercent(campaign.redemptionRate)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Receita</p>
-                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                        {formatCurrency(campaign.totalRevenue)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">ROI Incr.</p>
-                      <p className={`text-sm font-semibold ${
-                        campaign.roi > 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        {campaign.roi > 0 ? '+' : ''}{formatPercent(campaign.roi)}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Rastreados</p>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {campaign.contactsTracked || 0}
+                    </p>
                   </div>
-                )}
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Retornaram</p>
+                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                      {campaign.contactsReturned || 0}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Taxa Retorno</p>
+                    <p className={`text-sm font-semibold ${
+                      campaign.returnRate > 15
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : campaign.returnRate > 0
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : 'text-slate-600 dark:text-slate-400'
+                    }`}>
+                      {formatPercent(campaign.returnRate)}
+                    </p>
+                  </div>
+                </div>
 
-                {/* Progress Bar - Return rate for backend, redemption for legacy */}
+                {/* Progress Bar */}
                 <ProgressBar
-                  value={campaign.source === 'backend' ? campaign.returnRate : campaign.redemptionRate}
+                  value={campaign.returnRate}
                   max={100}
-                  color={
-                    campaign.source === 'backend'
-                      ? (campaign.returnRate > 15 ? 'emerald' : campaign.returnRate > 5 ? 'blue' : 'slate')
-                      : (campaign.status === 'excellent' ? 'emerald' : campaign.status === 'good' ? 'blue' : campaign.status === 'fair' ? 'amber' : 'red')
-                  }
+                  color={campaign.returnRate > 15 ? 'emerald' : campaign.returnRate > 5 ? 'blue' : 'slate'}
                   size="sm"
                 />
 
-                {/* Revenue recovered (backend only) */}
-                {campaign.source === 'backend' && campaign.revenueRecovered > 0 && (
+                {/* Revenue recovered */}
+                {campaign.revenueRecovered > 0 && (
                   <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
                     <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3" />
@@ -365,16 +271,14 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
                   </div>
                 )}
 
-                {/* View Details Button (backend campaigns only) */}
-                {campaign.source === 'backend' && (
-                  <button
-                    onClick={() => setSelectedCampaign(campaign)}
-                    className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 rounded-lg text-xs font-medium transition-colors"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Ver Detalhes dos Contatos
-                  </button>
-                )}
+                {/* View Details Button */}
+                <button
+                  onClick={() => setSelectedCampaign(campaign)}
+                  className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 rounded-lg text-xs font-medium transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  Ver Detalhes dos Contatos
+                </button>
               </div>
             ))}
           </div>
@@ -383,8 +287,11 @@ const CampaignList = ({ campaigns: legacyCampaigns = [], formatCurrency, formatP
             <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <Target className="w-8 h-8 text-slate-400" />
             </div>
-            <p className="text-slate-600 dark:text-slate-400">
+            <p className="text-slate-600 dark:text-slate-400 mb-2">
               Nenhuma campanha encontrada
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Crie uma nova campanha na aba "Nova Campanha"
             </p>
           </div>
         )}

@@ -1,8 +1,12 @@
-// CampaignDashboard.jsx v1.0
+// CampaignDashboard.jsx v2.0
 // Unified Campaign Analytics Dashboard
-// Design System v3.1 compliant
+// Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.0 (2025-12-11): Design System v4.0 update
+//   - KPIs now use vibrant gradient cards with white text
+//   - Replaced large InsightBox with discrete inline hints
+//   - Improved visual consistency with other campaign components
 // v1.0 (2025-12-10): Initial implementation
 //   - Hero KPIs: Return Rate, Revenue Recovered, At-Risk, Best Discount
 //   - A/B Testing insights with discount/service comparison
@@ -26,13 +30,14 @@ import {
   CheckCircle2,
   Clock,
   MessageCircle,
-  Send
+  Send,
+  Lightbulb,
+  Calendar
 } from 'lucide-react';
 
 // UI Components
 import KPICard, { KPIGrid } from '../ui/KPICard';
 import SectionCard from '../ui/SectionCard';
-import InsightBox from '../ui/InsightBox';
 import ProgressBar from '../ui/ProgressBar';
 
 // Services
@@ -308,21 +313,44 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Time Range Selector */}
-      <div className="flex items-center justify-end gap-2">
-        <select
-          value={timeRange}
-          onChange={(e) => setTimeRange(Number(e.target.value))}
-          className="text-sm px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-        >
-          <option value={7}>Ultimos 7 dias</option>
-          <option value={30}>Ultimos 30 dias</option>
-          <option value={90}>Ultimos 90 dias</option>
-        </select>
+      {/* Time Range Selector - Button Group Style */}
+      <div className="flex items-center justify-end gap-3">
+        <div className="flex items-center gap-1.5 text-slate-400">
+          <Calendar className="w-4 h-4" />
+          <span className="text-xs font-medium hidden sm:inline">Período:</span>
+        </div>
+        <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 gap-1">
+          {[
+            { value: 7, label: '7d', fullLabel: '7 dias' },
+            { value: 30, label: '30d', fullLabel: '30 dias' },
+            { value: 90, label: '90d', fullLabel: '90 dias' }
+          ].map(({ value, label, fullLabel }) => (
+            <button
+              key={value}
+              onClick={() => setTimeRange(value)}
+              className={`
+                px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
+                ${timeRange === value
+                  ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                }
+              `}
+            >
+              <span className="sm:hidden">{label}</span>
+              <span className="hidden sm:inline">{fullLabel}</span>
+            </button>
+          ))}
+        </div>
         <button
           onClick={() => setTimeRange(timeRange)}
-          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
-          title="Atualizar"
+          className={`
+            p-2 rounded-xl transition-all duration-200
+            ${isLoading
+              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }
+          `}
+          title="Atualizar dados"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
@@ -372,9 +400,22 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
         />
       </KPIGrid>
 
-      {/* Dynamic Insights */}
+      {/* Dynamic Insights - Discrete inline hints */}
       {insights.length > 0 && (
-        <InsightBox insights={insights} />
+        <div className="flex flex-wrap gap-2">
+          {insights.slice(0, 2).map((insight, idx) => (
+            <p key={idx} className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
+              insight.type === 'warning'
+                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
+                : insight.type === 'success'
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+            }`}>
+              <Lightbulb className="w-3 h-3" />
+              {insight.title}
+            </p>
+          ))}
+        </div>
       )}
 
       {/* A/B Testing Section */}

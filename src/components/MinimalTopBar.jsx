@@ -21,7 +21,7 @@
 //   - Glassmorphism backdrop blur
 
 import React from 'react';
-import { MapPin, RefreshCw, Menu, BarChart3, Users, TrendingUp, Settings, FileDown } from 'lucide-react';
+import { MapPin, RefreshCw, Menu, BarChart3, Users, TrendingUp, Settings, FileDown, MessageSquare, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
 import WeatherWidget from './WeatherWidget_API';
 import GoogleBusinessWidget from './GoogleBusinessWidget';
@@ -33,8 +33,10 @@ import { useSidebar } from '../contexts/SidebarContext';
 const TAB_CONFIG = {
   dashboard: { label: 'Dashboard', icon: BarChart3 },
   customers: { label: 'Clientes', icon: Users },
+  campaigns: { label: 'Campanhas', icon: MessageSquare },
   intelligence: { label: 'Inteligência', icon: TrendingUp },
-  operations: { label: 'Operações', icon: Settings }
+  operations: { label: 'Operações', icon: Settings },
+  upload: { label: 'Upload', icon: Upload }
 };
 
 const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {

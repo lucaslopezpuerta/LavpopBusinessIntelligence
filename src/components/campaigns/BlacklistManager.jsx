@@ -1,8 +1,14 @@
-// BlacklistManager.jsx v2.0
+// BlacklistManager.jsx v3.0
 // WhatsApp blacklist management UI component
-// Design System v3.1 compliant
+// Design System v4.0 compliant - Enhanced UX
 //
 // CHANGELOG:
+// v3.0 (2025-12-11): Complete UX redesign
+//   - Stats dashboard header with gradient backgrounds
+//   - Simplified to 2 main stat cards (Total, Opt-outs)
+//   - Discrete info hint instead of large banner
+//   - Mobile-first responsive layout
+//   - Improved visual hierarchy
 // v2.0 (2025-12-08): Supabase backend integration
 //   - Uses async functions to fetch from backend
 //   - Falls back to localStorage if backend unavailable
@@ -30,6 +36,7 @@ import {
   AlertTriangle,
   MessageSquareOff,
   UserX,
+  XCircle,
   Clock,
   Info,
   ChevronLeft,
@@ -114,7 +121,7 @@ const BlacklistManager = ({ customerData }) => {
   }, [blacklist, searchQuery]);
 
   // Reset to page 1 when search changes
-  useMemo(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
 
@@ -311,91 +318,102 @@ const BlacklistManager = ({ customerData }) => {
           </div>
         )}
 
-        {/* Stats Cards */}
+        {/* Stats Dashboard Header */}
         {!isLoading && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-2 gap-3">
+              {/* Total Bloqueados */}
+              <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
                 <div className="flex items-center gap-2 mb-1">
-                  <ShieldOff className="w-4 h-4 text-slate-500" />
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Total</span>
+                  <ShieldOff className="w-4 h-4 opacity-80" />
+                  <span className="text-xs font-medium opacity-90">Bloqueados</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
+                <p className="text-[10px] sm:text-xs opacity-75">números na blacklist</p>
               </div>
 
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              {/* Opt-outs */}
+              <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg">
                 <div className="flex items-center gap-2 mb-1">
-                  <MessageSquareOff className="w-4 h-4 text-red-500" />
-                  <span className="text-xs font-medium text-red-600 dark:text-red-400">Opt-outs</span>
+                  <MessageSquareOff className="w-4 h-4 opacity-80" />
+                  <span className="text-xs font-medium opacity-90">Opt-outs</span>
                 </div>
-                <p className="text-2xl font-bold text-red-700 dark:text-red-300">{stats.byReason?.optOut || 0}</p>
-              </div>
-
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Não entregues</span>
-                </div>
-                <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">
-                  {(stats.byReason?.undelivered || 0) + (stats.byReason?.numberBlocked || 0)}
-                </p>
-              </div>
-
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-2 mb-1">
-                  <UserX className="w-4 h-4 text-slate-500" />
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Manual</span>
-                </div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.byReason?.manual || 0}</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats.byReason?.optOut || 0}</p>
+                <p className="text-[10px] sm:text-xs opacity-75">pediram para parar</p>
               </div>
             </div>
+
+            {/* Discrete Info Hint */}
+            <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Info className="w-3 h-3" />
+              Sincroniza opt-outs e não entregues do Twilio automaticamente
+              {(stats.byReason?.undelivered || 0) + (stats.byReason?.numberBlocked || 0) > 0 && (
+                <span className="text-amber-500 dark:text-amber-400">
+                  · {(stats.byReason?.undelivered || 0) + (stats.byReason?.numberBlocked || 0)} não entregues
+                </span>
+              )}
+            </p>
 
         {/* Sync Status & Actions */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-xl flex items-center justify-center">
-              <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg">
+                <Clock className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                  Última sincronização
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {formatLastSync()}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">
-                Última sincronização
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {formatLastSync()}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
+            {/* Desktop: show sync button here */}
             <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors"
+              className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-blue-400 disabled:to-indigo-400 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
             >
               <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Sincronizando...' : 'Sincronizar Twilio'}
             </button>
+          </div>
 
+          {/* Mobile: full width sync button */}
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="sm:hidden w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-blue-400 disabled:to-indigo-400 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+          >
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Sincronizando...' : 'Sincronizar Twilio'}
+          </button>
+
+          {/* Secondary actions - grid on mobile, flex on desktop */}
+          <div className="grid grid-cols-3 sm:flex sm:justify-end gap-2">
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs sm:text-sm font-medium rounded-xl transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Adicionar
+              <span>Adicionar</span>
             </button>
 
             <button
               onClick={handleExport}
               disabled={blacklist.length === 0}
-              className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              Exportar
+              <span>Exportar</span>
             </button>
 
-            <label className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer">
+            <label className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer">
               <Upload className="w-4 h-4" />
-              {isImporting ? 'Importando...' : 'Importar'}
+              <span>{isImporting ? '...' : 'Importar'}</span>
               <input
                 type="file"
                 accept=".csv"
@@ -420,22 +438,16 @@ const BlacklistManager = ({ customerData }) => {
           />
         )}
 
-        {/* Info Box */}
-        <InsightBox
-          type="info"
-          title="Como funciona a blacklist?"
-          message="A sincronização com Twilio detecta automaticamente: 1) Mensagens com 'parar', 'quero' (opt-out), 2) Mensagens não entregues ou bloqueadas (erro 63024). Números nesta lista não receberão campanhas."
-        />
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Buscar por telefone, nome ou motivo..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
           />
         </div>
 

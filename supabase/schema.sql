@@ -335,10 +335,22 @@ CREATE TABLE IF NOT EXISTS automation_rules (
   id TEXT PRIMARY KEY,              -- e.g., winback_30, welcome_new
   name TEXT NOT NULL,
   enabled BOOLEAN DEFAULT FALSE,
-  trigger_type TEXT,                -- days_since_visit, first_purchase, wallet_balance
+  trigger_type TEXT,                -- days_since_visit, first_purchase, wallet_balance, hours_after_visit
   trigger_value INT,                -- Threshold value
   action_template TEXT,             -- Template ID to use
   action_channel TEXT DEFAULT 'whatsapp',
+
+  -- NEW: Configurable automation controls
+  valid_until TIMESTAMPTZ,          -- Stop date (null = runs forever)
+  cooldown_days INTEGER DEFAULT 14, -- Days before same customer can be targeted again
+  max_total_sends INTEGER,          -- Lifetime send limit (null = unlimited)
+  total_sends_count INTEGER DEFAULT 0, -- Current count of sends
+
+  -- NEW: Coupon configuration
+  coupon_code TEXT,                 -- Specific coupon code for this rule (e.g., VOLTE20)
+  discount_percent INTEGER,         -- Discount percentage (e.g., 20)
+  coupon_validity_days INTEGER DEFAULT 7, -- Days until coupon expires in message
+
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -967,11 +979,21 @@ CREATE TRIGGER update_customers_updated_at
 -- ==================== SAMPLE DATA (Optional) ====================
 -- Default automation rules
 
-INSERT INTO automation_rules (id, name, enabled, trigger_type, trigger_value, action_template, action_channel)
+INSERT INTO automation_rules (
+  id, name, enabled, trigger_type, trigger_value, action_template, action_channel,
+  cooldown_days, coupon_code, discount_percent, coupon_validity_days
+)
 VALUES
-  ('winback_30', 'Win-back 30 dias', false, 'days_since_visit', 30, 'winback_30days', 'whatsapp'),
-  ('welcome_new', 'Boas-vindas', false, 'first_purchase', 1, 'welcome_new', 'whatsapp'),
-  ('wallet_reminder', 'Lembrete de saldo', false, 'wallet_balance', 20, 'wallet_reminder', 'whatsapp')
+  ('winback_30', 'Win-back 30 dias', false, 'days_since_visit', 30, 'winback_discount', 'whatsapp',
+   30, 'VOLTE20', 20, 7),
+  ('winback_45', 'Win-back Critico', false, 'days_since_visit', 45, 'winback_critical', 'whatsapp',
+   21, 'VOLTE30', 30, 7),
+  ('welcome_new', 'Boas-vindas', false, 'first_purchase', 1, 'welcome_new', 'whatsapp',
+   365, 'BEM10', 10, 14),
+  ('wallet_reminder', 'Lembrete de saldo', false, 'wallet_balance', 20, 'wallet_reminder', 'whatsapp',
+   14, NULL, NULL, NULL),
+  ('post_visit', 'Pos-Visita', false, 'hours_after_visit', 24, 'post_visit_thanks', 'whatsapp',
+   7, NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 -- ==================== GRANTS ====================

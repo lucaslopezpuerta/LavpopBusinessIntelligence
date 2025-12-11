@@ -244,7 +244,7 @@ const CampaignROISection = ({ campaignROI, formatCurrency, formatPercent }) => {
             Nenhuma Campanha Encontrada
           </h3>
           <p className="text-sm text-gray-600 dark:text-slate-400 max-w-md mx-auto">
-            Certifique-se de que o arquivo campaigns.csv esta disponivel e contem dados de cupons.
+            As campanhas agora sao gerenciadas na aba Campanhas. Visite a aba Campanhas para ver metricas de efetividade.
           </p>
         </div>
       )}

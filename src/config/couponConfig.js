@@ -46,12 +46,77 @@ export const SERVICE_TYPE_LABELS = {
   [SERVICE_TYPES.DRY]: 'Só Secagem'
 };
 
-// Available service types by campaign type
+// Available service types by campaign type (fallback)
 export const SERVICE_OPTIONS = {
   [CAMPAIGN_TYPES.WINBACK]: [SERVICE_TYPES.BOTH, SERVICE_TYPES.WASH, SERVICE_TYPES.DRY],
   [CAMPAIGN_TYPES.WELCOME]: [SERVICE_TYPES.BOTH], // Welcome always applies to all services
   [CAMPAIGN_TYPES.PROMO]: [SERVICE_TYPES.BOTH, SERVICE_TYPES.DRY],
   [CAMPAIGN_TYPES.UPSELL]: [SERVICE_TYPES.DRY] // Upsell is specifically for dry service
+};
+
+/**
+ * Template-specific service options
+ * Some templates are service-specific and should only allow certain service types
+ * This overrides SERVICE_OPTIONS when a template has specific constraints
+ */
+export const TEMPLATE_SERVICE_OPTIONS = {
+  // Win-back templates
+  'winback_discount': [SERVICE_TYPES.BOTH, SERVICE_TYPES.WASH, SERVICE_TYPES.DRY], // General - all options
+  'winback_wash_only': [SERVICE_TYPES.WASH], // Wash only - locked to wash
+  'winback_dry_only': [SERVICE_TYPES.DRY], // Dry only - locked to dry
+
+  // Welcome templates
+  'welcome_new': [SERVICE_TYPES.BOTH], // Welcome - all services
+
+  // Promo templates
+  'promo_general': [SERVICE_TYPES.BOTH], // General promo - all services only (use promo_secagem for dry-only)
+  'promo_secagem': [SERVICE_TYPES.DRY], // Secagem promo - locked to dry
+
+  // Upsell templates
+  'upsell_secagem': [SERVICE_TYPES.DRY], // Upsell dryer - locked to dry
+
+  // Wallet reminder has no coupon
+  'wallet_reminder': []
+};
+
+/**
+ * Template-specific discount options
+ * Ensures only valid coupon combinations are available
+ * Based on the 24-coupon matrix in meta-whatsapp-templates.md
+ */
+export const TEMPLATE_DISCOUNT_OPTIONS = {
+  // Win-back: VOLTE/LAVA/SECA 15-30%
+  'winback_discount': [15, 20, 25, 30],
+  'winback_wash_only': [15, 20, 25, 30],
+  'winback_dry_only': [15, 20, 25, 30],
+
+  // Welcome: BEM 10-20%
+  'welcome_new': [10, 15, 20],
+
+  // Promo: PROMO 10-25%, PSEC 15-20%
+  'promo_general': [10, 15, 20, 25], // PROMO10, PROMO15, PROMO20, PROMO25
+  'promo_secagem': [15, 20],          // PSEC15, PSEC20 only
+
+  // Upsell: SEQUE 10-20%
+  'upsell_secagem': [10, 15, 20],
+
+  // No coupon
+  'wallet_reminder': []
+};
+
+/**
+ * Template-specific default discounts
+ * Based on the Template-to-Coupon Mapping in meta-whatsapp-templates.md
+ */
+export const TEMPLATE_DEFAULT_DISCOUNTS = {
+  'winback_discount': 20,   // VOLTE20
+  'winback_wash_only': 25,  // LAVA25
+  'winback_dry_only': 25,   // SECA25
+  'welcome_new': 10,        // BEM10
+  'promo_general': 15,      // PROMO15
+  'promo_secagem': 20,      // PSEC20
+  'upsell_secagem': 15,     // SEQUE15
+  'wallet_reminder': 0      // No coupon
 };
 
 /**
@@ -335,20 +400,51 @@ export function getCouponsForCampaignType(campaignType) {
 
 /**
  * Get available discount options for a template
+ * Uses template-specific options if defined, otherwise falls back to campaign type
  * @param {string} templateId - Template identifier
  * @returns {number[]} Array of available discount percentages
  */
 export function getDiscountOptionsForTemplate(templateId) {
+  // First check template-specific options
+  if (TEMPLATE_DISCOUNT_OPTIONS[templateId]) {
+    return TEMPLATE_DISCOUNT_OPTIONS[templateId];
+  }
+  // Fall back to campaign type options
   const campaignType = TEMPLATE_CAMPAIGN_TYPE_MAP[templateId];
   return DISCOUNT_OPTIONS[campaignType] || [20];
 }
 
 /**
+ * Get the default discount percentage for a template
+ * @param {string} templateId - Template identifier
+ * @returns {number} Default discount percentage
+ */
+export function getDefaultDiscountForTemplate(templateId) {
+  if (TEMPLATE_DEFAULT_DISCOUNTS[templateId] !== undefined) {
+    return TEMPLATE_DEFAULT_DISCOUNTS[templateId];
+  }
+  const campaignType = TEMPLATE_CAMPAIGN_TYPE_MAP[templateId];
+  const campaignTypeDefaults = {
+    [CAMPAIGN_TYPES.WINBACK]: 20,
+    [CAMPAIGN_TYPES.WELCOME]: 10,
+    [CAMPAIGN_TYPES.PROMO]: 15,
+    [CAMPAIGN_TYPES.UPSELL]: 15
+  };
+  return campaignTypeDefaults[campaignType] || 20;
+}
+
+/**
  * Get available service options for a template
+ * Uses template-specific options if defined, otherwise falls back to campaign type
  * @param {string} templateId - Template identifier
  * @returns {string[]} Array of available service types
  */
 export function getServiceOptionsForTemplate(templateId) {
+  // First check template-specific options
+  if (TEMPLATE_SERVICE_OPTIONS[templateId]) {
+    return TEMPLATE_SERVICE_OPTIONS[templateId];
+  }
+  // Fall back to campaign type options
   const campaignType = TEMPLATE_CAMPAIGN_TYPE_MAP[templateId];
   return SERVICE_OPTIONS[campaignType] || [SERVICE_TYPES.BOTH];
 }
@@ -367,28 +463,47 @@ export function getCouponForTemplate(templateId, discountPercent, serviceType) {
 
 /**
  * Get default coupon for a template (used as fallback)
+ * Uses template-specific discount and service type from the mapping tables
  * @param {string} templateId - Template identifier
  * @returns {object} Default coupon for the template
  */
 export function getDefaultCouponForTemplate(templateId) {
   const campaignType = TEMPLATE_CAMPAIGN_TYPE_MAP[templateId];
-  const defaultDiscounts = {
-    [CAMPAIGN_TYPES.WINBACK]: 20,
-    [CAMPAIGN_TYPES.WELCOME]: 15,
-    [CAMPAIGN_TYPES.PROMO]: 15,
-    [CAMPAIGN_TYPES.UPSELL]: 15
-  };
-  const defaultServiceTypes = {
-    [CAMPAIGN_TYPES.WINBACK]: SERVICE_TYPES.BOTH,
-    [CAMPAIGN_TYPES.WELCOME]: SERVICE_TYPES.BOTH,
-    [CAMPAIGN_TYPES.PROMO]: SERVICE_TYPES.BOTH,
-    [CAMPAIGN_TYPES.UPSELL]: SERVICE_TYPES.DRY
-  };
+
+  // Get template-specific discount (or fall back to campaign type default)
+  let discountPercent = TEMPLATE_DEFAULT_DISCOUNTS[templateId];
+  if (discountPercent === undefined) {
+    const campaignTypeDefaults = {
+      [CAMPAIGN_TYPES.WINBACK]: 20,
+      [CAMPAIGN_TYPES.WELCOME]: 10,
+      [CAMPAIGN_TYPES.PROMO]: 15,
+      [CAMPAIGN_TYPES.UPSELL]: 15
+    };
+    discountPercent = campaignTypeDefaults[campaignType];
+  }
+
+  // Get template-specific service type (first available option)
+  const templateServiceOptions = TEMPLATE_SERVICE_OPTIONS[templateId];
+  let serviceType;
+
+  if (templateServiceOptions && templateServiceOptions.length > 0) {
+    // Use the first available service type for this template
+    serviceType = templateServiceOptions[0];
+  } else {
+    // Fall back to campaign type defaults
+    const defaultServiceTypes = {
+      [CAMPAIGN_TYPES.WINBACK]: SERVICE_TYPES.BOTH,
+      [CAMPAIGN_TYPES.WELCOME]: SERVICE_TYPES.BOTH,
+      [CAMPAIGN_TYPES.PROMO]: SERVICE_TYPES.BOTH,
+      [CAMPAIGN_TYPES.UPSELL]: SERVICE_TYPES.DRY
+    };
+    serviceType = defaultServiceTypes[campaignType];
+  }
 
   return getCoupon(
     campaignType,
-    defaultDiscounts[campaignType],
-    defaultServiceTypes[campaignType]
+    discountPercent,
+    serviceType
   );
 }
 

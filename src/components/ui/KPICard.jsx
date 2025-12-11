@@ -1,8 +1,12 @@
-// KPICard.jsx v1.3
+// KPICard.jsx v1.4
 // Unified KPI card component for Intelligence dashboard
-// Design System v3.1 compliant - Replaces duplicated patterns
+// Design System v4.0 compliant - Replaces duplicated patterns
 //
 // CHANGELOG:
+// v1.4 (2025-12-11): Vibrant gradient variant (Design System v4.0)
+//   - Gradient variant now uses solidGradient (vibrant colors) with white text
+//   - Added shadow-lg to gradient cards for depth
+//   - Improved icon styling for gradient variant
 // v1.3 (2025-12-03): Responsive label/subtitle props
 //   - Added mobileLabel prop: shorter label for mobile screens
 //   - Added mobileSubtitle prop: shorter subtitle for mobile screens
@@ -80,7 +84,8 @@ const KPICard = ({
       subtitle: 'text-xs',
     },
     gradient: {
-      container: `p-3 sm:p-5 ${colors.bgGradient}`,
+      // Design System v4.0: Vibrant gradients with white text
+      container: `p-3 sm:p-5 ${colors.solidGradient || colors.bgGradient} shadow-lg`,
       value: 'text-lg sm:text-2xl',
       label: 'text-xs',
       subtitle: 'text-xs',
@@ -157,7 +162,7 @@ const KPICard = ({
             {/* Responsive label: show mobileLabel on small screens, full label on larger */}
             <p className={`
               ${v.label} font-medium uppercase tracking-wide mb-0.5 sm:mb-1 leading-tight
-              ${isGradient ? colors.textMuted : 'text-gray-500 dark:text-slate-400'}
+              ${isGradient ? 'text-white/80' : 'text-gray-500 dark:text-slate-400'}
             `}>
               {mobileLabel ? (
                 <>
@@ -168,7 +173,7 @@ const KPICard = ({
             </p>
             <p className={`
               ${v.value} font-bold mb-0.5 leading-tight break-words
-              ${isGradient ? colors.text : 'text-gray-900 dark:text-white'}
+              ${isGradient ? 'text-white' : 'text-gray-900 dark:text-white'}
             `}>
               {value}
             </p>
@@ -178,7 +183,7 @@ const KPICard = ({
                 {(subtitle || mobileSubtitle) && (
                   <span className={`
                     ${v.subtitle} leading-tight
-                    ${isGradient ? colors.textSubtle : 'text-gray-500 dark:text-slate-400'}
+                    ${isGradient ? 'text-white/70' : 'text-gray-500 dark:text-slate-400'}
                   `}>
                     {mobileSubtitle ? (
                       <>
@@ -196,7 +201,7 @@ const KPICard = ({
                 {(subtitle || mobileSubtitle) && (
                   <p className={`
                     ${v.subtitle} leading-tight
-                    ${isGradient ? colors.textSubtle : 'text-gray-500 dark:text-slate-400'}
+                    ${isGradient ? 'text-white/70' : 'text-gray-500 dark:text-slate-400'}
                   `}>
                     {mobileSubtitle ? (
                       <>
@@ -229,10 +234,10 @@ const KPICard = ({
         {Icon && (
           <div className={`
             p-1.5 sm:p-2.5 rounded-lg flex-shrink-0
-            ${isGradient ? colors.iconBg : `bg-gradient-to-br ${colors.gradient}`}
+            ${isGradient ? 'bg-white/20' : `bg-gradient-to-br ${colors.gradient}`}
           `}>
             <Icon
-              className={`w-4 h-4 sm:w-6 sm:h-6 ${isGradient ? colors.icon : 'text-white'}`}
+              className={`w-4 h-4 sm:w-6 sm:h-6 ${isGradient ? 'text-white' : 'text-white'}`}
               aria-hidden="true"
             />
           </div>

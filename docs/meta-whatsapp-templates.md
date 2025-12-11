@@ -15,6 +15,8 @@ Each template includes the exact text to copy/paste into WhatsApp Business Manag
 | Promocao Geral | `lavpop_promocao` | MARKETING | Todos |
 | Promocao Secagem | `lavpop_promo_secagem` | MARKETING | Todos |
 | Complete com Secagem | `lavpop_complete_secagem` | MARKETING | Upsell |
+| Win-back Urgente (45d) | `lavpop_winback_urgente` | MARKETING | Clientes Criticos |
+| Pos-Visita | `lavpop_pos_visita` | UTILITY | Todos (24h apos) |
 
 ---
 
@@ -449,6 +451,122 @@ Lavpop Caxias do Sul - Lavanderia Autosserviço
 
 ---
 
+## Template 9: Win-back Urgente (45 dias)
+
+**Template Name:** `lavpop_winback_urgente`
+**Category:** MARKETING
+**Language:** Portuguese (BR) - pt_BR
+**Code ID:** `winback_critical`
+
+> **Purpose:** Urgent win-back for customers at high risk of churning (45+ days inactive). More aggressive offer than standard win-back.
+
+### Header (TEXT)
+```
+Sentimos muito sua falta!
+```
+
+### Body
+```
+Olá {{1}}!
+
+Já faz {{2}} dias desde sua última visita na Lavpop. Queremos muito te ver de volta!
+
+Preparamos uma oferta ESPECIAL só para você:
+🎁 *{{3}}% de desconto* em qualquer serviço
+
+Use o cupom *{{4}}* até {{5}}.
+
+Não deixe essa oportunidade passar! 💙
+```
+
+### Footer
+```
+Lavpop Caxias do Sul - Lavanderia Autosserviço
+```
+
+### Buttons (Quick Reply)
+| Button Text | Button ID |
+|-------------|-----------|
+| Quero voltar! | `critical_accept` |
+| Não tenho interesse | `optout` |
+
+### Variable Descriptions
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{1}}` | Nome do cliente | Roberto |
+| `{{2}}` | Dias sem visita | 47 |
+| `{{3}}` | Desconto (%) | 30 |
+| `{{4}}` | Código do cupom | VOLTE30 |
+| `{{5}}` | Data de validade | 20/12 |
+
+### POS Coupon Configuration
+- Tipo: Cupom Desconto
+- Permitido para: Lavadoras e Secadoras
+- Ciclos por cliente: 1
+- Pré-requisito: Nenhum
+
+### Automation Trigger
+- **Trigger Type:** `days_since_visit`
+- **Trigger Value:** 45
+- **Priority:** Critical (highest urgency)
+
+---
+
+## Template 10: Pós-Visita (Agradecimento)
+
+**Template Name:** `lavpop_pos_visita`
+**Category:** UTILITY
+**Language:** Portuguese (BR) - pt_BR
+**Code ID:** `post_visit_thanks`
+
+> **Purpose:** Thank customers after their visit and request feedback/Google review. Sent automatically 24 hours after visit.
+
+### Header (TEXT)
+```
+Obrigado pela visita!
+```
+
+### Body
+```
+Olá {{1}}!
+
+Obrigado por visitar a Lavpop! Esperamos que tenha gostado do nosso serviço.
+
+A gente quer muito saber o que você achou! Conta pra gente como foi a sua experiência?
+
+⭐ Avalie no Google: https://g.page/r/Cf2AHwdGi7vCEAE/review
+
+Qualquer dúvida, estamos aqui! 💙
++55 54 98120-0363
+```
+
+### Footer
+```
+Lavpop Caxias do Sul - Lavanderia Autosserviço
+```
+
+### Buttons (Quick Reply)
+| Button Text | Button ID |
+|-------------|-----------|
+| Bora avaliar! | `feedback_excellent` |
+| Precisa melhorar | `feedback_improve` |
+| Não quero receber | `optout` |
+
+### Variable Descriptions
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{1}}` | Nome do cliente | Carla |
+
+### POS Coupon Configuration
+- Nenhum cupom necessário (apenas feedback)
+
+### Automation Trigger
+- **Trigger Type:** `hours_after_visit`
+- **Trigger Value:** 24
+- **Priority:** Medium
+
+---
+
 ## Button ID Reference
 
 | Template | Button Text | Button ID | Action |
@@ -469,6 +587,11 @@ Lavpop Caxias do Sul - Lavanderia Autosserviço
 | Promocao Secagem | Não tenho interesse | `optout` | **Add to blacklist** |
 | Complete Secagem | Quero secar! | `upsell_accept` | Track engagement |
 | Complete Secagem | Não tenho interesse | `optout` | **Add to blacklist** |
+| Win-back Urgente | Quero voltar! | `critical_accept` | Track engagement |
+| Win-back Urgente | Não tenho interesse | `optout` | **Add to blacklist** |
+| Pós-Visita | Excelente! | `feedback_excellent` | Track positive feedback |
+| Pós-Visita | Precisa melhorar | `feedback_improve` | Track improvement feedback |
+| Pós-Visita | Não quero receber | `optout` | **Add to blacklist** |
 
 > **Note**: The `optout` button ID is used across all templates for opt-out functionality. When your webhook receives this ID, automatically add the phone number to the blacklist. This is a **Meta requirement** for marketing messages.
 
@@ -634,11 +757,13 @@ This date is **psychological urgency** only. The actual coupon control is:
 | Win-back com Desconto | 20% | `VOLTE20` | 15-30%, Todos/Lavagem/Secagem |
 | Win-back Lavagem | 25% | `LAVA25` | 15-30%, Só Lavagem |
 | Win-back Secagem | 25% | `SECA25` | 15-30%, Só Secagem |
+| **Win-back Urgente (45d)** | 30% | `VOLTE30` | 25-35%, Todos |
 | Boas-vindas | 10% | `BEM10` | 10-20%, Todos |
 | Lembrete de Saldo | - | *(sem cupom)* | - |
 | Promoção Geral | 15% | `PROMO15` | 10-25%, Todos/Secagem |
 | Promoção Secagem | 20% | `PSEC20` | 15-20%, Só Secagem |
 | Complete com Secagem | 15% | `SEQUE15` | 10-20%, Só Secagem |
+| **Pós-Visita** | - | *(sem cupom)* | - |
 
 ### A/B Testing Examples
 

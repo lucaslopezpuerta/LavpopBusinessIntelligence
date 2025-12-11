@@ -97,10 +97,11 @@ export const loadAllData = async (onProgress, skipCache = false) => {
     'sales.csv',
     'rfm.csv',
     'customer.csv',
-    'blacklist.csv',
-    'twilio.csv',
-    'weather.csv',
-    'campaigns.csv'
+    'weather.csv'
+    // Deprecated CSVs (now in Supabase):
+    // - campaigns.csv
+    // - blacklist.csv
+    // - twilio.csv
   ];
 
   const data = {};
