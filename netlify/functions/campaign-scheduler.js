@@ -2,6 +2,10 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v1.1 (2025-12-11): Fixed bug where automation rules were skipped
+//   - Removed early return when no scheduled campaigns exist
+//   - Automations now always process regardless of scheduled campaigns
+//
 // Environment variables required:
 // - TWILIO_ACCOUNT_SID: Your Twilio Account SID
 // - TWILIO_AUTH_TOKEN: Your Twilio Auth Token
@@ -58,19 +62,14 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!dueCampaigns || dueCampaigns.length === 0) {
-      console.log('No campaigns due for execution');
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ message: 'No campaigns to process' })
-      };
-    }
-
-    console.log(`Found ${dueCampaigns.length} campaigns to execute`);
-
     const results = [];
 
-    for (const campaign of dueCampaigns) {
+    if (!dueCampaigns || dueCampaigns.length === 0) {
+      console.log('No scheduled campaigns due for execution');
+    } else {
+      console.log(`Found ${dueCampaigns.length} campaigns to execute`);
+
+      for (const campaign of dueCampaigns) {
       try {
         // Mark as processing
         await supabase
@@ -130,6 +129,7 @@ exports.handler = async (event, context) => {
           success: false,
           error: campaignError.message
         });
+      }
       }
     }
 
