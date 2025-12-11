@@ -1,8 +1,11 @@
-// AutomationRules.jsx v4.0
+// AutomationRules.jsx v4.1
 // Automation rules configuration for campaigns
 // Design System v3.1 compliant - Mobile-first redesign
 //
 // CHANGELOG:
+// v4.1 (2025-12-11): Added confirmation dialog for active automations
+//   - Shows warning when saving changes to active automations
+//   - Clarifies that changes only affect future sends
 // v4.0 (2025-12-11): Complete UX redesign
 //   - Mobile-first responsive design
 //   - Cleaner card layout with better visual hierarchy
@@ -36,7 +39,8 @@ import {
   Users,
   MessageCircle,
   Settings2,
-  HelpCircle
+  HelpCircle,
+  X
 } from 'lucide-react';
 import { getBrazilNow } from '../../utils/dateUtils';
 import SectionCard from '../ui/SectionCard';
@@ -275,6 +279,7 @@ const AutomationRules = ({ audienceSegments }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Load rules on mount
   useEffect(() => {
@@ -346,8 +351,15 @@ const AutomationRules = ({ audienceSegments }) => {
     setSaveSuccess(false);
   }, []);
 
-  const handleSave = useCallback(async () => {
+  // Check if any active automation has changes
+  const hasActiveAutomationChanges = useCallback(() => {
+    return rules.some(rule => rule.enabled);
+  }, [rules]);
+
+  // Perform the actual save
+  const performSave = useCallback(async () => {
     setIsSaving(true);
+    setShowConfirmDialog(false);
 
     const rulesToSave = rules.map(r => ({
       id: r.id,
@@ -375,6 +387,15 @@ const AutomationRules = ({ audienceSegments }) => {
     setHasChanges(false);
     setTimeout(() => setSaveSuccess(false), 3000);
   }, [rules]);
+
+  // Handle save button click - check for active automations first
+  const handleSave = useCallback(() => {
+    if (hasChanges && hasActiveAutomationChanges()) {
+      setShowConfirmDialog(true);
+    } else {
+      performSave();
+    }
+  }, [hasChanges, hasActiveAutomationChanges, performSave]);
 
   const withValidPhone = (customers) => {
     if (!customers) return [];
@@ -798,6 +819,67 @@ const AutomationRules = ({ audienceSegments }) => {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog for Active Automations */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowConfirmDialog(false)}
+          />
+
+          {/* Dialog */}
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-900/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Automação Ativa
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <p className="text-slate-700 dark:text-slate-300 mb-4">
+                Você está salvando alterações em uma ou mais automações que estão <strong className="text-amber-600 dark:text-amber-400">ativas</strong>.
+              </p>
+
+              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  <strong className="text-slate-700 dark:text-slate-300">Importante:</strong> As alterações <strong>não afetam</strong> mensagens já enviadas ou agendadas. Apenas <strong>futuros envios</strong> usarão as novas configurações.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                className="flex-1 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={performSave}
+                className="flex-1 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 rounded-xl shadow-lg shadow-amber-500/25 transition-all"
+              >
+                Salvar mesmo assim
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SectionCard>
   );
 };

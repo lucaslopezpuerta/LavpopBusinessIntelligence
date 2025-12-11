@@ -1,6 +1,15 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.2 (2025-12-10)
+-- Version: 3.4 (2025-12-11)
+--
+-- v3.4: Fixed avg_days_between computation
+--   - Added avg_days_between calculation to refresh_customer_metrics()
+--   - Formula: (last_visit - first_visit) / (distinct_visit_days - 1)
+--   - Uses distinct visit days (not transaction count) for laundromat accuracy
+--
+-- v3.3: Added automation_sends table
+--   - Tracks individual automation sends for history and cooldown enforcement
+--   - Indexes for rule_id, customer_id, sent_at, and cooldown queries
 --
 -- v3.2: Cleanup deprecated items
 --   - Removed risk_level column from customers (now computed client-side)
@@ -354,6 +363,30 @@ CREATE TABLE IF NOT EXISTS automation_rules (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ==================== AUTOMATION SENDS TABLE ====================
+-- Tracks individual automation sends for history and cooldown enforcement
+
+CREATE TABLE IF NOT EXISTS automation_sends (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  rule_id TEXT NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
+  customer_id TEXT NOT NULL,              -- Customer doc (CPF)
+  customer_name TEXT,                     -- For display
+  phone TEXT NOT NULL,                    -- Phone number sent to
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  status TEXT DEFAULT 'sent',             -- sent, delivered, read, failed
+  message_sid TEXT,                       -- Twilio message SID
+  error_code INT,                         -- Twilio error code if failed
+  error_message TEXT,                     -- Error details
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for automation_sends
+CREATE INDEX IF NOT EXISTS idx_automation_sends_rule_id ON automation_sends(rule_id);
+CREATE INDEX IF NOT EXISTS idx_automation_sends_customer_id ON automation_sends(customer_id);
+CREATE INDEX IF NOT EXISTS idx_automation_sends_sent_at ON automation_sends(sent_at DESC);
+-- Index for cooldown check: find recent sends per customer per rule
+CREATE INDEX IF NOT EXISTS idx_automation_sends_cooldown ON automation_sends(rule_id, customer_id, sent_at DESC);
 
 -- ==================== VIEWS ====================
 -- Drop existing views first to allow column changes
@@ -785,6 +818,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 
 -- Function to update customer metrics from transactions
 -- Computes RFM scores and segment (Portuguese names)
+-- v3.4: Now also computes avg_days_between
 CREATE OR REPLACE FUNCTION refresh_customer_metrics(p_customer_doc TEXT DEFAULT NULL)
 RETURNS INT AS $$
 DECLARE
@@ -798,6 +832,7 @@ BEGIN
     total_spent = sub.total_spent,
     total_services = sub.total_services,
     days_since_last_visit = sub.days_since_last_visit,
+    avg_days_between = sub.avg_days_between,
     recent_monetary_90d = sub.recent_monetary_90d,
     r_score = rfm.r_score,
     f_score = rfm.f_score,
@@ -813,6 +848,17 @@ BEGIN
       COALESCE(SUM(t.net_value) FILTER (WHERE NOT t.is_recarga), 0) as total_spent,
       COALESCE(SUM(t.total_services), 0) as total_services,
       CURRENT_DATE - MAX(t.data_hora)::DATE as days_since_last_visit,
+      -- avg_days_between: (last - first) / (distinct_visits - 1)
+      -- Uses distinct visit DAYS, not transaction count (multiple txns per visit is common)
+      CASE
+        WHEN COUNT(DISTINCT t.data_hora::DATE) FILTER (WHERE NOT t.is_recarga) > 1
+        THEN ROUND(
+          (MAX(t.data_hora)::DATE - MIN(t.data_hora)::DATE)::DECIMAL /
+          (COUNT(DISTINCT t.data_hora::DATE) FILTER (WHERE NOT t.is_recarga) - 1),
+          1
+        )
+        ELSE NULL
+      END as avg_days_between,
       COALESCE(SUM(t.net_value) FILTER (
         WHERE NOT t.is_recarga AND t.data_hora >= CURRENT_DATE - INTERVAL '90 days'
       ), 0) as recent_monetary_90d,
@@ -1005,6 +1051,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON campaign_sends TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON scheduled_campaigns TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON comm_logs TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON automation_rules TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON automation_sends TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON contact_tracking TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON campaign_contacts TO authenticated;
 

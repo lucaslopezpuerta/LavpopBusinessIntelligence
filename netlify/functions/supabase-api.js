@@ -2,6 +2,9 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 2.3 (2025-12-11) - Fixed automation rules save
+//   - saveAutomationRules now includes all fields (cooldown, valid_until, max_sends, coupon)
+//
 // Version: 2.2 (2025-12-11) - Added webhook events for delivery metrics
 //   - Added webhook_events.getDeliveryStats for real delivery rates
 //   - Added webhook_events.getAll for debugging
@@ -745,7 +748,7 @@ async function getAutomationRules(supabase, headers) {
 }
 
 async function saveAutomationRules(supabase, rules, headers) {
-  // Upsert all rules
+  // Upsert all rules with ALL configurable fields
   const { data, error } = await supabase
     .from('automation_rules')
     .upsert(rules.map(r => ({
@@ -755,7 +758,15 @@ async function saveAutomationRules(supabase, rules, headers) {
       trigger_type: r.trigger?.type,
       trigger_value: r.trigger?.value,
       action_template: r.action?.template,
-      action_channel: r.action?.channel
+      action_channel: r.action?.channel,
+      // Configurable automation controls
+      cooldown_days: r.cooldown_days,
+      valid_until: r.valid_until,
+      max_total_sends: r.max_total_sends,
+      // Coupon configuration
+      coupon_code: r.coupon_code,
+      discount_percent: r.discount_percent,
+      coupon_validity_days: r.coupon_validity_days
     })), { onConflict: 'id' });
 
   if (error) throw error;
