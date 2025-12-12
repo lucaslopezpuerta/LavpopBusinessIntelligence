@@ -1,7 +1,12 @@
-// netlify/functions/twilio-webhook.js v1.2
+// netlify/functions/twilio-webhook.js v1.3
 // Twilio WhatsApp Webhook Handler for Button Callbacks
 //
 // CHANGELOG:
+// v1.3 (2025-12-12): Fixed delivery tracking error causing HTTP 500
+//   - Replaced upsert with explicit select-then-update/insert pattern
+//   - Added better error handling to prevent function crashes
+//   - Fixed null phone handling that could cause .replace() to fail
+//   - All Supabase errors now logged without throwing
 // v1.2 (2025-12-12): Fixed status callback routing bug
 //   - Status callbacks were incorrectly routed to handleInboundMessage
 //   - Now checks MessageStatus BEFORE checking Direction
@@ -225,37 +230,51 @@ async function handleStatusUpdate(webhookData, headers) {
 /**
  * Track delivery status for campaign metrics
  * Stores in webhook_events for real delivery rate calculations
+ * Updates existing record if message_sid exists (for status progression: sent → delivered → read)
  */
 async function trackDeliveryStatus(messageSid, phone, status, errorCode = null) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
   if (!supabaseUrl || !supabaseKey || !messageSid) {
+    console.log('[TwilioWebhook] Skipping delivery tracking - missing credentials or messageSid');
     return;
   }
 
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const normalizedPhone = phone.replace(/\D/g, '');
+    const normalizedPhone = (phone || '').replace(/\D/g, '');
 
-    // Upsert delivery status (update if message_sid exists)
-    const { error } = await supabase
+    // First, try to update existing record (for status progression)
+    const { data: existing, error: selectError } = await supabase
       .from('webhook_events')
-      .upsert({
-        message_sid: messageSid,
-        phone: normalizedPhone,
-        event_type: 'delivery_status',
-        payload: status,
-        error_code: errorCode,
-        created_at: new Date().toISOString()
-      }, {
-        onConflict: 'message_sid',
-        ignoreDuplicates: false
-      });
+      .select('id, payload')
+      .eq('message_sid', messageSid)
+      .maybeSingle();
 
-    if (error) {
-      // If upsert fails (no unique constraint), try insert
-      await supabase
+    if (selectError) {
+      console.error('[TwilioWebhook] Error checking existing record:', selectError.message);
+    }
+
+    if (existing) {
+      // Update existing record with new status (sent → delivered → read)
+      const { error: updateError } = await supabase
+        .from('webhook_events')
+        .update({
+          payload: status,
+          error_code: errorCode,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
+
+      if (updateError) {
+        console.error('[TwilioWebhook] Error updating delivery status:', updateError.message);
+      } else {
+        console.log(`[TwilioWebhook] Updated delivery: ${messageSid} ${existing.payload} -> ${status}`);
+      }
+    } else {
+      // Insert new record
+      const { error: insertError } = await supabase
         .from('webhook_events')
         .insert({
           message_sid: messageSid,
@@ -265,11 +284,16 @@ async function trackDeliveryStatus(messageSid, phone, status, errorCode = null) 
           error_code: errorCode,
           created_at: new Date().toISOString()
         });
-    }
 
-    console.log(`[TwilioWebhook] Tracked delivery: ${messageSid} -> ${status}`);
+      if (insertError) {
+        console.error('[TwilioWebhook] Error inserting delivery status:', insertError.message);
+      } else {
+        console.log(`[TwilioWebhook] Tracked new delivery: ${messageSid} -> ${status}`);
+      }
+    }
   } catch (error) {
-    console.error('[TwilioWebhook] Failed to track delivery status:', error);
+    // Catch-all to prevent function crash
+    console.error('[TwilioWebhook] Failed to track delivery status:', error.message || error);
   }
 }
 

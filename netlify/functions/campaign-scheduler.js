@@ -69,7 +69,7 @@ const { createClient } = require('@supabase/supabase-js');
 const AUTOMATION_TEMPLATE_SIDS = {
   winback_discount: 'HX58267edb5948cfa0fb5c3ba73ea1d767',
   winback_critical: 'HXd4e8e8b1588f01c549446c0e157154bb',
-  welcome_new: 'HX6d31e447e8af840368b1167573ec9d6f',
+  welcome_new: 'HX2ae8ce2a72d92866fd28516aca9d76c3',  // Fixed: was using winback_wash_only SID
   wallet_reminder: 'HXa1f6a3f3c586acd36cb25a2d98a766fc',
   post_visit_thanks: 'HX62540533ed5cf7f251377cf3b4adbd8a'
 };

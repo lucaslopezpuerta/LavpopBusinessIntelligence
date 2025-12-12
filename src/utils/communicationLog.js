@@ -133,9 +133,9 @@ export const getCommunicationLogAsync = async (customerId, options = {}) => {
 
   try {
     if (await shouldUseBackend()) {
+      // Don't filter by type - show all communications (manual + automation)
       const result = await api.logs.getAll({
         customer_id: customerId,
-        type: 'communication',
         limit
       });
 

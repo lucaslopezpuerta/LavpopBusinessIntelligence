@@ -666,12 +666,21 @@ async function getCommLogs(supabase, params, headers) {
     .order('sent_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
+  // Filter by customer_id (required for per-customer logs)
+  if (params.customer_id) {
+    query = query.eq('customer_id', params.customer_id);
+  }
+
   if (params.phone) {
     query = query.eq('phone', params.phone);
   }
 
   if (params.channel) {
     query = query.eq('channel', params.channel);
+  }
+
+  if (params.type) {
+    query = query.eq('type', params.type);
   }
 
   const { data, error, count } = await query;
@@ -686,14 +695,24 @@ async function getCommLogs(supabase, params, headers) {
 }
 
 async function addCommLog(supabase, logData, headers) {
+  // Build message with campaign context if available
+  let message = logData.message || logData.notes || '';
+  if (logData.campaign_name && !message.includes(logData.campaign_name)) {
+    message = `${logData.campaign_name}: ${message}`.substring(0, 500);
+  }
+
   const log = {
     phone: logData.phone,
-    customer_id: logData.customerId,
+    customer_id: logData.customer_id || logData.customerId, // Support both snake_case and camelCase
     channel: logData.channel || 'whatsapp',
     direction: logData.direction || 'outbound',
-    message: logData.message?.substring(0, 500), // Truncate
-    external_id: logData.externalId,
-    status: logData.status || 'sent'
+    message: message.substring(0, 500), // Truncate
+    external_id: logData.externalId || logData.external_id,
+    status: logData.status || 'sent',
+    // Additional fields from schema
+    type: logData.type || 'communication',
+    method: logData.method,
+    notes: logData.notes
   };
 
   const { data, error } = await supabase
