@@ -1,6 +1,12 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.7 (2025-12-12)
+-- Version: 3.8 (2025-12-12)
+--
+-- v3.8: Webhook Events for Delivery Tracking
+--   - Added webhook_events table to store Twilio delivery status updates
+--   - Added campaign_delivery_metrics view for real delivery rate calculations
+--   - Enables tracking: sent → delivered → read → failed/undelivered
+--   - Links to campaign_contacts via message_sid (twilio_sid)
 --
 -- v3.7: Enhanced Automation Controls
 --   - Send time window (send_window_start, send_window_end)
@@ -462,6 +468,44 @@ CREATE INDEX IF NOT EXISTS idx_automation_sends_sent_at ON automation_sends(sent
 -- Index for cooldown check: find recent sends per customer per rule
 CREATE INDEX IF NOT EXISTS idx_automation_sends_cooldown ON automation_sends(rule_id, customer_id, sent_at DESC);
 
+-- ==================== WEBHOOK EVENTS TABLE (v3.8) ====================
+-- Stores Twilio webhook events for delivery tracking and engagement metrics
+-- Enables real delivery rate calculation instead of estimates
+
+CREATE TABLE IF NOT EXISTS webhook_events (
+  id SERIAL PRIMARY KEY,
+  message_sid TEXT NOT NULL,           -- Twilio Message SID (unique per message)
+  phone TEXT,                          -- Phone number (normalized, digits only)
+  event_type TEXT NOT NULL,            -- 'delivery_status', 'button_click', etc.
+  payload TEXT,                        -- For delivery_status: sent/delivered/read/failed/undelivered
+  error_code TEXT,                     -- Twilio error code if failed (e.g., 63024)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for looking up by message_sid (for upserts)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_webhook_events_message_sid
+ON webhook_events (message_sid);
+
+-- Index for querying by phone
+CREATE INDEX IF NOT EXISTS idx_webhook_events_phone
+ON webhook_events (phone);
+
+-- Index for querying by event_type and status
+CREATE INDEX IF NOT EXISTS idx_webhook_events_type_payload
+ON webhook_events (event_type, payload);
+
+-- Index for time-based queries
+CREATE INDEX IF NOT EXISTS idx_webhook_events_created_at
+ON webhook_events (created_at DESC);
+
+COMMENT ON TABLE webhook_events IS 'Stores Twilio webhook events for delivery tracking and engagement metrics';
+COMMENT ON COLUMN webhook_events.message_sid IS 'Twilio Message SID - unique identifier for each message';
+COMMENT ON COLUMN webhook_events.phone IS 'Recipient phone number (normalized, digits only)';
+COMMENT ON COLUMN webhook_events.event_type IS 'Event type: delivery_status, button_click, etc.';
+COMMENT ON COLUMN webhook_events.payload IS 'For delivery_status: sent/delivered/read/failed/undelivered. For button_click: the payload.';
+COMMENT ON COLUMN webhook_events.error_code IS 'Twilio error code for failed messages (e.g., 63024)';
+
 -- ==================== VIEWS ====================
 -- Drop existing views first to allow column changes
 -- (CREATE OR REPLACE VIEW cannot rename columns)
@@ -636,6 +680,32 @@ SELECT
 FROM transactions
 GROUP BY DATE(data_hora)
 ORDER BY date DESC;
+
+-- Campaign delivery metrics view (v3.8) - Real delivery rates from webhook events
+-- Joins campaign_contacts (which stores twilio_sid) with webhook_events (which stores message_sid)
+CREATE OR REPLACE VIEW campaign_delivery_metrics AS
+SELECT
+  cc.campaign_id,
+  c.name as campaign_name,
+  COUNT(DISTINCT cc.id) as total_sent,
+  COUNT(DISTINCT CASE WHEN we.payload = 'delivered' THEN we.message_sid END) as delivered,
+  COUNT(DISTINCT CASE WHEN we.payload = 'read' THEN we.message_sid END) as read,
+  COUNT(DISTINCT CASE WHEN we.payload IN ('failed', 'undelivered') THEN we.message_sid END) as failed,
+  ROUND(
+    COUNT(DISTINCT CASE WHEN we.payload = 'delivered' THEN we.message_sid END)::NUMERIC /
+    NULLIF(COUNT(DISTINCT cc.id), 0) * 100,
+    1
+  ) as delivery_rate,
+  ROUND(
+    COUNT(DISTINCT CASE WHEN we.payload = 'read' THEN we.message_sid END)::NUMERIC /
+    NULLIF(COUNT(DISTINCT CASE WHEN we.payload = 'delivered' THEN we.message_sid END), 0) * 100,
+    1
+  ) as read_rate
+FROM campaign_contacts cc
+JOIN campaigns c ON c.id = cc.campaign_id
+LEFT JOIN webhook_events we ON we.message_sid = cc.twilio_sid
+  AND we.event_type = 'delivery_status'
+GROUP BY cc.campaign_id, c.name;
 
 -- ==================== HELPER FUNCTIONS ====================
 
@@ -1460,6 +1530,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON automation_rules TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON automation_sends TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON contact_tracking TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON campaign_contacts TO authenticated;
+-- v3.8: Webhook events for delivery tracking
+GRANT SELECT, INSERT, UPDATE ON webhook_events TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE webhook_events_id_seq TO authenticated;
 
 -- NEW v3.0: Core data tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON transactions TO authenticated;
@@ -1479,6 +1552,8 @@ GRANT SELECT ON contact_effectiveness_summary TO authenticated;
 GRANT SELECT ON customer_summary TO authenticated;
 GRANT SELECT ON coupon_effectiveness TO authenticated;
 GRANT SELECT ON daily_revenue TO authenticated;
+-- v3.8: Delivery metrics view
+GRANT SELECT ON campaign_delivery_metrics TO authenticated;
 
 -- Grant execute on functions
 GRANT EXECUTE ON FUNCTION update_updated_at_column TO authenticated;

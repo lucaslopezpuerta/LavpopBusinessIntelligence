@@ -20,7 +20,7 @@
 // To configure:
 // 1. Set this URL in Twilio Console > Messaging > WhatsApp Senders
 // 2. Configure webhook for "When a message comes in"
-// 3. URL: https://your-site.netlify.app/.netlify/functions/twilio-webhook
+// 3. URL: https://wondrous-medovik-7f51be.netlify.app/.netlify/functions/twilio-webhook
 //
 // Environment variables required:
 // - TWILIO_AUTH_TOKEN: For webhook signature validation

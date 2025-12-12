@@ -2,6 +2,13 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.3 (2025-12-12): Fallback mechanism for send tracking
+//   - When record_automation_contact() fails, now falls back to:
+//     1. increment_campaign_sends RPC
+//     2. Direct campaign.sends update (read-then-write)
+//     3. automation_sends table insert for cooldown tracking
+//   - Fixes issue where campaign sends count showed 0 despite messages being sent
+//
 // v2.2 (2025-12-12): Enhanced automation controls
 //   - Send time window (send_window_start, send_window_end) - Brazil timezone
 //   - Day of week restrictions (send_days array: 1=Mon, 7=Sun)
@@ -722,8 +729,54 @@ async function sendAutomationMessage(supabase, rule, target, contentSid) {
 
       if (rpcError) {
         console.error('Error recording automation contact:', rpcError);
-        // Still return success since message was sent
-        // Tracking failure shouldn't fail the send
+        // Tracking failure shouldn't fail the send, but we need to at least update the sends count
+
+        // Fallback 1: Try to increment campaign sends count using RPC
+        const campaignId = rule.campaign_id || `AUTO_${rule.id}`;
+        try {
+          const { error: rpcIncrErr } = await supabase.rpc('increment_campaign_sends', {
+            p_campaign_id: campaignId,
+            p_send_count: 1
+          });
+
+          if (rpcIncrErr) {
+            console.error('increment_campaign_sends RPC failed:', rpcIncrErr);
+            // Fallback 2: Direct update with read-then-write
+            const { data: campaign } = await supabase
+              .from('campaigns')
+              .select('sends')
+              .eq('id', campaignId)
+              .single();
+
+            if (campaign) {
+              await supabase
+                .from('campaigns')
+                .update({
+                  sends: (campaign.sends || 0) + 1,
+                  last_sent_at: new Date().toISOString(),
+                  status: 'active'
+                })
+                .eq('id', campaignId);
+            }
+          }
+          console.log(`Fallback: Updated sends count for campaign ${campaignId}`);
+        } catch (fallbackErr) {
+          console.error('Fallback send count update also failed:', fallbackErr);
+        }
+
+        // Fallback 3: At minimum, record in automation_sends for cooldown tracking
+        try {
+          await supabase.from('automation_sends').insert({
+            rule_id: rule.id,
+            customer_id: target.doc,
+            customer_name: target.nome,
+            phone: normalizedPhone,
+            status: 'sent',
+            message_sid: data.sid
+          });
+        } catch (sendErr) {
+          console.error('Fallback automation_sends insert also failed:', sendErr);
+        }
       }
 
       // Record comm log (separate for detailed history)
