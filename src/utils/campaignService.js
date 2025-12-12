@@ -1,9 +1,12 @@
-// campaignService.js v3.4
+// campaignService.js v3.5
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Now supports Supabase backend for scheduled campaigns and effectiveness tracking
 //
 // CHANGELOG:
+// v3.5 (2025-12-12): Added comm_logs insert for manual campaigns
+//   - sendCampaignWithTracking now inserts to comm_logs table (parity with automations)
+//   - Ensures all sends have audit trail in Supabase
 // v3.4 (2025-12-11): Real delivery metrics from Twilio webhook
 //   - getDashboardMetrics now fetches real delivery/read rates from webhook_events
 //   - Fallback to 97% estimate only when no real data available
@@ -1067,10 +1070,26 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
           }).format(walletBalance);
         }
 
-        await sendWhatsAppMessage(phone, null, {
+        const sendResult = await sendWhatsAppMessage(phone, null, {
           contentSid,
           contentVariables: personalizedVars
         });
+
+        // Record to comm_logs for audit trail (parity with automation flow)
+        try {
+          await api.logs.add({
+            phone: normalizePhone(phone),
+            customer_id: customerId,
+            channel: 'whatsapp',
+            direction: 'outbound',
+            message: `Campaign: ${campaignId} [Template: ${contentSid}]`,
+            external_id: sendResult?.messageSid || null,
+            status: 'sent'
+          });
+        } catch (logError) {
+          console.warn('[CampaignService] Failed to log to comm_logs:', logError.message);
+          // Don't fail the send if logging fails
+        }
       }
 
       result.successCount++;

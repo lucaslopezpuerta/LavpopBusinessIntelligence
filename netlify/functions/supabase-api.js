@@ -2,6 +2,11 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 2.4 (2025-12-12) - v6.0 Enhanced automation controls
+//   - saveAutomationRules now includes send_window_start/end, send_days, max_daily_sends
+//   - Also includes exclude_recent_days, min_total_spent, wallet_balance_max
+//   - Updated getDefaultAutomationRules with v6.0 defaults
+//
 // Version: 2.3 (2025-12-11) - Fixed automation rules save
 //   - saveAutomationRules now includes all fields (cooldown, valid_until, max_sends, coupon)
 //
@@ -748,7 +753,7 @@ async function getAutomationRules(supabase, headers) {
 }
 
 async function saveAutomationRules(supabase, rules, headers) {
-  // Upsert all rules with ALL configurable fields
+  // Upsert all rules with ALL configurable fields (including v6.0 enhanced controls)
   const { data, error } = await supabase
     .from('automation_rules')
     .upsert(rules.map(r => ({
@@ -766,7 +771,15 @@ async function saveAutomationRules(supabase, rules, headers) {
       // Coupon configuration
       coupon_code: r.coupon_code,
       discount_percent: r.discount_percent,
-      coupon_validity_days: r.coupon_validity_days
+      coupon_validity_days: r.coupon_validity_days,
+      // v6.0: Enhanced automation controls
+      send_window_start: r.send_window_start,
+      send_window_end: r.send_window_end,
+      send_days: r.send_days,
+      max_daily_sends: r.max_daily_sends,
+      exclude_recent_days: r.exclude_recent_days,
+      min_total_spent: r.min_total_spent,
+      wallet_balance_max: r.wallet_balance_max
     })), { onConflict: 'id' });
 
   if (error) throw error;
@@ -789,7 +802,15 @@ function getDefaultAutomationRules() {
       cooldown_days: 30,
       coupon_code: 'VOLTE20',
       discount_percent: 20,
-      coupon_validity_days: 7
+      coupon_validity_days: 7,
+      // v6.0: Enhanced controls
+      send_window_start: '09:00',
+      send_window_end: '20:00',
+      send_days: [1, 2, 3, 4, 5],
+      max_daily_sends: null,
+      exclude_recent_days: 3,
+      min_total_spent: null,
+      wallet_balance_max: null
     },
     {
       id: 'winback_45',
@@ -800,7 +821,15 @@ function getDefaultAutomationRules() {
       cooldown_days: 21,
       coupon_code: 'VOLTE30',
       discount_percent: 30,
-      coupon_validity_days: 7
+      coupon_validity_days: 7,
+      // v6.0: Enhanced controls
+      send_window_start: '09:00',
+      send_window_end: '20:00',
+      send_days: [1, 2, 3, 4, 5],
+      max_daily_sends: null,
+      exclude_recent_days: 3,
+      min_total_spent: 50,
+      wallet_balance_max: null
     },
     {
       id: 'welcome_new',
@@ -811,7 +840,15 @@ function getDefaultAutomationRules() {
       cooldown_days: 365,
       coupon_code: 'BEM10',
       discount_percent: 10,
-      coupon_validity_days: 14
+      coupon_validity_days: 14,
+      // v6.0: Enhanced controls
+      send_window_start: '09:00',
+      send_window_end: '20:00',
+      send_days: [1, 2, 3, 4, 5],
+      max_daily_sends: null,
+      exclude_recent_days: null,
+      min_total_spent: null,
+      wallet_balance_max: null
     },
     {
       id: 'wallet_reminder',
@@ -819,7 +856,15 @@ function getDefaultAutomationRules() {
       enabled: false,
       trigger: { type: 'wallet_balance', value: 20 },
       action: { template: 'wallet_reminder', channel: 'whatsapp' },
-      cooldown_days: 14
+      cooldown_days: 14,
+      // v6.0: Enhanced controls
+      send_window_start: '09:00',
+      send_window_end: '20:00',
+      send_days: [1, 2, 3, 4, 5],
+      max_daily_sends: null,
+      exclude_recent_days: null,
+      min_total_spent: null,
+      wallet_balance_max: 200
     },
     {
       id: 'post_visit',
@@ -827,7 +872,15 @@ function getDefaultAutomationRules() {
       enabled: false,
       trigger: { type: 'hours_after_visit', value: 24 },
       action: { template: 'post_visit_thanks', channel: 'whatsapp' },
-      cooldown_days: 7
+      cooldown_days: 7,
+      // v6.0: Enhanced controls
+      send_window_start: '09:00',
+      send_window_end: '20:00',
+      send_days: [1, 2, 3, 4, 5, 6, 7],
+      max_daily_sends: null,
+      exclude_recent_days: null,
+      min_total_spent: null,
+      wallet_balance_max: null
     }
   ];
 }

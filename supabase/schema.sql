@@ -1,6 +1,28 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.4 (2025-12-11)
+-- Version: 3.7 (2025-12-12)
+--
+-- v3.7: Enhanced Automation Controls
+--   - Send time window (send_window_start, send_window_end)
+--   - Day of week restrictions (send_days array)
+--   - Daily rate limit (max_daily_sends)
+--   - Exclude recent visitors (exclude_recent_days)
+--   - Minimum spend threshold (min_total_spent)
+--   - Wallet balance max (wallet_balance_max)
+--
+-- v3.6: Unified Risk Level Computation (Option A)
+--   - Added risk_level and return_likelihood columns to customers table
+--   - Added calculate_customer_risk() function matching frontend algorithm exactly
+--   - Updated refresh_customer_metrics() to compute risk_level
+--   - Automations now use risk_level column for consistent audience targeting
+--   - Algorithm: Exponential decay with RFM segment bonus
+--
+-- v3.5: Unified Automation-Campaign Model
+--   - Added campaign_id column to automation_rules (links to campaigns table)
+--   - Added sync_automation_campaign() function to create campaign records for automations
+--   - Added record_automation_contact() function for unified tracking
+--   - Automations now appear in campaign_performance and campaign_effectiveness views
+--   - Trigger auto-syncs campaign when automation rule changes
 --
 -- v3.4: Fixed avg_days_between computation
 --   - Added avg_days_between calculation to refresh_customer_metrics()
@@ -126,7 +148,12 @@ CREATE TABLE IF NOT EXISTS customers (
   m_score INTEGER,                          -- Monetary score (1-5)
   recent_monetary_90d DECIMAL(10,2) DEFAULT 0, -- Total spending in last 90 days
   rfm_segment TEXT,                         -- RFM segment: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
-  -- NOTE: risk_level removed in v3.2 - Churn risk now computed client-side in customerMetrics.js
+
+  -- v3.6: Churn Risk (computed by refresh_customer_metrics, matching frontend algorithm)
+  -- Risk levels: Healthy, Monitor, At Risk, Churning, New Customer, Lost
+  -- Uses exponential decay formula with RFM segment bonus
+  risk_level TEXT,                          -- Churn risk level (matches customerMetrics.js)
+  return_likelihood INTEGER,                -- 0-100% likelihood of return
 
   -- Metadata
   imported_at TIMESTAMPTZ DEFAULT NOW(),
@@ -134,10 +161,16 @@ CREATE TABLE IF NOT EXISTS customers (
   source TEXT DEFAULT 'pos_import'          -- pos_import, manual, api
 );
 
+-- v3.6: Add risk_level columns for migration
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS risk_level TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS return_likelihood INTEGER;
+
 -- Indexes for customer queries
 CREATE INDEX IF NOT EXISTS idx_customers_rfm_segment ON customers(rfm_segment);
 CREATE INDEX IF NOT EXISTS idx_customers_last_visit ON customers(last_visit DESC);
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(telefone) WHERE telefone IS NOT NULL;
+-- v3.6: Index for automation targeting by risk level
+CREATE INDEX IF NOT EXISTS idx_customers_risk_level ON customers(risk_level);
 
 -- ==================== COUPON REDEMPTIONS TABLE (NEW v3.0) ====================
 -- Links coupon usage in transactions to campaigns for attribution
@@ -349,20 +382,61 @@ CREATE TABLE IF NOT EXISTS automation_rules (
   action_template TEXT,             -- Template ID to use
   action_channel TEXT DEFAULT 'whatsapp',
 
-  -- NEW: Configurable automation controls
+  -- Configurable automation controls
   valid_until TIMESTAMPTZ,          -- Stop date (null = runs forever)
   cooldown_days INTEGER DEFAULT 14, -- Days before same customer can be targeted again
   max_total_sends INTEGER,          -- Lifetime send limit (null = unlimited)
   total_sends_count INTEGER DEFAULT 0, -- Current count of sends
 
-  -- NEW: Coupon configuration
+  -- Coupon configuration
   coupon_code TEXT,                 -- Specific coupon code for this rule (e.g., VOLTE20)
   discount_percent INTEGER,         -- Discount percentage (e.g., 20)
   coupon_validity_days INTEGER DEFAULT 7, -- Days until coupon expires in message
 
+  -- v3.7: Enhanced automation controls
+  -- Send time window (Brazil timezone - checked by scheduler)
+  send_window_start TIME DEFAULT '09:00',  -- Start time (e.g., 09:00)
+  send_window_end TIME DEFAULT '20:00',    -- End time (e.g., 20:00)
+
+  -- Day of week restrictions (1=Mon, 2=Tue, ..., 7=Sun)
+  -- Default: weekdays only (Mon-Fri)
+  send_days INTEGER[] DEFAULT '{1,2,3,4,5}',
+
+  -- Daily rate limit (null = unlimited, uses max_per_execution in scheduler)
+  max_daily_sends INTEGER,
+  daily_sends_count INTEGER DEFAULT 0,     -- Reset daily by scheduler
+  last_daily_reset DATE,                   -- Track when count was last reset
+
+  -- Exclude recent visitors (days since last visit to exclude)
+  -- null = don't exclude (for welcome, wallet_reminder, post_visit)
+  exclude_recent_days INTEGER,
+
+  -- Minimum spend threshold (only target customers who spent >= this amount)
+  min_total_spent DECIMAL(10,2),
+
+  -- Wallet balance range (for wallet_reminder - max balance to target)
+  wallet_balance_max DECIMAL(10,2),
+
+  -- v3.5: Unified Campaign Model - Links automation to its campaign record
+  campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL,
+
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Index for campaign_id lookups
+CREATE INDEX IF NOT EXISTS idx_automation_rules_campaign_id ON automation_rules(campaign_id);
+
+-- v3.7: Add new automation control columns for migration
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS send_window_start TIME DEFAULT '09:00';
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS send_window_end TIME DEFAULT '20:00';
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS send_days INTEGER[] DEFAULT '{1,2,3,4,5}';
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS max_daily_sends INTEGER;
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS daily_sends_count INTEGER DEFAULT 0;
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS last_daily_reset DATE;
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS exclude_recent_days INTEGER;
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS min_total_spent DECIMAL(10,2);
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS wallet_balance_max DECIMAL(10,2);
 
 -- ==================== AUTOMATION SENDS TABLE ====================
 -- Tracks individual automation sends for history and cooldown enforcement
@@ -729,6 +803,204 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ==================== UNIFIED AUTOMATION-CAMPAIGN MODEL (v3.5) ====================
+-- Functions to treat automations as campaigns for unified metrics
+
+-- Function to create or update campaign record for an automation rule
+-- Called when: rule is enabled, rule config changes, or on first send
+CREATE OR REPLACE FUNCTION sync_automation_campaign(p_rule_id TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  v_rule RECORD;
+  v_campaign_id TEXT;
+  v_audience TEXT;
+BEGIN
+  -- Get the rule
+  SELECT * INTO v_rule FROM automation_rules WHERE id = p_rule_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Automation rule % not found', p_rule_id;
+  END IF;
+
+  -- Determine audience based on trigger type
+  v_audience := CASE v_rule.trigger_type
+    WHEN 'days_since_visit' THEN 'atRisk'
+    WHEN 'first_purchase' THEN 'newCustomers'
+    WHEN 'wallet_balance' THEN 'withWallet'
+    WHEN 'hours_after_visit' THEN 'all'
+    ELSE 'all'
+  END;
+
+  -- Check if campaign already exists
+  IF v_rule.campaign_id IS NOT NULL THEN
+    -- Update existing campaign
+    UPDATE campaigns SET
+      name = 'Auto: ' || v_rule.name,
+      template_id = v_rule.action_template,
+      audience = v_audience,
+      status = CASE WHEN v_rule.enabled THEN 'active' ELSE 'paused' END,
+      discount_percent = v_rule.discount_percent,
+      coupon_code = v_rule.coupon_code,
+      service_type = 'both',
+      contact_method = v_rule.action_channel,
+      updated_at = NOW()
+    WHERE id = v_rule.campaign_id;
+
+    RETURN v_rule.campaign_id;
+  ELSE
+    -- Create new campaign for this automation
+    v_campaign_id := 'AUTO_' || p_rule_id;
+
+    INSERT INTO campaigns (
+      id,
+      name,
+      template_id,
+      audience,
+      status,
+      contact_method,
+      discount_percent,
+      coupon_code,
+      service_type,
+      created_at
+    ) VALUES (
+      v_campaign_id,
+      'Auto: ' || v_rule.name,
+      v_rule.action_template,
+      v_audience,
+      CASE WHEN v_rule.enabled THEN 'active' ELSE 'draft' END,
+      COALESCE(v_rule.action_channel, 'whatsapp'),
+      v_rule.discount_percent,
+      v_rule.coupon_code,
+      'both',
+      NOW()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name,
+      template_id = EXCLUDED.template_id,
+      audience = EXCLUDED.audience,
+      status = EXCLUDED.status,
+      discount_percent = EXCLUDED.discount_percent,
+      coupon_code = EXCLUDED.coupon_code,
+      updated_at = NOW();
+
+    -- Link the campaign to the rule
+    UPDATE automation_rules SET campaign_id = v_campaign_id WHERE id = p_rule_id;
+
+    RETURN v_campaign_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function to sync campaign when automation rule changes
+CREATE OR REPLACE FUNCTION trigger_sync_automation_campaign()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only sync if rule is enabled or was just enabled
+  IF NEW.enabled = true OR (OLD IS NOT NULL AND OLD.enabled = true) THEN
+    PERFORM sync_automation_campaign(NEW.id);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to record an automation send with full campaign tracking
+-- Creates entries in: automation_sends, contact_tracking, campaign_contacts
+CREATE OR REPLACE FUNCTION record_automation_contact(
+  p_rule_id TEXT,
+  p_customer_id TEXT,
+  p_customer_name TEXT,
+  p_phone TEXT,
+  p_message_sid TEXT DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+  v_campaign_id TEXT;
+  v_contact_tracking_id INT;
+  v_automation_send_id UUID;
+  v_rule RECORD;
+BEGIN
+  -- Get the rule and ensure campaign exists
+  SELECT * INTO v_rule FROM automation_rules WHERE id = p_rule_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Automation rule % not found', p_rule_id;
+  END IF;
+
+  -- Ensure campaign record exists
+  IF v_rule.campaign_id IS NULL THEN
+    v_campaign_id := sync_automation_campaign(p_rule_id);
+  ELSE
+    v_campaign_id := v_rule.campaign_id;
+  END IF;
+
+  -- 1. Create contact tracking record
+  INSERT INTO contact_tracking (
+    customer_id,
+    customer_name,
+    contact_method,
+    campaign_id,
+    campaign_name,
+    status,
+    expires_at
+  ) VALUES (
+    p_customer_id,
+    p_customer_name,
+    'whatsapp',
+    v_campaign_id,
+    'Auto: ' || v_rule.name,
+    'pending',
+    NOW() + (COALESCE(v_rule.cooldown_days, 14) || ' days')::INTERVAL
+  )
+  RETURNING id INTO v_contact_tracking_id;
+
+  -- 2. Create campaign_contacts bridge record
+  INSERT INTO campaign_contacts (
+    campaign_id,
+    contact_tracking_id,
+    customer_id,
+    customer_name,
+    phone,
+    delivery_status,
+    twilio_sid
+  ) VALUES (
+    v_campaign_id,
+    v_contact_tracking_id,
+    p_customer_id,
+    p_customer_name,
+    p_phone,
+    'sent',
+    p_message_sid
+  );
+
+  -- 3. Create automation_sends record (for cooldown tracking)
+  INSERT INTO automation_sends (
+    rule_id,
+    customer_id,
+    customer_name,
+    phone,
+    status,
+    message_sid
+  ) VALUES (
+    p_rule_id,
+    p_customer_id,
+    p_customer_name,
+    p_phone,
+    'sent',
+    p_message_sid
+  )
+  RETURNING id INTO v_automation_send_id;
+
+  -- 4. Update campaign send count
+  UPDATE campaigns SET
+    sends = sends + 1,
+    last_sent_at = NOW(),
+    status = 'active'
+  WHERE id = v_campaign_id;
+
+  RETURN v_automation_send_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- ==================== RFM SEGMENTATION (v3.2) ====================
 -- RFM Segments (Portuguese - Marketing Focus):
 -- These names are DISTINCT from Churn Risk Levels to avoid confusion.
@@ -816,9 +1088,104 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+-- ==================== CHURN RISK CALCULATION (v3.6) ====================
+-- Calculates risk level using the EXACT same algorithm as customerMetrics.js
+-- This ensures 100% consistency between frontend display and backend automation targeting
+--
+-- Algorithm:
+-- 1. Lost: daysSinceLastVisit > 60 (LOST_THRESHOLD)
+-- 2. New Customer: transaction_count = 1
+-- 3. Likelihood-based (for customers with avg_days_between):
+--    - ratio = daysSinceLastVisit / avgDaysBetween
+--    - likelihood = exp(-max(0, ratio - 1)) * 100
+--    - likelihood *= segment_bonus (VIP=1.2, Frequente=1.1, etc.)
+--    - Healthy: >60%, Monitor: >30%, At Risk: >15%, Churning: ≤15%
+-- 4. Fallback: Monitor with 40% likelihood
+
+CREATE OR REPLACE FUNCTION calculate_customer_risk(
+  p_days_since_last_visit INTEGER,
+  p_transaction_count INTEGER,
+  p_avg_days_between DECIMAL,
+  p_rfm_segment TEXT
+)
+RETURNS TABLE (
+  risk_level TEXT,
+  return_likelihood INTEGER
+) AS $$
+DECLARE
+  v_lost_threshold INTEGER := 60;
+  v_risk_level TEXT;
+  v_likelihood DECIMAL;
+  v_ratio DECIMAL;
+  v_segment_bonus DECIMAL;
+BEGIN
+  -- Get segment bonus (matches SEGMENT_BONUS in customerMetrics.js)
+  v_segment_bonus := CASE COALESCE(p_rfm_segment, 'Unclassified')
+    WHEN 'VIP' THEN 1.2
+    WHEN 'Frequente' THEN 1.1
+    WHEN 'Promissor' THEN 1.0
+    WHEN 'Novato' THEN 0.9
+    WHEN 'Esfriando' THEN 0.8
+    WHEN 'Inativo' THEN 0.5
+    -- English legacy names
+    WHEN 'Champion' THEN 1.2
+    WHEN 'Loyal' THEN 1.1
+    WHEN 'Potential' THEN 1.0
+    WHEN 'New' THEN 0.9
+    WHEN 'At Risk' THEN 0.8
+    WHEN 'Need Attention' THEN 0.8
+    WHEN 'Lost' THEN 0.5
+    ELSE 1.0
+  END;
+
+  -- Case 1: Lost (>60 days since last visit)
+  IF COALESCE(p_days_since_last_visit, 999) > v_lost_threshold THEN
+    v_risk_level := 'Lost';
+    v_likelihood := 0;
+
+  -- Case 2: New Customer (only 1 transaction)
+  ELSIF COALESCE(p_transaction_count, 0) = 1 THEN
+    v_risk_level := 'New Customer';
+    v_likelihood := 50;
+
+  -- Case 3: Likelihood-based (has avgDaysBetween)
+  ELSIF p_avg_days_between IS NOT NULL AND p_avg_days_between > 0 THEN
+    v_ratio := COALESCE(p_days_since_last_visit, 0)::DECIMAL / p_avg_days_between;
+
+    -- Exponential decay formula: exp(-max(0, ratio - 1)) * 100
+    v_likelihood := EXP(-GREATEST(0, v_ratio - 1)) * 100;
+
+    -- Apply segment bonus
+    v_likelihood := v_likelihood * v_segment_bonus;
+
+    -- Cap at 100%
+    v_likelihood := LEAST(100, v_likelihood);
+
+    -- Classify by likelihood thresholds (matches RISK_THRESHOLDS in customerMetrics.js)
+    IF v_likelihood > 60 THEN
+      v_risk_level := 'Healthy';
+    ELSIF v_likelihood > 30 THEN
+      v_risk_level := 'Monitor';
+    ELSIF v_likelihood > 15 THEN
+      v_risk_level := 'At Risk';
+    ELSE
+      v_risk_level := 'Churning';
+    END IF;
+
+  -- Case 4: Fallback (no pattern data)
+  ELSE
+    v_risk_level := 'Monitor';
+    v_likelihood := 40;
+  END IF;
+
+  RETURN QUERY SELECT v_risk_level, ROUND(v_likelihood)::INTEGER;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 -- Function to update customer metrics from transactions
--- Computes RFM scores and segment (Portuguese names)
--- v3.4: Now also computes avg_days_between
+-- Computes RFM scores, segment, and risk level
+-- v3.6: Now also computes risk_level and return_likelihood (matching frontend algorithm)
+-- v3.4: Added avg_days_between calculation
 CREATE OR REPLACE FUNCTION refresh_customer_metrics(p_customer_doc TEXT DEFAULT NULL)
 RETURNS INT AS $$
 DECLARE
@@ -838,6 +1205,9 @@ BEGIN
     f_score = rfm.f_score,
     m_score = rfm.m_score,
     rfm_segment = rfm.segment,
+    -- v3.6: Set risk level from calculate_customer_risk
+    risk_level = risk.risk_level,
+    return_likelihood = risk.return_likelihood,
     updated_at = NOW()
   FROM (
     SELECT
@@ -874,6 +1244,13 @@ BEGIN
     sub.recent_monetary_90d,
     sub.registration_days
   ) rfm
+  -- v3.6: Compute risk level using RFM segment for bonus multiplier
+  CROSS JOIN LATERAL calculate_customer_risk(
+    sub.days_since_last_visit,
+    sub.transaction_count::INTEGER,
+    sub.avg_days_between,
+    rfm.segment
+  ) risk
   WHERE c.doc = sub.doc_cliente;
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
@@ -1007,6 +1384,13 @@ CREATE TRIGGER update_customers_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+-- v3.5: Trigger to sync campaign when automation rule changes
+DROP TRIGGER IF EXISTS sync_automation_campaign_trigger ON automation_rules;
+CREATE TRIGGER sync_automation_campaign_trigger
+  AFTER INSERT OR UPDATE ON automation_rules
+  FOR EACH ROW
+  EXECUTE FUNCTION trigger_sync_automation_campaign();
+
 -- ==================== ROW LEVEL SECURITY (Optional) ====================
 -- Uncomment these if you want to enable RLS
 
@@ -1023,23 +1407,45 @@ CREATE TRIGGER update_customers_updated_at
 -- CREATE POLICY "Service role full access" ON blacklist FOR ALL USING (true);
 
 -- ==================== SAMPLE DATA (Optional) ====================
--- Default automation rules
+-- Default automation rules with v3.7 enhanced controls
+-- Note: exclude_recent_days is NULL for welcome, wallet_reminder, post_visit (they target recent visitors)
 
 INSERT INTO automation_rules (
   id, name, enabled, trigger_type, trigger_value, action_template, action_channel,
-  cooldown_days, coupon_code, discount_percent, coupon_validity_days
+  cooldown_days, coupon_code, discount_percent, coupon_validity_days,
+  send_window_start, send_window_end, send_days, max_daily_sends,
+  exclude_recent_days, min_total_spent, wallet_balance_max
 )
 VALUES
+  -- Win-back 30 days: Exclude visitors in last 3 days, require min R$30 spend
   ('winback_30', 'Win-back 30 dias', false, 'days_since_visit', 30, 'winback_discount', 'whatsapp',
-   30, 'VOLTE20', 20, 7),
+   30, 'VOLTE20', 20, 7,
+   '09:00', '20:00', '{1,2,3,4,5}', 50,
+   3, 30.00, NULL),
+
+  -- Win-back 45 days (critical): Exclude visitors in last 3 days, require min R$50 spend
   ('winback_45', 'Win-back Critico', false, 'days_since_visit', 45, 'winback_critical', 'whatsapp',
-   21, 'VOLTE30', 30, 7),
+   21, 'VOLTE30', 30, 7,
+   '09:00', '20:00', '{1,2,3,4,5}', 30,
+   3, 50.00, NULL),
+
+  -- Welcome: No exclusions (targets new customers), no min spend
   ('welcome_new', 'Boas-vindas', false, 'first_purchase', 1, 'welcome_new', 'whatsapp',
-   365, 'BEM10', 10, 14),
+   365, 'BEM10', 10, 14,
+   '09:00', '20:00', '{1,2,3,4,5}', 20,
+   NULL, NULL, NULL),
+
+  -- Wallet reminder: No recent exclusion, target balances R$20-R$200
   ('wallet_reminder', 'Lembrete de saldo', false, 'wallet_balance', 20, 'wallet_reminder', 'whatsapp',
-   14, NULL, NULL, NULL),
+   14, NULL, NULL, NULL,
+   '09:00', '20:00', '{1,2,3,4,5}', 30,
+   NULL, NULL, 200.00),
+
+  -- Post-visit: No exclusions (targets recent visitors by design)
   ('post_visit', 'Pos-Visita', false, 'hours_after_visit', 24, 'post_visit_thanks', 'whatsapp',
-   7, NULL, NULL, NULL)
+   7, NULL, NULL, NULL,
+   '10:00', '19:00', '{1,2,3,4,5}', 50,
+   NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 -- ==================== GRANTS ====================
@@ -1085,7 +1491,11 @@ GRANT EXECUTE ON FUNCTION expire_old_contacts TO authenticated;
 -- NEW v3.0: Data functions
 GRANT EXECUTE ON FUNCTION refresh_customer_metrics TO authenticated;
 GRANT EXECUTE ON FUNCTION calculate_rfm_segment TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_customer_risk TO authenticated;
 GRANT EXECUTE ON FUNCTION find_campaign_by_coupon TO authenticated;
 GRANT EXECUTE ON FUNCTION process_coupon_redemption TO authenticated;
 GRANT EXECUTE ON FUNCTION upsert_customer TO authenticated;
 GRANT EXECUTE ON FUNCTION generate_transaction_hash TO authenticated;
+-- v3.5: Unified automation-campaign functions
+GRANT EXECUTE ON FUNCTION sync_automation_campaign TO authenticated;
+GRANT EXECUTE ON FUNCTION record_automation_contact TO authenticated;
