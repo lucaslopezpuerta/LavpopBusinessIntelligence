@@ -2,6 +2,10 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 2.5 (2025-12-12) - Fixed comm_logs customer filtering bug
+//   - getCommLogs now receives body params for POST requests (was only receiving query params)
+//   - This fixes the bug where all customers' logs were shown instead of just the current customer
+//
 // Version: 2.4 (2025-12-12) - v6.0 Enhanced automation controls
 //   - saveAutomationRules now includes send_window_start/end, send_days, max_daily_sends
 //   - Also includes exclude_recent_days, min_total_spent, wallet_balance_max
@@ -191,7 +195,8 @@ exports.handler = async (event, context) => {
 
       // ==================== COMMUNICATION LOGS ====================
       case 'logs.getAll':
-        return await getCommLogs(supabase, params, headers);
+        // Merge body params with query params (POST body takes precedence)
+        return await getCommLogs(supabase, { ...params, ...body }, headers);
 
       case 'logs.add':
         return await addCommLog(supabase, data, headers);
