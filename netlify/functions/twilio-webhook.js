@@ -1,7 +1,11 @@
-// netlify/functions/twilio-webhook.js v1.1
+// netlify/functions/twilio-webhook.js v1.2
 // Twilio WhatsApp Webhook Handler for Button Callbacks
 //
 // CHANGELOG:
+// v1.2 (2025-12-12): Fixed status callback routing bug
+//   - Status callbacks were incorrectly routed to handleInboundMessage
+//   - Now checks MessageStatus BEFORE checking Direction
+//   - This ensures delivery tracking actually works
 // v1.1 (2025-12-11): Added delivery status tracking
 //   - All status updates (sent, delivered, read, failed) now tracked in webhook_events
 //   - Enables real delivery rate calculation instead of estimates
@@ -73,14 +77,16 @@ exports.handler = async (event, context) => {
       return await handleButtonClick(phone, buttonPayload, webhookData, headers);
     }
 
-    // Handle inbound messages (check for opt-out keywords)
-    if (webhookData.Direction === 'inbound' || !webhookData.Direction) {
-      return await handleInboundMessage(phone, messageBody, webhookData, headers);
-    }
-
-    // Handle status updates
+    // Handle status updates FIRST (they don't have Direction field)
+    // Must check before inbound messages to avoid routing bug
     if (webhookData.MessageStatus) {
       return await handleStatusUpdate(webhookData, headers);
+    }
+
+    // Handle inbound messages (check for opt-out keywords)
+    // Only reaches here if no MessageStatus (true inbound message)
+    if (webhookData.Direction === 'inbound' || !webhookData.Direction) {
+      return await handleInboundMessage(phone, messageBody, webhookData, headers);
     }
 
     // Default response (empty TwiML)
