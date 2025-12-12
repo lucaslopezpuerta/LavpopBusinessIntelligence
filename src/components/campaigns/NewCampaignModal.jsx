@@ -269,10 +269,18 @@ const NewCampaignModal = ({
     return customers.filter(c => isValidBrazilianMobile(c.phone));
   }, [audienceSegments, selectedAudience]);
 
-  // Validate audience for campaign
-  const validationStats = useMemo(() => {
-    if (!audienceCustomers.length) return null;
-    return validateCampaignAudience(audienceCustomers);
+  // Validate audience for campaign (async - loads from backend)
+  const [validationStats, setValidationStats] = useState(null);
+  useEffect(() => {
+    if (!audienceCustomers.length) {
+      setValidationStats(null);
+      return;
+    }
+    let cancelled = false;
+    validateCampaignAudience(audienceCustomers).then(result => {
+      if (!cancelled) setValidationStats(result);
+    });
+    return () => { cancelled = true; };
   }, [audienceCustomers]);
 
   // Get discount options for selected template

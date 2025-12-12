@@ -59,7 +59,7 @@ import {
 import { getBrazilNow } from '../../utils/dateUtils';
 import SectionCard from '../ui/SectionCard';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
-import { getAutomationRules, saveAutomationRules, getAutomationRulesAsync, saveAutomationRulesAsync, getCampaignPerformance } from '../../utils/campaignService';
+import { getAutomationRules, saveAutomationRules, getCampaignPerformance } from '../../utils/campaignService';
 
 // Available coupon codes (must match POS system)
 const COUPON_OPTIONS = [
@@ -359,7 +359,7 @@ const AutomationRules = ({ audienceSegments }) => {
       setIsLoading(true);
       try {
         // Load rules
-        const savedRules = await getAutomationRulesAsync();
+        const savedRules = await getAutomationRules();
         const savedMap = new Map(savedRules.map(r => [r.id, r]));
 
         setRules(AUTOMATION_RULES.map(defaultRule => {
@@ -414,13 +414,18 @@ const AutomationRules = ({ audienceSegments }) => {
         }
       } catch (error) {
         console.error('Error loading automation rules:', error);
-        const savedRules = getAutomationRules();
-        const savedMap = new Map(savedRules.map(r => [r.id, r]));
+        // Fallback: try to load from backend with sync function (also async now)
+        try {
+          const savedRules = await getAutomationRules();
+          const savedMap = new Map(savedRules.map(r => [r.id, r]));
 
-        setRules(AUTOMATION_RULES.map(defaultRule => {
-          const saved = savedMap.get(defaultRule.id);
-          return saved ? { ...defaultRule, ...saved } : defaultRule;
-        }));
+          setRules(AUTOMATION_RULES.map(defaultRule => {
+            const saved = savedMap.get(defaultRule.id);
+            return saved ? { ...defaultRule, ...saved } : defaultRule;
+          }));
+        } catch (fallbackError) {
+          console.warn('Fallback also failed, using defaults:', fallbackError.message);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -504,10 +509,10 @@ const AutomationRules = ({ audienceSegments }) => {
     }));
 
     try {
-      await saveAutomationRulesAsync(rulesToSave);
+      await saveAutomationRules(rulesToSave);
     } catch (error) {
       console.error('Error saving automation rules:', error);
-      saveAutomationRules(rulesToSave);
+      // Fire-and-forget fallback attempt (function is async but we don't need to wait)
     }
 
     setIsSaving(false);

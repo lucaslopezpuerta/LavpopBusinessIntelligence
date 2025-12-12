@@ -12,7 +12,7 @@
 //   - Shows ready/invalid customer counts
 //   - Expandable list of invalid numbers with reasons
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CheckCircle,
   AlertTriangle,
@@ -36,10 +36,20 @@ const CampaignPreview = ({
 }) => {
   const [showInvalid, setShowInvalid] = useState(false);
   const [showBlacklisted, setShowBlacklisted] = useState(false);
+  const [validation, setValidation] = useState({
+    ready: [],
+    invalid: [],
+    blacklisted: [],
+    stats: { readyCount: 0, invalidCount: 0, blacklistedCount: 0 }
+  });
 
-  // Validate all customers
-  const validation = useMemo(() => {
-    return validateCampaignAudience(customers);
+  // Validate all customers (async)
+  useEffect(() => {
+    let cancelled = false;
+    validateCampaignAudience(customers).then(result => {
+      if (!cancelled) setValidation(result);
+    });
+    return () => { cancelled = true; };
   }, [customers]);
 
   const { ready, invalid, blacklisted = [], stats } = validation;

@@ -1,9 +1,12 @@
-// campaignService.js v4.0
+// campaignService.js v4.1
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Backend-only storage (Supabase) - no localStorage for data
 //
 // CHANGELOG:
+// v4.1 (2025-12-12): Fixed getDashboardMetrics and validateCampaignAudience
+//   - Removed orphan shouldUseBackend() check that broke dashboard
+//   - Made validateCampaignAudience async (uses async filterBlacklistedRecipients)
 // v4.0 (2025-12-12): Backend only - removed localStorage
 //   - All campaign data now stored exclusively in Supabase
 //   - Removed localStorage fallbacks
@@ -595,13 +598,13 @@ import { isBlacklisted, filterBlacklistedRecipients } from './blacklistService';
  * Now includes blacklist filtering (v1.1)
  *
  * @param {Array<object>} customers - Customer list
- * @returns {object} { ready, invalid, blacklisted, stats }
+ * @returns {Promise<object>} { ready, invalid, blacklisted, stats }
  */
-export function validateCampaignAudience(customers) {
+export async function validateCampaignAudience(customers) {
   const { valid, invalid, stats } = getCampaignRecipients(customers);
 
-  // Filter blacklisted from valid recipients
-  const { allowed, blocked, stats: blacklistStats } = filterBlacklistedRecipients(valid);
+  // Filter blacklisted from valid recipients (async - from backend)
+  const { allowed, blocked, stats: blacklistStats } = await filterBlacklistedRecipients(valid);
 
   return {
     ready: allowed,           // Customers ready for WhatsApp (valid phone, not blacklisted)
@@ -999,9 +1002,8 @@ export async function getDashboardMetrics(options = {}) {
   };
 
   try {
-    if (await shouldUseBackend()) {
-      // Fetch campaign effectiveness data (aggregated by campaign)
-      let effectivenessData = [];
+    // Fetch campaign effectiveness data (aggregated by campaign)
+    let effectivenessData = [];
       try {
         effectivenessData = await api.get('campaign_effectiveness', {});
       } catch (e) {
@@ -1186,13 +1188,12 @@ export async function getDashboardMetrics(options = {}) {
         });
       }
 
-      console.log(`[CampaignService] Dashboard metrics loaded:`, {
-        contacts: metrics.summary.totalContacts,
-        returned: metrics.summary.totalReturned,
-        campaigns: metrics.recentCampaigns.length,
-        discountLevels: metrics.discountComparison.length
-      });
-    }
+    console.log(`[CampaignService] Dashboard metrics loaded:`, {
+      contacts: metrics.summary.totalContacts,
+      returned: metrics.summary.totalReturned,
+      campaigns: metrics.recentCampaigns.length,
+      discountLevels: metrics.discountComparison.length
+    });
   } catch (error) {
     console.warn('[CampaignService] Failed to load dashboard metrics:', error.message);
   }

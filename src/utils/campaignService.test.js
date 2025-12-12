@@ -294,14 +294,14 @@ describe('Message Templates', () => {
 });
 
 describe('validateCampaignAudience', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
-    clearBlacklist();
+    await clearBlacklist();
   });
 
-  it('should separate ready, invalid, and blacklisted customers', () => {
+  it('should separate ready, invalid, and blacklisted customers', async () => {
     // Add one to blacklist
-    addToBlacklist('54996923502', { reason: 'opt-out' });
+    await addToBlacklist('54996923502', { reason: 'opt-out' });
 
     const customers = [
       { phone: '54996923501', name: 'Valid' },       // ready
@@ -309,7 +309,7 @@ describe('validateCampaignAudience', () => {
       { phone: '123', name: 'Invalid' }              // invalid phone
     ];
 
-    const result = validateCampaignAudience(customers);
+    const result = await validateCampaignAudience(customers);
 
     expect(result.ready).toHaveLength(1);
     expect(result.ready[0].name).toBe('Valid');
@@ -321,9 +321,9 @@ describe('validateCampaignAudience', () => {
     expect(result.invalid[0].name).toBe('Invalid');
   });
 
-  it('should include detailed stats', () => {
-    addToBlacklist('54996923502', { reason: 'opt-out' });
-    addToBlacklist('54996923503', { reason: 'undelivered' });
+  it('should include detailed stats', async () => {
+    await addToBlacklist('54996923502', { reason: 'opt-out' });
+    await addToBlacklist('54996923503', { reason: 'undelivered' });
 
     const customers = [
       { phone: '54996923501', name: 'Valid' },
@@ -332,7 +332,7 @@ describe('validateCampaignAudience', () => {
       { phone: '123', name: 'Invalid' }
     ];
 
-    const result = validateCampaignAudience(customers);
+    const result = await validateCampaignAudience(customers);
 
     expect(result.stats.readyCount).toBe(1);
     expect(result.stats.invalidCount).toBe(1);
@@ -343,14 +343,14 @@ describe('validateCampaignAudience', () => {
 });
 
 describe('isBlacklisted re-export', () => {
-  beforeEach(() => {
-    clearBlacklist();
+  beforeEach(async () => {
+    await clearBlacklist();
   });
 
-  it('should check if phone is blacklisted', () => {
-    expect(isBlacklisted('54996923504')).toBe(false);
+  it('should check if phone is blacklisted', async () => {
+    expect(await isBlacklisted('54996923504')).toBe(false);
 
-    addToBlacklist('54996923504');
-    expect(isBlacklisted('54996923504')).toBe(true);
+    await addToBlacklist('54996923504');
+    expect(await isBlacklisted('54996923504')).toBe(true);
   });
 });
