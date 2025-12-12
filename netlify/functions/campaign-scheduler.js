@@ -2,6 +2,15 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.4 (2025-12-12): Campaign return detection & coupon linking
+//   - Added processCampaignReturns() to run after each scheduler execution
+//   - Calls process_campaign_returns() SQL function to:
+//     1. Link coupon redemptions (transactions with usou_cupom=true → coupon_redemptions)
+//     2. Detect customer returns (last_visit > contacted_at → contact_tracking.status='returned')
+//     3. Expire old pending contacts (> 30 days)
+//   - Closes the feedback loop for campaign effectiveness metrics
+//   - Campaign ROI, return rates, and A/B testing now have real data
+//
 // v2.3 (2025-12-12): Fallback mechanism for send tracking
 //   - When record_automation_contact() fails, now falls back to:
 //     1. increment_campaign_sends RPC
@@ -176,12 +185,20 @@ exports.handler = async (event, context) => {
     // Process automation rules after scheduled campaigns
     const automationResults = await processAutomationRules(supabase);
 
+    // v2.4: Run campaign return detection and coupon linking
+    // This closes the feedback loop by:
+    // 1. Detecting customer returns (comparing last_visit with contacted_at)
+    // 2. Linking coupon redemptions to campaigns
+    // 3. Expiring old pending contacts
+    const returnResults = await processCampaignReturns(supabase);
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `Processed ${results.length} campaigns, ${automationResults.processed} automation rules`,
+        message: `Processed ${results.length} campaigns, ${automationResults.processed} automation rules, ${returnResults.returns_detected} returns detected`,
         campaigns: results,
-        automation: automationResults
+        automation: automationResults,
+        returns: returnResults
       })
     };
 
@@ -894,4 +911,102 @@ function formatExpirationDate(daysFromNow) {
   const date = new Date();
   date.setDate(date.getDate() + daysFromNow);
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// ==================== CAMPAIGN RETURN DETECTION (v2.4) ====================
+
+/**
+ * Process campaign returns and coupon redemptions
+ * Calls the process_campaign_returns() SQL function which:
+ * 1. Links coupon redemptions from transactions to campaigns (usou_cupom=true → coupon_redemptions)
+ * 2. Detects customer returns by comparing last_visit with contacted_at
+ * 3. Expires old pending contacts (> 30 days)
+ *
+ * This closes the feedback loop for campaign effectiveness tracking:
+ * - Return rates now update based on actual customer visits
+ * - ROI can be calculated from coupon redemptions
+ * - Campaign performance views show real data instead of 0%
+ *
+ * @param {Object} supabase - Supabase client
+ * @returns {Object} Results with counts of returns detected, coupons linked, contacts expired
+ */
+async function processCampaignReturns(supabase) {
+  console.log('Processing campaign returns and coupon redemptions...');
+
+  const results = {
+    returns_detected: 0,
+    coupons_linked: 0,
+    contacts_expired: 0,
+    error: null
+  };
+
+  try {
+    // Call the unified SQL function that handles all three operations
+    const { data, error } = await supabase.rpc('process_campaign_returns');
+
+    if (error) {
+      console.error('Error processing campaign returns:', error);
+      results.error = error.message;
+
+      // Try individual functions as fallback
+      console.log('Attempting individual return detection functions...');
+
+      try {
+        // 1. Link coupon redemptions
+        const { data: couponsLinked, error: couponErr } = await supabase.rpc('link_pending_coupon_redemptions');
+        if (!couponErr) {
+          results.coupons_linked = couponsLinked || 0;
+          console.log(`Linked ${results.coupons_linked} coupon redemptions`);
+        } else {
+          console.error('link_pending_coupon_redemptions failed:', couponErr);
+        }
+      } catch (e) {
+        console.error('Coupon linking fallback failed:', e);
+      }
+
+      try {
+        // 2. Detect returns
+        const { data: returnsDetected, error: returnErr } = await supabase.rpc('detect_customer_returns');
+        if (!returnErr) {
+          results.returns_detected = returnsDetected || 0;
+          console.log(`Detected ${results.returns_detected} customer returns`);
+        } else {
+          console.error('detect_customer_returns failed:', returnErr);
+        }
+      } catch (e) {
+        console.error('Return detection fallback failed:', e);
+      }
+
+      try {
+        // 3. Expire old contacts
+        const { data: expired, error: expireErr } = await supabase.rpc('expire_old_contacts');
+        if (!expireErr) {
+          results.contacts_expired = expired || 0;
+          console.log(`Expired ${results.contacts_expired} old contacts`);
+        } else {
+          console.error('expire_old_contacts failed:', expireErr);
+        }
+      } catch (e) {
+        console.error('Contact expiration fallback failed:', e);
+      }
+
+      return results;
+    }
+
+    // Extract results from the unified function (returns a single row)
+    if (data && data.length > 0) {
+      results.coupons_linked = data[0].coupons_linked || 0;
+      results.returns_detected = data[0].returns_detected || 0;
+      results.contacts_expired = data[0].contacts_expired || 0;
+    }
+
+    console.log(`Campaign returns processed: ${results.returns_detected} returns, ${results.coupons_linked} coupons, ${results.contacts_expired} expired`);
+
+    return results;
+
+  } catch (error) {
+    console.error('Campaign return processing error:', error);
+    results.error = error.message;
+    return results;
+  }
 }

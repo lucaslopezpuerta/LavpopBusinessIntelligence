@@ -318,6 +318,20 @@ export const api = {
     },
 
     /**
+     * Get per-campaign delivery metrics from webhook_events
+     * Returns delivered/read counts and rates for each campaign
+     */
+    async getCampaignMetrics() {
+      try {
+        const result = await apiRequest('webhook_events.getCampaignDeliveryMetrics');
+        return result.metrics || [];
+      } catch (error) {
+        console.error('Failed to fetch campaign delivery metrics:', error);
+        return [];
+      }
+    },
+
+    /**
      * Get raw webhook events for debugging
      */
     async getEvents(limit = 100, eventType = null) {

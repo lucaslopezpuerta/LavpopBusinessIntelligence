@@ -1,9 +1,13 @@
-// campaignService.js v3.5
+// campaignService.js v3.6
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Now supports Supabase backend for scheduled campaigns and effectiveness tracking
 //
 // CHANGELOG:
+// v3.6 (2025-12-12): Per-campaign delivery metrics from webhook_events
+//   - getDashboardMetrics now fetches per-campaign delivery data
+//   - recentCampaigns includes: delivered, read, failed, delivery_rate, read_rate
+//   - Uses campaign_delivery_metrics view for real-time data
 // v3.5 (2025-12-12): Added comm_logs insert for manual campaigns
 //   - sendCampaignWithTracking now inserts to comm_logs table (parity with automations)
 //   - Ensures all sends have audit trail in Supabase
@@ -1329,16 +1333,34 @@ export async function getDashboardMetrics(options = {}) {
         console.warn('[CampaignService] Could not fetch campaigns:', e.message);
       }
 
+      // Fetch per-campaign delivery metrics from webhook_events
+      let deliveryMetrics = [];
+      try {
+        deliveryMetrics = await api.delivery.getCampaignMetrics();
+      } catch (e) {
+        console.warn('[CampaignService] Could not fetch campaign delivery metrics:', e.message);
+      }
+
       if (campaignsData && campaignsData.length > 0) {
-        // Enrich with performance data
+        // Enrich with performance data AND delivery metrics
         metrics.recentCampaigns = campaignsData.slice(0, 10).map(c => {
           // Find matching effectiveness data
           const effData = effectivenessData?.find(e => e.campaign_id === c.id);
+          // Find matching delivery metrics from webhook_events
+          const delData = deliveryMetrics?.find(d => d.campaign_id === c.id);
+
           return {
             ...c,
             return_rate: effData?.return_rate || 0,
             total_revenue: effData?.total_return_revenue || 0,
-            contacts_count: effData?.total_contacts || 0
+            contacts_count: effData?.total_contacts || 0,
+            // Real delivery metrics from webhook events
+            delivered: delData?.delivered || 0,
+            read: delData?.read || 0,
+            failed: delData?.failed || 0,
+            delivery_rate: delData?.delivery_rate || null,
+            read_rate: delData?.read_rate || null,
+            has_delivery_data: !!delData
           };
         });
       }

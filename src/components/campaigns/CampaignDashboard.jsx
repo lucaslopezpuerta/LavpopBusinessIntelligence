@@ -1,8 +1,12 @@
-// CampaignDashboard.jsx v2.0
+// CampaignDashboard.jsx v2.1
 // Unified Campaign Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.1 (2025-12-12): Real delivery metrics per campaign
+//   - RecentCampaignsTable now shows: Entregues, Lidas, Taxa Entrega
+//   - Data from webhook_events via campaign_delivery_metrics view
+//   - Delivery columns show real Twilio webhook data, not estimates
 // v2.0 (2025-12-11): Design System v4.0 update
 //   - KPIs now use vibrant gradient cards with white text
 //   - Replaced large InsightBox with discrete inline hints
@@ -93,22 +97,25 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0">
-      <table className="w-full text-sm min-w-[600px]">
+      <table className="w-full text-sm min-w-[800px]">
         <thead>
           <tr className="border-b border-slate-200 dark:border-slate-700">
             <th className="text-left py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Campanha
             </th>
-            <th className="text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Desconto
             </th>
-            <th className="text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Cupom
-            </th>
-            <th className="text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Enviadas
             </th>
-            <th className="text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+              Entregues
+            </th>
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+              Lidas
+            </th>
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Retorno
             </th>
             <th className="text-right py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
@@ -138,7 +145,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                   </div>
                 </div>
               </td>
-              <td className="py-3 px-3 text-center">
+              <td className="py-3 px-2 text-center">
                 {campaign.discount_percent ? (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
                     {campaign.discount_percent}%
@@ -147,19 +154,28 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                   <span className="text-slate-400">-</span>
                 )}
               </td>
-              <td className="py-3 px-3 text-center">
-                {campaign.coupon_code ? (
-                  <code className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">
-                    {campaign.coupon_code}
-                  </code>
-                ) : (
-                  <span className="text-slate-400">-</span>
-                )}
-              </td>
-              <td className="py-3 px-3 text-center text-slate-700 dark:text-slate-300">
+              <td className="py-3 px-2 text-center text-slate-700 dark:text-slate-300">
                 {campaign.sends || 0}
               </td>
-              <td className="py-3 px-3 text-center">
+              <td className="py-3 px-2 text-center">
+                {campaign.has_delivery_data ? (
+                  <span className="text-green-600 dark:text-green-400 font-medium">
+                    {campaign.delivered || 0}
+                  </span>
+                ) : (
+                  <span className="text-slate-400" title="Aguardando webhook">-</span>
+                )}
+              </td>
+              <td className="py-3 px-2 text-center">
+                {campaign.has_delivery_data ? (
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                    {campaign.read || 0}
+                  </span>
+                ) : (
+                  <span className="text-slate-400" title="Aguardando webhook">-</span>
+                )}
+              </td>
+              <td className="py-3 px-2 text-center">
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
                   (campaign.return_rate || 0) >= 25
                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'

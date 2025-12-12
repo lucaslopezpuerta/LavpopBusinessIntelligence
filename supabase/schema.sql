@@ -1422,6 +1422,139 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+-- ==================== RETURN DETECTION (v3.9) ====================
+-- Functions to automatically detect customer returns and link coupon redemptions
+-- These complete the campaign effectiveness feedback loop
+
+-- Function to detect customer returns by comparing last_visit with contacted_at
+-- Runs periodically via scheduler to mark contacts as "returned" when customer revisits
+-- Returns number of contacts updated
+CREATE OR REPLACE FUNCTION detect_customer_returns()
+RETURNS INT AS $$
+DECLARE
+  v_updated INT := 0;
+BEGIN
+  -- Update pending contacts where customer has visited AFTER being contacted
+  UPDATE contact_tracking ct
+  SET
+    status = 'returned',
+    returned_at = c.last_visit::TIMESTAMPTZ,
+    days_to_return = (c.last_visit - ct.contacted_at::DATE),
+    -- Calculate return revenue from recent transactions (7 days from return)
+    return_revenue = COALESCE((
+      SELECT SUM(t.net_value)
+      FROM transactions t
+      WHERE t.doc_cliente = ct.customer_id
+        AND t.data_hora::DATE = c.last_visit
+        AND NOT t.is_recarga
+    ), 0),
+    updated_at = NOW()
+  FROM customers c
+  WHERE ct.customer_id = c.doc
+    AND ct.status = 'pending'
+    AND c.last_visit IS NOT NULL
+    AND c.last_visit > ct.contacted_at::DATE;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+  -- Log the result
+  IF v_updated > 0 THEN
+    RAISE NOTICE 'detect_customer_returns: Updated % contacts as returned', v_updated;
+  END IF;
+
+  RETURN v_updated;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to link coupon redemptions from transactions to campaigns
+-- Scans transactions with usou_cupom=true that aren't yet linked
+-- Returns number of redemptions created
+CREATE OR REPLACE FUNCTION link_pending_coupon_redemptions()
+RETURNS INT AS $$
+DECLARE
+  v_created INT := 0;
+  v_txn RECORD;
+  v_campaign_id TEXT;
+BEGIN
+  -- Process transactions with coupons that don't have redemption records yet
+  FOR v_txn IN
+    SELECT t.id, t.codigo_cupom, t.doc_cliente, t.data_hora, t.net_value
+    FROM transactions t
+    WHERE t.usou_cupom = true
+      AND t.codigo_cupom IS NOT NULL
+      AND LOWER(t.codigo_cupom) != 'n/d'
+      AND NOT EXISTS (
+        SELECT 1 FROM coupon_redemptions cr WHERE cr.transaction_id = t.id
+      )
+  LOOP
+    -- Find matching campaign for this coupon code
+    v_campaign_id := find_campaign_by_coupon(v_txn.codigo_cupom);
+
+    -- Create redemption record
+    INSERT INTO coupon_redemptions (
+      transaction_id, codigo_cupom, campaign_id, customer_doc,
+      redeemed_at, discount_value
+    ) VALUES (
+      v_txn.id,
+      v_txn.codigo_cupom,
+      v_campaign_id,
+      v_txn.doc_cliente,
+      v_txn.data_hora,
+      NULL  -- discount_value calculated later if needed
+    );
+
+    v_created := v_created + 1;
+
+    -- Also mark customer as returned if they have a pending contact for this campaign
+    IF v_campaign_id IS NOT NULL THEN
+      UPDATE contact_tracking
+      SET
+        status = 'returned',
+        returned_at = v_txn.data_hora,
+        days_to_return = EXTRACT(DAY FROM v_txn.data_hora - contacted_at)::INT,
+        return_revenue = COALESCE(return_revenue, 0) + COALESCE(v_txn.net_value, 0),
+        updated_at = NOW()
+      WHERE customer_id = v_txn.doc_cliente
+        AND campaign_id = v_campaign_id
+        AND status = 'pending'
+        AND contacted_at < v_txn.data_hora;
+    END IF;
+  END LOOP;
+
+  IF v_created > 0 THEN
+    RAISE NOTICE 'link_pending_coupon_redemptions: Created % redemption records', v_created;
+  END IF;
+
+  RETURN v_created;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Convenience function that runs all return detection logic
+-- Call this periodically from the scheduler
+CREATE OR REPLACE FUNCTION process_campaign_returns()
+RETURNS TABLE (
+  returns_detected INT,
+  coupons_linked INT,
+  contacts_expired INT
+) AS $$
+DECLARE
+  v_returns INT;
+  v_coupons INT;
+  v_expired INT;
+BEGIN
+  -- 1. Link any unlinked coupon redemptions
+  v_coupons := link_pending_coupon_redemptions();
+
+  -- 2. Detect returns from visit dates
+  v_returns := detect_customer_returns();
+
+  -- 3. Expire old contacts
+  v_expired := expire_old_contacts();
+
+  RETURN QUERY SELECT v_returns, v_coupons, v_expired;
+END;
+$$ LANGUAGE plpgsql;
+
 -- ==================== TRIGGERS ====================
 
 DROP TRIGGER IF EXISTS update_blacklist_updated_at ON blacklist;
@@ -1574,3 +1707,7 @@ GRANT EXECUTE ON FUNCTION generate_transaction_hash TO authenticated;
 -- v3.5: Unified automation-campaign functions
 GRANT EXECUTE ON FUNCTION sync_automation_campaign TO authenticated;
 GRANT EXECUTE ON FUNCTION record_automation_contact TO authenticated;
+-- v3.9: Return detection functions
+GRANT EXECUTE ON FUNCTION detect_customer_returns TO authenticated;
+GRANT EXECUTE ON FUNCTION link_pending_coupon_redemptions TO authenticated;
+GRANT EXECUTE ON FUNCTION process_campaign_returns TO authenticated;

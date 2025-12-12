@@ -242,6 +242,9 @@ exports.handler = async (event, context) => {
       case 'webhook_events.getAll':
         return await getWebhookEvents(supabase, params, headers);
 
+      case 'webhook_events.getCampaignDeliveryMetrics':
+        return await getCampaignDeliveryMetrics(supabase, headers);
+
       // ==================== RPC FUNCTIONS ====================
       case 'rpc.expire_old_contacts':
         return await expireOldContacts(supabase, headers);
@@ -270,7 +273,7 @@ exports.handler = async (event, context) => {
               'campaign_contacts.getAll', 'campaign_performance.get',
               'contact_tracking.getAll', 'contact_tracking.create', 'contact_tracking.update',
               'contact_tracking.record', 'contact_tracking.markReturned',
-              'webhook_events.getDeliveryStats', 'webhook_events.getAll',
+              'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
               'migrate.import'
             ]
@@ -1596,4 +1599,41 @@ async function getWebhookEvents(supabase, params, headers) {
     headers,
     body: JSON.stringify({ events: data || [] })
   };
+}
+
+/**
+ * Get per-campaign delivery metrics from campaign_delivery_metrics view
+ * Returns delivered/read counts and rates for each campaign
+ */
+async function getCampaignDeliveryMetrics(supabase, headers) {
+  try {
+    const { data, error } = await supabase
+      .from('campaign_delivery_metrics')
+      .select('*');
+
+    if (error) {
+      // Graceful fallback if view doesn't exist
+      if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ metrics: [], hasView: false })
+        };
+      }
+      throw error;
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ metrics: data || [], hasView: true })
+    };
+  } catch (error) {
+    console.error('[getCampaignDeliveryMetrics] Error:', error);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ metrics: [], hasView: false, error: 'Failed to fetch delivery metrics' })
+    };
+  }
 }
