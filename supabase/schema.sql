@@ -1,6 +1,12 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.8 (2025-12-12)
+-- Version: 3.9 (2025-12-12)
+--
+-- v3.9: Enhanced Webhook Campaign Linking
+--   - Added campaign_id column to webhook_events for direct campaign linking
+--   - Updated campaign_delivery_metrics view with UNION to include both linking methods
+--   - Webhook now looks up campaign_id from campaign_contacts or automation_sends
+--   - Better delivery metrics accuracy for automations
 --
 -- v3.8: Webhook Events for Delivery Tracking
 --   - Added webhook_events table to store Twilio delivery status updates
@@ -479,6 +485,7 @@ CREATE TABLE IF NOT EXISTS webhook_events (
   event_type TEXT NOT NULL,            -- 'delivery_status', 'button_click', etc.
   payload TEXT,                        -- For delivery_status: sent/delivered/read/failed/undelivered
   error_code TEXT,                     -- Twilio error code if failed (e.g., 63024)
+  campaign_id TEXT,                    -- v3.9: Direct campaign linking (fallback for non-campaign_contacts messages)
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -499,12 +506,20 @@ ON webhook_events (event_type, payload);
 CREATE INDEX IF NOT EXISTS idx_webhook_events_created_at
 ON webhook_events (created_at DESC);
 
+-- v3.9: Index for querying by campaign_id (direct campaign linking)
+CREATE INDEX IF NOT EXISTS idx_webhook_events_campaign_id
+ON webhook_events (campaign_id);
+
+-- v3.9: Add campaign_id column for migration
+ALTER TABLE webhook_events ADD COLUMN IF NOT EXISTS campaign_id TEXT;
+
 COMMENT ON TABLE webhook_events IS 'Stores Twilio webhook events for delivery tracking and engagement metrics';
 COMMENT ON COLUMN webhook_events.message_sid IS 'Twilio Message SID - unique identifier for each message';
 COMMENT ON COLUMN webhook_events.phone IS 'Recipient phone number (normalized, digits only)';
 COMMENT ON COLUMN webhook_events.event_type IS 'Event type: delivery_status, button_click, etc.';
 COMMENT ON COLUMN webhook_events.payload IS 'For delivery_status: sent/delivered/read/failed/undelivered. For button_click: the payload.';
 COMMENT ON COLUMN webhook_events.error_code IS 'Twilio error code for failed messages (e.g., 63024)';
+COMMENT ON COLUMN webhook_events.campaign_id IS 'Campaign ID for direct linking (alternative to joining via campaign_contacts)';
 
 -- ==================== VIEWS ====================
 -- Drop existing views first to allow column changes
@@ -681,31 +696,58 @@ FROM transactions
 GROUP BY DATE(data_hora)
 ORDER BY date DESC;
 
--- Campaign delivery metrics view (v3.8) - Real delivery rates from webhook events
--- Joins campaign_contacts (which stores twilio_sid) with webhook_events (which stores message_sid)
+-- Campaign delivery metrics view (v3.9) - Real delivery rates from webhook events
+-- v3.9: UNION approach includes both linking methods:
+-- 1. Join via campaign_contacts.twilio_sid (for messages with campaign_contacts records)
+-- 2. Direct webhook_events.campaign_id (for messages without campaign_contacts, e.g., automation sends)
 CREATE OR REPLACE VIEW campaign_delivery_metrics AS
+WITH delivery_data AS (
+  -- Method 1: Join via campaign_contacts (for messages with campaign_contacts records)
+  SELECT
+    cc.campaign_id,
+    cc.id as contact_id,
+    we.message_sid,
+    we.payload as status
+  FROM campaign_contacts cc
+  LEFT JOIN webhook_events we ON we.message_sid = cc.twilio_sid
+    AND we.event_type = 'delivery_status'
+  WHERE cc.twilio_sid IS NOT NULL
+
+  UNION
+
+  -- Method 2: Direct campaign_id in webhook_events (for messages without campaign_contacts)
+  SELECT
+    we.campaign_id,
+    NULL as contact_id,
+    we.message_sid,
+    we.payload as status
+  FROM webhook_events we
+  WHERE we.campaign_id IS NOT NULL
+    AND we.event_type = 'delivery_status'
+    AND NOT EXISTS (
+      SELECT 1 FROM campaign_contacts cc WHERE cc.twilio_sid = we.message_sid
+    )
+)
 SELECT
-  cc.campaign_id,
+  dd.campaign_id,
   c.name as campaign_name,
-  COUNT(DISTINCT cc.id) as total_sent,
-  COUNT(DISTINCT CASE WHEN we.payload = 'delivered' THEN we.message_sid END) as delivered,
-  COUNT(DISTINCT CASE WHEN we.payload = 'read' THEN we.message_sid END) as read,
-  COUNT(DISTINCT CASE WHEN we.payload IN ('failed', 'undelivered') THEN we.message_sid END) as failed,
+  COUNT(DISTINCT COALESCE(dd.contact_id::TEXT, dd.message_sid)) as total_sent,
+  COUNT(DISTINCT CASE WHEN dd.status = 'delivered' THEN dd.message_sid END) as delivered,
+  COUNT(DISTINCT CASE WHEN dd.status = 'read' THEN dd.message_sid END) as read,
+  COUNT(DISTINCT CASE WHEN dd.status IN ('failed', 'undelivered') THEN dd.message_sid END) as failed,
   ROUND(
-    COUNT(DISTINCT CASE WHEN we.payload = 'delivered' THEN we.message_sid END)::NUMERIC /
-    NULLIF(COUNT(DISTINCT cc.id), 0) * 100,
+    COUNT(DISTINCT CASE WHEN dd.status = 'delivered' THEN dd.message_sid END)::NUMERIC /
+    NULLIF(COUNT(DISTINCT COALESCE(dd.contact_id::TEXT, dd.message_sid)), 0) * 100,
     1
   ) as delivery_rate,
   ROUND(
-    COUNT(DISTINCT CASE WHEN we.payload = 'read' THEN we.message_sid END)::NUMERIC /
-    NULLIF(COUNT(DISTINCT CASE WHEN we.payload = 'delivered' THEN we.message_sid END), 0) * 100,
+    COUNT(DISTINCT CASE WHEN dd.status = 'read' THEN dd.message_sid END)::NUMERIC /
+    NULLIF(COUNT(DISTINCT CASE WHEN dd.status = 'delivered' THEN dd.message_sid END), 0) * 100,
     1
   ) as read_rate
-FROM campaign_contacts cc
-JOIN campaigns c ON c.id = cc.campaign_id
-LEFT JOIN webhook_events we ON we.message_sid = cc.twilio_sid
-  AND we.event_type = 'delivery_status'
-GROUP BY cc.campaign_id, c.name;
+FROM delivery_data dd
+JOIN campaigns c ON c.id = dd.campaign_id
+GROUP BY dd.campaign_id, c.name;
 
 -- ==================== HELPER FUNCTIONS ====================
 
