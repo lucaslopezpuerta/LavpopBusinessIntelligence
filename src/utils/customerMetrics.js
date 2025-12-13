@@ -572,6 +572,7 @@ export function getRFMCoordinates(customers) {
 /**
  * 2. Churn Histogram Data (Danger Zone)
  * Creates buckets for "Days Between Visits" to visualize drop-off
+ * v2.0: Now includes customerIds per bucket for contact tracking integration
  */
 export function getChurnHistogramData(customers) {
   // Filter for customers with > 1 visit to have a valid interval
@@ -588,11 +589,12 @@ export function getChurnHistogramData(customers) {
       min: i,
       max: i + bucketSize,
       count: 0,
+      customerIds: [], // v2.0: Track which customers are in each bucket
       label: i < 30 ? 'Safe' : i < 60 ? 'Warning' : 'Danger'
     });
   }
 
-  // Fill buckets
+  // Fill buckets with customer IDs
   validCustomers.forEach(c => {
     const days = c.avgDaysBetween;
     const bucketIndex = Math.min(
@@ -600,6 +602,7 @@ export function getChurnHistogramData(customers) {
       buckets.length - 1
     );
     buckets[bucketIndex].count++;
+    buckets[bucketIndex].customerIds.push(c.doc || c.id);
   });
 
   return buckets;
@@ -674,6 +677,8 @@ export function getRetentionCohorts(salesData) {
 /**
  * 4. Acquisition Trend (New Clients)
  * Groups new customers by their first visit date
+ * v2.0: Now includes customerIds per day for welcome campaign tracking
+ *       Also returns newCustomerIds for total new customer list
  */
 export function getAcquisitionTrend(customers, days = 30) {
   const now = new Date();
@@ -681,6 +686,7 @@ export function getAcquisitionTrend(customers, days = 30) {
   startDate.setDate(startDate.getDate() - days);
 
   const dailyCounts = {};
+  const newCustomerIds = []; // v2.0: Track all new customer IDs
 
   // Initialize all days with 0
   for (let i = 0; i <= days; i++) {
@@ -691,20 +697,29 @@ export function getAcquisitionTrend(customers, days = 30) {
     dailyCounts[dateStr] = {
       date: dateStr,
       displayDate: `${d.getDate()}/${d.getMonth() + 1}`,
-      count: 0
+      count: 0,
+      customerIds: [] // v2.0: Track which customers started on this day
     };
   }
 
-  // Count new customers
+  // Count new customers and collect IDs
   customers.forEach(c => {
     if (c.firstVisit && c.firstVisit >= startDate) {
+      const customerId = c.doc || c.id;
+      newCustomerIds.push(customerId);
+
       // Use formatDate for consistent local-timezone date keys
       const dateStr = formatDate(c.firstVisit);
       if (dailyCounts[dateStr]) {
         dailyCounts[dateStr].count++;
+        dailyCounts[dateStr].customerIds.push(customerId);
       }
     }
   });
 
-  return Object.values(dailyCounts);
+  // Return object with both daily data and total new customer list
+  return {
+    daily: Object.values(dailyCounts),
+    newCustomerIds
+  };
 }

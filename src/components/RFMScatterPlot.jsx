@@ -1,7 +1,13 @@
-// RFMScatterPlot.jsx v1.3 - RISK MAP WITH CLEAR EXPLANATION
-// Visual representation of customer value and recency
-// 
+// RFMScatterPlot.jsx v1.4 - CONTACT STATUS VISUALIZATION
+// Visual representation of customer value and recency with contact tracking
+//
 // CHANGELOG:
+// v1.4 (2025-12-13): Contact status visualization
+//   - NEW: Blue dashed stroke for contacted customers (pending in contact_tracking)
+//   - NEW: Tooltip shows contact status and campaign name
+//   - NEW: Legend indicating stroke meaning
+//   - NEW: Insight for contacted high-value customers
+//   - Accepts contactedIds and pendingContacts props from parent
 // v1.3 (2025-11-24): Added explanation for likelihood-based classification
 //   - NEW: Clear tooltip explaining why healthy customers can be in danger zone
 //   - IMPROVED: Updated insights to mention individual patterns
@@ -9,21 +15,36 @@
 // v1.1 (2025-11-24): Portuguese translations
 // v1.0 (2025-11-23): Initial implementation
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
 import { formatCurrency } from '../utils/numberUtils';
-import InsightBox from './ui/InsightBox'; // Unified component with both single and array API
+import InsightBox from './ui/InsightBox';
 
-const RFMScatterPlot = ({ data }) => {
+const RFMScatterPlot = ({ data, contactedIds = new Set(), pendingContacts = {} }) => {
     if (!data || data.length === 0) return null;
 
+    // Enrich data with contact status
+    const enrichedData = useMemo(() => {
+        return data.map(d => ({
+            ...d,
+            isContacted: contactedIds.has(String(d.id)),
+            contactInfo: pendingContacts[String(d.id)] || null
+        }));
+    }, [data, contactedIds, pendingContacts]);
+
     // Generate insights
-    const highValueAtRisk = data.filter(d => d.y > 500 && d.x > 30).length;
-    const champions = data.filter(d => d.y > 500 && d.x <= 20).length;
+    const highValueAtRisk = enrichedData.filter(d => d.y > 500 && d.x > 30).length;
+    const champions = enrichedData.filter(d => d.y > 500 && d.x <= 20).length;
+    const contactedHighValue = enrichedData.filter(d => d.y > 500 && d.x > 30 && d.isContacted).length;
+    const notContactedHighValue = highValueAtRisk - contactedHighValue;
+    const totalContacted = enrichedData.filter(d => d.isContacted).length;
 
     const insights = [];
-    if (highValueAtRisk > 0) {
-        insights.push({ type: 'warning', text: `⚠️ ${highValueAtRisk} clientes de alto valor (>R$500) estão em risco (>30 dias)` });
+    if (notContactedHighValue > 0) {
+        insights.push({ type: 'warning', text: `⚠️ ${notContactedHighValue} clientes de alto valor em risco ainda NÃO foram contactados` });
+    }
+    if (contactedHighValue > 0) {
+        insights.push({ type: 'info', text: `📨 ${contactedHighValue} clientes de alto valor em risco já foram contactados` });
     }
     if (champions > 0) {
         insights.push({ type: 'success', text: `🎯 ${champions} campeões identificados - mantenha o relacionamento` });
@@ -50,12 +71,21 @@ const RFMScatterPlot = ({ data }) => {
                 return labels[status] || status;
             };
 
+            // Format contact date
+            const formatContactDate = (isoDate) => {
+                if (!isoDate) return '';
+                const date = new Date(isoDate);
+                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            };
+
             return (
-                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
+                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs max-w-[220px]">
                     <p className="font-bold text-slate-800 dark:text-white mb-1">{d.name}</p>
                     <p className="text-slate-600 dark:text-slate-300">Gasto: <span className="font-semibold text-lavpop-blue dark:text-blue-400">{formatCurrency(d.y)}</span></p>
                     <p className="text-slate-600 dark:text-slate-300">Última visita: <span className="font-semibold text-red-500 dark:text-red-400">{d.x} dias atrás</span></p>
                     <p className="text-slate-600 dark:text-slate-300">Frequência: <span className="font-semibold text-lavpop-green dark:text-emerald-400">{d.r} visitas</span></p>
+
+                    {/* Risk Status Badge */}
                     <div className={`mt-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full w-fit ${d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
                         d.status === 'At Risk' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
                             d.status === 'Churning' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
@@ -63,6 +93,29 @@ const RFMScatterPlot = ({ data }) => {
                         }`}>
                         {getRiskLabel(d.status)}
                     </div>
+
+                    {/* Contact Status */}
+                    {d.isContacted && d.contactInfo && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                <span className="font-semibold">Contactado</span>
+                            </div>
+                            <p className="text-slate-500 dark:text-slate-400 text-[10px] mt-0.5">
+                                {d.contactInfo.campaign_name || 'Campanha'}
+                                {d.contactInfo.contacted_at && ` • ${formatContactDate(d.contactInfo.contacted_at)}`}
+                            </p>
+                        </div>
+                    )}
+                    {!d.isContacted && d.y > 500 && d.x > 30 && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-amber-600 dark:text-amber-400 text-[10px] font-medium">
+                                ⚡ Cliente de alto valor sem contato recente
+                            </p>
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -82,6 +135,29 @@ const RFMScatterPlot = ({ data }) => {
                     <span className="font-semibold text-green-600">Topo-Esquerda:</span> Campeões |
                     <span className="font-semibold text-red-500 ml-1">Topo-Direita:</span> Em Perigo
                 </p>
+
+                {/* Legend for contact status */}
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px]">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full bg-emerald-500/60"></div>
+                        <span className="text-slate-600 dark:text-slate-400">Saudável</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full bg-amber-500/60"></div>
+                        <span className="text-slate-600 dark:text-slate-400">Em Risco</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full bg-red-500/60"></div>
+                        <span className="text-slate-600 dark:text-slate-400">Crítico</span>
+                    </div>
+                    {totalContacted > 0 && (
+                        <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
+                            <div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dashed border-blue-500"></div>
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">Contactado ({totalContacted})</span>
+                        </div>
+                    )}
+                </div>
+
                 <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <p className="text-[10px] text-blue-700 dark:text-blue-300 font-medium">
                         💡 <span className="font-bold">Nota:</span> A classificação considera o padrão individual de cada cliente.
@@ -126,8 +202,8 @@ const RFMScatterPlot = ({ data }) => {
                             <Label value="Zona de Perigo (>30d)" position="insideTopRight" fill="#ef4444" fontSize={10} />
                         </ReferenceLine>
 
-                        <Scatter name="Clientes" data={data} fill="#8884d8">
-                            {data.map((entry, index) => (
+                        <Scatter name="Clientes" data={enrichedData} fill="#8884d8">
+                            {enrichedData.map((entry, index) => (
                                 <Cell
                                     key={`cell-${index}`}
                                     fill={
@@ -137,6 +213,9 @@ const RFMScatterPlot = ({ data }) => {
                                                     '#94a3b8'
                                     }
                                     fillOpacity={0.6}
+                                    stroke={entry.isContacted ? '#3b82f6' : 'transparent'}
+                                    strokeWidth={entry.isContacted ? 3 : 0}
+                                    strokeDasharray={entry.isContacted ? '4 2' : undefined}
                                 />
                             ))}
                         </Scatter>

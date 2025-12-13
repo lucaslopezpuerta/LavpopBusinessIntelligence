@@ -1,7 +1,11 @@
-// FilterBar.jsx v2.3 - REDESIGNED & RESPONSIVE
+// FilterBar.jsx v2.4 - EXCLUDE CONTACTED FILTER
 // Modern filter interface matching Design System
 //
 // CHANGELOG:
+// v2.4 (2025-12-13): Exclude contacted toggle
+//   - NEW: "Excluir Contactados" toggle pill to hide already-contacted customers
+//   - Integrates with contact tracking system
+//   - Helps prioritize outreach to uncontacted customers
 // v2.3 (2025-12-01): Removed sticky behavior
 //   - FilterBar no longer sticks to top when scrolling
 //   - Prevents conflict with CustomerSectionNavigation
@@ -18,7 +22,7 @@
 // v1.0 (2025-11-23): Initial implementation
 
 import React from 'react';
-import { Search, Download, ChevronDown, X, Filter } from 'lucide-react';
+import { Search, Download, ChevronDown, X, Filter, UserX } from 'lucide-react';
 
 const FilterBar = ({
     searchTerm,
@@ -31,16 +35,21 @@ const FilterBar = ({
     setSortBy,
     segments,
     onExport,
-    totalResults
+    totalResults,
+    // New: Exclude contacted filter
+    excludeContacted = false,
+    setExcludeContacted,
+    contactedCount = 0
 }) => {
     // Check if any filter is active
-    const hasActiveFilters = searchTerm || selectedSegment !== 'all' || selectedRisk !== 'all';
+    const hasActiveFilters = searchTerm || selectedSegment !== 'all' || selectedRisk !== 'all' || excludeContacted;
 
     // Clear all filters
     const handleClearFilters = () => {
         setSearchTerm('');
         setSelectedSegment('all');
         setSelectedRisk('all');
+        if (setExcludeContacted) setExcludeContacted(false);
     };
 
     return (
@@ -112,6 +121,33 @@ const FilterBar = ({
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
                     </div>
+
+                    {/* Exclude Contacted Toggle */}
+                    {setExcludeContacted && (
+                        <button
+                            onClick={() => setExcludeContacted(!excludeContacted)}
+                            aria-label={excludeContacted ? "Mostrar todos os clientes" : "Excluir clientes já contactados"}
+                            aria-pressed={excludeContacted}
+                            className={`
+                                flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm
+                                ${excludeContacted
+                                    ? 'bg-blue-600 text-white border border-blue-600 hover:bg-blue-700'
+                                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                                }
+                            `}
+                            title={excludeContacted ? `Mostrando apenas não contactados (${contactedCount} ocultos)` : "Excluir clientes já contactados"}
+                        >
+                            <UserX className="w-4 h-4" />
+                            <span className="hidden sm:inline">
+                                {excludeContacted ? 'Sem Contato' : 'Excluir Contactados'}
+                            </span>
+                            {excludeContacted && contactedCount > 0 && (
+                                <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                                    -{contactedCount}
+                                </span>
+                            )}
+                        </button>
+                    )}
 
                     {/* Sort */}
                     <div className="relative group flex-1 sm:flex-none min-w-[140px]">

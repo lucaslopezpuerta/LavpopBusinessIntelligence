@@ -792,8 +792,8 @@ export async function recordCampaignContact(campaignId, contactData) {
  */
 export async function getCampaignPerformance(campaignId = null) {
   try {
-    // Use the API actions for campaign performance
-    const data = await api.get('campaign_effectiveness', campaignId ? { campaign_id: campaignId } : {});
+    // Use campaign_performance view (has all campaign fields + return metrics)
+    const data = await api.get('campaign_performance', campaignId ? { id: campaignId } : {});
 
     if (campaignId && data.length > 0) {
       console.log(`[CampaignService] Loaded performance for campaign ${campaignId}`);

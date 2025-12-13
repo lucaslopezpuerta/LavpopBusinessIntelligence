@@ -2,6 +2,14 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 3.0 (2025-12-13) - Campaign performance view integration
+//   - Added campaign_performance.getAll to fetch all campaigns with return metrics
+//   - Used by CampaignList to display campaigns (replaces campaign_effectiveness query)
+//
+// Version: 2.9 (2025-12-13) - Fixed contacts.getAll response key mismatch
+//   - getContactTracking now returns both 'contacts' and 'contact_tracking' keys
+//   - Fixes checkmarks not showing (frontend expects 'contacts', backend returned 'contact_tracking')
+//
 // Version: 2.8 (2025-12-13) - Configurable coupon validity for manual campaigns
 //   - recordCampaignContactWithTracking now accepts couponValidityDays parameter
 //   - expires_at calculated as couponValidityDays + 3 day buffer (matches SQL function)
@@ -243,6 +251,9 @@ exports.handler = async (event, context) => {
       case 'campaign_contacts.record':
         return await recordCampaignContactWithTracking(supabase, data, headers);
 
+      case 'campaign_performance.getAll':
+        return await getAllCampaignPerformance(supabase, headers);
+
       case 'campaign_performance.get':
         return await getCampaignPerformance(supabase, params.campaign_id || id, headers);
 
@@ -309,7 +320,8 @@ exports.handler = async (event, context) => {
               'logs.getAll', 'logs.add', 'logs.getByPhone',
               'automation.getAll', 'automation.save',
               'campaign_effectiveness.getAll', 'contact_effectiveness_summary.getAll',
-              'campaign_contacts.getAll', 'campaign_contacts.record', 'campaign_performance.get',
+              'campaign_contacts.getAll', 'campaign_contacts.record',
+              'campaign_performance.getAll', 'campaign_performance.get',
               'contact_tracking.getAll', 'contact_tracking.create', 'contact_tracking.update',
               'contact_tracking.record', 'contact_tracking.markReturned',
               'contacts.getAll', 'contacts.create', 'contacts.clear',  // v2.7: Backend-only checkmarks
@@ -516,8 +528,7 @@ async function createCampaign(supabase, campaignData, headers) {
     status: 'draft',
     sends: 0,
     delivered: 0,
-    opened: 0,
-    converted: 0,
+    // Note: 'opened' and 'converted' columns removed in schema cleanup v3.13
     // Store full campaign details for analytics
     message_body: campaignData.messageBody || null,
     contact_method: campaignData.contactMethod || 'whatsapp',
@@ -982,6 +993,7 @@ async function migrateFromLocalStorage(supabase, data, headers) {
   }
 
   // Migrate campaigns
+  // Note: 'opened' and 'converted' columns removed in schema cleanup v3.13
   if (data.campaigns && data.campaigns.length > 0) {
     try {
       const { error } = await supabase
@@ -995,8 +1007,6 @@ async function migrateFromLocalStorage(supabase, data, headers) {
           status: c.status,
           sends: c.sends,
           delivered: c.delivered,
-          opened: c.opened,
-          converted: c.converted,
           created_at: c.createdAt,
           updated_at: c.updatedAt,
           last_sent_at: c.lastSentAt
@@ -1211,6 +1221,40 @@ async function getCampaignContacts(supabase, campaignId, headers) {
     statusCode: 200,
     headers,
     body: JSON.stringify(data || [])
+  };
+}
+
+/**
+ * Get all campaigns with performance metrics from campaign_performance view
+ * Used by CampaignList to display campaigns with return rates
+ */
+async function getAllCampaignPerformance(supabase, headers) {
+  // Query the campaign_performance view for all campaigns
+  const { data, error } = await supabase
+    .from('campaign_performance')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    // If view doesn't exist, return empty array (graceful fallback)
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      console.log('[API] campaign_performance view not found, returning empty array');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ campaign_performance: [] })
+      };
+    }
+    throw error;
+  }
+
+  console.log(`[API] getAllCampaignPerformance: Loaded ${data?.length || 0} campaigns`);
+
+  // Return with key matching table name for api.get() compatibility
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ campaign_performance: data || [] })
   };
 }
 
@@ -1545,7 +1589,8 @@ async function getContactTracking(supabase, params, headers) {
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify({ contact_tracking: data || [] })
+    // Return both keys for compatibility: contact_tracking (legacy) and contacts (v2.7+)
+    body: JSON.stringify({ contact_tracking: data || [], contacts: data || [] })
   };
 }
 

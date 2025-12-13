@@ -1,7 +1,25 @@
-// Customers View v2.8.0 - UNIFIED HEADER
+// Customers View v3.2.0 - KPI CARD PILLS
 // Complete redesign from card-based list to Intelligence Hub
 //
 // CHANGELOG:
+// v3.2.0 (2025-12-13): Informative pills on KPI cards
+//   - NEW: "X sem contato" pill on Em Risco card (priority action)
+//   - NEW: "X% boas-vindas" pill on Novos Clientes card (welcome coverage)
+//   - Calculates at-risk customers without contact for outreach prioritization
+//   - Design System v3.1 compliant pill styling
+// v3.1.0 (2025-12-13): Exclude contacted filter in directory
+//   - NEW: "Excluir Contactados" toggle in FilterBar
+//   - Hides already-contacted customers to prioritize outreach
+//   - Shows count of hidden contacted customers
+// v3.0.0 (2025-12-13): Enhanced chart integrations
+//   - ChurnHistogram: Pass contactedIds and customerSpending for contact/revenue tracking
+//   - NewClientsChart: Pass welcome contacts and returned customers for insights
+//   - Computes customerSpending map for revenue at risk calculation
+//   - Filters contacts by campaign_type for welcome coverage metrics
+// v2.9.0 (2025-12-13): Contact status visualization in RFM scatter plot
+//   - Added useContactTracking hook to get pending contact status
+//   - Pass contactedIds and pendingContacts to RFMScatterPlot
+//   - Enables visual distinction for contacted customers
 // v2.8.0 (2025-12-02): Unified header design
 //   - Added icon box with left border accent (purple)
 //   - Consistent styling across all app views
@@ -51,6 +69,7 @@ import CustomerCard from '../components/CustomerCard';
 import FilterBar from '../components/FilterBar';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import CustomerSectionNavigation from '../components/customers/CustomerSectionNavigation';
+import { useContactTracking } from '../hooks/useContactTracking';
 
 const Customers = ({ data }) => {
   // State
@@ -58,9 +77,36 @@ const Customers = ({ data }) => {
   const [selectedSegment, setSelectedSegment] = useState('all');
   const [selectedRisk, setSelectedRisk] = useState('all');
   const [sortBy, setSortBy] = useState('spending');
+  const [excludeContacted, setExcludeContacted] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  // Contact tracking for charts visualization
+  const { contactedIds, pendingContacts } = useContactTracking();
+
+  // Derive welcome campaign contacts (campaign_type === 'welcome')
+  const welcomeContactedIds = useMemo(() => {
+    const ids = new Set();
+    Object.entries(pendingContacts).forEach(([customerId, contact]) => {
+      if (contact.campaign_type === 'welcome' || contact.campaign_type === 'post_visit') {
+        ids.add(customerId);
+      }
+    });
+    return ids;
+  }, [pendingContacts]);
+
+  // Derive returned customers (from contacts with status='returned')
+  // Note: This requires the backend to track returned status
+  const returnedCustomerIds = useMemo(() => {
+    const ids = new Set();
+    Object.entries(pendingContacts).forEach(([customerId, contact]) => {
+      if (contact.status === 'returned') {
+        ids.add(customerId);
+      }
+    });
+    return ids;
+  }, [pendingContacts]);
 
   // 1. Calculate Base Metrics
   const metrics = useMemo(() => {
@@ -79,6 +125,42 @@ const Customers = ({ data }) => {
     };
   }, [metrics, data]);
 
+  // 2b. Customer spending map for revenue at risk calculation
+  const customerSpending = useMemo(() => {
+    if (!metrics?.activeCustomers) return {};
+    const map = {};
+    metrics.activeCustomers.forEach(c => {
+      map[c.doc || c.id] = c.netTotal || 0;
+    });
+    return map;
+  }, [metrics]);
+
+  // 2c. KPI Card Pills - Calculate contextual metrics for informative pills
+  const kpiPills = useMemo(() => {
+    if (!metrics) return {};
+
+    // At-risk customers (At Risk + Churning) WITHOUT contact
+    const atRiskCustomers = metrics.activeCustomers.filter(
+      c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning'
+    );
+    const atRiskWithoutContact = atRiskCustomers.filter(
+      c => !contactedIds.has(String(c.doc))
+    ).length;
+
+    // New customers (last 30 days) with welcome coverage
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const newCustomers = metrics.activeCustomers.filter(c => c.firstVisit && c.firstVisit >= thirtyDaysAgo);
+    const newWithWelcome = newCustomers.filter(c => welcomeContactedIds.has(String(c.doc))).length;
+    const welcomePct = newCustomers.length > 0 ? Math.round((newWithWelcome / newCustomers.length) * 100) : 0;
+
+    return {
+      atRiskWithoutContact,
+      welcomePct,
+      newCustomersTotal: newCustomers.length
+    };
+  }, [metrics, contactedIds, welcomeContactedIds]);
+
   // 3. Calculate New Clients (last 30 days based on first visit)
   const newClientsCount = useMemo(() => {
     if (!metrics?.activeCustomers) return 0;
@@ -92,8 +174,8 @@ const Customers = ({ data }) => {
   }, [metrics]);
 
   // 3. Filter & Sort Customers
-  const filteredCustomers = useMemo(() => {
-    if (!metrics) return [];
+  const { filteredCustomers, contactedInResults } = useMemo(() => {
+    if (!metrics) return { filteredCustomers: [], contactedInResults: 0 };
 
     // ✅ FIX: Show ALL customers (including Lost), not just active
     // IMPORTANT: Spread operator creates new array so React detects sort changes
@@ -119,6 +201,14 @@ const Customers = ({ data }) => {
       result = result.filter(c => c.riskLevel === selectedRisk);
     }
 
+    // Count contacted in current results (before excluding)
+    const contacted = result.filter(c => contactedIds.has(String(c.doc))).length;
+
+    // Exclude Contacted Filter
+    if (excludeContacted) {
+      result = result.filter(c => !contactedIds.has(String(c.doc)));
+    }
+
     // Sort
     result.sort((a, b) => {
       switch (sortBy) {
@@ -132,8 +222,8 @@ const Customers = ({ data }) => {
       }
     });
 
-    return result;
-  }, [metrics, searchTerm, selectedSegment, selectedRisk, sortBy]);
+    return { filteredCustomers: result, contactedInResults: contacted };
+  }, [metrics, searchTerm, selectedSegment, selectedRisk, sortBy, excludeContacted, contactedIds]);
 
   // Get unique segments for filter
   const segments = useMemo(() => {
@@ -153,7 +243,7 @@ const Customers = ({ data }) => {
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedSegment, selectedRisk, sortBy]);
+  }, [searchTerm, selectedSegment, selectedRisk, sortBy, excludeContacted]);
 
   // Export Handler
   const handleExport = () => {
@@ -231,6 +321,10 @@ const Customers = ({ data }) => {
             subtitle="Últimos 30 dias"
             icon={UserPlus}
             color="purple"
+            pill={kpiPills.newCustomersTotal > 0 ? {
+              text: `${kpiPills.welcomePct}% boas-vindas`,
+              variant: kpiPills.welcomePct >= 80 ? 'success' : 'warning'
+            } : undefined}
           />
           <SecondaryKPICard
             title="Clientes Ativos"
@@ -245,6 +339,10 @@ const Customers = ({ data }) => {
             subtitle="Risco + Crítico"
             icon={AlertTriangle}
             color="red"
+            pill={kpiPills.atRiskWithoutContact > 0 ? {
+              text: `${kpiPills.atRiskWithoutContact} sem contato`,
+              variant: 'warning'
+            } : undefined}
           />
           <SecondaryKPICard
             title="Taxa de Saúde"
@@ -288,13 +386,21 @@ const Customers = ({ data }) => {
             <CustomerRetentionScore data={intelligence.retention} />
           </div>
           <div className="h-full">
-            <RFMScatterPlot data={intelligence.rfm} />
+            <RFMScatterPlot data={intelligence.rfm} contactedIds={contactedIds} pendingContacts={pendingContacts} />
           </div>
           <div className="h-full">
-            <ChurnHistogram data={intelligence.histogram} />
+            <ChurnHistogram
+              data={intelligence.histogram}
+              contactedIds={contactedIds}
+              customerSpending={customerSpending}
+            />
           </div>
           <div className="h-full">
-            <NewClientsChart data={intelligence.acquisition} />
+            <NewClientsChart
+              data={intelligence.acquisition}
+              welcomeContactedIds={welcomeContactedIds}
+              returnedCustomerIds={returnedCustomerIds}
+            />
           </div>
         </div>
       </section>
@@ -319,18 +425,21 @@ const Customers = ({ data }) => {
         {/* Directory Content Container */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
           <FilterBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          selectedSegment={selectedSegment}
-          setSelectedSegment={setSelectedSegment}
-          selectedRisk={selectedRisk}
-          setSelectedRisk={setSelectedRisk}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          segments={segments}
-          onExport={handleExport}
-          totalResults={filteredCustomers.length}
-        />
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            selectedSegment={selectedSegment}
+            setSelectedSegment={setSelectedSegment}
+            selectedRisk={selectedRisk}
+            setSelectedRisk={setSelectedRisk}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            segments={segments}
+            onExport={handleExport}
+            totalResults={filteredCustomers.length}
+            excludeContacted={excludeContacted}
+            setExcludeContacted={setExcludeContacted}
+            contactedCount={contactedInResults}
+          />
 
         {filteredCustomers.length > 0 ? (
           <>

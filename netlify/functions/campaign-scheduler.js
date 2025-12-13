@@ -2,6 +2,12 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.6 (2025-12-13): Scheduled return processing (4x daily)
+//   - Changed processCampaignReturns() to run only 4 times per day
+//   - Runs at 00:00, 06:00, 12:00, 18:00 Brazil time
+//   - Added shouldRunReturnsProcessing() helper function
+//   - Reduces database load while maintaining timely return detection
+//
 // v2.5 (2025-12-13): Unified eligibility for automations
 //   - Replaced automation_sends-based cooldown with unified is_customer_contactable()
 //   - Uses check_customers_eligibility() RPC for batch eligibility checking
@@ -203,17 +209,25 @@ exports.handler = async (event, context) => {
     // Process automation rules after scheduled campaigns
     const automationResults = await processAutomationRules(supabase);
 
-    // v2.4: Run campaign return detection and coupon linking
+    // v2.4 + v2.6: Run campaign return detection and coupon linking
+    // Now runs only 4 times per day (00:00, 06:00, 12:00, 18:00 Brazil time)
     // This closes the feedback loop by:
     // 1. Detecting customer returns (comparing last_visit with contacted_at)
     // 2. Linking coupon redemptions to campaigns
     // 3. Expiring old pending contacts
-    const returnResults = await processCampaignReturns(supabase);
+    let returnResults = { returns_detected: 0, coupons_linked: 0, contacts_expired: 0, skipped: false };
+    if (shouldRunReturnsProcessing()) {
+      console.log('Running campaign return processing (scheduled 4x daily)...');
+      returnResults = await processCampaignReturns(supabase);
+    } else {
+      returnResults.skipped = true;
+      console.log('Skipping campaign return processing (not scheduled time)');
+    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `Processed ${results.length} campaigns, ${automationResults.processed} automation rules, ${returnResults.returns_detected} returns detected`,
+        message: `Processed ${results.length} campaigns, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}`,
         campaigns: results,
         automation: automationResults,
         returns: returnResults
@@ -363,6 +377,26 @@ function isSendDayAllowed(sendDays) {
 function getBrazilDateString() {
   const brazilNow = getBrazilNow();
   return brazilNow.toISOString().split('T')[0];
+}
+
+/**
+ * Check if it's time to run campaign return processing
+ * Runs 4 times per day: 00:00, 06:00, 12:00, 18:00 Brazil time
+ * Since scheduler runs every 5 minutes, we trigger when:
+ * - Hour is 0, 6, 12, or 18
+ * - Minutes are < 5 (first 5-minute window of the hour)
+ * @returns {boolean} True if it's time to run return processing
+ */
+function shouldRunReturnsProcessing() {
+  const brazilNow = getBrazilNow();
+  const hour = brazilNow.getHours();
+  const minute = brazilNow.getMinutes();
+
+  const targetHours = [0, 6, 12, 18];
+  const isTargetHour = targetHours.includes(hour);
+  const isFirstWindow = minute < 5;
+
+  return isTargetHour && isFirstWindow;
 }
 
 /**

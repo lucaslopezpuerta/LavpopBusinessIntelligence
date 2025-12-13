@@ -1,10 +1,29 @@
 # Campaigns Tab - Technical Documentation
 
-**Version:** 3.3.0
+**Version:** 3.4.0
 **Last Updated:** 2025-12-13
 **File:** `src/views/Campaigns.jsx`
 
 ## Changelog
+
+**v3.4.0 (2025-12-13):**
+- **Auto-refresh Triggers (Schema v3.14):**
+  - Customer metrics now update automatically when transactions are inserted
+  - No more manual "Sincronizar Metricas" clicks required after sales uploads
+  - Triggers: `trg_update_customer_after_transaction`, `trg_calculate_customer_risk`
+  - Computes: `last_visit`, `transaction_count`, `total_spent`, `avg_days_between`, `risk_level`
+- **Smart Customer Upsert:**
+  - Handles full customer list uploads (entire POS export) without data regression
+  - Profile fields (nome, telefone, email, saldo_carteira): Always update
+  - Date fields (first_visit, last_visit): Use GREATEST (won't regress to older dates)
+  - Count fields (transaction_count, total_spent): Use GREATEST (won't regress to lower values)
+  - Computed fields (risk_level, avg_days_between): Never touched (triggers handle)
+  - Falls back to simple upsert if RPC not available
+- **Smart Data Refresh (App.jsx v7.0):**
+  - Visibility-based refresh: Auto-refresh when returning to tab after 5+ minutes
+  - Auto-refresh every 10 minutes while tab is active
+  - Silent background refresh (no loading spinner)
+  - DataFreshnessProvider for app-wide refresh triggers
 
 **v3.3.0 (2025-12-13):**
 - **Unified Manual Campaign Flow:**
@@ -825,13 +844,17 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 | `src/utils/apiService.js` | API client with delivery methods |
 | `src/utils/phoneUtils.js` | Phone validation |
 | `src/utils/dateUtils.js` | Brazil timezone utilities |
+| `src/utils/supabaseUploader.js` | CSV upload with smart customer upsert (v1.1) |
+| `src/contexts/DataFreshnessContext.jsx` | App-wide data refresh context (v1.0) |
+| `src/App.jsx` | Smart data refresh system (v7.0) |
 | `netlify/functions/twilio-whatsapp.js` | Twilio send API integration |
 | `netlify/functions/twilio-webhook.js` | Twilio delivery status webhook (v1.1) |
 | `netlify/functions/supabase-api.js` | Supabase API endpoints (v2.6) |
-| `netlify/functions/campaign-scheduler.js` | Scheduled campaign & automation executor (v2.2) |
-| `supabase/migrations/add_automation_controls.sql` | Automation schema migration (v1) |
-| `supabase/migrations/add_enhanced_automation_controls.sql` | Enhanced controls migration (v6.0) |
-| `supabase/migrations/unify_automations_as_campaigns.sql` | Unified automation-campaign model (v3.0) |
+| `netlify/functions/campaign-scheduler.js` | Scheduled campaign & automation executor (v2.6) |
+| `supabase/schema.sql` | Main database schema (v3.14) |
+| `supabase/migrations/001_schema_cleanup.sql` | Schema cleanup migration |
+| `supabase/migrations/002_auto_refresh_triggers.sql` | Auto-refresh triggers for customer metrics |
+| `supabase/migrations/003_smart_customer_upsert.sql` | Smart customer upsert functions |
 
 ---
 
@@ -839,6 +862,7 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v3.4.0 | 2025-12-13 | **Auto-refresh Triggers + Smart Upsert**: Customer metrics auto-update on transaction insert, smart customer upsert prevents data regression, App.jsx v7.0 visibility-based refresh |
 | v3.3.0 | 2025-12-13 | **Unified Manual Campaign Flow**: Manual campaigns now use same flow as automations (send first, then record), twilio_sid stored in campaign_contacts, delivery metrics work for manual campaigns |
 | v3.2.0 | 2025-12-12 | **Enhanced Automation Controls (v6.0)**: Send time windows, day-of-week restrictions, daily rate limits, exclude recent visitors, min spend threshold, wallet balance max |
 | v3.1.0 | 2025-12-12 | **Unified risk_level targeting**: risk_level column computed by Supabase, 100% consistency with frontend |

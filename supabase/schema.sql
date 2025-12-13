@@ -1,6 +1,24 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.12 (2025-12-13)
+-- Version: 3.14 (2025-12-13)
+--
+-- v3.14: Auto-refresh Triggers + Smart Customer Upsert
+--   - Added auto-refresh triggers on transactions table (see migrations/002_auto_refresh_triggers.sql)
+--   - Triggers automatically update customer metrics when transactions are inserted
+--   - Added upsert_customer_profile() and upsert_customer_profiles_batch() for smart CSV imports
+--   - Smart upsert uses GREATEST for dates/counts to prevent data regression
+--   - Eliminates need for manual "Sincronizar Metricas" clicks after transaction imports
+--
+-- v3.13: Schema Cleanup (audit-driven)
+--   - REMOVED: campaigns.recipient_snapshot (never populated)
+--   - REMOVED: campaigns.created_by (no user auth system)
+--   - REMOVED: campaigns.error_message (errors tracked in campaign_contacts)
+--   - REMOVED: campaigns.scheduled_for (uses scheduled_campaigns table instead)
+--   - REMOVED: campaigns.opened (never updated, no webhook tracking)
+--   - REMOVED: campaigns.converted (never updated, no conversion tracking)
+--   - REMOVED: comm_logs.expires_at (expiration in contact_tracking instead)
+--   - ADDED: Unique index on campaign_contacts.twilio_sid for webhook lookups
+--   - See supabase/migrations/001_schema_cleanup.sql for migration
 --
 -- v3.12: Unified Contact Eligibility System
 --   - Added campaign_type column to contact_tracking for type-based cooldowns
@@ -238,6 +256,8 @@ CREATE INDEX IF NOT EXISTS idx_blacklist_added_at ON blacklist(added_at DESC);
 
 -- ==================== CAMPAIGNS TABLE ====================
 -- Campaign definitions and aggregate statistics
+-- v3.13: Removed unused columns (recipient_snapshot, created_by, error_message,
+--        scheduled_for, opened, converted) - see migrations/001_schema_cleanup.sql
 
 CREATE TABLE IF NOT EXISTS campaigns (
   id TEXT PRIMARY KEY,              -- Format: CAMP_1234567890
@@ -247,17 +267,11 @@ CREATE TABLE IF NOT EXISTS campaigns (
   audience_count INT DEFAULT 0,
   status TEXT DEFAULT 'draft',      -- draft, active, paused, completed, scheduled
   sends INT DEFAULT 0,              -- Total successful sends
-  delivered INT DEFAULT 0,          -- Confirmed deliveries
-  opened INT DEFAULT 0,             -- Opens (if trackable)
-  converted INT DEFAULT 0,          -- Conversions
+  delivered INT DEFAULT 0,          -- Confirmed deliveries (used in campaign_performance view)
   -- Enhanced fields for full campaign management
   message_body TEXT,                -- The actual WhatsApp message to send
   contact_method TEXT DEFAULT 'whatsapp',  -- whatsapp, sms, email
   target_segments JSONB,            -- {"segments": ["atRisk"], "walletMin": 10}
-  scheduled_for TIMESTAMPTZ,        -- Scheduled execution time (null = immediate)
-  recipient_snapshot JSONB,         -- Store recipient details at send time
-  created_by TEXT,                  -- Who created the campaign
-  error_message TEXT,               -- Error tracking for failed campaigns
   -- A/B Testing fields for discount effectiveness analysis
   discount_percent NUMERIC(5,2),    -- Discount % offered (e.g., 20.00)
   coupon_code TEXT,                 -- POS coupon code used (e.g., 'VOLTE20')
@@ -360,6 +374,9 @@ CREATE TABLE IF NOT EXISTS campaign_contacts (
 CREATE INDEX IF NOT EXISTS idx_campaign_contacts_campaign_id ON campaign_contacts(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_contacts_customer_id ON campaign_contacts(customer_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_contacts_status ON campaign_contacts(delivery_status);
+-- v3.13: Unique index for webhook lookups by Twilio message SID
+CREATE UNIQUE INDEX IF NOT EXISTS idx_campaign_contacts_twilio_sid
+ON campaign_contacts(twilio_sid) WHERE twilio_sid IS NOT NULL;
 
 -- ==================== SCHEDULED CAMPAIGNS TABLE ====================
 -- Campaigns scheduled for future execution
@@ -383,6 +400,7 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_created_at ON scheduled_campaigns(creat
 
 -- ==================== COMMUNICATION LOGS TABLE ====================
 -- Audit trail of all communications
+-- v3.13: Removed expires_at (expiration logic in contact_tracking table)
 
 CREATE TABLE IF NOT EXISTS comm_logs (
   id SERIAL PRIMARY KEY,
@@ -397,8 +415,7 @@ CREATE TABLE IF NOT EXISTS comm_logs (
   -- Additional fields for contact tracking and communication logging
   type TEXT DEFAULT 'communication', -- communication, contact_tracking
   method TEXT,                      -- call, whatsapp, email, manual, note
-  notes TEXT,                       -- Communication notes/description
-  expires_at TIMESTAMPTZ            -- For contact tracking expiration (7 days)
+  notes TEXT                        -- Communication notes/description
 );
 
 CREATE INDEX IF NOT EXISTS idx_comm_logs_phone ON comm_logs(phone);
@@ -1817,6 +1834,262 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ==================== AUTO-REFRESH TRIGGERS (v3.14) ====================
+-- Automatically update customer metrics when transactions are inserted
+-- Eliminates the need for manual "Sincronizar Metricas" clicks
+
+-- Helper function: Calculate avg_days_between for a customer
+CREATE OR REPLACE FUNCTION calculate_avg_days_between_trigger(p_customer_id TEXT)
+RETURNS NUMERIC AS $$
+DECLARE
+  v_avg_days NUMERIC;
+BEGIN
+  WITH visit_dates AS (
+    SELECT DISTINCT DATE(data_hora) as visit_date
+    FROM transactions
+    WHERE doc_cliente = p_customer_id
+      AND data_hora IS NOT NULL
+    ORDER BY visit_date
+  ),
+  visit_gaps AS (
+    SELECT
+      visit_date,
+      LAG(visit_date) OVER (ORDER BY visit_date) as prev_visit,
+      visit_date - LAG(visit_date) OVER (ORDER BY visit_date) as days_gap
+    FROM visit_dates
+  )
+  SELECT COALESCE(AVG(days_gap), 30) INTO v_avg_days
+  FROM visit_gaps
+  WHERE days_gap IS NOT NULL AND days_gap > 0;
+
+  RETURN COALESCE(v_avg_days, 30);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Helper function: Calculate risk_level for triggers
+CREATE OR REPLACE FUNCTION calculate_risk_level_trigger(
+  p_days_since_last_visit INTEGER,
+  p_avg_days_between NUMERIC,
+  p_transaction_count INTEGER
+)
+RETURNS TEXT AS $$
+DECLARE
+  v_ratio NUMERIC;
+BEGIN
+  IF p_transaction_count <= 1 THEN
+    RETURN 'New Customer';
+  END IF;
+
+  IF p_days_since_last_visit IS NULL THEN
+    RETURN 'Unknown';
+  END IF;
+
+  v_ratio := p_days_since_last_visit::NUMERIC / NULLIF(p_avg_days_between, 0);
+
+  IF v_ratio <= 1.2 THEN
+    RETURN 'Healthy';
+  ELSIF v_ratio <= 2.0 THEN
+    RETURN 'At Risk';
+  ELSIF v_ratio <= 3.0 THEN
+    RETURN 'Churning';
+  ELSE
+    RETURN 'Lost';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function: Update customer after transaction insert
+CREATE OR REPLACE FUNCTION update_customer_after_transaction()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_customer_id TEXT;
+  v_tx_date DATE;
+  v_tx_value NUMERIC;
+  v_avg_days NUMERIC;
+  v_days_since INTEGER;
+BEGIN
+  v_customer_id := NEW.doc_cliente;
+  v_tx_date := DATE(NEW.data_hora);
+  v_tx_value := COALESCE(NEW.valor_venda, 0);
+
+  IF v_customer_id IS NULL OR v_customer_id = '' THEN
+    RETURN NEW;
+  END IF;
+
+  v_avg_days := calculate_avg_days_between_trigger(v_customer_id);
+  v_days_since := CURRENT_DATE - v_tx_date;
+
+  UPDATE customers
+  SET
+    last_visit = GREATEST(COALESCE(last_visit, v_tx_date), v_tx_date),
+    transaction_count = COALESCE(transaction_count, 0) + 1,
+    total_spent = CASE
+      WHEN NEW.transaction_type IN ('TYPE_1', 'TYPE_3')
+      THEN COALESCE(total_spent, 0) + v_tx_value
+      ELSE COALESCE(total_spent, 0)
+    END,
+    avg_days_between = v_avg_days,
+    days_since_last_visit = CURRENT_DATE - GREATEST(COALESCE(last_visit, v_tx_date), v_tx_date),
+    risk_level = calculate_risk_level_trigger(
+      CURRENT_DATE - GREATEST(COALESCE(last_visit, v_tx_date), v_tx_date),
+      v_avg_days,
+      COALESCE(transaction_count, 0) + 1
+    ),
+    updated_at = NOW()
+  WHERE doc = v_customer_id;
+
+  IF NOT FOUND THEN
+    INSERT INTO customers (
+      doc, nome, telefone, first_visit, last_visit,
+      transaction_count, total_spent, avg_days_between,
+      days_since_last_visit, risk_level, source, created_at, updated_at
+    ) VALUES (
+      v_customer_id, NEW.nome_cliente, NEW.telefone, v_tx_date, v_tx_date,
+      1, CASE WHEN NEW.transaction_type IN ('TYPE_1', 'TYPE_3') THEN v_tx_value ELSE 0 END,
+      30, v_days_since, 'New Customer', 'auto_created', NOW(), NOW()
+    )
+    ON CONFLICT (doc) DO UPDATE SET
+      last_visit = GREATEST(customers.last_visit, EXCLUDED.last_visit),
+      transaction_count = customers.transaction_count + 1,
+      total_spent = customers.total_spent + EXCLUDED.total_spent,
+      updated_at = NOW();
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function: Calculate customer risk on insert/update
+CREATE OR REPLACE FUNCTION calculate_customer_risk_on_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.last_visit IS NOT NULL THEN
+    NEW.days_since_last_visit := CURRENT_DATE - NEW.last_visit;
+  END IF;
+
+  NEW.risk_level := calculate_risk_level_trigger(
+    NEW.days_since_last_visit,
+    COALESCE(NEW.avg_days_between, 30),
+    COALESCE(NEW.transaction_count, 1)
+  );
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ==================== SMART CUSTOMER UPSERT (v3.14) ====================
+-- Handles full customer list uploads without regressing computed data
+-- Profile fields: always update
+-- Date fields: use GREATEST (won't regress to older dates)
+-- Count fields: use GREATEST (won't regress to lower values)
+-- Computed fields: never touch (triggers handle)
+
+CREATE OR REPLACE FUNCTION upsert_customer_profile(
+  p_doc TEXT,
+  p_nome TEXT DEFAULT NULL,
+  p_telefone TEXT DEFAULT NULL,
+  p_email TEXT DEFAULT NULL,
+  p_data_cadastro TIMESTAMPTZ DEFAULT NULL,
+  p_saldo_carteira NUMERIC DEFAULT 0,
+  p_first_visit DATE DEFAULT NULL,
+  p_last_visit DATE DEFAULT NULL,
+  p_transaction_count INTEGER DEFAULT 0,
+  p_total_spent NUMERIC DEFAULT 0,
+  p_source TEXT DEFAULT 'manual_upload'
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_result JSONB;
+  v_action TEXT;
+BEGIN
+  IF EXISTS (SELECT 1 FROM customers WHERE doc = p_doc) THEN
+    UPDATE customers SET
+      nome = COALESCE(p_nome, nome),
+      telefone = COALESCE(p_telefone, telefone),
+      email = COALESCE(p_email, email),
+      data_cadastro = COALESCE(p_data_cadastro, data_cadastro),
+      saldo_carteira = COALESCE(p_saldo_carteira, saldo_carteira),
+      first_visit = COALESCE(
+        LEAST(COALESCE(first_visit, p_first_visit), COALESCE(p_first_visit, first_visit)),
+        first_visit,
+        p_first_visit
+      ),
+      last_visit = GREATEST(
+        COALESCE(last_visit, p_last_visit),
+        COALESCE(p_last_visit, last_visit)
+      ),
+      transaction_count = GREATEST(
+        COALESCE(transaction_count, 0),
+        COALESCE(p_transaction_count, 0)
+      ),
+      total_spent = GREATEST(
+        COALESCE(total_spent, 0),
+        COALESCE(p_total_spent, 0)
+      ),
+      updated_at = NOW()
+    WHERE doc = p_doc;
+
+    v_action := 'updated';
+  ELSE
+    INSERT INTO customers (
+      doc, nome, telefone, email, data_cadastro, saldo_carteira,
+      first_visit, last_visit, transaction_count, total_spent,
+      source, created_at, updated_at
+    ) VALUES (
+      p_doc, p_nome, p_telefone, p_email, p_data_cadastro,
+      COALESCE(p_saldo_carteira, 0), p_first_visit, p_last_visit,
+      COALESCE(p_transaction_count, 0), COALESCE(p_total_spent, 0),
+      p_source, NOW(), NOW()
+    );
+
+    v_action := 'inserted';
+  END IF;
+
+  v_result := jsonb_build_object('doc', p_doc, 'action', v_action);
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Batch version for better performance
+CREATE OR REPLACE FUNCTION upsert_customer_profiles_batch(p_customers JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_customer JSONB;
+  v_inserted INTEGER := 0;
+  v_updated INTEGER := 0;
+  v_result JSONB;
+BEGIN
+  FOR v_customer IN SELECT * FROM jsonb_array_elements(p_customers)
+  LOOP
+    SELECT upsert_customer_profile(
+      p_doc := v_customer->>'doc',
+      p_nome := v_customer->>'nome',
+      p_telefone := v_customer->>'telefone',
+      p_email := v_customer->>'email',
+      p_data_cadastro := (v_customer->>'data_cadastro')::TIMESTAMPTZ,
+      p_saldo_carteira := COALESCE((v_customer->>'saldo_carteira')::NUMERIC, 0),
+      p_first_visit := (v_customer->>'first_visit')::DATE,
+      p_last_visit := (v_customer->>'last_visit')::DATE,
+      p_transaction_count := COALESCE((v_customer->>'transaction_count')::INTEGER, 0),
+      p_total_spent := COALESCE((v_customer->>'total_spent')::NUMERIC, 0),
+      p_source := COALESCE(v_customer->>'source', 'manual_upload')
+    ) INTO v_result;
+
+    IF v_result->>'action' = 'inserted' THEN
+      v_inserted := v_inserted + 1;
+    ELSE
+      v_updated := v_updated + 1;
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'inserted', v_inserted,
+    'updated', v_updated,
+    'total', v_inserted + v_updated
+  );
+END;
+$$ LANGUAGE plpgsql;
+
 -- ==================== TRIGGERS ====================
 
 DROP TRIGGER IF EXISTS update_blacklist_updated_at ON blacklist;
@@ -1855,6 +2128,19 @@ CREATE TRIGGER sync_automation_campaign_trigger
   AFTER INSERT OR UPDATE ON automation_rules
   FOR EACH ROW
   EXECUTE FUNCTION trigger_sync_automation_campaign();
+
+-- v3.14: Auto-refresh triggers for customer metrics
+DROP TRIGGER IF EXISTS trg_update_customer_after_transaction ON transactions;
+CREATE TRIGGER trg_update_customer_after_transaction
+  AFTER INSERT ON transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_customer_after_transaction();
+
+DROP TRIGGER IF EXISTS trg_calculate_customer_risk ON customers;
+CREATE TRIGGER trg_calculate_customer_risk
+  BEFORE INSERT OR UPDATE ON customers
+  FOR EACH ROW
+  EXECUTE FUNCTION calculate_customer_risk_on_insert();
 
 -- ==================== ROW LEVEL SECURITY (Optional) ====================
 -- Uncomment these if you want to enable RLS
@@ -1976,3 +2262,11 @@ GRANT EXECUTE ON FUNCTION process_campaign_returns TO authenticated;
 -- v3.12: Unified eligibility functions
 GRANT EXECUTE ON FUNCTION is_customer_contactable TO authenticated;
 GRANT EXECUTE ON FUNCTION check_customers_eligibility TO authenticated;
+-- v3.14: Auto-refresh trigger functions
+GRANT EXECUTE ON FUNCTION calculate_avg_days_between_trigger TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_risk_level_trigger TO authenticated;
+GRANT EXECUTE ON FUNCTION update_customer_after_transaction TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_customer_risk_on_insert TO authenticated;
+-- v3.14: Smart customer upsert functions
+GRANT EXECUTE ON FUNCTION upsert_customer_profile TO authenticated;
+GRANT EXECUTE ON FUNCTION upsert_customer_profiles_batch TO authenticated;

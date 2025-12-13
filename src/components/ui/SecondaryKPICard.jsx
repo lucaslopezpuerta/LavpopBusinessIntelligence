@@ -1,8 +1,13 @@
-// SecondaryKPICard.jsx v1.5
+// SecondaryKPICard.jsx v1.6
 // Compact KPI card for secondary metrics
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.6 (2025-12-13): Informative pill support
+//   - NEW: pill prop for contextual status indicators
+//   - Supports variants: warning, success, info, error
+//   - Semi-transparent styling for gradient backgrounds
+//   - Positioned in footer alongside subtitle
 // v1.5 (2025-12-01): Relocated WoW badge to bottom right
 //   - Moved TrendBadge from Value row to footer
 //   - Footer layout: subtitle left, badge right
@@ -39,7 +44,15 @@ const SecondaryKPICard = ({
   color = 'slate',
   onClick,
   className = '',
+  pill, // { text: string, variant: 'warning' | 'success' | 'info' | 'error' }
 }) => {
+  // Pill variants - semi-transparent for gradient backgrounds
+  const pillVariants = {
+    warning: 'bg-white/20 text-white border border-amber-300/50',
+    success: 'bg-white/20 text-white border border-emerald-300/50',
+    info: 'bg-white/20 text-white border border-blue-300/50',
+    error: 'bg-white/20 text-white border border-red-300/50',
+  };
   // Gradient backgrounds matching original KPICards design
   const colorMap = {
     cyan: {
@@ -144,13 +157,20 @@ const SecondaryKPICard = ({
           {displayValue}
         </div>
 
-        {/* Footer: Subtitle + Trend Badge */}
+        {/* Footer: Subtitle + Pill + Trend Badge */}
         <div className="flex items-center justify-between gap-1">
-          {subtitle && (
-            <div className={`text-xs ${colors.subtitle} leading-tight`}>
-              {subtitle}
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {subtitle && (
+              <div className={`text-xs ${colors.subtitle} leading-tight`}>
+                {subtitle}
+              </div>
+            )}
+            {pill && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pillVariants[pill.variant] || pillVariants.info}`}>
+                {pill.text}
+              </span>
+            )}
+          </div>
           {trend?.show && (
             <div className="flex-shrink-0 ml-auto">
               <TrendBadge value={trend.value} size="xs" inverted />
