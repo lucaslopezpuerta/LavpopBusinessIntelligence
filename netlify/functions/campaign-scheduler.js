@@ -2,6 +2,12 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.7 (2025-12-13): Fixed fallback tracking for automation sends
+//   - Fallback now creates contact_tracking + campaign_contacts records
+//   - Previously only updated campaigns.sends (causing "Rastreados" to show 0)
+//   - Added getCampaignTypeFromTemplate() helper for campaign type mapping
+//   - Ensures campaign_performance view shows correct tracked contacts
+//
 // v2.6 (2025-12-13): Scheduled return processing (4x daily)
 //   - Changed processCampaignReturns() to run only 4 times per day
 //   - Runs at 00:00, 06:00, 12:00, 18:00 Brazil time
@@ -316,6 +322,25 @@ function formatCurrency(value) {
     style: 'currency',
     currency: 'BRL'
   }).format(value || 0);
+}
+
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Map template name to campaign type for eligibility tracking
+ * @param {string} template - Template name (e.g., 'winback_discount')
+ * @returns {string} Campaign type (e.g., 'winback')
+ */
+function getCampaignTypeFromTemplate(template) {
+  const templateMap = {
+    'winback_discount': 'winback',
+    'winback_critical': 'winback',
+    'welcome_new': 'welcome',
+    'wallet_reminder': 'wallet',
+    'post_visit_thanks': 'post_visit',
+    'upsell_secagem': 'upsell'
+  };
+  return templateMap[template] || 'other';
 }
 
 // ==================== BRAZIL TIMEZONE HELPERS (v2.2) ====================
@@ -867,10 +892,63 @@ async function sendAutomationMessage(supabase, rule, target, contentSid) {
 
       if (rpcError) {
         console.error('Error recording automation contact:', rpcError);
-        // Tracking failure shouldn't fail the send, but we need to at least update the sends count
+        // Tracking failure shouldn't fail the send, but we need to create tracking records
+        // This ensures campaign_performance view shows correct "Rastreados" count
 
-        // Fallback 1: Try to increment campaign sends count using RPC
         const campaignId = rule.campaign_id || `AUTO_${rule.id}`;
+        const campaignName = 'Auto: ' + rule.name;
+        const campaignType = getCampaignTypeFromTemplate(rule.action_template);
+        const expiresAt = new Date(Date.now() + (rule.cooldown_days || 14) * 24 * 60 * 60 * 1000).toISOString();
+
+        // Fallback 1: Create contact_tracking record (required for campaign_performance view)
+        let contactTrackingId = null;
+        try {
+          const { data: tracking, error: trackingErr } = await supabase
+            .from('contact_tracking')
+            .insert({
+              customer_id: target.doc,
+              customer_name: target.nome,
+              contact_method: 'whatsapp',
+              campaign_id: campaignId,
+              campaign_name: campaignName,
+              campaign_type: campaignType,
+              status: 'pending',
+              contacted_at: new Date().toISOString(),
+              expires_at: expiresAt
+            })
+            .select('id')
+            .single();
+
+          if (!trackingErr && tracking) {
+            contactTrackingId = tracking.id;
+            console.log(`Fallback: Created contact_tracking ${contactTrackingId}`);
+          } else {
+            console.error('Fallback contact_tracking insert failed:', trackingErr);
+          }
+        } catch (trackErr) {
+          console.error('Fallback contact_tracking insert error:', trackErr);
+        }
+
+        // Fallback 2: Create campaign_contacts bridge record (links to contact_tracking)
+        if (contactTrackingId) {
+          try {
+            await supabase.from('campaign_contacts').insert({
+              campaign_id: campaignId,
+              contact_tracking_id: contactTrackingId,
+              customer_id: target.doc,
+              customer_name: target.nome,
+              phone: normalizedPhone,
+              delivery_status: 'sent',
+              twilio_sid: data.sid,
+              sent_at: new Date().toISOString()
+            });
+            console.log(`Fallback: Created campaign_contacts for tracking ${contactTrackingId}`);
+          } catch (bridgeErr) {
+            console.error('Fallback campaign_contacts insert failed:', bridgeErr);
+          }
+        }
+
+        // Fallback 3: Try to increment campaign sends count using RPC
         try {
           const { error: rpcIncrErr } = await supabase.rpc('increment_campaign_sends', {
             p_campaign_id: campaignId,
@@ -879,7 +957,7 @@ async function sendAutomationMessage(supabase, rule, target, contentSid) {
 
           if (rpcIncrErr) {
             console.error('increment_campaign_sends RPC failed:', rpcIncrErr);
-            // Fallback 2: Direct update with read-then-write
+            // Fallback 4: Direct update with read-then-write
             const { data: campaign } = await supabase
               .from('campaigns')
               .select('sends')
@@ -902,7 +980,7 @@ async function sendAutomationMessage(supabase, rule, target, contentSid) {
           console.error('Fallback send count update also failed:', fallbackErr);
         }
 
-        // Fallback 3: At minimum, record in automation_sends for cooldown tracking
+        // Fallback 5: Record in automation_sends for cooldown tracking
         try {
           await supabase.from('automation_sends').insert({
             rule_id: rule.id,

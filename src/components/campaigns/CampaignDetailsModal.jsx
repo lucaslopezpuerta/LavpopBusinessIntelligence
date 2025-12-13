@@ -1,9 +1,17 @@
-// CampaignDetailsModal.jsx v1.0
+// CampaignDetailsModal.jsx v1.1
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-12-13): Mobile compatibility improvements
+//   - Responsive modal width (full on mobile, max-w-4xl on desktop)
+//   - Responsive padding (p-4 sm:p-6) per Design System
+//   - Metrics grid: 1-col mobile, 2-col tablet, 5-col desktop
+//   - Filter buttons: larger touch targets (min-h-9), flex-wrap for mobile
+//   - Contact cards: stack layout on mobile, horizontal on desktop
+//   - Footer: stack layout on mobile
+//   - Responsive text sizes for metric values
 // v1.0 (2025-12-08): Initial implementation
 //   - Campaign info header with metrics
 //   - Contact list with status indicators
@@ -131,9 +139,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-full sm:max-w-2xl lg:max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-xl">
               <Target className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -142,7 +150,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                 {campaignData.name || campaign.id}
               </h2>
-              <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {campaignData.created_at && (
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
@@ -173,29 +181,29 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
         </div>
 
         {/* Metrics Summary */}
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Enviados</p>
-              <p className="text-xl font-bold text-slate-900 dark:text-white">
+              <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                 {campaignData.sends || 0}
               </p>
             </div>
             <div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Rastreados</p>
-              <p className="text-xl font-bold text-slate-900 dark:text-white">
+              <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                 {campaignData.contacts_tracked || contacts.length}
               </p>
             </div>
             <div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Retornaram</p>
-              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+              <p className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">
                 {campaignData.contacts_returned || statusCounts.returned || 0}
               </p>
             </div>
             <div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Taxa Retorno</p>
-              <p className={`text-xl font-bold ${
+              <p className={`text-lg sm:text-xl font-bold ${
                 (campaignData.return_rate || 0) > 15
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : (campaignData.return_rate || 0) > 0
@@ -205,9 +213,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                 {formatPercent(campaignData.return_rate || 0)}
               </p>
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Receita Recuperada</p>
-              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+              <p className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(campaignData.total_revenue_recovered || 0)}
               </p>
             </div>
@@ -215,8 +223,8 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
         </div>
 
         {/* Filter Bar */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex flex-wrap gap-2">
             {[
               { key: 'all', label: 'Todos', count: contacts.length },
               { key: 'returned', label: 'Retornaram', count: statusCounts.returned || 0 },
@@ -226,7 +234,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
               <button
                 key={key}
                 onClick={() => setFilterStatus(key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`px-3 py-2 min-h-[36px] rounded-lg text-xs font-medium transition-colors ${
                   filterStatus === key
                     ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -239,7 +247,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
           <button
             onClick={handleRefresh}
             disabled={isLoading}
-            className="p-2 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+            className="p-2.5 min-h-[36px] min-w-[36px] text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
             title="Atualizar"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -264,17 +272,17 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                     key={contact.id}
                     className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-sm transition-shadow"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       {/* Customer Info */}
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className={`p-2 rounded-lg ${getStatusColor(status)}`}>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className={`p-2 rounded-lg shrink-0 ${getStatusColor(status)}`}>
                           {getStatusIcon(status)}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-slate-900 dark:text-white truncate">
                             {contact.customer_name || 'Cliente'}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                             {contact.phone && (
                               <span className="flex items-center gap-1">
                                 <Phone className="w-3 h-3" />
@@ -286,15 +294,15 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                         </div>
                       </div>
 
-                      {/* Status Badge */}
-                      <div className="flex items-center gap-3">
+                      {/* Status Badge & Details */}
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 ml-11 sm:ml-0">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
                           {getStatusLabel(status)}
                         </span>
 
                         {/* Return details for returned contacts */}
                         {status === 'returned' && (
-                          <div className="flex items-center gap-3 text-sm">
+                          <div className="flex items-center gap-2 sm:gap-3 text-sm">
                             {tracking.days_to_return !== null && (
                               <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
                                 <ArrowRight className="w-3 h-3" />
@@ -337,8 +345,8 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
         {/* Footer Stats */}
         {contacts.length > 0 && (
           <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 text-sm">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <span className="text-slate-600 dark:text-slate-400">
                   Média dias para retorno:{' '}
                   <span className="font-semibold text-slate-900 dark:text-white">

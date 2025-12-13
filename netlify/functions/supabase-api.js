@@ -246,7 +246,8 @@ exports.handler = async (event, context) => {
         return await getContactEffectivenessSummary(supabase, headers);
 
       case 'campaign_contacts.getAll':
-        return await getCampaignContacts(supabase, params.campaign_id, headers);
+        // Merge body params with query params (POST body takes precedence)
+        return await getCampaignContacts(supabase, body.campaign_id || params.campaign_id, headers);
 
       case 'campaign_contacts.record':
         return await recordCampaignContactWithTracking(supabase, data, headers);
