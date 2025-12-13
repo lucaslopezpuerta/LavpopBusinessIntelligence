@@ -1,8 +1,17 @@
-// NewCampaignModal.jsx v4.5
+// NewCampaignModal.jsx v4.7
 // Campaign creation wizard modal
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v4.7 (2025-12-13): Configurable coupon validity for manual campaigns
+//   - Added couponValidityDays state (default 7 days)
+//   - Added UI selector in Step 2 (5, 7, 10, 14, 21, 30 days)
+//   - All validade calculations now use configurable couponValidityDays
+//   - Template defaults populate couponValidityDays from discountDefaults
+// v4.6 (2025-12-13): Eligibility system integration
+//   - Pass campaignType to sendCampaignWithTracking for cooldown enforcement
+//   - Display ineligible contacts count and reasons in send results
+//   - Filter contacts that are in cooldown period (7 days global, 30 days same type)
 // v4.5 (2025-12-11): Template filtering by audience
 //   - Templates in Step 2 now filtered by selected audience
 //   - Matches same filtering behavior as Messages tab
@@ -76,7 +85,8 @@ import {
   Crown,
   TrendingUp,
   Snowflake,
-  Moon
+  Moon,
+  UserMinus
 } from 'lucide-react';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import {
@@ -229,6 +239,7 @@ const NewCampaignModal = ({
   // Discount and service type selection for A/B testing
   const [selectedDiscount, setSelectedDiscount] = useState(null);
   const [selectedServiceType, setSelectedServiceType] = useState(null);
+  const [couponValidityDays, setCouponValidityDays] = useState(7); // Default 7 days
 
   // Scheduling state
   const [sendMode, setSendMode] = useState('now'); // 'now' or 'scheduled'
@@ -249,6 +260,7 @@ const NewCampaignModal = ({
         const defaults = initialTemplate.discountDefaults || {};
         setSelectedDiscount(defaults.discountPercent || null);
         setSelectedServiceType(defaults.serviceType || null);
+        setCouponValidityDays(defaults.couponValidityDays || 7);
         // Auto-advance to step 2 if audience is also set, otherwise step 1
         setCurrentStep(initialAudience ? 1 : 0);
       }
@@ -351,7 +363,8 @@ const NewCampaignModal = ({
     if (!template) return '';
 
     let body = template.body;
-    const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const validityMs = couponValidityDays * 24 * 60 * 60 * 1000;
+    const validade = new Date(Date.now() + validityMs).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     const customerName = customer?.name ? getFirstName(customer.name) : 'Cliente';
     const customerWallet = customer?.walletBalance || 0;
 
@@ -418,7 +431,8 @@ const NewCampaignModal = ({
       setIsSending(true);
 
       // Build content variables for scheduled send
-      const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      const validityMs = couponValidityDays * 24 * 60 * 60 * 1000;
+      const validade = new Date(Date.now() + validityMs)
         .toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
       const scheduledContentVars = {
@@ -509,7 +523,8 @@ const NewCampaignModal = ({
 
       // Build content variables for Meta template
       // Variables: {{1}}=name, {{2}}=discount/wallet, {{3}}=coupon, {{4}}=expiration
-      const validade = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      const validityMs = couponValidityDays * 24 * 60 * 60 * 1000;
+      const validade = new Date(Date.now() + validityMs)
         .toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
       const contentVariables = {
@@ -534,24 +549,32 @@ const NewCampaignModal = ({
 
       // Send campaign with effectiveness tracking using Meta-approved template
       // This records contacts in contact_tracking + campaign_contacts
+      // Includes eligibility filtering to respect cooldown periods
+      const campaignType = TEMPLATE_CAMPAIGN_TYPE_MAP[selectedTemplate.id] || null;
       const result = await sendCampaignWithTracking(campaign.id, recipientsForTracking, {
         contentSid: selectedTemplate.twilioContentSid, // Use Meta-approved template (REQUIRED)
         contentVariables: contentVariables,
         templateId: selectedTemplate.id, // For error messages
+        campaignType: campaignType, // For eligibility filtering (7d global, 30d same type)
+        couponValidityDays: couponValidityDays, // For expires_at calculation (v4.7)
         skipWhatsApp: false // Set to true for testing without sending
       });
 
       // Check if campaign had any success
       const hasSuccess = result.successCount > 0;
       const hasFailed = result.failedCount > 0;
+      const hasIneligible = (result.ineligibleCount || 0) > 0;
 
       setSendResult({
         success: hasSuccess,
-        partial: hasSuccess && hasFailed,
+        partial: hasSuccess && (hasFailed || hasIneligible),
         sent: result.successCount,
         failed: result.failedCount,
         tracked: result.trackedContacts,
         sentVia: result.sentVia,
+        // Eligibility info - contacts filtered due to cooldown
+        ineligibleCount: result.ineligibleCount || 0,
+        ineligibleContacts: result.ineligibleContacts || [],
         // Include detailed error breakdown from summary
         summary: result.summary,
         errors: result.errors
@@ -761,6 +784,7 @@ const NewCampaignModal = ({
                         const defaults = template.discountDefaults || {};
                         setSelectedDiscount(defaults.discountPercent || null);
                         setSelectedServiceType(defaults.serviceType || null);
+                        setCouponValidityDays(defaults.couponValidityDays || 7);
                       }}
                       className={`
                         w-full p-4 rounded-xl border-2 text-left transition-all
@@ -874,6 +898,33 @@ const NewCampaignModal = ({
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Coupon Validity Days Selector */}
+                  <div className="mt-4">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                      Validade do cupom (dias)
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {[5, 7, 10, 14, 21, 30].map((days) => (
+                        <button
+                          key={days}
+                          onClick={() => setCouponValidityDays(days)}
+                          className={`
+                            px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                            ${couponValidityDays === days
+                              ? 'bg-emerald-600 text-white shadow-md'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-500'
+                            }
+                          `}
+                        >
+                          {days} dias
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                      Tempo para o cliente usar o cupom e ser rastreado como retorno
+                    </p>
                   </div>
 
                   {/* Coupon Code Preview */}
@@ -1034,7 +1085,9 @@ const NewCampaignModal = ({
                             Campanha Parcialmente Enviada
                           </h3>
                           <p className="text-amber-600 dark:text-amber-400">
-                            ✅ {sendResult.sent} enviadas • ❌ {sendResult.failed} falharam
+                            ✅ {sendResult.sent} enviadas
+                            {sendResult.failed > 0 && ` • ❌ ${sendResult.failed} falharam`}
+                            {sendResult.ineligibleCount > 0 && ` • ⏳ ${sendResult.ineligibleCount} em cooldown`}
                           </p>
                         </>
                       ) : (
@@ -1093,6 +1146,40 @@ const NewCampaignModal = ({
                           Alguns erros podem ser temporários. Considere reenviar mais tarde.
                         </p>
                       )}
+                    </div>
+                  )}
+
+                  {/* Ineligible Contacts (Cooldown) */}
+                  {sendResult.ineligibleCount > 0 && (
+                    <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                        <UserMinus className="w-4 h-4 text-blue-500" />
+                        Contatos em período de cooldown ({sendResult.ineligibleCount}):
+                      </p>
+                      <div className="max-h-32 overflow-y-auto space-y-1.5">
+                        {sendResult.ineligibleContacts.slice(0, 10).map((contact, idx) => (
+                          <div
+                            key={idx}
+                            className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg"
+                          >
+                            <span className="font-medium text-slate-700 dark:text-slate-300">
+                              {contact.customerName}
+                            </span>
+                            <span className="text-blue-600 dark:text-blue-400 ml-2">
+                              — {contact.reason}
+                            </span>
+                          </div>
+                        ))}
+                        {sendResult.ineligibleCount > 10 && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 text-center pt-1">
+                            ... e mais {sendResult.ineligibleCount - 10} contatos
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Estes clientes foram contactados recentemente e serão elegíveis após o período de espera.
+                      </p>
                     </div>
                   )}
                 </div>

@@ -1,6 +1,20 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.9 (2025-12-12)
+-- Version: 3.12 (2025-12-13)
+--
+-- v3.12: Unified Contact Eligibility System
+--   - Added campaign_type column to contact_tracking for type-based cooldowns
+--   - Created is_customer_contactable() function - single source of truth for eligibility
+--   - Created check_customers_eligibility() function for batch checking
+--   - Updated record_automation_contact() to include campaign_type
+--   - Enforces: 7-day global cooldown, 30-day same-type cooldown, 90-day opt-out
+--
+-- v3.11: Fix return detection for same-day returns
+--   - Changed > to >= to detect same-day returns
+--   - Revenue now sums ALL transactions within 7 days after contact
+--   - Added GREATEST(0, ...) to prevent negative days_to_return
+--
+-- v3.10: Added eligibility indexes for contact_tracking
 --
 -- v3.9: Enhanced Webhook Campaign Linking
 --   - Added campaign_id column to webhook_events for direct campaign linking
@@ -292,6 +306,7 @@ CREATE TABLE IF NOT EXISTS contact_tracking (
   -- Campaign link (null for manual contacts)
   campaign_id TEXT,                       -- Links to campaigns table
   campaign_name TEXT,                     -- For display without join
+  campaign_type TEXT,                     -- v3.12: Campaign type for type-based cooldowns (winback, welcome, promo, wallet, upsell, post_visit)
 
   -- Outcome tracking
   status TEXT DEFAULT 'pending',          -- pending, returned, expired, cleared
@@ -313,6 +328,16 @@ CREATE INDEX IF NOT EXISTS idx_contact_tracking_status ON contact_tracking(statu
 CREATE INDEX IF NOT EXISTS idx_contact_tracking_campaign ON contact_tracking(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_contact_tracking_contacted_at ON contact_tracking(contacted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_contact_tracking_expires ON contact_tracking(expires_at) WHERE status = 'pending';
+
+-- v3.12: Indexes for eligibility queries
+CREATE INDEX IF NOT EXISTS idx_contact_tracking_eligibility
+ON contact_tracking (customer_id, status, contacted_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_contact_tracking_type
+ON contact_tracking (customer_id, campaign_type, contacted_at DESC);
+
+-- v3.12: Add campaign_type column for migration
+ALTER TABLE contact_tracking ADD COLUMN IF NOT EXISTS campaign_type TEXT;
 
 -- ==================== CAMPAIGN CONTACTS TABLE ====================
 -- Links campaigns to contact_tracking for effectiveness measurement
@@ -1017,6 +1042,7 @@ $$ LANGUAGE plpgsql;
 
 -- Function to record an automation send with full campaign tracking
 -- Creates entries in: automation_sends, contact_tracking, campaign_contacts
+-- v3.12: Added campaign_type for unified eligibility tracking
 CREATE OR REPLACE FUNCTION record_automation_contact(
   p_rule_id TEXT,
   p_customer_id TEXT,
@@ -1030,6 +1056,7 @@ DECLARE
   v_contact_tracking_id INT;
   v_automation_send_id UUID;
   v_rule RECORD;
+  v_campaign_type TEXT;
 BEGIN
   -- Get the rule and ensure campaign exists
   SELECT * INTO v_rule FROM automation_rules WHERE id = p_rule_id;
@@ -1038,6 +1065,17 @@ BEGIN
     RAISE EXCEPTION 'Automation rule % not found', p_rule_id;
   END IF;
 
+  -- Determine campaign_type from action_template
+  v_campaign_type := CASE v_rule.action_template
+    WHEN 'winback_discount' THEN 'winback'
+    WHEN 'winback_critical' THEN 'winback'
+    WHEN 'welcome_new' THEN 'welcome'
+    WHEN 'wallet_reminder' THEN 'wallet'
+    WHEN 'post_visit_thanks' THEN 'post_visit'
+    WHEN 'upsell_secagem' THEN 'upsell'
+    ELSE 'other'
+  END;
+
   -- Ensure campaign record exists
   IF v_rule.campaign_id IS NULL THEN
     v_campaign_id := sync_automation_campaign(p_rule_id);
@@ -1045,13 +1083,14 @@ BEGIN
     v_campaign_id := v_rule.campaign_id;
   END IF;
 
-  -- 1. Create contact tracking record
+  -- 1. Create contact tracking record WITH campaign_type
   INSERT INTO contact_tracking (
     customer_id,
     customer_name,
     contact_method,
     campaign_id,
     campaign_name,
+    campaign_type,
     status,
     expires_at
   ) VALUES (
@@ -1060,6 +1099,7 @@ BEGIN
     'whatsapp',
     v_campaign_id,
     'Auto: ' || v_rule.name,
+    v_campaign_type,
     'pending',
     NOW() + (COALESCE(v_rule.cooldown_days, 14) || ' days')::INTERVAL
   )
@@ -1112,6 +1152,179 @@ BEGIN
   RETURN v_automation_send_id;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ==================== UNIFIED CONTACT ELIGIBILITY (v3.12) ====================
+-- Functions to check if a customer is eligible for campaign contact
+-- Used by both manual campaigns (UI) and automations (scheduler)
+
+-- Function to check if a single customer is eligible for contact
+-- Enforces cooldown rules to prevent customer fatigue and WhatsApp spam complaints
+CREATE OR REPLACE FUNCTION is_customer_contactable(
+  p_customer_id TEXT,
+  p_campaign_type TEXT DEFAULT NULL,
+  p_min_days_global INT DEFAULT 7,
+  p_min_days_same_type INT DEFAULT 30
+)
+RETURNS TABLE (
+  is_eligible BOOLEAN,
+  reason TEXT,
+  last_contact_date TIMESTAMPTZ,
+  last_campaign_type TEXT,
+  last_campaign_name TEXT,
+  days_since_contact INT,
+  days_until_eligible INT
+) AS $$
+DECLARE
+  v_last_contact RECORD;
+  v_last_same_type RECORD;
+  v_days_since INT;
+  v_days_until INT;
+BEGIN
+  -- Find most recent contact (any type)
+  SELECT ct.contacted_at, ct.campaign_type, ct.campaign_name
+  INTO v_last_contact
+  FROM contact_tracking ct
+  WHERE ct.customer_id = p_customer_id
+    AND ct.status IN ('pending', 'returned')  -- Don't count expired/cleared
+  ORDER BY ct.contacted_at DESC
+  LIMIT 1;
+
+  -- If no previous contact, customer is eligible
+  IF v_last_contact IS NULL THEN
+    RETURN QUERY SELECT
+      TRUE::BOOLEAN,
+      'Nenhum contato anterior'::TEXT,
+      NULL::TIMESTAMPTZ,
+      NULL::TEXT,
+      NULL::TEXT,
+      NULL::INT,
+      0::INT;
+    RETURN;
+  END IF;
+
+  -- Calculate days since last contact
+  v_days_since := EXTRACT(DAY FROM NOW() - v_last_contact.contacted_at)::INT;
+
+  -- Check global cooldown (any campaign type)
+  IF v_days_since < p_min_days_global THEN
+    v_days_until := p_min_days_global - v_days_since;
+    RETURN QUERY SELECT
+      FALSE::BOOLEAN,
+      format('Contactado há %s dias. Aguarde mais %s dias.', v_days_since, v_days_until)::TEXT,
+      v_last_contact.contacted_at,
+      v_last_contact.campaign_type,
+      v_last_contact.campaign_name,
+      v_days_since,
+      v_days_until;
+    RETURN;
+  END IF;
+
+  -- Check same campaign type cooldown (if type specified)
+  IF p_campaign_type IS NOT NULL THEN
+    SELECT ct.contacted_at, ct.campaign_type, ct.campaign_name
+    INTO v_last_same_type
+    FROM contact_tracking ct
+    WHERE ct.customer_id = p_customer_id
+      AND ct.campaign_type = p_campaign_type
+      AND ct.status IN ('pending', 'returned')
+    ORDER BY ct.contacted_at DESC
+    LIMIT 1;
+
+    IF v_last_same_type IS NOT NULL THEN
+      v_days_since := EXTRACT(DAY FROM NOW() - v_last_same_type.contacted_at)::INT;
+
+      IF v_days_since < p_min_days_same_type THEN
+        v_days_until := p_min_days_same_type - v_days_since;
+        RETURN QUERY SELECT
+          FALSE::BOOLEAN,
+          format('Já recebeu campanha "%s" há %s dias. Aguarde mais %s dias.',
+                 p_campaign_type, v_days_since, v_days_until)::TEXT,
+          v_last_same_type.contacted_at,
+          v_last_same_type.campaign_type,
+          v_last_same_type.campaign_name,
+          v_days_since,
+          v_days_until;
+        RETURN;
+      END IF;
+    END IF;
+  END IF;
+
+  -- Check for recent opt-out button clicks (90 day cooldown)
+  IF EXISTS (
+    SELECT 1 FROM webhook_events we
+    JOIN campaign_contacts cc ON cc.twilio_sid = we.message_sid
+    JOIN contact_tracking ct ON ct.id = cc.contact_tracking_id
+    WHERE ct.customer_id = p_customer_id
+      AND we.event_type = 'button_click'
+      AND LOWER(we.payload) LIKE '%não%interesse%'
+      AND we.created_at > NOW() - INTERVAL '90 days'
+  ) THEN
+    RETURN QUERY SELECT
+      FALSE::BOOLEAN,
+      'Cliente clicou "Não tenho interesse" nos últimos 90 dias'::TEXT,
+      v_last_contact.contacted_at,
+      v_last_contact.campaign_type,
+      v_last_contact.campaign_name,
+      v_days_since,
+      NULL::INT;
+    RETURN;
+  END IF;
+
+  -- Customer is eligible
+  RETURN QUERY SELECT
+    TRUE::BOOLEAN,
+    'Elegível para contato'::TEXT,
+    v_last_contact.contacted_at,
+    v_last_contact.campaign_type,
+    v_last_contact.campaign_name,
+    v_days_since,
+    0::INT;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION is_customer_contactable IS
+'Check if a customer is eligible for campaign contact based on cooldown rules.
+Returns eligibility status, reason, and last contact info.
+Used by both manual campaigns (UI) and automations (scheduler).';
+
+-- Function to batch check eligibility for multiple customers
+-- More efficient than calling is_customer_contactable() in a loop
+CREATE OR REPLACE FUNCTION check_customers_eligibility(
+  p_customer_ids TEXT[],
+  p_campaign_type TEXT DEFAULT NULL,
+  p_min_days_global INT DEFAULT 7,
+  p_min_days_same_type INT DEFAULT 30
+)
+RETURNS TABLE (
+  customer_id TEXT,
+  is_eligible BOOLEAN,
+  reason TEXT,
+  last_contact_date TIMESTAMPTZ,
+  days_since_contact INT,
+  days_until_eligible INT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    cid,
+    (e).is_eligible,
+    (e).reason,
+    (e).last_contact_date,
+    (e).days_since_contact,
+    (e).days_until_eligible
+  FROM unnest(p_customer_ids) AS cid
+  CROSS JOIN LATERAL is_customer_contactable(
+    cid,
+    p_campaign_type,
+    p_min_days_global,
+    p_min_days_same_type
+  ) AS e;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION check_customers_eligibility IS
+'Batch check eligibility for multiple customers.
+More efficient than calling is_customer_contactable() in a loop.';
 
 -- ==================== RFM SEGMENTATION (v3.2) ====================
 -- RFM Segments (Portuguese - Marketing Focus):
@@ -1471,23 +1684,30 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- Function to detect customer returns by comparing last_visit with contacted_at
 -- Runs periodically via scheduler to mark contacts as "returned" when customer revisits
 -- Returns number of contacts updated
+--
+-- v3.11 (2025-12-13): Fixed same-day returns and multi-visit revenue
+--   - Changed > to >= to detect same-day returns
+--   - Revenue now sums ALL transactions within 7 days after contact (not just last_visit)
 CREATE OR REPLACE FUNCTION detect_customer_returns()
 RETURNS INT AS $$
 DECLARE
   v_updated INT := 0;
 BEGIN
-  -- Update pending contacts where customer has visited AFTER being contacted
+  -- Update pending contacts where customer has visited ON OR AFTER being contacted
+  -- Uses >= to catch same-day returns (customer contacted in morning, returns in afternoon)
   UPDATE contact_tracking ct
   SET
     status = 'returned',
     returned_at = c.last_visit::TIMESTAMPTZ,
-    days_to_return = (c.last_visit - ct.contacted_at::DATE),
-    -- Calculate return revenue from recent transactions (7 days from return)
+    days_to_return = GREATEST(0, (c.last_visit - ct.contacted_at::DATE)),
+    -- Calculate return revenue from ALL transactions within 7 days after contact
+    -- Not just the last_visit date - captures multiple return visits
     return_revenue = COALESCE((
       SELECT SUM(t.net_value)
       FROM transactions t
       WHERE t.doc_cliente = ct.customer_id
-        AND t.data_hora::DATE = c.last_visit
+        AND t.data_hora::DATE >= ct.contacted_at::DATE
+        AND t.data_hora::DATE <= ct.contacted_at::DATE + INTERVAL '7 days'
         AND NOT t.is_recarga
     ), 0),
     updated_at = NOW()
@@ -1495,7 +1715,7 @@ BEGIN
   WHERE ct.customer_id = c.doc
     AND ct.status = 'pending'
     AND c.last_visit IS NOT NULL
-    AND c.last_visit > ct.contacted_at::DATE;
+    AND c.last_visit >= ct.contacted_at::DATE;  -- Changed > to >= for same-day returns
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
 
@@ -1753,3 +1973,6 @@ GRANT EXECUTE ON FUNCTION record_automation_contact TO authenticated;
 GRANT EXECUTE ON FUNCTION detect_customer_returns TO authenticated;
 GRANT EXECUTE ON FUNCTION link_pending_coupon_redemptions TO authenticated;
 GRANT EXECUTE ON FUNCTION process_campaign_returns TO authenticated;
+-- v3.12: Unified eligibility functions
+GRANT EXECUTE ON FUNCTION is_customer_contactable TO authenticated;
+GRANT EXECUTE ON FUNCTION check_customers_eligibility TO authenticated;

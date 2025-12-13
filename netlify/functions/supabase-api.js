@@ -2,6 +2,25 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 2.8 (2025-12-13) - Configurable coupon validity for manual campaigns
+//   - recordCampaignContactWithTracking now accepts couponValidityDays parameter
+//   - expires_at calculated as couponValidityDays + 3 day buffer (matches SQL function)
+//   - Default 7 days for backwards compatibility
+//   - Enables accurate return attribution for configurable coupon validity
+//
+// Version: 2.7 (2025-12-13) - Backend-only checkmarks
+//   - Added contacts.getAll, contacts.create, contacts.clear aliases
+//   - createContactTracking now calculates expires_at (7 days for manual, 14 for campaigns)
+//   - clearContactStatus marks pending contacts as 'cleared' for manual uncheck
+//   - Supports campaign_type='manual' for UI checkmarks
+//   - Removes localStorage dependency - contact_tracking is single source of truth
+//
+// Version: 2.6 (2025-12-13) - Unified manual campaign tracking (matches automation flow)
+//   - Added campaign_contacts.record action for manual campaigns
+//   - Creates contact_tracking + campaign_contacts WITH twilio_sid in one call
+//   - Mirrors the SQL record_automation_contact() function behavior
+//   - Enables delivery metrics tracking for manual campaigns
+//
 // Version: 2.5 (2025-12-12) - Fixed comm_logs customer filtering bug
 //   - getCommLogs now receives body params for POST requests (was only receiving query params)
 //   - This fixes the bug where all customers' logs were shown instead of just the current customer
@@ -221,14 +240,19 @@ exports.handler = async (event, context) => {
       case 'campaign_contacts.getAll':
         return await getCampaignContacts(supabase, params.campaign_id, headers);
 
+      case 'campaign_contacts.record':
+        return await recordCampaignContactWithTracking(supabase, data, headers);
+
       case 'campaign_performance.get':
         return await getCampaignPerformance(supabase, params.campaign_id || id, headers);
 
       // ==================== CONTACT TRACKING ====================
       case 'contact_tracking.getAll':
+      case 'contacts.getAll':  // Alias for frontend compatibility
         return await getContactTracking(supabase, body, headers);
 
       case 'contact_tracking.create':
+      case 'contacts.create':  // Alias for frontend compatibility
         return await createContactTracking(supabase, data, headers);
 
       case 'contact_tracking.update':
@@ -239,6 +263,16 @@ exports.handler = async (event, context) => {
 
       case 'contact_tracking.markReturned':
         return await markContactReturned(supabase, data, headers);
+
+      case 'contacts.clear':  // Mark pending contact as 'cleared' (manual uncheck)
+        return await clearContactStatus(supabase, body, headers);
+
+      // ==================== CONTACT ELIGIBILITY ====================
+      case 'eligibility.check':
+        return await checkCustomerEligibility(supabase, data, headers);
+
+      case 'eligibility.checkBatch':
+        return await checkCustomersEligibilityBatch(supabase, data, headers);
 
       // ==================== WEBHOOK EVENTS (Delivery Metrics) ====================
       case 'webhook_events.getDeliveryStats':
@@ -275,9 +309,11 @@ exports.handler = async (event, context) => {
               'logs.getAll', 'logs.add', 'logs.getByPhone',
               'automation.getAll', 'automation.save',
               'campaign_effectiveness.getAll', 'contact_effectiveness_summary.getAll',
-              'campaign_contacts.getAll', 'campaign_performance.get',
+              'campaign_contacts.getAll', 'campaign_contacts.record', 'campaign_performance.get',
               'contact_tracking.getAll', 'contact_tracking.create', 'contact_tracking.update',
               'contact_tracking.record', 'contact_tracking.markReturned',
+              'contacts.getAll', 'contacts.create', 'contacts.clear',  // v2.7: Backend-only checkmarks
+              'eligibility.check', 'eligibility.checkBatch',
               'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
               'migrate.import'
@@ -1215,6 +1251,162 @@ async function getCampaignPerformance(supabase, campaignId, headers) {
 
 // ==================== CONTACT TRACKING FUNCTIONS ====================
 
+/**
+ * Record a campaign contact with full tracking (mirrors record_automation_contact SQL function)
+ * Creates entries in: contact_tracking, campaign_contacts (with twilio_sid)
+ * Updates campaign sends count
+ *
+ * This is the unified flow for manual campaigns - send first, then record with message_sid
+ */
+async function recordCampaignContactWithTracking(supabase, data, headers) {
+  const {
+    campaignId,
+    customerId,
+    customerName,
+    phone,
+    twilioSid,
+    contactMethod = 'whatsapp',
+    campaignType = null,  // For unified cooldown tracking
+    couponValidityDays = 7  // v2.8: Configurable coupon validity for expires_at
+  } = data;
+
+  if (!campaignId || !customerId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'campaignId and customerId required' })
+    };
+  }
+
+  try {
+    // 1. Get campaign info for the contact_tracking record
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('name, template_id')
+      .eq('id', campaignId)
+      .single();
+
+    const campaignName = campaign?.name || campaignId;
+
+    // Infer campaign_type from template_id or name if not provided
+    let inferredType = campaignType;
+    if (!inferredType && campaign) {
+      const templateId = campaign.template_id || '';
+      const name = (campaign.name || '').toLowerCase();
+      if (templateId.includes('winback') || name.includes('win') || name.includes('volte')) {
+        inferredType = 'winback';
+      } else if (templateId.includes('welcome') || name.includes('boas') || name.includes('bem-vindo')) {
+        inferredType = 'welcome';
+      } else if (templateId.includes('wallet') || name.includes('saldo') || name.includes('carteira')) {
+        inferredType = 'wallet';
+      } else if (templateId.includes('promo') || name.includes('promo') || name.includes('desconto')) {
+        inferredType = 'promo';
+      } else if (templateId.includes('upsell') || name.includes('secagem') || name.includes('complete')) {
+        inferredType = 'upsell';
+      } else if (templateId.includes('post_visit') || name.includes('pós') || name.includes('visita')) {
+        inferredType = 'post_visit';
+      } else {
+        inferredType = 'other';
+      }
+    }
+
+    // 2. Create contact_tracking record WITH campaign_type
+    // v2.8: expires_at uses couponValidityDays + 3 day buffer (matches SQL record_automation_contact)
+    const RETURN_ATTRIBUTION_BUFFER = 3;  // Extra days to catch late returns
+    const expiryDays = couponValidityDays + RETURN_ATTRIBUTION_BUFFER;
+
+    const { data: tracking, error: trackingError } = await supabase
+      .from('contact_tracking')
+      .insert({
+        customer_id: customerId,
+        customer_name: customerName,
+        contact_method: contactMethod,
+        campaign_id: campaignId,
+        campaign_name: campaignName,
+        campaign_type: inferredType,  // Include campaign_type for cooldowns
+        status: 'pending',
+        contacted_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString()
+      })
+      .select()
+      .single();
+
+    if (trackingError) {
+      console.error('[API] Error creating contact_tracking:', trackingError);
+      throw trackingError;
+    }
+
+    // 3. Create campaign_contacts bridge record WITH twilio_sid
+    const { data: contactRecord, error: contactError } = await supabase
+      .from('campaign_contacts')
+      .insert({
+        campaign_id: campaignId,
+        contact_tracking_id: tracking.id,
+        customer_id: customerId,
+        customer_name: customerName,
+        phone: phone,
+        delivery_status: 'sent',
+        twilio_sid: twilioSid || null,
+        sent_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (contactError) {
+      console.error('[API] Error creating campaign_contacts:', contactError);
+      // Don't throw - tracking record was created successfully
+    }
+
+    // 4. Update campaign sends count
+    const { error: updateError } = await supabase
+      .from('campaigns')
+      .update({
+        sends: supabase.rpc ? undefined : 1, // Will use increment below
+        last_sent_at: new Date().toISOString(),
+        status: 'active'
+      })
+      .eq('id', campaignId);
+
+    // Increment sends count using RPC or manual update
+    await supabase.rpc('increment_campaign_sends', {
+      p_campaign_id: campaignId,
+      p_send_count: 1
+    }).catch(async (rpcErr) => {
+      // Fallback: read-then-write if RPC fails
+      const { data: currentCampaign } = await supabase
+        .from('campaigns')
+        .select('sends')
+        .eq('id', campaignId)
+        .single();
+
+      await supabase
+        .from('campaigns')
+        .update({ sends: (currentCampaign?.sends || 0) + 1 })
+        .eq('id', campaignId);
+    });
+
+    console.log(`[API] Recorded campaign contact: campaign=${campaignId}, customer=${customerId}, twilio_sid=${twilioSid || 'none'}`);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        tracking,
+        contact: contactRecord,
+        campaignId
+      })
+    };
+  } catch (error) {
+    console.error('[API] recordCampaignContactWithTracking failed:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
+    };
+  }
+}
+
 async function recordContactTracking(supabase, trackingData, headers) {
   const { customerId, campaignId, customerName, phone, contactMethod } = trackingData;
 
@@ -1358,9 +1550,28 @@ async function getContactTracking(supabase, params, headers) {
 }
 
 async function createContactTracking(supabase, data, headers) {
+  // Calculate defaults for required fields
+  const now = new Date();
+  const expiryDays = data.campaign_type === 'manual' ? 7 : 14; // Manual contacts expire in 7 days
+  const expiresAt = new Date(now.getTime() + expiryDays * 24 * 60 * 60 * 1000);
+
+  const record = {
+    customer_id: data.customer_id,
+    customer_name: data.customer_name,
+    contact_method: data.contact_method || 'manual',
+    campaign_id: data.campaign_id || null,
+    campaign_name: data.campaign_name || (data.campaign_id ? null : 'Contato Manual'),
+    campaign_type: data.campaign_type || (data.campaign_id ? null : 'manual'),
+    risk_level: data.risk_level || null,
+    status: data.status || 'pending',
+    contacted_at: data.contacted_at || now.toISOString(),
+    expires_at: data.expires_at || expiresAt.toISOString(),
+    notes: data.notes || null
+  };
+
   const { data: created, error } = await supabase
     .from('contact_tracking')
-    .insert(data)
+    .insert(record)
     .select()
     .single();
 
@@ -1369,7 +1580,7 @@ async function createContactTracking(supabase, data, headers) {
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify({ contact_tracking: created })
+    body: JSON.stringify({ contact_tracking: created, contact: created })
   };
 }
 
@@ -1399,6 +1610,45 @@ async function updateContactTracking(supabase, body, headers) {
     statusCode: 200,
     headers,
     body: JSON.stringify({ success: true, updated: data?.length || 0 })
+  };
+}
+
+/**
+ * Clear contact status - mark pending contact as 'cleared'
+ * Used when user manually unchecks the "contacted" checkbox
+ */
+async function clearContactStatus(supabase, body, headers) {
+  const customerId = body.customer_id || body.customerId;
+
+  if (!customerId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'customerId required' })
+    };
+  }
+
+  // Update pending contacts for this customer to 'cleared'
+  const { data, error } = await supabase
+    .from('contact_tracking')
+    .update({
+      status: 'cleared',
+      updated_at: new Date().toISOString()
+    })
+    .eq('customer_id', customerId)
+    .eq('status', 'pending')
+    .select();
+
+  if (error) throw error;
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({
+      success: true,
+      cleared: data?.length || 0,
+      customerId
+    })
   };
 }
 
@@ -1658,6 +1908,412 @@ async function getCampaignDeliveryMetrics(supabase, headers) {
       statusCode: 200,
       headers,
       body: JSON.stringify({ metrics: [], hasView: false, error: 'Failed to fetch delivery metrics' })
+    };
+  }
+}
+
+// ==================== CONTACT ELIGIBILITY FUNCTIONS ====================
+
+/**
+ * Check if a single customer is eligible for campaign contact
+ * Uses the is_customer_contactable() SQL function for unified logic
+ *
+ * @param {Object} data - { customerId, campaignType?, minDaysGlobal?, minDaysSameType? }
+ * @returns {Object} Eligibility result with reason
+ */
+async function checkCustomerEligibility(supabase, data, headers) {
+  const {
+    customerId,
+    campaignType = null,
+    minDaysGlobal = 7,
+    minDaysSameType = 30
+  } = data;
+
+  if (!customerId) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'customerId required' })
+    };
+  }
+
+  try {
+    // Try to use the SQL function first
+    const { data: result, error } = await supabase.rpc('is_customer_contactable', {
+      p_customer_id: customerId,
+      p_campaign_type: campaignType,
+      p_min_days_global: minDaysGlobal,
+      p_min_days_same_type: minDaysSameType
+    });
+
+    if (error) {
+      console.warn('[API] is_customer_contactable RPC failed, using fallback:', error.message);
+      // Fallback: query contact_tracking directly
+      return await checkEligibilityFallback(supabase, customerId, campaignType, minDaysGlobal, minDaysSameType, headers);
+    }
+
+    // RPC returns array, get first row
+    const eligibility = Array.isArray(result) ? result[0] : result;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        customerId,
+        isEligible: eligibility?.is_eligible ?? true,
+        reason: eligibility?.reason || 'Elegível para contato',
+        lastContactDate: eligibility?.last_contact_date || null,
+        lastCampaignType: eligibility?.last_campaign_type || null,
+        lastCampaignName: eligibility?.last_campaign_name || null,
+        daysSinceContact: eligibility?.days_since_contact || null,
+        daysUntilEligible: eligibility?.days_until_eligible || 0
+      })
+    };
+  } catch (error) {
+    console.error('[API] checkCustomerEligibility error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
+    };
+  }
+}
+
+/**
+ * Fallback eligibility check using direct queries
+ * Used when is_customer_contactable() SQL function isn't available
+ */
+async function checkEligibilityFallback(supabase, customerId, campaignType, minDaysGlobal, minDaysSameType, headers) {
+  try {
+    // Find most recent contact
+    const { data: contacts, error } = await supabase
+      .from('contact_tracking')
+      .select('contacted_at, campaign_type, campaign_name, status')
+      .eq('customer_id', customerId)
+      .in('status', ['pending', 'returned'])
+      .order('contacted_at', { ascending: false })
+      .limit(1);
+
+    if (error && !error.message?.includes('does not exist')) {
+      throw error;
+    }
+
+    // No previous contact = eligible
+    if (!contacts || contacts.length === 0) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          customerId,
+          isEligible: true,
+          reason: 'Nenhum contato anterior',
+          lastContactDate: null,
+          lastCampaignType: null,
+          daysSinceContact: null,
+          daysUntilEligible: 0
+        })
+      };
+    }
+
+    const lastContact = contacts[0];
+    const daysSince = Math.floor(
+      (Date.now() - new Date(lastContact.contacted_at).getTime()) / (24 * 60 * 60 * 1000)
+    );
+
+    // Check global cooldown
+    if (daysSince < minDaysGlobal) {
+      const daysUntil = minDaysGlobal - daysSince;
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          customerId,
+          isEligible: false,
+          reason: `Contactado há ${daysSince} dias. Aguarde mais ${daysUntil} dias.`,
+          lastContactDate: lastContact.contacted_at,
+          lastCampaignType: lastContact.campaign_type,
+          lastCampaignName: lastContact.campaign_name,
+          daysSinceContact: daysSince,
+          daysUntilEligible: daysUntil
+        })
+      };
+    }
+
+    // Check same campaign type cooldown
+    if (campaignType && lastContact.campaign_type === campaignType) {
+      if (daysSince < minDaysSameType) {
+        const daysUntil = minDaysSameType - daysSince;
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            customerId,
+            isEligible: false,
+            reason: `Já recebeu campanha "${campaignType}" há ${daysSince} dias. Aguarde mais ${daysUntil} dias.`,
+            lastContactDate: lastContact.contacted_at,
+            lastCampaignType: lastContact.campaign_type,
+            lastCampaignName: lastContact.campaign_name,
+            daysSinceContact: daysSince,
+            daysUntilEligible: daysUntil
+          })
+        };
+      }
+    }
+
+    // Eligible
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        customerId,
+        isEligible: true,
+        reason: 'Elegível para contato',
+        lastContactDate: lastContact.contacted_at,
+        lastCampaignType: lastContact.campaign_type,
+        lastCampaignName: lastContact.campaign_name,
+        daysSinceContact: daysSince,
+        daysUntilEligible: 0
+      })
+    };
+  } catch (error) {
+    console.error('[API] checkEligibilityFallback error:', error);
+    // On error, assume eligible (don't block campaigns due to errors)
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        customerId,
+        isEligible: true,
+        reason: 'Erro ao verificar - assumindo elegível',
+        error: error.message
+      })
+    };
+  }
+}
+
+/**
+ * Batch check eligibility for multiple customers
+ * More efficient than checking one by one
+ *
+ * @param {Object} data - { customerIds: string[], campaignType?, minDaysGlobal?, minDaysSameType? }
+ * @returns {Object} Map of customerId -> eligibility result
+ */
+async function checkCustomersEligibilityBatch(supabase, data, headers) {
+  const {
+    customerIds,
+    campaignType = null,
+    minDaysGlobal = 7,
+    minDaysSameType = 30
+  } = data;
+
+  if (!customerIds || !Array.isArray(customerIds) || customerIds.length === 0) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'customerIds array required' })
+    };
+  }
+
+  // Limit batch size to prevent timeouts
+  const MAX_BATCH = 500;
+  const idsToCheck = customerIds.slice(0, MAX_BATCH);
+
+  try {
+    // Try to use the batch SQL function
+    const { data: result, error } = await supabase.rpc('check_customers_eligibility', {
+      p_customer_ids: idsToCheck,
+      p_campaign_type: campaignType,
+      p_min_days_global: minDaysGlobal,
+      p_min_days_same_type: minDaysSameType
+    });
+
+    if (error) {
+      console.warn('[API] check_customers_eligibility RPC failed, using fallback:', error.message);
+      // Fallback: check each one individually
+      return await checkBatchEligibilityFallback(supabase, idsToCheck, campaignType, minDaysGlobal, minDaysSameType, headers);
+    }
+
+    // Build response map
+    const eligibilityMap = {};
+    const eligible = [];
+    const ineligible = [];
+
+    for (const row of (result || [])) {
+      const entry = {
+        customerId: row.customer_id,
+        isEligible: row.is_eligible,
+        reason: row.reason,
+        lastContactDate: row.last_contact_date,
+        daysSinceContact: row.days_since_contact,
+        daysUntilEligible: row.days_until_eligible
+      };
+      eligibilityMap[row.customer_id] = entry;
+
+      if (row.is_eligible) {
+        eligible.push(row.customer_id);
+      } else {
+        ineligible.push(entry);
+      }
+    }
+
+    // Fill in any missing IDs as eligible (no contact history)
+    for (const id of idsToCheck) {
+      if (!eligibilityMap[id]) {
+        eligibilityMap[id] = {
+          customerId: id,
+          isEligible: true,
+          reason: 'Nenhum contato anterior',
+          daysUntilEligible: 0
+        };
+        eligible.push(id);
+      }
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        total: idsToCheck.length,
+        eligibleCount: eligible.length,
+        ineligibleCount: ineligible.length,
+        eligible,
+        ineligible,
+        eligibilityMap,
+        truncated: customerIds.length > MAX_BATCH
+      })
+    };
+  } catch (error) {
+    console.error('[API] checkCustomersEligibilityBatch error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
+    };
+  }
+}
+
+/**
+ * Fallback batch eligibility check using direct queries
+ */
+async function checkBatchEligibilityFallback(supabase, customerIds, campaignType, minDaysGlobal, minDaysSameType, headers) {
+  try {
+    // Get all recent contacts for these customers
+    const { data: contacts, error } = await supabase
+      .from('contact_tracking')
+      .select('customer_id, contacted_at, campaign_type, campaign_name, status')
+      .in('customer_id', customerIds)
+      .in('status', ['pending', 'returned'])
+      .order('contacted_at', { ascending: false });
+
+    if (error && !error.message?.includes('does not exist')) {
+      throw error;
+    }
+
+    // Group contacts by customer (most recent first)
+    const contactsByCustomer = {};
+    for (const contact of (contacts || [])) {
+      if (!contactsByCustomer[contact.customer_id]) {
+        contactsByCustomer[contact.customer_id] = contact;
+      }
+    }
+
+    // Check eligibility for each customer
+    const eligibilityMap = {};
+    const eligible = [];
+    const ineligible = [];
+
+    for (const customerId of customerIds) {
+      const lastContact = contactsByCustomer[customerId];
+
+      if (!lastContact) {
+        // No previous contact = eligible
+        eligibilityMap[customerId] = {
+          customerId,
+          isEligible: true,
+          reason: 'Nenhum contato anterior',
+          daysUntilEligible: 0
+        };
+        eligible.push(customerId);
+        continue;
+      }
+
+      const daysSince = Math.floor(
+        (Date.now() - new Date(lastContact.contacted_at).getTime()) / (24 * 60 * 60 * 1000)
+      );
+
+      // Check global cooldown
+      if (daysSince < minDaysGlobal) {
+        const daysUntil = minDaysGlobal - daysSince;
+        const entry = {
+          customerId,
+          isEligible: false,
+          reason: `Contactado há ${daysSince} dias. Aguarde mais ${daysUntil} dias.`,
+          lastContactDate: lastContact.contacted_at,
+          daysSinceContact: daysSince,
+          daysUntilEligible: daysUntil
+        };
+        eligibilityMap[customerId] = entry;
+        ineligible.push(entry);
+        continue;
+      }
+
+      // Check same campaign type cooldown
+      if (campaignType && lastContact.campaign_type === campaignType && daysSince < minDaysSameType) {
+        const daysUntil = minDaysSameType - daysSince;
+        const entry = {
+          customerId,
+          isEligible: false,
+          reason: `Já recebeu campanha "${campaignType}" há ${daysSince} dias.`,
+          lastContactDate: lastContact.contacted_at,
+          daysSinceContact: daysSince,
+          daysUntilEligible: daysUntil
+        };
+        eligibilityMap[customerId] = entry;
+        ineligible.push(entry);
+        continue;
+      }
+
+      // Eligible
+      eligibilityMap[customerId] = {
+        customerId,
+        isEligible: true,
+        reason: 'Elegível para contato',
+        lastContactDate: lastContact.contacted_at,
+        daysSinceContact: daysSince,
+        daysUntilEligible: 0
+      };
+      eligible.push(customerId);
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        total: customerIds.length,
+        eligibleCount: eligible.length,
+        ineligibleCount: ineligible.length,
+        eligible,
+        ineligible,
+        eligibilityMap
+      })
+    };
+  } catch (error) {
+    console.error('[API] checkBatchEligibilityFallback error:', error);
+    // On error, assume all eligible
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        total: customerIds.length,
+        eligibleCount: customerIds.length,
+        ineligibleCount: 0,
+        eligible: customerIds,
+        ineligible: [],
+        eligibilityMap: Object.fromEntries(
+          customerIds.map(id => [id, { customerId: id, isEligible: true, reason: 'Erro ao verificar - assumindo elegível' }])
+        ),
+        error: error.message
+      })
     };
   }
 }

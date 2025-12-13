@@ -2,6 +2,13 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.5 (2025-12-13): Unified eligibility for automations
+//   - Replaced automation_sends-based cooldown with unified is_customer_contactable()
+//   - Uses check_customers_eligibility() RPC for batch eligibility checking
+//   - Enforces global cooldown (7 days) and same-type cooldown (30 days)
+//   - Includes opt-out button click detection (90 days)
+//   - Aligns automation eligibility with manual campaign eligibility
+//
 // v2.4 (2025-12-12): Campaign return detection & coupon linking
 //   - Added processCampaignReturns() to run after each scheduler execution
 //   - Calls process_campaign_returns() SQL function to:
@@ -72,6 +79,17 @@ const AUTOMATION_TEMPLATE_SIDS = {
   welcome_new: 'HX2ae8ce2a72d92866fd28516aca9d76c3',  // Fixed: was using winback_wash_only SID
   wallet_reminder: 'HXa1f6a3f3c586acd36cb25a2d98a766fc',
   post_visit_thanks: 'HX62540533ed5cf7f251377cf3b4adbd8a'
+};
+
+// Map automation templates to campaign types for eligibility checks
+// Used by the unified is_customer_contactable() function
+const TEMPLATE_TO_CAMPAIGN_TYPE = {
+  winback_discount: 'winback',
+  winback_critical: 'winback',
+  welcome_new: 'welcome',
+  wallet_reminder: 'wallet',
+  post_visit_thanks: 'post_visit',
+  upsell_secagem: 'upsell'
 };
 
 // Initialize Supabase client
@@ -567,8 +585,12 @@ async function processAutomationRule(supabase, rule, blacklistedPhones) {
 
 /**
  * Find customers matching automation rule criteria
- * Excludes customers already contacted for this rule within cooldown period
- * Uses automation_sends table for accurate cooldown tracking
+ * Uses unified eligibility system (is_customer_contactable) for cooldown tracking
+ *
+ * v2.5: Replaced automation_sends cooldown with unified eligibility system
+ *       - Global cooldown: 7 days between any campaigns
+ *       - Same-type cooldown: 30 days between campaigns of the same type
+ *       - Opt-out button click detection: 90 days
  *
  * v3.6: For days_since_visit triggers, uses risk_level column (computed by Supabase)
  *       This ensures 100% consistency with frontend segmentation (same algorithm)
@@ -579,22 +601,10 @@ async function processAutomationRule(supabase, rule, blacklistedPhones) {
  *       - wallet_balance_max: For wallet_reminder, only target balances <= this amount
  */
 async function findAutomationTargets(supabase, rule) {
-  const { trigger_type, trigger_value, id: ruleId, cooldown_days } = rule;
+  const { trigger_type, trigger_value, id: ruleId } = rule;
 
-  // Use configurable cooldown_days (default 14 if not set)
-  const cooldownPeriod = cooldown_days || 14;
-  const cooldownDate = new Date();
-  cooldownDate.setDate(cooldownDate.getDate() - cooldownPeriod);
-
-  // Use automation_sends for cooldown (more accurate than contact_tracking)
-  // This uses the idx_automation_sends_cooldown index
-  const { data: recentSends } = await supabase
-    .from('automation_sends')
-    .select('customer_id')
-    .eq('rule_id', ruleId)
-    .gte('sent_at', cooldownDate.toISOString());
-
-  const recentlyContacted = new Set((recentSends || []).map(c => c.customer_id));
+  // Determine campaign type for eligibility checking
+  const campaignType = TEMPLATE_TO_CAMPAIGN_TYPE[rule.action_template] || 'other';
 
   // Build query based on trigger type
   // v3.6: Now includes risk_level for consistent targeting
@@ -675,12 +685,89 @@ async function findAutomationTargets(supabase, rule) {
     return [];
   }
 
-  // Filter out recently contacted
-  const filtered = (customers || []).filter(c => !recentlyContacted.has(c.doc));
+  if (!customers || customers.length === 0) {
+    console.log(`Rule ${ruleId}: No matching customers found`);
+    return [];
+  }
 
-  console.log(`Found ${customers?.length || 0} matching customers → ${filtered.length} after cooldown filter`);
+  console.log(`Rule ${ruleId}: Found ${customers.length} matching customers, checking eligibility...`);
 
-  return filtered;
+  // Use unified eligibility system for filtering
+  // This checks global cooldown (7 days) and same-type cooldown (30 days)
+  const customerIds = customers.map(c => c.doc);
+
+  try {
+    // Call the batch eligibility check RPC
+    const { data: eligibilityResults, error: eligError } = await supabase.rpc('check_customers_eligibility', {
+      p_customer_ids: customerIds,
+      p_campaign_type: campaignType,
+      p_min_days_global: 7,
+      p_min_days_same_type: 30
+    });
+
+    if (eligError) {
+      // Fallback to legacy automation_sends check if RPC fails
+      console.warn(`Rule ${ruleId}: Eligibility RPC failed, falling back to automation_sends:`, eligError.message);
+
+      // Use automation_sends for cooldown as fallback
+      const cooldownPeriod = rule.cooldown_days || 14;
+      const cooldownDate = new Date();
+      cooldownDate.setDate(cooldownDate.getDate() - cooldownPeriod);
+
+      const { data: recentSends } = await supabase
+        .from('automation_sends')
+        .select('customer_id')
+        .eq('rule_id', ruleId)
+        .gte('sent_at', cooldownDate.toISOString());
+
+      const recentlyContacted = new Set((recentSends || []).map(c => c.customer_id));
+      const filtered = customers.filter(c => !recentlyContacted.has(c.doc));
+
+      console.log(`Rule ${ruleId}: ${customers.length} → ${filtered.length} after fallback cooldown filter`);
+      return filtered;
+    }
+
+    // Filter to only eligible customers
+    const eligibleIds = new Set(
+      (eligibilityResults || [])
+        .filter(r => r.is_eligible === true)
+        .map(r => r.customer_id)
+    );
+
+    const filtered = customers.filter(c => eligibleIds.has(c.doc));
+
+    // Log ineligible reasons for debugging
+    const ineligible = (eligibilityResults || []).filter(r => !r.is_eligible);
+    if (ineligible.length > 0) {
+      console.log(`Rule ${ruleId}: ${ineligible.length} customers ineligible:`,
+        ineligible.slice(0, 3).map(r => ({ id: r.customer_id, reason: r.reason }))
+      );
+    }
+
+    console.log(`Rule ${ruleId}: ${customers.length} → ${filtered.length} after eligibility check`);
+    return filtered;
+
+  } catch (eligCheckError) {
+    // If eligibility check fails completely, use legacy fallback
+    console.error(`Rule ${ruleId}: Eligibility check error:`, eligCheckError.message);
+
+    // Fallback to automation_sends cooldown
+    const cooldownPeriod = rule.cooldown_days || 14;
+    const cooldownDate = new Date();
+    cooldownDate.setDate(cooldownDate.getDate() - cooldownPeriod);
+
+    const { data: recentSends } = await supabase
+      .from('automation_sends')
+      .select('customer_id')
+      .eq('rule_id', ruleId)
+      .gte('sent_at', cooldownDate.toISOString());
+
+    const recentlyContacted = new Set((recentSends || []).map(c => c.customer_id));
+    const filtered = customers.filter(c => !recentlyContacted.has(c.doc));
+
+    console.log(`Rule ${ruleId}: ${customers.length} → ${filtered.length} after error fallback`);
+    return filtered;
+  }
 }
 
 /**

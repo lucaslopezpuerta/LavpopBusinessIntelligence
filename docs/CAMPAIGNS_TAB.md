@@ -1,10 +1,18 @@
 # Campaigns Tab - Technical Documentation
 
-**Version:** 3.2.0
-**Last Updated:** 2025-12-12
+**Version:** 3.3.0
+**Last Updated:** 2025-12-13
 **File:** `src/views/Campaigns.jsx`
 
 ## Changelog
+
+**v3.3.0 (2025-12-13):**
+- **Unified Manual Campaign Flow:**
+  - Manual campaigns now use the same flow as automations: SEND FIRST, then RECORD
+  - `sendCampaignWithTracking` now stores `twilio_sid` in `campaign_contacts`
+  - New `campaign_contacts.record` API action mirrors SQL `record_automation_contact()`
+  - Webhook can now link delivery events to manual campaigns via `twilio_sid`
+  - Delivery metrics (delivered/read) now work for manual campaigns
 
 **v3.2.0 (2025-12-12):**
 - **Enhanced Automation Controls (v6.0):**
@@ -819,7 +827,7 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 | `src/utils/dateUtils.js` | Brazil timezone utilities |
 | `netlify/functions/twilio-whatsapp.js` | Twilio send API integration |
 | `netlify/functions/twilio-webhook.js` | Twilio delivery status webhook (v1.1) |
-| `netlify/functions/supabase-api.js` | Supabase API endpoints (v2.2) |
+| `netlify/functions/supabase-api.js` | Supabase API endpoints (v2.6) |
 | `netlify/functions/campaign-scheduler.js` | Scheduled campaign & automation executor (v2.2) |
 | `supabase/migrations/add_automation_controls.sql` | Automation schema migration (v1) |
 | `supabase/migrations/add_enhanced_automation_controls.sql` | Enhanced controls migration (v6.0) |
@@ -831,6 +839,7 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v3.3.0 | 2025-12-13 | **Unified Manual Campaign Flow**: Manual campaigns now use same flow as automations (send first, then record), twilio_sid stored in campaign_contacts, delivery metrics work for manual campaigns |
 | v3.2.0 | 2025-12-12 | **Enhanced Automation Controls (v6.0)**: Send time windows, day-of-week restrictions, daily rate limits, exclude recent visitors, min spend threshold, wallet balance max |
 | v3.1.0 | 2025-12-12 | **Unified risk_level targeting**: risk_level column computed by Supabase, 100% consistency with frontend |
 | v3.0.0 | 2025-12-12 | **Unified Automation-Campaign Model**: Automations create campaign records, unified tracking via SQL functions, AutomationRules v5.0 with campaign metrics display |

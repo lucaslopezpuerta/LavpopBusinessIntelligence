@@ -1,9 +1,34 @@
-// campaignService.js v4.1
+// campaignService.js v4.6
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Backend-only storage (Supabase) - no localStorage for data
 //
 // CHANGELOG:
+// v4.6 (2025-12-13): Configurable coupon validity for manual campaigns
+//   - Added couponValidityDays parameter to sendCampaignWithTracking
+//   - Passed to api.campaignContacts.record() for backend expires_at calculation
+//   - recordCampaignContact now uses couponValidityDays + 3 day buffer
+//   - Matches SQL record_automation_contact() behavior
+// v4.5 (2025-12-13): Unified eligibility checks for manual campaigns
+//   - sendCampaignWithTracking now checks eligibility before sending
+//   - Uses api.eligibility.filterRecipients() to filter out ineligible customers
+//   - Enforces global cooldown (7 days) and same-type cooldown (30 days)
+//   - Added campaignType parameter to options for type-based cooldowns
+//   - Ineligible recipients are tracked in result.ineligibleContacts
+// v4.4 (2025-12-13): Added retry logic for contact tracking
+//   - Contact recording now uses withRetry() for reliability
+//   - Tracking failures are logged with twilio_sid for manual recovery
+//   - Improved error reporting when tracking fails but message was sent
+// v4.3 (2025-12-13): Fixed duplicate comm_logs entries and improved template logging
+//   - Removed logCommunication() from sendWhatsAppMessage (callers now handle logging)
+//   - Removed logCommunication() from sendBulkWhatsApp (callers now handle logging)
+//   - Log messages now show human-readable template name instead of ContentSid
+//   - Only one comm_logs entry per send (with customer_id) instead of duplicates
+// v4.2 (2025-12-13): Unified manual campaign flow with automation flow
+//   - sendCampaignWithTracking now sends FIRST, then records with twilio_sid
+//   - Uses new api.campaignContacts.record() for unified tracking
+//   - Enables delivery metrics (delivered/read) for manual campaigns
+//   - campaign_contacts.twilio_sid now populated for webhook linking
 // v4.1 (2025-12-12): Fixed getDashboardMetrics and validateCampaignAudience
 //   - Removed orphan shouldUseBackend() check that broke dashboard
 //   - Made validateCampaignAudience async (uses async filterBlacklistedRecipients)
@@ -41,6 +66,7 @@ import {
   withRetry,
   createResultSummary
 } from './campaignErrors';
+import { getTemplateNameBySid } from '../config/messageTemplates';
 
 const TWILIO_FUNCTION_URL = '/.netlify/functions/twilio-whatsapp';
 
@@ -129,10 +155,8 @@ export async function sendWhatsAppMessage(phone, message, options = {}) {
         });
       }
 
-      // Log to communication history
-      const logMessage = contentSid ? `[Template: ${contentSid}]` : message;
-      logCommunication(normalizedPhone, 'whatsapp', logMessage, data.messageSid);
-
+      // NOTE: Logging moved to callers (sendCampaignWithTracking, etc.)
+      // who have customer_id context for proper attribution
       return data;
     } catch (error) {
       // Re-throw CampaignErrors as-is
@@ -233,13 +257,7 @@ export async function sendBulkWhatsApp(recipients, message, options = {}) {
       throw new Error(data.error || 'Failed to send bulk messages');
     }
 
-    // Log successful sends
-    if (data.results?.success) {
-      const logMessage = contentSid ? `[Template: ${contentSid}]` : message;
-      data.results.success.forEach(result => {
-        logCommunication(result.phone, 'whatsapp', logMessage, result.messageSid);
-      });
-    }
+    // NOTE: Logging moved to callers who have customer_id context
 
     // Include validation stats in response
     return {
@@ -733,16 +751,20 @@ export const saveAutomationRulesAsync = saveAutomationRules;
  * Record a campaign contact for effectiveness tracking (backend only)
  * Creates entries in both contact_tracking and campaign_contacts tables
  * @param {string} campaignId - Campaign ID
- * @param {object} contactData - { customerId, customerName, phone, contactMethod }
+ * @param {object} contactData - { customerId, customerName, phone, contactMethod, couponValidityDays }
  * @returns {Promise<object>} Created records
  */
 export async function recordCampaignContact(campaignId, contactData) {
-  const { customerId, customerName, phone, contactMethod = 'whatsapp' } = contactData;
+  const { customerId, customerName, phone, contactMethod = 'whatsapp', couponValidityDays = 7 } = contactData;
 
   try {
     // Get campaign name for the contact_tracking record
     const campaign = await api.campaigns.get(campaignId);
     const campaignName = campaign?.name || campaignId;
+
+    // Calculate expires_at: couponValidityDays + 3 day buffer (matches SQL function)
+    const expiryDays = couponValidityDays + 3;
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString();
 
     // Use the contact_tracking.record API action
     const result = await api.contacts.create({
@@ -752,7 +774,7 @@ export async function recordCampaignContact(campaignId, contactData) {
       campaign_id: campaignId,
       campaign_name: campaignName,
       status: 'pending',
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      expires_at: expiresAt
     });
 
     console.log(`[CampaignService] Recorded contact for campaign ${campaignId}: ${customerId}`);
@@ -804,7 +826,13 @@ export async function getCampaignContacts(campaignId) {
 
 /**
  * Send campaign and record contacts for effectiveness tracking
- * Enhanced version that links to contact_tracking
+ * Unified flow matching automation: SEND FIRST, then RECORD with twilio_sid
+ *
+ * Flow:
+ * 1. Check eligibility to filter out customers in cooldown period
+ * 2. Send WhatsApp message via Twilio → get messageSid
+ * 3. Record to contact_tracking + campaign_contacts WITH twilio_sid
+ * 4. This enables webhook to link delivery events to campaign
  *
  * IMPORTANT: Marketing campaigns REQUIRE ContentSid (Meta-approved template).
  * Plain text messages only work within the 24-hour customer service window,
@@ -816,12 +844,24 @@ export async function getCampaignContacts(campaignId) {
  * @param {string} options.contentSid - Twilio Content SID for Meta-approved template (REQUIRED)
  * @param {object} options.contentVariables - Base variables for template (personalized per-recipient)
  * @param {string} options.templateId - Template ID for error messages
+ * @param {string} options.campaignType - Campaign type for eligibility checks (winback, welcome, promo, wallet, upsell, post_visit)
+ * @param {number} options.couponValidityDays - Coupon validity in days (default: 7) - used for expires_at calculation
+ * @param {boolean} options.skipEligibilityCheck - If true, skip eligibility filter (default: false)
  * @param {boolean} options.dryRun - If true, don't send messages (for testing)
  * @param {boolean} options.skipWhatsApp - If true, skip sending but record tracking
  * @returns {Promise<object>} Send result with tracking info
  */
 export async function sendCampaignWithTracking(campaignId, recipients, options = {}) {
-  const { contentSid, contentVariables, templateId, dryRun = false, skipWhatsApp = false } = options;
+  const {
+    contentSid,
+    contentVariables,
+    templateId,
+    campaignType = null,
+    couponValidityDays = 7,
+    skipEligibilityCheck = false,
+    dryRun = false,
+    skipWhatsApp = false
+  } = options;
 
   const result = {
     campaignId,
@@ -829,8 +869,10 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     successCount: 0,
     failedCount: 0,
     skippedCount: 0,
+    ineligibleCount: 0,
     trackedContacts: 0,
     errors: [],
+    ineligibleContacts: [],
     sentVia: 'template'
   };
 
@@ -853,7 +895,45 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     }
   }
 
-  for (const recipient of recipients) {
+  // STEP 0: Filter recipients based on eligibility (cooldown checks)
+  // This prevents spammy behavior by enforcing:
+  // - Global cooldown: 7 days between any campaigns
+  // - Same-type cooldown: 30 days between campaigns of the same type
+  let eligibleRecipients = recipients;
+
+  if (!skipEligibilityCheck && !dryRun && recipients.length > 0) {
+    try {
+      console.log(`[CampaignService] Checking eligibility for ${recipients.length} recipients...`);
+
+      const eligibilityResult = await api.eligibility.filterRecipients(recipients, {
+        campaignType: campaignType
+      });
+
+      eligibleRecipients = eligibilityResult.eligible;
+      result.ineligibleCount = eligibilityResult.ineligible.length;
+      result.ineligibleContacts = eligibilityResult.ineligible.map(r => ({
+        customerId: r.customerId || r.doc,
+        customerName: r.customerName || r.name,
+        phone: r.phone,
+        reason: r.eligibilityInfo?.reason || 'Inelegível para contato'
+      }));
+
+      console.log(`[CampaignService] Eligibility check: ${eligibleRecipients.length} eligible, ${result.ineligibleCount} ineligible`);
+
+      if (result.ineligibleCount > 0) {
+        console.log('[CampaignService] Ineligible recipients:', result.ineligibleContacts.slice(0, 5).map(c => ({
+          customerId: c.customerId,
+          reason: c.reason
+        })));
+      }
+    } catch (eligibilityError) {
+      // On error, log warning but proceed with all recipients
+      // Better to send than to block due to eligibility check failure
+      console.warn('[CampaignService] Eligibility check failed, proceeding with all recipients:', eligibilityError.message);
+    }
+  }
+
+  for (const recipient of eligibleRecipients) {
     const { customerId, customerName, phone, name, walletBalance } = recipient;
     const recipientName = customerName || name;
 
@@ -869,18 +949,10 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     }
 
     try {
-      // Record contact for tracking (before sending WhatsApp)
-      if (!dryRun) {
-        await recordCampaignContact(campaignId, {
-          customerId,
-          customerName: recipientName,
-          phone,
-          contactMethod: 'whatsapp'
-        });
-        result.trackedContacts++;
-      }
+      let messageSid = null;
 
-      // Send WhatsApp if not skipped
+      // STEP 1: Send WhatsApp FIRST (matches automation flow)
+      // This way we have the messageSid before recording
       if (!skipWhatsApp && !dryRun) {
         // Template mode - personalize variables for this recipient
         const personalizedVars = {
@@ -901,20 +973,58 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
           contentVariables: personalizedVars
         });
 
-        // Record to comm_logs for audit trail (parity with automation flow)
+        messageSid = sendResult?.messageSid || null;
+
+        // Record to comm_logs for audit trail
         try {
+          // Use human-readable template name instead of ContentSid
+          const templateName = getTemplateNameBySid(contentSid);
           await api.logs.add({
             phone: normalizePhone(phone),
             customer_id: customerId,
             channel: 'whatsapp',
             direction: 'outbound',
-            message: `Campaign: ${campaignId} [Template: ${contentSid}]`,
-            external_id: sendResult?.messageSid || null,
+            message: `Campaign: ${campaignId} [Template: ${templateName}]`,
+            external_id: messageSid,
             status: 'sent'
           });
         } catch (logError) {
           console.warn('[CampaignService] Failed to log to comm_logs:', logError.message);
-          // Don't fail the send if logging fails
+        }
+      }
+
+      // STEP 2: Record contact with twilio_sid AFTER sending (matches automation flow)
+      // This enables delivery tracking via webhook
+      // Uses retry logic to ensure tracking is recorded (critical for effectiveness metrics)
+      if (!dryRun) {
+        try {
+          await withRetry(
+            async () => {
+              await api.campaignContacts.record({
+                campaignId,
+                customerId,
+                customerName: recipientName,
+                phone: normalizePhone(phone),
+                twilioSid: messageSid,
+                contactMethod: 'whatsapp',
+                campaignType: campaignType,
+                couponValidityDays: couponValidityDays
+              });
+            },
+            { maxRetries: 2, context: { campaignId, customerId, messageSid } }
+          );
+          result.trackedContacts++;
+        } catch (trackError) {
+          console.error('[CampaignService] Failed to record contact tracking after retries:', trackError.message);
+          // Track the failure but don't fail the send - message was already sent
+          result.errors.push({
+            customerId,
+            phone,
+            type: 'TRACKING_FAILED',
+            error: `Mensagem enviada mas tracking falhou: ${trackError.message}`,
+            retryable: false,
+            twilioSid: messageSid // Include SID for manual recovery
+          });
         }
       }
 
@@ -943,7 +1053,7 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     }
   }
 
-  // Update campaign stats
+  // Record aggregate send stats to campaign_sends table
   if (!dryRun && result.successCount > 0) {
     await recordCampaignSendAsync(campaignId, {
       recipients: result.totalRecipients,
@@ -959,6 +1069,7 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     success: result.successCount,
     tracked: result.trackedContacts,
     failed: result.failedCount,
+    ineligible: result.ineligibleCount,
     status: result.summary.status
   });
 
