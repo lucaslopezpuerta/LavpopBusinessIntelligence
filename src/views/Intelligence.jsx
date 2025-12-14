@@ -57,13 +57,11 @@
 // v1.2.0 (2025-11-29): Design System v3.0 - Dark mode & Nivo theme
 // v1.0.0 (2025-11-18): Complete redesign with Tailwind + Nivo
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
 import { Settings, Calendar, TrendingUp, Zap, DollarSign, Lightbulb } from 'lucide-react';
 
 // Business logic
 import BusinessSettingsModal, { useBusinessSettings } from '../components/BusinessSettingsModal';
-import { useTheme } from '../contexts/ThemeContext';
-import { getLavpopNivoTheme } from '../utils/chartThemes';
 import {
   calculateProfitability,
   calculateWeatherImpact,
@@ -80,11 +78,14 @@ import {
 import KPICard, { KPIGrid } from '../components/ui/KPICard';
 import { IntelligenceLoadingSkeleton } from '../components/ui/Skeleton';
 
-// Section components
-import ProfitabilitySection from '../components/intelligence/ProfitabilitySection';
-import WeatherImpactSection from '../components/intelligence/WeatherImpactSection';
-import GrowthTrendsSection from '../components/intelligence/GrowthTrendsSection';
-import CampaignROISection from '../components/intelligence/CampaignROISection';
+// Lazy-loaded section components (contain charts)
+import {
+  LazyProfitabilitySection,
+  LazyWeatherImpactSection,
+  LazyGrowthTrendsSection,
+  LazyCampaignROISection,
+  SectionLoadingFallback
+} from '../utils/lazyCharts';
 
 // UX Enhancement components
 import RevenueForecast from '../components/intelligence/RevenueForecast';
@@ -95,8 +96,6 @@ import SectionNavigation from '../components/intelligence/SectionNavigation';
 const Intelligence = ({ data }) => {
   const [showSettings, setShowSettings] = useState(false);
   const settings = useBusinessSettings();
-  const { isDark } = useTheme();
-  const nivoTheme = useMemo(() => getLavpopNivoTheme(isDark), [isDark]);
 
   // Calculate all metrics
   const profitability = useMemo(() => {
@@ -406,34 +405,41 @@ const Intelligence = ({ data }) => {
           />
 
           {/* Section 1: Profitability */}
-          <ProfitabilitySection
-            profitability={profitability}
-            formatCurrency={formatCurrency}
-            formatPercent={formatPercent}
-            nivoTheme={nivoTheme}
-          />
+          <Suspense fallback={<SectionLoadingFallback />}>
+            <LazyProfitabilitySection
+              profitability={profitability}
+              formatCurrency={formatCurrency}
+              formatPercent={formatPercent}
+            />
+          </Suspense>
 
           {/* Section 2: Weather Impact (Comfort-based) */}
-          <WeatherImpactSection
-            weatherImpact={weatherImpact}
-            comfortWeatherImpact={comfortWeatherImpact}
-            formatCurrency={formatCurrency}
-            formatPercent={formatPercent}
-          />
+          <Suspense fallback={<SectionLoadingFallback />}>
+            <LazyWeatherImpactSection
+              weatherImpact={weatherImpact}
+              comfortWeatherImpact={comfortWeatherImpact}
+              formatCurrency={formatCurrency}
+              formatPercent={formatPercent}
+            />
+          </Suspense>
 
           {/* Section 3: Growth & Trends */}
-          <GrowthTrendsSection
-            growthTrends={growthTrends}
-            formatCurrency={formatCurrency}
-            formatPercent={formatPercent}
-          />
+          <Suspense fallback={<SectionLoadingFallback />}>
+            <LazyGrowthTrendsSection
+              growthTrends={growthTrends}
+              formatCurrency={formatCurrency}
+              formatPercent={formatPercent}
+            />
+          </Suspense>
 
           {/* Section 4: Campaign Effectiveness */}
-          <CampaignROISection
-            campaignROI={campaignROI}
-            formatCurrency={formatCurrency}
-            formatPercent={formatPercent}
-          />
+          <Suspense fallback={<SectionLoadingFallback />}>
+            <LazyCampaignROISection
+              campaignROI={campaignROI}
+              formatCurrency={formatCurrency}
+              formatPercent={formatPercent}
+            />
+          </Suspense>
 
       </div>
 

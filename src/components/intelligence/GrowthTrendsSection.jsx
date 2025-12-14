@@ -1,15 +1,13 @@
-// GrowthTrendsSection.jsx v4.3
+// GrowthTrendsSection.jsx v5.0
 // Growth & trends analysis section for Intelligence tab
-// Design System v3.1 compliant - Migrated to Tremor charts
+// Design System v3.1 compliant - Migrated to Recharts
 //
 // CHANGELOG:
-// v4.3 (2025-12-14): Enhanced mobile experience (no horizontal scroll)
-//   - Compact stacked cards for mobile/tablet (replaces table)
-//   - Visual indicators for best/worst months (star/arrow icons)
-//   - Colored borders for current/best/worst month highlighting
-//   - MoM growth badge with trend icon in header row
-//   - Revenue + Cycles displayed side-by-side
-//   - Touch feedback with scale transform
+// v5.0 (2025-12-14): Migrated from Tremor to Recharts
+//   - Replaced Tremor AreaChart with Recharts AreaChart
+//   - Custom tooltip matching project patterns
+//   - Gradient fill with linear gradient defs
+//   - Reduced bundle size by removing Tremor dependency
 // v4.2 (2025-12-03): Desktop table improvements
 //   - Center-aligned all table headers and cells
 //   - Full month names on desktop table (e.g., "Novembro 2024")
@@ -19,33 +17,23 @@
 //   - Removed label rotation since tiny format fits without rotation
 //   - Fixed Y-axis width for proper currency display
 // v4.0 (2025-12-03): Tremor chart library migration
-//   - Replaced Recharts with Tremor AreaChart
-//   - Beautiful gradient fill with smooth animations
-//   - Modern hover interactions with built-in tooltips
-//   - Cleaner, more polished visual appearance
-//   - Custom value formatter for Brazilian currency
 // v3.2 (2025-12-03): Responsive labels + mobile card improvements
-//   - KPI cards: full labels on desktop, short labels on mobile
-//   - Mobile monthly cards: center-aligned text, improved spacing
-//   - Uses KPICard v1.3 mobileLabel/mobileSubtitle props
 // v3.1 (2025-12-03): Mobile KPI card improvements
-//   - Shortened labels: "Média", "Melhor", "Pior", "Direção" (single words)
-//   - Shortened subtitles: "6 meses", "3 meses" (compact)
-//   - Works with KPICard v1.2 truncation fixes
 // v3.0 (2025-12-03): Major refactor - Nivo to Recharts migration
 // v2.2 (2025-12-02): Fixed Nivo chart NaN crash
 // v2.1 (2025-12-02): Unified section header
 // v2.0 (2025-11-30): Major refactor with unified components
 // v1.0 (2025-11-30): Initial extraction from Intelligence.jsx
 
-import React, { useMemo } from 'react';
-import { AreaChart } from '@tremor/react';
-import { TrendingUp, TrendingDown, Award, AlertTriangle, Minus, Clock, Star, ArrowDown } from 'lucide-react';
+import React, { useMemo, useCallback } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TrendingUp, TrendingDown, Award, AlertTriangle, Minus, Clock } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import KPICard, { KPIGrid } from '../ui/KPICard';
 import InsightBox from '../ui/InsightBox';
 import TrendBadge from '../ui/TrendBadge';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { useTheme } from '../../contexts/ThemeContext';
 import { formatMonthKey } from '../../utils/dateUtils';
 
 const GrowthTrendsSection = ({
@@ -54,15 +42,16 @@ const GrowthTrendsSection = ({
   formatPercent
 }) => {
   const isMobile = useIsMobile();
+  const { isDark } = useTheme();
 
-  // Memoize chart data with formatted month names for Tremor
+  // Memoize chart data with formatted month names
   // Use 'tiny' format on mobile (e.g., "N24") to prevent label truncation
   const chartData = useMemo(() => {
     if (!growthTrends?.monthly?.length) return null;
     const dataPoints = growthTrends.monthly.slice(-12).map((m) => ({
       month: formatMonthKey(m.month, isMobile ? 'tiny' : 'short'), // Mobile: "N24", Desktop: "Nov 24"
       fullMonth: formatMonthKey(m.month, 'long'), // For tooltip: "Novembro 2024"
-      Receita: m.revenue || 0, // Tremor uses category names for display
+      Receita: m.revenue || 0,
       isPartial: m.isPartial || false,
     }));
     // Need at least 2 points for a line
@@ -70,18 +59,29 @@ const GrowthTrendsSection = ({
     return dataPoints;
   }, [growthTrends?.monthly, isMobile]);
 
-  // Currency formatter for Tremor tooltips and Y-axis
-  const currencyFormatter = (value) => {
+  // Currency formatter for tooltips and Y-axis
+  const currencyFormatter = useCallback((value) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);
-  };
+  }, []);
 
-  // Custom compact tooltip for Tremor (especially for mobile)
-  const customTooltip = ({ payload, active }) => {
+  // Format Y axis values (compact on mobile)
+  const formatYAxis = useCallback((value) => {
+    if (isMobile) {
+      if (value >= 1000) {
+        return `${Math.round(value / 1000)}k`;
+      }
+      return `R$ ${value}`;
+    }
+    return currencyFormatter(value);
+  }, [isMobile, currencyFormatter]);
+
+  // Custom tooltip for Recharts
+  const CustomTooltip = useCallback(({ active, payload }) => {
     if (!active || !payload?.length) return null;
     const data = payload[0]?.payload;
     if (!data) return null;
@@ -95,12 +95,12 @@ const GrowthTrendsSection = ({
         <p className="font-semibold text-slate-900 dark:text-white">
           {data.fullMonth || data.month}
         </p>
-        <p className="text-slate-600 dark:text-slate-300">
+        <p className="text-blue-600 dark:text-blue-400 font-bold">
           {currencyFormatter(data.Receita)}
         </p>
       </div>
     );
-  };
+  }, [isMobile, currencyFormatter]);
 
   // Memoize monthly data for table/cards
   const monthlyData = useMemo(() =>
@@ -201,7 +201,7 @@ const GrowthTrendsSection = ({
           />
         </KPIGrid>
 
-        {/* Area Chart - Tremor */}
+        {/* Area Chart - Recharts */}
         {chartData && (
           <div>
             <p id="growth-chart-desc" className="sr-only">
@@ -214,27 +214,70 @@ const GrowthTrendsSection = ({
               role="img"
               aria-label="Gráfico de Tendência de Receita"
             >
-              <AreaChart
-                data={chartData}
-                index="month"
-                categories={['Receita']}
-                colors={['blue']}
-                valueFormatter={currencyFormatter}
-                customTooltip={customTooltip}
-                showAnimation={true}
-                animationDuration={1000}
-                curveType="monotone"
-                showGradient={true}
-                showLegend={false}
-                showGridLines={true}
-                showXAxis={true}
-                showYAxis={true}
-                yAxisWidth={isMobile ? 55 : 85}
-                startEndOnly={false}
-                intervalType="preserveStartEnd"
-                className="h-full [&_.recharts-cartesian-axis-tick-value]:text-xs [&_.recharts-cartesian-axis-tick-value]:fill-slate-600 dark:[&_.recharts-cartesian-axis-tick-value]:fill-slate-400"
-                connectNulls={true}
-              />
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={chartData}
+                  margin={isMobile
+                    ? { top: 10, right: 10, bottom: 20, left: 45 }
+                    : { top: 20, right: 30, bottom: 20, left: 70 }
+                  }
+                >
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={isDark ? '#334155' : '#e2e8f0'}
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tick={{
+                      fontSize: 12,
+                      fill: isDark ? '#94a3b8' : '#64748b'
+                    }}
+                    axisLine={{ stroke: isDark ? '#475569' : '#cbd5e1' }}
+                    tickLine={false}
+                    dy={10}
+                  />
+                  <YAxis
+                    tickFormatter={formatYAxis}
+                    tick={{
+                      fontSize: 12,
+                      fill: isDark ? '#94a3b8' : '#64748b'
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={isMobile ? 45 : 70}
+                  />
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    cursor={{ stroke: isDark ? '#475569' : '#cbd5e1', strokeDasharray: '3 3' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Receita"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    fill="url(#revenueGradient)"
+                    dot={{
+                      fill: '#3b82f6',
+                      stroke: isDark ? '#1e293b' : '#ffffff',
+                      strokeWidth: 2,
+                      r: 4
+                    }}
+                    activeDot={{
+                      fill: '#3b82f6',
+                      stroke: isDark ? '#1e293b' : '#ffffff',
+                      strokeWidth: 2,
+                      r: 6
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}
