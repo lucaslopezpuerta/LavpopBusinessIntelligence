@@ -1186,25 +1186,25 @@ async function getCampaignContacts(supabase, campaignId, headers) {
     };
   }
 
-  // Get campaign contacts with their tracking status
+  // Query contact_tracking directly by campaign_id
+  // This works for both manual campaigns AND automations (which don't use campaign_contacts bridge)
   const { data, error } = await supabase
-    .from('campaign_contacts')
+    .from('contact_tracking')
     .select(`
       id,
       campaign_id,
       customer_id,
       customer_name,
-      phone,
-      sent_at,
-      contact_tracking (
-        status,
-        return_date,
-        return_revenue,
-        days_to_return
-      )
+      contact_method,
+      status,
+      contacted_at,
+      expires_at,
+      return_date,
+      return_revenue,
+      days_to_return
     `)
     .eq('campaign_id', campaignId)
-    .order('sent_at', { ascending: false });
+    .order('contacted_at', { ascending: false });
 
   if (error) {
     // If table doesn't exist, return empty array
@@ -1218,13 +1218,29 @@ async function getCampaignContacts(supabase, campaignId, headers) {
     throw error;
   }
 
-  console.log(`[API] getCampaignContacts: Loaded ${data?.length || 0} contacts for campaign ${campaignId}`);
+  // Transform data to match expected format (contact_tracking embedded in each record)
+  const transformed = (data || []).map(ct => ({
+    id: ct.id,
+    campaign_id: ct.campaign_id,
+    customer_id: ct.customer_id,
+    customer_name: ct.customer_name,
+    phone: null, // contact_tracking doesn't store phone directly
+    sent_at: ct.contacted_at,
+    contact_tracking: {
+      status: ct.status,
+      return_date: ct.return_date,
+      return_revenue: ct.return_revenue,
+      days_to_return: ct.days_to_return
+    }
+  }));
+
+  console.log(`[API] getCampaignContacts: Loaded ${transformed.length} contacts for campaign ${campaignId} (from contact_tracking)`);
 
   // Return with key matching table name for api.get() compatibility
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify({ campaign_contacts: data || [] })
+    body: JSON.stringify({ campaign_contacts: transformed })
   };
 }
 

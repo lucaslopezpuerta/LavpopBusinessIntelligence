@@ -14,6 +14,8 @@
 --
 -- NOTE: campaign_contacts table still exists and is useful for tracking delivery status,
 -- Twilio SID, and other messaging-specific data. This change only affects the performance view.
+--
+-- UPDATE v2: Added discount_percent, coupon_code, service_type for A/B testing display
 
 -- ==================== DROP AND RECREATE VIEW ====================
 
@@ -30,6 +32,10 @@ SELECT
   c.delivered,
   c.created_at,
   c.last_sent_at,
+  -- A/B testing fields (needed for dashboard display)
+  c.discount_percent,
+  c.coupon_code,
+  c.service_type,
   -- Contact tracking metrics (now joined directly via campaign_id)
   COUNT(DISTINCT ct.id) as contacts_tracked,
   COUNT(DISTINCT CASE WHEN ct.status = 'returned' THEN ct.id END) as contacts_returned,
@@ -44,7 +50,7 @@ SELECT
   ROUND(AVG(ct.days_to_return), 1) as avg_days_to_return
 FROM campaigns c
 LEFT JOIN contact_tracking ct ON c.id = ct.campaign_id
-GROUP BY c.id, c.name, c.audience, c.status, c.contact_method, c.sends, c.delivered, c.created_at, c.last_sent_at;
+GROUP BY c.id, c.name, c.audience, c.status, c.contact_method, c.sends, c.delivered, c.created_at, c.last_sent_at, c.discount_percent, c.coupon_code, c.service_type;
 
 -- ==================== GRANT PERMISSIONS ====================
 

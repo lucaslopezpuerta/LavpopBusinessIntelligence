@@ -1,8 +1,11 @@
-// CampaignDashboard.jsx v2.1
+// CampaignDashboard.jsx v2.2
 // Unified Campaign Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.2 (2025-12-14): Added coupon code column to Recent Campaigns table
+//   - Shows coupon_code from campaign_performance view
+//   - Styled as monospace badge for readability
 // v2.1 (2025-12-12): Real delivery metrics per campaign
 //   - RecentCampaignsTable now shows: Entregues, Lidas, Taxa Entrega
 //   - Data from webhook_events via campaign_delivery_metrics view
@@ -97,7 +100,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0">
-      <table className="w-full text-sm min-w-[800px]">
+      <table className="w-full text-sm min-w-[900px]">
         <thead>
           <tr className="border-b border-slate-200 dark:border-slate-700">
             <th className="text-left py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
@@ -105,6 +108,9 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
             </th>
             <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Desconto
+            </th>
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+              Cupom
             </th>
             <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Enviadas
@@ -149,6 +155,15 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                 {campaign.discount_percent ? (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
                     {campaign.discount_percent}%
+                  </span>
+                ) : (
+                  <span className="text-slate-400">-</span>
+                )}
+              </td>
+              <td className="py-3 px-2 text-center">
+                {campaign.coupon_code ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono">
+                    {campaign.coupon_code}
                   </span>
                 ) : (
                   <span className="text-slate-400">-</span>
