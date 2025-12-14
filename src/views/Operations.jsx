@@ -61,14 +61,14 @@
 // v2.0 (Previous): Added machine performance tracking
 // v1.0 (Previous): Initial Operations tab
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, Suspense } from 'react';
 import { Wrench, Gauge, Grid3X3, Clock } from 'lucide-react';
 import OperationsKPICards from '../components/OperationsKPICards';
 import UtilizationHeatmap from '../components/UtilizationHeatmap';
 import PeakHoursSummary from '../components/PeakHoursSummary';
-import DayOfWeekChart from '../components/DayOfWeekChart';
 import MachinePerformanceTable from '../components/MachinePerformanceTable';
 import DateRangeSelector from '../components/DateRangeSelector';
+import { LazyDayOfWeekChart, ChartLoadingFallback } from '../utils/lazyCharts';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { getDateWindows } from '../utils/dateWindows';
@@ -234,11 +234,13 @@ const Operations = ({ data }) => {
             />
           </div>
           <div className="col-span-12 lg:col-span-6">
-            <DayOfWeekChart
-              dayPatterns={operationsMetrics.dayPatterns}
-              dateFilter={dateFilter}
-              dateWindow={dateWindow}
-            />
+            <Suspense fallback={<ChartLoadingFallback height="h-80" />}>
+              <LazyDayOfWeekChart
+                dayPatterns={operationsMetrics.dayPatterns}
+                dateFilter={dateFilter}
+                dateWindow={dateWindow}
+              />
+            </Suspense>
           </div>
         </div>
       </section>

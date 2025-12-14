@@ -29,11 +29,11 @@
 //   - Cleaner visual hierarchy (3 hero + 6 secondary)
 //   - Non-gradient design per Design System audit
 // v8.5: Fixed layout & metrics
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { LayoutDashboard } from 'lucide-react';
 import KPICardsGrid from '../components/KPICardsGrid';
-import OperatingCyclesChart from '../components/OperatingCyclesChart';
 import DashboardDateControl from '../components/DashboardDateControl';
+import { LazyOperatingCyclesChart, ChartLoadingFallback } from '../utils/lazyCharts';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
@@ -169,7 +169,9 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
           Operações
         </h2>
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <OperatingCyclesChart salesData={salesData} />
+          <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
+            <LazyOperatingCyclesChart salesData={salesData} />
+          </Suspense>
         </div>
       </section>
 
