@@ -1,6 +1,10 @@
-// apiService.js v2.0
+// apiService.js v2.1
 // Unified API service for Supabase backend communication
 // Provides fallback to localStorage when backend is unavailable
+//
+// Version: 2.1 (2025-12-13) - Unified campaign contact tracking
+//   - Added campaignContacts.record for manual campaigns
+//   - Matches automation flow: send first, then record with twilio_sid
 //
 // Version: 2.0 (2025-12-10) - Security hardening
 //   - Added API key authentication (X-Api-Key header)
@@ -296,6 +300,30 @@ export const api = {
     }
   },
 
+  // ==================== CAMPAIGN CONTACTS ====================
+  // Unified tracking for manual campaigns (mirrors automation flow)
+  campaignContacts: {
+    /**
+     * Record a campaign contact with full tracking
+     * Creates contact_tracking + campaign_contacts with twilio_sid
+     * This is the unified flow: send first, then record with message_sid
+     *
+     * @param {object} data - { campaignId, customerId, customerName, phone, twilioSid }
+     */
+    async record(data) {
+      const result = await apiRequest('campaign_contacts.record', { data });
+      return result;
+    },
+
+    /**
+     * Get all contacts for a campaign
+     */
+    async getAll(campaignId) {
+      const result = await apiRequest('campaign_contacts.getAll', { campaign_id: campaignId });
+      return result || [];
+    }
+  },
+
   // ==================== DELIVERY METRICS ====================
   delivery: {
     /**
@@ -318,6 +346,20 @@ export const api = {
     },
 
     /**
+     * Get per-campaign delivery metrics from webhook_events
+     * Returns delivered/read counts and rates for each campaign
+     */
+    async getCampaignMetrics() {
+      try {
+        const result = await apiRequest('webhook_events.getCampaignDeliveryMetrics');
+        return result.metrics || [];
+      } catch (error) {
+        console.error('Failed to fetch campaign delivery metrics:', error);
+        return [];
+      }
+    },
+
+    /**
      * Get raw webhook events for debugging
      */
     async getEvents(limit = 100, eventType = null) {
@@ -325,6 +367,121 @@ export const api = {
       if (eventType) params.event_type = eventType;
       const result = await apiRequest('webhook_events.getAll', params, 'GET');
       return result.events || [];
+    }
+  },
+
+  // ==================== CONTACT ELIGIBILITY ====================
+  // Unified cooldown checks for manual and automatic campaigns
+  eligibility: {
+    /**
+     * Check if a single customer is eligible for campaign contact
+     * Enforces global cooldown (7 days) and same-type cooldown (30 days)
+     *
+     * @param {string} customerId - Customer document/ID
+     * @param {object} options - { campaignType?, minDaysGlobal?, minDaysSameType? }
+     * @returns {Promise<object>} { isEligible, reason, lastContactDate, daysUntilEligible }
+     */
+    async check(customerId, options = {}) {
+      try {
+        const result = await apiRequest('eligibility.check', {
+          customerId,
+          campaignType: options.campaignType || null,
+          minDaysGlobal: options.minDaysGlobal || 7,
+          minDaysSameType: options.minDaysSameType || 30
+        });
+        return result;
+      } catch (error) {
+        console.error('Failed to check eligibility:', error);
+        // On error, assume eligible (don't block campaigns)
+        return {
+          customerId,
+          isEligible: true,
+          reason: 'Erro ao verificar - assumindo elegível',
+          error: error.message
+        };
+      }
+    },
+
+    /**
+     * Batch check eligibility for multiple customers
+     * More efficient than checking one by one
+     *
+     * @param {string[]} customerIds - Array of customer IDs
+     * @param {object} options - { campaignType?, minDaysGlobal?, minDaysSameType? }
+     * @returns {Promise<object>} { total, eligibleCount, ineligibleCount, eligible, ineligible, eligibilityMap }
+     */
+    async checkBatch(customerIds, options = {}) {
+      if (!customerIds || customerIds.length === 0) {
+        return {
+          total: 0,
+          eligibleCount: 0,
+          ineligibleCount: 0,
+          eligible: [],
+          ineligible: [],
+          eligibilityMap: {}
+        };
+      }
+
+      try {
+        const result = await apiRequest('eligibility.checkBatch', {
+          customerIds,
+          campaignType: options.campaignType || null,
+          minDaysGlobal: options.minDaysGlobal || 7,
+          minDaysSameType: options.minDaysSameType || 30
+        });
+        return result;
+      } catch (error) {
+        console.error('Failed to check batch eligibility:', error);
+        // On error, assume all eligible
+        return {
+          total: customerIds.length,
+          eligibleCount: customerIds.length,
+          ineligibleCount: 0,
+          eligible: customerIds,
+          ineligible: [],
+          eligibilityMap: Object.fromEntries(
+            customerIds.map(id => [id, { customerId: id, isEligible: true, reason: 'Erro ao verificar' }])
+          ),
+          error: error.message
+        };
+      }
+    },
+
+    /**
+     * Filter recipients based on eligibility (convenience method)
+     * Returns only eligible recipients and stats about filtered ones
+     *
+     * @param {Array} recipients - Array of { customerId, ... }
+     * @param {object} options - { campaignType?, minDaysGlobal?, minDaysSameType? }
+     * @returns {Promise<object>} { eligible, ineligible, stats }
+     */
+    async filterRecipients(recipients, options = {}) {
+      if (!recipients || recipients.length === 0) {
+        return { eligible: [], ineligible: [], stats: { total: 0, eligible: 0, ineligible: 0 } };
+      }
+
+      const customerIds = recipients.map(r => r.customerId || r.doc).filter(Boolean);
+      const result = await this.checkBatch(customerIds, options);
+
+      // Map back to original recipients
+      const eligibleSet = new Set(result.eligible);
+      const eligible = recipients.filter(r => eligibleSet.has(r.customerId || r.doc));
+      const ineligible = recipients
+        .filter(r => !eligibleSet.has(r.customerId || r.doc))
+        .map(r => ({
+          ...r,
+          eligibilityInfo: result.eligibilityMap[r.customerId || r.doc]
+        }));
+
+      return {
+        eligible,
+        ineligible,
+        stats: {
+          total: recipients.length,
+          eligible: result.eligibleCount,
+          ineligible: result.ineligibleCount
+        }
+      };
     }
   },
 

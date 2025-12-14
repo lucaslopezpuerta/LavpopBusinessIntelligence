@@ -1,8 +1,54 @@
 # Campaigns Tab - Technical Documentation
 
-**Version:** 2.5.0
-**Last Updated:** 2025-12-11
+**Version:** 3.4.0
+**Last Updated:** 2025-12-13
 **File:** `src/views/Campaigns.jsx`
+
+## Changelog
+
+**v3.4.0 (2025-12-13):**
+- **Auto-refresh Triggers (Schema v3.14):**
+  - Customer metrics now update automatically when transactions are inserted
+  - No more manual "Sincronizar Metricas" clicks required after sales uploads
+  - Triggers: `trg_update_customer_after_transaction`, `trg_calculate_customer_risk`
+  - Computes: `last_visit`, `transaction_count`, `total_spent`, `avg_days_between`, `risk_level`
+- **Smart Customer Upsert:**
+  - Handles full customer list uploads (entire POS export) without data regression
+  - Profile fields (nome, telefone, email, saldo_carteira): Always update
+  - Date fields (first_visit, last_visit): Use GREATEST (won't regress to older dates)
+  - Count fields (transaction_count, total_spent): Use GREATEST (won't regress to lower values)
+  - Computed fields (risk_level, avg_days_between): Never touched (triggers handle)
+  - Falls back to simple upsert if RPC not available
+- **Smart Data Refresh (App.jsx v7.0):**
+  - Visibility-based refresh: Auto-refresh when returning to tab after 5+ minutes
+  - Auto-refresh every 10 minutes while tab is active
+  - Silent background refresh (no loading spinner)
+  - DataFreshnessProvider for app-wide refresh triggers
+
+**v3.3.0 (2025-12-13):**
+- **Unified Manual Campaign Flow:**
+  - Manual campaigns now use the same flow as automations: SEND FIRST, then RECORD
+  - `sendCampaignWithTracking` now stores `twilio_sid` in `campaign_contacts`
+  - New `campaign_contacts.record` API action mirrors SQL `record_automation_contact()`
+  - Webhook can now link delivery events to manual campaigns via `twilio_sid`
+  - Delivery metrics (delivered/read) now work for manual campaigns
+
+**v3.2.0 (2025-12-12):**
+- **Enhanced Automation Controls (v6.0):**
+  - Send time window: Only send messages between configurable hours (Brazil timezone)
+  - Day of week restrictions: Individual checkboxes for each day (Seg, Ter, Qua, Qui, Sex, Sáb, Dom)
+  - Daily rate limiting: Maximum messages per day per automation
+  - Exclude recent visitors: Don't send to customers who visited recently (except welcome/wallet/post-visit)
+  - Minimum total spent threshold: Only target customers who spent above a certain amount
+  - Wallet balance range: For wallet_reminder, set a max balance to target
+- AutomationRules UI v6.0 with new control sections
+- campaign-scheduler.js v2.2 with enhanced filtering and Brazil timezone checks
+
+**v3.1.0 (2025-12-12):**
+- Added `risk_level` column to customers table for consistent automation targeting
+- Risk level computed in Supabase using same algorithm as frontend (exponential decay with RFM bonus)
+- Automations now use `risk_level IN ('At Risk', 'Churning')` instead of custom ratio calculation
+- 100% consistency between manual campaign UI and automation targeting
 
 ---
 
@@ -236,7 +282,16 @@ audienceSegments (filtered by risk/RFM)
 
 **Purpose:** Configure automated campaigns that trigger based on customer behavior
 
-**File:** `src/components/campaigns/AutomationRules.jsx`
+**File:** `src/components/campaigns/AutomationRules.jsx` (v6.0)
+
+**Unified Campaign Model (v3.0):**
+
+Automations are now treated as **"Auto Campaigns"** - they create corresponding records in the `campaigns` table and use the same tracking infrastructure as manual campaigns. This provides:
+
+- **Unified Metrics:** Manual + Auto campaigns appear in the same dashboard
+- **A/B Testing Data:** Automation coupons tracked for effectiveness analysis
+- **Complete Funnel Visibility:** Sent → Delivered → Returned metrics
+- **Contact Return Tracking:** Unified tracking across all campaign types
 
 **Features:**
 - Enable/disable individual automation rules
@@ -244,6 +299,15 @@ audienceSegments (filtered by risk/RFM)
 - Set stop dates (automation end date in Brazil timezone)
 - Define maximum send limits per automation
 - Configure coupon codes and validity periods
+- **View campaign metrics:** Return rate, revenue recovered per automation
+
+**v6.0 Enhanced Controls:**
+- **Send Time Window:** Only send messages between configurable hours (default 09:00-20:00 Brazil time)
+- **Day of Week Restrictions:** Select which days automations can send (default Mon-Fri)
+- **Daily Rate Limit:** Maximum messages per day per automation (prevents spamming)
+- **Exclude Recent Visitors:** Skip customers who visited within X days (for winback automations)
+- **Minimum Total Spent:** Only target customers with lifetime spend ≥ threshold
+- **Wallet Balance Max:** For wallet_reminder, only target balances up to X (avoid alerting high-balance customers)
 
 #### Available Automation Rules
 
@@ -273,9 +337,30 @@ audienceSegments (filtered by risk/RFM)
   // Coupon Configuration
   coupon_code: 'VOLTE20',      // Must exist in POS system
   discount_percent: 20,        // Display only (coupon handles actual discount)
-  coupon_validity_days: 7      // Days shown in message as expiration
+  coupon_validity_days: 7,     // Days shown in message as expiration
+
+  // v6.0: Enhanced Controls
+  send_window_start: '09:00',  // Start time for sending (Brazil timezone)
+  send_window_end: '20:00',    // End time for sending (Brazil timezone)
+  send_days: [1,2,3,4,5],      // Days allowed (1=Mon, 7=Sun) - default Mon-Fri
+  max_daily_sends: 50,         // Max messages per day (null = unlimited)
+  exclude_recent_days: 3,      // Skip customers who visited within X days (null = don't exclude)
+  min_total_spent: 50.00,      // Only target customers who spent >= R$50 (null = no minimum)
+  wallet_balance_max: 200.00   // For wallet_reminder: only target balances <= R$200 (null = no max)
 }
 ```
+
+**Per-Rule Default Settings:**
+
+| Rule | exclude_recent_days | min_total_spent | wallet_balance_max | send_days |
+|------|---------------------|-----------------|-------------------|-----------|
+| `winback_30` | 3 | null | null | Mon-Fri |
+| `winback_45` | 3 | R$50 | null | Mon-Fri |
+| `welcome_new` | null* | null | null | Mon-Fri |
+| `wallet_reminder` | null* | null | R$200 | Mon-Fri |
+| `post_visit` | null* | null | null | All days |
+
+*\* These automations target recent visitors, so `exclude_recent_days` should be null.*
 
 #### Status States
 
@@ -305,22 +390,85 @@ Result: Customer NOT eligible (must wait 16 more days)
 Automations are executed by a Netlify scheduled function:
 
 ```
-netlify/functions/campaign-scheduler.js (runs every 15 minutes)
+netlify/functions/campaign-scheduler.js v2.2 (runs every 5 minutes)
     ↓
 For each enabled automation_rule:
+├── Ensure campaign record exists:
+│   └── Call sync_automation_campaign(rule_id) if campaign_id is null
 ├── Check valid_until (if set, skip if passed)
 ├── Check max_total_sends (if set, skip if reached)
-├── Query eligible customers:
-│   ├── Match trigger criteria (e.g., inactive 30+ days)
+├── v2.2: Check send_window_start/end (Brazil timezone)
+│   └── Skip if current Brazil time outside window
+├── v2.2: Check send_days (day of week restrictions)
+│   └── Skip if today not in allowed days (1=Mon, 7=Sun)
+├── v2.2: Check max_daily_sends (daily rate limit)
+│   └── Skip if daily_sends_count >= max_daily_sends (reset daily)
+├── Query eligible customers (v3.6 unified targeting):
+│   ├── days_since_visit: WHERE risk_level IN ('At Risk', 'Churning')
+│   │                     AND days_since_last_visit >= trigger_value
+│   ├── first_purchase: WHERE risk_level = 'New Customer'
+│   │                   AND transaction_count = 1
+│   ├── v2.2: exclude_recent_days: WHERE days_since_last_visit > X (if set)
+│   ├── v2.2: min_total_spent: WHERE total_spent >= X (if set)
+│   ├── v2.2: wallet_balance_max: WHERE saldo_carteira <= X (for wallet_reminder)
 │   ├── Has valid Brazilian mobile
 │   ├── Not in blacklist
-│   └── Not contacted within cooldown_days
+│   └── Not contacted within cooldown_days (checked via automation_sends)
 ├── For each eligible customer:
 │   ├── Send WhatsApp via Twilio
-│   ├── Increment total_sends_count
-│   └── Record in automation_sends table
+│   ├── Call record_automation_contact() which:
+│   │   ├── Creates contact_tracking record
+│   │   ├── Creates campaign_contacts bridge record
+│   │   ├── Creates automation_sends record
+│   │   └── Updates campaign sends count
+│   └── Increment rule total_sends_count + daily_sends_count
 └── Log execution results
 ```
+
+**Why risk_level Column (v3.6)?**
+
+Previously, automations used a simple ratio calculation (`days_since_last_visit > avg_days_between * 1.3`) to determine if a customer was "at risk". This differed from the frontend's exponential decay algorithm, causing inconsistencies:
+
+| Customer | avg_days_between | days_since | Frontend | Backend (old) | Backend (new) |
+|----------|------------------|------------|----------|---------------|---------------|
+| A | 7 | 35 | At Risk | Not targeted | At Risk ✓ |
+| B | 60 | 35 | Healthy | Targeted ✗ | Healthy ✓ |
+
+The `risk_level` column is now computed by `calculate_customer_risk()` in Supabase using the exact same algorithm as `customerMetrics.js`:
+
+```sql
+-- Exponential decay formula (matches frontend)
+likelihood = exp(-max(0, (days_since / avg_days_between) - 1)) * 100
+likelihood = likelihood * segment_bonus  -- VIP=1.2, Frequente=1.1, etc.
+
+-- Classification thresholds
+IF likelihood > 60 THEN 'Healthy'
+ELSIF likelihood > 30 THEN 'Monitor'
+ELSIF likelihood > 15 THEN 'At Risk'
+ELSE 'Churning'
+```
+
+#### SQL Functions for Unified Tracking
+
+**calculate_customer_risk(p_days_since_last_visit, p_transaction_count, p_avg_days_between, p_rfm_segment)** *(v3.6)*
+- Computes risk level using the exact same algorithm as frontend's `customerMetrics.js`
+- Returns `(risk_level TEXT, return_likelihood INTEGER)`
+- Called by `refresh_customer_metrics()` to populate customers.risk_level
+- Immutable function for consistent results
+
+**sync_automation_campaign(p_rule_id TEXT)**
+- Creates or updates a campaign record for an automation rule
+- Campaign ID format: `AUTO_{rule_id}` (e.g., `AUTO_winback_30`)
+- Maps trigger types to audiences (days_since_visit → atRisk, first_purchase → newCustomers, etc.)
+- Syncs status: enabled rule → 'active' campaign, disabled → 'paused'
+
+**record_automation_contact(p_rule_id, p_customer_id, p_customer_name, p_phone, p_message_sid)**
+- Creates unified tracking records across all relevant tables:
+  1. `contact_tracking` - For return tracking with campaign attribution
+  2. `campaign_contacts` - Bridges campaign ↔ contact_tracking
+  3. `automation_sends` - For cooldown tracking
+- Updates campaign sends count
+- Returns automation_send UUID for reference
 
 ---
 
@@ -352,6 +500,7 @@ getDashboardMetrics({ days })          // Aggregate metrics
 
 | Table | Purpose |
 |-------|---------|
+| `customers` | Customer data with risk_level + return_likelihood *(v3.6)* |
 | `campaigns` | Campaign metadata + A/B config |
 | `campaign_contacts` | Recipients per campaign |
 | `contact_tracking` | Message delivery + engagement |
@@ -361,6 +510,17 @@ getDashboardMetrics({ days })          // Aggregate metrics
 | `automation_rules` | Automation configuration |
 | `automation_sends` | Automation execution history |
 | `webhook_events` | Twilio delivery status events |
+
+#### Customers Table Risk Columns *(v3.6)*
+
+```sql
+-- Risk level classification (computed by refresh_customer_metrics)
+risk_level TEXT,           -- 'Healthy', 'Monitor', 'At Risk', 'Churning', 'New Customer', 'Lost'
+return_likelihood INTEGER  -- 0-100% likelihood of return
+
+-- Index for efficient automation queries
+CREATE INDEX idx_customers_risk_level ON customers(risk_level);
+```
 
 > **Note:** Legacy CSV files (`campaigns.csv`, `blacklist.csv`, `twilio.csv`) have been deprecated. All campaign data is now stored in Supabase.
 
@@ -381,8 +541,11 @@ getDashboardMetrics({ days })          // Aggregate metrics
 | `coupon_code` | TEXT | Coupon code for message |
 | `discount_percent` | INTEGER | Discount percentage |
 | `coupon_validity_days` | INTEGER | Days until coupon expires (default: 7) |
+| `campaign_id` | TEXT | **FK to campaigns.id** - Links rule to its campaign record (v3.0) |
 | `created_at` | TIMESTAMPTZ | Rule creation timestamp |
 | `updated_at` | TIMESTAMPTZ | Last modification timestamp |
+
+> **Note (v3.0):** The `campaign_id` column links each automation rule to a corresponding campaign record. Auto-generated campaign IDs follow the format `AUTO_{rule_id}`. This is populated automatically by the `sync_automation_campaign_trigger` when rules are enabled.
 
 #### automation_sends Schema
 
@@ -681,11 +844,17 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 | `src/utils/apiService.js` | API client with delivery methods |
 | `src/utils/phoneUtils.js` | Phone validation |
 | `src/utils/dateUtils.js` | Brazil timezone utilities |
+| `src/utils/supabaseUploader.js` | CSV upload with smart customer upsert (v1.1) |
+| `src/contexts/DataFreshnessContext.jsx` | App-wide data refresh context (v1.0) |
+| `src/App.jsx` | Smart data refresh system (v7.0) |
 | `netlify/functions/twilio-whatsapp.js` | Twilio send API integration |
 | `netlify/functions/twilio-webhook.js` | Twilio delivery status webhook (v1.1) |
-| `netlify/functions/supabase-api.js` | Supabase API endpoints (v2.2) |
-| `netlify/functions/campaign-scheduler.js` | Scheduled campaign & automation executor |
-| `supabase/migrations/add_automation_controls.sql` | Automation schema migration |
+| `netlify/functions/supabase-api.js` | Supabase API endpoints (v2.6) |
+| `netlify/functions/campaign-scheduler.js` | Scheduled campaign & automation executor (v2.6) |
+| `supabase/schema.sql` | Main database schema (v3.14) |
+| `supabase/migrations/001_schema_cleanup.sql` | Schema cleanup migration |
+| `supabase/migrations/002_auto_refresh_triggers.sql` | Auto-refresh triggers for customer metrics |
+| `supabase/migrations/003_smart_customer_upsert.sql` | Smart customer upsert functions |
 
 ---
 
@@ -693,6 +862,11 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v3.4.0 | 2025-12-13 | **Auto-refresh Triggers + Smart Upsert**: Customer metrics auto-update on transaction insert, smart customer upsert prevents data regression, App.jsx v7.0 visibility-based refresh |
+| v3.3.0 | 2025-12-13 | **Unified Manual Campaign Flow**: Manual campaigns now use same flow as automations (send first, then record), twilio_sid stored in campaign_contacts, delivery metrics work for manual campaigns |
+| v3.2.0 | 2025-12-12 | **Enhanced Automation Controls (v6.0)**: Send time windows, day-of-week restrictions, daily rate limits, exclude recent visitors, min spend threshold, wallet balance max |
+| v3.1.0 | 2025-12-12 | **Unified risk_level targeting**: risk_level column computed by Supabase, 100% consistency with frontend |
+| v3.0.0 | 2025-12-12 | **Unified Automation-Campaign Model**: Automations create campaign records, unified tracking via SQL functions, AutomationRules v5.0 with campaign metrics display |
 | v2.5.0 | 2025-12-11 | Delivery tracking via Twilio webhook, deprecated legacy CSV files, CampaignList v3.0 backend-only |
 | v2.4.0 | 2025-12-11 | Automation enhancements: configurable cooldowns, stop dates, send limits, coupon configuration |
 | v2.3.0 | 2025-12-11 | Brazil timezone scheduling, coupon config improvements |

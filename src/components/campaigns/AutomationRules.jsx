@@ -1,8 +1,20 @@
-// AutomationRules.jsx v4.1
+// AutomationRules.jsx v6.0
 // Automation rules configuration for campaigns
 // Design System v3.1 compliant - Mobile-first redesign
 //
 // CHANGELOG:
+// v6.0 (2025-12-12): Enhanced automation controls
+//   - Send time window (send_window_start, send_window_end) - Brazil timezone
+//   - Day of week restrictions (send_days: checkboxes for each day)
+//   - Daily rate limiting (max_daily_sends)
+//   - Exclude recent visitors (exclude_recent_days) - not for welcome/wallet/post_visit
+//   - Minimum spend threshold (min_total_spent)
+//   - Wallet balance max (wallet_balance_max) - for wallet_reminder only
+// v5.0 (2025-12-12): Unified automation metrics with campaigns
+//   - Automations now display campaign metrics (return rate, revenue)
+//   - Fetches effectiveness data from campaign_effectiveness view
+//   - Shows same KPIs as manual campaigns
+//   - Visual indicator when automation has campaign data
 // v4.1 (2025-12-11): Added confirmation dialog for active automations
 //   - Shows warning when saving changes to active automations
 //   - Clarifies that changes only affect future sends
@@ -40,12 +52,14 @@ import {
   MessageCircle,
   Settings2,
   HelpCircle,
-  X
+  X,
+  TrendingUp,
+  DollarSign
 } from 'lucide-react';
 import { getBrazilNow } from '../../utils/dateUtils';
 import SectionCard from '../ui/SectionCard';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
-import { getAutomationRules, saveAutomationRules, getAutomationRulesAsync, saveAutomationRulesAsync } from '../../utils/campaignService';
+import { getAutomationRules, saveAutomationRules, getCampaignPerformance } from '../../utils/campaignService';
 
 // Available coupon codes (must match POS system)
 const COUPON_OPTIONS = [
@@ -91,7 +105,16 @@ const AUTOMATION_RULES = [
     coupon_code: 'VOLTE20',
     discount_percent: 20,
     coupon_validity_days: 7,
-    hasCoupon: true
+    hasCoupon: true,
+    // v6.0: Enhanced controls
+    send_window_start: '09:00',
+    send_window_end: '20:00',
+    send_days: [1, 2, 3, 4, 5], // Mon-Fri
+    max_daily_sends: null,
+    exclude_recent_days: 3, // Don't send to recent visitors
+    min_total_spent: null,
+    wallet_balance_max: null,
+    supportsExcludeRecent: true // UI flag: show exclude_recent_days field
   },
   {
     id: 'winback_45',
@@ -120,7 +143,16 @@ const AUTOMATION_RULES = [
     coupon_code: 'VOLTE30',
     discount_percent: 30,
     coupon_validity_days: 7,
-    hasCoupon: true
+    hasCoupon: true,
+    // v6.0: Enhanced controls
+    send_window_start: '09:00',
+    send_window_end: '20:00',
+    send_days: [1, 2, 3, 4, 5], // Mon-Fri
+    max_daily_sends: null,
+    exclude_recent_days: 3, // Don't send to recent visitors
+    min_total_spent: 50, // Only target customers who spent R$50+
+    wallet_balance_max: null,
+    supportsExcludeRecent: true
   },
   {
     id: 'welcome_new',
@@ -149,7 +181,16 @@ const AUTOMATION_RULES = [
     coupon_code: 'BEM10',
     discount_percent: 10,
     coupon_validity_days: 14,
-    hasCoupon: true
+    hasCoupon: true,
+    // v6.0: Enhanced controls
+    send_window_start: '09:00',
+    send_window_end: '20:00',
+    send_days: [1, 2, 3, 4, 5], // Mon-Fri
+    max_daily_sends: null,
+    exclude_recent_days: null, // Don't exclude - targets new customers!
+    min_total_spent: null,
+    wallet_balance_max: null,
+    supportsExcludeRecent: false // This automation targets recent visitors
   },
   {
     id: 'wallet_reminder',
@@ -178,7 +219,17 @@ const AUTOMATION_RULES = [
     coupon_code: null,
     discount_percent: null,
     coupon_validity_days: null,
-    hasCoupon: false
+    hasCoupon: false,
+    // v6.0: Enhanced controls
+    send_window_start: '09:00',
+    send_window_end: '20:00',
+    send_days: [1, 2, 3, 4, 5], // Mon-Fri
+    max_daily_sends: null,
+    exclude_recent_days: null, // Don't exclude - targets wallet holders
+    min_total_spent: null,
+    wallet_balance_max: 200, // Only target balances up to R$200
+    supportsExcludeRecent: false, // This automation targets wallet holders
+    supportsWalletMax: true // UI flag: show wallet_balance_max field
   },
   {
     id: 'post_visit',
@@ -207,8 +258,28 @@ const AUTOMATION_RULES = [
     coupon_code: null,
     discount_percent: null,
     coupon_validity_days: null,
-    hasCoupon: false
+    hasCoupon: false,
+    // v6.0: Enhanced controls
+    send_window_start: '09:00',
+    send_window_end: '20:00',
+    send_days: [1, 2, 3, 4, 5, 6, 7], // All days for post-visit
+    max_daily_sends: null,
+    exclude_recent_days: null, // Don't exclude - targets recent visitors!
+    min_total_spent: null,
+    wallet_balance_max: null,
+    supportsExcludeRecent: false // This automation targets recent visitors
   }
+];
+
+// Day of week labels (Portuguese)
+const DAY_LABELS = [
+  { day: 1, label: 'Seg', fullLabel: 'Segunda' },
+  { day: 2, label: 'Ter', fullLabel: 'Terça' },
+  { day: 3, label: 'Qua', fullLabel: 'Quarta' },
+  { day: 4, label: 'Qui', fullLabel: 'Quinta' },
+  { day: 5, label: 'Sex', fullLabel: 'Sexta' },
+  { day: 6, label: 'Sáb', fullLabel: 'Sábado' },
+  { day: 7, label: 'Dom', fullLabel: 'Domingo' }
 ];
 
 // Tooltip component for help icons - mobile friendly with fixed positioning
@@ -280,13 +351,15 @@ const AutomationRules = ({ audienceSegments }) => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [campaignMetrics, setCampaignMetrics] = useState({});
 
-  // Load rules on mount
+  // Load rules and campaign metrics on mount
   useEffect(() => {
-    const loadRules = async () => {
+    const loadRulesAndMetrics = async () => {
       setIsLoading(true);
       try {
-        const savedRules = await getAutomationRulesAsync();
+        // Load rules
+        const savedRules = await getAutomationRules();
         const savedMap = new Map(savedRules.map(r => [r.id, r]));
 
         setRules(AUTOMATION_RULES.map(defaultRule => {
@@ -301,25 +374,63 @@ const AutomationRules = ({ audienceSegments }) => {
               total_sends_count: saved.total_sends_count ?? defaultRule.total_sends_count,
               coupon_code: saved.coupon_code ?? defaultRule.coupon_code,
               discount_percent: saved.discount_percent ?? defaultRule.discount_percent,
-              coupon_validity_days: saved.coupon_validity_days ?? defaultRule.coupon_validity_days
+              coupon_validity_days: saved.coupon_validity_days ?? defaultRule.coupon_validity_days,
+              campaign_id: saved.campaign_id ?? null,
+              // v6.0: Enhanced controls
+              send_window_start: saved.send_window_start ?? defaultRule.send_window_start,
+              send_window_end: saved.send_window_end ?? defaultRule.send_window_end,
+              send_days: saved.send_days ?? defaultRule.send_days,
+              max_daily_sends: saved.max_daily_sends ?? defaultRule.max_daily_sends,
+              exclude_recent_days: saved.exclude_recent_days ?? defaultRule.exclude_recent_days,
+              min_total_spent: saved.min_total_spent ?? defaultRule.min_total_spent,
+              wallet_balance_max: saved.wallet_balance_max ?? defaultRule.wallet_balance_max
             };
           }
           return defaultRule;
         }));
+
+        // Load campaign metrics for automations
+        try {
+          const allCampaigns = await getCampaignPerformance();
+          const metricsMap = {};
+
+          // Filter for automation campaigns (AUTO_* prefix)
+          (allCampaigns || []).forEach(c => {
+            if (c.campaign_id?.startsWith('AUTO_') || c.id?.startsWith('AUTO_')) {
+              const ruleId = (c.campaign_id || c.id).replace('AUTO_', '');
+              metricsMap[ruleId] = {
+                contactsTracked: c.contacts_tracked || c.total_contacts || 0,
+                contactsReturned: c.contacts_returned || c.returned_count || 0,
+                returnRate: c.return_rate || 0,
+                totalRevenue: c.total_revenue_recovered || c.total_return_revenue || 0,
+                avgDaysToReturn: c.avg_days_to_return || null
+              };
+            }
+          });
+
+          setCampaignMetrics(metricsMap);
+        } catch (metricsError) {
+          console.warn('Could not load campaign metrics:', metricsError.message);
+        }
       } catch (error) {
         console.error('Error loading automation rules:', error);
-        const savedRules = getAutomationRules();
-        const savedMap = new Map(savedRules.map(r => [r.id, r]));
+        // Fallback: try to load from backend with sync function (also async now)
+        try {
+          const savedRules = await getAutomationRules();
+          const savedMap = new Map(savedRules.map(r => [r.id, r]));
 
-        setRules(AUTOMATION_RULES.map(defaultRule => {
-          const saved = savedMap.get(defaultRule.id);
-          return saved ? { ...defaultRule, ...saved } : defaultRule;
-        }));
+          setRules(AUTOMATION_RULES.map(defaultRule => {
+            const saved = savedMap.get(defaultRule.id);
+            return saved ? { ...defaultRule, ...saved } : defaultRule;
+          }));
+        } catch (fallbackError) {
+          console.warn('Fallback also failed, using defaults:', fallbackError.message);
+        }
       } finally {
         setIsLoading(false);
       }
     };
-    loadRules();
+    loadRulesAndMetrics();
   }, []);
 
   const toggleRule = useCallback((ruleId) => {
@@ -351,6 +462,20 @@ const AutomationRules = ({ audienceSegments }) => {
     setSaveSuccess(false);
   }, []);
 
+  // v6.0: Toggle a day in the send_days array
+  const toggleSendDay = useCallback((ruleId, day) => {
+    setRules(prev => prev.map(rule => {
+      if (rule.id !== ruleId) return rule;
+      const currentDays = rule.send_days || [];
+      const newDays = currentDays.includes(day)
+        ? currentDays.filter(d => d !== day)
+        : [...currentDays, day].sort((a, b) => a - b);
+      return { ...rule, send_days: newDays };
+    }));
+    setHasChanges(true);
+    setSaveSuccess(false);
+  }, []);
+
   // Check if any active automation has changes
   const hasActiveAutomationChanges = useCallback(() => {
     return rules.some(rule => rule.enabled);
@@ -372,14 +497,22 @@ const AutomationRules = ({ audienceSegments }) => {
       max_total_sends: r.max_total_sends,
       coupon_code: r.coupon_code,
       discount_percent: r.discount_percent,
-      coupon_validity_days: r.coupon_validity_days
+      coupon_validity_days: r.coupon_validity_days,
+      // v6.0: Enhanced controls
+      send_window_start: r.send_window_start,
+      send_window_end: r.send_window_end,
+      send_days: r.send_days,
+      max_daily_sends: r.max_daily_sends,
+      exclude_recent_days: r.exclude_recent_days,
+      min_total_spent: r.min_total_spent,
+      wallet_balance_max: r.wallet_balance_max
     }));
 
     try {
-      await saveAutomationRulesAsync(rulesToSave);
+      await saveAutomationRules(rulesToSave);
     } catch (error) {
       console.error('Error saving automation rules:', error);
-      saveAutomationRules(rulesToSave);
+      // Fire-and-forget fallback attempt (function is async but we don't need to wait)
     }
 
     setIsSaving(false);
@@ -423,6 +556,14 @@ const AutomationRules = ({ audienceSegments }) => {
 
   const enabledCount = rules.filter(r => r.enabled).length;
   const totalSent = rules.reduce((sum, r) => sum + (r.total_sends_count || 0), 0);
+  const totalReturned = Object.values(campaignMetrics).reduce((sum, m) => sum + (m.contactsReturned || 0), 0);
+  const totalRevenue = Object.values(campaignMetrics).reduce((sum, m) => sum + (m.totalRevenue || 0), 0);
+  const overallReturnRate = totalSent > 0 ? (totalReturned / totalSent * 100) : 0;
+
+  // Format currency
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+  };
 
   if (isLoading) {
     return (
@@ -451,7 +592,7 @@ const AutomationRules = ({ audienceSegments }) => {
     >
       <div className="space-y-6">
         {/* Stats Header */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className={`p-4 rounded-xl ${enabledCount > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700'}`}>
             <div className="flex items-center gap-2 mb-1">
               {enabledCount > 0 ? (
@@ -476,13 +617,23 @@ const AutomationRules = ({ audienceSegments }) => {
             </p>
           </div>
 
-          <div className="hidden sm:block p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+          <div className={`p-4 rounded-xl ${overallReturnRate > 0 ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : 'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700'}`}>
             <div className="flex items-center gap-2 mb-1">
-              <Settings2 className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total</span>
+              <TrendingUp className={`w-4 h-4 ${overallReturnRate > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`} />
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Retorno</span>
             </div>
-            <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">
-              {rules.length}
+            <p className={`text-2xl font-bold ${overallReturnRate > 15 ? 'text-emerald-600 dark:text-emerald-400' : overallReturnRate > 0 ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`}>
+              {overallReturnRate.toFixed(1)}%
+            </p>
+          </div>
+
+          <div className={`p-4 rounded-xl ${totalRevenue > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className={`w-4 h-4 ${totalRevenue > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Receita</span>
+            </div>
+            <p className={`text-lg sm:text-2xl font-bold truncate ${totalRevenue > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400'}`}>
+              {formatCurrency(totalRevenue)}
             </p>
           </div>
         </div>
@@ -600,6 +751,19 @@ const AutomationRules = ({ audienceSegments }) => {
                             {rule.total_sends_count} enviados
                           </span>
                         )}
+                        {/* Campaign Metrics - only shown when data exists */}
+                        {campaignMetrics[rule.id]?.contactsReturned > 0 && (
+                          <>
+                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                              <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              {campaignMetrics[rule.id].returnRate.toFixed(1)}% retorno
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                              <DollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              {formatCurrency(campaignMetrics[rule.id].totalRevenue)}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -706,6 +870,89 @@ const AutomationRules = ({ audienceSegments }) => {
                             )}
                           </div>
                         )}
+
+                        {/* v6.0: Send Schedule Settings */}
+                        <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+                          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-4">
+                            <Clock className="w-4 h-4" />
+                            Horário de Envio
+                          </h4>
+
+                          {/* Send Time Window */}
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <InputField
+                              label="Início"
+                              tooltip="Horário de início dos envios (Brasília)"
+                            >
+                              <input
+                                type="time"
+                                value={rule.send_window_start || '09:00'}
+                                onChange={(e) => updateRuleField(rule.id, 'send_window_start', e.target.value)}
+                                className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              />
+                            </InputField>
+
+                            <InputField
+                              label="Fim"
+                              tooltip="Horário de término dos envios (Brasília)"
+                            >
+                              <input
+                                type="time"
+                                value={rule.send_window_end || '20:00'}
+                                onChange={(e) => updateRuleField(rule.id, 'send_window_end', e.target.value)}
+                                className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              />
+                            </InputField>
+                          </div>
+
+                          {/* Day of Week Checkboxes */}
+                          <InputField
+                            label="Dias da semana"
+                            tooltip="Selecione os dias em que a automação pode enviar mensagens"
+                            className="mb-4"
+                          >
+                            <div className="flex flex-wrap gap-2 mt-1.5">
+                              {DAY_LABELS.map(({ day, label, fullLabel }) => {
+                                const isSelected = (rule.send_days || []).includes(day);
+                                return (
+                                  <button
+                                    key={day}
+                                    type="button"
+                                    onClick={() => toggleSendDay(rule.id, day)}
+                                    title={fullLabel}
+                                    className={`
+                                      px-3 py-2 text-xs font-medium rounded-lg transition-all
+                                      ${isSelected
+                                        ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                      }
+                                    `}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </InputField>
+
+                          {/* Daily Rate Limit */}
+                          <InputField
+                            label="Limite diário de envios"
+                            tooltip="Máximo de mensagens por dia para esta automação (vazio = sem limite)"
+                          >
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min="1"
+                                placeholder="Sem limite"
+                                value={rule.max_daily_sends || ''}
+                                onChange={(e) => updateRuleField(rule.id, 'max_daily_sends', e.target.value ? parseInt(e.target.value) : null)}
+                                className="w-full h-11 pl-4 pr-20 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              />
+                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">msg/dia</span>
+                            </div>
+                          </InputField>
+                        </div>
                       </div>
 
                       {/* Advanced Settings Toggle */}
@@ -751,6 +998,67 @@ const AutomationRules = ({ audienceSegments }) => {
                                 />
                               </div>
                             </div>
+                          )}
+
+                          {/* v6.0: Exclude Recent Visitors - only for winback automations */}
+                          {rule.supportsExcludeRecent && (
+                            <InputField
+                              label="Excluir visitantes recentes"
+                              tooltip="Não enviar para clientes que visitaram nos últimos X dias (evita spam)"
+                            >
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="30"
+                                  placeholder="Não excluir"
+                                  value={rule.exclude_recent_days || ''}
+                                  onChange={(e) => updateRuleField(rule.id, 'exclude_recent_days', e.target.value ? parseInt(e.target.value) : null)}
+                                  className="w-full h-11 pl-4 pr-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">dias</span>
+                              </div>
+                            </InputField>
+                          )}
+
+                          {/* v6.0: Minimum Total Spent */}
+                          <InputField
+                            label="Gasto mínimo total"
+                            tooltip="Apenas enviar para clientes que gastaram no mínimo este valor"
+                          >
+                            <div className="relative">
+                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">R$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="10"
+                                placeholder="Sem mínimo"
+                                value={rule.min_total_spent || ''}
+                                onChange={(e) => updateRuleField(rule.id, 'min_total_spent', e.target.value ? parseFloat(e.target.value) : null)}
+                                className="w-full h-11 pl-10 pr-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              />
+                            </div>
+                          </InputField>
+
+                          {/* v6.0: Wallet Balance Max - only for wallet_reminder */}
+                          {rule.supportsWalletMax && (
+                            <InputField
+                              label="Saldo máximo"
+                              tooltip="Apenas enviar para clientes com saldo até este valor (evita alertar quem tem muito saldo)"
+                            >
+                              <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">R$</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="10"
+                                  placeholder="Sem limite"
+                                  value={rule.wallet_balance_max || ''}
+                                  onChange={(e) => updateRuleField(rule.id, 'wallet_balance_max', e.target.value ? parseFloat(e.target.value) : null)}
+                                  className="w-full h-11 pl-10 pr-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                />
+                              </div>
+                            </InputField>
                           )}
                         </div>
                       )}

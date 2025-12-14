@@ -33,12 +33,12 @@ const CampaignCard = ({ campaign, formatCurrency, formatPercent }) => {
   };
 
   return (
-    <div className="border border-gray-200 dark:border-slate-700 rounded-xl p-4 sm:p-5 hover:shadow-md transition-shadow bg-white dark:bg-slate-800">
+    <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 sm:p-5 hover:shadow-md transition-shadow bg-white dark:bg-slate-800">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-4">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
               {campaign.code}
             </h3>
             <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${statusColors.badge} ${statusColors.text}`}>
@@ -50,7 +50,7 @@ const CampaignCard = ({ campaign, formatCurrency, formatPercent }) => {
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-600 dark:text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Desconto: <span className="font-semibold">{campaign.discountPercent}%</span>
             <span className="hidden sm:inline">
               {' | '}
@@ -60,7 +60,7 @@ const CampaignCard = ({ campaign, formatCurrency, formatPercent }) => {
             </span>
           </p>
           {/* Mobile dates */}
-          <p className="sm:hidden text-xs text-gray-500 dark:text-slate-500 mt-0.5">
+          <p className="sm:hidden text-xs text-slate-500 dark:text-slate-500 mt-0.5">
             {campaign.startDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
             {' - '}
             {campaign.endDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
@@ -71,31 +71,31 @@ const CampaignCard = ({ campaign, formatCurrency, formatPercent }) => {
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-4">
         <div>
-          <p className="text-xs text-gray-600 dark:text-slate-400 mb-1">Resgates</p>
-          <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Resgates</p>
+          <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
             {campaign.redemptions}/{campaign.totalCyclesAvailable}
           </p>
         </div>
         <div>
-          <p className="text-xs text-gray-600 dark:text-slate-400 mb-1">Conversao</p>
-          <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Conversao</p>
+          <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
             {formatPercent(campaign.redemptionRate)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-gray-600 dark:text-slate-400 mb-1">Receita</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Receita</p>
           <p className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400">
             {formatCurrency(campaign.totalRevenue)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-gray-600 dark:text-slate-400 mb-1">Desconto</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Desconto</p>
           <p className="text-base sm:text-lg font-bold text-red-600 dark:text-red-400">
             -{formatCurrency(campaign.totalDiscount)}
           </p>
         </div>
         <div className="col-span-2 sm:col-span-1">
-          <p className="text-xs text-gray-600 dark:text-slate-400 mb-1">ROI Incr.</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ROI Incr.</p>
           <p className={`text-base sm:text-lg font-bold ${
             campaign.roi > 0
               ? 'text-emerald-600 dark:text-emerald-400'
@@ -221,7 +221,7 @@ const CampaignROISection = ({ campaignROI, formatCurrency, formatPercent }) => {
 
           {/* Campaign Cards */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300">
+            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               Detalhes por Campanha
             </h4>
             {campaignROI.campaigns.map((campaign) => (
@@ -237,13 +237,13 @@ const CampaignROISection = ({ campaignROI, formatCurrency, formatPercent }) => {
       ) : (
         /* Empty State */
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Target className="w-8 h-8 text-gray-400 dark:text-slate-500" aria-hidden="true" />
+          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Target className="w-8 h-8 text-slate-400 dark:text-slate-500" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
             Nenhuma Campanha Encontrada
           </h3>
-          <p className="text-sm text-gray-600 dark:text-slate-400 max-w-md mx-auto">
+          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
             As campanhas agora sao gerenciadas na aba Campanhas. Visite a aba Campanhas para ver metricas de efetividade.
           </p>
         </div>

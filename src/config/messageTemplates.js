@@ -1,6 +1,17 @@
-// messageTemplates.js v2.0
+// messageTemplates.js v2.2
 // Centralized WhatsApp message templates configuration
 // Meta Business API compliant with {{1}}, {{2}} placeholder format
+//
+// CHANGELOG:
+// v2.2 (2025-12-13): Added couponValidityDays to all templates
+//   - discountDefaults now includes couponValidityDays for return attribution
+//   - Most templates: 7 days validity
+//   - Critical winback (30%): 14 days (bigger offer = more time)
+//   - No-coupon templates: 7-14 days for return tracking
+// v2.1 (2025-12-13): Added ContentSid lookup helpers
+//   - getTemplateBySid(): Find template by Twilio ContentSid
+//   - getTemplateNameBySid(): Get human-readable name from ContentSid
+// v2.0: Added couponConfig integration and complete template library
 //
 // These templates are designed to work with Lavpop POS coupon system:
 // - Discount percentage coupons (see couponConfig.js for full list)
@@ -120,7 +131,8 @@ Te esperamos! 💙`,
     discountDefaults: {
       discountPercent: 20,
       couponCode: 'VOLTE20',
-      serviceType: 'both' // 'wash', 'dry', or 'both'
+      serviceType: 'both', // 'wash', 'dry', or 'both'
+      couponValidityDays: 7 // How long the coupon is valid
     }
   },
 
@@ -185,7 +197,8 @@ Te esperamos! 💙`,
     discountDefaults: {
       discountPercent: 25,
       couponCode: 'LAVA25',
-      serviceType: 'wash'
+      serviceType: 'wash',
+      couponValidityDays: 7
     }
   },
 
@@ -250,7 +263,8 @@ Te esperamos! 💙`,
     discountDefaults: {
       discountPercent: 25,
       couponCode: 'SECA25',
-      serviceType: 'dry'
+      serviceType: 'dry',
+      couponValidityDays: 7
     }
   },
 
@@ -319,7 +333,8 @@ Nao deixe essa oportunidade passar! 💙`,
     discountDefaults: {
       discountPercent: 30,
       couponCode: 'VOLTE30',
-      serviceType: 'both'
+      serviceType: 'both',
+      couponValidityDays: 14 // Bigger offer = more time
     }
   },
 
@@ -387,7 +402,8 @@ Qualquer dúvida, estamos aqui! 💙
     discountDefaults: {
       discountPercent: 10,
       couponCode: 'BEM10',
-      serviceType: 'both'
+      serviceType: 'both',
+      couponValidityDays: 7
     }
   },
 
@@ -446,7 +462,8 @@ Te esperamos! 💙`,
     discountDefaults: {
       discountPercent: 0, // No discount - reminder only
       couponCode: null,
-      serviceType: null
+      serviceType: null,
+      couponValidityDays: 14 // No coupon but still track returns for 14 days
     }
   },
 
@@ -514,7 +531,8 @@ Aproveite! 💙`,
     discountDefaults: {
       discountPercent: 15,
       couponCode: 'PROMO15',
-      serviceType: 'both'
+      serviceType: 'both',
+      couponValidityDays: 7
     }
   },
 
@@ -581,7 +599,8 @@ Aproveite! 💙`,
     discountDefaults: {
       discountPercent: 20,
       couponCode: 'PSEC20',
-      serviceType: 'dry'
+      serviceType: 'dry',
+      couponValidityDays: 7
     }
   },
 
@@ -647,7 +666,8 @@ Roupas secas em minutos, sem preocupação! 💙`,
     discountDefaults: {
       discountPercent: 15,
       couponCode: 'SEQUE15',
-      serviceType: 'dry'
+      serviceType: 'dry',
+      couponValidityDays: 7
     }
   },
 
@@ -708,7 +728,8 @@ Qualquer duvida, estamos aqui! 💙
     discountDefaults: {
       discountPercent: 0,
       couponCode: null,
-      serviceType: null
+      serviceType: null,
+      couponValidityDays: 7 // No coupon but track for return attribution
     }
   }
 ];
@@ -722,6 +743,25 @@ Qualquer duvida, estamos aqui! 💙
  */
 export function getTemplateById(templateId) {
   return MESSAGE_TEMPLATES.find(t => t.id === templateId) || null;
+}
+
+/**
+ * Get template by Twilio ContentSid
+ * @param {string} contentSid - Twilio Content SID (HX...)
+ * @returns {object|null} Template object or null if not found
+ */
+export function getTemplateBySid(contentSid) {
+  return MESSAGE_TEMPLATES.find(t => t.twilioContentSid === contentSid) || null;
+}
+
+/**
+ * Get template name by Twilio ContentSid
+ * @param {string} contentSid - Twilio Content SID (HX...)
+ * @returns {string} Template name or ContentSid if not found
+ */
+export function getTemplateNameBySid(contentSid) {
+  const template = getTemplateBySid(contentSid);
+  return template?.name || contentSid;
 }
 
 /**

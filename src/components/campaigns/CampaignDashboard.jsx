@@ -1,8 +1,24 @@
-// CampaignDashboard.jsx v2.0
+// CampaignDashboard.jsx v2.3
 // Unified Campaign Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.3 (2025-12-14): Mobile-responsive table, UX improvements
+//   - Removed min-w-[900px] - table now responsive without horizontal scroll
+//   - Columns hidden progressively: Mobile (4) → Tablet (6) → Desktop (8)
+//   - Merged Desconto + Cupom into single "Oferta" column (desktop only)
+//   - Fixed "Entregues" to show TOTAL delivered (delivered + read)
+//   - Added "Falhou" column with red highlighting (desktop only)
+//   - Fixed bug: total_revenue → total_revenue_recovered
+//   - Fixed border colors per Design System (slate-200/700)
+//   - Added thead background per Design System
+// v2.2 (2025-12-14): Added coupon code column to Recent Campaigns table
+//   - Shows coupon_code from campaign_performance view
+//   - Styled as monospace badge for readability
+// v2.1 (2025-12-12): Real delivery metrics per campaign
+//   - RecentCampaignsTable now shows: Entregues, Lidas, Taxa Entrega
+//   - Data from webhook_events via campaign_delivery_metrics view
+//   - Delivery columns show real Twilio webhook data, not estimates
 // v2.0 (2025-12-11): Design System v4.0 update
 //   - KPIs now use vibrant gradient cards with white text
 //   - Replaced large InsightBox with discrete inline hints
@@ -23,6 +39,7 @@ import {
   Percent,
   Target,
   AlertTriangle,
+  AlertCircle,
   RefreshCw,
   ArrowRight,
   Sparkles,
@@ -91,90 +108,160 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
     );
   }
 
+  // Helper: Calculate total delivered (delivered + read)
+  const getTotalDelivered = (campaign) => {
+    if (!campaign.has_delivery_data) return null;
+    return (campaign.delivered || 0) + (campaign.read || 0);
+  };
+
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0">
-      <table className="w-full text-sm min-w-[600px]">
-        <thead>
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50 dark:bg-slate-800/50">
           <tr className="border-b border-slate-200 dark:border-slate-700">
-            <th className="text-left py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            {/* Always visible */}
+            <th className="text-left py-3 px-3 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Campanha
             </th>
-            <th className="text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Desconto
+            {/* Desktop only: Oferta (merged Desconto + Cupom) */}
+            <th className="hidden lg:table-cell text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+              Oferta
             </th>
-            <th className="text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Cupom
-            </th>
-            <th className="text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            {/* Always visible */}
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Enviadas
             </th>
-            <th className="text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            {/* Tablet+ */}
+            <th className="hidden sm:table-cell text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+              Entregues
+            </th>
+            {/* Always visible */}
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+              Lidas
+            </th>
+            {/* Desktop only: Falhou */}
+            <th className="hidden lg:table-cell text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+              Falhou
+            </th>
+            {/* Always visible */}
+            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Retorno
             </th>
-            <th className="text-right py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            {/* Tablet+ */}
+            <th className="hidden sm:table-cell text-right py-3 px-3 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
               Receita
             </th>
           </tr>
         </thead>
         <tbody>
-          {campaigns.map((campaign, idx) => (
-            <tr
-              key={campaign.id || idx}
-              className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-            >
-              <td className="py-3 px-4">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    campaign.status === 'active' ? 'bg-green-500' :
-                    campaign.status === 'completed' ? 'bg-blue-500' : 'bg-slate-400'
-                  }`} />
-                  <div>
-                    <p className="font-medium text-slate-900 dark:text-white truncate max-w-[180px]">
-                      {campaign.name}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {campaign.audience}
-                    </p>
+          {campaigns.map((campaign, idx) => {
+            const totalDelivered = getTotalDelivered(campaign);
+            const hasFailed = (campaign.failed || 0) > 0;
+
+            return (
+              <tr
+                key={campaign.id || idx}
+                className="border-b border-slate-200 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              >
+                {/* Campanha - Always visible */}
+                <td className="py-3 px-3 sm:px-4">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      campaign.status === 'active' ? 'bg-green-500' :
+                      campaign.status === 'completed' ? 'bg-blue-500' : 'bg-slate-400'
+                    }`} />
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[180px]">
+                        {campaign.name}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {campaign.audience}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td className="py-3 px-3 text-center">
-                {campaign.discount_percent ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
-                    {campaign.discount_percent}%
+                </td>
+
+                {/* Oferta (Desconto + Cupom) - Desktop only */}
+                <td className="hidden lg:table-cell py-3 px-2 text-center">
+                  {campaign.discount_percent ? (
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                        {campaign.discount_percent}%
+                      </span>
+                      {campaign.coupon_code && (
+                        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                          {campaign.coupon_code}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">-</span>
+                  )}
+                </td>
+
+                {/* Enviadas - Always visible */}
+                <td className="py-3 px-2 text-center text-slate-700 dark:text-slate-300">
+                  {campaign.sends || 0}
+                </td>
+
+                {/* Entregues (Total = delivered + read) - Tablet+ */}
+                <td className="hidden sm:table-cell py-3 px-2 text-center">
+                  {totalDelivered !== null ? (
+                    <span className="text-green-600 dark:text-green-400 font-medium">
+                      {totalDelivered}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400" title="Aguardando webhook">-</span>
+                  )}
+                </td>
+
+                {/* Lidas - Always visible */}
+                <td className="py-3 px-2 text-center">
+                  {campaign.has_delivery_data ? (
+                    <span className="text-blue-600 dark:text-blue-400 font-medium">
+                      {campaign.read || 0}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400" title="Aguardando webhook">-</span>
+                  )}
+                </td>
+
+                {/* Falhou - Desktop only */}
+                <td className="hidden lg:table-cell py-3 px-2 text-center">
+                  {campaign.has_delivery_data ? (
+                    hasFailed ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                        <AlertCircle className="w-3 h-3" />
+                        {campaign.failed}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">0</span>
+                    )
+                  ) : (
+                    <span className="text-slate-400">-</span>
+                  )}
+                </td>
+
+                {/* Retorno - Always visible */}
+                <td className="py-3 px-2 text-center">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    (campaign.return_rate || 0) >= 25
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                      : (campaign.return_rate || 0) >= 15
+                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                  }`}>
+                    {formatPercent(campaign.return_rate || 0)}
                   </span>
-                ) : (
-                  <span className="text-slate-400">-</span>
-                )}
-              </td>
-              <td className="py-3 px-3 text-center">
-                {campaign.coupon_code ? (
-                  <code className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">
-                    {campaign.coupon_code}
-                  </code>
-                ) : (
-                  <span className="text-slate-400">-</span>
-                )}
-              </td>
-              <td className="py-3 px-3 text-center text-slate-700 dark:text-slate-300">
-                {campaign.sends || 0}
-              </td>
-              <td className="py-3 px-3 text-center">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  (campaign.return_rate || 0) >= 25
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                    : (campaign.return_rate || 0) >= 15
-                      ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
-                }`}>
-                  {formatPercent(campaign.return_rate || 0)}
-                </span>
-              </td>
-              <td className="py-3 px-4 text-right font-medium text-slate-900 dark:text-white">
-                {formatCurrency(campaign.total_revenue || 0)}
-              </td>
-            </tr>
-          ))}
+                </td>
+
+                {/* Receita - Tablet+ */}
+                <td className="hidden sm:table-cell py-3 px-3 sm:px-4 text-right font-medium text-slate-900 dark:text-white">
+                  {formatCurrency(campaign.total_revenue_recovered || 0)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

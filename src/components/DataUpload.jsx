@@ -1,4 +1,4 @@
-// DataUpload.jsx v1.0
+// DataUpload.jsx v1.2
 // Upload component for manual CSV data imports
 //
 // Features:
@@ -6,7 +6,18 @@
 //   - Auto-detects file type (sales vs customer)
 //   - Shows upload progress with stages
 //   - Displays results (inserted, skipped, errors)
-//   - Option to refresh customer metrics after upload
+//   - Refresh computed metrics button (for both file types)
+//   - Auto-triggers app data refresh after successful upload
+//   - Upload order guidance
+//
+// CHANGELOG:
+// v1.2 (2025-12-13): Improved metric refresh flow
+//   - Show "Sync Metrics" button for BOTH sales and customer uploads
+//   - Added upload order guidance in help section
+//   - Both file types affect computed columns
+// v1.1 (2025-12-13): Auto-refresh after upload
+//   - Added onDataChange prop for app-wide data refresh
+//   - Triggers refresh after successful upload to sync dashboards
 
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,7 +40,7 @@ import {
   refreshCustomerMetrics
 } from '../utils/supabaseUploader';
 
-const DataUpload = () => {
+const DataUpload = ({ onDataChange }) => {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
   const [fileType, setFileType] = useState(null); // 'sales' | 'customer' | 'unknown'
@@ -114,6 +125,15 @@ const DataUpload = () => {
       }
 
       setResult(uploadResult);
+
+      // Auto-trigger app-wide data refresh after successful upload
+      if (uploadResult.success && uploadResult.inserted > 0 && onDataChange) {
+        console.log('[DataUpload] Triggering app data refresh after successful upload');
+        // Use setTimeout to allow UI to update first
+        setTimeout(() => {
+          onDataChange(`upload_${fileType}`);
+        }, 500);
+      }
     } catch (err) {
       setResult({
         success: false,
@@ -413,19 +433,33 @@ const DataUpload = () => {
                   <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
                       <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{result.inserted}</p>
-                      <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">Inseridos</p>
+                      <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">
+                        {result.updated !== undefined ? 'Novos' : 'Inseridos'}
+                      </p>
                     </div>
-                    <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                      <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{result.total}</p>
-                      <p className="text-xs text-slate-500">Total linhas</p>
-                    </div>
+                    {/* Show "Updated" column for smart customer upsert */}
+                    {result.updated !== undefined ? (
+                      <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{result.updated}</p>
+                        <p className="text-xs text-blue-600/70 dark:text-blue-400/70">Atualizados</p>
+                      </div>
+                    ) : (
+                      <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                        <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{result.total}</p>
+                        <p className="text-xs text-slate-500">Total linhas</p>
+                      </div>
+                    )}
                     <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
                       <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{result.skipped || 0}</p>
                       <p className="text-xs text-amber-600/70 dark:text-amber-400/70">Ignorados</p>
                     </div>
                     <div className="text-center p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{result.duplicates || 0}</p>
-                      <p className="text-xs text-blue-600/70 dark:text-blue-400/70">Duplicados</p>
+                      <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">
+                        {result.updated !== undefined ? result.total : (result.duplicates || 0)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {result.updated !== undefined ? 'Total linhas' : 'Duplicados'}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -453,20 +487,19 @@ const DataUpload = () => {
                     >
                       Importar outro arquivo
                     </button>
-                    {fileType === 'customer' && (
-                      <button
-                        onClick={handleRefreshMetrics}
-                        disabled={refreshing}
-                        className="px-4 py-2 bg-gradient-to-r from-lavpop-blue to-blue-600 rounded-lg text-sm font-medium text-white hover:shadow-lg hover:shadow-lavpop-blue/25 transition-all flex items-center gap-2 disabled:opacity-50"
-                      >
-                        {refreshing ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-4 h-4" />
-                        )}
-                        Atualizar metricas
-                      </button>
-                    )}
+                    {/* Show sync button for BOTH file types - computed columns depend on both */}
+                    <button
+                      onClick={handleRefreshMetrics}
+                      disabled={refreshing}
+                      className="px-4 py-2 bg-gradient-to-r from-lavpop-blue to-blue-600 rounded-lg text-sm font-medium text-white hover:shadow-lg hover:shadow-lavpop-blue/25 transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {refreshing ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      Sincronizar Metricas
+                    </button>
                   </div>
                 )}
               </div>
@@ -512,28 +545,60 @@ const DataUpload = () => {
       </AnimatePresence>
 
       {/* Help section */}
-      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-900 dark:text-white mb-4">
-          Formatos aceitos
-        </h3>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2 mb-2">
-              <ShoppingCart className="w-5 h-5 text-blue-600" />
-              <span className="font-medium text-slate-900 dark:text-white">sales.csv</span>
+      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 space-y-6">
+        {/* Upload Order */}
+        <div>
+          <h3 className="font-semibold text-slate-900 dark:text-white mb-3">
+            Ordem de Upload Recomendada
+          </h3>
+          <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center">1</span>
+              <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="font-medium text-emerald-700 dark:text-emerald-300">customer.csv</span>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Arquivo de vendas do POS. Colunas: Data_Hora, Valor_Venda, Doc_Cliente, Maquinas, etc.
-            </p>
+            <span className="text-slate-400">→</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center">2</span>
+              <ShoppingCart className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="font-medium text-blue-700 dark:text-blue-300">sales.csv</span>
+            </div>
+            <span className="text-slate-400">→</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <span className="w-5 h-5 rounded-full bg-purple-500 text-white text-xs font-bold flex items-center justify-center">3</span>
+              <RefreshCw className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span className="font-medium text-purple-700 dark:text-purple-300">Sincronizar</span>
+            </div>
           </div>
-          <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="w-5 h-5 text-emerald-600" />
-              <span className="font-medium text-slate-900 dark:text-white">customer.csv</span>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            Clientes primeiro, depois vendas. Clique em "Sincronizar Metricas" apos o ultimo upload para atualizar colunas computadas (risk_level, rfm_segment, etc).
+          </p>
+        </div>
+
+        {/* File formats */}
+        <div>
+          <h3 className="font-semibold text-slate-900 dark:text-white mb-3">
+            Formatos aceitos
+          </h3>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 mb-2">
+                <ShoppingCart className="w-5 h-5 text-blue-600" />
+                <span className="font-medium text-slate-900 dark:text-white">sales.csv</span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Arquivo de vendas do POS. Colunas: Data_Hora, Valor_Venda, Doc_Cliente, Maquinas, etc.
+              </p>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Arquivo de clientes. Colunas: Documento, Nome, Telefone, Email, Saldo_Carteira, etc.
-            </p>
+            <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-5 h-5 text-emerald-600" />
+                <span className="font-medium text-slate-900 dark:text-white">customer.csv</span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Arquivo de clientes. Colunas: Documento, Nome, Telefone, Email, Saldo_Carteira, etc.
+              </p>
+            </div>
           </div>
         </div>
       </div>

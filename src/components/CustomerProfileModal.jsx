@@ -1,8 +1,16 @@
-// CustomerProfileModal.jsx v1.9 - SHARED DATE UTILITIES
+// CustomerProfileModal.jsx v2.1 - BACKEND COMMUNICATION LOG
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v2.1 (2025-12-14): Mask CPF for privacy
+//   - Added maskCpf() helper: 12345678901 → 123.***.***-01
+//   - CPF now displays masked in Personal Information section
+// v2.0 (2025-12-12): Backend communication log integration
+//   - Uses getCommunicationLogAsync to fetch from comm_logs table
+//   - Merges backend data with localStorage for complete history
+//   - Shows campaign context when communication was from a campaign
+//   - Loading state while fetching backend data
 // v1.9 (2025-12-10): Use shared dateUtils for consistent timezone handling
 //   - Removed duplicate parseBrDate function
 //   - Now imports parseBrDate from dateUtils.js
@@ -118,20 +126,46 @@ import { formatCurrency } from '../utils/numberUtils';
 import { RISK_LABELS } from '../utils/customerMetrics';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useContactTracking } from '../hooks/useContactTracking';
-import { addCommunicationEntry, getCommunicationLog, getDefaultNotes } from '../utils/communicationLog';
+import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, getDefaultNotes } from '../utils/communicationLog';
 import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
 import { parseBrDate } from '../utils/dateUtils';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
-    const [communicationLog, setCommunicationLog] = useState(() => {
-        // Load from shared utility
-        return getCommunicationLog(customer.doc);
-    });
+    // Initialize with localStorage for immediate display, then fetch from backend
+    const [communicationLog, setCommunicationLog] = useState(() => getCommunicationLog(customer.doc));
+    const [isLoadingLog, setIsLoadingLog] = useState(true);
     const [newNote, setNewNote] = useState('');
     const [noteMethod, setNoteMethod] = useState('call');
     // Use matchMedia hook instead of resize listener
     const isMobile = useMediaQuery('(max-width: 639px)');
+
+    // Load communication log from backend (comm_logs table) on mount
+    useEffect(() => {
+        let mounted = true;
+
+        const loadBackendLog = async () => {
+            try {
+                const log = await getCommunicationLogAsync(customer.doc);
+                if (mounted) {
+                    setCommunicationLog(log);
+                }
+            } catch (error) {
+                console.warn('Failed to load backend communication log:', error);
+                // Keep localStorage data on error
+            } finally {
+                if (mounted) {
+                    setIsLoadingLog(false);
+                }
+            }
+        };
+
+        loadBackendLog();
+
+        return () => {
+            mounted = false;
+        };
+    }, [customer.doc]);
 
     // Shared contact tracking (syncs across app with effectiveness tracking)
     const { isContacted, toggleContacted, markContacted } = useContactTracking();
@@ -154,10 +188,17 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
     // Listen for communication log updates from other components
     useEffect(() => {
-        const handleLogUpdate = (event) => {
+        const handleLogUpdate = async (event) => {
             // Only update if it's for this customer
             if (event.detail?.customerId === customer.doc) {
-                setCommunicationLog(getCommunicationLog(customer.doc));
+                // Fetch fresh data from backend to ensure consistency
+                try {
+                    const log = await getCommunicationLogAsync(customer.doc);
+                    setCommunicationLog(log);
+                } catch {
+                    // Fallback to localStorage on error
+                    setCommunicationLog(getCommunicationLog(customer.doc));
+                }
             }
         };
 
@@ -231,6 +272,14 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     };
 
     // parseBrDate now imported from dateUtils.js for consistent timezone handling
+
+    // Mask CPF for privacy: 12345678901 → 123.***.***-01
+    const maskCpf = (cpf) => {
+        if (!cpf) return '-';
+        const clean = String(cpf).replace(/\D/g, '');
+        if (clean.length !== 11) return cpf; // Return as-is if not valid CPF length
+        return `${clean.slice(0, 3)}.***.***-${clean.slice(-2)}`;
+    };
 
     // Helper for parsing machines - extracts machine codes (e.g., "Lavadora:3" -> "L3")
     const parseMachines = (machineStr) => {
@@ -451,7 +500,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
                                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">CPF</div>
-                                        <div className="text-xs font-semibold text-slate-800 dark:text-white">{customer.doc}</div>
+                                        <div className="text-xs font-semibold text-slate-800 dark:text-white">{maskCpf(customer.doc)}</div>
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
                                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Telefone</div>
@@ -570,7 +619,11 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
                                 {/* Communication History */}
                                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                    {communicationLog.length === 0 ? (
+                                    {isLoadingLog ? (
+                                        <div className="text-center py-4 text-slate-400 text-sm">
+                                            <div className="animate-pulse">Carregando histórico...</div>
+                                        </div>
+                                    ) : communicationLog.length === 0 ? (
                                         <div className="text-center py-4 text-slate-400 text-sm">
                                             Nenhuma comunicação registrada
                                         </div>
@@ -585,12 +638,20 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                                             {entry.method === 'email' && <Mail className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
                                                             {entry.method === 'note' && <FileText className="w-3 h-3 text-slate-600 dark:text-slate-400" />}
                                                         </div>
-                                                        <div>
+                                                        <div className="flex-1 min-w-0">
                                                             <div className="text-xs font-semibold text-slate-800 dark:text-white">
                                                                 {entry.notes}
                                                             </div>
-                                                            <div className="text-[10px] text-slate-400">
-                                                                {new Date(entry.date).toLocaleString('pt-BR')}
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-[10px] text-slate-400">
+                                                                    {new Date(entry.date).toLocaleString('pt-BR')}
+                                                                </span>
+                                                                {/* Show campaign badge if from a campaign */}
+                                                                {entry.campaign_name && (
+                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                                                                        {entry.campaign_name}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

@@ -1,45 +1,67 @@
-// campaignService.js v3.4
+// campaignService.js v4.9
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
-// Now supports Supabase backend for scheduled campaigns and effectiveness tracking
+// Backend-only storage (Supabase) - no localStorage for data
 //
 // CHANGELOG:
+// v4.9 (2025-12-14): Simplified delivery metrics - now from campaign_performance view
+//   - getDashboardMetrics no longer needs separate api.delivery.getCampaignMetrics() call
+//   - Delivery columns (delivered, read, has_delivery_data) now in campaign_performance view
+//   - This fixes delivery metrics showing "-" after browser cache clear
+// v4.8 (2025-12-14): Fixed getCampaignContacts to query contact_tracking directly
+//   - Automations create contact_tracking without campaign_contacts bridge records
+//   - getCampaignContacts now queries contact_tracking by campaign_id
+//   - This fixes contacts not showing in CampaignDetailsModal for automations
+//   - Matches the campaign_performance view fix (migration 005)
+// v4.7 (2025-12-14): Fixed getDashboardMetrics recentCampaigns
+//   - Now uses campaign_performance view instead of manual joins
+//   - campaign_performance view was fixed to join directly to contact_tracking
+//   - This fixes the "0% return rate, R$0 revenue" issue in Recent Campaigns table
+// v4.6 (2025-12-13): Configurable coupon validity for manual campaigns
+//   - Added couponValidityDays parameter to sendCampaignWithTracking
+//   - Passed to api.campaignContacts.record() for backend expires_at calculation
+//   - recordCampaignContact now uses couponValidityDays + 3 day buffer
+//   - Matches SQL record_automation_contact() behavior
+// v4.5 (2025-12-13): Unified eligibility checks for manual campaigns
+//   - sendCampaignWithTracking now checks eligibility before sending
+//   - Uses api.eligibility.filterRecipients() to filter out ineligible customers
+//   - Enforces global cooldown (7 days) and same-type cooldown (30 days)
+//   - Added campaignType parameter to options for type-based cooldowns
+//   - Ineligible recipients are tracked in result.ineligibleContacts
+// v4.4 (2025-12-13): Added retry logic for contact tracking
+//   - Contact recording now uses withRetry() for reliability
+//   - Tracking failures are logged with twilio_sid for manual recovery
+//   - Improved error reporting when tracking fails but message was sent
+// v4.3 (2025-12-13): Fixed duplicate comm_logs entries and improved template logging
+//   - Removed logCommunication() from sendWhatsAppMessage (callers now handle logging)
+//   - Removed logCommunication() from sendBulkWhatsApp (callers now handle logging)
+//   - Log messages now show human-readable template name instead of ContentSid
+//   - Only one comm_logs entry per send (with customer_id) instead of duplicates
+// v4.2 (2025-12-13): Unified manual campaign flow with automation flow
+//   - sendCampaignWithTracking now sends FIRST, then records with twilio_sid
+//   - Uses new api.campaignContacts.record() for unified tracking
+//   - Enables delivery metrics (delivered/read) for manual campaigns
+//   - campaign_contacts.twilio_sid now populated for webhook linking
+// v4.1 (2025-12-12): Fixed getDashboardMetrics and validateCampaignAudience
+//   - Removed orphan shouldUseBackend() check that broke dashboard
+//   - Made validateCampaignAudience async (uses async filterBlacklistedRecipients)
+// v4.0 (2025-12-12): Backend only - removed localStorage
+//   - All campaign data now stored exclusively in Supabase
+//   - Removed localStorage fallbacks
+//   - Deprecated sync functions replaced with async backend calls
+// v3.7 (2025-12-12): Fixed funnel sent count to include automations
+//   - funnel.sent now uses campaigns.sends column (includes automations)
+//   - Previously only counted manual sends from campaign_sends table
+// v3.6 (2025-12-12): Per-campaign delivery metrics from webhook_events
+// v3.5 (2025-12-12): Added comm_logs insert for manual campaigns
 // v3.4 (2025-12-11): Real delivery metrics from Twilio webhook
-//   - getDashboardMetrics now fetches real delivery/read rates from webhook_events
-//   - Fallback to 97% estimate only when no real data available
-//   - Added hasRealDeliveryData, deliveryRate, readRate to metrics
 // v3.3 (2025-12-11): Fixed API usage for backend operations
-//   - Replaced api.supabase.from() calls with proper api.get/api.campaigns/api.sends methods
-//   - Fixed recordCampaignContact to use api.contacts.create
-//   - Fixed getCampaignPerformance to use api.get('campaign_effectiveness')
-//   - Fixed getDashboardMetrics to use proper API methods
 // v3.2 (2025-12-09): Robust error handling for campaign operations
-//   - Removed misleading plain text fallback (doesn't work for marketing)
-//   - Added ContentSid validation before sending
-//   - Implemented error classification (retryable vs permanent)
-//   - Added retry logic for transient failures
-//   - Better error messages for user display
 // v3.1 (2025-12-09): Added Meta-approved template support via ContentSid
-//   - sendWhatsAppMessage now accepts contentSid + contentVariables for template mode
-//   - sendBulkWhatsApp supports contentSid for bulk template sends
-//   - sendTemplateMessage convenience function for template-based sending
-//   - Templates sent via ContentSid comply with Meta WhatsApp Business API
 // v3.0 (2025-12-08): Added campaign effectiveness tracking
-//   - recordCampaignContact links campaigns to contact_tracking
-//   - getCampaignPerformance retrieves effectiveness metrics
-//   - getCampaignContacts shows individual contact outcomes
-//   - New campaign_contacts table bridges campaigns ↔ contact_tracking
 // v2.0 (2025-12-08): Added Supabase backend support
-//   - Scheduled campaigns now stored in database
-//   - Backend executor runs scheduled campaigns automatically
-//   - Async API with localStorage fallback
 // v1.2 (2025-12-08): Added blacklist integration
-//   - validateCampaignAudience now filters blacklisted numbers
-//   - Exports isBlacklisted for component use
-//   - Supports opt-out, undelivered, and manually blocked numbers
 // v1.1 (2025-12-03): Added Brazilian mobile phone validation
-//   - Validates phone numbers before sending to avoid Twilio errors
-//   - Uses shared phoneUtils for consistent validation across app
 
 import {
   normalizePhone,
@@ -47,7 +69,7 @@ import {
   getPhoneValidationError,
   getCampaignRecipients
 } from './phoneUtils';
-import { api, isBackendAvailable } from './apiService';
+import { api } from './apiService';
 import {
   CampaignError,
   ErrorType,
@@ -57,21 +79,9 @@ import {
   withRetry,
   createResultSummary
 } from './campaignErrors';
+import { getTemplateNameBySid } from '../config/messageTemplates';
 
 const TWILIO_FUNCTION_URL = '/.netlify/functions/twilio-whatsapp';
-
-// Storage keys
-const SCHEDULED_CAMPAIGNS_KEY = 'lavpop_scheduled_campaigns';
-
-// Backend availability cache
-let useBackend = null;
-
-async function shouldUseBackend() {
-  if (useBackend === null) {
-    useBackend = await isBackendAvailable();
-  }
-  return useBackend;
-}
 
 // ==================== WHATSAPP MESSAGING ====================
 
@@ -158,10 +168,8 @@ export async function sendWhatsAppMessage(phone, message, options = {}) {
         });
       }
 
-      // Log to communication history
-      const logMessage = contentSid ? `[Template: ${contentSid}]` : message;
-      logCommunication(normalizedPhone, 'whatsapp', logMessage, data.messageSid);
-
+      // NOTE: Logging moved to callers (sendCampaignWithTracking, etc.)
+      // who have customer_id context for proper attribution
       return data;
     } catch (error) {
       // Re-throw CampaignErrors as-is
@@ -262,13 +270,7 @@ export async function sendBulkWhatsApp(recipients, message, options = {}) {
       throw new Error(data.error || 'Failed to send bulk messages');
     }
 
-    // Log successful sends
-    if (data.results?.success) {
-      const logMessage = contentSid ? `[Template: ${contentSid}]` : message;
-      data.results.success.forEach(result => {
-        logCommunication(result.phone, 'whatsapp', logMessage, result.messageSid);
-      });
-    }
+    // NOTE: Logging moved to callers who have customer_id context
 
     // Include validation stats in response
     return {
@@ -320,131 +322,117 @@ export async function checkMessageStatus(messageSid) {
   }
 }
 
-// ==================== CAMPAIGN MANAGEMENT ====================
-
-const CAMPAIGNS_STORAGE_KEY = 'lavpop_campaigns';
-const CAMPAIGN_SENDS_KEY = 'lavpop_campaign_sends';
+// ==================== CAMPAIGN MANAGEMENT (BACKEND ONLY) ====================
 
 /**
- * Get all saved campaigns
- * @returns {Array<object>} Campaigns list
+ * Get all saved campaigns (backend only)
+ * @returns {Promise<Array<object>>} Campaigns list
  */
-export function getCampaigns() {
+export async function getCampaigns() {
   try {
-    const stored = localStorage.getItem(CAMPAIGNS_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
+    return await api.campaigns.getAll();
+  } catch (error) {
+    console.error('Failed to get campaigns:', error.message);
     return [];
   }
 }
 
 /**
- * Save a new campaign
+ * Save a new campaign (backend only)
  * @param {object} campaign - Campaign data
- * @returns {object} Saved campaign with ID
+ * @returns {Promise<object>} Saved campaign with ID
  */
-export function saveCampaign(campaign) {
-  const campaigns = getCampaigns();
-  const newCampaign = {
-    ...campaign,
-    id: `CAMP_${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    status: 'draft',
-    sends: 0,
-    delivered: 0,
-    opened: 0,
-    converted: 0
-  };
-
-  campaigns.push(newCampaign);
-  localStorage.setItem(CAMPAIGNS_STORAGE_KEY, JSON.stringify(campaigns));
-
-  return newCampaign;
+export async function saveCampaign(campaign) {
+  try {
+    return await api.campaigns.create(campaign);
+  } catch (error) {
+    console.error('Failed to save campaign:', error.message);
+    // Return a local object so the UI doesn't break
+    return {
+      ...campaign,
+      id: `CAMP_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      status: 'draft',
+      sends: 0
+    };
+  }
 }
 
 /**
- * Update campaign status
+ * Update campaign status (backend only)
  * @param {string} campaignId - Campaign ID
  * @param {object} updates - Fields to update
- * @returns {object|null} Updated campaign
+ * @returns {Promise<object|null>} Updated campaign
  */
-export function updateCampaign(campaignId, updates) {
-  const campaigns = getCampaigns();
-  const index = campaigns.findIndex(c => c.id === campaignId);
-
-  if (index === -1) return null;
-
-  campaigns[index] = { ...campaigns[index], ...updates, updatedAt: new Date().toISOString() };
-  localStorage.setItem(CAMPAIGNS_STORAGE_KEY, JSON.stringify(campaigns));
-
-  return campaigns[index];
+export async function updateCampaign(campaignId, updates) {
+  try {
+    return await api.campaigns.update(campaignId, updates);
+  } catch (error) {
+    console.error('Failed to update campaign:', error.message);
+    return null;
+  }
 }
 
 /**
- * Record a campaign send event
+ * Record a campaign send event (backend only)
  * @param {string} campaignId - Campaign ID
  * @param {object} sendData - Send details { recipients, successCount, failedCount }
+ * @returns {Promise<void>}
  */
-export function recordCampaignSend(campaignId, sendData) {
-  // Update campaign stats
-  const campaigns = getCampaigns();
-  const campaign = campaigns.find(c => c.id === campaignId);
-
-  if (campaign) {
-    campaign.sends = (campaign.sends || 0) + sendData.successCount;
-    campaign.lastSentAt = new Date().toISOString();
-    campaign.status = 'active';
-    localStorage.setItem(CAMPAIGNS_STORAGE_KEY, JSON.stringify(campaigns));
+export async function recordCampaignSend(campaignId, sendData) {
+  try {
+    await api.sends.record({
+      campaignId,
+      recipients: sendData.recipients,
+      successCount: sendData.successCount,
+      failedCount: sendData.failedCount
+    });
+  } catch (error) {
+    console.error('Failed to record campaign send:', error.message);
   }
-
-  // Log send event
-  const sends = getCampaignSends();
-  sends.push({
-    campaignId,
-    timestamp: new Date().toISOString(),
-    ...sendData
-  });
-  localStorage.setItem(CAMPAIGN_SENDS_KEY, JSON.stringify(sends.slice(-100))); // Keep last 100
 }
 
 /**
- * Get campaign send history
+ * Get campaign send history (backend only)
  * @param {string} campaignId - Optional filter by campaign
- * @returns {Array<object>} Send events
+ * @returns {Promise<Array<object>>} Send events
  */
-export function getCampaignSends(campaignId = null) {
+export async function getCampaignSends(campaignId = null) {
   try {
-    const stored = localStorage.getItem(CAMPAIGN_SENDS_KEY);
-    const sends = stored ? JSON.parse(stored) : [];
-    return campaignId ? sends.filter(s => s.campaignId === campaignId) : sends;
-  } catch {
+    return await api.sends.getAll(campaignId ? { campaignId } : {});
+  } catch (error) {
+    console.error('Failed to get campaign sends:', error.message);
     return [];
   }
 }
 
-// ==================== AUTOMATION RULES ====================
-
-const AUTOMATION_RULES_KEY = 'lavpop_automation_rules';
+// ==================== AUTOMATION RULES (BACKEND ONLY) ====================
 
 /**
- * Get automation rules configuration
- * @returns {Array<object>} Automation rules
+ * Get automation rules configuration (backend only)
+ * @returns {Promise<Array<object>>} Automation rules
  */
-export function getAutomationRules() {
+export async function getAutomationRules() {
   try {
-    const stored = localStorage.getItem(AUTOMATION_RULES_KEY);
-    return stored ? JSON.parse(stored) : getDefaultAutomationRules();
-  } catch {
+    const rules = await api.automation.getAll();
+    return rules.length > 0 ? rules : getDefaultAutomationRules();
+  } catch (error) {
+    console.error('Failed to get automation rules:', error.message);
     return getDefaultAutomationRules();
   }
 }
 
 /**
- * Save automation rules configuration
+ * Save automation rules configuration (backend only)
  * @param {Array<object>} rules - Rules to save
+ * @returns {Promise<void>}
  */
-export function saveAutomationRules(rules) {
-  localStorage.setItem(AUTOMATION_RULES_KEY, JSON.stringify(rules));
+export async function saveAutomationRules(rules) {
+  try {
+    await api.automation.save(rules);
+  } catch (error) {
+    console.error('Failed to save automation rules:', error.message);
+  }
 }
 
 /**
@@ -549,45 +537,41 @@ export function findAutomationTargets(rule, customers) {
   }
 }
 
-// ==================== COMMUNICATION LOG ====================
-
-const COMM_LOG_KEY = 'lavpop_comm_log';
+// ==================== COMMUNICATION LOG (BACKEND ONLY) ====================
 
 /**
- * Log a communication event
+ * Log a communication event (backend only)
  * @param {string} phone - Customer phone
  * @param {string} channel - Communication channel (whatsapp, email, sms)
  * @param {string} message - Message content
  * @param {string} externalId - External reference (messageSid, etc.)
  */
-function logCommunication(phone, channel, message, externalId = null) {
+async function logCommunication(phone, channel, message, externalId = null) {
   try {
-    const logs = JSON.parse(localStorage.getItem(COMM_LOG_KEY) || '[]');
-    logs.push({
+    await api.logs.add({
       phone,
       channel,
       message: message?.substring(0, 100), // Store truncated message
-      externalId,
-      timestamp: new Date().toISOString(),
-      status: 'sent'
+      external_id: externalId,
+      direction: 'outbound',
+      type: 'campaign'
     });
-    // Keep last 500 entries
-    localStorage.setItem(COMM_LOG_KEY, JSON.stringify(logs.slice(-500)));
   } catch (error) {
-    console.error('Failed to log communication:', error);
+    console.error('Failed to log communication:', error.message);
   }
 }
 
 /**
- * Get communication logs for a phone number
+ * Get communication logs for a phone number (backend only)
  * @param {string} phone - Customer phone
- * @returns {Array<object>} Communication logs
+ * @returns {Promise<Array<object>>} Communication logs
  */
-export function getCommunicationLogs(phone) {
+export async function getCommunicationLogs(phone) {
   try {
-    const logs = JSON.parse(localStorage.getItem(COMM_LOG_KEY) || '[]');
-    return phone ? logs.filter(l => l.phone === phone) : logs;
-  } catch {
+    const result = await api.logs.getAll(phone ? { phone } : {});
+    return result.logs || [];
+  } catch (error) {
+    console.error('Failed to get communication logs:', error.message);
     return [];
   }
 }
@@ -645,13 +629,13 @@ import { isBlacklisted, filterBlacklistedRecipients } from './blacklistService';
  * Now includes blacklist filtering (v1.1)
  *
  * @param {Array<object>} customers - Customer list
- * @returns {object} { ready, invalid, blacklisted, stats }
+ * @returns {Promise<object>} { ready, invalid, blacklisted, stats }
  */
-export function validateCampaignAudience(customers) {
+export async function validateCampaignAudience(customers) {
   const { valid, invalid, stats } = getCampaignRecipients(customers);
 
-  // Filter blacklisted from valid recipients
-  const { allowed, blocked, stats: blacklistStats } = filterBlacklistedRecipients(valid);
+  // Filter blacklisted from valid recipients (async - from backend)
+  const { allowed, blocked, stats: blacklistStats } = await filterBlacklistedRecipients(valid);
 
   return {
     ready: allowed,           // Customers ready for WhatsApp (valid phone, not blacklisted)
@@ -675,307 +659,198 @@ export function validateCampaignAudience(customers) {
  */
 export { isBlacklisted };
 
-// ==================== SCHEDULED CAMPAIGNS ====================
+// ==================== SCHEDULED CAMPAIGNS (BACKEND ONLY) ====================
 
 /**
- * Get scheduled campaigns from localStorage
- * @returns {Array} Scheduled campaigns
+ * Get scheduled campaigns (backend only)
+ * @returns {Promise<Array>} Scheduled campaigns
  */
-export function getScheduledCampaigns() {
+export async function getScheduledCampaigns() {
   try {
-    const stored = localStorage.getItem(SCHEDULED_CAMPAIGNS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
+    return await api.scheduled.getAll();
+  } catch (error) {
+    console.error('Failed to get scheduled campaigns:', error.message);
     return [];
   }
 }
 
 /**
- * Save scheduled campaign to localStorage
+ * Save scheduled campaign (backend only)
  * @param {object} campaign - Campaign data
- * @returns {object} Saved campaign
+ * @returns {Promise<object>} Saved campaign
  */
-export function saveScheduledCampaign(campaign) {
-  const campaigns = getScheduledCampaigns();
-  const newCampaign = {
-    ...campaign,
-    id: `SCHED_${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    status: 'scheduled'
-  };
-  campaigns.push(newCampaign);
-  localStorage.setItem(SCHEDULED_CAMPAIGNS_KEY, JSON.stringify(campaigns));
-  return newCampaign;
-}
-
-/**
- * Cancel a scheduled campaign
- * @param {string} id - Campaign ID
- * @returns {boolean} Success
- */
-export function cancelScheduledCampaign(id) {
-  const campaigns = getScheduledCampaigns();
-  const index = campaigns.findIndex(c => c.id === id && c.status === 'scheduled');
-  if (index === -1) return false;
-
-  campaigns[index].status = 'cancelled';
-  localStorage.setItem(SCHEDULED_CAMPAIGNS_KEY, JSON.stringify(campaigns));
-  return true;
-}
-
-// ==================== ASYNC BACKEND OPERATIONS ====================
-// These functions use Supabase backend with localStorage fallback
-
-/**
- * Get scheduled campaigns with backend support
- * @returns {Promise<Array>} Scheduled campaigns
- */
-export async function getScheduledCampaignsAsync() {
+export async function saveScheduledCampaign(campaign) {
   try {
-    if (await shouldUseBackend()) {
-      return await api.scheduled.getAll();
-    }
+    return await api.scheduled.create({
+      templateId: campaign.templateId,
+      audience: campaign.audience,
+      messageBody: campaign.messageBody,
+      recipients: campaign.recipients,
+      scheduledFor: campaign.scheduledFor
+    });
   } catch (error) {
-    console.warn('Backend fetch failed, using localStorage:', error.message);
+    console.error('Failed to save scheduled campaign:', error.message);
+    return {
+      ...campaign,
+      id: `SCHED_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      status: 'scheduled'
+    };
   }
-  return getScheduledCampaigns();
 }
 
 /**
- * Create scheduled campaign with backend support
- * @param {object} campaignData - Campaign data
- * @returns {Promise<object>} Created campaign
- */
-export async function createScheduledCampaignAsync(campaignData) {
-  try {
-    if (await shouldUseBackend()) {
-      return await api.scheduled.create({
-        templateId: campaignData.templateId,
-        audience: campaignData.audience,
-        messageBody: campaignData.messageBody,
-        recipients: campaignData.recipients,
-        scheduledFor: campaignData.scheduledFor
-      });
-    }
-  } catch (error) {
-    console.warn('Backend create failed, using localStorage:', error.message);
-  }
-  return saveScheduledCampaign(campaignData);
-}
-
-/**
- * Cancel scheduled campaign with backend support
+ * Cancel a scheduled campaign (backend only)
  * @param {string} id - Campaign ID
  * @returns {Promise<boolean>} Success
  */
-export async function cancelScheduledCampaignAsync(id) {
+export async function cancelScheduledCampaign(id) {
   try {
-    if (await shouldUseBackend()) {
-      await api.scheduled.cancel(id);
-      return true;
-    }
+    await api.scheduled.cancel(id);
+    return true;
   } catch (error) {
-    console.warn('Backend cancel failed, using localStorage:', error.message);
+    console.error('Failed to cancel scheduled campaign:', error.message);
+    return false;
   }
-  return cancelScheduledCampaign(id);
 }
+
+// ==================== BACKWARDS COMPATIBILITY ALIASES ====================
+// These aliases maintain backwards compatibility with code using the old *Async naming
 
 /**
- * Get campaigns with backend support
- * @returns {Promise<Array>} Campaigns
+ * @deprecated Use getScheduledCampaigns() instead (now async)
  */
-export async function getCampaignsAsync() {
-  try {
-    if (await shouldUseBackend()) {
-      return await api.campaigns.getAll();
-    }
-  } catch (error) {
-    console.warn('Backend fetch failed, using localStorage:', error.message);
-  }
-  return getCampaigns();
-}
+export const getScheduledCampaignsAsync = getScheduledCampaigns;
 
 /**
- * Create campaign with backend support
- * @param {object} campaignData - Campaign data
- * @returns {Promise<object>} Created campaign
+ * @deprecated Use saveScheduledCampaign() instead (now async)
  */
-export async function createCampaignAsync(campaignData) {
-  try {
-    if (await shouldUseBackend()) {
-      return await api.campaigns.create(campaignData);
-    }
-  } catch (error) {
-    console.warn('Backend create failed, using localStorage:', error.message);
-  }
-  return saveCampaign(campaignData);
-}
+export const createScheduledCampaignAsync = saveScheduledCampaign;
 
 /**
- * Record campaign send with backend support
- * @param {string} campaignId - Campaign ID
- * @param {object} sendData - Send details
- * @returns {Promise<void>}
+ * @deprecated Use cancelScheduledCampaign() instead (now async)
  */
-export async function recordCampaignSendAsync(campaignId, sendData) {
-  try {
-    if (await shouldUseBackend()) {
-      await api.sends.record({
-        campaignId,
-        recipients: sendData.recipients,
-        successCount: sendData.successCount,
-        failedCount: sendData.failedCount
-      });
-      return;
-    }
-  } catch (error) {
-    console.warn('Backend record failed, using localStorage:', error.message);
-  }
-  recordCampaignSend(campaignId, sendData);
-}
+export const cancelScheduledCampaignAsync = cancelScheduledCampaign;
 
 /**
- * Get automation rules with backend support
- * @returns {Promise<Array>} Automation rules
+ * @deprecated Use getCampaigns() instead (now async)
  */
-export async function getAutomationRulesAsync() {
-  try {
-    if (await shouldUseBackend()) {
-      return await api.automation.getAll();
-    }
-  } catch (error) {
-    console.warn('Backend fetch failed, using localStorage:', error.message);
-  }
-  return getAutomationRules();
-}
+export const getCampaignsAsync = getCampaigns;
 
 /**
- * Save automation rules with backend support
- * @param {Array} rules - Rules to save
- * @returns {Promise<void>}
+ * @deprecated Use saveCampaign() instead (now async)
  */
-export async function saveAutomationRulesAsync(rules) {
-  try {
-    if (await shouldUseBackend()) {
-      await api.automation.save(rules);
-      return;
-    }
-  } catch (error) {
-    console.warn('Backend save failed, using localStorage:', error.message);
-  }
-  saveAutomationRules(rules);
-}
+export const createCampaignAsync = saveCampaign;
 
-// ==================== CAMPAIGN EFFECTIVENESS TRACKING ====================
+/**
+ * @deprecated Use recordCampaignSend() instead (now async)
+ */
+export const recordCampaignSendAsync = recordCampaignSend;
+
+/**
+ * @deprecated Use getAutomationRules() instead (now async)
+ */
+export const getAutomationRulesAsync = getAutomationRules;
+
+/**
+ * @deprecated Use saveAutomationRules() instead (now async)
+ */
+export const saveAutomationRulesAsync = saveAutomationRules;
+
+// ==================== CAMPAIGN EFFECTIVENESS TRACKING (BACKEND ONLY) ====================
 // These functions link campaigns to contact_tracking for measuring return rates
 
 /**
- * Record a campaign contact for effectiveness tracking
+ * Record a campaign contact for effectiveness tracking (backend only)
  * Creates entries in both contact_tracking and campaign_contacts tables
  * @param {string} campaignId - Campaign ID
- * @param {object} contactData - { customerId, customerName, phone, contactMethod }
+ * @param {object} contactData - { customerId, customerName, phone, contactMethod, couponValidityDays }
  * @returns {Promise<object>} Created records
  */
 export async function recordCampaignContact(campaignId, contactData) {
-  const { customerId, customerName, phone, contactMethod = 'whatsapp' } = contactData;
+  const { customerId, customerName, phone, contactMethod = 'whatsapp', couponValidityDays = 7 } = contactData;
 
   try {
-    if (await shouldUseBackend()) {
-      // Get campaign name for the contact_tracking record
-      const campaign = await api.campaigns.get(campaignId);
-      const campaignName = campaign?.name || campaignId;
+    // Get campaign name for the contact_tracking record
+    const campaign = await api.campaigns.get(campaignId);
+    const campaignName = campaign?.name || campaignId;
 
-      // Use the contact_tracking.record API action
-      const result = await api.contacts.create({
-        customer_id: customerId,
-        customer_name: customerName,
-        contact_method: contactMethod,
-        campaign_id: campaignId,
-        campaign_name: campaignName,
-        status: 'pending',
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      });
+    // Calculate expires_at: couponValidityDays + 3 day buffer (matches SQL function)
+    const expiryDays = couponValidityDays + 3;
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString();
 
-      console.log(`[CampaignService] Recorded contact for campaign ${campaignId}: ${customerId}`);
-      return { tracking: result, contact: result };
-    }
+    // Use the contact_tracking.record API action
+    const result = await api.contacts.create({
+      customer_id: customerId,
+      customer_name: customerName,
+      contact_method: contactMethod,
+      campaign_id: campaignId,
+      campaign_name: campaignName,
+      status: 'pending',
+      expires_at: expiresAt
+    });
+
+    console.log(`[CampaignService] Recorded contact for campaign ${campaignId}: ${customerId}`);
+    return { tracking: result, contact: result };
   } catch (error) {
-    console.warn('[CampaignService] Failed to record campaign contact:', error.message);
+    console.error('[CampaignService] Failed to record campaign contact:', error.message);
+    return { tracking: null, contact: null };
   }
-
-  // Fallback: store in localStorage
-  const sends = JSON.parse(localStorage.getItem(CAMPAIGN_SENDS_KEY) || '[]');
-  const localRecord = {
-    id: Date.now(),
-    campaign_id: campaignId,
-    customer_id: customerId,
-    customer_name: customerName,
-    phone: phone,
-    contact_method: contactMethod,
-    sent_at: new Date().toISOString(),
-    status: 'pending'
-  };
-  sends.push(localRecord);
-  localStorage.setItem(CAMPAIGN_SENDS_KEY, JSON.stringify(sends.slice(-500)));
-
-  return { tracking: null, contact: localRecord };
 }
 
 /**
- * Get campaign performance metrics with effectiveness data
+ * Get campaign performance metrics with effectiveness data (backend only)
  * @param {string} campaignId - Optional specific campaign ID
  * @returns {Promise<Array|object>} Performance metrics
  */
 export async function getCampaignPerformance(campaignId = null) {
   try {
-    if (await shouldUseBackend()) {
-      // Use the API actions for campaign performance
-      const data = await api.get('campaign_effectiveness', campaignId ? { campaign_id: campaignId } : {});
+    // Use campaign_performance view (has all campaign fields + return metrics)
+    const data = await api.get('campaign_performance', campaignId ? { id: campaignId } : {});
 
-      if (campaignId && data.length > 0) {
-        console.log(`[CampaignService] Loaded performance for campaign ${campaignId}`);
-        return data[0];
-      }
-
-      console.log(`[CampaignService] Loaded performance for ${data.length} campaigns`);
-      return data;
+    if (campaignId && data.length > 0) {
+      console.log(`[CampaignService] Loaded performance for campaign ${campaignId}`);
+      return data[0];
     }
-  } catch (error) {
-    console.warn('[CampaignService] Could not load campaign performance:', error.message);
-  }
 
-  // Fallback: return basic campaign data
-  const campaigns = getCampaigns();
-  if (campaignId) {
-    return campaigns.find(c => c.id === campaignId) || null;
+    console.log(`[CampaignService] Loaded performance for ${data.length} campaigns`);
+    return data;
+  } catch (error) {
+    console.error('[CampaignService] Could not load campaign performance:', error.message);
+    return campaignId ? null : [];
   }
-  return campaigns;
 }
 
 /**
- * Get contacts for a specific campaign with their tracking outcomes
+ * Get contacts for a specific campaign with their tracking outcomes (backend only)
+ * Now queries contact_tracking directly instead of campaign_contacts bridge table
+ * This ensures automation sends appear (they create contact_tracking without campaign_contacts)
+ *
  * @param {string} campaignId - Campaign ID
- * @returns {Promise<Array>} Contacts with outcomes
+ * @returns {Promise<Array>} Contacts with outcomes (flat structure from contact_tracking)
  */
 export async function getCampaignContacts(campaignId) {
   try {
-    if (await shouldUseBackend()) {
-      // Use the campaign_contacts.getAll API action
-      const data = await api.get('campaign_contacts', { campaign_id: campaignId });
-      return data;
-    }
+    // Query contact_tracking directly by campaign_id
+    // This matches the campaign_performance view fix (migration 005)
+    // Automations create contact_tracking records but not always campaign_contacts
+    const data = await api.get('contact_tracking', { campaign_id: campaignId });
+    return data || [];
   } catch (error) {
-    console.warn('[CampaignService] Could not load campaign contacts:', error.message);
+    console.error('[CampaignService] Could not load campaign contacts:', error.message);
+    return [];
   }
-
-  // Fallback: return sends from localStorage
-  const sends = JSON.parse(localStorage.getItem(CAMPAIGN_SENDS_KEY) || '[]');
-  return sends.filter(s => s.campaign_id === campaignId);
 }
 
 /**
  * Send campaign and record contacts for effectiveness tracking
- * Enhanced version that links to contact_tracking
+ * Unified flow matching automation: SEND FIRST, then RECORD with twilio_sid
+ *
+ * Flow:
+ * 1. Check eligibility to filter out customers in cooldown period
+ * 2. Send WhatsApp message via Twilio → get messageSid
+ * 3. Record to contact_tracking + campaign_contacts WITH twilio_sid
+ * 4. This enables webhook to link delivery events to campaign
  *
  * IMPORTANT: Marketing campaigns REQUIRE ContentSid (Meta-approved template).
  * Plain text messages only work within the 24-hour customer service window,
@@ -987,12 +862,24 @@ export async function getCampaignContacts(campaignId) {
  * @param {string} options.contentSid - Twilio Content SID for Meta-approved template (REQUIRED)
  * @param {object} options.contentVariables - Base variables for template (personalized per-recipient)
  * @param {string} options.templateId - Template ID for error messages
+ * @param {string} options.campaignType - Campaign type for eligibility checks (winback, welcome, promo, wallet, upsell, post_visit)
+ * @param {number} options.couponValidityDays - Coupon validity in days (default: 7) - used for expires_at calculation
+ * @param {boolean} options.skipEligibilityCheck - If true, skip eligibility filter (default: false)
  * @param {boolean} options.dryRun - If true, don't send messages (for testing)
  * @param {boolean} options.skipWhatsApp - If true, skip sending but record tracking
  * @returns {Promise<object>} Send result with tracking info
  */
 export async function sendCampaignWithTracking(campaignId, recipients, options = {}) {
-  const { contentSid, contentVariables, templateId, dryRun = false, skipWhatsApp = false } = options;
+  const {
+    contentSid,
+    contentVariables,
+    templateId,
+    campaignType = null,
+    couponValidityDays = 7,
+    skipEligibilityCheck = false,
+    dryRun = false,
+    skipWhatsApp = false
+  } = options;
 
   const result = {
     campaignId,
@@ -1000,8 +887,10 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     successCount: 0,
     failedCount: 0,
     skippedCount: 0,
+    ineligibleCount: 0,
     trackedContacts: 0,
     errors: [],
+    ineligibleContacts: [],
     sentVia: 'template'
   };
 
@@ -1024,7 +913,45 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     }
   }
 
-  for (const recipient of recipients) {
+  // STEP 0: Filter recipients based on eligibility (cooldown checks)
+  // This prevents spammy behavior by enforcing:
+  // - Global cooldown: 7 days between any campaigns
+  // - Same-type cooldown: 30 days between campaigns of the same type
+  let eligibleRecipients = recipients;
+
+  if (!skipEligibilityCheck && !dryRun && recipients.length > 0) {
+    try {
+      console.log(`[CampaignService] Checking eligibility for ${recipients.length} recipients...`);
+
+      const eligibilityResult = await api.eligibility.filterRecipients(recipients, {
+        campaignType: campaignType
+      });
+
+      eligibleRecipients = eligibilityResult.eligible;
+      result.ineligibleCount = eligibilityResult.ineligible.length;
+      result.ineligibleContacts = eligibilityResult.ineligible.map(r => ({
+        customerId: r.customerId || r.doc,
+        customerName: r.customerName || r.name,
+        phone: r.phone,
+        reason: r.eligibilityInfo?.reason || 'Inelegível para contato'
+      }));
+
+      console.log(`[CampaignService] Eligibility check: ${eligibleRecipients.length} eligible, ${result.ineligibleCount} ineligible`);
+
+      if (result.ineligibleCount > 0) {
+        console.log('[CampaignService] Ineligible recipients:', result.ineligibleContacts.slice(0, 5).map(c => ({
+          customerId: c.customerId,
+          reason: c.reason
+        })));
+      }
+    } catch (eligibilityError) {
+      // On error, log warning but proceed with all recipients
+      // Better to send than to block due to eligibility check failure
+      console.warn('[CampaignService] Eligibility check failed, proceeding with all recipients:', eligibilityError.message);
+    }
+  }
+
+  for (const recipient of eligibleRecipients) {
     const { customerId, customerName, phone, name, walletBalance } = recipient;
     const recipientName = customerName || name;
 
@@ -1040,18 +967,10 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     }
 
     try {
-      // Record contact for tracking (before sending WhatsApp)
-      if (!dryRun) {
-        await recordCampaignContact(campaignId, {
-          customerId,
-          customerName: recipientName,
-          phone,
-          contactMethod: 'whatsapp'
-        });
-        result.trackedContacts++;
-      }
+      let messageSid = null;
 
-      // Send WhatsApp if not skipped
+      // STEP 1: Send WhatsApp FIRST (matches automation flow)
+      // This way we have the messageSid before recording
       if (!skipWhatsApp && !dryRun) {
         // Template mode - personalize variables for this recipient
         const personalizedVars = {
@@ -1067,10 +986,64 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
           }).format(walletBalance);
         }
 
-        await sendWhatsAppMessage(phone, null, {
+        const sendResult = await sendWhatsAppMessage(phone, null, {
           contentSid,
           contentVariables: personalizedVars
         });
+
+        messageSid = sendResult?.messageSid || null;
+
+        // Record to comm_logs for audit trail
+        try {
+          // Use human-readable template name instead of ContentSid
+          const templateName = getTemplateNameBySid(contentSid);
+          await api.logs.add({
+            phone: normalizePhone(phone),
+            customer_id: customerId,
+            channel: 'whatsapp',
+            direction: 'outbound',
+            message: `Campaign: ${campaignId} [Template: ${templateName}]`,
+            external_id: messageSid,
+            status: 'sent'
+          });
+        } catch (logError) {
+          console.warn('[CampaignService] Failed to log to comm_logs:', logError.message);
+        }
+      }
+
+      // STEP 2: Record contact with twilio_sid AFTER sending (matches automation flow)
+      // This enables delivery tracking via webhook
+      // Uses retry logic to ensure tracking is recorded (critical for effectiveness metrics)
+      if (!dryRun) {
+        try {
+          await withRetry(
+            async () => {
+              await api.campaignContacts.record({
+                campaignId,
+                customerId,
+                customerName: recipientName,
+                phone: normalizePhone(phone),
+                twilioSid: messageSid,
+                contactMethod: 'whatsapp',
+                campaignType: campaignType,
+                couponValidityDays: couponValidityDays
+              });
+            },
+            { maxRetries: 2, context: { campaignId, customerId, messageSid } }
+          );
+          result.trackedContacts++;
+        } catch (trackError) {
+          console.error('[CampaignService] Failed to record contact tracking after retries:', trackError.message);
+          // Track the failure but don't fail the send - message was already sent
+          result.errors.push({
+            customerId,
+            phone,
+            type: 'TRACKING_FAILED',
+            error: `Mensagem enviada mas tracking falhou: ${trackError.message}`,
+            retryable: false,
+            twilioSid: messageSid // Include SID for manual recovery
+          });
+        }
       }
 
       result.successCount++;
@@ -1098,7 +1071,7 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     }
   }
 
-  // Update campaign stats
+  // Record aggregate send stats to campaign_sends table
   if (!dryRun && result.successCount > 0) {
     await recordCampaignSendAsync(campaignId, {
       recipients: result.totalRecipients,
@@ -1114,6 +1087,7 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
     success: result.successCount,
     tracked: result.trackedContacts,
     failed: result.failedCount,
+    ineligible: result.ineligibleCount,
     status: result.summary.status
   });
 
@@ -1157,9 +1131,8 @@ export async function getDashboardMetrics(options = {}) {
   };
 
   try {
-    if (await shouldUseBackend()) {
-      // Fetch campaign effectiveness data (aggregated by campaign)
-      let effectivenessData = [];
+    // Fetch campaign effectiveness data (aggregated by campaign)
+    let effectivenessData = [];
       try {
         effectivenessData = await api.get('campaign_effectiveness', {});
       } catch (e) {
@@ -1266,16 +1239,18 @@ export async function getDashboardMetrics(options = {}) {
         metrics.funnel.returned = returned.length;
       }
 
-      // Fetch campaign sends for funnel (sent/delivered counts)
-      let sendsData = [];
+      // Fetch all campaigns to get total sends (includes automations)
+      // The campaigns.sends column is updated by both manual sends AND record_automation_contact()
+      let campaignsForFunnel = [];
       try {
-        sendsData = await api.sends.getAll();
+        campaignsForFunnel = await api.campaigns.getAll();
       } catch (e) {
-        console.warn('[CampaignService] Could not fetch sends:', e.message);
+        console.warn('[CampaignService] Could not fetch campaigns for funnel:', e.message);
       }
 
-      if (sendsData && sendsData.length > 0) {
-        metrics.funnel.sent = sendsData.reduce((sum, s) => sum + (s.success_count || 0), 0);
+      if (campaignsForFunnel && campaignsForFunnel.length > 0) {
+        // Sum up all sends from campaigns (this includes automation sends)
+        metrics.funnel.sent = campaignsForFunnel.reduce((sum, c) => sum + (c.sends || 0), 0);
       }
 
       // Fetch real delivery stats from Twilio webhook events
@@ -1302,35 +1277,42 @@ export async function getDashboardMetrics(options = {}) {
         metrics.hasRealDeliveryData = false;
       }
 
-      // Fetch recent campaigns with performance data
-      let campaignsData = [];
+      // Fetch recent campaigns with performance data from campaign_performance view
+      // v4.9: This view now includes delivery metrics directly (delivered, read, has_delivery_data)
+      // No separate api.delivery.getCampaignMetrics() call needed anymore
+      let campaignPerformanceData = [];
       try {
-        campaignsData = await api.campaigns.getAll();
+        campaignPerformanceData = await api.get('campaign_performance', {});
       } catch (e) {
-        console.warn('[CampaignService] Could not fetch campaigns:', e.message);
+        console.warn('[CampaignService] Could not fetch campaign performance:', e.message);
       }
 
-      if (campaignsData && campaignsData.length > 0) {
-        // Enrich with performance data
-        metrics.recentCampaigns = campaignsData.slice(0, 10).map(c => {
-          // Find matching effectiveness data
-          const effData = effectivenessData?.find(e => e.campaign_id === c.id);
-          return {
-            ...c,
-            return_rate: effData?.return_rate || 0,
-            total_revenue: effData?.total_return_revenue || 0,
-            contacts_count: effData?.total_contacts || 0
-          };
-        });
+      if (campaignPerformanceData && campaignPerformanceData.length > 0) {
+        // v4.9: Use campaign_performance view data directly - now includes ALL metrics
+        // Return metrics: return_rate, total_revenue_recovered, contacts_tracked
+        // Delivery metrics: delivered, read, failed, delivery_rate, read_rate, has_delivery_data
+        metrics.recentCampaigns = campaignPerformanceData.slice(0, 10).map(c => ({
+          ...c,
+          // Performance metrics (aliased for compatibility)
+          return_rate: c.return_rate || 0,
+          total_revenue: c.total_revenue_recovered || 0,
+          contacts_count: c.contacts_tracked || 0,
+          // Delivery metrics (now from campaign_performance view directly)
+          delivered: c.delivered || 0,
+          read: c.read || 0,
+          failed: c.failed || 0,
+          delivery_rate: c.delivery_rate || null,
+          read_rate: c.read_rate || null,
+          has_delivery_data: c.has_delivery_data || false
+        }));
       }
 
-      console.log(`[CampaignService] Dashboard metrics loaded:`, {
-        contacts: metrics.summary.totalContacts,
-        returned: metrics.summary.totalReturned,
-        campaigns: metrics.recentCampaigns.length,
-        discountLevels: metrics.discountComparison.length
-      });
-    }
+    console.log(`[CampaignService] Dashboard metrics loaded:`, {
+      contacts: metrics.summary.totalContacts,
+      returned: metrics.summary.totalReturned,
+      campaigns: metrics.recentCampaigns.length,
+      discountLevels: metrics.discountComparison.length
+    });
   } catch (error) {
     console.warn('[CampaignService] Failed to load dashboard metrics:', error.message);
   }

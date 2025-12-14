@@ -39,6 +39,7 @@ export const semanticColors = {
     iconBg: 'bg-red-100 dark:bg-red-900/40',
     gradient: 'from-red-500 to-red-600',
     ring: 'ring-red-500',
+    solidGradient: 'bg-gradient-to-br from-red-500 to-rose-600',
   },
   profit: {
     bg: 'bg-purple-50 dark:bg-purple-900/20',
@@ -51,6 +52,7 @@ export const semanticColors = {
     iconBg: 'bg-purple-100 dark:bg-purple-900/40',
     gradient: 'from-purple-500 to-purple-600',
     ring: 'ring-purple-500',
+    solidGradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
   },
 
   // Trend indicators
@@ -78,6 +80,7 @@ export const semanticColors = {
     iconBg: 'bg-red-100 dark:bg-red-900/40',
     gradient: 'from-red-500 to-red-600',
     ring: 'ring-red-500',
+    solidGradient: 'bg-gradient-to-br from-red-500 to-rose-600',
   },
   neutral: {
     bg: 'bg-slate-50 dark:bg-slate-800',
@@ -226,6 +229,7 @@ export const semanticColors = {
     iconBg: 'bg-blue-100 dark:bg-blue-900/40',
     gradient: 'from-blue-500 to-blue-600',
     ring: 'ring-blue-500',
+    solidGradient: 'bg-gradient-to-br from-blue-500 to-indigo-600',
   },
   lavpop: {
     bg: 'bg-lavpop-blue-50 dark:bg-lavpop-blue-900/20',

@@ -1,7 +1,10 @@
-// netlify/functions/twilio-whatsapp.js v1.2
+// netlify/functions/twilio-whatsapp.js v1.3
 // Twilio WhatsApp Business API integration for campaign messaging
 //
 // CHANGELOG:
+// v1.3 (2025-12-12): Fixed blacklist sync not detecting error 63024 messages
+//   - Bug fix: error_code was compared as string vs number (strict equality failed)
+//   - Now properly parses error_code to integer before comparison
 // v1.2 (2025-12-09): Added Meta-approved template support via ContentSid
 //   - sendMessage now accepts contentSid + contentVariables for template mode
 //   - sendBulkMessages supports contentSid for bulk template sends
@@ -409,7 +412,8 @@ async function fetchMessages(body, accountSid, authToken, headers) {
     for (const msg of data.messages || []) {
       const direction = (msg.direction || '').toLowerCase();
       const status = (msg.status || '').toLowerCase();
-      const errorCode = msg.error_code;
+      // IMPORTANT: Twilio returns error_code as string, so convert to number for comparison
+      const errorCode = msg.error_code ? parseInt(msg.error_code, 10) : null;
       const body = normalizeText(msg.body);
       const from = (msg.from || '').replace(/^whatsapp:/, '');
       const to = (msg.to || '').replace(/^whatsapp:/, '');
@@ -429,7 +433,7 @@ async function fetchMessages(body, accountSid, authToken, headers) {
       }
 
       // Check for undelivered outbound messages
-      if (direction.startsWith('outbound') && (status === 'undelivered' || status === 'failed' || errorCode === 63024)) {
+      if (direction.startsWith('outbound') && (status === 'undelivered' || status === 'failed' || errorCode === 63024 || errorCode === 63031 || errorCode === 63049 || errorCode === 63032)) {
         blacklistCandidates.undelivered.push({
           phone: to,
           status: status,

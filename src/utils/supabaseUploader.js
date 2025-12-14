@@ -1,4 +1,4 @@
-// supabaseUploader.js v1.0
+// supabaseUploader.js v1.1
 // Client-side CSV parser and Supabase uploader for manual data imports
 //
 // Usage:
@@ -11,6 +11,17 @@
 //   - Deduplication via MD5 hash
 //   - Batch upsert to Supabase (100 records per batch)
 //   - Progress callback for UI feedback
+//   - Smart customer upsert (v1.1): Handles full customer list uploads
+//     without regressing computed metrics from transaction triggers
+//
+// CHANGELOG:
+// v1.1 (2025-12-13): Smart customer upsert
+//   - Uses upsert_customer_profiles_batch() RPC for intelligent merge
+//   - Profile fields always update (nome, telefone, email, saldo_carteira)
+//   - Date fields use GREATEST (won't regress to older dates)
+//   - Count fields use GREATEST (won't regress to lower values)
+//   - Computed fields (risk_level, avg_days_between) untouched
+//   - Falls back to simple upsert if RPC not available
 
 // ============== CONFIGURATION ==============
 
@@ -356,14 +367,16 @@ export async function uploadSalesCSV(csvText, onProgress = () => {}) {
 
 /**
  * Parse and upload customer CSV to Supabase
+ * Uses smart upsert that won't regress computed metrics from transaction triggers
+ *
  * @param {string} csvText - Raw CSV text
  * @param {function} onProgress - Progress callback (current, total, phase)
- * @returns {Promise<{success: boolean, inserted: number, skipped: number, errors: string[]}>}
+ * @returns {Promise<{success: boolean, inserted: number, updated: number, skipped: number, errors: string[]}>}
  */
 export async function uploadCustomerCSV(csvText, onProgress = () => {}) {
   const client = await getSupabase();
   if (!client) {
-    return { success: false, inserted: 0, skipped: 0, errors: ['Supabase not configured'] };
+    return { success: false, inserted: 0, updated: 0, skipped: 0, errors: ['Supabase not configured'] };
   }
 
   const cleaned = cleanCSV(csvText);
@@ -428,33 +441,71 @@ export async function uploadCustomerCSV(csvText, onProgress = () => {}) {
   const customers = Array.from(customerMap.values());
   onProgress(rows.length, rows.length, 'uploading');
 
-  // Batch insert with upsert
+  // Try smart upsert RPC first, fallback to simple upsert
   let inserted = 0;
+  let updated = 0;
+  let useSmartUpsert = true;
+
   for (let i = 0; i < customers.length; i += BATCH_SIZE) {
     const batch = customers.slice(i, i + BATCH_SIZE);
-    try {
-      const { error } = await client
-        .from('customers')
-        .upsert(batch, { onConflict: 'doc' });
 
-      if (error) {
-        errors.push(`Batch ${Math.floor(i / BATCH_SIZE)}: ${error.message}`);
-      } else {
-        inserted += batch.length;
+    if (useSmartUpsert) {
+      try {
+        // Smart upsert: Won't overwrite dates/counts with older/lower values
+        const { data, error } = await client.rpc('upsert_customer_profiles_batch', {
+          p_customers: batch
+        });
+
+        if (error) {
+          // If RPC doesn't exist, fallback to simple upsert
+          if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+            console.log('[CustomerUpload] Smart upsert not available, using simple upsert');
+            useSmartUpsert = false;
+          } else {
+            errors.push(`Batch ${Math.floor(i / BATCH_SIZE)}: ${error.message}`);
+            continue;
+          }
+        } else if (data) {
+          inserted += data.inserted || 0;
+          updated += data.updated || 0;
+          onProgress(i + batch.length, customers.length, 'uploading');
+          continue;
+        }
+      } catch (err) {
+        console.log('[CustomerUpload] Smart upsert error, falling back:', err.message);
+        useSmartUpsert = false;
       }
-    } catch (err) {
-      errors.push(`Batch ${Math.floor(i / BATCH_SIZE)}: ${err.message}`);
     }
+
+    // Fallback: Simple upsert (may overwrite data)
+    if (!useSmartUpsert) {
+      try {
+        const { error } = await client
+          .from('customers')
+          .upsert(batch, { onConflict: 'doc' });
+
+        if (error) {
+          errors.push(`Batch ${Math.floor(i / BATCH_SIZE)}: ${error.message}`);
+        } else {
+          inserted += batch.length;
+        }
+      } catch (err) {
+        errors.push(`Batch ${Math.floor(i / BATCH_SIZE)}: ${err.message}`);
+      }
+    }
+
     onProgress(i + batch.length, customers.length, 'uploading');
   }
 
   return {
     success: errors.length === 0,
     inserted,
+    updated,
     skipped,
     total: rows.length,
     duplicates,
-    errors
+    errors,
+    smartUpsert: useSmartUpsert // Indicates if smart upsert was used
   };
 }
 

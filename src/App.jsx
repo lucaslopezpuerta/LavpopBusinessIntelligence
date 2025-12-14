@@ -1,12 +1,20 @@
-// App.jsx v6.2 - SIDEBAR LAYOUT + MINIMALIST DESIGN
+// App.jsx v7.0 - SMART DATA REFRESH
 // ✅ Added minimalist icon sidebar with hover expansion
 // ✅ Compact top bar with widgets (60px to match sidebar)
 // ✅ Mobile drawer with backdrop overlay
 // ✅ Maximized horizontal space for data visualizations
 // ✅ Integrated Lavpop logo in loading and error screens
 // ✅ Mobile breadcrumb shows current tab
+// ✅ Smart data refresh with visibility detection
+// ✅ Auto-refresh every 10 minutes when active
 //
 // CHANGELOG:
+// v7.0 (2025-12-13): Smart data refresh system
+//   - Visibility-based refresh (when returning to tab after 5+ min)
+//   - Auto-refresh every 10 minutes while tab is active
+//   - DataFreshnessProvider for app-wide refresh triggers
+//   - Prevents duplicate refreshes with debouncing
+//   - Silent background refresh (no loading spinner)
 // v6.2 (2025-11-30): Mobile improvements
 //   - Pass activeTab to MinimalTopBar for mobile breadcrumb
 //   - Header height aligned with sidebar (60px)
@@ -15,19 +23,25 @@
 // v5.0 (2025-11-23): Error boundaries + code splitting
 // v4.2 (2025-11-21): Reload button added
 
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { RefreshCw, XCircle } from 'lucide-react';
 import LogoNoBackground from './assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
+import { DataFreshnessProvider } from './contexts/DataFreshnessContext';
 import { loadAllData } from './utils/supabaseLoader';
 import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
 import Backdrop from './components/Backdrop';
 import MinimalTopBar from './components/MinimalTopBar';
 import ErrorBoundary from './components/ErrorBoundary';
+
+// Data freshness configuration
+const STALE_TIME = 5 * 60 * 1000;        // 5 minutes - data considered stale
+const REFRESH_INTERVAL = 10 * 60 * 1000;  // 10 minutes - auto-refresh interval
+const MIN_REFRESH_GAP = 30 * 1000;        // 30 seconds - minimum between refreshes
 
 // Lazy load tab components for code splitting
 const Dashboard = lazy(() => import('./views/Dashboard'));
@@ -56,26 +70,110 @@ function AppContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState('complete');
 
-  const loadData = async (skipCache = false) => {
+  // Smart refresh state
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const refreshingRef = useRef(false);
+  const lastRefreshAttemptRef = useRef(0);
+
+  // Check if data is stale
+  const isStale = useCallback(() => {
+    if (!lastRefreshed) return true;
+    return Date.now() - lastRefreshed > STALE_TIME;
+  }, [lastRefreshed]);
+
+  // Core data loading function
+  const loadData = useCallback(async (options = {}) => {
+    const { skipCache = false, silent = false, isInitial = false } = options;
+
+    // Prevent duplicate refreshes (unless initial load)
+    if (!isInitial && refreshingRef.current) {
+      console.log('[App] Refresh already in progress, skipping');
+      return;
+    }
+
+    // Prevent too-frequent refreshes (unless initial or forced)
+    if (!isInitial && !skipCache) {
+      const timeSinceLastAttempt = Date.now() - lastRefreshAttemptRef.current;
+      if (timeSinceLastAttempt < MIN_REFRESH_GAP) {
+        console.log('[App] Too soon since last refresh, skipping');
+        return;
+      }
+    }
+
     try {
-      setLoading(true);
+      refreshingRef.current = true;
+      lastRefreshAttemptRef.current = Date.now();
+
+      if (isInitial) {
+        setLoading(true);
+      }
+      if (!silent) {
+        setRefreshing(true);
+      }
       setError(null);
+
+      console.log(`[App] Loading data (skipCache: ${skipCache}, silent: ${silent})...`);
       const loadedData = await loadAllData((progress) => {
-        setLoadProgress(progress);
+        if (isInitial) {
+          setLoadProgress(progress);
+        }
       }, skipCache);
+
       setData(loadedData);
+      setLastRefreshed(Date.now());
+      console.log('[App] Data loaded successfully');
+
     } catch (err) {
-      console.error('Failed to load data:', err);
+      console.error('[App] Failed to load data:', err);
       setError(err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      refreshingRef.current = false;
     }
-  };
-
-  useEffect(() => {
-    loadData();
   }, []);
+
+  // Initial data load
+  useEffect(() => {
+    loadData({ isInitial: true });
+  }, [loadData]);
+
+  // Visibility-based refresh: refresh when tab becomes visible (if stale)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !loading) {
+        console.log('[App] Tab became visible, checking data freshness...');
+        if (isStale()) {
+          console.log('[App] Data is stale, triggering background refresh');
+          loadData({ skipCache: true, silent: true });
+        } else {
+          console.log('[App] Data is still fresh');
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [loading, isStale, loadData]);
+
+  // Auto-refresh interval: refresh every 10 minutes while tab is active
+  useEffect(() => {
+    if (loading) return;
+
+    console.log(`[App] Setting up auto-refresh every ${REFRESH_INTERVAL / 1000}s`);
+
+    const intervalId = setInterval(() => {
+      // Only auto-refresh if tab is visible
+      if (document.visibilityState === 'visible') {
+        console.log('[App] Auto-refresh triggered');
+        loadData({ skipCache: true, silent: true });
+      } else {
+        console.log('[App] Skipping auto-refresh (tab hidden)');
+      }
+    }, REFRESH_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [loading, loadData]);
 
   // Map tab IDs to components
   const tabComponents = {
@@ -93,10 +191,19 @@ function AppContent() {
     navigateTo(tabId);
   };
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    loadData(true); // Skip cache on manual refresh
-  };
+  // Manual refresh handler (button click)
+  const handleRefresh = useCallback(() => {
+    console.log('[App] Manual refresh triggered');
+    loadData({ skipCache: true, silent: false });
+  }, [loadData]);
+
+  // Refresh after user action (e.g., campaign sent)
+  const refreshAfterAction = useCallback(async (actionName = 'action') => {
+    console.log(`[App] Refreshing after ${actionName}...`);
+    // Small delay to let backend process
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return loadData({ skipCache: true, silent: true });
+  }, [loadData]);
 
   const handleRetry = () => {
     window.location.reload();
@@ -228,6 +335,7 @@ function AppContent() {
                   onNavigate={handleTabChange}
                   viewMode={viewMode}
                   setViewMode={setViewMode}
+                  onDataChange={refreshAfterAction}
                 />
               </Suspense>
             </motion.div>
@@ -253,7 +361,9 @@ function App() {
       <ThemeProvider>
         <SidebarProvider>
           <NavigationProvider>
-            <AppContent />
+            <DataFreshnessProvider>
+              <AppContent />
+            </DataFreshnessProvider>
           </NavigationProvider>
         </SidebarProvider>
       </ThemeProvider>

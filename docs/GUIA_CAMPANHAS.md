@@ -319,6 +319,8 @@ Sempre **Horário de Brasília** (São Paulo, UTC-3). Se você agendar uma campa
 
 Automações são campanhas que **enviam mensagens automaticamente** quando clientes atingem determinados gatilhos, sem necessidade de intervenção manual.
 
+> **Novo (v3.0):** Automações agora funcionam como **"Campanhas Automáticas"** - elas aparecem no dashboard junto com campanhas manuais, permitindo visualizar métricas unificadas de retorno e receita.
+
 ### Automações Disponíveis
 
 | Automação | Gatilho | Ação |
@@ -383,11 +385,23 @@ Para automações com cupom, você pode configurar:
 
 ### Monitorar Automações
 
+#### Painel de Resumo
+
+No topo da aba de Automações, você vê:
+- **Ativas:** Quantas automações estão rodando
+- **Enviados:** Total de mensagens enviadas por todas as automações
+- **Retorno:** Taxa de retorno média das automações
+- **Receita:** Receita total recuperada pelas automações
+
+#### Por Automação
+
 Cada automação mostra:
 - **Status:** Ativa, Inativa, Encerrada ou Limite atingido
 - **Enviados:** Quantidade total de mensagens enviadas
 - **Elegíveis:** Clientes que se encaixam no gatilho agora
 - **Progresso:** Barra de progresso quando há limite definido
+- **Taxa de Retorno:** % de clientes que voltaram após a mensagem (quando disponível)
+- **Receita:** Valor gasto pelos clientes que retornaram (quando disponível)
 
 ### Boas Práticas para Automações
 
@@ -407,4 +421,4 @@ Problemas ou dúvidas? Entre em contato com o suporte técnico.
 
 ---
 
-*Última atualização: 11 de Dezembro de 2025 (v2.5)*
+*Última atualização: 12 de Dezembro de 2025 (v3.0)*

@@ -137,10 +137,10 @@ const KPICard = ({
   const cardClasses = `
     ${v.container}
     rounded-xl
-    border border-gray-100 dark:border-slate-700
+    border border-slate-100 dark:border-slate-700
     shadow-soft
     transition-all duration-200
-    ${onClick ? 'cursor-pointer hover:shadow-soft-lg hover:border-gray-200 dark:hover:border-slate-600 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2 dark:focus:ring-offset-slate-800' : ''}
+    ${onClick ? 'cursor-pointer hover:shadow-soft-lg hover:border-slate-200 dark:hover:border-slate-600 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2 dark:focus:ring-offset-slate-800' : ''}
     ${className}
   `.trim();
 
@@ -162,7 +162,7 @@ const KPICard = ({
             {/* Responsive label: show mobileLabel on small screens, full label on larger */}
             <p className={`
               ${v.label} font-medium uppercase tracking-wide mb-0.5 sm:mb-1 leading-tight
-              ${isGradient ? 'text-white/80' : 'text-gray-500 dark:text-slate-400'}
+              ${isGradient ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}
             `}>
               {mobileLabel ? (
                 <>
@@ -173,7 +173,7 @@ const KPICard = ({
             </p>
             <p className={`
               ${v.value} font-bold mb-0.5 leading-tight break-words
-              ${isGradient ? 'text-white' : 'text-gray-900 dark:text-white'}
+              ${isGradient ? 'text-white' : 'text-slate-900 dark:text-white'}
             `}>
               {value}
             </p>
@@ -183,7 +183,7 @@ const KPICard = ({
                 {(subtitle || mobileSubtitle) && (
                   <span className={`
                     ${v.subtitle} leading-tight
-                    ${isGradient ? 'text-white/70' : 'text-gray-500 dark:text-slate-400'}
+                    ${isGradient ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}
                   `}>
                     {mobileSubtitle ? (
                       <>
@@ -201,7 +201,7 @@ const KPICard = ({
                 {(subtitle || mobileSubtitle) && (
                   <p className={`
                     ${v.subtitle} leading-tight
-                    ${isGradient ? 'text-white/70' : 'text-gray-500 dark:text-slate-400'}
+                    ${isGradient ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}
                   `}>
                     {mobileSubtitle ? (
                       <>
@@ -216,7 +216,7 @@ const KPICard = ({
                   <div className="mt-1.5 sm:mt-2">
                     {trend.label ? (
                       <span
-                        className={`text-xs font-medium ${trend.value > 0 ? 'text-emerald-600 dark:text-emerald-400' : trend.value < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400'}`}
+                        className={`text-xs font-medium ${trend.value > 0 ? 'text-emerald-600 dark:text-emerald-400' : trend.value < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}
                         role="status"
                       >
                         {trend.label}

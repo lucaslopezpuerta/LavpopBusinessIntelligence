@@ -69,7 +69,7 @@ const ComfortWeatherCard = ({
                     category.impact < 0 ? TrendingDown : Minus;
   const trendColor = category.impact > 0 ? 'text-emerald-600 dark:text-emerald-400' :
                      category.impact < 0 ? 'text-red-600 dark:text-red-400' :
-                     'text-gray-500 dark:text-gray-400';
+                     'text-slate-500 dark:text-slate-400';
 
   // Check if we need to stack stats (when extended window badge is present)
   const shouldStackStats = category.extendedWindow && hasData && category.impact !== null && !isBaseline;
@@ -166,7 +166,7 @@ const CorrelationCard = ({
   const strength = r >= 0.3 ? 'Forte' : r >= 0.15 ? 'Moderada' : 'Fraca';
   const strengthColor = r >= 0.3 ? 'text-purple-600 dark:text-purple-400' :
                         r >= 0.15 ? 'text-blue-600 dark:text-blue-400' :
-                        'text-gray-500 dark:text-gray-400';
+                        'text-slate-500 dark:text-slate-400';
 
   const bgColor = isTemp
     ? 'bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20'
@@ -184,7 +184,7 @@ const CorrelationCard = ({
         <div className={`p-1.5 rounded-lg ${isTemp ? 'bg-orange-100 dark:bg-orange-800/50' : 'bg-blue-100 dark:bg-blue-800/50'}`}>
           <Icon className={`w-4 h-4 ${iconColor}`} />
         </div>
-        <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
           {label}
         </h4>
       </div>
@@ -192,10 +192,10 @@ const CorrelationCard = ({
       <div className="grid grid-cols-2 gap-3">
         {/* Correlation coefficient */}
         <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
             Correlação
           </p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">
+          <p className="text-lg font-bold text-slate-900 dark:text-white">
             r = {correlation.correlation.toFixed(2)}
           </p>
           <p className={`text-xs font-medium ${strengthColor}`}>
@@ -205,21 +205,21 @@ const CorrelationCard = ({
 
         {/* Impact per unit */}
         <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
             Impacto
           </p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">
+          <p className="text-lg font-bold text-slate-900 dark:text-white">
             {perUnit > 0 ? '+' : ''}{perUnit.toFixed(1)}%
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             por 1{unit}
           </p>
         </div>
       </div>
 
       {/* Interpretation */}
-      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
           {correlation.interpretation}
         </p>
       </div>
@@ -370,14 +370,14 @@ const WeatherImpactSection = ({
         {hasComfortData && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Receita por Condição Climática
               </h3>
               <div className="group relative">
-                <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all w-72 z-10 text-left">
+                <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 dark:bg-slate-700 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all w-72 z-10 text-left">
                   <p className="font-semibold mb-1.5">Classificação por Conforto Térmico</p>
-                  <ul className="space-y-0.5 text-[11px] text-gray-300">
+                  <ul className="space-y-0.5 text-[11px] text-slate-300">
                     <li>🥵 <strong>Abafado:</strong> sensação ≥27°C</li>
                     <li>☀️ <strong>Quente:</strong> temperatura ≥23°C</li>
                     <li>😌 <strong>Ameno:</strong> 10–23°C (baseline)</li>
@@ -441,7 +441,7 @@ const WeatherImpactSection = ({
         {/* Correlation Cards */}
         {(tempCorr?.hasEnoughData || humidityCorr?.hasEnoughData) && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
               Correlações Climáticas
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -462,7 +462,7 @@ const WeatherImpactSection = ({
         {/* Chart - only render if we have valid data */}
         {chartData && chartData.length >= 2 && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
               Comparativo de Receita
             </h3>
             <p id="comfort-weather-chart-desc" className="sr-only">
