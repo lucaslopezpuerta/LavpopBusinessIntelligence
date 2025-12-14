@@ -37,20 +37,18 @@
 // v2.0.1 (2025-11-24): Fixed RFM data loading
 // v2.0 (2025-11-23): Customer Intelligence Hub Implementation
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
 import { Users as UsersIcon, UserPlus, AlertTriangle, Heart, BarChart3, LayoutGrid } from 'lucide-react';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend } from '../utils/customerMetrics';
 import SecondaryKPICard from '../components/ui/SecondaryKPICard';
 import { formatNumber, formatPercent } from '../utils/formatters';
 import CustomerProfileModal from '../components/CustomerProfileModal';
 import CustomerRetentionScore from '../components/CustomerRetentionScore';
-import RFMScatterPlot from '../components/RFMScatterPlot';
-import ChurnHistogram from '../components/ChurnHistogram';
-import NewClientsChart from '../components/NewClientsChart';
 import CustomerCard from '../components/CustomerCard';
 import FilterBar from '../components/FilterBar';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import CustomerSectionNavigation from '../components/customers/CustomerSectionNavigation';
+import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, ChartLoadingFallback } from '../utils/lazyCharts';
 
 const Customers = ({ data }) => {
   // State
@@ -288,13 +286,19 @@ const Customers = ({ data }) => {
             <CustomerRetentionScore data={intelligence.retention} />
           </div>
           <div className="h-full">
-            <RFMScatterPlot data={intelligence.rfm} />
+            <Suspense fallback={<ChartLoadingFallback height="h-80" />}>
+              <LazyRFMScatterPlot data={intelligence.rfm} />
+            </Suspense>
           </div>
           <div className="h-full">
-            <ChurnHistogram data={intelligence.histogram} />
+            <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+              <LazyChurnHistogram data={intelligence.histogram} />
+            </Suspense>
           </div>
           <div className="h-full">
-            <NewClientsChart data={intelligence.acquisition} />
+            <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+              <LazyNewClientsChart data={intelligence.acquisition} />
+            </Suspense>
           </div>
         </div>
       </section>
