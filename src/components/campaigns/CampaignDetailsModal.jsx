@@ -1,9 +1,20 @@
-// CampaignDetailsModal.jsx v1.1
+// CampaignDetailsModal.jsx v1.4
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.4 (2025-12-14): Mask CPF for privacy
+//   - Added maskCpf() helper: 12345678901 → 123.***.***-01
+//   - Customer ID now displays masked for data protection
+// v1.3 (2025-12-14): Added phone display (now in contact_tracking)
+//   - contact_tracking now has phone field (migration 006)
+//   - Re-added Phone icon import
+// v1.2 (2025-12-14): Fixed contacts not showing for automations
+//   - getCampaignContacts now queries contact_tracking directly (not campaign_contacts)
+//   - Automations create contact_tracking without campaign_contacts bridge records
+//   - Updated to handle flat structure from contact_tracking table
+//   - Uses contacted_at instead of sent_at (contact_tracking schema)
 // v1.1 (2025-12-13): Mobile compatibility improvements
 //   - Responsive modal width (full on mobile, max-w-4xl on desktop)
 //   - Responsive padding (p-4 sm:p-6) per Design System
@@ -65,16 +76,17 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
   }, [campaign.id]);
 
   // Filter contacts by status
+  // Now uses flat structure from contact_tracking (not nested contact_tracking object)
   const filteredContacts = filterStatus === 'all'
     ? contacts
     : contacts.filter(c => {
-        const status = c.contact_tracking?.status || 'pending';
+        const status = c.status || 'pending';
         return status === filterStatus;
       });
 
   // Count by status
   const statusCounts = contacts.reduce((acc, c) => {
-    const status = c.contact_tracking?.status || 'pending';
+    const status = c.status || 'pending';
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {});
@@ -112,6 +124,14 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
       default:
         return 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
     }
+  };
+
+  // Mask CPF for privacy: 12345678901 → 123.***.***-01
+  const maskCpf = (cpf) => {
+    if (!cpf) return '-';
+    const clean = String(cpf).replace(/\D/g, '');
+    if (clean.length !== 11) return cpf; // Return as-is if not valid CPF length
+    return `${clean.slice(0, 3)}.***.***-${clean.slice(-2)}`;
   };
 
   const getAudienceLabel = (audience) => {
@@ -264,8 +284,8 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
           ) : filteredContacts.length > 0 ? (
             <div className="space-y-2">
               {filteredContacts.map((contact) => {
-                const tracking = contact.contact_tracking || {};
-                const status = tracking.status || 'pending';
+                // Now using flat structure from contact_tracking table directly
+                const status = contact.status || 'pending';
 
                 return (
                   <div
@@ -289,7 +309,10 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                                 {contact.phone}
                               </span>
                             )}
-                            <span>ID: {contact.customer_id}</span>
+                            <span>CPF: {maskCpf(contact.customer_id)}</span>
+                            {contact.risk_level && (
+                              <span className="text-slate-400">• {contact.risk_level}</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -303,24 +326,24 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                         {/* Return details for returned contacts */}
                         {status === 'returned' && (
                           <div className="flex items-center gap-2 sm:gap-3 text-sm">
-                            {tracking.days_to_return !== null && (
+                            {contact.days_to_return !== null && contact.days_to_return !== undefined && (
                               <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
                                 <ArrowRight className="w-3 h-3" />
-                                {tracking.days_to_return}d
+                                {contact.days_to_return}d
                               </span>
                             )}
-                            {tracking.return_revenue > 0 && (
+                            {contact.return_revenue > 0 && (
                               <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                                 <DollarSign className="w-3 h-3" />
-                                {formatCurrency(tracking.return_revenue)}
+                                {formatCurrency(contact.return_revenue)}
                               </span>
                             )}
                           </div>
                         )}
 
-                        {/* Sent date */}
+                        {/* Contact date (contacted_at from contact_tracking) */}
                         <span className="text-xs text-slate-400 dark:text-slate-500">
-                          {contact.sent_at && new Date(contact.sent_at).toLocaleDateString('pt-BR')}
+                          {contact.contacted_at && new Date(contact.contacted_at).toLocaleDateString('pt-BR')}
                         </span>
                       </div>
                     </div>

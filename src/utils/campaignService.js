@@ -1,9 +1,14 @@
-// campaignService.js v4.7
+// campaignService.js v4.8
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Backend-only storage (Supabase) - no localStorage for data
 //
 // CHANGELOG:
+// v4.8 (2025-12-14): Fixed getCampaignContacts to query contact_tracking directly
+//   - Automations create contact_tracking without campaign_contacts bridge records
+//   - getCampaignContacts now queries contact_tracking by campaign_id
+//   - This fixes contacts not showing in CampaignDetailsModal for automations
+//   - Matches the campaign_performance view fix (migration 005)
 // v4.7 (2025-12-14): Fixed getDashboardMetrics recentCampaigns
 //   - Now uses campaign_performance view instead of manual joins
 //   - campaign_performance view was fixed to join directly to contact_tracking
@@ -814,14 +819,19 @@ export async function getCampaignPerformance(campaignId = null) {
 
 /**
  * Get contacts for a specific campaign with their tracking outcomes (backend only)
+ * Now queries contact_tracking directly instead of campaign_contacts bridge table
+ * This ensures automation sends appear (they create contact_tracking without campaign_contacts)
+ *
  * @param {string} campaignId - Campaign ID
- * @returns {Promise<Array>} Contacts with outcomes
+ * @returns {Promise<Array>} Contacts with outcomes (flat structure from contact_tracking)
  */
 export async function getCampaignContacts(campaignId) {
   try {
-    // Use the campaign_contacts.getAll API action
-    const data = await api.get('campaign_contacts', { campaign_id: campaignId });
-    return data;
+    // Query contact_tracking directly by campaign_id
+    // This matches the campaign_performance view fix (migration 005)
+    // Automations create contact_tracking records but not always campaign_contacts
+    const data = await api.get('contact_tracking', { campaign_id: campaignId });
+    return data || [];
   } catch (error) {
     console.error('[CampaignService] Could not load campaign contacts:', error.message);
     return [];

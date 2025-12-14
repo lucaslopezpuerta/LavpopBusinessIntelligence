@@ -2,6 +2,17 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, and scheduled campaigns
 //
+// Version: 3.2 (2025-12-14) - Risk level capture at time of contact
+//   - recordCampaignContactWithTracking now fetches customer risk_level from customers table
+//   - risk_level is captured as a snapshot at time of contact (for analytics)
+//   - Matches migration 007: backfill_risk_level_and_phone.sql
+//
+// Version: 3.1 (2025-12-14) - Unified contact_tracking with delivery fields
+//   - recordCampaignContactWithTracking now populates phone, twilio_sid, delivery_status
+//     directly in contact_tracking (no longer requires campaign_contacts bridge)
+//   - Matches migration 006: merge campaign_contacts into contact_tracking
+//   - campaign_contacts still created for backward compatibility (deprecated)
+//
 // Version: 3.0 (2025-12-13) - Campaign performance view integration
 //   - Added campaign_performance.getAll to fetch all campaigns with return metrics
 //   - Used by CampaignList to display campaigns (replaces campaign_effectiveness query)
@@ -1332,7 +1343,8 @@ async function getCampaignPerformance(supabase, campaignId, headers) {
 
 /**
  * Record a campaign contact with full tracking (mirrors record_automation_contact SQL function)
- * Creates entries in: contact_tracking, campaign_contacts (with twilio_sid)
+ * v3.1: Now populates delivery fields (phone, twilio_sid, delivery_status) directly in contact_tracking
+ * Creates entries in: contact_tracking (unified!), campaign_contacts (deprecated, for backward compat)
  * Updates campaign sends count
  *
  * This is the unified flow for manual campaigns - send first, then record with message_sid
@@ -1367,6 +1379,15 @@ async function recordCampaignContactWithTracking(supabase, data, headers) {
 
     const campaignName = campaign?.name || campaignId;
 
+    // v3.2: Get customer's current risk_level (snapshot at time of contact)
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('risk_level')
+      .eq('doc', customerId)
+      .single();
+
+    const riskLevel = customer?.risk_level || null;
+
     // Infer campaign_type from template_id or name if not provided
     let inferredType = campaignType;
     if (!inferredType && campaign) {
@@ -1389,7 +1410,8 @@ async function recordCampaignContactWithTracking(supabase, data, headers) {
       }
     }
 
-    // 2. Create contact_tracking record WITH campaign_type
+    // 2. Create contact_tracking record WITH delivery fields (unified!)
+    // v3.1: Now includes phone, twilio_sid, delivery_status directly
     // v2.8: expires_at uses couponValidityDays + 3 day buffer (matches SQL record_automation_contact)
     const RETURN_ATTRIBUTION_BUFFER = 3;  // Extra days to catch late returns
     const expiryDays = couponValidityDays + RETURN_ATTRIBUTION_BUFFER;
@@ -1405,7 +1427,13 @@ async function recordCampaignContactWithTracking(supabase, data, headers) {
         campaign_type: inferredType,  // Include campaign_type for cooldowns
         status: 'pending',
         contacted_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString(),
+        // v3.1: Delivery fields now in contact_tracking (unified!)
+        phone: phone || null,
+        twilio_sid: twilioSid || null,
+        delivery_status: twilioSid ? 'sent' : 'pending',
+        // v3.2: Risk level snapshot at time of contact
+        risk_level: riskLevel
       })
       .select()
       .single();
@@ -1415,7 +1443,8 @@ async function recordCampaignContactWithTracking(supabase, data, headers) {
       throw trackingError;
     }
 
-    // 3. Create campaign_contacts bridge record WITH twilio_sid
+    // 3. DEPRECATED: Create campaign_contacts bridge record for backward compatibility
+    // This will be removed in a future migration after all queries use contact_tracking directly
     const { data: contactRecord, error: contactError } = await supabase
       .from('campaign_contacts')
       .insert({
@@ -1432,7 +1461,7 @@ async function recordCampaignContactWithTracking(supabase, data, headers) {
       .single();
 
     if (contactError) {
-      console.error('[API] Error creating campaign_contacts:', contactError);
+      console.error('[API] Error creating campaign_contacts (deprecated):', contactError);
       // Don't throw - tracking record was created successfully
     }
 
@@ -1464,7 +1493,7 @@ async function recordCampaignContactWithTracking(supabase, data, headers) {
         .eq('id', campaignId);
     });
 
-    console.log(`[API] Recorded campaign contact: campaign=${campaignId}, customer=${customerId}, twilio_sid=${twilioSid || 'none'}`);
+    console.log(`[API] Recorded campaign contact: campaign=${campaignId}, customer=${customerId}, risk_level=${riskLevel || 'unknown'}, twilio_sid=${twilioSid || 'none'}`);
 
     return {
       statusCode: 200,

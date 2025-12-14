@@ -1,6 +1,22 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.14 (2025-12-13)
+-- Version: 3.16 (2025-12-14)
+--
+-- v3.16: Risk Level Capture at Time of Contact
+--   - record_automation_contact() now captures risk_level from customers table
+--   - record_campaign_contact_unified() now captures risk_level from customers table
+--   - Backfill migration 007 populates risk_level for existing records
+--   - Phone backfill from customers table for records without campaign_contacts
+--   - Analytics can now answer: "What was the customer's risk when we contacted them?"
+--
+-- v3.15: Unified contact_tracking with delivery fields
+--   - Added phone, twilio_sid, delivery_status, delivery_error_* to contact_tracking
+--   - contact_tracking is now single source of truth for both return AND delivery tracking
+--   - campaign_contacts table deprecated (kept for backward compatibility)
+--   - Updated record_automation_contact() to populate delivery fields
+--   - Added record_campaign_contact_unified() for manual campaigns
+--   - Simplified campaign_delivery_metrics view (no more UNION)
+--   - See migrations/006_merge_campaign_contacts_into_contact_tracking.sql
 --
 -- v3.14: Auto-refresh Triggers + Smart Customer Upsert
 --   - Added auto-refresh triggers on transactions table (see migrations/002_auto_refresh_triggers.sql)
@@ -306,6 +322,8 @@ CREATE INDEX IF NOT EXISTS idx_campaign_sends_sent_at ON campaign_sends(sent_at 
 
 -- ==================== CONTACT TRACKING TABLE ====================
 -- Tracks customer outreach and measures campaign effectiveness
+-- v3.15: Now unified table for BOTH return tracking AND delivery tracking
+-- Previously delivery data was in campaign_contacts (now deprecated)
 
 CREATE TABLE IF NOT EXISTS contact_tracking (
   id SERIAL PRIMARY KEY,
@@ -322,7 +340,14 @@ CREATE TABLE IF NOT EXISTS contact_tracking (
   campaign_name TEXT,                     -- For display without join
   campaign_type TEXT,                     -- v3.12: Campaign type for type-based cooldowns (winback, welcome, promo, wallet, upsell, post_visit)
 
-  -- Outcome tracking
+  -- v3.15: Delivery tracking (moved from campaign_contacts)
+  phone TEXT,                             -- Recipient phone number (normalized)
+  twilio_sid TEXT,                        -- Twilio message SID for webhook linking
+  delivery_status TEXT DEFAULT 'pending', -- pending, sent, delivered, read, failed, undelivered
+  delivery_error_code INT,                -- Twilio error code if failed
+  delivery_error_message TEXT,            -- Error details if failed
+
+  -- Outcome tracking (return attribution)
   status TEXT DEFAULT 'pending',          -- pending, returned, expired, cleared
   returned_at TIMESTAMPTZ,                -- When customer came back
   days_to_return INT,                     -- Calculated: returned_at - contacted_at
@@ -353,8 +378,29 @@ ON contact_tracking (customer_id, campaign_type, contacted_at DESC);
 -- v3.12: Add campaign_type column for migration
 ALTER TABLE contact_tracking ADD COLUMN IF NOT EXISTS campaign_type TEXT;
 
--- ==================== CAMPAIGN CONTACTS TABLE ====================
--- Links campaigns to contact_tracking for effectiveness measurement
+-- v3.15: Add delivery tracking columns (moved from campaign_contacts)
+ALTER TABLE contact_tracking ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE contact_tracking ADD COLUMN IF NOT EXISTS twilio_sid TEXT;
+ALTER TABLE contact_tracking ADD COLUMN IF NOT EXISTS delivery_status TEXT DEFAULT 'pending';
+ALTER TABLE contact_tracking ADD COLUMN IF NOT EXISTS delivery_error_code INT;
+ALTER TABLE contact_tracking ADD COLUMN IF NOT EXISTS delivery_error_message TEXT;
+
+-- v3.15: Index for webhook lookups by twilio_sid (CRITICAL for performance)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_tracking_twilio_sid
+ON contact_tracking(twilio_sid) WHERE twilio_sid IS NOT NULL;
+
+-- v3.15: Index for delivery status queries
+CREATE INDEX IF NOT EXISTS idx_contact_tracking_delivery_status
+ON contact_tracking(delivery_status);
+
+-- v3.15: Composite index for campaign delivery metrics
+CREATE INDEX IF NOT EXISTS idx_contact_tracking_campaign_delivery
+ON contact_tracking(campaign_id, delivery_status) WHERE campaign_id IS NOT NULL;
+
+-- ==================== CAMPAIGN CONTACTS TABLE (DEPRECATED) ====================
+-- DEPRECATED in v3.15: Use contact_tracking instead for unified tracking
+-- This table is kept for backward compatibility but will be removed in future versions
+-- Previously: Links campaigns to contact_tracking for effectiveness measurement
 
 CREATE TABLE IF NOT EXISTS campaign_contacts (
   id SERIAL PRIMARY KEY,
@@ -741,58 +787,31 @@ FROM transactions
 GROUP BY DATE(data_hora)
 ORDER BY date DESC;
 
--- Campaign delivery metrics view (v3.9) - Real delivery rates from webhook events
--- v3.9: UNION approach includes both linking methods:
--- 1. Join via campaign_contacts.twilio_sid (for messages with campaign_contacts records)
--- 2. Direct webhook_events.campaign_id (for messages without campaign_contacts, e.g., automation sends)
+-- Campaign delivery metrics view (v3.15) - Real delivery rates from contact_tracking
+-- v3.15: Simplified to query contact_tracking directly (has delivery_status now)
+-- No more UNION needed - all delivery data is in contact_tracking
 CREATE OR REPLACE VIEW campaign_delivery_metrics AS
-WITH delivery_data AS (
-  -- Method 1: Join via campaign_contacts (for messages with campaign_contacts records)
-  SELECT
-    cc.campaign_id,
-    cc.id as contact_id,
-    we.message_sid,
-    we.payload as status
-  FROM campaign_contacts cc
-  LEFT JOIN webhook_events we ON we.message_sid = cc.twilio_sid
-    AND we.event_type = 'delivery_status'
-  WHERE cc.twilio_sid IS NOT NULL
-
-  UNION
-
-  -- Method 2: Direct campaign_id in webhook_events (for messages without campaign_contacts)
-  SELECT
-    we.campaign_id,
-    NULL as contact_id,
-    we.message_sid,
-    we.payload as status
-  FROM webhook_events we
-  WHERE we.campaign_id IS NOT NULL
-    AND we.event_type = 'delivery_status'
-    AND NOT EXISTS (
-      SELECT 1 FROM campaign_contacts cc WHERE cc.twilio_sid = we.message_sid
-    )
-)
 SELECT
-  dd.campaign_id,
+  ct.campaign_id,
   c.name as campaign_name,
-  COUNT(DISTINCT COALESCE(dd.contact_id::TEXT, dd.message_sid)) as total_sent,
-  COUNT(DISTINCT CASE WHEN dd.status = 'delivered' THEN dd.message_sid END) as delivered,
-  COUNT(DISTINCT CASE WHEN dd.status = 'read' THEN dd.message_sid END) as read,
-  COUNT(DISTINCT CASE WHEN dd.status IN ('failed', 'undelivered') THEN dd.message_sid END) as failed,
+  COUNT(DISTINCT ct.id) as total_sent,
+  COUNT(DISTINCT CASE WHEN ct.delivery_status = 'delivered' THEN ct.id END) as delivered,
+  COUNT(DISTINCT CASE WHEN ct.delivery_status = 'read' THEN ct.id END) as read,
+  COUNT(DISTINCT CASE WHEN ct.delivery_status IN ('failed', 'undelivered') THEN ct.id END) as failed,
   ROUND(
-    COUNT(DISTINCT CASE WHEN dd.status = 'delivered' THEN dd.message_sid END)::NUMERIC /
-    NULLIF(COUNT(DISTINCT COALESCE(dd.contact_id::TEXT, dd.message_sid)), 0) * 100,
+    COUNT(DISTINCT CASE WHEN ct.delivery_status = 'delivered' THEN ct.id END)::NUMERIC /
+    NULLIF(COUNT(DISTINCT ct.id), 0) * 100,
     1
   ) as delivery_rate,
   ROUND(
-    COUNT(DISTINCT CASE WHEN dd.status = 'read' THEN dd.message_sid END)::NUMERIC /
-    NULLIF(COUNT(DISTINCT CASE WHEN dd.status = 'delivered' THEN dd.message_sid END), 0) * 100,
+    COUNT(DISTINCT CASE WHEN ct.delivery_status = 'read' THEN ct.id END)::NUMERIC /
+    NULLIF(COUNT(DISTINCT CASE WHEN ct.delivery_status = 'delivered' THEN ct.id END), 0) * 100,
     1
   ) as read_rate
-FROM delivery_data dd
-JOIN campaigns c ON c.id = dd.campaign_id
-GROUP BY dd.campaign_id, c.name;
+FROM contact_tracking ct
+JOIN campaigns c ON c.id = ct.campaign_id
+WHERE ct.campaign_id IS NOT NULL
+GROUP BY ct.campaign_id, c.name;
 
 -- ==================== HELPER FUNCTIONS ====================
 

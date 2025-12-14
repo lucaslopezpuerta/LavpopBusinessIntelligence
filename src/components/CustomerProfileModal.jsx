@@ -1,8 +1,11 @@
-// CustomerProfileModal.jsx v2.0 - BACKEND COMMUNICATION LOG
+// CustomerProfileModal.jsx v2.1 - BACKEND COMMUNICATION LOG
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v2.1 (2025-12-14): Mask CPF for privacy
+//   - Added maskCpf() helper: 12345678901 → 123.***.***-01
+//   - CPF now displays masked in Personal Information section
 // v2.0 (2025-12-12): Backend communication log integration
 //   - Uses getCommunicationLogAsync to fetch from comm_logs table
 //   - Merges backend data with localStorage for complete history
@@ -270,6 +273,14 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
     // parseBrDate now imported from dateUtils.js for consistent timezone handling
 
+    // Mask CPF for privacy: 12345678901 → 123.***.***-01
+    const maskCpf = (cpf) => {
+        if (!cpf) return '-';
+        const clean = String(cpf).replace(/\D/g, '');
+        if (clean.length !== 11) return cpf; // Return as-is if not valid CPF length
+        return `${clean.slice(0, 3)}.***.***-${clean.slice(-2)}`;
+    };
+
     // Helper for parsing machines - extracts machine codes (e.g., "Lavadora:3" -> "L3")
     const parseMachines = (machineStr) => {
         if (!machineStr || machineStr === 'N/A') return [];
@@ -489,7 +500,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
                                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">CPF</div>
-                                        <div className="text-xs font-semibold text-slate-800 dark:text-white">{customer.doc}</div>
+                                        <div className="text-xs font-semibold text-slate-800 dark:text-white">{maskCpf(customer.doc)}</div>
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
                                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Telefone</div>
