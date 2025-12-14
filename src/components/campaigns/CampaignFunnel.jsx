@@ -1,8 +1,14 @@
-// CampaignFunnel.jsx v1.0
+// CampaignFunnel.jsx v2.0
 // Campaign conversion funnel visualization
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.0 (2025-12-14): Added 5-stage funnel with real engagement tracking
+//   - New stage: "Lidas" (Read) between Entregues and Engajaram
+//   - "Engajaram" now shows real button clicks (Quero usar!, etc.) not just reads
+//   - Auto-replies from businesses are NOT counted as engagement
+//   - Updated funnel: Enviadas → Entregues → Lidas → Engajaram → Retornaram
+//   - Some customers return from "Lidas" without clicking (this is normal)
 // v1.0 (2025-12-10): Initial implementation
 //   - Visual funnel: Enviadas -> Entregues -> Engajaram -> Retornaram
 //   - Conversion rates between stages
@@ -14,6 +20,7 @@ import React from 'react';
 import {
   Send,
   CheckCircle2,
+  Eye,
   MousePointerClick,
   UserCheck,
   ArrowRight,
@@ -46,6 +53,11 @@ const FunnelStage = ({
       bg: 'bg-emerald-100 dark:bg-emerald-900/30',
       icon: 'text-emerald-600 dark:text-emerald-400',
       ring: 'ring-emerald-500/20'
+    },
+    cyan: {
+      bg: 'bg-cyan-100 dark:bg-cyan-900/30',
+      icon: 'text-cyan-600 dark:text-cyan-400',
+      ring: 'ring-cyan-500/20'
     },
     purple: {
       bg: 'bg-purple-100 dark:bg-purple-900/30',
@@ -131,19 +143,22 @@ const CampaignFunnel = ({
   const {
     sent = 0,
     delivered = 0,
-    engaged = 0,
+    read = 0,       // Messages opened (read receipts)
+    engaged = 0,    // Positive button clicks
     returned = 0
   } = funnel;
 
   // Calculate percentages (relative to sent)
   const sentPct = 100;
   const deliveredPct = sent > 0 ? Math.round((delivered / sent) * 100) : 0;
+  const readPct = sent > 0 ? Math.round((read / sent) * 100) : 0;
   const engagedPct = sent > 0 ? Math.round((engaged / sent) * 100) : 0;
   const returnedPct = sent > 0 ? Math.round((returned / sent) * 100) : 0;
 
   // Calculate conversion rates between stages
   const deliveryRate = sent > 0 ? Math.round((delivered / sent) * 100) : 0;
-  const engagementRate = delivered > 0 ? Math.round((engaged / delivered) * 100) : 0;
+  const readRate = delivered > 0 ? Math.round((read / delivered) * 100) : 0;
+  const engagementRate = read > 0 ? Math.round((engaged / read) * 100) : 0;
   const conversionRate = engaged > 0 ? Math.round((returned / engaged) * 100) : 0;
 
   // Format helpers
@@ -167,7 +182,7 @@ const CampaignFunnel = ({
       >
         <div className="animate-pulse">
           <div className="flex justify-center gap-4 py-8">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(5)].map((_, i) => (
               <div key={i} className="w-24 h-32 bg-slate-200 dark:bg-slate-700 rounded-xl" />
             ))}
           </div>
@@ -223,8 +238,16 @@ const CampaignFunnel = ({
           label="Entregues"
           value={delivered}
           percentage={deliveredPct}
-          conversionRate={engagementRate}
+          conversionRate={readRate}
           color="emerald"
+        />
+        <FunnelStage
+          icon={Eye}
+          label="Lidas"
+          value={read}
+          percentage={readPct}
+          conversionRate={engagementRate}
+          color="cyan"
         />
         <FunnelStage
           icon={MousePointerClick}
@@ -260,8 +283,17 @@ const CampaignFunnel = ({
           label="Entregues"
           value={delivered}
           percentage={deliveredPct}
-          conversionRate={engagementRate}
+          conversionRate={readRate}
           color="emerald"
+          isMobile
+        />
+        <FunnelStage
+          icon={Eye}
+          label="Lidas"
+          value={read}
+          percentage={readPct}
+          conversionRate={engagementRate}
+          color="cyan"
           isMobile
         />
         <FunnelStage

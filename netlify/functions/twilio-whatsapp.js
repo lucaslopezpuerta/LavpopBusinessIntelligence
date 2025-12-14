@@ -1,7 +1,12 @@
-// netlify/functions/twilio-whatsapp.js v1.3
+// netlify/functions/twilio-whatsapp.js v1.4
 // Twilio WhatsApp Business API integration for campaign messaging
 //
 // CHANGELOG:
+// v1.4 (2025-12-14): Fixed false positive opt-out detection
+//   - Removed "quero" (I want) from opt-out keywords - it's a positive word
+//   - "Quero usar" was being incorrectly flagged as opt-out
+//   - Added proper negative phrases: "não quero", "nao quero", "desinscrever"
+//   - Aligned keywords with twilio-webhook.js for consistency
 // v1.3 (2025-12-12): Fixed blacklist sync not detecting error 63024 messages
 //   - Bug fix: error_code was compared as string vs number (strict equality failed)
 //   - Now properly parses error_code to integer before comparison
@@ -406,7 +411,13 @@ async function fetchMessages(body, accountSid, authToken, headers) {
       allMessages: []   // Raw message data for debugging
     };
 
-    const optOutKeywords = ['parar', 'quero', 'stop', 'pare', 'cancelar', 'sair'];
+    // Opt-out keywords - must be negative phrases, not positive words like "quero" (I want)
+    // "Quero usar" = positive; "Não quero" / "Não tenho interesse" = negative opt-out
+    // Must match the opt-out button texts from meta-whatsapp-templates.md
+    const optOutKeywords = [
+      'parar', 'pare', 'stop', 'cancelar', 'sair', 'remover', 'desinscrever', 'unsubscribe',
+      'nao quero', 'nao tenho interesse'  // Quick reply opt-out button texts (normalized without accents)
+    ];
     const normalizeText = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
     for (const msg of data.messages || []) {

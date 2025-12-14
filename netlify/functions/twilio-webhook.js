@@ -1,7 +1,13 @@
-// netlify/functions/twilio-webhook.js v1.5
+// netlify/functions/twilio-webhook.js v1.6
 // Twilio WhatsApp Webhook Handler for Button Callbacks
 //
 // CHANGELOG:
+// v1.6 (2025-12-14): Smart message classification for engagement tracking
+//   - New classifyInboundMessage() detects: button_positive, button_optout, auto_reply, custom_message
+//   - Positive button clicks (Quero usar!, Vou aproveitar!) tracked as engagement
+//   - Auto-replies (business auto-responses with URLs) NOT counted as engagement
+//   - Opt-out button texts properly detected (Não tenho interesse, Não quero receber)
+//   - trackEngagement() now accepts eventType parameter for granular analytics
 // v1.5 (2025-12-14): Update contact_tracking.delivery_status for dashboard metrics
 //   - trackDeliveryStatus now updates contact_tracking.delivery_status directly
 //   - This enables campaign_performance view to show real delivery metrics
@@ -191,44 +197,114 @@ async function handleButtonClick(phone, buttonPayload, webhookData, headers) {
 }
 
 /**
- * Handle inbound text messages (check for opt-out keywords)
+ * Classify inbound message type
+ * Returns: 'button_positive', 'button_optout', 'auto_reply', 'custom_message'
  */
-async function handleInboundMessage(phone, messageBody, webhookData, headers) {
-  // Opt-out keywords (Portuguese and English)
-  const optOutKeywords = [
-    'parar', 'pare', 'stop', 'cancelar', 'sair', 'remover',
-    'não quero', 'nao quero', 'desinscrever', 'unsubscribe'
-  ];
-
-  // Normalize message (remove accents)
+function classifyInboundMessage(messageBody) {
   const normalizedBody = messageBody
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+    .toLowerCase()
+    .trim();
 
+  // Positive button texts from our templates (exact or near-exact matches)
+  const positiveButtonTexts = [
+    'quero usar!', 'quero usar', 'vou aproveitar!', 'vou aproveitar',
+    'obrigado!', 'obrigado', 'vou usar!', 'vou usar', 'vou secar!', 'vou secar',
+    'quero voltar!', 'quero voltar', 'bora avaliar!', 'bora avaliar',
+    'precisa melhorar'  // Feedback button (not opt-out)
+  ];
+
+  // Opt-out button texts from our templates
+  const optOutButtonTexts = [
+    'nao tenho interesse', 'nao quero receber', 'nao quero'
+  ];
+
+  // Opt-out keywords (manual messages)
+  const optOutKeywords = [
+    'parar', 'pare', 'stop', 'cancelar', 'sair', 'remover', 'desinscrever', 'unsubscribe'
+  ];
+
+  // Auto-reply indicators (business auto-responses)
+  const autoReplyIndicators = [
+    '.com.br', '.com/', 'http://', 'https://', 'www.',
+    'agendamento', 'agendar horario', 'como podemos ajudar',
+    'obrigado pelo contato', 'agradece seu contato', 'atendimento automatico',
+    'fora do horario', 'horario comercial', 'retornaremos'
+  ];
+
+  // Check for positive button click (short + exact match)
+  if (normalizedBody.length <= 25) {
+    const isPositiveButton = positiveButtonTexts.some(btn =>
+      normalizedBody === btn || normalizedBody === btn.replace('!', '')
+    );
+    if (isPositiveButton) return 'button_positive';
+  }
+
+  // Check for opt-out button click
+  if (normalizedBody.length <= 30) {
+    const isOptOutButton = optOutButtonTexts.some(btn => normalizedBody.includes(btn));
+    if (isOptOutButton) return 'button_optout';
+  }
+
+  // Check for opt-out keywords in any message
   const hasOptOutKeyword = optOutKeywords.some(kw => normalizedBody.includes(kw));
+  if (hasOptOutKeyword) return 'button_optout';
 
-  if (hasOptOutKeyword) {
-    await addToBlacklist(phone, 'opt-out', `Keyword: "${messageBody}"`);
-    console.log(`[TwilioWebhook] Added ${phone} to blacklist via keyword opt-out`);
+  // Check for auto-reply (longer messages with business patterns)
+  if (normalizedBody.length > 30) {
+    const isAutoReply = autoReplyIndicators.some(ind => normalizedBody.includes(ind));
+    if (isAutoReply) return 'auto_reply';
+  }
 
-    // Log opt-out event
-    await logInboundMessage(phone, messageBody, 'opt_out', webhookData);
+  return 'custom_message';
+}
 
-    // Send confirmation message
-    return {
-      statusCode: 200,
-      headers,
-      body: `<?xml version="1.0" encoding="UTF-8"?>
+/**
+ * Handle inbound text messages
+ * Classifies messages and tracks engagement/opt-outs accordingly
+ */
+async function handleInboundMessage(phone, messageBody, webhookData, headers) {
+  const messageType = classifyInboundMessage(messageBody);
+  console.log(`[TwilioWebhook] Inbound from ${phone}: "${messageBody.substring(0, 50)}..." → ${messageType}`);
+
+  switch (messageType) {
+    case 'button_positive':
+      // Track as positive engagement
+      await trackEngagement(phone, messageBody, webhookData, 'button_positive');
+      await logInboundMessage(phone, messageBody, 'button_positive', webhookData);
+      console.log(`[TwilioWebhook] Positive button click from ${phone}: ${messageBody}`);
+      break;
+
+    case 'button_optout':
+      // Add to blacklist
+      await addToBlacklist(phone, 'opt-out', `Message: "${messageBody}"`);
+      await logInboundMessage(phone, messageBody, 'button_optout', webhookData);
+      console.log(`[TwilioWebhook] Opt-out from ${phone}: ${messageBody}`);
+
+      // Send confirmation
+      return {
+        statusCode: 200,
+        headers,
+        body: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Message>Você foi removido da nossa lista de mensagens. Não enviaremos mais comunicações por WhatsApp. Se mudar de ideia, visite nossa lavanderia!</Message>
 </Response>`
-    };
-  }
+      };
 
-  // Log all inbound messages for analytics
-  await logInboundMessage(phone, messageBody, 'inbound_message', webhookData);
-  console.log(`[TwilioWebhook] Inbound message from ${phone}: ${messageBody}`);
+    case 'auto_reply':
+      // Log but don't count as engagement (it's automated)
+      await logInboundMessage(phone, messageBody, 'auto_reply', webhookData);
+      console.log(`[TwilioWebhook] Auto-reply detected from ${phone} (not counted as engagement)`);
+      break;
+
+    case 'custom_message':
+    default:
+      // Custom human message - could be question, feedback, etc.
+      await logInboundMessage(phone, messageBody, 'custom_message', webhookData);
+      console.log(`[TwilioWebhook] Custom message from ${phone}: ${messageBody}`);
+      break;
+  }
 
   return {
     statusCode: 200,
@@ -514,7 +590,7 @@ async function logInboundMessage(phone, messageBody, eventType, webhookData) {
 /**
  * Track engagement (button clicks indicating interest)
  */
-async function trackEngagement(phone, buttonPayload, webhookData) {
+async function trackEngagement(phone, buttonPayload, webhookData, eventType = 'button_click') {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
@@ -526,27 +602,28 @@ async function trackEngagement(phone, buttonPayload, webhookData) {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const normalizedPhone = phone.replace(/\D/g, '');
 
-    // Log engagement event
+    // Log engagement event with specific type
     await supabase
       .from('webhook_events')
       .insert({
         phone: normalizedPhone,
-        event_type: 'button_click',
+        event_type: eventType,  // 'button_click' or 'button_positive'
         payload: buttonPayload,
         message_sid: webhookData.MessageSid,
         created_at: new Date().toISOString()
       });
 
-    // Update contact_tracking status if exists
-    await supabase
-      .from('contact_tracking')
-      .update({
-        engagement_type: buttonPayload,
-        engaged_at: new Date().toISOString()
-      })
-      .eq('phone', normalizedPhone)
-      .eq('status', 'pending');
-
+    // Update contact_tracking status if exists (only for positive engagement)
+    if (eventType === 'button_positive' || eventType === 'button_click') {
+      await supabase
+        .from('contact_tracking')
+        .update({
+          engagement_type: buttonPayload,
+          engaged_at: new Date().toISOString()
+        })
+        .eq('phone', normalizedPhone)
+        .eq('status', 'pending');
+    }
   } catch (error) {
     console.error('[TwilioWebhook] Failed to track engagement:', error);
   }

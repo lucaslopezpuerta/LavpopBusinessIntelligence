@@ -367,6 +367,25 @@ export const api = {
       if (eventType) params.event_type = eventType;
       const result = await apiRequest('webhook_events.getAll', params, 'GET');
       return result.events || [];
+    },
+
+    /**
+     * Get engagement statistics (button clicks, opt-outs, auto-replies)
+     * Used for the campaign funnel "Engaged" stage
+     */
+    async getEngagementStats(days = 30) {
+      try {
+        const result = await apiRequest('webhook_events.getEngagementStats', { days }, 'GET');
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch engagement stats:', error);
+        return {
+          stats: { buttonPositive: 0, buttonOptout: 0, autoReply: 0, customMessage: 0, total: 0 },
+          totalPositiveEngagement: 0,
+          totalOptOuts: 0,
+          hasRealData: false
+        };
+      }
     }
   },
 

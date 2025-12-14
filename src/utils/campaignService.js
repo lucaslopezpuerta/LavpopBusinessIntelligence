@@ -1124,8 +1124,9 @@ export async function getDashboardMetrics(options = {}) {
     funnel: {
       sent: 0,
       delivered: 0,
-      engaged: 0,
-      returned: 0
+      read: 0,        // Messages opened (read receipts)
+      engaged: 0,     // Positive button clicks (Quero usar!, etc.)
+      returned: 0     // Customers who returned after campaign
     },
     recentCampaigns: []
   };
@@ -1259,22 +1260,47 @@ export async function getDashboardMetrics(options = {}) {
         if (deliveryStats.hasRealData) {
           // Use real delivery data from webhook events
           metrics.funnel.delivered = deliveryStats.totalDelivered;
-          metrics.funnel.engaged = deliveryStats.stats.read; // "read" status indicates engagement
+          metrics.funnel.read = deliveryStats.stats.read; // "read" status (message opened)
           metrics.deliveryRate = deliveryStats.deliveryRate;
           metrics.readRate = deliveryStats.readRate;
           metrics.hasRealDeliveryData = true;
         } else {
           // Fallback to estimates if no real data yet
           metrics.funnel.delivered = Math.round(metrics.funnel.sent * 0.97);
-          metrics.funnel.engaged = Math.round(metrics.funnel.delivered * 0.2);
+          metrics.funnel.read = Math.round(metrics.funnel.delivered * 0.6);
           metrics.hasRealDeliveryData = false;
         }
       } catch (e) {
         console.warn('[CampaignService] Could not fetch delivery stats:', e.message);
         // Fallback to estimates
         metrics.funnel.delivered = Math.round(metrics.funnel.sent * 0.97);
-        metrics.funnel.engaged = Math.round(metrics.funnel.delivered * 0.2);
+        metrics.funnel.read = Math.round(metrics.funnel.delivered * 0.6);
         metrics.hasRealDeliveryData = false;
+      }
+
+      // Fetch real engagement stats (button clicks) from webhook events
+      try {
+        const engagementStats = await api.delivery.getEngagementStats(days);
+        if (engagementStats.hasRealData) {
+          // Real engagement = positive button clicks (Quero usar!, Vou aproveitar!, etc.)
+          metrics.funnel.engaged = engagementStats.totalPositiveEngagement;
+          metrics.hasRealEngagementData = true;
+          metrics.engagementBreakdown = {
+            buttonPositive: engagementStats.stats.buttonPositive,
+            buttonClick: engagementStats.stats.buttonClick,
+            optOuts: engagementStats.totalOptOuts,
+            autoReplies: engagementStats.totalAutoReplies,
+            customMessages: engagementStats.totalCustomMessages
+          };
+        } else {
+          // Fallback to estimate (20% of read messages engaged)
+          metrics.funnel.engaged = Math.round((metrics.funnel.read || 0) * 0.2);
+          metrics.hasRealEngagementData = false;
+        }
+      } catch (e) {
+        console.warn('[CampaignService] Could not fetch engagement stats:', e.message);
+        metrics.funnel.engaged = Math.round((metrics.funnel.read || 0) * 0.2);
+        metrics.hasRealEngagementData = false;
       }
 
       // Fetch recent campaigns with performance data from campaign_performance view

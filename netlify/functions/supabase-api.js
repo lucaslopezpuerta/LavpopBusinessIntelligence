@@ -307,6 +307,9 @@ exports.handler = async (event, context) => {
       case 'webhook_events.getCampaignDeliveryMetrics':
         return await getCampaignDeliveryMetrics(supabase, headers);
 
+      case 'webhook_events.getEngagementStats':
+        return await getEngagementStats(supabase, params, headers);
+
       // ==================== RPC FUNCTIONS ====================
       case 'rpc.expire_old_contacts':
         return await expireOldContacts(supabase, headers);
@@ -338,7 +341,7 @@ exports.handler = async (event, context) => {
               'contact_tracking.record', 'contact_tracking.markReturned',
               'contacts.getAll', 'contacts.create', 'contacts.clear',  // v2.7: Backend-only checkmarks
               'eligibility.check', 'eligibility.checkBatch',
-              'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics',
+              'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics', 'webhook_events.getEngagementStats',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
               'migrate.import'
             ]
@@ -2017,6 +2020,112 @@ async function getCampaignDeliveryMetrics(supabase, headers) {
       statusCode: 200,
       headers,
       body: JSON.stringify({ metrics: [], hasView: false, error: 'Failed to fetch delivery metrics' })
+    };
+  }
+}
+
+/**
+ * Get engagement statistics from webhook_events
+ * Counts button clicks (positive engagement) vs opt-outs vs auto-replies
+ * Used for the campaign funnel "Engaged" stage
+ */
+async function getEngagementStats(supabase, params, headers) {
+  const days = parseInt(params.days) || 30;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  try {
+    // Get all engagement-related events in the time range
+    const { data, error } = await supabase
+      .from('webhook_events')
+      .select('event_type, payload, created_at')
+      .in('event_type', ['button_click', 'button_positive', 'button_optout', 'auto_reply', 'custom_message', 'inbound_message', 'opt_out'])
+      .gte('created_at', startDate.toISOString());
+
+    if (error) {
+      // Graceful fallback if table doesn't exist
+      if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            stats: { buttonPositive: 0, buttonOptout: 0, autoReply: 0, customMessage: 0, total: 0 },
+            engagementRate: 0,
+            hasRealData: false
+          })
+        };
+      }
+      throw error;
+    }
+
+    // Count event types
+    const stats = {
+      buttonPositive: 0,  // Positive button clicks (Quero usar!, etc.)
+      buttonClick: 0,     // Generic button clicks (legacy)
+      buttonOptout: 0,    // Opt-out button clicks
+      autoReply: 0,       // Business auto-responses (not counted as engagement)
+      customMessage: 0,   // Custom human messages
+      optOut: 0,          // Legacy opt-out events
+      total: 0
+    };
+
+    (data || []).forEach(event => {
+      const type = event.event_type;
+      stats.total++;
+
+      switch(type) {
+        case 'button_positive':
+          stats.buttonPositive++;
+          break;
+        case 'button_click':
+          stats.buttonClick++;
+          break;
+        case 'button_optout':
+          stats.buttonOptout++;
+          break;
+        case 'auto_reply':
+          stats.autoReply++;
+          break;
+        case 'custom_message':
+        case 'inbound_message':
+          stats.customMessage++;
+          break;
+        case 'opt_out':
+          stats.optOut++;
+          break;
+      }
+    });
+
+    // Total positive engagement = button_positive + button_click (legacy)
+    const totalPositiveEngagement = stats.buttonPositive + stats.buttonClick;
+
+    // Total opt-outs = button_optout + opt_out (legacy)
+    const totalOptOuts = stats.buttonOptout + stats.optOut;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        stats,
+        totalPositiveEngagement,
+        totalOptOuts,
+        totalAutoReplies: stats.autoReply,
+        totalCustomMessages: stats.customMessage,
+        hasRealData: stats.total > 0
+      })
+    };
+  } catch (error) {
+    console.error('[getEngagementStats] Error:', error);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        stats: { buttonPositive: 0, buttonOptout: 0, autoReply: 0, customMessage: 0, total: 0 },
+        totalPositiveEngagement: 0,
+        totalOptOuts: 0,
+        hasRealData: false,
+        error: 'Failed to fetch engagement stats'
+      })
     };
   }
 }
