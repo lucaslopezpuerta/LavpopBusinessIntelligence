@@ -596,8 +596,7 @@ SELECT
   COALESCE(SUM(ct.return_revenue), 0) as total_revenue_recovered,
   ROUND(AVG(ct.days_to_return), 1) as avg_days_to_return
 FROM campaigns c
-LEFT JOIN campaign_contacts cc ON c.id = cc.campaign_id
-LEFT JOIN contact_tracking ct ON cc.contact_tracking_id = ct.id
+LEFT JOIN contact_tracking ct ON c.id = ct.campaign_id
 GROUP BY c.id, c.name, c.audience, c.status, c.contact_method, c.sends, c.delivered, c.created_at, c.last_sent_at;
 
 -- Campaign effectiveness summary view (grouped by campaign)

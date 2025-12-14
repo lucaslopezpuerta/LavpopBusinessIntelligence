@@ -170,40 +170,40 @@ const ProfitabilitySection = ({
 
         {/* Cost Breakdown Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div className="p-4 bg-white dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">
+          <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
+            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
               Custos Fixos
             </h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-slate-400">Periodo:</span>
-                <span className="font-medium text-gray-900 dark:text-white">
+                <span className="text-slate-600 dark:text-slate-400">Periodo:</span>
+                <span className="font-medium text-slate-900 dark:text-white">
                   {profitability.daysInPeriod} dias
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-slate-400">Total:</span>
-                <span className="font-bold text-gray-900 dark:text-white">
+                <span className="text-slate-600 dark:text-slate-400">Total:</span>
+                <span className="font-bold text-slate-900 dark:text-white">
                   {formatCurrency(profitability.fixedCosts)}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="p-4 bg-white dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">
+          <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
+            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
               Manutencao
             </h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-slate-400">Custo:</span>
-                <span className="font-medium text-gray-900 dark:text-white">
+                <span className="text-slate-600 dark:text-slate-400">Custo:</span>
+                <span className="font-medium text-slate-900 dark:text-white">
                   {formatCurrency(profitability.maintenanceCosts)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-slate-400">% do Total:</span>
-                <span className="font-bold text-gray-900 dark:text-white">
+                <span className="text-slate-600 dark:text-slate-400">% do Total:</span>
+                <span className="font-bold text-slate-900 dark:text-white">
                   {formatPercent(profitability.totalCosts > 0
                     ? (profitability.maintenanceCosts / profitability.totalCosts) * 100
                     : 0)}

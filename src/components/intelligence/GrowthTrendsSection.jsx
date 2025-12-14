@@ -1,8 +1,15 @@
-// GrowthTrendsSection.jsx v4.2
+// GrowthTrendsSection.jsx v4.3
 // Growth & trends analysis section for Intelligence tab
 // Design System v3.1 compliant - Migrated to Tremor charts
 //
 // CHANGELOG:
+// v4.3 (2025-12-14): Enhanced mobile experience (no horizontal scroll)
+//   - Compact stacked cards for mobile/tablet (replaces table)
+//   - Visual indicators for best/worst months (star/arrow icons)
+//   - Colored borders for current/best/worst month highlighting
+//   - MoM growth badge with trend icon in header row
+//   - Revenue + Cycles displayed side-by-side
+//   - Touch feedback with scale transform
 // v4.2 (2025-12-03): Desktop table improvements
 //   - Center-aligned all table headers and cells
 //   - Full month names on desktop table (e.g., "Novembro 2024")
@@ -33,7 +40,7 @@
 
 import React, { useMemo } from 'react';
 import { AreaChart } from '@tremor/react';
-import { TrendingUp, TrendingDown, Award, AlertTriangle, Minus, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, AlertTriangle, Minus, Clock, Star, ArrowDown } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import KPICard, { KPIGrid } from '../ui/KPICard';
 import InsightBox from '../ui/InsightBox';
@@ -232,90 +239,138 @@ const GrowthTrendsSection = ({
           </div>
         )}
 
-        {/* Mobile: Card view for monthly data - Center aligned */}
-        <div className="block lg:hidden space-y-3">
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300 text-center">
+        {/* Mobile/Tablet: Compact stacked cards (no horizontal scroll) */}
+        <div className="block lg:hidden">
+          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
             Últimos 6 Meses
           </h4>
-          {monthlyData.map((month) => (
-            <div
-              key={month.month}
-              className={`p-4 rounded-xl text-center ${
-                month.isCurrentMonth
-                  ? 'bg-lavpop-blue-50 dark:bg-lavpop-blue-900/20 border border-lavpop-blue-200 dark:border-lavpop-blue-800'
-                  : 'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              {/* Month header with badge */}
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <span className="font-bold text-base text-gray-900 dark:text-white">
-                  {formatMonthKey(month.month, 'long')}
-                </span>
-                {month.isPartial && (
-                  <span className="flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
-                    <Clock className="w-2.5 h-2.5" />
-                    Parcial
-                  </span>
-                )}
-              </div>
 
-              {/* Growth badge - prominent */}
-              {month.momGrowth !== null && (
-                <div className="mb-3">
-                  <TrendBadge value={month.momGrowth} size="md" showIcon />
-                </div>
-              )}
+          <div className="space-y-2">
+            {monthlyData.map((month) => {
+              const isBestMonth = growthTrends.bestMonth && month.month === growthTrends.bestMonth.month;
+              const isWorstMonth = growthTrends.worstMonth && month.month === growthTrends.worstMonth.month;
 
-              {/* Stats grid - centered */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <span className="text-xs text-gray-500 dark:text-slate-400 block mb-1">Receita</span>
-                  <span className="font-bold text-gray-900 dark:text-white text-lg">
-                    {formatCurrency(month.revenue)}
-                  </span>
+              return (
+                <div
+                  key={month.month}
+                  className={`
+                    rounded-xl border p-3 transition-colors
+                    ${month.isCurrentMonth
+                      ? 'bg-lavpop-blue-50 dark:bg-lavpop-blue-900/20 border-lavpop-blue-200 dark:border-lavpop-blue-800'
+                      : isBestMonth
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                        : isWorstMonth
+                          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                    }
+                    active:scale-[0.99]
+                  `}
+                >
+                  {/* Header row: Month name + badges + MoM growth */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {isBestMonth && (
+                        <Star className="w-4 h-4 text-emerald-500 fill-emerald-500 flex-shrink-0" aria-label="Melhor mês" />
+                      )}
+                      {isWorstMonth && (
+                        <ArrowDown className="w-4 h-4 text-amber-600 flex-shrink-0" aria-label="Pior mês" />
+                      )}
+                      <span className="font-bold text-slate-900 dark:text-white truncate">
+                        {formatMonthKey(month.month, 'short')}
+                      </span>
+                      {month.isPartial && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded flex-shrink-0">
+                          <Clock className="w-2.5 h-2.5" />
+                          Parcial
+                        </span>
+                      )}
+                    </div>
+
+                    {/* MoM Growth badge - right aligned */}
+                    {month.momGrowth !== null ? (
+                      <span className={`
+                        inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold flex-shrink-0
+                        ${month.momGrowth > 0
+                          ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                          : month.momGrowth < 0
+                            ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                        }
+                      `}>
+                        {month.momGrowth > 0 && <TrendingUp className="w-3 h-3" aria-hidden="true" />}
+                        {month.momGrowth < 0 && <TrendingDown className="w-3 h-3" aria-hidden="true" />}
+                        {month.momGrowth === 0 && <Minus className="w-3 h-3" aria-hidden="true" />}
+                        {month.momGrowth > 0 ? '+' : ''}{month.momGrowth.toFixed(1)}%
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                    )}
+                  </div>
+
+                  {/* Metrics row: Revenue and Cycles side by side */}
+                  <div className="flex items-baseline justify-between gap-4">
+                    <div className="flex-1">
+                      <span className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Receita</span>
+                      <p className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                        {formatCurrency(month.revenue)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Ciclos</span>
+                      <p className="text-lg font-semibold text-slate-700 dark:text-slate-300 leading-tight">
+                        {month.services.toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <span className="text-xs text-gray-500 dark:text-slate-400 block mb-1">Ciclos</span>
-                  <span className="font-semibold text-gray-900 dark:text-white text-lg">
-                    {month.services.toLocaleString('pt-BR')}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+              );
+            })}
+          </div>
+
+          {/* Compact legend */}
+          <div className="mt-3 flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <span className="flex items-center gap-1">
+              <Star className="w-3 h-3 text-emerald-500 fill-emerald-500" />
+              Melhor
+            </span>
+            <span className="flex items-center gap-1">
+              <ArrowDown className="w-3 h-3 text-amber-600" />
+              Pior
+            </span>
+          </div>
         </div>
 
         {/* Desktop: Table view - center aligned */}
-        <div className="hidden lg:block border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+        <div className="hidden lg:block border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
-                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wide">
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                     Mês
                   </th>
-                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wide">
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                     Receita
                   </th>
-                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wide">
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                     Ciclos
                   </th>
-                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-gray-700 dark:text-slate-300 uppercase tracking-wide">
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                     Crescimento MoM
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {monthlyData.map((month) => (
                   <tr
                     key={month.month}
                     className={
                       month.isCurrentMonth
                         ? 'bg-lavpop-blue-50 dark:bg-lavpop-blue-900/20'
-                        : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     }
                   >
-                    <td className="px-4 py-3 text-sm text-center font-medium text-gray-900 dark:text-white">
+                    <td className="px-4 py-3 text-sm text-center font-medium text-slate-900 dark:text-white">
                       <div className="flex items-center justify-center gap-2">
                         {formatMonthKey(month.month, 'long')}
                         {month.isPartial && (
@@ -326,10 +381,10 @@ const GrowthTrendsSection = ({
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-center font-semibold text-gray-900 dark:text-white">
+                    <td className="px-4 py-3 text-sm text-center font-semibold text-slate-900 dark:text-white">
                       {formatCurrency(month.revenue)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-center text-gray-700 dark:text-slate-300">
+                    <td className="px-4 py-3 text-sm text-center text-slate-700 dark:text-slate-300">
                       {month.services.toLocaleString('pt-BR')}
                     </td>
                     <td className="px-4 py-3 text-sm text-center">
@@ -339,14 +394,14 @@ const GrowthTrendsSection = ({
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : month.momGrowth < 0
                               ? 'text-red-600 dark:text-red-400'
-                              : 'text-gray-600 dark:text-slate-400'
+                              : 'text-slate-600 dark:text-slate-400'
                         }`}>
                           {month.momGrowth > 0 && <TrendingUp className="w-4 h-4" aria-hidden="true" />}
                           {month.momGrowth < 0 && <TrendingDown className="w-4 h-4" aria-hidden="true" />}
                           {formatPercent(month.momGrowth, 1)}
                         </span>
                       ) : (
-                        <span className="text-gray-400 dark:text-slate-500 text-xs">—</span>
+                        <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
                       )}
                     </td>
                   </tr>

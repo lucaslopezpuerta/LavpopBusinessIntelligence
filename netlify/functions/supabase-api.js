@@ -253,7 +253,7 @@ exports.handler = async (event, context) => {
         return await recordCampaignContactWithTracking(supabase, data, headers);
 
       case 'campaign_performance.getAll':
-        return await getAllCampaignPerformance(supabase, headers);
+        return await getAllCampaignPerformance(supabase, body, headers);
 
       case 'campaign_performance.get':
         return await getCampaignPerformance(supabase, params.campaign_id || id, headers);
@@ -1212,29 +1212,47 @@ async function getCampaignContacts(supabase, campaignId, headers) {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify([])
+        body: JSON.stringify({ campaign_contacts: [] })
       };
     }
     throw error;
   }
 
+  console.log(`[API] getCampaignContacts: Loaded ${data?.length || 0} contacts for campaign ${campaignId}`);
+
+  // Return with key matching table name for api.get() compatibility
   return {
     statusCode: 200,
     headers,
-    body: JSON.stringify(data || [])
+    body: JSON.stringify({ campaign_contacts: data || [] })
   };
 }
 
 /**
  * Get all campaigns with performance metrics from campaign_performance view
  * Used by CampaignList to display campaigns with return rates
+ * @param {object} filters - Optional filters (id, audience, etc.)
  */
-async function getAllCampaignPerformance(supabase, headers) {
-  // Query the campaign_performance view for all campaigns
-  const { data, error } = await supabase
+async function getAllCampaignPerformance(supabase, filters = {}, headers) {
+  // Query the campaign_performance view
+  let query = supabase
     .from('campaign_performance')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('*');
+
+  // Apply id filter if provided (for single campaign fetch)
+  if (filters?.id) {
+    query = query.eq('id', filters.id);
+  }
+
+  // Apply other optional filters
+  if (filters?.audience) {
+    query = query.eq('audience', filters.audience);
+  }
+
+  // Order by creation date
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     // If view doesn't exist, return empty array (graceful fallback)
@@ -1249,7 +1267,7 @@ async function getAllCampaignPerformance(supabase, headers) {
     throw error;
   }
 
-  console.log(`[API] getAllCampaignPerformance: Loaded ${data?.length || 0} campaigns`);
+  console.log(`[API] getAllCampaignPerformance: Loaded ${data?.length || 0} campaigns${filters?.id ? ` (filtered by id: ${filters.id})` : ''}`);
 
   // Return with key matching table name for api.get() compatibility
   return {

@@ -1,9 +1,13 @@
-// campaignService.js v4.6
+// campaignService.js v4.7
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Backend-only storage (Supabase) - no localStorage for data
 //
 // CHANGELOG:
+// v4.7 (2025-12-14): Fixed getDashboardMetrics recentCampaigns
+//   - Now uses campaign_performance view instead of manual joins
+//   - campaign_performance view was fixed to join directly to contact_tracking
+//   - This fixes the "0% return rate, R$0 revenue" issue in Recent Campaigns table
 // v4.6 (2025-12-13): Configurable coupon validity for manual campaigns
 //   - Added couponValidityDays parameter to sendCampaignWithTracking
 //   - Passed to api.campaignContacts.record() for backend expires_at calculation
@@ -1259,12 +1263,13 @@ export async function getDashboardMetrics(options = {}) {
         metrics.hasRealDeliveryData = false;
       }
 
-      // Fetch recent campaigns with performance data
-      let campaignsData = [];
+      // Fetch recent campaigns with performance data from campaign_performance view
+      // This view now joins directly to contact_tracking for accurate return metrics
+      let campaignPerformanceData = [];
       try {
-        campaignsData = await api.campaigns.getAll();
+        campaignPerformanceData = await api.get('campaign_performance', {});
       } catch (e) {
-        console.warn('[CampaignService] Could not fetch campaigns:', e.message);
+        console.warn('[CampaignService] Could not fetch campaign performance:', e.message);
       }
 
       // Fetch per-campaign delivery metrics from webhook_events
@@ -1275,19 +1280,18 @@ export async function getDashboardMetrics(options = {}) {
         console.warn('[CampaignService] Could not fetch campaign delivery metrics:', e.message);
       }
 
-      if (campaignsData && campaignsData.length > 0) {
-        // Enrich with performance data AND delivery metrics
-        metrics.recentCampaigns = campaignsData.slice(0, 10).map(c => {
-          // Find matching effectiveness data
-          const effData = effectivenessData?.find(e => e.campaign_id === c.id);
+      if (campaignPerformanceData && campaignPerformanceData.length > 0) {
+        // Use campaign_performance view data directly (already has return metrics)
+        metrics.recentCampaigns = campaignPerformanceData.slice(0, 10).map(c => {
           // Find matching delivery metrics from webhook_events
           const delData = deliveryMetrics?.find(d => d.campaign_id === c.id);
 
           return {
             ...c,
-            return_rate: effData?.return_rate || 0,
-            total_revenue: effData?.total_return_revenue || 0,
-            contacts_count: effData?.total_contacts || 0,
+            // Performance metrics from campaign_performance view
+            return_rate: c.return_rate || 0,
+            total_revenue: c.total_revenue_recovered || 0,
+            contacts_count: c.contacts_tracked || 0,
             // Real delivery metrics from webhook events
             delivered: delData?.delivered || 0,
             read: delData?.read || 0,
