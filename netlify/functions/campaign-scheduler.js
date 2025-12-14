@@ -2,11 +2,12 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
-// v2.8 (2025-12-14): Improved failure logging + hourly return processing
+// v2.8 (2025-12-14): Improved failure logging + hourly returns + old phone format support
 //   - Added summary log after each rule showing failures with error messages
 //   - Shows last 4 digits of phone + error reason (e.g., "63016: Template not found")
 //   - Added separate log for blacklist skips
 //   - Changed return processing from 4x daily to every hour (faster feedback loop)
+//   - normalizePhone() now handles 10-digit old format (pre-2012) by adding "9" after DDD
 //
 // v2.7 (2025-12-13): Fixed fallback tracking for automation sends
 //   - Fallback now creates contact_tracking + campaign_contacts records
@@ -1099,6 +1100,11 @@ function buildContentVariables(rule, target) {
 
 /**
  * Normalize phone number to E.164 format (+55XXXXXXXXXXX)
+ * Handles:
+ * - 11 digits: Standard Brazilian mobile (DDD + 9 + 8 digits)
+ * - 10 digits: Old format pre-2012 (DDD + 8 digits) - adds "9" after DDD
+ * - 13 digits: With country code (55 + DDD + 9 + 8 digits)
+ * - 12 digits: With country code, old format (55 + DDD + 8 digits)
  */
 function normalizePhone(phone) {
   if (!phone) return null;
@@ -1108,12 +1114,23 @@ function normalizePhone(phone) {
 
   // Handle Brazilian numbers
   if (digits.length === 11) {
+    // Standard format: DDD (2) + 9 + 8 digits
     return `+55${digits}`;
+  } else if (digits.length === 10) {
+    // Old format pre-2012: DDD (2) + 8 digits
+    // Insert "9" after the DDD to convert to new format
+    const ddd = digits.slice(0, 2);
+    const number = digits.slice(2);
+    return `+55${ddd}9${number}`;
   } else if (digits.length === 13 && digits.startsWith('55')) {
+    // With country code: 55 + DDD + 9 + 8 digits
     return `+${digits}`;
   } else if (digits.length === 12 && digits.startsWith('55')) {
-    // Missing the 9 digit
-    return `+${digits}`;
+    // With country code, old format: 55 + DDD + 8 digits
+    // Insert "9" after the DDD
+    const ddd = digits.slice(2, 4);
+    const number = digits.slice(4);
+    return `+55${ddd}9${number}`;
   }
 
   return null;
