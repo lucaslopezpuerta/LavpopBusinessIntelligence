@@ -8,8 +8,8 @@
 //   - Returns blacklist reason for display
 //   - Caches data to avoid repeated fetches
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { apiRequest } from '../utils/apiService';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { api } from '../utils/apiService';
 
 // Cache blacklist data across hook instances
 let cachedBlacklist = null;
@@ -24,40 +24,56 @@ export function useBlacklist() {
   const [blacklist, setBlacklist] = useState(cachedBlacklist || []);
   const [isLoading, setIsLoading] = useState(!cachedBlacklist);
   const [error, setError] = useState(null);
+  const isMountedRef = useRef(true);
 
   // Fetch blacklist from API
   const fetchBlacklist = useCallback(async (force = false) => {
     // Use cache if available and not expired
     if (!force && cachedBlacklist && Date.now() - cacheTimestamp < CACHE_DURATION) {
-      setBlacklist(cachedBlacklist);
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setBlacklist(cachedBlacklist);
+        setIsLoading(false);
+      }
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
-      const result = await apiRequest('blacklist.getAll', {}, 'GET');
-      const data = result.data || [];
+      // api.blacklist.getAll() returns the entries array directly
+      const data = await api.blacklist.getAll();
 
       // Update cache
       cachedBlacklist = data;
       cacheTimestamp = Date.now();
 
-      setBlacklist(data);
+      if (isMountedRef.current) {
+        setBlacklist(data);
+      }
     } catch (err) {
       console.error('[useBlacklist] Failed to fetch blacklist:', err);
-      setError(err.message);
+      if (isMountedRef.current) {
+        setError(err.message);
+      }
       // Keep existing data on error
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   // Fetch on mount
   useEffect(() => {
+    isMountedRef.current = true;
     fetchBlacklist();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [fetchBlacklist]);
 
   // Create a Set of normalized phone numbers for fast lookup
