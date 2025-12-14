@@ -31,6 +31,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { SidebarProvider } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { DataFreshnessProvider } from './contexts/DataFreshnessContext';
+import { RealtimeSyncProvider } from './contexts/RealtimeSyncContext';
 import { loadAllData } from './utils/supabaseLoader';
 import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
@@ -39,9 +40,10 @@ import MinimalTopBar from './components/MinimalTopBar';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Data freshness configuration
-const STALE_TIME = 5 * 60 * 1000;        // 5 minutes - data considered stale
-const REFRESH_INTERVAL = 10 * 60 * 1000;  // 10 minutes - auto-refresh interval
-const MIN_REFRESH_GAP = 30 * 1000;        // 30 seconds - minimum between refreshes
+// With Supabase Realtime, polling is now a fallback - increase intervals
+const STALE_TIME = 15 * 60 * 1000;        // 15 minutes - data considered stale (realtime handles fresh data)
+const REFRESH_INTERVAL = 30 * 60 * 1000;  // 30 minutes - auto-refresh interval (fallback only)
+const MIN_REFRESH_GAP = 60 * 1000;        // 60 seconds - minimum between refreshes
 
 // Lazy load tab components for code splitting
 const Dashboard = lazy(() => import('./views/Dashboard'));
@@ -133,6 +135,13 @@ function AppContent() {
     }
   }, []);
 
+  // Remove the HTML initial loader when React mounts
+  useEffect(() => {
+    if (window.removeInitialLoader) {
+      window.removeInitialLoader();
+    }
+  }, []);
+
   // Initial data load
   useEffect(() => {
     loadData({ isInitial: true });
@@ -156,16 +165,16 @@ function AppContent() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [loading, isStale, loadData]);
 
-  // Auto-refresh interval: refresh every 10 minutes while tab is active
+  // Auto-refresh interval: refresh every 30 minutes while tab is active (fallback only)
   useEffect(() => {
     if (loading) return;
 
-    console.log(`[App] Setting up auto-refresh every ${REFRESH_INTERVAL / 1000}s`);
+    console.log(`[App] Setting up auto-refresh every ${REFRESH_INTERVAL / 1000}s (fallback for realtime)`);
 
     const intervalId = setInterval(() => {
       // Only auto-refresh if tab is visible
       if (document.visibilityState === 'visible') {
-        console.log('[App] Auto-refresh triggered');
+        console.log('[App] Auto-refresh triggered (fallback)');
         loadData({ skipCache: true, silent: true });
       } else {
         console.log('[App] Skipping auto-refresh (tab hidden)');
@@ -174,6 +183,10 @@ function AppContent() {
 
     return () => clearInterval(intervalId);
   }, [loading, loadData]);
+
+  // Note: Realtime sync for contact_tracking is handled by useContactTracking hook
+  // which listens to 'contactTrackingUpdate' events dispatched by RealtimeSyncProvider
+  // This provides instant contact status updates on mobile without full data refresh
 
   // Map tab IDs to components
   const tabComponents = {
@@ -245,7 +258,7 @@ function AppContent() {
               />
             </div>
             <p className="text-sm font-medium opacity-90">
-              {loadProgress.loaded} de {loadProgress.total} arquivos carregados
+              {loadProgress.loaded} de {loadProgress.total} dados sincronizados
             </p>
           </div>
         </div>
@@ -362,7 +375,9 @@ function App() {
         <SidebarProvider>
           <NavigationProvider>
             <DataFreshnessProvider>
-              <AppContent />
+              <RealtimeSyncProvider>
+                <AppContent />
+              </RealtimeSyncProvider>
             </DataFreshnessProvider>
           </NavigationProvider>
         </SidebarProvider>

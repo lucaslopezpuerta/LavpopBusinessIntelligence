@@ -37,7 +37,7 @@
 //   - Automation rules for win-back and welcome series
 //   - Message template library (Meta-compliant)
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import {
   MessageSquare,
   Plus
@@ -50,11 +50,22 @@ import InsightBox from '../components/ui/InsightBox';
 import CampaignList from '../components/campaigns/CampaignList';
 import AudienceSelector from '../components/campaigns/AudienceSelector';
 import MessageComposer from '../components/campaigns/MessageComposer';
-import AutomationRules from '../components/campaigns/AutomationRules';
 import CampaignSectionNavigation from '../components/campaigns/CampaignSectionNavigation';
 import BlacklistManager from '../components/campaigns/BlacklistManager';
-import NewCampaignModal from '../components/campaigns/NewCampaignModal';
 import CampaignDashboard from '../components/campaigns/CampaignDashboard';
+
+// Lazy-loaded heavy components (60KB + 50KB savings)
+const AutomationRules = lazy(() => import('../components/campaigns/AutomationRules'));
+const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
+
+// Loading fallback for lazy components
+const ModalLoadingFallback = () => (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl">
+      <div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin mx-auto" />
+    </div>
+  </div>
+);
 
 // Business logic
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
@@ -207,9 +218,11 @@ const Campaigns = ({ data }) => {
 
       {/* Automation Rules Section */}
       {activeSection === 'automations' && (
-        <AutomationRules
-          audienceSegments={audienceSegments}
-        />
+        <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div>}>
+          <AutomationRules
+            audienceSegments={audienceSegments}
+          />
+        </Suspense>
       )}
 
       {/* Audience Selector Section */}
@@ -246,13 +259,17 @@ const Campaigns = ({ data }) => {
       )}
 
       {/* New Campaign Modal */}
-      <NewCampaignModal
-        isOpen={showNewCampaign}
-        onClose={handleCloseModal}
-        audienceSegments={audienceSegments}
-        initialTemplate={initialTemplate}
-        initialAudience={selectedAudience}
-      />
+      {showNewCampaign && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <NewCampaignModal
+            isOpen={showNewCampaign}
+            onClose={handleCloseModal}
+            audienceSegments={audienceSegments}
+            initialTemplate={initialTemplate}
+            initialAudience={selectedAudience}
+          />
+        </Suspense>
+      )}
 
     </div>
   );

@@ -27,7 +27,7 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, Award, AlertTriangle, Minus, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, AlertTriangle, Minus, Clock, Star, ArrowDown } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import KPICard, { KPIGrid } from '../ui/KPICard';
 import InsightBox from '../ui/InsightBox';

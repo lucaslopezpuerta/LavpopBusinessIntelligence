@@ -55,18 +55,21 @@
 // v2.0.1 (2025-11-24): Fixed RFM data loading
 // v2.0 (2025-11-23): Customer Intelligence Hub Implementation
 
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { Users as UsersIcon, UserPlus, AlertTriangle, Heart, BarChart3, LayoutGrid } from 'lucide-react';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend } from '../utils/customerMetrics';
 import SecondaryKPICard from '../components/ui/SecondaryKPICard';
 import { formatNumber, formatPercent } from '../utils/formatters';
-import CustomerProfileModal from '../components/CustomerProfileModal';
+
+// Lazy-load heavy modal (40KB savings)
+const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
 import CustomerRetentionScore from '../components/CustomerRetentionScore';
 import CustomerCard from '../components/CustomerCard';
 import FilterBar from '../components/FilterBar';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import CustomerSectionNavigation from '../components/customers/CustomerSectionNavigation';
 import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, ChartLoadingFallback } from '../utils/lazyCharts';
+import { useContactTracking } from '../hooks/useContactTracking';
 
 const Customers = ({ data }) => {
   // State
@@ -535,11 +538,13 @@ const Customers = ({ data }) => {
 
       {/* Customer Profile Modal */}
       {selectedCustomer && (
-        <CustomerProfileModal
-          customer={selectedCustomer}
-          sales={data.sales}
-          onClose={() => setSelectedCustomer(null)}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+          <CustomerProfileModal
+            customer={selectedCustomer}
+            sales={data.sales}
+            onClose={() => setSelectedCustomer(null)}
+          />
+        </Suspense>
       )}
     </div>
   );

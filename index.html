@@ -2,12 +2,153 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bilavnova</title>
+    <meta name="description" content="Lavpop Business Intelligence - Dashboard de análise de dados" />
+
+    <!-- Mobile optimizations -->
+    <meta name="theme-color" content="#1a5a8e" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Preconnect to critical origins (saves 100-300ms per connection on mobile) -->
+    <link rel="preconnect" href="https://kudxbgrietiseyrmnllx.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- DNS prefetch fallback for older browsers -->
+    <link rel="dns-prefetch" href="https://kudxbgrietiseyrmnllx.supabase.co" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Inline critical CSS for instant loading screen -->
+    <style>
+      /* Instant loading screen - shows before any JS loads */
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #1a5a8e 0%, #55b03b 100%);
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.3s ease-out;
+      }
+      #initial-loader.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .loader-content {
+        text-align: center;
+        color: white;
+        padding: 1rem;
+      }
+      .loader-logo {
+        width: 96px;
+        height: 96px;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        padding: 12px;
+        border: 1px solid rgba(255,255,255,0.2);
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+        animation: pulse 2s ease-in-out infinite;
+      }
+      .loader-logo svg {
+        width: 100%;
+        height: 100%;
+      }
+      .loader-title {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 2rem;
+        letter-spacing: -0.025em;
+      }
+      .loader-bar-container {
+        width: 320px;
+        max-width: 100%;
+        margin: 0 auto;
+      }
+      .loader-bar {
+        height: 8px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 9999px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+      }
+      .loader-bar-fill {
+        height: 100%;
+        width: 30%;
+        background: white;
+        border-radius: 9999px;
+        animation: loading 1.5s ease-in-out infinite;
+      }
+      .loader-text {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 0.875rem;
+        font-weight: 500;
+        opacity: 0.9;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.7; }
+        50% { opacity: 1; }
+      }
+      @keyframes loading {
+        0% { width: 10%; margin-left: 0; }
+        50% { width: 40%; margin-left: 30%; }
+        100% { width: 10%; margin-left: 90%; }
+      }
+      /* Respect reduced motion preference */
+      @media (prefers-reduced-motion: reduce) {
+        .loader-logo { animation: none; opacity: 1; }
+        .loader-bar-fill { animation: none; width: 50%; margin-left: 0; }
+        #initial-loader { transition: none; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Instant loading screen - replaced by React when ready -->
+      <div id="initial-loader">
+        <div class="loader-content">
+          <div class="loader-logo">
+            <!-- Inline SVG logo for instant display -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 375 375" width="72" height="72">
+              <path fill="#10306b" d="M 375 333.332031 C 375 356.34375 356.34375 375 333.332031 375 L 41.667969 375 C 18.65625 375 0 356.34375 0 333.332031 L 0 41.667969 C 0 18.65625 18.65625 0 41.667969 0 L 333.332031 0 C 356.34375 0 375 18.65625 375 41.667969 Z"/>
+              <path fill="#ffffff" d="M 109.355469 96.34375 C 109.355469 80.84375 120.011719 72.125 134.863281 72.125 L 196.875 72.125 C 230.457031 72.125 257.605469 94.730469 257.605469 128.96875 C 257.605469 151.574219 248.230469 166.761719 227.550781 176.449219 L 227.550781 177.09375 C 255.019531 180.96875 276.644531 203.894531 276.644531 232 C 276.644531 277.542969 246.292969 302.09375 201.71875 302.09375 L 135.199219 302.09375 C 120.332031 302.09375 109.355469 292.730469 109.355469 277.550781 Z M 157.800781 163.199219 L 183 163.199219 C 198.824219 163.199219 209.15625 153.832031 209.15625 137.675781 C 209.15625 122.5 197.207031 114.75 183 114.75 L 157.800781 114.75 Z M 157.800781 259.449219 L 195.917969 259.449219 C 213.355469 259.449219 226.28125 249.4375 226.28125 231.355469 C 226.28125 216.167969 214.644531 205.832031 192.042969 205.832031 L 157.800781 205.832031 Z"/>
+            </svg>
+          </div>
+          <h1 class="loader-title">Carregando Lavpop BI</h1>
+          <div class="loader-bar-container">
+            <div class="loader-bar">
+              <div class="loader-bar-fill"></div>
+            </div>
+            <p class="loader-text">Conectando ao servidor...</p>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Remove initial loader when React is ready
+      window.removeInitialLoader = function() {
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.classList.add('fade-out');
+          setTimeout(() => loader.remove(), 300);
+        }
+      };
+    </script>
   </body>
 </html>

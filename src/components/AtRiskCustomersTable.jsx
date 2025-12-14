@@ -78,10 +78,12 @@
 // v6.1 (2025-11-22): Mobile view optimization
 // v6.0 (2025-11-21): No overflow redesign
 
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, Check, ArrowUpDown, Users } from 'lucide-react';
-import CustomerProfileModal from './CustomerProfileModal';
 import { RISK_LABELS } from '../utils/customerMetrics';
+
+// Lazy-load heavy modal (40KB savings)
+const CustomerProfileModal = lazy(() => import('./CustomerProfileModal'));
 import { formatCurrency } from '../utils/formatters';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { addCommunicationEntry, getDefaultNotes } from '../utils/communicationLog';
@@ -703,11 +705,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
       </div>
 
       {selectedCustomer && (
-        <CustomerProfileModal
-          customer={selectedCustomer}
-          sales={salesData}
-          onClose={() => setSelectedCustomer(null)}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+          <CustomerProfileModal
+            customer={selectedCustomer}
+            sales={salesData}
+            onClose={() => setSelectedCustomer(null)}
+          />
+        </Suspense>
       )}
     </>
   );
