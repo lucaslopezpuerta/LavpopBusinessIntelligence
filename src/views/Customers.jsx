@@ -387,17 +387,29 @@ const Customers = ({ data }) => {
           </div>
           <div className="h-full">
             <Suspense fallback={<ChartLoadingFallback height="h-80" />}>
-              <LazyRFMScatterPlot data={intelligence.rfm} />
+              <LazyRFMScatterPlot
+                data={intelligence.rfm}
+                contactedIds={contactedIds}
+                pendingContacts={pendingContacts}
+              />
             </Suspense>
           </div>
           <div className="h-full">
             <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
-              <LazyChurnHistogram data={intelligence.histogram} />
+              <LazyChurnHistogram
+                data={intelligence.histogram}
+                contactedIds={contactedIds}
+                customerSpending={customerSpending}
+              />
             </Suspense>
           </div>
           <div className="h-full">
             <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
-              <LazyNewClientsChart data={intelligence.acquisition} />
+              <LazyNewClientsChart
+                data={intelligence.acquisition}
+                welcomeContactedIds={welcomeContactedIds}
+                returnedCustomerIds={returnedCustomerIds}
+              />
             </Suspense>
           </div>
         </div>

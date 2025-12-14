@@ -23,25 +23,10 @@
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { getSupabaseClient } from '../utils/supabaseClient';
 
-// Supabase client (lazy loaded to match supabaseLoader.js pattern)
-let supabaseClient = null;
-
-async function getSupabase() {
-  if (!supabaseClient) {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.warn('[useRealtimeSync] Supabase credentials not configured');
-      return null;
-    }
-
-    const { createClient } = await import('@supabase/supabase-js');
-    supabaseClient = createClient(supabaseUrl, supabaseKey);
-  }
-  return supabaseClient;
-}
+// Use shared Supabase client to avoid multiple GoTrueClient instances
+const getSupabase = getSupabaseClient;
 
 export function useRealtimeSync({
   onContactChange,

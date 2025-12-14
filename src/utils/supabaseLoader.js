@@ -45,25 +45,10 @@
 import Papa from 'papaparse';
 import { getCachedData, setCachedData } from './dataCache';
 import { normalizeCpf } from './cpfUtils';
+import { getSupabaseClient } from './supabaseClient';
 
-// Supabase client (lazy loaded)
-let supabase = null;
-
-async function getSupabase() {
-  if (!supabase) {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.warn('Supabase credentials not configured');
-      return null;
-    }
-
-    const { createClient } = await import('@supabase/supabase-js');
-    supabase = createClient(supabaseUrl, supabaseKey);
-  }
-  return supabase;
-}
+// Use shared Supabase client to avoid multiple GoTrueClient instances
+const getSupabase = getSupabaseClient;
 
 // ============== CSV FALLBACK (for non-migrated files) ==============
 
