@@ -62,8 +62,6 @@ import { Settings, Calendar, TrendingUp, Zap, DollarSign, Lightbulb } from 'luci
 
 // Business logic
 import BusinessSettingsModal, { useBusinessSettings } from '../components/BusinessSettingsModal';
-import { useTheme } from '../contexts/ThemeContext';
-import { getLavpopNivoTheme } from '../utils/chartThemes';
 import {
   calculateProfitability,
   calculateWeatherImpact,
@@ -95,8 +93,6 @@ import SectionNavigation from '../components/intelligence/SectionNavigation';
 const Intelligence = ({ data }) => {
   const [showSettings, setShowSettings] = useState(false);
   const settings = useBusinessSettings();
-  const { isDark } = useTheme();
-  const nivoTheme = useMemo(() => getLavpopNivoTheme(isDark), [isDark]);
 
   // Calculate all metrics
   const profitability = useMemo(() => {
@@ -410,7 +406,6 @@ const Intelligence = ({ data }) => {
             profitability={profitability}
             formatCurrency={formatCurrency}
             formatPercent={formatPercent}
-            nivoTheme={nivoTheme}
           />
 
           {/* Section 2: Weather Impact (Comfort-based) */}

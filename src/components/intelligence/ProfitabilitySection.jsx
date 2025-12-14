@@ -1,8 +1,13 @@
-// ProfitabilitySection.jsx v2.2
+// ProfitabilitySection.jsx v3.0
 // Profitability analysis section for Intelligence tab
 // Design System v3.1 compliant - Refactored with unified components
 //
 // CHANGELOG:
+// v3.0 (2025-12-14): Migrated from Nivo to Recharts
+//   - Replaced ResponsiveBar (Nivo) with BarChart (Recharts)
+//   - Custom tooltip matching project patterns
+//   - Better dark mode support via Tailwind classes
+//   - Reduced bundle size by removing Nivo dependency
 // v2.2 (2025-12-02): Fixed Nivo chart NaN crash
 //   - Guard against empty/zero revenue/cost data
 //   - Fixed division by zero in maintenance % calculation
@@ -17,8 +22,8 @@
 //   - Reduced code from 308 to ~200 lines
 // v1.0 (2025-11-30): Initial extraction from Intelligence.jsx
 
-import React, { useMemo } from 'react';
-import { ResponsiveBar } from '@nivo/bar';
+import React, { useMemo, useCallback } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { DollarSign, CheckCircle, AlertTriangle } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import KPICard, { KPIGrid } from '../ui/KPICard';
@@ -26,43 +31,79 @@ import InsightBox from '../ui/InsightBox';
 import ProgressBar from '../ui/ProgressBar';
 import { ChartLegend } from '../ui/ChartSection';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { useTheme } from '../../contexts/ThemeContext';
+
+// Chart colors
+const CHART_COLORS = {
+  receita: '#10b981',
+  custos: '#ef4444',
+  lucro: '#8b5cf6'
+};
 
 const ProfitabilitySection = ({
   profitability,
   formatCurrency,
-  formatPercent,
-  nivoTheme
+  formatPercent
 }) => {
   const isMobile = useIsMobile();
+  const { isDark } = useTheme();
 
-  // Memoize chart data to prevent re-renders - guard against invalid values
+  // Memoize chart data for Recharts format (array of objects per bar)
   const chartData = useMemo(() => {
     if (!profitability) return null;
     // Check if we have valid data (not all zeros/NaN)
     const hasValidData = (profitability.totalRevenue || 0) > 0 ||
                          (profitability.totalCosts || 0) > 0;
     if (!hasValidData) return null;
-    return [{
-      category: 'Analise',
-      Receita: profitability.totalRevenue || 0,
-      Custos: profitability.totalCosts || 0,
-      Lucro: Math.max(0, profitability.netProfit || 0)
-    }];
-  }, [profitability?.totalRevenue, profitability?.totalCosts, profitability?.netProfit]);
 
-  // Memoize chart margins
-  const chartMargins = useMemo(() => (
-    isMobile
-      ? { top: 10, right: 20, bottom: 40, left: 70 }
-      : { top: 20, right: 130, bottom: 50, left: 80 }
-  ), [isMobile]);
+    // Format data for grouped bar chart
+    return [
+      { name: 'Receita', value: profitability.totalRevenue || 0, fill: CHART_COLORS.receita },
+      { name: 'Custos', value: profitability.totalCosts || 0, fill: CHART_COLORS.custos },
+      { name: 'Lucro', value: Math.max(0, profitability.netProfit || 0), fill: CHART_COLORS.lucro }
+    ];
+  }, [profitability?.totalRevenue, profitability?.totalCosts, profitability?.netProfit]);
 
   // Chart legend items
   const legendItems = useMemo(() => [
-    { color: '#10b981', label: 'Receita' },
-    { color: '#ef4444', label: 'Custos' },
-    { color: '#8b5cf6', label: 'Lucro' }
+    { color: CHART_COLORS.receita, label: 'Receita' },
+    { color: CHART_COLORS.custos, label: 'Custos' },
+    { color: CHART_COLORS.lucro, label: 'Lucro' }
   ], []);
+
+  // Custom tooltip for Recharts
+  const CustomTooltip = useCallback(({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+    const data = payload[0];
+
+    return (
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
+        <div className="flex items-center gap-2 mb-1">
+          <div
+            className="w-3 h-3 rounded-sm"
+            style={{ backgroundColor: data.payload.fill }}
+          />
+          <span className="font-semibold text-slate-900 dark:text-white text-sm">
+            {data.payload.name}
+          </span>
+        </div>
+        <p className="text-slate-600 dark:text-slate-300 font-bold">
+          {formatCurrency(data.value)}
+        </p>
+      </div>
+    );
+  }, [formatCurrency]);
+
+  // Format Y axis values
+  const formatYAxis = useCallback((value) => {
+    if (isMobile) {
+      if (value >= 1000) {
+        return `${Math.round(value / 1000)}k`;
+      }
+      return `R$ ${value}`;
+    }
+    return formatCurrency(value);
+  }, [isMobile, formatCurrency]);
 
   if (!profitability) return null;
 
@@ -227,38 +268,73 @@ const ProfitabilitySection = ({
             role="img"
             aria-label="Grafico de Rentabilidade"
           >
-            <ResponsiveBar
-              data={chartData}
-              keys={['Receita', 'Custos', 'Lucro']}
-              indexBy="category"
-              margin={chartMargins}
-              padding={0.3}
-              groupMode="grouped"
-              colors={['#10b981', '#ef4444', '#8b5cf6']}
-              borderRadius={8}
-              axisLeft={{
-                format: (value) => isMobile ? `${Math.round(value / 1000)}k` : formatCurrency(value)
-              }}
-              labelTextColor="white"
-              labelSkipWidth={12}
-              labelSkipHeight={12}
-              legends={isMobile ? [] : [{
-                dataFrom: 'keys',
-                anchor: 'bottom-right',
-                direction: 'column',
-                translateX: 120,
-                itemWidth: 100,
-                itemHeight: 20,
-                symbolSize: 12,
-                symbolShape: 'circle'
-              }]}
-              animate={false}
-              theme={nivoTheme}
-            />
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={isMobile
+                  ? { top: 10, right: 10, bottom: 20, left: 50 }
+                  : { top: 20, right: 30, bottom: 20, left: 60 }
+                }
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={isDark ? '#334155' : '#e2e8f0'}
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="name"
+                  tick={{
+                    fontSize: 12,
+                    fill: isDark ? '#94a3b8' : '#64748b'
+                  }}
+                  axisLine={{ stroke: isDark ? '#475569' : '#cbd5e1' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={formatYAxis}
+                  tick={{
+                    fontSize: 12,
+                    fill: isDark ? '#94a3b8' : '#64748b'
+                  }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={isMobile ? 45 : 70}
+                />
+                <Tooltip
+                  content={<CustomTooltip />}
+                  cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
+                />
+                <Bar
+                  dataKey="value"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={80}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Mobile Legend - Uses unified component */}
-          {isMobile && <ChartLegend items={legendItems} />}
+          {/* Legend - Desktop shows inline, mobile uses unified component */}
+          {!isMobile ? (
+            <div className="flex justify-center gap-6 mt-4">
+              {legendItems.map((item) => (
+                <div key={item.label} className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-sm"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">
+                    {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ChartLegend items={legendItems} />
+          )}
         </div>
         )}
       </div>
