@@ -2,6 +2,12 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.8 (2025-12-14): Improved failure logging + hourly return processing
+//   - Added summary log after each rule showing failures with error messages
+//   - Shows last 4 digits of phone + error reason (e.g., "63016: Template not found")
+//   - Added separate log for blacklist skips
+//   - Changed return processing from 4x daily to every hour (faster feedback loop)
+//
 // v2.7 (2025-12-13): Fixed fallback tracking for automation sends
 //   - Fallback now creates contact_tracking + campaign_contacts records
 //   - Previously only updated campaigns.sends (causing "Rastreados" to show 0)
@@ -223,7 +229,7 @@ exports.handler = async (event, context) => {
     // 3. Expiring old pending contacts
     let returnResults = { returns_detected: 0, coupons_linked: 0, contacts_expired: 0, skipped: false };
     if (shouldRunReturnsProcessing()) {
-      console.log('Running campaign return processing (scheduled 4x daily)...');
+      console.log('Running campaign return processing (hourly)...');
       returnResults = await processCampaignReturns(supabase);
     } else {
       returnResults.skipped = true;
@@ -406,22 +412,16 @@ function getBrazilDateString() {
 
 /**
  * Check if it's time to run campaign return processing
- * Runs 4 times per day: 00:00, 06:00, 12:00, 18:00 Brazil time
- * Since scheduler runs every 5 minutes, we trigger when:
- * - Hour is 0, 6, 12, or 18
- * - Minutes are < 5 (first 5-minute window of the hour)
+ * Runs every hour (24x per day) in the first 5-minute window
+ * Since scheduler runs every 5 minutes, we trigger when minutes < 5
  * @returns {boolean} True if it's time to run return processing
  */
 function shouldRunReturnsProcessing() {
   const brazilNow = getBrazilNow();
-  const hour = brazilNow.getHours();
   const minute = brazilNow.getMinutes();
 
-  const targetHours = [0, 6, 12, 18];
-  const isTargetHour = targetHours.includes(hour);
-  const isFirstWindow = minute < 5;
-
-  return isTargetHour && isFirstWindow;
+  // Run in the first 5-minute window of every hour
+  return minute < 5;
 }
 
 /**
@@ -631,6 +631,22 @@ async function processAutomationRule(supabase, rule, blacklistedPhones) {
         result.failed++;
         result.targets.push({ phone: target.telefone, status: 'error', error: sendError.message });
       }
+    }
+
+    // v2.8: Log failure summary if any failures occurred (helps debug Twilio/eligibility issues)
+    if (result.failed > 0) {
+      const failedTargets = result.targets.filter(t => t.status === 'failed' || t.status === 'error');
+      console.log(`Rule ${rule.id} FAILURES (${result.failed}):`,
+        failedTargets.slice(0, 5).map(t => ({
+          phone: t.phone?.slice(-4) || '????',  // Last 4 digits for privacy
+          error: t.error
+        }))
+      );
+    }
+
+    // Log skip summary if customers were blacklisted
+    if (result.skipped > 0) {
+      console.log(`Rule ${rule.id} SKIPPED: ${result.skipped} blacklisted numbers`);
     }
 
     return result;
