@@ -1,9 +1,13 @@
-// campaignService.js v4.8
+// campaignService.js v4.9
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Backend-only storage (Supabase) - no localStorage for data
 //
 // CHANGELOG:
+// v4.9 (2025-12-14): Simplified delivery metrics - now from campaign_performance view
+//   - getDashboardMetrics no longer needs separate api.delivery.getCampaignMetrics() call
+//   - Delivery columns (delivered, read, has_delivery_data) now in campaign_performance view
+//   - This fixes delivery metrics showing "-" after browser cache clear
 // v4.8 (2025-12-14): Fixed getCampaignContacts to query contact_tracking directly
 //   - Automations create contact_tracking without campaign_contacts bridge records
 //   - getCampaignContacts now queries contact_tracking by campaign_id
@@ -1274,7 +1278,8 @@ export async function getDashboardMetrics(options = {}) {
       }
 
       // Fetch recent campaigns with performance data from campaign_performance view
-      // This view now joins directly to contact_tracking for accurate return metrics
+      // v4.9: This view now includes delivery metrics directly (delivered, read, has_delivery_data)
+      // No separate api.delivery.getCampaignMetrics() call needed anymore
       let campaignPerformanceData = [];
       try {
         campaignPerformanceData = await api.get('campaign_performance', {});
@@ -1282,35 +1287,24 @@ export async function getDashboardMetrics(options = {}) {
         console.warn('[CampaignService] Could not fetch campaign performance:', e.message);
       }
 
-      // Fetch per-campaign delivery metrics from webhook_events
-      let deliveryMetrics = [];
-      try {
-        deliveryMetrics = await api.delivery.getCampaignMetrics();
-      } catch (e) {
-        console.warn('[CampaignService] Could not fetch campaign delivery metrics:', e.message);
-      }
-
       if (campaignPerformanceData && campaignPerformanceData.length > 0) {
-        // Use campaign_performance view data directly (already has return metrics)
-        metrics.recentCampaigns = campaignPerformanceData.slice(0, 10).map(c => {
-          // Find matching delivery metrics from webhook_events
-          const delData = deliveryMetrics?.find(d => d.campaign_id === c.id);
-
-          return {
-            ...c,
-            // Performance metrics from campaign_performance view
-            return_rate: c.return_rate || 0,
-            total_revenue: c.total_revenue_recovered || 0,
-            contacts_count: c.contacts_tracked || 0,
-            // Real delivery metrics from webhook events
-            delivered: delData?.delivered || 0,
-            read: delData?.read || 0,
-            failed: delData?.failed || 0,
-            delivery_rate: delData?.delivery_rate || null,
-            read_rate: delData?.read_rate || null,
-            has_delivery_data: !!delData
-          };
-        });
+        // v4.9: Use campaign_performance view data directly - now includes ALL metrics
+        // Return metrics: return_rate, total_revenue_recovered, contacts_tracked
+        // Delivery metrics: delivered, read, failed, delivery_rate, read_rate, has_delivery_data
+        metrics.recentCampaigns = campaignPerformanceData.slice(0, 10).map(c => ({
+          ...c,
+          // Performance metrics (aliased for compatibility)
+          return_rate: c.return_rate || 0,
+          total_revenue: c.total_revenue_recovered || 0,
+          contacts_count: c.contacts_tracked || 0,
+          // Delivery metrics (now from campaign_performance view directly)
+          delivered: c.delivered || 0,
+          read: c.read || 0,
+          failed: c.failed || 0,
+          delivery_rate: c.delivery_rate || null,
+          read_rate: c.read_rate || null,
+          has_delivery_data: c.has_delivery_data || false
+        }));
       }
 
     console.log(`[CampaignService] Dashboard metrics loaded:`, {

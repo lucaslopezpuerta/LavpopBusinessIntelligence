@@ -1,6 +1,15 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.16 (2025-12-14)
+-- Version: 3.17 (2025-12-14)
+--
+-- v3.17: Delivery Metrics in campaign_performance View
+--   - campaign_performance view now includes delivery metrics directly
+--   - Added: delivered, read, failed, sent_pending columns (computed from contact_tracking.delivery_status)
+--   - Added: delivery_rate, read_rate, has_delivery_data computed fields
+--   - Removed: c.delivered from campaigns table (legacy/unused)
+--   - Dashboard no longer needs separate campaign_delivery_metrics query
+--   - Single source of truth for both return AND delivery metrics
+--   - See migrations/008_add_delivery_to_campaign_performance.sql
 --
 -- v3.16: Risk Level Capture at Time of Contact
 --   - record_automation_contact() now captures risk_level from customers table
@@ -121,9 +130,10 @@
 -- - automation_rules: Automation configurations
 --
 -- Views:
--- - campaign_performance: Campaign metrics with return rates
+-- - campaign_performance: Campaign metrics with return rates AND delivery metrics (v3.17)
 -- - campaign_effectiveness: Aggregated by campaign for effectiveness metrics
 -- - contact_effectiveness_summary: Overall contact tracking summary
+-- - campaign_delivery_metrics: Per-campaign delivery stats (legacy, use campaign_performance instead)
 -- - customer_summary: Customer metrics computed from transactions (NEW in v3.0)
 
 -- ==================== TRANSACTIONS TABLE (NEW v3.0) ====================
@@ -618,23 +628,57 @@ DROP VIEW IF EXISTS campaign_performance CASCADE;
 DROP VIEW IF EXISTS customer_summary CASCADE;
 
 -- Campaign performance view with effectiveness metrics
+-- v3.17: Now includes delivery metrics directly (no separate campaign_delivery_metrics query needed)
+-- Columns organized by: Identity → Timestamps → Config → Volume → Delivery → Returns
 CREATE OR REPLACE VIEW campaign_performance AS
 SELECT
+  -- ===== IDENTITY =====
   c.id,
   c.name,
-  c.audience,
   c.status,
-  c.contact_method,
-  c.sends,
-  c.delivered,
+
+  -- ===== TIMESTAMPS =====
   c.created_at,
   c.last_sent_at,
-  -- A/B testing fields (needed for dashboard display)
+
+  -- ===== CAMPAIGN CONFIG =====
+  c.audience,
+  c.contact_method,
   c.discount_percent,
   c.coupon_code,
   c.service_type,
-  -- Contact tracking metrics
+
+  -- ===== SEND VOLUME =====
+  c.sends,
   COUNT(DISTINCT ct.id) as contacts_tracked,
+
+  -- ===== DELIVERY METRICS (message delivery from Twilio webhooks) =====
+  COUNT(DISTINCT CASE WHEN ct.delivery_status = 'delivered' THEN ct.id END) as delivered,
+  COUNT(DISTINCT CASE WHEN ct.delivery_status = 'read' THEN ct.id END) as read,
+  COUNT(DISTINCT CASE WHEN ct.delivery_status IN ('failed', 'undelivered') THEN ct.id END) as failed,
+  COUNT(DISTINCT CASE WHEN ct.delivery_status = 'sent' THEN ct.id END) as sent_pending,
+  ROUND(
+    CASE
+      WHEN COUNT(DISTINCT ct.id) > 0
+      THEN (COUNT(DISTINCT CASE WHEN ct.delivery_status IN ('delivered', 'read') THEN ct.id END)::DECIMAL / COUNT(DISTINCT ct.id)) * 100
+      ELSE 0
+    END, 1
+  ) as delivery_rate,
+  ROUND(
+    CASE
+      WHEN COUNT(DISTINCT CASE WHEN ct.delivery_status IN ('delivered', 'read') THEN ct.id END) > 0
+      THEN (COUNT(DISTINCT CASE WHEN ct.delivery_status = 'read' THEN ct.id END)::DECIMAL /
+            COUNT(DISTINCT CASE WHEN ct.delivery_status IN ('delivered', 'read') THEN ct.id END)) * 100
+      ELSE 0
+    END, 1
+  ) as read_rate,
+  CASE
+    WHEN COUNT(DISTINCT CASE WHEN ct.delivery_status IS NOT NULL AND ct.delivery_status != 'pending' THEN ct.id END) > 0
+    THEN TRUE
+    ELSE FALSE
+  END as has_delivery_data,
+
+  -- ===== RETURN METRICS (customer return tracking) =====
   COUNT(DISTINCT CASE WHEN ct.status = 'returned' THEN ct.id END) as contacts_returned,
   ROUND(
     CASE
@@ -645,9 +689,10 @@ SELECT
   ) as return_rate,
   COALESCE(SUM(ct.return_revenue), 0) as total_revenue_recovered,
   ROUND(AVG(ct.days_to_return), 1) as avg_days_to_return
+
 FROM campaigns c
 LEFT JOIN contact_tracking ct ON c.id = ct.campaign_id
-GROUP BY c.id, c.name, c.audience, c.status, c.contact_method, c.sends, c.delivered, c.created_at, c.last_sent_at, c.discount_percent, c.coupon_code, c.service_type;
+GROUP BY c.id, c.name, c.status, c.created_at, c.last_sent_at, c.audience, c.contact_method, c.discount_percent, c.coupon_code, c.service_type, c.sends;
 
 -- Campaign effectiveness summary view (grouped by campaign)
 -- Enhanced with A/B testing metrics for discount effectiveness analysis

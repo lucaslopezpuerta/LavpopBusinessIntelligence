@@ -1,7 +1,11 @@
-// netlify/functions/twilio-webhook.js v1.4
+// netlify/functions/twilio-webhook.js v1.5
 // Twilio WhatsApp Webhook Handler for Button Callbacks
 //
 // CHANGELOG:
+// v1.5 (2025-12-14): Update contact_tracking.delivery_status for dashboard metrics
+//   - trackDeliveryStatus now updates contact_tracking.delivery_status directly
+//   - This enables campaign_performance view to show real delivery metrics
+//   - Fixes "Entregues" and "Lidas" columns showing "-" in dashboard
 // v1.4 (2025-12-12): Fixed campaign linking, button detection, and blacklist issues
 //   - trackDeliveryStatus now looks up campaign_id from comm_logs via message_sid
 //   - Button clicks now detected via ButtonText field (not just ButtonPayload)
@@ -271,9 +275,10 @@ async function handleStatusUpdate(webhookData, headers) {
 
 /**
  * Track delivery status for campaign metrics
- * Stores in webhook_events for real delivery rate calculations
+ * Stores in webhook_events AND updates contact_tracking.delivery_status
  * Updates existing record if message_sid exists (for status progression: sent → delivered → read)
  * IMPORTANT: Links to campaign_id by looking up comm_logs via message_sid
+ * v1.5: Now updates contact_tracking.delivery_status so campaign_performance view shows metrics
  */
 async function trackDeliveryStatus(messageSid, phone, status, errorCode = null) {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -288,6 +293,49 @@ async function trackDeliveryStatus(messageSid, phone, status, errorCode = null) 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const normalizedPhone = (phone || '').replace(/\D/g, '');
 
+    // ===== STEP 1: Update contact_tracking.delivery_status (for campaign_performance view) =====
+    // This is the critical update that enables dashboard delivery metrics
+    try {
+      const { data: ctUpdated, error: ctError } = await supabase
+        .from('contact_tracking')
+        .update({
+          delivery_status: status,
+          delivery_error_code: errorCode || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('twilio_sid', messageSid)
+        .select('id, campaign_id');
+
+      if (ctError) {
+        console.error('[TwilioWebhook] Error updating contact_tracking:', ctError.message);
+      } else if (ctUpdated && ctUpdated.length > 0) {
+        console.log(`[TwilioWebhook] Updated contact_tracking.delivery_status: ${messageSid} -> ${status} (${ctUpdated.length} records, campaign: ${ctUpdated[0]?.campaign_id || 'unknown'})`);
+      } else {
+        console.log(`[TwilioWebhook] No contact_tracking record found for twilio_sid: ${messageSid}`);
+      }
+    } catch (ctErr) {
+      console.error('[TwilioWebhook] contact_tracking update failed:', ctErr.message);
+    }
+
+    // ===== STEP 2: Update campaign_contacts for backward compatibility =====
+    try {
+      const { error: ccError } = await supabase
+        .from('campaign_contacts')
+        .update({
+          delivery_status: status,
+          error_code: errorCode || null
+        })
+        .eq('twilio_sid', messageSid);
+
+      if (ccError) {
+        // Ignore errors - campaign_contacts is deprecated
+        console.log('[TwilioWebhook] campaign_contacts update skipped:', ccError.message);
+      }
+    } catch (ccErr) {
+      // Ignore - deprecated table
+    }
+
+    // ===== STEP 3: Update webhook_events table (for analytics/debugging) =====
     // First, try to update existing record (for status progression)
     const { data: existing, error: selectError } = await supabase
       .from('webhook_events')
@@ -313,49 +361,38 @@ async function trackDeliveryStatus(messageSid, phone, status, errorCode = null) 
       if (updateError) {
         console.error('[TwilioWebhook] Error updating delivery status:', updateError.message);
       } else {
-        console.log(`[TwilioWebhook] Updated delivery: ${messageSid} ${existing.payload} -> ${status} (campaign: ${existing.campaign_id || 'unknown'})`);
+        console.log(`[TwilioWebhook] Updated webhook_events: ${messageSid} ${existing.payload} -> ${status}`);
       }
     } else {
-      // Look up campaign_id from campaign_contacts using twilio_sid
-      // This links webhook delivery events to the correct campaign
-      // campaign_contacts stores twilio_sid when record_automation_contact() or manual sends run
+      // Look up campaign_id from contact_tracking using twilio_sid
       let campaignId = null;
       try {
-        // First try campaign_contacts (primary location for campaign sends)
-        const { data: campaignContact } = await supabase
-          .from('campaign_contacts')
+        // Try contact_tracking first (unified table, always has campaign_id)
+        const { data: ctRecord } = await supabase
+          .from('contact_tracking')
           .select('campaign_id')
           .eq('twilio_sid', messageSid)
           .maybeSingle();
 
-        if (campaignContact?.campaign_id) {
-          campaignId = campaignContact.campaign_id;
-          console.log(`[TwilioWebhook] Found campaign_id ${campaignId} in campaign_contacts for ${messageSid}`);
+        if (ctRecord?.campaign_id) {
+          campaignId = ctRecord.campaign_id;
+          console.log(`[TwilioWebhook] Found campaign_id ${campaignId} in contact_tracking for ${messageSid}`);
         } else {
-          // Fallback: try automation_sends table
-          const { data: automationSend } = await supabase
-            .from('automation_sends')
-            .select('rule_id')
-            .eq('message_sid', messageSid)
+          // Fallback: try campaign_contacts (deprecated but may have older data)
+          const { data: campaignContact } = await supabase
+            .from('campaign_contacts')
+            .select('campaign_id')
+            .eq('twilio_sid', messageSid)
             .maybeSingle();
 
-          if (automationSend?.rule_id) {
-            // Get campaign_id from automation_rules
-            const { data: rule } = await supabase
-              .from('automation_rules')
-              .select('campaign_id')
-              .eq('id', automationSend.rule_id)
-              .maybeSingle();
-
-            if (rule?.campaign_id) {
-              campaignId = rule.campaign_id;
-              console.log(`[TwilioWebhook] Found campaign_id ${campaignId} via automation rule for ${messageSid}`);
-            }
+          if (campaignContact?.campaign_id) {
+            campaignId = campaignContact.campaign_id;
+            console.log(`[TwilioWebhook] Found campaign_id ${campaignId} in campaign_contacts for ${messageSid}`);
           }
         }
 
         if (!campaignId) {
-          console.log(`[TwilioWebhook] No campaign found for message ${messageSid} - delivery won't be linked`);
+          console.log(`[TwilioWebhook] No campaign found for message ${messageSid} - webhook event won't be linked`);
         }
       } catch (lookupError) {
         console.error('[TwilioWebhook] Error looking up campaign_id:', lookupError.message);
