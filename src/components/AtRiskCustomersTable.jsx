@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v8.5 - CAMPAIGN CONTEXT TRACKING
+// AtRiskCustomersTable.jsx v8.6 - BLACKLIST INDICATOR
 // ✅ No horizontal scroll
 // ✅ Mobile: Card layout with swipe actions (like CustomerListDrilldown)
 // ✅ Desktop: Table with all columns visible
@@ -14,8 +14,14 @@
 // ✅ Design System v3.1 compliant header
 // ✅ Brazilian mobile phone validation for WhatsApp
 // ✅ Passes customer context for effectiveness tracking
+// ✅ Blacklist indicator with toggle to show/hide
 //
 // CHANGELOG:
+// v8.6 (2025-12-14): Blacklist indicator
+//   - Shows "Bloqueado" badge for blacklisted customers
+//   - Toggle to show/hide blacklisted customers (hidden by default)
+//   - Disables all contact actions for blacklisted customers
+//   - Uses useBlacklist hook for centralized management
 // v8.5 (2025-12-08): Campaign context tracking
 //   - Passes customer name and risk level when marking as contacted
 //   - Enables auto-detect returns via useContactTracking
@@ -79,13 +85,14 @@
 // v6.0 (2025-11-21): No overflow redesign
 
 import React, { useState, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
-import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, Check, ArrowUpDown, Users } from 'lucide-react';
+import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, Check, ArrowUpDown, Users, Ban, EyeOff, Eye } from 'lucide-react';
 import { RISK_LABELS } from '../utils/customerMetrics';
 
 // Lazy-load heavy modal (40KB savings)
 const CustomerProfileModal = lazy(() => import('./CustomerProfileModal'));
 import { formatCurrency } from '../utils/formatters';
 import { useContactTracking } from '../hooks/useContactTracking';
+import { useBlacklist } from '../hooks/useBlacklist';
 import { addCommunicationEntry, getDefaultNotes } from '../utils/communicationLog';
 import { isValidBrazilianMobile, normalizePhone } from '../utils/phoneUtils';
 
@@ -102,6 +109,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('days'); // Default sort by days absent
+  const [showBlacklisted, setShowBlacklisted] = useState(false);
 
   // Swipe state for mobile
   const [swipeState, setSwipeState] = useState({ id: null, direction: null, offset: 0 });
@@ -120,19 +128,32 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     customers: allAtRiskCustomers
   });
 
-  // Sort customers based on selected option
+  // Blacklist management (centralized hook)
+  const { isBlacklisted, getBlacklistReason } = useBlacklist();
+
+  // Sort and filter customers based on blacklist toggle
   const sortedCustomers = useMemo(() => {
-    const sorted = [...allAtRiskCustomers];
+    // Filter out blacklisted customers if toggle is off
+    let filtered = [...allAtRiskCustomers];
+    if (!showBlacklisted) {
+      filtered = filtered.filter(c => !isBlacklisted(c.phone));
+    }
+
     switch (sortBy) {
       case 'days':
-        return sorted.sort((a, b) => (b.daysSinceLastVisit || 0) - (a.daysSinceLastVisit || 0));
+        return filtered.sort((a, b) => (b.daysSinceLastVisit || 0) - (a.daysSinceLastVisit || 0));
       case 'name':
-        return sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       case 'value':
       default:
-        return sorted.sort((a, b) => (b.netTotal || 0) - (a.netTotal || 0));
+        return filtered.sort((a, b) => (b.netTotal || 0) - (a.netTotal || 0));
     }
-  }, [allAtRiskCustomers, sortBy]);
+  }, [allAtRiskCustomers, sortBy, showBlacklisted, isBlacklisted]);
+
+  // Count blacklisted customers in the at-risk list
+  const blacklistedInList = useMemo(() => {
+    return allAtRiskCustomers.filter(c => isBlacklisted(c.phone)).length;
+  }, [allAtRiskCustomers, isBlacklisted]);
 
   // Pagination
   const totalPages = Math.ceil(sortedCustomers.length / ITEMS_PER_PAGE);
@@ -316,26 +337,51 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
             </div>
           </div>
 
-          {/* Sorting Controls */}
-          <div className="flex items-center gap-2">
-            <ArrowUpDown className="w-4 h-4 text-slate-400" />
-            <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
-              {Object.entries(SORT_OPTIONS).map(([key, { label }]) => (
-                <button
-                  key={key}
-                  onClick={() => handleSortChange(key)}
-                  className={`
-                    px-3 py-1.5 text-xs font-medium transition-all
-                    ${sortBy === key
-                      ? 'bg-lavpop-blue text-white'
-                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
-                    }
-                  `}
-                >
-                  {label}
-                </button>
-              ))}
+          {/* Sorting Controls and Blacklist Toggle */}
+          <div className="flex items-center gap-3">
+            {/* Sorting */}
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="w-4 h-4 text-slate-400" />
+              <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
+                {Object.entries(SORT_OPTIONS).map(([key, { label }]) => (
+                  <button
+                    key={key}
+                    onClick={() => handleSortChange(key)}
+                    className={`
+                      px-3 py-1.5 text-xs font-medium transition-all
+                      ${sortBy === key
+                        ? 'bg-lavpop-blue text-white'
+                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                      }
+                    `}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
+            {/* Blacklist Toggle */}
+            {blacklistedInList > 0 && (
+              <button
+                onClick={() => setShowBlacklisted(!showBlacklisted)}
+                className={`
+                  flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg border transition-colors
+                  ${showBlacklisted
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
+                    : 'text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 hover:text-slate-600 dark:hover:text-slate-300'
+                  }
+                `}
+                title={showBlacklisted ? 'Ocultar bloqueados' : `Mostrar ${blacklistedInList} bloqueado${blacklistedInList > 1 ? 's' : ''}`}
+              >
+                {showBlacklisted ? (
+                  <Eye className="w-3.5 h-3.5" />
+                ) : (
+                  <EyeOff className="w-3.5 h-3.5" />
+                )}
+                <span>{blacklistedInList}</span>
+                <Ban className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -345,17 +391,21 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
             const styles = getRiskStyles(customer.riskLevel);
             const customerId = customer.doc || `idx-${index}`;
             const contacted = isContacted(customerId);
+            const blacklisted = isBlacklisted(customer.phone);
+            const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
             const hasPhone = customer.phone && formatPhone(customer.phone);
             const canWhatsApp = hasValidWhatsApp(customer.phone);
             const isSwipingThis = swipeState.id === customerId;
+            // Disable contact actions if blacklisted
+            const canContact = !blacklisted;
 
             return (
               <div
                 key={customer.doc || index}
                 className="relative overflow-hidden rounded-xl"
               >
-                {/* Swipe action backgrounds (mobile only, hide when contacted) */}
-                {hasPhone && !contacted && (
+                {/* Swipe action backgrounds (mobile only, hide when contacted or blacklisted) */}
+                {hasPhone && !contacted && canContact && (
                   <>
                     {/* WhatsApp (swipe right) - only if valid Brazilian mobile */}
                     {canWhatsApp && (
@@ -377,45 +427,56 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                     bg-slate-50 dark:bg-slate-700
                     border-l-4 rounded-xl
                     ${contacted ? 'opacity-60' : ''}
+                    ${blacklisted ? 'opacity-70' : ''}
                     transition-transform duration-150 ease-out
                     touch-pan-y
                   `}
                   style={{
-                    borderLeftColor: contacted ? '#10b981' : styles.borderColorValue,
+                    borderLeftColor: blacklisted ? '#ef4444' : contacted ? '#10b981' : styles.borderColorValue,
                     transform: isSwipingThis ? `translateX(${swipeState.offset}px)` : 'translateX(0)'
                   }}
                   onClick={() => setSelectedCustomer(customer)}
-                  onTouchStart={(e) => hasPhone && !contacted && handleTouchStart(e, customerId)}
-                  onTouchMove={(e) => hasPhone && !contacted && handleTouchMove(e, customerId)}
-                  onTouchEnd={() => !contacted && handleTouchEnd(customer, customerId)}
+                  onTouchStart={(e) => hasPhone && !contacted && canContact && handleTouchStart(e, customerId)}
+                  onTouchMove={(e) => hasPhone && !contacted && canContact && handleTouchMove(e, customerId)}
+                  onTouchEnd={() => !contacted && canContact && handleTouchEnd(customer, customerId)}
                 >
                   {/* Risk dot indicator */}
                   <div className="relative flex-shrink-0">
                     <div className={`
                       w-9 h-9 rounded-full flex items-center justify-center
-                      ${contacted
-                        ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-white dark:bg-slate-600 text-slate-600 dark:text-slate-300'
+                      ${blacklisted
+                        ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+                        : contacted
+                          ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-white dark:bg-slate-600 text-slate-600 dark:text-slate-300'
                       }
                       shadow-sm font-semibold text-xs
-                    `}>
-                      {contacted ? (
+                    `}
+                      title={blacklisted ? (blacklistInfo?.reason || 'Bloqueado') : undefined}
+                    >
+                      {blacklisted ? (
+                        <Ban className="w-4 h-4" />
+                      ) : contacted ? (
                         <Check className="w-4 h-4" />
                       ) : (
                         (customer.name || '?').charAt(0).toUpperCase()
                       )}
                     </div>
-                    {/* Risk indicator dot */}
-                    {!contacted && (
+                    {/* Risk indicator dot (hide if blacklisted) */}
+                    {!contacted && !blacklisted && (
                       <div className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${styles.dot} border-2 border-slate-50 dark:border-slate-700`} />
                     )}
                   </div>
 
                   {/* Customer info */}
                   <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-semibold truncate ${contacted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                    <p className={`text-sm font-semibold truncate ${blacklisted ? 'text-slate-500 dark:text-slate-400' : contacted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                       {customer.name || 'Sem nome'}
-                      {contacted && <span className="text-emerald-500 ml-1.5 text-xs font-normal no-underline">✓</span>}
+                      {blacklisted ? (
+                        <span className="text-red-500 ml-1.5 text-xs font-normal cursor-help" title={blacklistInfo?.reason || 'Bloqueado'}>Bloqueado</span>
+                      ) : contacted && (
+                        <span className="text-emerald-500 ml-1.5 text-xs font-normal no-underline">✓</span>
+                      )}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                       <span className={styles.dot.replace('bg-', 'text-').replace('-500', '-600')}>{styles.label === 'Em Risco' ? 'Risco' : styles.label}</span>
@@ -426,24 +487,26 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                     </p>
                   </div>
 
-                  {/* Action buttons */}
-                  <div className="flex gap-1 flex-shrink-0">
-                    {/* Mark as contacted */}
-                    <button
-                      onClick={(e) => handleMarkContacted(e, customerId)}
-                      className={`
-                        w-10 h-10 flex items-center justify-center
-                        rounded-lg border transition-colors
-                        ${contacted
-                          ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                          : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600'
-                        }
-                      `}
-                      title={contacted ? 'Desmarcar' : 'Marcar contactado'}
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {/* Action buttons (hidden for blacklisted) */}
+                  {!blacklisted && (
+                    <div className="flex gap-1 flex-shrink-0">
+                      {/* Mark as contacted */}
+                      <button
+                        onClick={(e) => handleMarkContacted(e, customerId)}
+                        className={`
+                          w-10 h-10 flex items-center justify-center
+                          rounded-lg border transition-colors
+                          ${contacted
+                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                            : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600'
+                          }
+                        `}
+                        title={contacted ? 'Desmarcar' : 'Marcar contactado'}
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
 
                   {/* Chevron indicator */}
                   <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -497,6 +560,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                 const styles = getRiskStyles(customer.riskLevel);
                 const customerId = customer.doc || `idx-${index}`;
                 const contacted = isContacted(customerId);
+                const blacklisted = isBlacklisted(customer.phone);
+                const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
 
                 return (
                   <tr
@@ -511,8 +576,9 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                       border-l-4
                       focus-visible:outline-none focus-visible:bg-blue-50 dark:focus-visible:bg-blue-900/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
                       ${contacted ? 'opacity-60' : ''}
+                      ${blacklisted ? 'opacity-70' : ''}
                     `}
-                    style={{ borderLeftColor: contacted ? '#10b981' : styles.borderColorValue }}
+                    style={{ borderLeftColor: blacklisted ? '#ef4444' : contacted ? '#10b981' : styles.borderColorValue }}
                     onClick={() => setSelectedCustomer(customer)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -523,9 +589,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                   >
                     {/* Cliente */}
                     <td className="px-4 py-2">
-                      <div className={`font-semibold text-sm ${contacted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                      <div className={`font-semibold text-sm ${blacklisted ? 'text-slate-500 dark:text-slate-400' : contacted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                         {customer.name || 'Sem nome'}
-                        {contacted && <span className="text-emerald-500 ml-1.5 text-xs font-normal no-underline">✓</span>}
+                        {blacklisted ? (
+                          <span className="text-red-500 ml-1.5 text-xs font-normal cursor-help" title={blacklistInfo?.reason || 'Bloqueado'}>Bloqueado</span>
+                        ) : contacted && (
+                          <span className="text-emerald-500 ml-1.5 text-xs font-normal no-underline">✓</span>
+                        )}
                       </div>
                     </td>
 
@@ -553,6 +623,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
 
                     {/* Ações */}
                     <td className="px-4 py-2">
+                      {blacklisted ? (
+                        <div className="flex items-center justify-center">
+                          <span className="text-xs text-slate-400 dark:text-slate-500 italic">Bloqueado</span>
+                        </div>
+                      ) : (
                       <div className="flex items-center justify-center gap-2">
                         {/* Mark as contacted button */}
                         <button
@@ -627,6 +702,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                           </>
                         )}
                       </div>
+                      )}
                     </td>
                   </tr>
                 );

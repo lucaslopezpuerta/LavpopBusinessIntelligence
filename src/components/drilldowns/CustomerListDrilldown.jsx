@@ -1,4 +1,4 @@
-// CustomerListDrilldown.jsx v3.7 - CONTACT CONTEXT TRACKING
+// CustomerListDrilldown.jsx v3.8 - BLACKLIST INDICATOR
 // ✅ Pagination with "Ver mais" button
 // ✅ WhatsApp and Call actions
 // ✅ Dynamic sorting with controls
@@ -11,8 +11,14 @@
 // ✅ Design System v3.1 compliant
 // ✅ Brazilian mobile phone validation for WhatsApp
 // ✅ Passes customer context for effectiveness tracking
+// ✅ Blacklist indicator with toggle to show/hide
 //
 // CHANGELOG:
+// v3.8 (2025-12-14): Blacklist indicator
+//   - Shows "Bloqueado" badge for blacklisted customers
+//   - Toggle to show/hide blacklisted customers (hidden by default)
+//   - Disables all contact actions for blacklisted customers
+//   - Uses useBlacklist hook for centralized management
 // v3.7 (2025-12-08): Contact context tracking
 //   - Passes customer name and risk level when marking as contacted
 //   - Uses markContacted for proper effectiveness tracking
@@ -56,8 +62,9 @@
 // v2.0: Initial SMART LISTS implementation
 
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { Phone, MessageCircle, Check, ChevronDown, ArrowUpDown, PartyPopper } from 'lucide-react';
+import { Phone, MessageCircle, Check, ChevronDown, ArrowUpDown, PartyPopper, Ban, EyeOff, Eye } from 'lucide-react';
 import { useContactTracking } from '../../hooks/useContactTracking';
+import { useBlacklist } from '../../hooks/useBlacklist';
 import { addCommunicationEntry, getDefaultNotes } from '../../utils/communicationLog';
 import { isValidBrazilianMobile, normalizePhone } from '../../utils/phoneUtils';
 
@@ -74,10 +81,14 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
     const [sortBy, setSortBy] = useState(type === 'atrisk' ? 'days' : 'value');
     const [swipeState, setSwipeState] = useState({ id: null, direction: null, offset: 0 });
+    const [showBlacklisted, setShowBlacklisted] = useState(false);
     const touchStartRef = useRef({ x: 0, y: 0 });
 
     // Shared contact tracking (syncs across app with effectiveness tracking)
     const { isContacted, toggleContacted, markContacted } = useContactTracking();
+
+    // Blacklist management (centralized hook)
+    const { isBlacklisted, getBlacklistReason, blacklistCount } = useBlacklist();
 
     // Helper to get customer context for effectiveness tracking
     const getCustomerContext = useCallback((customerId) => {
@@ -153,20 +164,29 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         return 'text-slate-500 dark:text-slate-400';
     };
 
-    // Sort customers
+    // Sort and filter customers
     const sortedCustomers = useMemo(() => {
-        const sorted = [...customers];
+        // Filter out blacklisted customers if toggle is off
+        let filtered = [...customers];
+        if (!showBlacklisted) {
+            filtered = filtered.filter(c => !isBlacklisted(c.phone));
+        }
 
         switch (sortBy) {
             case 'days':
-                return sorted.sort((a, b) => (b.daysSinceLastVisit || 0) - (a.daysSinceLastVisit || 0));
+                return filtered.sort((a, b) => (b.daysSinceLastVisit || 0) - (a.daysSinceLastVisit || 0));
             case 'name':
-                return sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             case 'value':
             default:
-                return sorted.sort((a, b) => (b.netTotal || 0) - (a.netTotal || 0));
+                return filtered.sort((a, b) => (b.netTotal || 0) - (a.netTotal || 0));
         }
-    }, [customers, sortBy]);
+    }, [customers, sortBy, showBlacklisted, isBlacklisted]);
+
+    // Count blacklisted customers in this list
+    const blacklistedInList = useMemo(() => {
+        return customers.filter(c => isBlacklisted(c.phone)).length;
+    }, [customers, isBlacklisted]);
 
     const handleCall = useCallback((e, phone, customerId) => {
         e?.stopPropagation();
@@ -319,25 +339,49 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         <div className="space-y-3">
             {/* Sorting controls - compact */}
             {customers.length > 1 && (
-                <div className="flex items-center gap-2 pb-2">
-                    <ArrowUpDown className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                    <div className="flex gap-1 flex-wrap">
-                        {Object.entries(SORT_OPTIONS).map(([key, option]) => (
-                            <button
-                                key={key}
-                                onClick={() => setSortBy(key)}
-                                className={`
-                                    px-2 py-0.5 text-xs rounded transition-colors
-                                    ${sortBy === key
-                                        ? 'bg-lavpop-blue text-white'
-                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                                    }
-                                `}
-                            >
-                                {option.label}
-                            </button>
-                        ))}
+                <div className="flex items-center justify-between gap-2 pb-2">
+                    <div className="flex items-center gap-2">
+                        <ArrowUpDown className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                        <div className="flex gap-1 flex-wrap">
+                            {Object.entries(SORT_OPTIONS).map(([key, option]) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setSortBy(key)}
+                                    className={`
+                                        px-2 py-0.5 text-xs rounded transition-colors
+                                        ${sortBy === key
+                                            ? 'bg-lavpop-blue text-white'
+                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                        }
+                                    `}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
+                    {/* Blacklist toggle */}
+                    {blacklistedInList > 0 && (
+                        <button
+                            onClick={() => setShowBlacklisted(!showBlacklisted)}
+                            className={`
+                                flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors
+                                ${showBlacklisted
+                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                                }
+                            `}
+                            title={showBlacklisted ? 'Ocultar bloqueados' : `Mostrar ${blacklistedInList} bloqueado${blacklistedInList > 1 ? 's' : ''}`}
+                        >
+                            {showBlacklisted ? (
+                                <Eye className="w-3 h-3" />
+                            ) : (
+                                <EyeOff className="w-3 h-3" />
+                            )}
+                            <span>{blacklistedInList}</span>
+                            <Ban className="w-3 h-3" />
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -347,18 +391,22 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                     const riskStyle = getRiskStyle(customer);
                     const customerId = customer.doc || `idx-${index}`;
                     const contacted = isContacted(customerId);
+                    const blacklisted = isBlacklisted(customer.phone);
+                    const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
                     const hasPhone = customer.phone && formatPhone(customer.phone);
                     const canWhatsApp = hasValidWhatsApp(customer.phone);
                     const isSwipingThis = swipeState.id === customerId;
                     const tertiaryInfo = getTertiaryInfo(customer);
+                    // Disable contact actions if blacklisted
+                    const canContact = !blacklisted;
 
                     return (
                         <div
                             key={customer.doc || index}
                             className="relative overflow-hidden rounded-xl"
                         >
-                            {/* Swipe action backgrounds (mobile only, hide when contacted) */}
-                            {hasPhone && !contacted && (
+                            {/* Swipe action backgrounds (mobile only, hide when contacted or blacklisted) */}
+                            {hasPhone && !contacted && canContact && (
                                 <>
                                     {/* WhatsApp (swipe right) - only for valid Brazilian mobiles */}
                                     {canWhatsApp && (
@@ -380,43 +428,54 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                     bg-slate-50 dark:bg-slate-700
                                     border border-slate-200 dark:border-slate-700 rounded-xl
                                     ${contacted ? 'opacity-60' : ''}
+                                    ${blacklisted ? 'opacity-70 border-red-200 dark:border-red-900/50' : ''}
                                     transition-transform duration-150 ease-out
                                     touch-pan-y
                                 `}
                                 style={{
                                     transform: isSwipingThis ? `translateX(${swipeState.offset}px)` : 'translateX(0)'
                                 }}
-                                onTouchStart={(e) => hasPhone && !contacted && handleTouchStart(e, customerId)}
-                                onTouchMove={(e) => hasPhone && !contacted && handleTouchMove(e, customerId)}
-                                onTouchEnd={() => !contacted && handleTouchEnd(customer, customerId)}
+                                onTouchStart={(e) => hasPhone && !contacted && canContact && handleTouchStart(e, customerId)}
+                                onTouchMove={(e) => hasPhone && !contacted && canContact && handleTouchMove(e, customerId)}
+                                onTouchEnd={() => !contacted && canContact && handleTouchEnd(customer, customerId)}
                             >
                                 {/* Avatar with initials */}
                                 <div className="relative flex-shrink-0">
                                     <div className={`
                                         w-9 h-9 rounded-full flex items-center justify-center
-                                        ${contacted
-                                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
-                                            : 'bg-white dark:bg-slate-600 text-slate-600 dark:text-slate-300'
+                                        ${blacklisted
+                                            ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+                                            : contacted
+                                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                                                : 'bg-white dark:bg-slate-600 text-slate-600 dark:text-slate-300'
                                         }
                                         shadow-sm font-semibold text-xs
-                                    `}>
-                                        {contacted ? (
+                                    `}
+                                        title={blacklisted ? (blacklistInfo?.reason || 'Bloqueado') : undefined}
+                                    >
+                                        {blacklisted ? (
+                                            <Ban className="w-4 h-4" />
+                                        ) : contacted ? (
                                             <Check className="w-4 h-4" />
                                         ) : (
                                             getInitials(customer.name)
                                         )}
                                     </div>
-                                    {/* Risk indicator dot */}
-                                    {riskStyle && !contacted && (
+                                    {/* Risk indicator dot (hide if blacklisted) */}
+                                    {riskStyle && !contacted && !blacklisted && (
                                         <div className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${riskStyle.dot} border-2 border-slate-50 dark:border-slate-700`} />
                                     )}
                                 </div>
 
                                 {/* Customer info - compact layout */}
                                 <div className="min-w-0 flex-1">
-                                    <p className={`text-sm font-semibold truncate ${contacted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                                    <p className={`text-sm font-semibold truncate ${blacklisted ? 'text-slate-500 dark:text-slate-400' : contacted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                                         {customer.name || 'Cliente sem nome'}
-                                        {contacted && <span className="text-emerald-500 ml-1.5 text-xs font-normal no-underline">Contactado</span>}
+                                        {blacklisted ? (
+                                            <span className="text-red-500 ml-1.5 text-xs font-normal cursor-help" title={blacklistInfo?.reason || 'Bloqueado'}>Bloqueado</span>
+                                        ) : contacted && (
+                                            <span className="text-emerald-500 ml-1.5 text-xs font-normal no-underline">Contactado</span>
+                                        )}
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                                         {getSecondaryInfo(customer)}
@@ -425,50 +484,52 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                     </p>
                                 </div>
 
-                                {/* Action buttons - 44px touch target */}
-                                <div className="flex gap-1 flex-shrink-0">
-                                    {/* Mark as contacted */}
-                                    <button
-                                        onClick={(e) => handleMarkContacted(e, customerId)}
-                                        className={`
-                                            w-11 h-11 flex items-center justify-center
-                                            rounded-lg border transition-colors
-                                            ${contacted
-                                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                                                : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
-                                            }
-                                        `}
-                                        title={contacted ? 'Desmarcar' : 'Marcar contactado'}
-                                    >
-                                        <Check className="w-4 h-4" />
-                                    </button>
+                                {/* Action buttons - 44px touch target (hidden for blacklisted) */}
+                                {!blacklisted && (
+                                    <div className="flex gap-1 flex-shrink-0">
+                                        {/* Mark as contacted */}
+                                        <button
+                                            onClick={(e) => handleMarkContacted(e, customerId)}
+                                            className={`
+                                                w-11 h-11 flex items-center justify-center
+                                                rounded-lg border transition-colors
+                                                ${contacted
+                                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                                                    : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                                }
+                                            `}
+                                            title={contacted ? 'Desmarcar' : 'Marcar contactado'}
+                                        >
+                                            <Check className="w-4 h-4" />
+                                        </button>
 
-                                    {hasPhone && (
-                                        <>
-                                            {/* Call button - hidden on mobile (use swipe) */}
-                                            <button
-                                                onClick={(e) => handleCall(e, customer.phone, customerId)}
-                                                className="hidden md:flex w-11 h-11 items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-lavpop-blue dark:text-blue-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                                                title="Ligar"
-                                            >
-                                                <Phone className="w-4 h-4" />
-                                            </button>
-                                            {/* WhatsApp button - hidden on mobile (use swipe), disabled for invalid numbers */}
-                                            <button
-                                                onClick={(e) => handleWhatsApp(e, customer.phone, customerId)}
-                                                disabled={!canWhatsApp}
-                                                className={`hidden md:flex w-11 h-11 items-center justify-center rounded-lg border transition-colors ${
-                                                    canWhatsApp
-                                                        ? 'bg-white dark:bg-slate-800 text-lavpop-green border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
-                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                                                }`}
-                                                title={canWhatsApp ? 'WhatsApp' : 'Número inválido para WhatsApp'}
-                                            >
-                                                <MessageCircle className="w-4 h-4" />
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
+                                        {hasPhone && (
+                                            <>
+                                                {/* Call button - hidden on mobile (use swipe) */}
+                                                <button
+                                                    onClick={(e) => handleCall(e, customer.phone, customerId)}
+                                                    className="hidden md:flex w-11 h-11 items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-lavpop-blue dark:text-blue-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                                    title="Ligar"
+                                                >
+                                                    <Phone className="w-4 h-4" />
+                                                </button>
+                                                {/* WhatsApp button - hidden on mobile (use swipe), disabled for invalid numbers */}
+                                                <button
+                                                    onClick={(e) => handleWhatsApp(e, customer.phone, customerId)}
+                                                    disabled={!canWhatsApp}
+                                                    className={`hidden md:flex w-11 h-11 items-center justify-center rounded-lg border transition-colors ${
+                                                        canWhatsApp
+                                                            ? 'bg-white dark:bg-slate-800 text-lavpop-green border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
+                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                                                    }`}
+                                                    title={canWhatsApp ? 'WhatsApp' : 'Número inválido para WhatsApp'}
+                                                >
+                                                    <MessageCircle className="w-4 h-4" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );

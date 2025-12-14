@@ -1,8 +1,13 @@
-// CustomerProfileModal.jsx v2.1 - BACKEND COMMUNICATION LOG
+// CustomerProfileModal.jsx v2.2 - BLACKLIST INDICATOR
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v2.2 (2025-12-14): Blacklist indicator
+//   - Shows "Bloqueado" badge for blacklisted customers (takes precedence over contacted)
+//   - Disables all contact actions (Call, WhatsApp, Email) for blacklisted
+//   - Shows blacklist reason discreetly on hover
+//   - Uses useBlacklist hook for centralized blacklist management
 // v2.1 (2025-12-14): Mask CPF for privacy
 //   - Added maskCpf() helper: 12345678901 → 123.***.***-01
 //   - CPF now displays masked in Personal Information section
@@ -84,6 +89,7 @@ import {
     Shield,
     Pause,
     UserMinus,
+    Ban,
 } from 'lucide-react';
 
 // Segment-based avatar configuration
@@ -129,6 +135,7 @@ import { useContactTracking } from '../hooks/useContactTracking';
 import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, getDefaultNotes } from '../utils/communicationLog';
 import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
 import { parseBrDate } from '../utils/dateUtils';
+import { useBlacklist } from '../hooks/useBlacklist';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
@@ -185,6 +192,11 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const phoneError = !hasValidPhone && customer.phone
         ? getPhoneValidationError(customer.phone)
         : null;
+
+    // Blacklist check (takes precedence over contacted status)
+    const { isBlacklisted, getBlacklistReason } = useBlacklist();
+    const blacklisted = isBlacklisted(customer.phone);
+    const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
 
     // Listen for communication log updates from other components
     useEffect(() => {
@@ -370,8 +382,16 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                     {customer.name}
                                 </h2>
                                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                    {/* Contact status indicator */}
-                                    {contacted && (
+                                    {/* Blacklist indicator (takes precedence) */}
+                                    {blacklisted ? (
+                                        <div
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-red-600 text-white shadow-sm cursor-help"
+                                            title={blacklistInfo?.reason || 'Bloqueado'}
+                                        >
+                                            <Ban className="w-2.5 h-2.5" />
+                                            Bloqueado
+                                        </div>
+                                    ) : contacted && (
                                         <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-500 text-white shadow-sm">
                                             <Check className="w-2.5 h-2.5" />
                                             Contactado
@@ -393,44 +413,47 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </div>
                             </div>
                             {/* Quick Actions - desktop only (contacted toggle moved to Communication History) */}
-                            <div className="hidden sm:flex gap-2">
-                                {customer.phone && (
-                                    <>
-                                        {/* Call button */}
+                            {/* Hide all actions if blacklisted */}
+                            {!blacklisted && (
+                                <div className="hidden sm:flex gap-2">
+                                    {customer.phone && (
+                                        <>
+                                            {/* Call button */}
+                                            <button
+                                                onClick={handleCall}
+                                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-lavpop-blue hover:text-white transition-colors text-xs font-semibold border border-slate-200 dark:border-slate-600"
+                                            >
+                                                <Phone className="w-3 h-3" />
+                                                <span className="hidden min-[500px]:inline">Ligar</span>
+                                            </button>
+                                            {/* WhatsApp button - disabled if phone is invalid */}
+                                            <button
+                                                onClick={handleWhatsApp}
+                                                disabled={!hasValidPhone}
+                                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                                                    hasValidPhone
+                                                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white border-green-200 dark:border-green-800 cursor-pointer'
+                                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 cursor-not-allowed'
+                                                }`}
+                                                title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido para WhatsApp')}
+                                            >
+                                                <MessageCircle className="w-4 h-4" />
+                                                <span className="hidden min-[500px]:inline">WhatsApp</span>
+                                            </button>
+                                        </>
+                                    )}
+                                    {/* Email button */}
+                                    {customer.email && (
                                         <button
-                                            onClick={handleCall}
-                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-lavpop-blue hover:text-white transition-colors text-xs font-semibold border border-slate-200 dark:border-slate-600"
+                                            onClick={handleEmail}
+                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white transition-colors text-xs font-semibold border border-blue-200 dark:border-blue-800"
                                         >
-                                            <Phone className="w-3 h-3" />
-                                            <span className="hidden min-[500px]:inline">Ligar</span>
+                                            <Mail className="w-3 h-3" />
+                                            <span className="hidden min-[500px]:inline">Email</span>
                                         </button>
-                                        {/* WhatsApp button - disabled if phone is invalid */}
-                                        <button
-                                            onClick={handleWhatsApp}
-                                            disabled={!hasValidPhone}
-                                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                                                hasValidPhone
-                                                    ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white border-green-200 dark:border-green-800 cursor-pointer'
-                                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 cursor-not-allowed'
-                                            }`}
-                                            title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido para WhatsApp')}
-                                        >
-                                            <MessageCircle className="w-4 h-4" />
-                                            <span className="hidden min-[500px]:inline">WhatsApp</span>
-                                        </button>
-                                    </>
-                                )}
-                                {/* Email button */}
-                                {customer.email && (
-                                    <button
-                                        onClick={handleEmail}
-                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white transition-colors text-xs font-semibold border border-blue-200 dark:border-blue-800"
-                                    >
-                                        <Mail className="w-3 h-3" />
-                                        <span className="hidden min-[500px]:inline">Email</span>
-                                    </button>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <button
@@ -567,8 +590,8 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             <Check className="w-3 h-3" />
                                             <span className="hidden min-[400px]:inline">{contacted ? 'Contactado' : 'Marcar contactado'}</span>
                                         </button>
-                                        {/* WhatsApp button for mobile - disabled if phone is invalid */}
-                                        {customer.phone && (
+                                        {/* WhatsApp button for mobile - hidden if blacklisted, disabled if phone is invalid */}
+                                        {customer.phone && !blacklisted && (
                                             <button
                                                 onClick={handleWhatsApp}
                                                 disabled={!hasValidPhone}
