@@ -1630,7 +1630,12 @@ async function getContactTracking(supabase, params, headers) {
     query = query.eq('customer_id', params.customer_id);
   }
   if (params.status) {
-    query = query.eq('status', params.status);
+    // v3.2: Support array of statuses (e.g., ['pending', 'queued'])
+    if (Array.isArray(params.status)) {
+      query = query.in('status', params.status);
+    } else {
+      query = query.eq('status', params.status);
+    }
   }
   if (params.campaign_id) {
     query = query.eq('campaign_id', params.campaign_id);

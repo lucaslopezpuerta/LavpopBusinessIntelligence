@@ -1,8 +1,18 @@
-// CustomerSegmentModal.jsx v1.2
+// CustomerSegmentModal.jsx v1.5
 // Clean modal for displaying filtered customer lists with campaign integration
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.5 (2025-12-15): Fixed contacted status display + default filter
+//   - hideContacted now defaults to true (better for campaign targeting)
+//   - Backend updated to include 'queued' status in contacted check
+// v1.4 (2025-12-15): Removed WhatsApp/Call buttons
+//   - Modal now focused on campaign/automation actions only
+//   - Individual contact actions available via customer profile modal
+// v1.3 (2025-12-15): Fixed duplicate contact_tracking records bug
+//   - Removed onMarkContacted call after handleIncludeInAutomation
+//   - That call was creating a second "Contato Manual" record with wrong data
+//   - Now dispatches 'contact-tracking-changed' event to refresh UI instead
 // v1.2 (2025-12-15): Portal rendering + phone field fixes
 //   - Uses React Portal to render at document.body (fixes modal inside chart containers)
 //   - Fixed phone field to check both 'phone' and 'telefone' (different data sources)
@@ -15,20 +25,18 @@
 //   - Two-track campaign integration (automated + manual)
 //   - Selection modes: Select All + individual checkboxes
 //   - Filter toggles: hide contacted, hide blacklisted
-//   - Quick actions: WhatsApp, Call per customer row
 //   - Click customer name to open profile modal
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Users, Phone, MessageCircle, Check, ChevronRight,
-  Zap, Plus, AlertTriangle, UserPlus, TrendingUp, RefreshCw
+  X, Users, Check, ChevronRight,
+  Plus, RefreshCw
 } from 'lucide-react';
 import { useBlacklist } from '../../hooks/useBlacklist';
 import { useActiveCampaigns } from '../../hooks/useActiveCampaigns';
-import { isValidBrazilianMobile, normalizePhone } from '../../utils/phoneUtils';
-import { addCommunicationEntry, getDefaultNotes } from '../../utils/communicationLog';
+import { normalizePhone } from '../../utils/phoneUtils';
 import { api } from '../../utils/apiService';
 
 // Items per page for pagination
@@ -64,7 +72,7 @@ const CustomerSegmentModal = ({
 }) => {
   // State
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [hideContacted, setHideContacted] = useState(false);
+  const [hideContacted, setHideContacted] = useState(true);  // v1.5: Default true for campaign targeting
   const [hideBlacklisted, setHideBlacklisted] = useState(true);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [selectedManualCampaign, setSelectedManualCampaign] = useState('');
@@ -166,39 +174,6 @@ const CustomerSegmentModal = ({
     });
   }, []);
 
-  // Contact handlers
-  const handleCall = useCallback((e, customer) => {
-    e?.stopPropagation();
-    const phone = customer.phone || customer.telefone;
-    if (!phone) return;
-
-    const cleaned = String(phone).replace(/\D/g, '');
-    if (cleaned.length >= 10) {
-      window.location.href = `tel:+55${cleaned}`;
-      addCommunicationEntry(customer.id || customer.doc, 'call', getDefaultNotes('call'));
-      onMarkContacted?.(customer.id || customer.doc, 'call');
-    }
-  }, [onMarkContacted]);
-
-  const handleWhatsApp = useCallback((e, customer) => {
-    e?.stopPropagation();
-    const phone = customer.phone || customer.telefone;
-    if (!isValidBrazilianMobile(phone)) return;
-
-    const normalized = normalizePhone(phone);
-    if (!normalized) return;
-
-    const whatsappNumber = normalized.replace('+', '');
-    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const url = isMobileDevice
-      ? `https://api.whatsapp.com/send?phone=${whatsappNumber}`
-      : `https://web.whatsapp.com/send?phone=${whatsappNumber}`;
-    window.open(url, '_blank');
-
-    addCommunicationEntry(customer.id || customer.doc, 'whatsapp', getDefaultNotes('whatsapp'));
-    onMarkContacted?.(customer.id || customer.doc, 'whatsapp');
-  }, [onMarkContacted]);
-
   // Campaign handlers
   const handleIncludeInAutomation = useCallback(async (automationId) => {
     if (selectedIds.size === 0) return;
@@ -239,7 +214,10 @@ const CustomerSegmentModal = ({
       if (successCount > 0) {
         alert(`✅ ${successCount} clientes incluídos na fila de "${automationName}"${failedCount > 0 ? ` (${failedCount} falharam)` : ''}`);
         setSelectedIds(new Set());
-        onMarkContacted?.(customerIds[0], 'automation'); // Refresh contact status
+        // Note: Don't call onMarkContacted here - it creates a duplicate record!
+        // The contact_tracking entry was already created by api.contacts.create above.
+        // Just dispatch event to refresh UI
+        window.dispatchEvent(new CustomEvent('contact-tracking-changed'));
       } else {
         alert('❌ Não foi possível incluir os clientes na automação');
       }
@@ -249,7 +227,7 @@ const CustomerSegmentModal = ({
     } finally {
       setIsAddingToAutomation(false);
     }
-  }, [selectedIds, automated, customers, onMarkContacted]);
+  }, [selectedIds, automated, customers]);
 
   const handleAddToManualCampaign = useCallback(async () => {
     if (selectedIds.size === 0 || !selectedManualCampaign) return;
@@ -519,7 +497,6 @@ const CustomerSegmentModal = ({
                       const isSelected = selectedIds.has(customerId);
                       const isCustomerContacted = contactedIds.has(String(customerId));
                       const isCustomerBlacklisted = isBlacklisted(customerPhone);
-                      const hasValidPhone = isValidBrazilianMobile(customerPhone);
 
                       return (
                         <div
@@ -584,25 +561,6 @@ const CustomerSegmentModal = ({
                             </div>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button
-                              onClick={(e) => handleWhatsApp(e, customer)}
-                              disabled={!hasValidPhone || isCustomerBlacklisted}
-                              className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                              title={!hasValidPhone ? 'Número inválido para WhatsApp' : isCustomerBlacklisted ? 'Cliente bloqueado' : 'Enviar WhatsApp'}
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => handleCall(e, customer)}
-                              disabled={!customerPhone || isCustomerBlacklisted}
-                              className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                              title={isCustomerBlacklisted ? 'Cliente bloqueado' : 'Ligar'}
-                            >
-                              <Phone className="w-4 h-4" />
-                            </button>
-                          </div>
                         </div>
                       );
                     })}

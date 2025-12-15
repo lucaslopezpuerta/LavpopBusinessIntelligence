@@ -248,7 +248,10 @@ export const api = {
     },
 
     async getPending(customerId = null) {
-      const filters = { status: 'pending' };
+      // v1.1: Include both 'pending' and 'queued' statuses
+      // - pending: message sent, waiting for return
+      // - queued: manual inclusion, waiting for scheduler to send
+      const filters = { status: ['pending', 'queued'] };
       if (customerId) filters.customer_id = customerId;
       const result = await apiRequest('contacts.getAll', filters);
       return result.contacts || [];
