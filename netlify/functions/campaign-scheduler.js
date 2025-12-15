@@ -575,10 +575,10 @@ async function processPriorityQueue(supabase) {
   const results = { processed: 0, sent: 0, failed: 0, skipped: 0 };
 
   try {
-    // 1. Query queued manual inclusions with customer data
+    // 1. Query queued manual inclusions (no FK join - fetch customer data separately)
     const { data: queued, error: queueError } = await supabase
       .from('contact_tracking')
-      .select('*, customers!inner(telefone, nome, doc)')
+      .select('*')
       .eq('priority_source', 'manual_inclusion')
       .eq('status', 'queued')
       .limit(50);  // Process max 50 per run to avoid timeout
@@ -595,6 +595,20 @@ async function processPriorityQueue(supabase) {
 
     console.log(`Found ${queued.length} manual inclusions to process`);
 
+    // Fetch customer data for all queued entries
+    const customerIds = queued.map(q => q.customer_id);
+    const { data: customers, error: custError } = await supabase
+      .from('customers')
+      .select('doc, nome, telefone, risk_level, saldo_carteira, days_since_last_visit')
+      .in('doc', customerIds);
+
+    if (custError) {
+      console.error('Error fetching customers:', custError);
+    }
+
+    // Create a map for quick lookup
+    const customerMap = new Map((customers || []).map(c => [c.doc, c]));
+
     // Get blacklisted phones
     const { data: blacklist } = await supabase
       .from('blacklist')
@@ -602,7 +616,6 @@ async function processPriorityQueue(supabase) {
     const blacklistedPhones = new Set((blacklist || []).map(b => b.phone));
 
     // 2. Check eligibility using unified RPC (respects cooldowns)
-    const customerIds = queued.map(q => q.customer_id);
     const { data: eligibilityResults, error: eligError } = await supabase.rpc('check_customers_eligibility', {
       p_customer_ids: customerIds,
       p_campaign_type: null,  // Check global cooldown only
@@ -628,8 +641,10 @@ async function processPriorityQueue(supabase) {
     for (const entry of queued) {
       results.processed++;
 
-      const phone = normalizePhone(entry.customers?.telefone);
-      const customerName = entry.customers?.nome || entry.customer_name;
+      // Get customer data from map
+      const customer = customerMap.get(entry.customer_id);
+      const phone = normalizePhone(customer?.telefone || entry.phone);
+      const customerName = customer?.nome || entry.customer_name;
 
       // Skip if not eligible (unless eligibility check failed)
       if (!failedEligibilityCheck && !eligibleIds.has(entry.customer_id)) {
@@ -672,19 +687,27 @@ async function processPriorityQueue(supabase) {
         continue;
       }
 
-      // Get automation rule from campaign_id (format: AUTO_ruleId)
-      const ruleId = entry.campaign_id?.replace('AUTO_', '');
+      // Get automation rule from campaign_id
+      // campaign_id can be:
+      // - "AUTO_welcome_new" (correct format from automation system)
+      // - "welcome_new" (just rule id from frontend)
+      let ruleId = entry.campaign_id;
       if (!ruleId) {
-        console.log(`Queue ${entry.id}: Skipped - no valid campaign_id`);
+        console.log(`Queue ${entry.id}: Skipped - no campaign_id`);
         await supabase.from('contact_tracking')
           .update({
             status: 'cleared',
-            notes: 'Skipped: invalid campaign_id',
+            notes: 'Skipped: no campaign_id',
             contacted_at: new Date().toISOString()
           })
           .eq('id', entry.id);
         results.skipped++;
         continue;
+      }
+
+      // Strip AUTO_ prefix if present
+      if (ruleId.startsWith('AUTO_')) {
+        ruleId = ruleId.replace('AUTO_', '');
       }
 
       const { data: rule, error: ruleError } = await supabase
@@ -706,6 +729,9 @@ async function processPriorityQueue(supabase) {
         continue;
       }
 
+      // Ensure we have the correct campaign_id format for tracking
+      const correctCampaignId = `AUTO_${rule.id}`;
+
       // Get ContentSid for template
       const contentSid = AUTOMATION_TEMPLATE_SIDS[rule.action_template];
       if (!contentSid) {
@@ -725,13 +751,18 @@ async function processPriorityQueue(supabase) {
       const target = {
         doc: entry.customer_id,
         nome: customerName,
-        telefone: phone
+        telefone: phone,
+        saldo_carteira: customer?.saldo_carteira || 0,
+        days_since_last_visit: customer?.days_since_last_visit || 0
       };
+
+      // Get campaign type from template for proper tracking
+      const campaignType = getCampaignTypeFromTemplate(rule.action_template);
 
       // 4. Send message using automation's template
       const sendResult = await sendAutomationMessage(supabase, rule, target, contentSid);
 
-      // 5. Update contact_tracking with result
+      // 5. Update contact_tracking with result + fix any missing fields
       if (sendResult.success) {
         await supabase.from('contact_tracking')
           .update({
@@ -740,7 +771,11 @@ async function processPriorityQueue(supabase) {
             twilio_sid: sendResult.sid,
             delivery_status: 'sent',
             contacted_at: new Date().toISOString(),
-            notes: 'Sent via manual inclusion'
+            notes: 'Sent via manual inclusion',
+            // Fix fields that may have been set incorrectly by frontend
+            campaign_id: correctCampaignId,
+            campaign_type: campaignType,
+            risk_level: customer?.risk_level || entry.risk_level
           })
           .eq('id', entry.id);
         results.sent++;
@@ -752,7 +787,11 @@ async function processPriorityQueue(supabase) {
             phone: phone,
             delivery_status: 'failed',
             contacted_at: new Date().toISOString(),
-            notes: `Failed: ${sendResult.error}`
+            notes: `Failed: ${sendResult.error}`,
+            // Fix fields even on failure for consistency
+            campaign_id: correctCampaignId,
+            campaign_type: campaignType,
+            risk_level: customer?.risk_level || entry.risk_level
           })
           .eq('id', entry.id);
         results.failed++;

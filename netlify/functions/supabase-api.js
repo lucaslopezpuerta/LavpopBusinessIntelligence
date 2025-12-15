@@ -1698,6 +1698,7 @@ async function createContactTracking(supabase, data, headers) {
     campaign_name: data.campaign_name || (data.campaign_id ? null : 'Contato Manual'),
     campaign_type: data.campaign_type || (data.campaign_id ? null : 'manual'),
     risk_level: data.risk_level || null,
+    phone: data.phone || null,
     status: data.status || 'pending',
     contacted_at: data.contacted_at || now.toISOString(),
     expires_at: data.expires_at || expiresAt.toISOString(),

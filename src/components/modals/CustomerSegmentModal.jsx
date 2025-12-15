@@ -1,8 +1,12 @@
-// CustomerSegmentModal.jsx v1.1
+// CustomerSegmentModal.jsx v1.2
 // Clean modal for displaying filtered customer lists with campaign integration
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.2 (2025-12-15): Portal rendering + phone field fixes
+//   - Uses React Portal to render at document.body (fixes modal inside chart containers)
+//   - Fixed phone field to check both 'phone' and 'telefone' (different data sources)
+//   - Added blacklist count to toggle label like AtRiskCustomersTable
 // v1.1 (2025-12-15): Implemented automation and manual campaign integration
 //   - Added real API call to include customers in automation queue
 //   - Added integration with existing manual campaigns
@@ -15,6 +19,7 @@
 //   - Click customer name to open profile modal
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Users, Phone, MessageCircle, Check, ChevronRight,
@@ -83,7 +88,11 @@ const CustomerSegmentModal = ({
     }
 
     if (hideBlacklisted) {
-      filtered = filtered.filter(c => !isBlacklisted(c.phone));
+      // Check both phone and telefone fields (different data sources use different names)
+      filtered = filtered.filter(c => {
+        const phone = c.phone || c.telefone;
+        return !isBlacklisted(phone);
+      });
     }
 
     return filtered;
@@ -94,7 +103,10 @@ const CustomerSegmentModal = ({
     const total = customers.length;
     const contacted = customers.filter(c => contactedIds.has(String(c.id || c.doc))).length;
     const notContacted = total - contacted;
-    const blacklisted = customers.filter(c => isBlacklisted(c.phone)).length;
+    const blacklisted = customers.filter(c => {
+      const phone = c.phone || c.telefone;
+      return isBlacklisted(phone);
+    }).length;
 
     return { total, contacted, notContacted, blacklisted };
   }, [customers, contactedIds, isBlacklisted]);
@@ -157,7 +169,7 @@ const CustomerSegmentModal = ({
   // Contact handlers
   const handleCall = useCallback((e, customer) => {
     e?.stopPropagation();
-    const phone = customer.phone;
+    const phone = customer.phone || customer.telefone;
     if (!phone) return;
 
     const cleaned = String(phone).replace(/\D/g, '');
@@ -170,9 +182,10 @@ const CustomerSegmentModal = ({
 
   const handleWhatsApp = useCallback((e, customer) => {
     e?.stopPropagation();
-    if (!isValidBrazilianMobile(customer.phone)) return;
+    const phone = customer.phone || customer.telefone;
+    if (!isValidBrazilianMobile(phone)) return;
 
-    const normalized = normalizePhone(customer.phone);
+    const normalized = normalizePhone(phone);
     if (!normalized) return;
 
     const whatsappNumber = normalized.replace('+', '');
@@ -199,16 +212,20 @@ const CustomerSegmentModal = ({
       const automationName = automation?.name || automationId;
 
       // Record each customer as priority for this automation
-      // Uses contact_tracking with priority_source to bypass normal eligibility
+      // Uses contact_tracking with priority_source for scheduler processing
+      // campaign_id format: AUTO_{rule_id} to match automation campaign tracking
       const results = await Promise.allSettled(
         customerIds.map(async (customerId) => {
           const customer = customers.find(c => (c.id || c.doc) === customerId);
           return api.contacts.create({
             customer_id: customerId,
-            customer_name: customer?.name || null,
+            customer_name: customer?.name || customer?.nome || null,
             contact_method: 'whatsapp',
-            campaign_id: automationId,
-            campaign_name: `${automationName} (Prioridade)`,
+            campaign_id: `AUTO_${automationId}`,
+            campaign_name: `Auto: ${automationName}`,
+            campaign_type: automation?.campaign_type || null,
+            risk_level: customer?.riskLevel || customer?.risk_level || null,
+            phone: customer?.phone || customer?.telefone || null,
             status: 'queued',
             priority_source: 'manual_inclusion',
             expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -252,7 +269,7 @@ const CustomerSegmentModal = ({
             campaignId: selectedManualCampaign,
             customerId: customerId,
             customerName: customer?.name || null,
-            phone: customer?.phone ? normalizePhone(customer.phone) : null,
+            phone: (customer?.phone || customer?.telefone) ? normalizePhone(customer.phone || customer.telefone) : null,
             contactMethod: 'whatsapp',
             status: 'queued'
           });
@@ -313,27 +330,29 @@ const CustomerSegmentModal = ({
     return `****${cleaned.slice(-4)}`;
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - scrollable to ensure modal can always be closed */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[1050] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[1050] bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
           >
-            {/* Modal Container */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]"
-            >
+            {/* Centering wrapper with min-height to ensure scroll works */}
+            <div className="min-h-full flex items-center justify-center p-4">
+              {/* Modal Container */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[85vh] my-4"
+              >
               {/* Header */}
               <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-3">
@@ -476,7 +495,7 @@ const CustomerSegmentModal = ({
                     className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    Ocultar Bloqueados
+                    Ocultar Bloqueados{stats.blacklisted > 0 && ` (${stats.blacklisted})`}
                   </span>
                 </label>
               </div>
@@ -496,10 +515,11 @@ const CustomerSegmentModal = ({
                   <div className="space-y-2">
                     {displayList.map((customer) => {
                       const customerId = customer.id || customer.doc;
+                      const customerPhone = customer.phone || customer.telefone;
                       const isSelected = selectedIds.has(customerId);
                       const isCustomerContacted = contactedIds.has(String(customerId));
-                      const isCustomerBlacklisted = isBlacklisted(customer.phone);
-                      const hasValidPhone = isValidBrazilianMobile(customer.phone);
+                      const isCustomerBlacklisted = isBlacklisted(customerPhone);
+                      const hasValidPhone = isValidBrazilianMobile(customerPhone);
 
                       return (
                         <div
@@ -547,7 +567,7 @@ const CustomerSegmentModal = ({
                               )}
                             </div>
                             <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                              <span>{maskPhone(customer.phone)}</span>
+                              <span>{maskPhone(customerPhone)}</span>
                               <span className="font-medium text-slate-700 dark:text-slate-300">
                                 {formatCurrency(customer.netTotal || customer.y)}
                               </span>
@@ -576,7 +596,7 @@ const CustomerSegmentModal = ({
                             </button>
                             <button
                               onClick={(e) => handleCall(e, customer)}
-                              disabled={!customer.phone || isCustomerBlacklisted}
+                              disabled={!customerPhone || isCustomerBlacklisted}
                               className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                               title={isCustomerBlacklisted ? 'Cliente bloqueado' : 'Ligar'}
                             >
@@ -603,10 +623,12 @@ const CustomerSegmentModal = ({
                 )}
               </div>
             </motion.div>
+            </div>
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
