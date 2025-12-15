@@ -1,7 +1,9 @@
-// Customer Metrics Calculator v3.4.0 - DISTINCT PORTUGUESE RFM SEGMENTS
+// Customer Metrics Calculator v3.5.0 - DISTINCT PORTUGUESE RFM SEGMENTS
 // ✅ Brazilian number parsing added (handles comma decimals)
 // ✅ Cashback rate corrected (7.5%)
 // ✅ Cashback start date corrected (June 1, 2024)
+// ✅ v3.5.0 (2025-12-15): getRFMCoordinates includes phone for blacklist filtering
+//     - CustomerSegmentModal from RFMScatterPlot now correctly filters blacklisted
 // ✅ v3.4.0 (2025-12-10): Distinct Portuguese RFM segment names
 //     - RFM segments: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
 //     - Names are DISTINCT from Churn Risk Levels to avoid confusion
@@ -556,6 +558,7 @@ export function getTopAtRiskCustomers(customerMetrics, limit = 10) {
 /**
  * 1. RFM Coordinates for Scatter Plot (Risk Map)
  * Maps customers to X (Recency) and Y (Monetary) coordinates
+ * v2.1: Added phone field for blacklist filtering in CustomerSegmentModal
  */
 export function getRFMCoordinates(customers) {
   return customers.map(c => ({
@@ -565,7 +568,8 @@ export function getRFMCoordinates(customers) {
     y: c.netTotal,           // Monetary (Total Spend)
     r: c.transactions,       // Radius (Frequency)
     status: c.riskLevel,
-    segment: c.segment
+    segment: c.segment,
+    phone: c.phone           // For blacklist filtering
   }));
 }
 

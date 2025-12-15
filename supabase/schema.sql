@@ -1,6 +1,13 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.18 (2025-12-15)
+-- Version: 3.19 (2025-12-15)
+--
+-- v3.19: Fix Duplicate Queue Entries
+--   - record_automation_contact() now checks for existing queued entries
+--   - If a queued entry exists (from manual inclusion), it UPDATES instead of INSERT
+--   - Prevents duplicate contact_tracking records for same customer+campaign
+--   - Added index idx_contact_tracking_queued_lookup for efficient lookups
+--   - See migrations/010_fix_duplicate_queue_entries.sql
 --
 -- v3.18: Manual Inclusion Priority Queue
 --   - Added priority_source column to contact_tracking table
@@ -1147,6 +1154,7 @@ $$ LANGUAGE plpgsql;
 -- v3.12: Added campaign_type for unified eligibility tracking
 -- v3.15: Added phone, twilio_sid, delivery_status to contact_tracking (unified delivery tracking)
 -- v3.16: Added risk_level snapshot from customers table at time of contact
+-- v3.19: Check for existing queued entries and UPDATE instead of INSERT (prevents duplicates)
 CREATE OR REPLACE FUNCTION record_automation_contact(
   p_rule_id TEXT,
   p_customer_id TEXT,
@@ -1158,6 +1166,7 @@ RETURNS UUID AS $$
 DECLARE
   v_campaign_id TEXT;
   v_contact_tracking_id INT;
+  v_existing_queued_id INT;
   v_automation_send_id UUID;
   v_rule RECORD;
   v_campaign_type TEXT;
@@ -1191,39 +1200,67 @@ BEGIN
     v_campaign_id := v_rule.campaign_id;
   END IF;
 
-  -- 1. Create contact tracking record WITH delivery fields AND risk_level
-  INSERT INTO contact_tracking (
-    customer_id,
-    customer_name,
-    contact_method,
-    campaign_id,
-    campaign_name,
-    campaign_type,
-    status,
-    expires_at,
-    -- v3.15: Delivery fields (unified tracking)
-    phone,
-    twilio_sid,
-    delivery_status,
-    -- v3.16: Risk level snapshot
-    risk_level
-  ) VALUES (
-    p_customer_id,
-    p_customer_name,
-    'whatsapp',
-    v_campaign_id,
-    'Auto: ' || v_rule.name,
-    v_campaign_type,
-    'pending',
-    NOW() + (COALESCE(v_rule.cooldown_days, 14) || ' days')::INTERVAL,
-    -- v3.15: Delivery fields
-    p_phone,
-    p_message_sid,
-    CASE WHEN p_message_sid IS NOT NULL THEN 'sent' ELSE 'pending' END,
-    -- v3.16: Risk level snapshot
-    v_risk_level
-  )
-  RETURNING id INTO v_contact_tracking_id;
+  -- v3.19: Check for existing QUEUED entry (from manual inclusion)
+  -- If found, UPDATE it instead of creating a duplicate
+  SELECT id INTO v_existing_queued_id
+  FROM contact_tracking
+  WHERE customer_id = p_customer_id
+    AND campaign_id = v_campaign_id
+    AND status = 'queued'
+  LIMIT 1;
+
+  IF v_existing_queued_id IS NOT NULL THEN
+    -- UPDATE existing queued entry instead of INSERT
+    UPDATE contact_tracking SET
+      status = 'pending',
+      contacted_at = NOW(),
+      expires_at = NOW() + (COALESCE(v_rule.cooldown_days, 14) || ' days')::INTERVAL,
+      phone = p_phone,
+      twilio_sid = p_message_sid,
+      delivery_status = CASE WHEN p_message_sid IS NOT NULL THEN 'sent' ELSE 'pending' END,
+      risk_level = v_risk_level,
+      campaign_type = v_campaign_type,
+      campaign_name = 'Auto: ' || v_rule.name,
+      updated_at = NOW(),
+      -- Keep priority_source as 'manual_inclusion' to track origin
+      priority_source = COALESCE(priority_source, 'automation')
+    WHERE id = v_existing_queued_id
+    RETURNING id INTO v_contact_tracking_id;
+
+    RAISE NOTICE 'record_automation_contact: Updated existing queued entry % for customer %', v_existing_queued_id, p_customer_id;
+  ELSE
+    -- 1. Create NEW contact tracking record (no existing queued entry)
+    INSERT INTO contact_tracking (
+      customer_id,
+      customer_name,
+      contact_method,
+      campaign_id,
+      campaign_name,
+      campaign_type,
+      status,
+      expires_at,
+      phone,
+      twilio_sid,
+      delivery_status,
+      risk_level,
+      priority_source
+    ) VALUES (
+      p_customer_id,
+      p_customer_name,
+      'whatsapp',
+      v_campaign_id,
+      'Auto: ' || v_rule.name,
+      v_campaign_type,
+      'pending',
+      NOW() + (COALESCE(v_rule.cooldown_days, 14) || ' days')::INTERVAL,
+      p_phone,
+      p_message_sid,
+      CASE WHEN p_message_sid IS NOT NULL THEN 'sent' ELSE 'pending' END,
+      v_risk_level,
+      'automation'  -- Mark as automation-created
+    )
+    RETURNING id INTO v_contact_tracking_id;
+  END IF;
 
   -- 2. DEPRECATED: campaign_contacts bridge record
   -- Keeping for backward compatibility with existing queries
@@ -1274,6 +1311,11 @@ BEGIN
   RETURN v_automation_send_id;
 END;
 $$ LANGUAGE plpgsql;
+
+-- v3.19: Index for efficient queued entry lookup (prevents duplicates)
+CREATE INDEX IF NOT EXISTS idx_contact_tracking_queued_lookup
+ON contact_tracking(customer_id, campaign_id, status)
+WHERE status = 'queued';
 
 -- ==================== UNIFIED CONTACT ELIGIBILITY (v3.12) ====================
 -- Functions to check if a customer is eligible for campaign contact
