@@ -1145,6 +1145,8 @@ $$ LANGUAGE plpgsql;
 -- Function to record an automation send with full campaign tracking
 -- Creates entries in: automation_sends, contact_tracking, campaign_contacts
 -- v3.12: Added campaign_type for unified eligibility tracking
+-- v3.15: Added phone, twilio_sid, delivery_status to contact_tracking (unified delivery tracking)
+-- v3.16: Added risk_level snapshot from customers table at time of contact
 CREATE OR REPLACE FUNCTION record_automation_contact(
   p_rule_id TEXT,
   p_customer_id TEXT,
@@ -1159,6 +1161,7 @@ DECLARE
   v_automation_send_id UUID;
   v_rule RECORD;
   v_campaign_type TEXT;
+  v_risk_level TEXT;
 BEGIN
   -- Get the rule and ensure campaign exists
   SELECT * INTO v_rule FROM automation_rules WHERE id = p_rule_id;
@@ -1166,6 +1169,9 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Automation rule % not found', p_rule_id;
   END IF;
+
+  -- Get customer's current risk_level (snapshot at time of contact)
+  SELECT risk_level INTO v_risk_level FROM customers WHERE doc = p_customer_id;
 
   -- Determine campaign_type from action_template
   v_campaign_type := CASE v_rule.action_template
@@ -1185,7 +1191,7 @@ BEGIN
     v_campaign_id := v_rule.campaign_id;
   END IF;
 
-  -- 1. Create contact tracking record WITH campaign_type
+  -- 1. Create contact tracking record WITH delivery fields AND risk_level
   INSERT INTO contact_tracking (
     customer_id,
     customer_name,
@@ -1194,7 +1200,13 @@ BEGIN
     campaign_name,
     campaign_type,
     status,
-    expires_at
+    expires_at,
+    -- v3.15: Delivery fields (unified tracking)
+    phone,
+    twilio_sid,
+    delivery_status,
+    -- v3.16: Risk level snapshot
+    risk_level
   ) VALUES (
     p_customer_id,
     p_customer_name,
@@ -1203,11 +1215,19 @@ BEGIN
     'Auto: ' || v_rule.name,
     v_campaign_type,
     'pending',
-    NOW() + (COALESCE(v_rule.cooldown_days, 14) || ' days')::INTERVAL
+    NOW() + (COALESCE(v_rule.cooldown_days, 14) || ' days')::INTERVAL,
+    -- v3.15: Delivery fields
+    p_phone,
+    p_message_sid,
+    CASE WHEN p_message_sid IS NOT NULL THEN 'sent' ELSE 'pending' END,
+    -- v3.16: Risk level snapshot
+    v_risk_level
   )
   RETURNING id INTO v_contact_tracking_id;
 
-  -- 2. Create campaign_contacts bridge record
+  -- 2. DEPRECATED: campaign_contacts bridge record
+  -- Keeping for backward compatibility with existing queries
+  -- Will be removed in future migration
   INSERT INTO campaign_contacts (
     campaign_id,
     contact_tracking_id,

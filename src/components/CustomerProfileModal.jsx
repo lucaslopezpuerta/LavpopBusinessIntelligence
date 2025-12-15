@@ -1,8 +1,10 @@
-// CustomerProfileModal.jsx v2.2 - BLACKLIST INDICATOR
+// CustomerProfileModal.jsx v2.3 - Z-INDEX FIX
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v2.3 (2025-12-15): Z-index fix for modal stacking
+//   - Changed z-50 to z-[1100] to appear above CustomerSegmentModal (z-[1050])
 // v2.2 (2025-12-14): Blacklist indicator
 //   - Shows "Bloqueado" badge for blacklisted customers (takes precedence over contacted)
 //   - Disables all contact actions (Call, WhatsApp, Email) for blacklisted
@@ -361,7 +363,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     }, [customer]);
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1100] flex items-center justify-center p-3 sm:p-4 animate-fade-in">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col">
                 {/* Header - Simplified with Segment Avatar */}
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 px-4 py-3 sm:px-5 border-b border-slate-200 dark:border-slate-700">

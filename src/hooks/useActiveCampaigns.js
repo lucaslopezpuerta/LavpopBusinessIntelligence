@@ -1,8 +1,11 @@
-// useActiveCampaigns.js v1.1
+// useActiveCampaigns.js v1.2
 // Hook for fetching and filtering active campaigns by audience type
 // Separates automated campaigns from manual campaigns
 //
 // CHANGELOG:
+// v1.2 (2025-12-15): Fixed manual campaigns filter
+//   - Excludes automation-generated campaigns (is_automated, AUTO_ prefix, Auto: name)
+//   - Manual dropdown now only shows actual manual campaigns
 // v1.1 (2025-12-15): Added debounce and race condition protection
 //   - Added lastFetchRef for debouncing (matches useContactTracking pattern)
 //   - Added isFetchingRef to prevent concurrent fetches
@@ -126,9 +129,14 @@ export function useActiveCampaigns() {
     };
   }, [fetchData]);
 
-  // Filter active manual campaigns
+  // Filter active manual campaigns (exclude automation-generated campaigns)
   const manualCampaigns = useMemo(() => {
-    return campaigns.filter(c => c.status === 'active');
+    return campaigns.filter(c =>
+      c.status === 'active' &&
+      !c.is_automated &&
+      !c.id?.startsWith('AUTO_') &&
+      !c.name?.startsWith('Auto:')
+    );
   }, [campaigns]);
 
   // Filter enabled automation rules

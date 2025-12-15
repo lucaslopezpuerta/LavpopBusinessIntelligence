@@ -2,6 +2,11 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.10 (2025-12-15): Duplicate prevention for automation sends
+//   - Added check for existing contact_tracking records before sending
+//   - Prevents duplicates when manual inclusion was created via CustomerSegmentModal
+//   - Skips customers with 'queued' or 'pending' status for same campaign_id
+//
 // v2.9 (2025-12-15): Priority queue for manual inclusions
 //   - Added processPriorityQueue() to handle "Incluir em Automação" entries
 //   - Processes contact_tracking entries with priority_source='manual_inclusion', status='queued'
@@ -871,6 +876,36 @@ async function processAutomationRule(supabase, rule, blacklistedPhones) {
       }
       return true;
     });
+
+    // v2.10: Filter out customers who already have a contact_tracking record for this campaign
+    // This prevents duplicates when a manual inclusion was created via CustomerSegmentModal
+    const campaignId = rule.campaign_id || `AUTO_${rule.id}`;
+    const customerIds = eligibleTargets.map(t => t.doc);
+
+    if (customerIds.length > 0) {
+      const { data: existingContacts } = await supabase
+        .from('contact_tracking')
+        .select('customer_id')
+        .eq('campaign_id', campaignId)
+        .in('customer_id', customerIds)
+        .in('status', ['queued', 'pending']); // Don't exclude cleared/expired
+
+      if (existingContacts?.length > 0) {
+        const existingCustomerIds = new Set(existingContacts.map(c => c.customer_id));
+        const beforeCount = eligibleTargets.length;
+        const filteredTargets = eligibleTargets.filter(t => !existingCustomerIds.has(t.doc));
+        const duplicatesSkipped = beforeCount - filteredTargets.length;
+
+        if (duplicatesSkipped > 0) {
+          console.log(`Rule ${rule.id}: Skipped ${duplicatesSkipped} customers with existing contact_tracking records`);
+          result.skipped += duplicatesSkipped;
+        }
+
+        // Update eligibleTargets reference for the send loop
+        eligibleTargets.length = 0;
+        eligibleTargets.push(...filteredTargets);
+      }
+    }
 
     // Send messages (limit to 20 per rule execution to avoid timeouts)
     const maxPerExecution = 20;
