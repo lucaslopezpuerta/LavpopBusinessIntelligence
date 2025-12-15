@@ -1,7 +1,16 @@
-// Customers View v3.2.0 - KPI CARD PILLS
+// Customers View v3.4.0 - CHART-TO-CAMPAIGN INTEGRATION
 // Complete redesign from card-based list to Intelligence Hub
 //
 // CHANGELOG:
+// v3.4.0 (2025-12-15): Chart-to-campaign integration
+//   - NEW: onCreateCampaign handler opens NewCampaignModal with pre-selected customers
+//   - NEW: Customers selected from chart modals can be added to new campaigns
+//   - NEW: Dynamic custom audience segment for pre-selected customers
+// v3.3.0 (2025-12-15): Interactive chart insights
+//   - NEW: Charts now have clickable insights that open CustomerSegmentModal
+//   - NEW: customerMap prop passed to charts for ID-to-customer lookups
+//   - NEW: onOpenCustomerProfile, onMarkContacted, onCreateCampaign handlers
+//   - Charts: RFMScatterPlot, ChurnHistogram, NewClientsChart all updated
 // v3.2.0 (2025-12-13): Informative pills on KPI cards
 //   - NEW: "X sem contato" pill on Em Risco card (priority action)
 //   - NEW: "X% boas-vindas" pill on Novos Clientes card (welcome coverage)
@@ -55,14 +64,16 @@
 // v2.0.1 (2025-11-24): Fixed RFM data loading
 // v2.0 (2025-11-23): Customer Intelligence Hub Implementation
 
-import React, { useState, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Users as UsersIcon, UserPlus, AlertTriangle, Heart, BarChart3, LayoutGrid } from 'lucide-react';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend } from '../utils/customerMetrics';
 import SecondaryKPICard from '../components/ui/SecondaryKPICard';
 import { formatNumber, formatPercent } from '../utils/formatters';
+import { isValidBrazilianMobile } from '../utils/phoneUtils';
 
-// Lazy-load heavy modal (40KB savings)
+// Lazy-load heavy modals
 const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
+const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
 import CustomerRetentionScore from '../components/CustomerRetentionScore';
 import CustomerCard from '../components/CustomerCard';
 import FilterBar from '../components/FilterBar';
@@ -82,8 +93,12 @@ const Customers = ({ data }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
+  // Campaign modal state
+  const [campaignModalOpen, setCampaignModalOpen] = useState(false);
+  const [preSelectedCustomerIds, setPreSelectedCustomerIds] = useState([]);
+
   // Contact tracking for charts visualization
-  const { contactedIds, pendingContacts } = useContactTracking();
+  const { contactedIds, pendingContacts, markContacted } = useContactTracking();
 
   // Derive welcome campaign contacts (campaign_type === 'welcome')
   const welcomeContactedIds = useMemo(() => {
@@ -134,6 +149,86 @@ const Customers = ({ data }) => {
     });
     return map;
   }, [metrics]);
+
+  // 2c. Customer map for ID-to-customer lookups in charts
+  const customerMap = useMemo(() => {
+    if (!metrics?.allCustomers) return {};
+    const map = {};
+    metrics.allCustomers.forEach(c => {
+      const id = c.doc || c.id;
+      map[id] = c;
+    });
+    return map;
+  }, [metrics]);
+
+  // Handler to open customer profile from charts
+  const handleOpenCustomerProfile = (customerId) => {
+    const customer = customerMap[customerId];
+    if (customer) {
+      setSelectedCustomer(customer);
+    }
+  };
+
+  // Handler for marking customer as contacted from charts
+  const handleMarkContacted = useCallback((customerId, method) => {
+    const customer = customerMap[customerId];
+    markContacted(customerId, method, {
+      customerName: customer?.name || null,
+      riskLevel: customer?.riskLevel || null
+    });
+  }, [customerMap, markContacted]);
+
+  // Handler for creating a campaign with pre-selected customers from chart modals
+  const handleCreateCampaign = useCallback((customerIds) => {
+    setPreSelectedCustomerIds(customerIds);
+    setCampaignModalOpen(true);
+  }, []);
+
+  // Build audience segments for NewCampaignModal (includes pre-selected custom segment)
+  const audienceSegments = useMemo(() => {
+    if (!metrics?.activeCustomers) return null;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Standard segments
+    const atRisk = metrics.activeCustomers.filter(
+      c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning'
+    );
+    const newCustomers = metrics.activeCustomers.filter(
+      c => c.firstVisit && c.firstVisit >= thirtyDaysAgo
+    );
+    const healthy = metrics.activeCustomers.filter(c => c.riskLevel === 'Healthy');
+    const withWallet = metrics.activeCustomers.filter(c => (c.walletBalance || 0) >= 10);
+    const withPhone = metrics.activeCustomers.filter(c => isValidBrazilianMobile(c.phone));
+
+    // RFM segments
+    const vip = metrics.activeCustomers.filter(c => c.segment === 'VIP');
+    const frequent = metrics.activeCustomers.filter(c => c.segment === 'Frequent');
+    const promising = metrics.activeCustomers.filter(c => c.segment === 'Promising');
+    const cooling = metrics.activeCustomers.filter(c => c.segment === 'Cooling');
+    const inactive = metrics.activeCustomers.filter(c => c.segment === 'Inactive');
+
+    // Custom segment from pre-selected IDs (if any)
+    const custom = preSelectedCustomerIds.length > 0
+      ? preSelectedCustomerIds.map(id => customerMap[id]).filter(Boolean)
+      : [];
+
+    return {
+      atRisk,
+      newCustomers,
+      healthy,
+      withWallet,
+      withPhone,
+      vip,
+      frequent,
+      promising,
+      cooling,
+      inactive,
+      custom,
+      all: withPhone
+    };
+  }, [metrics, preSelectedCustomerIds, customerMap]);
 
   // 2c. KPI Card Pills - Calculate contextual metrics for informative pills
   const kpiPills = useMemo(() => {
@@ -391,6 +486,9 @@ const Customers = ({ data }) => {
                 data={intelligence.rfm}
                 contactedIds={contactedIds}
                 pendingContacts={pendingContacts}
+                onOpenCustomerProfile={handleOpenCustomerProfile}
+                onMarkContacted={handleMarkContacted}
+                onCreateCampaign={handleCreateCampaign}
               />
             </Suspense>
           </div>
@@ -400,6 +498,10 @@ const Customers = ({ data }) => {
                 data={intelligence.histogram}
                 contactedIds={contactedIds}
                 customerSpending={customerSpending}
+                customerMap={customerMap}
+                onOpenCustomerProfile={handleOpenCustomerProfile}
+                onMarkContacted={handleMarkContacted}
+                onCreateCampaign={handleCreateCampaign}
               />
             </Suspense>
           </div>
@@ -409,6 +511,10 @@ const Customers = ({ data }) => {
                 data={intelligence.acquisition}
                 welcomeContactedIds={welcomeContactedIds}
                 returnedCustomerIds={returnedCustomerIds}
+                customerMap={customerMap}
+                onOpenCustomerProfile={handleOpenCustomerProfile}
+                onMarkContacted={handleMarkContacted}
+                onCreateCampaign={handleCreateCampaign}
               />
             </Suspense>
           </div>
@@ -555,6 +661,21 @@ const Customers = ({ data }) => {
             customer={selectedCustomer}
             sales={data.sales}
             onClose={() => setSelectedCustomer(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* New Campaign Modal - for creating campaigns from chart insights */}
+      {campaignModalOpen && audienceSegments && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+          <NewCampaignModal
+            isOpen={campaignModalOpen}
+            onClose={() => {
+              setCampaignModalOpen(false);
+              setPreSelectedCustomerIds([]);
+            }}
+            audienceSegments={audienceSegments}
+            initialAudience={preSelectedCustomerIds.length > 0 ? 'custom' : null}
           />
         </Suspense>
       )}

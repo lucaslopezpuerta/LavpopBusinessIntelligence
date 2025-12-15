@@ -1,7 +1,12 @@
-// RFMScatterPlot.jsx v1.4 - CONTACT STATUS VISUALIZATION
+// RFMScatterPlot.jsx v2.0 - INTERACTIVE INSIGHTS
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v2.0 (2025-12-15): Interactive insights + modal integration
+//   - REFACTORED: Reduced insights from 4 to 2 (primary clickable, secondary info)
+//   - NEW: Click bubble → opens CustomerProfileModal
+//   - NEW: Click insight → opens CustomerSegmentModal with filtered customers
+//   - NEW: onOpenCustomerProfile and onOpenSegmentModal props
 // v1.4 (2025-12-13): Contact status visualization
 //   - NEW: Blue dashed stroke for contacted customers (pending in contact_tracking)
 //   - NEW: Tooltip shows contact status and campaign name
@@ -9,18 +14,29 @@
 //   - NEW: Insight for contacted high-value customers
 //   - Accepts contactedIds and pendingContacts props from parent
 // v1.3 (2025-11-24): Added explanation for likelihood-based classification
-//   - NEW: Clear tooltip explaining why healthy customers can be in danger zone
-//   - IMPROVED: Updated insights to mention individual patterns
 // v1.2 (2025-11-24): Added actionable insights
 // v1.1 (2025-11-24): Portuguese translations
 // v1.0 (2025-11-23): Initial implementation
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
+import { AlertTriangle, Trophy } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
 import InsightBox from './ui/InsightBox';
+import CustomerSegmentModal from './modals/CustomerSegmentModal';
 
-const RFMScatterPlot = ({ data, contactedIds = new Set(), pendingContacts = {} }) => {
+const RFMScatterPlot = ({
+    data,
+    contactedIds = new Set(),
+    pendingContacts = {},
+    onOpenCustomerProfile,
+    onMarkContacted,
+    onCreateCampaign
+}) => {
+    // Modal state
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'atRisk', color: 'amber' });
+
     if (!data || data.length === 0) return null;
 
     // Enrich data with contact status
@@ -32,26 +48,70 @@ const RFMScatterPlot = ({ data, contactedIds = new Set(), pendingContacts = {} }
         }));
     }, [data, contactedIds, pendingContacts]);
 
-    // Generate insights
-    const highValueAtRisk = enrichedData.filter(d => d.y > 500 && d.x > 30).length;
-    const champions = enrichedData.filter(d => d.y > 500 && d.x <= 20).length;
-    const contactedHighValue = enrichedData.filter(d => d.y > 500 && d.x > 30 && d.isContacted).length;
-    const notContactedHighValue = highValueAtRisk - contactedHighValue;
+    // Calculate segment stats
+    const highValueAtRiskCustomers = useMemo(() =>
+        enrichedData.filter(d => d.y > 500 && d.x > 30), [enrichedData]);
+    const championsCustomers = useMemo(() =>
+        enrichedData.filter(d => d.y > 500 && d.x <= 20), [enrichedData]);
+
+    const notContactedHighValue = highValueAtRiskCustomers.filter(d => !d.isContacted).length;
     const totalContacted = enrichedData.filter(d => d.isContacted).length;
 
-    const insights = [];
-    if (notContactedHighValue > 0) {
-        insights.push({ type: 'warning', text: `⚠️ ${notContactedHighValue} clientes de alto valor em risco ainda NÃO foram contactados` });
-    }
-    if (contactedHighValue > 0) {
-        insights.push({ type: 'info', text: `📨 ${contactedHighValue} clientes de alto valor em risco já foram contactados` });
-    }
-    if (champions > 0) {
-        insights.push({ type: 'success', text: `🎯 ${champions} campeões identificados - mantenha o relacionamento` });
-    }
-    if (insights.length === 0) {
-        insights.push({ type: 'success', text: '✅ Nenhum cliente de alto valor em risco no momento' });
-    }
+    // Click handler for bubble
+    const handleBubbleClick = useCallback((entry) => {
+        if (onOpenCustomerProfile && entry?.id) {
+            onOpenCustomerProfile(entry.id);
+        }
+    }, [onOpenCustomerProfile]);
+
+    // Click handler for high-value at-risk insight
+    const handleHighValueAtRiskClick = useCallback(() => {
+        const notContacted = highValueAtRiskCustomers.filter(d => !d.isContacted);
+        setModalData({
+            title: 'Clientes de Alto Valor em Risco',
+            subtitle: `${notContacted.length} clientes sem contato`,
+            customers: notContacted,
+            audienceType: 'atRisk',
+            color: 'amber',
+            icon: AlertTriangle
+        });
+        setModalOpen(true);
+    }, [highValueAtRiskCustomers]);
+
+    // Generate simplified insights (reduced from 4 to 2)
+    const insights = useMemo(() => {
+        const result = [];
+
+        // Primary insight: High-value at risk (clickable if > 0)
+        if (notContactedHighValue > 0) {
+            result.push({
+                type: 'warning',
+                text: `${notContactedHighValue} clientes de alto valor em risco sem contato`,
+                onClick: handleHighValueAtRiskClick,
+                customerCount: notContactedHighValue
+            });
+        } else if (highValueAtRiskCustomers.length === 0) {
+            result.push({
+                type: 'success',
+                text: 'Nenhum cliente de alto valor em risco no momento'
+            });
+        } else {
+            result.push({
+                type: 'info',
+                text: `${highValueAtRiskCustomers.length} clientes de alto valor em risco - todos contactados`
+            });
+        }
+
+        // Secondary insight: Champions count (info only)
+        if (championsCustomers.length > 0) {
+            result.push({
+                type: 'success',
+                text: `${championsCustomers.length} campeoes ativos - mantenha o relacionamento`
+            });
+        }
+
+        return result;
+    }, [notContactedHighValue, highValueAtRiskCustomers, championsCustomers, handleHighValueAtRiskClick]);
 
     // Custom Tooltip
     const CustomTooltip = ({ active, payload }) => {
@@ -202,7 +262,13 @@ const RFMScatterPlot = ({ data, contactedIds = new Set(), pendingContacts = {} }
                             <Label value="Zona de Perigo (>30d)" position="insideTopRight" fill="#ef4444" fontSize={10} />
                         </ReferenceLine>
 
-                        <Scatter name="Clientes" data={enrichedData} fill="#8884d8">
+                        <Scatter
+                            name="Clientes"
+                            data={enrichedData}
+                            fill="#8884d8"
+                            onClick={(data) => handleBubbleClick(data)}
+                            cursor={onOpenCustomerProfile ? 'pointer' : 'default'}
+                        >
                             {enrichedData.map((entry, index) => (
                                 <Cell
                                     key={`cell-${index}`}
@@ -224,6 +290,22 @@ const RFMScatterPlot = ({ data, contactedIds = new Set(), pendingContacts = {} }
             </div>
 
             <InsightBox insights={insights} />
+
+            {/* Customer Segment Modal */}
+            <CustomerSegmentModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                title={modalData.title}
+                subtitle={modalData.subtitle}
+                icon={modalData.icon}
+                color={modalData.color}
+                customers={modalData.customers}
+                audienceType={modalData.audienceType}
+                contactedIds={contactedIds}
+                onOpenCustomerProfile={onOpenCustomerProfile}
+                onMarkContacted={onMarkContacted}
+                onCreateCampaign={onCreateCampaign}
+            />
         </div>
     );
 };

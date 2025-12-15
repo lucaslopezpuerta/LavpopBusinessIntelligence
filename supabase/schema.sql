@@ -1,6 +1,13 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.17 (2025-12-14)
+-- Version: 3.18 (2025-12-15)
+--
+-- v3.18: Manual Inclusion Priority Queue
+--   - Added priority_source column to contact_tracking table
+--   - Supports 'manual_inclusion' (user clicked Incluir), 'automation' (scheduler), NULL (legacy)
+--   - Scheduler processes queued entries every 5 minutes
+--   - Enforces eligibility checks (7-day global cooldown, 30-day same-type cooldown)
+--   - See migrations/009_add_priority_source.sql
 --
 -- v3.17: Delivery Metrics in campaign_performance View
 --   - campaign_performance view now includes delivery metrics directly
@@ -369,7 +376,10 @@ CREATE TABLE IF NOT EXISTS contact_tracking (
   -- Metadata
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- v3.18: Priority queue for manual inclusions
+  priority_source TEXT                    -- 'manual_inclusion' (user clicked Incluir), 'automation' (scheduler), NULL (legacy)
 );
 
 CREATE INDEX IF NOT EXISTS idx_contact_tracking_customer ON contact_tracking(customer_id);
@@ -406,6 +416,14 @@ ON contact_tracking(delivery_status);
 -- v3.15: Composite index for campaign delivery metrics
 CREATE INDEX IF NOT EXISTS idx_contact_tracking_campaign_delivery
 ON contact_tracking(campaign_id, delivery_status) WHERE campaign_id IS NOT NULL;
+
+-- v3.18: Add priority_source column for manual inclusion queue
+ALTER TABLE contact_tracking ADD COLUMN IF NOT EXISTS priority_source TEXT;
+
+-- v3.18: Index for efficient priority queue queries
+CREATE INDEX IF NOT EXISTS idx_contact_tracking_priority_queue
+ON contact_tracking(priority_source, status)
+WHERE priority_source = 'manual_inclusion' AND status = 'queued';
 
 -- ==================== CAMPAIGN CONTACTS TABLE (DEPRECATED) ====================
 -- DEPRECATED in v3.15: Use contact_tracking instead for unified tracking

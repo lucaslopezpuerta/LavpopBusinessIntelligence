@@ -1,7 +1,11 @@
-// NewClientsChart.jsx v3.0 - WELCOME COVERAGE + RETURN TRACKING
+// NewClientsChart.jsx v3.1 - INTERACTIVE INSIGHTS
 // New customer acquisition with campaign integration
 //
 // CHANGELOG:
+// v3.1 (2025-12-15): Interactive insights + modal integration
+//   - REFACTORED: Reduced insights from 4 to 2 (primary clickable, secondary info)
+//   - NEW: Click insight → opens modal with unwelcomed new customers
+//   - NEW: onOpenCustomerProfile and onCreateCampaign props
 // v3.0 (2025-12-13): Welcome coverage + return tracking
 //   - NEW: welcomeContactedIds prop - IDs who received welcome campaign
 //   - NEW: returnedCustomerIds prop - IDs of new customers who returned
@@ -9,25 +13,26 @@
 //   - NEW: Return tracking insight (% of new customers who came back)
 //   - NEW: Trend comparison (this week vs last week)
 //   - IMPROVED: Dynamic data-driven insights
-//   - UPDATED: Handles new data format { daily, newCustomerIds }
 // v2.3 (2025-11-30): Chart memoization for performance
-//   - Memoized stats, insights, and CustomTooltip
-//   - Prevents unnecessary chart repaints
 // v2.2 (2025-11-29): Design System v3.0 compliance
-//   - Removed emojis from insight text strings
 // v2.1 (2025-11-24): Added actionable insights
-//   - NEW: InsightBox with acquisition recommendations
 // v2.0 (2025-11-23): Redesign for Customer Intelligence Hub
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { UserPlus } from 'lucide-react';
 import InsightBox from './ui/InsightBox';
+import CustomerSegmentModal from './modals/CustomerSegmentModal';
 
 const NewClientsChart = ({
   data,
   newCustomerIds = [],
   welcomeContactedIds = new Set(),
-  returnedCustomerIds = new Set()
+  returnedCustomerIds = new Set(),
+  customerMap = {},
+  onOpenCustomerProfile,
+  onMarkContacted,
+  onCreateCampaign
 }) => {
   // Handle both old format (array) and new format ({ daily, newCustomerIds })
   const dailyData = useMemo(() => {
@@ -88,64 +93,74 @@ const NewClientsChart = ({
     };
   }, [dailyData, allNewCustomerIds, welcomeContactedIds, returnedCustomerIds]);
 
-  // Generate dynamic insights
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'newCustomers', color: 'purple' });
+
+  // Helper to convert customer IDs to customer objects
+  const getCustomersFromIds = useCallback((customerIds) => {
+    return customerIds
+      .map(id => customerMap[String(id)] || { id, name: `Cliente ${String(id).slice(-4)}` })
+      .filter(Boolean);
+  }, [customerMap]);
+
+  // Click handler for unwelcomed customers insight
+  const handleUnwelcomedClick = useCallback(() => {
+    const unwelcomedIds = allNewCustomerIds.filter(id => !welcomeContactedIds.has(String(id)));
+    const customers = getCustomersFromIds(unwelcomedIds);
+
+    if (customers.length === 0) return;
+
+    setModalData({
+      title: 'Novos Clientes sem Boas-vindas',
+      subtitle: `${customers.length} clientes`,
+      customers,
+      audienceType: 'newCustomers',
+      color: 'purple',
+      icon: UserPlus
+    });
+    setModalOpen(true);
+  }, [allNewCustomerIds, welcomeContactedIds, getCustomersFromIds]);
+
+  // Generate simplified insights (reduced from 4 to 2)
   const insights = useMemo(() => {
     const result = [];
 
-    // Base stats
-    result.push({
-      type: 'success',
-      text: `${stats.totalNew} novos clientes (média ${stats.avgNew}/dia)`
-    });
-
-    // Week-over-week trend
-    if (stats.weekChange !== 0) {
-      const trendType = stats.weekChange > 0 ? 'success' : 'warning';
-      const trendText = stats.weekChange > 0
-        ? `+${stats.weekChange}% vs semana anterior`
-        : `${stats.weekChange}% vs semana anterior`;
-      result.push({ type: trendType, text: trendText });
-    }
-
-    // Welcome campaign coverage
-    if (welcomeContactedIds.size > 0 && allNewCustomerIds.length > 0) {
-      if (stats.welcomePct >= 80) {
-        result.push({
-          type: 'success',
-          text: `${stats.welcomeCount}/${allNewCustomerIds.length} receberam boas-vindas (${stats.welcomePct}%)`
-        });
-      } else if (stats.notWelcomed > 0) {
-        result.push({
-          type: 'warning',
-          text: `${stats.notWelcomed} novos clientes sem mensagem de boas-vindas`
-        });
-      }
-    }
-
-    // Return tracking
-    if (returnedCustomerIds.size > 0 && stats.returnedCount > 0) {
-      const returnType = stats.returnPct >= 50 ? 'success' : 'info';
+    // Primary insight: Unwelcomed customers (clickable if > 0)
+    if (stats.notWelcomed > 0) {
       result.push({
-        type: returnType,
-        text: `${stats.returnedCount} novos clientes já retornaram (${stats.returnPct}% conversão)`
+        type: 'warning',
+        text: `${stats.notWelcomed} novos clientes sem mensagem de boas-vindas`,
+        onClick: handleUnwelcomedClick,
+        customerCount: stats.notWelcomed
       });
-    }
-
-    // Action items
-    if (stats.notWelcomed > 0 && welcomeContactedIds.size > 0) {
+    } else if (stats.welcomeCount > 0) {
       result.push({
-        type: 'action',
-        text: 'Ação: Ativar automação de boas-vindas para novos clientes'
+        type: 'success',
+        text: `${stats.welcomeCount} novos clientes receberam boas-vindas (${stats.welcomePct}%)`
       });
     } else {
       result.push({
-        type: 'action',
-        text: 'Meta: Converter 80% em clientes recorrentes'
+        type: 'success',
+        text: `${stats.totalNew} novos clientes (media ${stats.avgNew}/dia)`
+      });
+    }
+
+    // Secondary insight: Return rate (info only)
+    if (stats.returnedCount > 0) {
+      result.push({
+        type: stats.returnPct >= 50 ? 'success' : 'info',
+        text: `${stats.returnedCount} novos clientes ja retornaram (${stats.returnPct}% conversao)`
+      });
+    } else if (stats.weekChange !== 0) {
+      result.push({
+        type: stats.weekChange > 0 ? 'success' : 'info',
+        text: `${stats.weekChange > 0 ? '+' : ''}${stats.weekChange}% vs semana anterior`
       });
     }
 
     return result;
-  }, [stats, welcomeContactedIds, returnedCustomerIds, allNewCustomerIds]);
+  }, [stats, handleUnwelcomedClick]);
 
   // Memoize CustomTooltip
   const CustomTooltip = useCallback(({ active, payload }) => {
@@ -261,6 +276,22 @@ const NewClientsChart = ({
       </div>
 
       <InsightBox insights={insights} />
+
+      {/* Customer Segment Modal */}
+      <CustomerSegmentModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={modalData.title}
+        subtitle={modalData.subtitle}
+        icon={modalData.icon}
+        color={modalData.color}
+        customers={modalData.customers}
+        audienceType={modalData.audienceType}
+        contactedIds={welcomeContactedIds}
+        onOpenCustomerProfile={onOpenCustomerProfile}
+        onMarkContacted={onMarkContacted}
+        onCreateCampaign={onCreateCampaign}
+      />
     </div>
   );
 };

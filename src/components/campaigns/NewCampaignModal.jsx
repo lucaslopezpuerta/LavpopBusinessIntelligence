@@ -1,8 +1,12 @@
-// NewCampaignModal.jsx v4.7
+// NewCampaignModal.jsx v4.8
 // Campaign creation wizard modal
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v4.8 (2025-12-15): Custom audience support from chart insights
+//   - Added 'custom' audience for pre-selected customers from charts
+//   - Custom audience only shows when audienceSegments.custom has customers
+//   - Supports chart-to-campaign workflow from Customers view
 // v4.7 (2025-12-13): Configurable coupon validity for manual campaigns
 //   - Added couponValidityDays state (default 7 days)
 //   - Added UI selector in Step 2 (5, 7, 10, 14, 21, 30 days)
@@ -86,7 +90,8 @@ import {
   TrendingUp,
   Snowflake,
   Moon,
-  UserMinus
+  UserMinus,
+  UserCheck
 } from 'lucide-react';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import {
@@ -123,7 +128,8 @@ const ICON_MAP = {
   Snowflake,
   Moon,
   AlertTriangle,
-  Users
+  Users,
+  UserCheck
 };
 
 // Audience options - organized by category
@@ -245,6 +251,28 @@ const NewCampaignModal = ({
   const [sendMode, setSendMode] = useState('now'); // 'now' or 'scheduled'
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+
+  // Build audiences list - includes custom audience when pre-selected customers exist
+  const availableAudiences = useMemo(() => {
+    const hasCustom = audienceSegments?.custom?.length > 0;
+
+    if (hasCustom) {
+      // Add custom audience at the top when pre-selected customers exist
+      return [
+        {
+          id: 'custom',
+          label: 'Seleção Manual',
+          description: `${audienceSegments.custom.length} clientes pré-selecionados`,
+          icon: UserCheck,
+          color: 'indigo',
+          category: 'custom'
+        },
+        ...AUDIENCES
+      ];
+    }
+
+    return AUDIENCES;
+  }, [audienceSegments?.custom]);
 
   // Handle initial values when modal opens with pre-selection
   useEffect(() => {
@@ -693,7 +721,7 @@ const NewCampaignModal = ({
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {AUDIENCES.map((audience) => {
+                {availableAudiences.map((audience) => {
                   const Icon = audience.icon;
                   const count = getAudienceCount(audience.id);
                   const isSelected = selectedAudience === audience.id;
@@ -726,6 +754,7 @@ const NewCampaignModal = ({
                           audience.color === 'cyan' ? 'bg-cyan-100 dark:bg-cyan-900/40' :
                           audience.color === 'green' ? 'bg-green-100 dark:bg-green-900/40' :
                           audience.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700' :
+                          audience.color === 'indigo' ? 'bg-indigo-100 dark:bg-indigo-900/40' :
                           'bg-slate-100 dark:bg-slate-700'
                         }
                       `}>
@@ -734,6 +763,7 @@ const NewCampaignModal = ({
                           ${audience.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
                             audience.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
                             audience.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
+                            audience.color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' :
                             audience.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
                             audience.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
                             audience.color === 'cyan' ? 'text-cyan-600 dark:text-cyan-400' :
@@ -1205,7 +1235,7 @@ const NewCampaignModal = ({
                       <div>
                         <p className="text-slate-500 dark:text-slate-400">Audiência</p>
                         <p className="font-medium text-slate-900 dark:text-white">
-                          {AUDIENCES.find(a => a.id === selectedAudience)?.label}
+                          {availableAudiences.find(a => a.id === selectedAudience)?.label}
                         </p>
                       </div>
                       <div>

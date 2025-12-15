@@ -1,25 +1,41 @@
-// ChurnHistogram.jsx v2.0 - CONTACT STATUS + DYNAMIC INSIGHTS
+// ChurnHistogram.jsx v2.1 - INTERACTIVE INSIGHTS + BAR CLICKS
 // Time-to-churn distribution histogram with contact tracking integration
 //
 // CHANGELOG:
+// v2.1 (2025-12-15): Interactive insights + bar clicks
+//   - REFACTORED: Reduced insights from 6 to 2 (primary clickable, secondary info)
+//   - NEW: Click bar → opens modal with NON-CONTACTED customers in that bin
+//   - NEW: Click insight → opens modal with danger zone customers
+//   - NEW: onOpenCustomerProfile and onCreateCampaign props
 // v2.0 (2025-12-13): Contact status + dynamic insights
 //   - NEW: contactedIds prop for contact tracking integration
 //   - NEW: Dynamic peak detection (actual peak bin, not hardcoded)
 //   - NEW: Contact status shown in insights (contacted vs not in danger zone)
 //   - NEW: Revenue at risk calculation using customerSpending
 //   - IMPROVED: Data-driven insights based on actual distribution
-//   - IMPROVED: Memoized calculations for performance
 // v1.2 (2025-11-29): Design System v3.0 compliance
-//   - Removed emojis from insight text strings
 // v1.1 (2025-11-24): Added actionable insights
-//   - NEW: InsightBox with churn pattern analysis
 // v1.0 (2025-11-23): Initial implementation
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { AlertCircle } from 'lucide-react';
 import InsightBox from './ui/InsightBox';
+import CustomerSegmentModal from './modals/CustomerSegmentModal';
 
-const ChurnHistogram = ({ data, contactedIds = new Set(), customerSpending = {} }) => {
+const ChurnHistogram = ({
+    data,
+    contactedIds = new Set(),
+    customerSpending = {},
+    customerMap = {},
+    onOpenCustomerProfile,
+    onMarkContacted,
+    onCreateCampaign
+}) => {
+    // Modal state
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'atRisk', color: 'red' });
+
     if (!data || data.length === 0) return null;
 
     // Memoize all calculations
@@ -60,62 +76,107 @@ const ChurnHistogram = ({ data, contactedIds = new Set(), customerSpending = {} 
             contactedInDanger,
             notContactedInDanger,
             revenueAtRisk,
-            peakBin
+            peakBin,
+            dangerCustomerIds
         };
     }, [data, contactedIds, customerSpending]);
 
-    // Generate dynamic insights
+    // Helper to convert customer IDs to customer objects
+    const getCustomersFromIds = useCallback((customerIds) => {
+        return customerIds
+            .map(id => customerMap[String(id)] || { id, name: `Cliente ${String(id).slice(-4)}` })
+            .filter(Boolean);
+    }, [customerMap]);
+
+    // Click handler for bar - shows NON-CONTACTED customers in that bin
+    const handleBarClick = useCallback((binData) => {
+        if (!binData || !binData.customerIds) return;
+
+        // Filter to non-contacted customers only
+        const notContactedIds = binData.customerIds.filter(id => !contactedIds.has(String(id)));
+        const customers = getCustomersFromIds(notContactedIds);
+
+        if (customers.length === 0) return;
+
+        setModalData({
+            title: `Clientes: ${binData.bin} dias`,
+            subtitle: `${customers.length} clientes sem contato`,
+            customers,
+            audienceType: 'atRisk',
+            color: binData.min >= 30 ? 'red' : binData.min >= 20 ? 'amber' : 'green',
+            icon: AlertCircle
+        });
+        setModalOpen(true);
+    }, [contactedIds, getCustomersFromIds]);
+
+    // Click handler for danger zone insight
+    const handleDangerZoneClick = useCallback(() => {
+        // Get non-contacted customers in danger zone
+        const notContactedIds = stats.dangerCustomerIds.filter(id => !contactedIds.has(String(id)));
+        const customers = getCustomersFromIds(notContactedIds);
+
+        if (customers.length === 0) return;
+
+        setModalData({
+            title: 'Zona de Perigo (30+ dias)',
+            subtitle: `${customers.length} clientes sem contato`,
+            customers,
+            audienceType: 'atRisk',
+            color: 'red',
+            icon: AlertCircle
+        });
+        setModalOpen(true);
+    }, [stats.dangerCustomerIds, contactedIds, getCustomersFromIds]);
+
+    // Format currency helper
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(value);
+    };
+
+    // Generate simplified insights (reduced from 6 to 2)
     const insights = useMemo(() => {
         const result = [];
 
-        // Health status
-        if (stats.healthyPct >= 60) {
-            result.push({ type: 'success', text: `${stats.healthyPct}% retornam em 0-20 dias (padrão saudável)` });
-        } else if (stats.healthyPct > 0) {
-            result.push({ type: 'warning', text: `Apenas ${stats.healthyPct}% retornam em 0-20 dias` });
-        } else {
-            result.push({ type: 'warning', text: 'Nenhum cliente com padrão de retorno < 20 dias' });
-        }
-
-        // Dynamic peak detection
-        if (stats.peakBin && stats.peakBin.count > 0) {
-            const peakLabel = stats.peakBin.min >= 30 ? '(zona crítica)' : '';
-            result.push({
-                type: stats.peakBin.min >= 30 ? 'warning' : 'info',
-                text: `Pico em ${stats.peakBin.bin} dias ${peakLabel}`
-            });
-        }
-
-        // Contact status in danger zone
+        // Primary insight: Danger zone customers (clickable if > 0)
         if (stats.notContactedInDanger > 0) {
             result.push({
                 type: 'warning',
-                text: `${stats.notContactedInDanger} clientes em zona de perigo sem contato`
+                text: `${stats.notContactedInDanger} clientes em zona de perigo sem contato`,
+                onClick: handleDangerZoneClick,
+                customerCount: stats.notContactedInDanger
+            });
+        } else if (stats.dangerCount > 0) {
+            result.push({
+                type: 'success',
+                text: `${stats.dangerCount} clientes em zona de perigo - todos contactados`
+            });
+        } else {
+            result.push({
+                type: 'success',
+                text: 'Nenhum cliente em zona de perigo'
             });
         }
-        if (stats.contactedInDanger > 0) {
+
+        // Secondary insight: Revenue at risk (info only)
+        if (stats.revenueAtRisk > 0) {
             result.push({
                 type: 'info',
-                text: `${stats.contactedInDanger} clientes em zona de perigo já contactados`
+                text: `${formatCurrency(stats.revenueAtRisk)} em risco na zona de perigo`
+            });
+        } else {
+            result.push({
+                type: 'success',
+                text: `${stats.healthyPct}% dos clientes retornam em ate 20 dias`
             });
         }
 
-        // Revenue at risk
-        if (stats.revenueAtRisk > 0) {
-            const formattedRevenue = new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(stats.revenueAtRisk);
-            result.push({ type: 'warning', text: `${formattedRevenue} em risco na zona de perigo` });
-        }
-
-        // Action item
-        result.push({ type: 'action', text: 'Ação: Contatar clientes após 25 dias sem visitar' });
-
         return result;
-    }, [stats]);
+    }, [stats, handleDangerZoneClick]);
 
     // Memoized tooltip
     const CustomTooltip = useCallback(({ active, payload, label }) => {
@@ -201,7 +262,12 @@ const ChurnHistogram = ({ data, contactedIds = new Set(), customerSpending = {} 
                             axisLine={false}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
-                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                        <Bar
+                            dataKey="count"
+                            radius={[4, 4, 0, 0]}
+                            onClick={(barData) => handleBarClick(barData)}
+                            cursor="pointer"
+                        >
                             {data.map((entry, index) => (
                                 <Cell
                                     key={`cell-${index}`}
@@ -218,6 +284,22 @@ const ChurnHistogram = ({ data, contactedIds = new Set(), customerSpending = {} 
             </div>
 
             <InsightBox insights={insights} />
+
+            {/* Customer Segment Modal */}
+            <CustomerSegmentModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                title={modalData.title}
+                subtitle={modalData.subtitle}
+                icon={modalData.icon}
+                color={modalData.color}
+                customers={modalData.customers}
+                audienceType={modalData.audienceType}
+                contactedIds={contactedIds}
+                onOpenCustomerProfile={onOpenCustomerProfile}
+                onMarkContacted={onMarkContacted}
+                onCreateCampaign={onCreateCampaign}
+            />
         </div>
     );
 };

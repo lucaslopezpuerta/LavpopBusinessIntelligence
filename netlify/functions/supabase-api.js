@@ -1662,6 +1662,29 @@ async function getContactTracking(supabase, params, headers) {
 }
 
 async function createContactTracking(supabase, data, headers) {
+  // Check for duplicate queued entry for manual inclusions
+  if (data.priority_source === 'manual_inclusion') {
+    const { data: existing } = await supabase
+      .from('contact_tracking')
+      .select('id')
+      .eq('customer_id', data.customer_id)
+      .eq('campaign_id', data.campaign_id)
+      .eq('status', 'queued')
+      .maybeSingle();
+
+    if (existing) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          skipped: true,
+          reason: 'Already queued',
+          existing_id: existing.id
+        })
+      };
+    }
+  }
+
   // Calculate defaults for required fields
   const now = new Date();
   const expiryDays = data.campaign_type === 'manual' ? 7 : 14; // Manual contacts expire in 7 days
@@ -1678,7 +1701,8 @@ async function createContactTracking(supabase, data, headers) {
     status: data.status || 'pending',
     contacted_at: data.contacted_at || now.toISOString(),
     expires_at: data.expires_at || expiresAt.toISOString(),
-    notes: data.notes || null
+    notes: data.notes || null,
+    priority_source: data.priority_source || null
   };
 
   const { data: created, error } = await supabase

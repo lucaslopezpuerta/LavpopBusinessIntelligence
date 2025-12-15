@@ -1,8 +1,14 @@
-// CampaignList.jsx v3.0
+// CampaignList.jsx v3.1
 // Campaign list and history display - Backend only
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.1 (2025-12-15): UX enhancements from audit
+//   - Added delivery metrics row (Entregues/Lidas/Falhou) to cards
+//   - Added "Last Sent" with relative time display
+//   - Added tooltips to all metric labels
+//   - Added quick stats summary at top (campaigns, contacts, revenue)
+//   - Compact "Ver Detalhes" button
 // v3.0 (2025-12-11): Backend-only campaigns (deprecated CSV)
 //   - Removed legacy CSV campaign support
 //   - Simplified component props and data flow
@@ -11,12 +17,33 @@
 // v2.1 (2025-12-08): Added campaign details modal
 // v2.0 (2025-12-08): Backend integration + effectiveness metrics
 
-import React, { useState, useEffect } from 'react';
-import { Target, Calendar, Users, Search, MessageSquare, TrendingUp, RefreshCw, Eye } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Target, Calendar, Users, Search, MessageSquare, TrendingUp, RefreshCw, Eye, CheckCircle2, BookOpen, AlertCircle, ArrowRight, Send } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import ProgressBar from '../ui/ProgressBar';
 import { getCampaignPerformance } from '../../utils/campaignService';
 import CampaignDetailsModal from './CampaignDetailsModal';
+
+// Helper: Relative time in Portuguese
+const getRelativeTime = (date) => {
+  if (!date) return null;
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'hoje';
+  if (diffDays === 1) return 'ontem';
+  if (diffDays < 7) return `há ${diffDays} dias`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `há ${weeks} semana${weeks > 1 ? 's' : ''}`;
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return `há ${months} ${months > 1 ? 'meses' : 'mês'}`;
+  }
+  return date.toLocaleDateString('pt-BR');
+};
 
 const CampaignList = ({ formatCurrency, formatPercent }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,7 +71,13 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
         isActive: c.status === 'active',
         contactMethod: c.contact_method || 'whatsapp',
         sends: c.sends || 0,
+        // Delivery metrics
         delivered: c.delivered || 0,
+        read: c.read || 0,
+        failed: c.failed || 0,
+        hasDeliveryData: c.has_delivery_data || false,
+        deliveryRate: c.delivery_rate || 0,
+        // Return metrics
         contactsTracked: c.contacts_tracked || 0,
         contactsReturned: c.contacts_returned || 0,
         returnRate: c.return_rate || 0,
@@ -60,6 +93,16 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
       setIsLoading(false);
     }
   };
+
+  // Calculate quick stats summary
+  const quickStats = useMemo(() => {
+    const totalCampaigns = campaigns.length;
+    const totalContacts = campaigns.reduce((sum, c) => sum + (c.contactsTracked || 0), 0);
+    const totalReturned = campaigns.reduce((sum, c) => sum + (c.contactsReturned || 0), 0);
+    const totalRevenue = campaigns.reduce((sum, c) => sum + (c.revenueRecovered || 0), 0);
+    const avgReturnRate = totalContacts > 0 ? (totalReturned / totalContacts) * 100 : 0;
+    return { totalCampaigns, totalContacts, totalReturned, totalRevenue, avgReturnRate };
+  }, [campaigns]);
 
   // Filter campaigns
   const filteredCampaigns = campaigns.filter(campaign => {
@@ -166,6 +209,29 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
           </div>
         </div>
 
+        {/* Quick Stats Summary */}
+        {!isLoading && campaigns.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+            <span className="flex items-center gap-1">
+              <Target className="w-3.5 h-3.5 text-purple-500" />
+              <strong className="text-slate-900 dark:text-white">{quickStats.totalCampaigns}</strong> campanhas
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-blue-500" />
+              <strong className="text-slate-900 dark:text-white">{quickStats.totalContacts}</strong> contatos
+            </span>
+            <span className="flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <strong className="text-slate-900 dark:text-white">{quickStats.totalReturned}</strong> retornaram
+              <span className="text-slate-400">({formatPercent(quickStats.avgReturnRate)})</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+              <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(quickStats.totalRevenue)}</strong> recuperado
+            </span>
+          </div>
+        )}
+
         {/* Loading State */}
         {isLoading && (
           <div className="flex items-center justify-center py-8">
@@ -193,21 +259,27 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
                         {getStatusLabel(campaign.status)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                       {campaign.createdAt && (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1" title="Data de criação">
                           <Calendar className="w-3 h-3" />
                           {campaign.createdAt.toLocaleDateString('pt-BR')}
                         </span>
                       )}
+                      {campaign.lastSentAt && (
+                        <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400" title={`Último envio: ${campaign.lastSentAt.toLocaleDateString('pt-BR')}`}>
+                          <Send className="w-3 h-3" />
+                          {getRelativeTime(campaign.lastSentAt)}
+                        </span>
+                      )}
                       {campaign.audience && (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1" title="Público-alvo">
                           <Users className="w-3 h-3" />
                           {getAudienceLabel(campaign.audience)}
                         </span>
                       )}
                       {campaign.contactMethod && (
-                        <span className="flex items-center gap-1">
+                        <span className="hidden sm:flex items-center gap-1" title="Canal de contato">
                           <MessageSquare className="w-3 h-3" />
                           {campaign.contactMethod === 'whatsapp' ? 'WhatsApp' : campaign.contactMethod}
                         </span>
@@ -216,27 +288,56 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
                   </div>
                 </div>
 
+                {/* Delivery Funnel Row */}
+                {campaign.hasDeliveryData && (
+                  <div className="flex items-center gap-1 mb-3 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-xs overflow-x-auto">
+                    <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      <Send className="w-3 h-3" />
+                      {campaign.sends}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0" />
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400 whitespace-nowrap" title="Mensagens entregues no dispositivo">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {campaign.delivered + campaign.read}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0" />
+                    <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 whitespace-nowrap" title="Mensagens lidas pelo cliente">
+                      <BookOpen className="w-3 h-3" />
+                      {campaign.read}
+                    </span>
+                    {campaign.failed > 0 && (
+                      <>
+                        <span className="text-slate-300 dark:text-slate-600 mx-1">|</span>
+                        <span className="flex items-center gap-1 text-red-600 dark:text-red-400 whitespace-nowrap" title="Falha na entrega">
+                          <AlertCircle className="w-3 h-3" />
+                          {campaign.failed}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                  <div>
+                  <div title="Mensagens enviadas via WhatsApp">
                     <p className="text-xs text-slate-500 dark:text-slate-400">Enviados</p>
                     <p className="text-sm font-semibold text-slate-900 dark:text-white">
                       {campaign.sends || 0}
                     </p>
                   </div>
-                  <div>
+                  <div title="Contatos sendo monitorados para retorno">
                     <p className="text-xs text-slate-500 dark:text-slate-400">Rastreados</p>
                     <p className="text-sm font-semibold text-slate-900 dark:text-white">
                       {campaign.contactsTracked || 0}
                     </p>
                   </div>
-                  <div>
+                  <div title="Clientes que voltaram à loja após a campanha">
                     <p className="text-xs text-slate-500 dark:text-slate-400">Retornaram</p>
                     <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                       {campaign.contactsReturned || 0}
                     </p>
                   </div>
-                  <div>
+                  <div title="Porcentagem de contatos que retornaram">
                     <p className="text-xs text-slate-500 dark:text-slate-400">Taxa Retorno</p>
                     <p className={`text-sm font-semibold ${
                       campaign.returnRate > 15
@@ -271,13 +372,13 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
                   </div>
                 )}
 
-                {/* View Details Button */}
+                {/* View Details Button - Compact */}
                 <button
                   onClick={() => setSelectedCampaign(campaign)}
-                  className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 rounded-lg text-xs font-medium transition-colors"
+                  className="mt-3 flex items-center gap-1.5 py-1.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 rounded-lg text-xs font-medium transition-colors"
                 >
-                  <Eye className="w-4 h-4" />
-                  Ver Detalhes dos Contatos
+                  <Eye className="w-3.5 h-3.5" />
+                  Ver Contatos
                 </button>
               </div>
             ))}

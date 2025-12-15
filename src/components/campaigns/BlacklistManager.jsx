@@ -1,8 +1,16 @@
-// BlacklistManager.jsx v3.0
+// BlacklistManager.jsx v3.1
 // WhatsApp blacklist management UI component
-// Design System v4.0 compliant - Enhanced UX
+// Design System v3.1 compliant
 //
 // CHANGELOG:
+// v3.1 (2025-12-15): Design System compliance fixes
+//   - Modal redesigned with gradient header (per Design System modals)
+//   - Table header styled with bg-slate-50 background
+//   - Added search clear button (X)
+//   - Improved mobile button layout (stack vertically)
+//   - Added tooltips to stats cards
+//   - Improved info hint contrast
+//   - Added row hover state to table
 // v3.0 (2025-12-11): Complete UX redesign
 //   - Stats dashboard header with gradient backgrounds
 //   - Simplified to 2 main stat cards (Total, Opt-outs)
@@ -43,7 +51,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import InsightBox from '../ui/InsightBox';
@@ -323,7 +332,10 @@ const BlacklistManager = ({ customerData }) => {
           <>
             <div className="grid grid-cols-2 gap-3">
               {/* Total Bloqueados */}
-              <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
+              <div
+                className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg"
+                title="Total de números que não receberão mensagens de campanhas"
+              >
                 <div className="flex items-center gap-2 mb-1">
                   <ShieldOff className="w-4 h-4 opacity-80" />
                   <span className="text-xs font-medium opacity-90">Bloqueados</span>
@@ -333,7 +345,10 @@ const BlacklistManager = ({ customerData }) => {
               </div>
 
               {/* Opt-outs */}
-              <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg">
+              <div
+                className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg"
+                title="Clientes que pediram para não receber mais mensagens"
+              >
                 <div className="flex items-center gap-2 mb-1">
                   <MessageSquareOff className="w-4 h-4 opacity-80" />
                   <span className="text-xs font-medium opacity-90">Opt-outs</span>
@@ -343,12 +358,12 @@ const BlacklistManager = ({ customerData }) => {
               </div>
             </div>
 
-            {/* Discrete Info Hint */}
-            <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-              <Info className="w-3 h-3" />
+            {/* Info Hint - Improved contrast */}
+            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <Info className="w-3 h-3 text-blue-500" />
               Sincroniza opt-outs e não entregues do Twilio automaticamente
               {(stats.byReason?.undelivered || 0) + (stats.byReason?.numberBlocked || 0) > 0 && (
-                <span className="text-amber-500 dark:text-amber-400">
+                <span className="text-amber-600 dark:text-amber-400 font-medium">
                   · {(stats.byReason?.undelivered || 0) + (stats.byReason?.numberBlocked || 0)} não entregues
                 </span>
               )}
@@ -392,11 +407,11 @@ const BlacklistManager = ({ customerData }) => {
             {isSyncing ? 'Sincronizando...' : 'Sincronizar Twilio'}
           </button>
 
-          {/* Secondary actions - grid on mobile, flex on desktop */}
-          <div className="grid grid-cols-3 sm:flex sm:justify-end gap-2">
+          {/* Secondary actions - stack on mobile, flex on desktop */}
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs sm:text-sm font-medium rounded-xl transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-sm font-medium rounded-xl transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Adicionar</span>
@@ -405,15 +420,15 @@ const BlacklistManager = ({ customerData }) => {
             <button
               onClick={handleExport}
               disabled={blacklist.length === 0}
-              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              <span>Exportar</span>
+              <span>Exportar CSV</span>
             </button>
 
-            <label className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer">
+            <label className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer">
               <Upload className="w-4 h-4" />
-              <span>{isImporting ? '...' : 'Importar'}</span>
+              <span>{isImporting ? 'Importando...' : 'Importar CSV'}</span>
               <input
                 type="file"
                 accept=".csv"
@@ -439,7 +454,7 @@ const BlacklistManager = ({ customerData }) => {
         )}
 
 
-        {/* Search */}
+        {/* Search with clear button */}
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -447,28 +462,37 @@ const BlacklistManager = ({ customerData }) => {
             placeholder="Buscar por telefone, nome ou motivo..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
+            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              title="Limpar busca"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Blacklist Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
           <table className="w-full">
-            <thead>
+            <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                   Telefone
                 </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                   Nome
                 </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                   Motivo
                 </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                   Data
                 </th>
-                <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                <th className="text-right py-3 px-4 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                   Ação
                 </th>
               </tr>
@@ -491,6 +515,7 @@ const BlacklistManager = ({ customerData }) => {
                       className={`
                         border-b border-slate-100 dark:border-slate-800
                         ${index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'}
+                        hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors
                       `}
                     >
                       <td className="py-3 px-4">
@@ -633,15 +658,28 @@ const BlacklistManager = ({ customerData }) => {
           </div>
         )}
 
-        {/* Add Modal */}
+        {/* Add Modal - Design System compliant with gradient header */}
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 animate-fade-in">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-                Adicionar à Blacklist
-              </h3>
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
+              {/* Gradient Header */}
+              <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-600 to-rose-600">
+                <div className="flex items-center gap-3">
+                  <ShieldOff className="w-5 h-5 text-white/80" />
+                  <h3 className="text-lg font-bold text-white">
+                    Adicionar à Blacklist
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-              <div className="space-y-4">
+              {/* Body */}
+              <div className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Telefone *
@@ -651,7 +689,7 @@ const BlacklistManager = ({ customerData }) => {
                     placeholder="+5554999999999"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
 
@@ -664,7 +702,7 @@ const BlacklistManager = ({ customerData }) => {
                     placeholder="Nome do cliente"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
 
@@ -675,7 +713,7 @@ const BlacklistManager = ({ customerData }) => {
                   <select
                     value={newReason}
                     onChange={(e) => setNewReason(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="manual">Manual</option>
                     <option value="opt-out">Opt-out (pediu para parar)</option>
@@ -685,17 +723,18 @@ const BlacklistManager = ({ customerData }) => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6">
+              {/* Footer */}
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleAdd}
                   disabled={!newPhone.trim()}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 disabled:from-red-400 disabled:to-rose-400 text-white text-sm font-semibold rounded-lg shadow-lg shadow-red-500/25 transition-all"
                 >
                   Adicionar
                 </button>

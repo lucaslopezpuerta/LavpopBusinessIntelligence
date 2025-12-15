@@ -1,10 +1,19 @@
 # Campaigns Tab - Technical Documentation
 
-**Version:** 3.4.0
-**Last Updated:** 2025-12-13
+**Version:** 3.5.0
+**Last Updated:** 2025-12-15
 **File:** `src/views/Campaigns.jsx`
 
 ## Changelog
+
+**v3.5.0 (2025-12-15):**
+- **Manual Inclusion Priority Queue (Schema v3.18):**
+  - Users can now manually add customers to automation queues from CustomerSegmentModal
+  - New `priority_source` column in `contact_tracking` table (`manual_inclusion`, `automation`, or `null`)
+  - Scheduler processes queued entries via new `processPriorityQueue()` function
+  - Respects eligibility cooldowns (7-day global, 30-day same-type) - no bypass
+  - Duplicate entries are prevented at the API level
+  - See [Manual Inclusion Flow](#manual-inclusion-flow) for details
 
 **v3.4.0 (2025-12-13):**
 - **Auto-refresh Triggers (Schema v3.14):**
@@ -423,6 +432,88 @@ For each enabled automation_rule:
 │   │   └── Updates campaign sends count
 │   └── Increment rule total_sends_count + daily_sends_count
 └── Log execution results
+```
+
+#### Manual Inclusion Flow
+
+Users can manually add customers to automation queues via the "Incluir em Automação" button in the CustomerSegmentModal. This is useful for:
+- Adding specific customers to an automation who don't meet the automatic trigger criteria
+- Re-engaging customers who were previously skipped due to cooldowns (after cooldown expires)
+- Testing automation templates with specific customers
+
+**UI Flow:**
+
+```
+CustomerSegmentModal (customer details)
+    ↓
+Click "Incluir em Automação" button
+    ↓
+Shows dropdown with matching automations
+├── Filtered by audience type (e.g., At Risk customer sees winback automations)
+└── Shows automation name + template type
+    ↓
+Select automation → API creates contact_tracking entry
+├── priority_source: 'manual_inclusion'
+├── status: 'queued'
+├── campaign_id: 'AUTO_{rule_id}'
+└── customer_id, customer_name
+```
+
+**Backend Processing:**
+
+```
+campaign-scheduler.js (runs every 5 minutes)
+    ↓
+processPriorityQueue(supabase)
+    ↓
+1. Query contact_tracking WHERE priority_source='manual_inclusion' AND status='queued' (limit 50)
+    ↓
+2. Check eligibility via check_customers_eligibility() RPC
+├── 7-day global cooldown enforced
+├── 30-day same-type cooldown enforced
+└── NO bypass for manual inclusions
+    ↓
+3. For each queued entry:
+├── Skip if not eligible → status='cleared', notes='Skipped: cooldown active'
+├── Skip if no phone → status='cleared', notes='Skipped: no valid phone'
+├── Skip if blacklisted → status='cleared', notes='Skipped: blacklisted'
+├── Get automation rule from campaign_id (AUTO_{rule_id})
+├── Get ContentSid from AUTOMATION_TEMPLATE_SIDS
+└── Send via sendAutomationMessage()
+    ↓
+4. Update contact_tracking:
+├── Success → status='pending', twilio_sid, delivery_status='sent'
+└── Failure → status='cleared', delivery_status='failed', notes='Failed: {error}'
+```
+
+**Status Flow:**
+
+```
+Manual Inclusion:
+  queued → pending → returned/expired
+             ↓
+          cleared (if ineligible/blacklisted/failed)
+
+Automation (for comparison):
+  (created as pending) → returned/expired
+```
+
+**Key Design Decisions:**
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Processing | Async (5-min scheduler) | Consistent with automation flow |
+| Eligibility | Enforced (no bypass) | Prevents spam, respects customer preferences |
+| Duplicates | Skipped at API level | Same customer can't be queued twice |
+| Tracking | Uses contact_tracking | Single source of truth, analytics work automatically |
+
+**Database Column:**
+
+```sql
+-- contact_tracking.priority_source
+'manual_inclusion' -- User clicked "Incluir em Automação"
+'automation'       -- Scheduler created automatically
+NULL               -- Legacy or manual campaign
 ```
 
 **Why risk_level Column (v3.6)?**
@@ -849,12 +940,15 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 | `src/App.jsx` | Smart data refresh system (v7.0) |
 | `netlify/functions/twilio-whatsapp.js` | Twilio send API integration |
 | `netlify/functions/twilio-webhook.js` | Twilio delivery status webhook (v1.1) |
-| `netlify/functions/supabase-api.js` | Supabase API endpoints (v2.6) |
-| `netlify/functions/campaign-scheduler.js` | Scheduled campaign & automation executor (v2.6) |
-| `supabase/schema.sql` | Main database schema (v3.14) |
+| `netlify/functions/supabase-api.js` | Supabase API endpoints (v2.7) - duplicate check for manual inclusions |
+| `netlify/functions/campaign-scheduler.js` | Scheduled campaign & automation executor (v2.9) - priority queue processing |
+| `supabase/schema.sql` | Main database schema (v3.18) |
 | `supabase/migrations/001_schema_cleanup.sql` | Schema cleanup migration |
 | `supabase/migrations/002_auto_refresh_triggers.sql` | Auto-refresh triggers for customer metrics |
 | `supabase/migrations/003_smart_customer_upsert.sql` | Smart customer upsert functions |
+| `supabase/migrations/009_add_priority_source.sql` | Priority source column for manual inclusions |
+| `src/components/modals/CustomerSegmentModal.jsx` | Customer details modal with "Incluir em Automação" button |
+| `src/hooks/useActiveCampaigns.js` | Hook to fetch active automations by audience |
 
 ---
 
@@ -862,6 +956,7 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v3.5.0 | 2025-12-15 | **Manual Inclusion Priority Queue**: Users can add customers to automation queues via "Incluir em Automação" button, scheduler processes queued entries, eligibility cooldowns enforced, duplicate prevention |
 | v3.4.0 | 2025-12-13 | **Auto-refresh Triggers + Smart Upsert**: Customer metrics auto-update on transaction insert, smart customer upsert prevents data regression, App.jsx v7.0 visibility-based refresh |
 | v3.3.0 | 2025-12-13 | **Unified Manual Campaign Flow**: Manual campaigns now use same flow as automations (send first, then record), twilio_sid stored in campaign_contacts, delivery metrics work for manual campaigns |
 | v3.2.0 | 2025-12-12 | **Enhanced Automation Controls (v6.0)**: Send time windows, day-of-week restrictions, daily rate limits, exclude recent visitors, min spend threshold, wallet balance max |

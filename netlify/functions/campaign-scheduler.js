@@ -2,6 +2,14 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.9 (2025-12-15): Priority queue for manual inclusions
+//   - Added processPriorityQueue() to handle "Incluir em Automação" entries
+//   - Processes contact_tracking entries with priority_source='manual_inclusion', status='queued'
+//   - Respects eligibility cooldowns (7 days global, 30 days same-type)
+//   - Skips blacklisted phones and invalid entries
+//   - Updates contact_tracking status to 'pending' after successful send
+//   - Returns priorityQueue results in scheduler response
+//
 // v2.8 (2025-12-14): Improved failure logging + hourly returns + old phone format support
 //   - Added summary log after each rule showing failures with error messages
 //   - Shows last 4 digits of phone + error reason (e.g., "63016: Template not found")
@@ -219,6 +227,9 @@ exports.handler = async (event, context) => {
       }
     }
 
+    // v2.9: Process priority queue first (manual inclusions from "Incluir em Automação" button)
+    const priorityResults = await processPriorityQueue(supabase);
+
     // Process automation rules after scheduled campaigns
     const automationResults = await processAutomationRules(supabase);
 
@@ -240,8 +251,9 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `Processed ${results.length} campaigns, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}`,
+        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}`,
         campaigns: results,
+        priorityQueue: priorityResults,
         automation: automationResults,
         returns: returnResults
       })
@@ -542,6 +554,217 @@ async function processAutomationRules(supabase) {
 
   } catch (error) {
     console.error('Automation processing error:', error);
+    results.error = error.message;
+    return results;
+  }
+}
+
+/**
+ * Process priority queue (manual inclusions)
+ * Handles customers manually added to automations via "Incluir em Automação" button
+ *
+ * Flow:
+ * 1. Query contact_tracking where priority_source='manual_inclusion' AND status='queued'
+ * 2. Check eligibility (respects cooldowns - no bypass)
+ * 3. Send message using automation's template
+ * 4. Update status to 'pending' for return tracking
+ */
+async function processPriorityQueue(supabase) {
+  console.log('Processing priority queue (manual inclusions)...');
+
+  const results = { processed: 0, sent: 0, failed: 0, skipped: 0 };
+
+  try {
+    // 1. Query queued manual inclusions with customer data
+    const { data: queued, error: queueError } = await supabase
+      .from('contact_tracking')
+      .select('*, customers!inner(telefone, nome, doc)')
+      .eq('priority_source', 'manual_inclusion')
+      .eq('status', 'queued')
+      .limit(50);  // Process max 50 per run to avoid timeout
+
+    if (queueError) {
+      console.error('Error fetching priority queue:', queueError);
+      return results;
+    }
+
+    if (!queued || queued.length === 0) {
+      console.log('No manual inclusions in queue');
+      return results;
+    }
+
+    console.log(`Found ${queued.length} manual inclusions to process`);
+
+    // Get blacklisted phones
+    const { data: blacklist } = await supabase
+      .from('blacklist')
+      .select('phone');
+    const blacklistedPhones = new Set((blacklist || []).map(b => b.phone));
+
+    // 2. Check eligibility using unified RPC (respects cooldowns)
+    const customerIds = queued.map(q => q.customer_id);
+    const { data: eligibilityResults, error: eligError } = await supabase.rpc('check_customers_eligibility', {
+      p_customer_ids: customerIds,
+      p_campaign_type: null,  // Check global cooldown only
+      p_min_days_global: 7,
+      p_min_days_same_type: 30
+    });
+
+    if (eligError) {
+      console.error('Error checking eligibility:', eligError);
+      // Continue but treat all as eligible (fail open)
+    }
+
+    const eligibleIds = new Set(
+      (eligibilityResults || [])
+        .filter(e => e.is_eligible)
+        .map(e => e.customer_id)
+    );
+
+    // If eligibility check failed, assume all are eligible
+    const failedEligibilityCheck = !eligibilityResults;
+
+    // 3. Process each queued entry
+    for (const entry of queued) {
+      results.processed++;
+
+      const phone = normalizePhone(entry.customers?.telefone);
+      const customerName = entry.customers?.nome || entry.customer_name;
+
+      // Skip if not eligible (unless eligibility check failed)
+      if (!failedEligibilityCheck && !eligibleIds.has(entry.customer_id)) {
+        console.log(`Queue ${entry.id}: Skipped - customer ${entry.customer_id} not eligible (cooldown)`);
+        await supabase.from('contact_tracking')
+          .update({
+            status: 'cleared',
+            notes: 'Skipped: cooldown active',
+            contacted_at: new Date().toISOString()
+          })
+          .eq('id', entry.id);
+        results.skipped++;
+        continue;
+      }
+
+      // Skip if blacklisted or no phone
+      if (!phone) {
+        console.log(`Queue ${entry.id}: Skipped - no valid phone`);
+        await supabase.from('contact_tracking')
+          .update({
+            status: 'cleared',
+            notes: 'Skipped: no valid phone',
+            contacted_at: new Date().toISOString()
+          })
+          .eq('id', entry.id);
+        results.skipped++;
+        continue;
+      }
+
+      if (blacklistedPhones.has(phone)) {
+        console.log(`Queue ${entry.id}: Skipped - phone blacklisted`);
+        await supabase.from('contact_tracking')
+          .update({
+            status: 'cleared',
+            notes: 'Skipped: blacklisted',
+            contacted_at: new Date().toISOString()
+          })
+          .eq('id', entry.id);
+        results.skipped++;
+        continue;
+      }
+
+      // Get automation rule from campaign_id (format: AUTO_ruleId)
+      const ruleId = entry.campaign_id?.replace('AUTO_', '');
+      if (!ruleId) {
+        console.log(`Queue ${entry.id}: Skipped - no valid campaign_id`);
+        await supabase.from('contact_tracking')
+          .update({
+            status: 'cleared',
+            notes: 'Skipped: invalid campaign_id',
+            contacted_at: new Date().toISOString()
+          })
+          .eq('id', entry.id);
+        results.skipped++;
+        continue;
+      }
+
+      const { data: rule, error: ruleError } = await supabase
+        .from('automation_rules')
+        .select('*')
+        .eq('id', ruleId)
+        .single();
+
+      if (ruleError || !rule) {
+        console.log(`Queue ${entry.id}: Skipped - automation rule ${ruleId} not found`);
+        await supabase.from('contact_tracking')
+          .update({
+            status: 'cleared',
+            notes: `Skipped: rule ${ruleId} not found`,
+            contacted_at: new Date().toISOString()
+          })
+          .eq('id', entry.id);
+        results.skipped++;
+        continue;
+      }
+
+      // Get ContentSid for template
+      const contentSid = AUTOMATION_TEMPLATE_SIDS[rule.action_template];
+      if (!contentSid) {
+        console.log(`Queue ${entry.id}: Skipped - no template for ${rule.action_template}`);
+        await supabase.from('contact_tracking')
+          .update({
+            status: 'cleared',
+            notes: `Skipped: no template for ${rule.action_template}`,
+            contacted_at: new Date().toISOString()
+          })
+          .eq('id', entry.id);
+        results.skipped++;
+        continue;
+      }
+
+      // Build target object for sendAutomationMessage
+      const target = {
+        doc: entry.customer_id,
+        nome: customerName,
+        telefone: phone
+      };
+
+      // 4. Send message using automation's template
+      const sendResult = await sendAutomationMessage(supabase, rule, target, contentSid);
+
+      // 5. Update contact_tracking with result
+      if (sendResult.success) {
+        await supabase.from('contact_tracking')
+          .update({
+            status: 'pending',
+            phone: phone,
+            twilio_sid: sendResult.sid,
+            delivery_status: 'sent',
+            contacted_at: new Date().toISOString(),
+            notes: 'Sent via manual inclusion'
+          })
+          .eq('id', entry.id);
+        results.sent++;
+        console.log(`Queue ${entry.id}: Sent to ${phone.slice(-4)} (SID: ${sendResult.sid})`);
+      } else {
+        await supabase.from('contact_tracking')
+          .update({
+            status: 'cleared',
+            phone: phone,
+            delivery_status: 'failed',
+            contacted_at: new Date().toISOString(),
+            notes: `Failed: ${sendResult.error}`
+          })
+          .eq('id', entry.id);
+        results.failed++;
+        console.log(`Queue ${entry.id}: Failed - ${sendResult.error}`);
+      }
+    }
+
+    console.log(`Priority queue complete: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`);
+    return results;
+
+  } catch (error) {
+    console.error('Priority queue processing error:', error);
     results.error = error.message;
     return results;
   }

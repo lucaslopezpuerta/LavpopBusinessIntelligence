@@ -1,8 +1,13 @@
-// InsightBox.jsx v1.2
+// InsightBox.jsx v1.3
 // Actionable insight box for Intelligence sections
 // Design System v3.0 compliant
 //
 // CHANGELOG:
+// v1.3 (2025-12-15): Clickable insights support
+//   - Added onClick prop for clickable insights
+//   - Added hover state styling when clickable
+//   - Added optional customerCount badge
+//   - Added chevron indicator for clickable items
 // v1.2 (2025-11-30): Unified API - supports both single item and array patterns
 //   - Single item: <InsightBox type="success" title="..." message="..." />
 //   - Array: <InsightBox insights={[{type, text}, ...]} />
@@ -12,7 +17,7 @@
 // v1.0 (2025-11-29): Original inline component
 
 import React from 'react';
-import { CheckCircle, AlertCircle, Zap, TrendingUp, Info } from 'lucide-react';
+import { CheckCircle, AlertCircle, Zap, TrendingUp, Info, ChevronRight } from 'lucide-react';
 
 const STYLES = {
   success: {
@@ -62,15 +67,29 @@ const STYLES = {
 /**
  * Single insight item renderer
  */
-const InsightItem = ({ type, title, text, message, action, className = '' }) => {
+const InsightItem = ({ type, title, text, message, action, onClick, customerCount, className = '' }) => {
   const style = STYLES[type] || STYLES.default;
   const { Icon } = style;
   const displayMessage = message || text; // Support both 'message' and 'text' props
+  const isClickable = !!onClick;
+
+  const handleClick = (e) => {
+    if (isClickable) {
+      e.stopPropagation();
+      onClick();
+    }
+  };
 
   return (
     <div
-      className={`${style.bg} border rounded-xl p-3 sm:p-4 ${className}`}
-      role="alert"
+      className={`
+        ${style.bg} border rounded-xl p-3 sm:p-4 ${className}
+        ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200' : ''}
+      `}
+      role={isClickable ? 'button' : 'alert'}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={handleClick}
+      onKeyDown={isClickable ? (e) => e.key === 'Enter' && handleClick(e) : undefined}
     >
       <div className="flex items-start gap-2 sm:gap-3">
         <Icon
@@ -86,7 +105,7 @@ const InsightItem = ({ type, title, text, message, action, className = '' }) => 
           <p className={`text-xs sm:text-sm ${style.message} leading-relaxed`}>
             {displayMessage}
           </p>
-          {action && (
+          {action && !isClickable && (
             <button
               className={`mt-2 text-xs sm:text-sm font-medium ${style.icon} hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current rounded`}
             >
@@ -94,6 +113,18 @@ const InsightItem = ({ type, title, text, message, action, className = '' }) => 
             </button>
           )}
         </div>
+
+        {/* Customer count badge and chevron for clickable items */}
+        {isClickable && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {customerCount !== undefined && customerCount > 0 && (
+              <span className={`text-xs font-bold ${style.icon} bg-white/50 dark:bg-black/20 px-2 py-0.5 rounded-full`}>
+                {customerCount}
+              </span>
+            )}
+            <ChevronRight className={`w-4 h-4 ${style.icon}`} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -102,8 +133,8 @@ const InsightItem = ({ type, title, text, message, action, className = '' }) => 
 /**
  * Unified InsightBox component
  * Supports two API patterns:
- * 1. Single item: <InsightBox type="success" title="..." message="..." />
- * 2. Array: <InsightBox insights={[{type, text}, {type, text}]} />
+ * 1. Single item: <InsightBox type="success" title="..." message="..." onClick={...} customerCount={5} />
+ * 2. Array: <InsightBox insights={[{type, text, onClick, customerCount}, ...]} />
  */
 const InsightBox = ({
   // Single item props
@@ -111,6 +142,8 @@ const InsightBox = ({
   title,
   message,
   action,
+  onClick,
+  customerCount,
   className = '',
   // Array pattern prop
   insights
@@ -127,6 +160,8 @@ const InsightBox = ({
             title={insight.title}
             message={insight.message}
             action={insight.action}
+            onClick={insight.onClick}
+            customerCount={insight.customerCount}
           />
         ))}
       </div>
@@ -141,6 +176,8 @@ const InsightBox = ({
         title={title}
         message={message}
         action={action}
+        onClick={onClick}
+        customerCount={customerCount}
         className={className}
       />
     );
