@@ -1,10 +1,19 @@
-// ChurnHistogram.jsx v2.1 - INTERACTIVE INSIGHTS + BAR CLICKS
+// ChurnHistogram.jsx v2.3 - INTERACTIVE INSIGHTS + BAR CLICKS + MOBILE TOUCH
 // Time-to-churn distribution histogram with contact tracking integration
 //
 // CHANGELOG:
+// v2.3 (2025-12-16): Mobile touch tooltip support
+//   - Uses tap-to-preview, tap-again-to-action pattern
+//   - First tap shows tooltip with "Toque novamente" hint on mobile
+//   - Second tap opens CustomerSegmentModal
+//   - Fixed text-[10px] violation in tooltip contact status (min 12px)
+// v2.2 (2025-12-16): Pass ALL customers to modal (let modal filter)
+//   - Removed pre-filtering of non-contacted customers
+//   - Modal's hideContacted=true handles filtering (more flexible for user)
+//   - Fixes issue where unchecking "Ocultar Contactados" showed empty list
 // v2.1 (2025-12-15): Interactive insights + bar clicks
 //   - REFACTORED: Reduced insights from 6 to 2 (primary clickable, secondary info)
-//   - NEW: Click bar → opens modal with NON-CONTACTED customers in that bin
+//   - NEW: Click bar → opens modal with customers in that bin
 //   - NEW: Click insight → opens modal with danger zone customers
 //   - NEW: onOpenCustomerProfile and onCreateCampaign props
 // v2.0 (2025-12-13): Contact status + dynamic insights
@@ -17,7 +26,7 @@
 // v1.1 (2025-11-24): Added actionable insights
 // v1.0 (2025-11-23): Initial implementation
 
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { AlertCircle } from 'lucide-react';
 import InsightBox from './ui/InsightBox';
@@ -35,6 +44,28 @@ const ChurnHistogram = ({
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
     const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'atRisk', color: 'red' });
+
+    // Touch device detection for mobile-friendly tooltips
+    const isTouchDevice = useRef(false);
+    const [activeTouch, setActiveTouch] = useState(null); // Stores bin label of active touch
+    const touchTimeoutRef = useRef(null);
+
+    // Detect touch device
+    useEffect(() => {
+        const handleTouchStart = () => {
+            isTouchDevice.current = true;
+        };
+        window.addEventListener('touchstart', handleTouchStart, { once: true });
+        return () => window.removeEventListener('touchstart', handleTouchStart);
+    }, []);
+
+    // Auto-dismiss touch tooltip after 5 seconds
+    useEffect(() => {
+        if (activeTouch) {
+            touchTimeoutRef.current = setTimeout(() => setActiveTouch(null), 5000);
+            return () => clearTimeout(touchTimeoutRef.current);
+        }
+    }, [activeTouch]);
 
     if (!data || data.length === 0) return null;
 
@@ -88,45 +119,57 @@ const ChurnHistogram = ({
             .filter(Boolean);
     }, [customerMap]);
 
-    // Click handler for bar - shows NON-CONTACTED customers in that bin
+    // Click handler for bar - mobile-friendly with tap-to-preview
     const handleBarClick = useCallback((binData) => {
-        if (!binData || !binData.customerIds) return;
+        if (!binData || !binData.customerIds || binData.customerIds.length === 0) return;
 
-        // Filter to non-contacted customers only
-        const notContactedIds = binData.customerIds.filter(id => !contactedIds.has(String(id)));
-        const customers = getCustomersFromIds(notContactedIds);
+        // On touch devices: first tap shows tooltip, second tap opens modal
+        if (isTouchDevice.current) {
+            if (activeTouch === binData.bin) {
+                // Second tap - open modal
+                setActiveTouch(null);
+            } else {
+                // First tap - just show tooltip (set active for hint)
+                setActiveTouch(binData.bin);
+                return; // Don't open modal on first tap
+            }
+        }
+
+        // v2.2: Pass ALL customers, let modal's hideContacted filter handle it
+        const customers = getCustomersFromIds(binData.customerIds);
 
         if (customers.length === 0) return;
 
         setModalData({
             title: `Clientes: ${binData.bin} dias`,
-            subtitle: `${customers.length} clientes sem contato`,
+            subtitle: `${customers.length} clientes`,
             customers,
             audienceType: 'atRisk',
             color: binData.min >= 30 ? 'red' : binData.min >= 20 ? 'amber' : 'green',
             icon: AlertCircle
         });
         setModalOpen(true);
-    }, [contactedIds, getCustomersFromIds]);
+    }, [getCustomersFromIds, activeTouch]);
 
     // Click handler for danger zone insight
     const handleDangerZoneClick = useCallback(() => {
-        // Get non-contacted customers in danger zone
-        const notContactedIds = stats.dangerCustomerIds.filter(id => !contactedIds.has(String(id)));
-        const customers = getCustomersFromIds(notContactedIds);
+        if (!stats.dangerCustomerIds || stats.dangerCustomerIds.length === 0) return;
+
+        // v2.2: Pass ALL customers in danger zone, let modal filter
+        const customers = getCustomersFromIds(stats.dangerCustomerIds);
 
         if (customers.length === 0) return;
 
         setModalData({
             title: 'Zona de Perigo (30+ dias)',
-            subtitle: `${customers.length} clientes sem contato`,
+            subtitle: `${customers.length} clientes`,
             customers,
             audienceType: 'atRisk',
             color: 'red',
             icon: AlertCircle
         });
         setModalOpen(true);
-    }, [stats.dangerCustomerIds, contactedIds, getCustomersFromIds]);
+    }, [stats.dangerCustomerIds, getCustomersFromIds]);
 
     // Format currency helper
     const formatCurrency = (value) => {
@@ -178,13 +221,14 @@ const ChurnHistogram = ({
         return result;
     }, [stats, handleDangerZoneClick]);
 
-    // Memoized tooltip
+    // Memoized tooltip - with mobile hint support
     const CustomTooltip = useCallback(({ active, payload, label }) => {
         if (active && payload && payload.length) {
             const binData = payload[0].payload;
             const binCustomerIds = binData.customerIds || [];
             const contactedCount = binCustomerIds.filter(id => contactedIds.has(String(id))).length;
             const notContactedCount = binData.count - contactedCount;
+            const isActiveTouchItem = activeTouch === binData.bin;
 
             return (
                 <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
@@ -196,24 +240,33 @@ const ChurnHistogram = ({
                         retornam geralmente neste período
                     </p>
 
-                    {/* Contact status breakdown */}
+                    {/* Contact status breakdown - Fixed: text-xs instead of text-[10px] */}
                     {binData.count > 0 && contactedIds.size > 0 && (
                         <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center justify-between text-xs">
                                 <span className="text-blue-600 dark:text-blue-400">Contactados:</span>
                                 <span className="font-bold text-blue-600 dark:text-blue-400">{contactedCount}</span>
                             </div>
-                            <div className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center justify-between text-xs">
                                 <span className="text-slate-500 dark:text-slate-400">Sem contato:</span>
                                 <span className="font-bold text-slate-600 dark:text-slate-300">{notContactedCount}</span>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Mobile hint - shows when item is active from first tap */}
+                    {isActiveTouchItem && binData.customerIds?.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-blue-600 dark:text-blue-400 text-xs font-medium text-center animate-pulse">
+                                👆 Toque novamente para ver clientes
+                            </p>
                         </div>
                     )}
                 </div>
             );
         }
         return null;
-    }, [contactedIds]);
+    }, [contactedIds, activeTouch]);
 
     return (
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
@@ -228,9 +281,9 @@ const ChurnHistogram = ({
                     Após <span className="font-bold text-red-500">30 dias</span>, a chance de retorno cai drasticamente.
                 </p>
 
-                {/* Contact status legend */}
+                {/* Contact status legend - Design System compliant (min text-xs) */}
                 {contactedIds.size > 0 && stats.dangerCount > 0 && (
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px]">
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-red-500/60"></div>
                             <span className="text-slate-600 dark:text-slate-400">Zona de perigo</span>

@@ -1,54 +1,28 @@
-// KPICardsGrid.jsx v2.2
-// Restructured KPI display with visual hierarchy
-// Design System v3.1 compliant
+// KPICardsGrid.jsx v3.0 - SPARKLINES + FULL WIDTH
+// Restructured KPI display with visual hierarchy and trend sparklines
+// Design System v3.2 compliant
 //
 // CHANGELOG:
+// v3.0 (2025-12-16): Sparklines + visual enhancements
+//   - NEW: Sparkline data calculation for all metrics
+//   - NEW: Pass sparklineData to HeroKPICard and SecondaryKPICard
+//   - Uses daily data from businessMetrics for trend visualization
+//   - Full-width layout support
 // v2.2 (2025-12-01): Optimized modal width for customer lists
-//   - Customer modals use max-w-lg for better desktop density
-//   - Financial/explainer modals keep max-w-2xl
 // v2.1 (2025-12-01): Badge prop for customer modals
-//   - Pass customer count badge to modal header
-//   - Removed onNavigate props (now using pagination)
 // v2.0 (2025-12-01): Metric-specific drilldowns for wash/dry
-//   - Changed wash metricType from 'cycles' to 'wash'
-//   - Changed dry metricType from 'cycles' to 'dry'
-//   - Drilldowns now show service-specific trends
 // v1.9 (2025-12-01): Enhanced modal with metric context
-//   - Pass icon, color, and displayValue to KPIDetailModal
-//   - Modal header now shows visual continuity with KPI card
 // v1.8 (2025-12-01): Simplified desktop layout
-//   - lg+: Unified 12-col grid for all desktop sizes (Option A only)
-//   - Removed xl+ single row layout (Option C) per user feedback
 // v1.7 (2025-12-01): Improved desktop grid distribution
-//   - xl+: All 7 cards in single row (Option C)
-//   - lg: Unified 12-col grid with aligned hero/secondary (Option A)
-//   - Better space utilization on wide screens
 // v1.6 (2025-12-01): Hide WoW badges on partial week
-//   - Trend badges hidden when viewMode is 'current' (partial week)
-//   - Comparing partial week to full week is misleading
 // v1.5 (2025-12-01): Hero card mobile titles
-//   - Added shortTitle prop for abbreviated mobile titles
-//   - "Receita Líquida" → "Receita", "Total de Ciclos" → "Ciclos", etc.
 // v1.4 (2025-12-01): Mobile responsive hero cards
-//   - Changed hero grid to 3 columns on all screens
-//   - Tighter gaps on mobile (gap-2 sm:gap-4)
 // v1.3 (2025-12-01): Utilization source fix
-//   - Uses operationsMetrics.utilization for accurate utilization %
-//   - Previous source (businessMetrics) was calculating differently
 // v1.2 (2025-12-01): Customer cards relocated
-//   - Moved New Clients and Active Clients cards to Customers.jsx
-//   - Reduced secondary KPIs to 4 cards (Wash, Dry, At Risk, Health)
 // v1.1 (2025-11-30): Prop standardization & responsive fix
-//   - Changed iconColor to color for consistency
-//   - Improved responsive breakpoints (2→3→4→6 progression)
 // v1.0 (2025-11-30): Initial implementation
-//   - Hero cards for primary metrics (Revenue, Cycles, Utilization)
-//   - Secondary cards in 2-column grid
-//   - Clean, non-gradient design
-//   - Reduced cognitive load (visual hierarchy)
-//   - Preserved drill-down functionality
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   DollarSign, WashingMachine, Percent, Droplet, Flame,
   AlertCircle, Heart
@@ -113,6 +87,27 @@ const KPICardsGrid = ({
   const washPercent = totalServices > 0 ? ((washCount / totalServices) * 100).toFixed(0) : 0;
   const dryPercent = totalServices > 0 ? ((dryCount / totalServices) * 100).toFixed(0) : 0;
 
+  // Calculate sparkline data from daily metrics (last 7 days)
+  const sparklineData = useMemo(() => {
+    const dailyData = businessMetrics.daily || [];
+    if (!dailyData.length) return {};
+
+    // Sort by date and take last 7 entries
+    const sortedDaily = [...dailyData].sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateA - dateB;
+    }).slice(-7);
+
+    return {
+      revenue: sortedDaily.map(d => d.netRevenue || d.revenue || 0),
+      cycles: sortedDaily.map(d => (d.washServices || 0) + (d.dryServices || 0) || d.totalServices || 0),
+      utilization: sortedDaily.map(d => d.utilization || 0),
+      wash: sortedDaily.map(d => d.washServices || 0),
+      dry: sortedDaily.map(d => d.dryServices || 0),
+    };
+  }, [businessMetrics.daily]);
+
   // Time subtitle
   const getTimeSubtitle = () => {
     if (viewMode === 'current' && businessMetrics.windows?.currentWeek) {
@@ -149,7 +144,7 @@ const KPICardsGrid = ({
   // Only show WoW trends for complete week (not partial/current)
   const showTrends = viewMode === 'complete';
 
-  // Hero KPIs (primary metrics)
+  // Hero KPIs (primary metrics) - with sparkline data
   const heroKPIs = [
     {
       id: 'revenue',
@@ -162,7 +157,8 @@ const KPICardsGrid = ({
       icon: DollarSign,
       color: 'green',
       drilldownType: 'financial',
-      metricType: 'revenue'
+      metricType: 'revenue',
+      sparklineData: sparklineData.revenue,
     },
     {
       id: 'services',
@@ -175,7 +171,8 @@ const KPICardsGrid = ({
       icon: WashingMachine,
       color: 'blue',
       drilldownType: 'financial',
-      metricType: 'cycles'
+      metricType: 'cycles',
+      sparklineData: sparklineData.cycles,
     },
     {
       id: 'utilization',
@@ -188,11 +185,12 @@ const KPICardsGrid = ({
       icon: Percent,
       color: 'purple',
       drilldownType: 'explainer',
-      metricType: 'utilization'
+      metricType: 'utilization',
+      sparklineData: sparklineData.utilization,
     }
   ];
 
-  // Secondary KPIs (compact)
+  // Secondary KPIs (compact) - with sparkline data
   const secondaryKPIs = [
     {
       id: 'wash',
@@ -203,7 +201,8 @@ const KPICardsGrid = ({
       icon: Droplet,
       color: 'cyan',
       drilldownType: 'financial',
-      metricType: 'wash'
+      metricType: 'wash',
+      sparklineData: sparklineData.wash,
     },
     {
       id: 'dry',
@@ -214,7 +213,8 @@ const KPICardsGrid = ({
       icon: Flame,
       color: 'orange',
       drilldownType: 'financial',
-      metricType: 'dry'
+      metricType: 'dry',
+      sparklineData: sparklineData.dry,
     },
     {
       id: 'atrisk',
@@ -224,7 +224,8 @@ const KPICardsGrid = ({
       icon: AlertCircle,
       color: 'red',
       drilldownType: 'customer',
-      customerType: 'atrisk'
+      customerType: 'atrisk',
+      // No sparkline for customer count (not time-series)
     },
     {
       id: 'health',
@@ -234,7 +235,8 @@ const KPICardsGrid = ({
       icon: Heart,
       color: 'green',
       drilldownType: 'explainer',
-      metricType: 'health'
+      metricType: 'health',
+      // No sparkline for health rate (not time-series)
     }
   ];
 
@@ -255,11 +257,12 @@ const KPICardsGrid = ({
               trend={kpi.trend}
               icon={kpi.icon}
               color={kpi.color}
+              sparklineData={kpi.sparklineData}
               onClick={() => handleCardClick(kpi)}
             />
           ))}
         </div>
-        {/* Secondary cards: 2 columns on mobile, 3 on sm */}
+        {/* Secondary cards: 2 columns on mobile, 4 on sm */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {secondaryKPIs.map(kpi => (
             <SecondaryKPICard
@@ -270,6 +273,7 @@ const KPICardsGrid = ({
               trend={kpi.trend}
               icon={kpi.icon}
               color={kpi.color}
+              sparklineData={kpi.sparklineData}
               onClick={() => handleCardClick(kpi)}
             />
           ))}
@@ -291,6 +295,7 @@ const KPICardsGrid = ({
                 trend={kpi.trend}
                 icon={kpi.icon}
                 color={kpi.color}
+                sparklineData={kpi.sparklineData}
                 onClick={() => handleCardClick(kpi)}
               />
             </div>
@@ -307,6 +312,7 @@ const KPICardsGrid = ({
                 trend={kpi.trend}
                 icon={kpi.icon}
                 color={kpi.color}
+                sparklineData={kpi.sparklineData}
                 onClick={() => handleCardClick(kpi)}
               />
             </div>

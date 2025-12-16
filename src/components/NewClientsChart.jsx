@@ -1,10 +1,20 @@
-// NewClientsChart.jsx v3.1 - INTERACTIVE INSIGHTS
+// NewClientsChart.jsx v3.3 - INTERACTIVE INSIGHTS + BAR CLICKS + MOBILE TOUCH
 // New customer acquisition with campaign integration
 //
 // CHANGELOG:
+// v3.3 (2025-12-16): Mobile touch tooltip support + bar click
+//   - NEW: Click bar → opens modal with customers from that day
+//   - Uses tap-to-preview, tap-again-to-action pattern
+//   - First tap shows tooltip with "Toque novamente" hint on mobile
+//   - Second tap opens CustomerSegmentModal
+//   - Fixed text-[10px] violation in tooltip welcome status (min 12px)
+// v3.2 (2025-12-16): Pass ALL customers to modal (let modal filter)
+//   - Removed pre-filtering of unwelcomed customers
+//   - Modal's hideContacted=true handles filtering (more flexible for user)
+//   - Fixes issue where unchecking "Ocultar Contactados" showed empty list
 // v3.1 (2025-12-15): Interactive insights + modal integration
 //   - REFACTORED: Reduced insights from 4 to 2 (primary clickable, secondary info)
-//   - NEW: Click insight → opens modal with unwelcomed new customers
+//   - NEW: Click insight → opens modal with new customers
 //   - NEW: onOpenCustomerProfile and onCreateCampaign props
 // v3.0 (2025-12-13): Welcome coverage + return tracking
 //   - NEW: welcomeContactedIds prop - IDs who received welcome campaign
@@ -18,7 +28,7 @@
 // v2.1 (2025-11-24): Added actionable insights
 // v2.0 (2025-11-23): Redesign for Customer Intelligence Hub
 
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { UserPlus } from 'lucide-react';
 import InsightBox from './ui/InsightBox';
@@ -97,6 +107,28 @@ const NewClientsChart = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'newCustomers', color: 'purple' });
 
+  // Touch device detection for mobile-friendly tooltips
+  const isTouchDevice = useRef(false);
+  const [activeTouch, setActiveTouch] = useState(null); // Stores displayDate of active touch
+  const touchTimeoutRef = useRef(null);
+
+  // Detect touch device
+  useEffect(() => {
+    const handleTouchStart = () => {
+      isTouchDevice.current = true;
+    };
+    window.addEventListener('touchstart', handleTouchStart, { once: true });
+    return () => window.removeEventListener('touchstart', handleTouchStart);
+  }, []);
+
+  // Auto-dismiss touch tooltip after 5 seconds
+  useEffect(() => {
+    if (activeTouch) {
+      touchTimeoutRef.current = setTimeout(() => setActiveTouch(null), 5000);
+      return () => clearTimeout(touchTimeoutRef.current);
+    }
+  }, [activeTouch]);
+
   // Helper to convert customer IDs to customer objects
   const getCustomersFromIds = useCallback((customerIds) => {
     return customerIds
@@ -104,15 +136,17 @@ const NewClientsChart = ({
       .filter(Boolean);
   }, [customerMap]);
 
-  // Click handler for unwelcomed customers insight
-  const handleUnwelcomedClick = useCallback(() => {
-    const unwelcomedIds = allNewCustomerIds.filter(id => !welcomeContactedIds.has(String(id)));
-    const customers = getCustomersFromIds(unwelcomedIds);
+  // Click handler for new customers insight - passes ALL new customers
+  const handleNewCustomersClick = useCallback(() => {
+    if (!allNewCustomerIds || allNewCustomerIds.length === 0) return;
+
+    // v3.2: Pass ALL new customers, let modal's hideContacted filter handle it
+    const customers = getCustomersFromIds(allNewCustomerIds);
 
     if (customers.length === 0) return;
 
     setModalData({
-      title: 'Novos Clientes sem Boas-vindas',
+      title: 'Novos Clientes',
       subtitle: `${customers.length} clientes`,
       customers,
       audienceType: 'newCustomers',
@@ -120,7 +154,38 @@ const NewClientsChart = ({
       icon: UserPlus
     });
     setModalOpen(true);
-  }, [allNewCustomerIds, welcomeContactedIds, getCustomersFromIds]);
+  }, [allNewCustomerIds, getCustomersFromIds]);
+
+  // Click handler for bar - mobile-friendly with tap-to-preview
+  const handleBarClick = useCallback((dayData) => {
+    if (!dayData || !dayData.customerIds || dayData.customerIds.length === 0) return;
+
+    // On touch devices: first tap shows tooltip, second tap opens modal
+    if (isTouchDevice.current) {
+      if (activeTouch === dayData.displayDate) {
+        // Second tap - open modal
+        setActiveTouch(null);
+      } else {
+        // First tap - just show tooltip (set active for hint)
+        setActiveTouch(dayData.displayDate);
+        return; // Don't open modal on first tap
+      }
+    }
+
+    const customers = getCustomersFromIds(dayData.customerIds);
+
+    if (customers.length === 0) return;
+
+    setModalData({
+      title: `Novos Clientes: ${dayData.displayDate}`,
+      subtitle: `${customers.length} clientes`,
+      customers,
+      audienceType: 'newCustomers',
+      color: 'blue',
+      icon: UserPlus
+    });
+    setModalOpen(true);
+  }, [getCustomersFromIds, activeTouch]);
 
   // Generate simplified insights (reduced from 4 to 2)
   const insights = useMemo(() => {
@@ -131,7 +196,7 @@ const NewClientsChart = ({
       result.push({
         type: 'warning',
         text: `${stats.notWelcomed} novos clientes sem mensagem de boas-vindas`,
-        onClick: handleUnwelcomedClick,
+        onClick: handleNewCustomersClick,
         customerCount: stats.notWelcomed
       });
     } else if (stats.welcomeCount > 0) {
@@ -160,14 +225,15 @@ const NewClientsChart = ({
     }
 
     return result;
-  }, [stats, handleUnwelcomedClick]);
+  }, [stats, handleNewCustomersClick]);
 
-  // Memoize CustomTooltip
+  // Memoize CustomTooltip - with mobile hint support
   const CustomTooltip = useCallback(({ active, payload }) => {
     if (active && payload && payload.length) {
       const dayData = payload[0].payload;
       const dayCustomerIds = dayData.customerIds || [];
       const welcomed = dayCustomerIds.filter(id => welcomeContactedIds.has(String(id))).length;
+      const isActiveTouchItem = activeTouch === dayData.displayDate;
 
       return (
         <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
@@ -176,24 +242,33 @@ const NewClientsChart = ({
             <span className="font-bold text-lavpop-blue dark:text-blue-400 text-lg">{payload[0].value}</span> novos clientes
           </p>
 
-          {/* Welcome status for this day */}
+          {/* Welcome status for this day - Fixed: text-xs instead of text-[10px] */}
           {dayCustomerIds.length > 0 && welcomeContactedIds.size > 0 && (
             <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between text-[10px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-green-600 dark:text-green-400">Com boas-vindas:</span>
                 <span className="font-bold text-green-600 dark:text-green-400">{welcomed}</span>
               </div>
-              <div className="flex items-center justify-between text-[10px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 dark:text-slate-400">Sem boas-vindas:</span>
                 <span className="font-bold text-slate-600 dark:text-slate-300">{dayData.count - welcomed}</span>
               </div>
+            </div>
+          )}
+
+          {/* Mobile hint - shows when item is active from first tap */}
+          {isActiveTouchItem && dayCustomerIds.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+              <p className="text-blue-600 dark:text-blue-400 text-xs font-medium text-center animate-pulse">
+                👆 Toque novamente para ver clientes
+              </p>
             </div>
           )}
         </div>
       );
     }
     return null;
-  }, [welcomeContactedIds]);
+  }, [welcomeContactedIds, activeTouch]);
 
   if (!dailyData || dailyData.length === 0) return null;
 
@@ -208,9 +283,9 @@ const NewClientsChart = ({
           Aquisição nos últimos 30 dias.
         </p>
 
-        {/* Welcome coverage legend */}
+        {/* Welcome coverage legend - Design System compliant (min text-xs) */}
         {welcomeContactedIds.size > 0 && allNewCustomerIds.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px]">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
               <span className="text-slate-600 dark:text-slate-400">Total novos</span>
@@ -263,7 +338,12 @@ const NewClientsChart = ({
               allowDecimals={false}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+            <Bar
+              dataKey="count"
+              radius={[4, 4, 0, 0]}
+              onClick={(barData) => handleBarClick(barData)}
+              cursor="pointer"
+            >
               {dailyData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}

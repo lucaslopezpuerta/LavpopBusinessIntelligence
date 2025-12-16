@@ -1,7 +1,10 @@
-// IconSidebar.jsx v1.2
+// IconSidebar.jsx v1.3
 // Minimalist icon-only sidebar with hover-to-expand functionality
 //
 // CHANGELOG:
+// v1.3 (2025-12-16): Added Diretório tab
+//   - New navigation item for customer directory (search icon)
+//   - Positioned after Clientes for logical grouping
 // v1.2 (2025-11-30): UI improvements
 //   - Header height h-[60px] to match top bar exactly
 //   - More prominent active tab indicator (left accent bar)
@@ -18,7 +21,7 @@
 //   - Dark mode support
 //   - Tooltip fallback for collapsed state
 
-import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search } from 'lucide-react';
 import LogoNoBackground from '../assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -29,6 +32,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'customers', label: 'Clientes', icon: Users },
+    { id: 'diretorio', label: 'Diretório', icon: Search },
     { id: 'campaigns', label: 'Campanhas', icon: MessageSquare },
     { id: 'intelligence', label: 'Inteligência', icon: TrendingUp },
     { id: 'operations', label: 'Operações', icon: Settings },

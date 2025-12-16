@@ -1,22 +1,24 @@
-// CustomerSectionNavigation.jsx v1.0
+// CustomerSectionNavigation.jsx v1.1
 // Sticky section navigation tabs for Customers tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-12-16): Removed Diretório, added progress indicator
+//   - Diretório moved to separate route (/diretorio)
+//   - Added progress dots showing current section
+//   - Sections: Resumo, Ação, Análise
 // v1.0 (2025-12-01): Initial implementation
 //   - Sticky header with section tabs
 //   - Smooth scroll to section
 //   - Active section indicator
-//   - Sections: Resumo, Ação, Análise, Diretório
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { LayoutGrid, AlertTriangle, BarChart3, Users } from 'lucide-react';
+import { LayoutGrid, AlertTriangle, BarChart3 } from 'lucide-react';
 
 const SECTIONS = [
   { id: 'resumo-section', label: 'Resumo', shortLabel: 'Resumo', icon: LayoutGrid },
   { id: 'acao-section', label: 'Ação Imediata', shortLabel: 'Ação', icon: AlertTriangle },
-  { id: 'analise-section', label: 'Análise', shortLabel: 'Análise', icon: BarChart3 },
-  { id: 'diretorio-section', label: 'Diretório', shortLabel: 'Dir.', icon: Users }
+  { id: 'analise-section', label: 'Análise', shortLabel: 'Análise', icon: BarChart3 }
 ];
 
 const CustomerSectionNavigation = ({ className = '', hasAtRisk = true }) => {
@@ -131,6 +133,31 @@ const CustomerSectionNavigation = ({ className = '', hasAtRisk = true }) => {
               </button>
             );
           })}
+
+          {/* Progress Indicator Dots */}
+          <div className="hidden sm:flex items-center gap-1 ml-auto pr-2">
+            {visibleSections.map(({ id }, idx) => {
+              const isActive = activeSection === id;
+              const isPast = visibleSections.findIndex(s => s.id === activeSection) > idx;
+
+              return (
+                <button
+                  key={`dot-${id}`}
+                  onClick={() => scrollToSection(id)}
+                  className={`
+                    w-2 h-2 rounded-full transition-all duration-300
+                    ${isActive
+                      ? 'w-6 bg-lavpop-blue dark:bg-blue-400'
+                      : isPast
+                      ? 'bg-lavpop-blue/50 dark:bg-blue-400/50'
+                      : 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500'
+                    }
+                  `}
+                  aria-label={`Ir para ${visibleSections[idx].label}`}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
     </nav>

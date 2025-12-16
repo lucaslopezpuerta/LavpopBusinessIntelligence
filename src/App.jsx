@@ -1,4 +1,4 @@
-// App.jsx v7.0 - SMART DATA REFRESH
+// App.jsx v7.1 - SMART DATA REFRESH
 // ✅ Added minimalist icon sidebar with hover expansion
 // ✅ Compact top bar with widgets (60px to match sidebar)
 // ✅ Mobile drawer with backdrop overlay
@@ -7,8 +7,12 @@
 // ✅ Mobile breadcrumb shows current tab
 // ✅ Smart data refresh with visibility detection
 // ✅ Auto-refresh every 10 minutes when active
+// ✅ Separate Directory route for customer browsing
 //
 // CHANGELOG:
+// v7.1 (2025-12-16): Added Directory route
+//   - New /diretorio tab for customer browsing
+//   - Extracted from Customers view for better UX
 // v7.0 (2025-12-13): Smart data refresh system
 //   - Visibility-based refresh (when returning to tab after 5+ min)
 //   - Auto-refresh every 10 minutes while tab is active
@@ -48,6 +52,7 @@ const MIN_REFRESH_GAP = 60 * 1000;        // 60 seconds - minimum between refres
 // Lazy load tab components for code splitting
 const Dashboard = lazy(() => import('./views/Dashboard'));
 const Customers = lazy(() => import('./views/Customers'));
+const Directory = lazy(() => import('./views/Directory'));
 const Campaigns = lazy(() => import('./views/Campaigns'));
 const Operations = lazy(() => import('./views/Operations'));
 const Intelligence = lazy(() => import('./views/Intelligence'));
@@ -192,6 +197,7 @@ function AppContent() {
   const tabComponents = {
     dashboard: Dashboard,
     customers: Customers,
+    diretorio: Directory,
     campaigns: Campaigns,
     intelligence: Intelligence,
     operations: Operations,
@@ -332,8 +338,8 @@ function AppContent() {
         {/* Top Bar */}
         <MinimalTopBar refreshing={refreshing} onRefresh={handleRefresh} activeTab={activeTab} />
 
-        {/* Main Content */}
-        <main className="flex-1 max-w-[100rem] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+        {/* Main Content - Full width with edge-to-edge support */}
+        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -357,7 +363,7 @@ function AppContent() {
 
         {/* Footer */}
         <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto">
-          <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-4">
             <p className="text-center text-xs text-slate-500 dark:text-slate-400">
               Powered by <span className="font-semibold text-slate-700 dark:text-slate-300">Nova Lopez Lavanderia Ltd.</span>
             </p>

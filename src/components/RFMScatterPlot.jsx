@@ -1,11 +1,20 @@
-// RFMScatterPlot.jsx v2.0 - INTERACTIVE INSIGHTS
+// RFMScatterPlot.jsx v2.2 - INTERACTIVE INSIGHTS + MOBILE TOUCH
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v2.2 (2025-12-16): Mobile touch tooltip support
+//   - Uses useTouchTooltip hook for tap-to-preview, tap-again-to-action
+//   - First tap shows tooltip with "Toque novamente" hint on mobile
+//   - Second tap opens CustomerProfileModal
+//   - Fixed text-[10px] violation in tooltip risk badge (min 12px)
+// v2.1 (2025-12-16): Pass ALL customers to modal (let modal filter)
+//   - Removed pre-filtering of non-contacted customers
+//   - Modal's hideContacted=true handles filtering (more flexible for user)
+//   - Fixes issue where unchecking "Ocultar Contactados" showed empty list
 // v2.0 (2025-12-15): Interactive insights + modal integration
 //   - REFACTORED: Reduced insights from 4 to 2 (primary clickable, secondary info)
 //   - NEW: Click bubble → opens CustomerProfileModal
-//   - NEW: Click insight → opens CustomerSegmentModal with filtered customers
+//   - NEW: Click insight → opens CustomerSegmentModal with customers
 //   - NEW: onOpenCustomerProfile and onOpenSegmentModal props
 // v1.4 (2025-12-13): Contact status visualization
 //   - NEW: Blue dashed stroke for contacted customers (pending in contact_tracking)
@@ -18,12 +27,13 @@
 // v1.1 (2025-11-24): Portuguese translations
 // v1.0 (2025-11-23): Initial implementation
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
 import { AlertTriangle, Trophy } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
 import InsightBox from './ui/InsightBox';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
+import { useTouchTooltip } from '../hooks/useTouchTooltip';
 
 const RFMScatterPlot = ({
     data,
@@ -36,6 +46,28 @@ const RFMScatterPlot = ({
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
     const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'atRisk', color: 'amber' });
+
+    // Touch device detection for mobile-friendly tooltips
+    const isTouchDevice = useRef(false);
+    const [activeTouch, setActiveTouch] = useState(null);
+    const touchTimeoutRef = useRef(null);
+
+    // Detect touch device
+    useEffect(() => {
+        const handleTouchStart = () => {
+            isTouchDevice.current = true;
+        };
+        window.addEventListener('touchstart', handleTouchStart, { once: true });
+        return () => window.removeEventListener('touchstart', handleTouchStart);
+    }, []);
+
+    // Auto-dismiss touch tooltip after 5 seconds
+    useEffect(() => {
+        if (activeTouch) {
+            touchTimeoutRef.current = setTimeout(() => setActiveTouch(null), 5000);
+            return () => clearTimeout(touchTimeoutRef.current);
+        }
+    }, [activeTouch]);
 
     if (!data || data.length === 0) return null;
 
@@ -57,20 +89,39 @@ const RFMScatterPlot = ({
     const notContactedHighValue = highValueAtRiskCustomers.filter(d => !d.isContacted).length;
     const totalContacted = enrichedData.filter(d => d.isContacted).length;
 
-    // Click handler for bubble
+    // Click handler for bubble - mobile-friendly with tap-to-preview
     const handleBubbleClick = useCallback((entry) => {
-        if (onOpenCustomerProfile && entry?.id) {
-            onOpenCustomerProfile(entry.id);
-        }
-    }, [onOpenCustomerProfile]);
+        if (!entry?.id) return;
 
-    // Click handler for high-value at-risk insight
+        // On touch devices: first tap shows tooltip, second tap opens profile
+        if (isTouchDevice.current) {
+            if (activeTouch === entry.id) {
+                // Second tap - open profile
+                setActiveTouch(null);
+                if (onOpenCustomerProfile) {
+                    onOpenCustomerProfile(entry.id);
+                }
+            } else {
+                // First tap - just show tooltip (set active for hint)
+                setActiveTouch(entry.id);
+            }
+        } else {
+            // Desktop: direct click opens profile
+            if (onOpenCustomerProfile) {
+                onOpenCustomerProfile(entry.id);
+            }
+        }
+    }, [onOpenCustomerProfile, activeTouch]);
+
+    // Click handler for high-value at-risk insight - passes ALL high-value at-risk customers
     const handleHighValueAtRiskClick = useCallback(() => {
-        const notContacted = highValueAtRiskCustomers.filter(d => !d.isContacted);
+        if (!highValueAtRiskCustomers || highValueAtRiskCustomers.length === 0) return;
+
+        // v2.1: Pass ALL high-value at-risk customers, let modal filter
         setModalData({
             title: 'Clientes de Alto Valor em Risco',
-            subtitle: `${notContacted.length} clientes sem contato`,
-            customers: notContacted,
+            subtitle: `${highValueAtRiskCustomers.length} clientes`,
+            customers: highValueAtRiskCustomers,
             audienceType: 'atRisk',
             color: 'amber',
             icon: AlertTriangle
@@ -113,10 +164,11 @@ const RFMScatterPlot = ({
         return result;
     }, [notContactedHighValue, highValueAtRiskCustomers, championsCustomers, handleHighValueAtRiskClick]);
 
-    // Custom Tooltip
+    // Custom Tooltip - with mobile hint support
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
+            const isActiveTouchItem = activeTouch === d.id;
 
             // Translate risk status to Portuguese
             const getRiskLabel = (status) => {
@@ -145,8 +197,8 @@ const RFMScatterPlot = ({
                     <p className="text-slate-600 dark:text-slate-300">Última visita: <span className="font-semibold text-red-500 dark:text-red-400">{d.x} dias atrás</span></p>
                     <p className="text-slate-600 dark:text-slate-300">Frequência: <span className="font-semibold text-lavpop-green dark:text-emerald-400">{d.r} visitas</span></p>
 
-                    {/* Risk Status Badge */}
-                    <div className={`mt-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full w-fit ${d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                    {/* Risk Status Badge - Fixed: text-xs instead of text-[10px] */}
+                    <div className={`mt-2 text-xs font-bold uppercase px-2 py-0.5 rounded-full w-fit ${d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
                         d.status === 'At Risk' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
                             d.status === 'Churning' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
                                 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
@@ -163,7 +215,7 @@ const RFMScatterPlot = ({
                                 </svg>
                                 <span className="font-semibold">Contactado</span>
                             </div>
-                            <p className="text-slate-500 dark:text-slate-400 text-[10px] mt-0.5">
+                            <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">
                                 {d.contactInfo.campaign_name || 'Campanha'}
                                 {d.contactInfo.contacted_at && ` • ${formatContactDate(d.contactInfo.contacted_at)}`}
                             </p>
@@ -171,8 +223,17 @@ const RFMScatterPlot = ({
                     )}
                     {!d.isContacted && d.y > 500 && d.x > 30 && (
                         <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                            <p className="text-amber-600 dark:text-amber-400 text-[10px] font-medium">
+                            <p className="text-amber-600 dark:text-amber-400 text-xs font-medium">
                                 ⚡ Cliente de alto valor sem contato recente
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Mobile hint - shows when item is active from first tap */}
+                    {isActiveTouchItem && onOpenCustomerProfile && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-blue-600 dark:text-blue-400 text-xs font-medium text-center animate-pulse">
+                                👆 Toque novamente para ver perfil
                             </p>
                         </div>
                     )}
@@ -196,30 +257,30 @@ const RFMScatterPlot = ({
                     <span className="font-semibold text-red-500 ml-1">Topo-Direita:</span> Em Perigo
                 </p>
 
-                {/* Legend for contact status */}
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px]">
+                {/* Legend for contact status - Design System compliant (min text-xs) */}
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
                     <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-emerald-500/60"></div>
+                        <div className="w-3 h-3 rounded-full bg-emerald-500/60"></div>
                         <span className="text-slate-600 dark:text-slate-400">Saudável</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-amber-500/60"></div>
+                        <div className="w-3 h-3 rounded-full bg-amber-500/60"></div>
                         <span className="text-slate-600 dark:text-slate-400">Em Risco</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-red-500/60"></div>
+                        <div className="w-3 h-3 rounded-full bg-red-500/60"></div>
                         <span className="text-slate-600 dark:text-slate-400">Crítico</span>
                     </div>
                     {totalContacted > 0 && (
                         <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
-                            <div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dashed border-blue-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dashed border-blue-500"></div>
                             <span className="text-blue-600 dark:text-blue-400 font-medium">Contactado ({totalContacted})</span>
                         </div>
                     )}
                 </div>
 
                 <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-[10px] text-blue-700 dark:text-blue-300 font-medium">
+                    <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
                         💡 <span className="font-bold">Nota:</span> A classificação considera o padrão individual de cada cliente.
                         Clientes "saudáveis" podem aparecer à direita se naturalmente visitam com menos frequência.
                     </p>

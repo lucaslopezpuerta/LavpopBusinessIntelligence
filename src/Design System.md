@@ -1,8 +1,20 @@
-# LavpopBI Design System v3.1
+# LavpopBI Design System v3.2
 
-> **Last Updated:** November 30, 2025
+> **Last Updated:** December 16, 2025
 > **Status:** Active - All components aligned with this system
-> **Audit Completed:** UX/UI and Code Architecture Audit v1.0
+> **Audit Completed:** UX/UI and Code Architecture Audit v2.0
+
+## 📋 Changelog
+
+### v3.2 (December 16, 2025)
+- **BREAKING:** Removed `text-[10px]` from allowed font sizes (minimum is now `text-xs`/12px)
+- **NEW:** Z-Index system with semantic layer constants
+- **NEW:** Mobile touch tooltip pattern for charts (tap-to-preview, tap-again-to-action)
+- **NEW:** Icon sidebar navigation with hover expansion
+- **NEW:** Modal UX requirements (escape key, click-outside, portal rendering)
+- **NEW:** RetentionPulse compact widget component
+- **UPDATED:** Chart tooltip mobile support with visual hints
+- **UPDATED:** Modal stacking guidelines with standardized z-index values
 
 ---
 
@@ -53,8 +65,10 @@ font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
 - **Display:** `text-2xl` (24px) - Logo, major headings
 - **Heading:** `text-xl` (20px) - Section titles
 - **Body:** `text-sm` (14px) - Standard text
-- **Small:** `text-xs` (12px) - Labels, captions
-- **Micro:** `text-[10px]` - Compact widget labels
+- **Small:** `text-xs` (12px) - Labels, captions, minimum allowed size
+
+> ⚠️ **IMPORTANT:** The minimum font size is `text-xs` (12px). Never use `text-[10px]` or smaller.
+> This ensures readability on all devices and accessibility compliance.
 
 ---
 
@@ -89,27 +103,100 @@ gap-6    // 24px - Large spacing
 gap-8    // 32px - Major sections
 ```
 
+### Z-Index System
+
+Use semantic z-index layers from `src/constants/zIndex.js`:
+
+```javascript
+// Z-Index Constants (src/constants/zIndex.js)
+export const Z_INDEX = {
+  // Base layers
+  DROPDOWN: 40,        // Dropdowns, popovers
+
+  // Modal layers (50-69)
+  MODAL_PRIMARY: 50,   // Primary modals (KPIDetailModal, CustomerSegmentModal)
+  MODAL_CHILD: 60,     // Child modals opened from primary (CustomerProfileModal)
+
+  // Alert layers (70+)
+  ALERT: 70,           // Confirmation dialogs, alerts
+  TOAST: 80,           // Toast notifications
+};
+```
+
+**Usage Guidelines:**
+
+| Layer | Z-Index | Tailwind | Use Case |
+|-------|---------|----------|----------|
+| Sidebar | 40 | `z-40` | Icon sidebar navigation |
+| Dropdown | 40 | `z-40` | Dropdown menus, popovers |
+| Primary Modal | 50 | `z-50` | Main modals (CustomerSegmentModal, KPIDetailModal) |
+| Child Modal | 60 | `z-[60]` | Modals opened from other modals (CustomerProfileModal) |
+| Alert | 70 | `z-[70]` | Confirmation dialogs |
+| Toast | 80 | `z-[80]` | Toast notifications |
+
+> ⚠️ **IMPORTANT:** Never use arbitrary z-index values like `z-[1050]`. Always use the semantic constants.
+
 ---
 
 ## 🎯 Component Patterns
 
-### Header (App.jsx)
+### Navigation System
 
-**Desktop Layout:**
+#### Icon Sidebar (Desktop - `IconSidebar.jsx`)
+
+**Collapsed State (60px):**
 ```
-[Logo + Location] | [Navigation Pills] | [Widgets] [Controls] [Menu]
+[Logo]
+[Icon] ← Hover to expand
+[Icon]
+[Icon]
+...
+[Theme Toggle]
 ```
 
-**Mobile Layout:**
+**Expanded State (240px on hover):**
 ```
-[Logo + Location] | [Weather] [Google] [Instagram] [Menu]
+[Logo + Title]
+[Icon] [Label] ← Full width with label
+[Icon] [Label]
+[Icon] [Label]
+...
+[Theme Toggle]
 ```
 
 **Specifications:**
-- Height: `h-16` (64px)
+- Collapsed width: `w-[60px]`
+- Expanded width: `w-[240px]`
+- Background: `bg-white dark:bg-slate-900`
+- Border: `border-r border-slate-200 dark:border-slate-700`
+- Position: `fixed left-0 top-0 h-full z-40`
+- Transition: `transition-all duration-300`
+
+#### Top Bar (Desktop - `MinimalTopBar.jsx`)
+
+**Layout:**
+```
+[Breadcrumb] | [Retention Pulse] [Widgets] [Google] [Instagram]
+```
+
+**Specifications:**
+- Height: `h-[60px]`
 - Background: `bg-white/80 dark:bg-slate-900/80 backdrop-blur-md`
-- Border: `border-b border-slate-200/50 dark:border-slate-800/50`
-- Position: `sticky top-0 z-50`
+- Border: `border-b border-slate-200/50 dark:border-slate-700/50`
+- Position: `sticky top-0 z-30`
+
+#### Mobile Navigation
+
+**Mobile Layout (< 1024px):**
+```
+[Logo + Location] | [Retention Pulse] [Menu Button]
+```
+
+**Mobile Drawer:**
+- Full-screen overlay with backdrop blur
+- Slide-in animation from right
+- Contains all navigation items and widgets
+- Close on backdrop tap or X button
 
 ### Compact Widgets
 
@@ -361,9 +448,11 @@ hover:scale-105      /* Cards (optional) */
 // Label
 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
 
-// Caption
-<span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
+// Caption (minimum size - never use text-[10px])
+<span className="text-xs font-medium text-slate-600 dark:text-slate-400">
 ```
+
+> ⚠️ Never use `text-[10px]` for captions. Use `text-xs` (12px) as the minimum.
 
 ---
 
@@ -608,27 +697,77 @@ border-blue-200 dark:border-blue-800
 
 ## 🪟 Modals & Overlays
 
+### Modal UX Requirements
+
+All modals MUST implement these behaviors:
+
+| Requirement | Implementation | Priority |
+|-------------|----------------|----------|
+| Escape key close | `useEffect` with `keydown` listener | Required |
+| Click-outside close | Backdrop `onClick` handler | Required |
+| Portal rendering | `createPortal(modal, document.body)` | Required for child modals |
+| Body scroll lock | `document.body.style.overflow = 'hidden'` | Required |
+| Focus trap | Focus stays within modal | Recommended |
+| ARIA attributes | `role="dialog"`, `aria-modal="true"` | Recommended |
+
 ### Modal Container
 
 ```jsx
-<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-  {/* Backdrop */}
-  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-  
-  {/* Modal */}
-  <div className="
-    relative z-10
-    bg-white dark:bg-slate-800
-    rounded-2xl
-    shadow-2xl
-    border border-slate-200 dark:border-slate-700
-    max-w-2xl w-full
-    max-h-[90vh]
-    overflow-hidden
-  ">
-    {/* Content */}
-  </div>
-</div>
+import { createPortal } from 'react-dom';
+
+const Modal = ({ isOpen, onClose, children }) => {
+  // Escape key handler
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
+  // Click-outside handler
+  const handleBackdropClick = useCallback((e) => {
+    if (e.target === e.currentTarget) onClose();
+  }, [onClose]);
+
+  if (!isOpen) return null;
+
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      {/* Modal */}
+      <div
+        className="
+          relative z-10
+          bg-white dark:bg-slate-800
+          rounded-2xl shadow-2xl
+          border border-slate-200 dark:border-slate-700
+          max-w-2xl w-full max-h-[90vh]
+          overflow-hidden
+        "
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
+
+  // Use portal for child modals (z-[60])
+  return createPortal(modalContent, document.body);
+};
 ```
 
 ### Modal Sizes
@@ -813,7 +952,100 @@ text-white
 2. **Use for clarification** - Not for essential information
 3. **Delay appearance** - 300-500ms hover delay
 4. **Portal rendering** - Use React Portal for z-index issues
-5. **Mobile alternative** - Use modals or expandable sections on touch devices
+5. **Mobile alternative** - Use the touch tooltip pattern below
+
+---
+
+## 📱 Mobile Touch Tooltips (Charts)
+
+Charts with interactive tooltips need special handling on touch devices. Use the **tap-to-preview, tap-again-to-action** pattern.
+
+### Pattern Overview
+
+| Action | Desktop | Mobile |
+|--------|---------|--------|
+| Show tooltip | Hover | First tap |
+| Perform action | Click | Second tap (same element) |
+| Dismiss | Mouse leave | Tap elsewhere / Auto-dismiss (5s) |
+
+### Implementation
+
+Use the `useTouchTooltip` hook from `src/hooks/useTouchTooltip.js`:
+
+```jsx
+// Touch device detection
+const isTouchDevice = useRef(false);
+const [activeTouch, setActiveTouch] = useState(null);
+const touchTimeoutRef = useRef(null);
+
+// Detect touch device
+useEffect(() => {
+  const handleTouchStart = () => {
+    isTouchDevice.current = true;
+  };
+  window.addEventListener('touchstart', handleTouchStart, { once: true });
+  return () => window.removeEventListener('touchstart', handleTouchStart);
+}, []);
+
+// Auto-dismiss after 5 seconds
+useEffect(() => {
+  if (activeTouch) {
+    touchTimeoutRef.current = setTimeout(() => setActiveTouch(null), 5000);
+    return () => clearTimeout(touchTimeoutRef.current);
+  }
+}, [activeTouch]);
+
+// Click handler with touch support
+const handleClick = useCallback((item) => {
+  if (isTouchDevice.current) {
+    if (activeTouch === item.id) {
+      // Second tap - perform action
+      setActiveTouch(null);
+      performAction(item);
+    } else {
+      // First tap - show tooltip only
+      setActiveTouch(item.id);
+    }
+  } else {
+    // Desktop - direct action
+    performAction(item);
+  }
+}, [activeTouch]);
+```
+
+### Mobile Hint in Tooltip
+
+When an item is "active" from first tap, show a visual hint:
+
+```jsx
+const CustomTooltip = ({ payload }) => {
+  const isActive = activeTouch === payload[0].payload.id;
+
+  return (
+    <div className="tooltip">
+      {/* Normal tooltip content */}
+      <p>{payload[0].payload.name}</p>
+
+      {/* Mobile hint - shows only when active from first tap */}
+      {isActive && (
+        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+          <p className="text-blue-600 dark:text-blue-400 text-xs font-medium text-center animate-pulse">
+            👆 Toque novamente para ver detalhes
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### Components Using This Pattern
+
+| Component | Action on Second Tap |
+|-----------|---------------------|
+| `RFMScatterPlot` | Opens CustomerProfileModal |
+| `ChurnHistogram` | Opens CustomerSegmentModal for bin |
+| `NewClientsChart` | Opens CustomerSegmentModal for day |
 
 ---
 
@@ -1468,23 +1700,61 @@ const clearUserData = () => {
 
 When creating new components, ensure:
 
+**Core Requirements:**
 - [ ] Responsive design (mobile-first)
-- [ ] Dark mode support
+- [ ] Dark mode support (all `bg-*` have `dark:bg-*` pair)
+- [ ] Minimum font size `text-xs` (never `text-[10px]`)
 - [ ] Proper spacing and typography
-- [ ] Accessible markup and labels
 - [ ] Smooth transitions
+
+**Accessibility:**
+- [ ] Accessible markup and labels (`aria-*` attributes)
+- [ ] Keyboard navigation (focus states, escape key for modals)
+- [ ] Minimum touch target size (44x44px)
+
+**Interactive Elements:**
 - [ ] Loading and error states
-- [ ] Touch-friendly on mobile
-- [ ] Consistent with design system
+- [ ] Touch-friendly on mobile (tap-to-preview for charts)
+- [ ] Click-outside to close (for modals/dropdowns)
+
+**Architecture:**
+- [ ] Use semantic z-index from constants (never arbitrary values)
+- [ ] Portal rendering for modals that can be stacked
+- [ ] Consistent with design system patterns
 
 ---
 
 ## 🔗 Related Files
 
-- **Config:** `tailwind.config.js`
-- **Theme:** `src/contexts/ThemeContext.jsx`
+### Configuration
+- **Tailwind Config:** `tailwind.config.js`
+- **Z-Index Constants:** `src/constants/zIndex.js`
+
+### Contexts & Hooks
+- **Theme Context:** `src/contexts/ThemeContext.jsx`
+- **Sidebar Context:** `src/contexts/SidebarContext.jsx`
+- **Touch Tooltip Hook:** `src/hooks/useTouchTooltip.js`
+
+### Navigation
 - **Main App:** `src/App.jsx`
-- **Components:** `src/components/`
+- **Icon Sidebar:** `src/components/IconSidebar.jsx`
+- **Top Bar:** `src/components/MinimalTopBar.jsx`
+- **Mobile Drawer:** `src/components/MobileDrawer.jsx`
+
+### Modals
+- **KPI Detail Modal:** `src/components/modals/KPIDetailModal.jsx`
+- **Customer Segment Modal:** `src/components/modals/CustomerSegmentModal.jsx`
+- **Customer Profile Modal:** `src/components/CustomerProfileModal.jsx`
+
+### Charts (with Mobile Touch Support)
+- **RFM Scatter Plot:** `src/components/RFMScatterPlot.jsx`
+- **Churn Histogram:** `src/components/ChurnHistogram.jsx`
+- **New Clients Chart:** `src/components/NewClientsChart.jsx`
+
+### Widgets
+- **Retention Pulse:** `src/components/RetentionPulse.jsx`
+- **Secondary KPI Card:** `src/components/ui/SecondaryKPICard.jsx`
+- **Hero KPI Card:** `src/components/ui/HeroKPICard.jsx`
 
 ---
 

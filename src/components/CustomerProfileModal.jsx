@@ -1,8 +1,16 @@
-// CustomerProfileModal.jsx v2.3 - Z-INDEX FIX
+// CustomerProfileModal.jsx v2.5 - STANDARDIZED Z-INDEX
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v2.5 (2025-12-16): Standardized z-index system
+//   - Uses Z_INDEX.MODAL_CHILD from shared constants
+//   - Consistent layering: primary modals (50) < child modals (60)
+// v2.4 (2025-12-16): UX consistency with CustomerSegmentModal
+//   - Added Escape key handler to close modal
+//   - Added click-outside (backdrop) to close modal
+//   - Added portal rendering via createPortal for proper z-index stacking
+//   - Consistent close behavior across all modals
 // v2.3 (2025-12-15): Z-index fix for modal stacking
 //   - Changed z-50 to z-[1100] to appear above CustomerSegmentModal (z-[1050])
 // v2.2 (2025-12-14): Blacklist indicator
@@ -62,7 +70,9 @@
 //   - Communication logging via localStorage
 //   - Quick contact actions (Call, WhatsApp, Email)
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { Z_INDEX } from '../constants/zIndex';
 import {
     X,
     Phone,
@@ -197,6 +207,26 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
     // Blacklist check (takes precedence over contacted status)
     const { isBlacklisted, getBlacklistReason } = useBlacklist();
+
+    // Escape key handler - consistent with CustomerSegmentModal
+    useEffect(() => {
+        const handleEscapeKey = (e) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        document.addEventListener('keydown', handleEscapeKey);
+        return () => document.removeEventListener('keydown', handleEscapeKey);
+    }, [onClose]);
+
+    // Click-outside handler
+    const handleBackdropClick = useCallback((e) => {
+        // Only close if clicking the backdrop itself, not the modal content
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    }, [onClose]);
     const blacklisted = isBlacklisted(customer.phone);
     const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
 
@@ -362,9 +392,19 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         };
     }, [customer]);
 
-    return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1100] flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col">
+    // Portal rendering for proper z-index stacking
+    return createPortal(
+        <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-3 sm:p-4 animate-fade-in"
+            onClick={handleBackdropClick}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="customer-profile-title"
+        >
+            <div
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Header - Simplified with Segment Avatar */}
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 px-4 py-3 sm:px-5 border-b border-slate-200 dark:border-slate-700">
                     <div className="flex items-center justify-between">
@@ -380,7 +420,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 );
                             })()}
                             <div className="flex-1 min-w-0">
-                                <h2 className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate">
+                                <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate">
                                     {customer.name}
                                 </h2>
                                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -908,7 +948,8 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     )}
                 </div>
             </div>
-        </div >
+        </div>,
+        document.body
     );
 };
 

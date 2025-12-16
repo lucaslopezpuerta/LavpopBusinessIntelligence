@@ -1,8 +1,11 @@
-// KPIDetailModal.jsx v2.2
+// KPIDetailModal.jsx v2.3
 // Enhanced modal with metric-aware header
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.3 (2025-12-16): Standardized z-index system
+//   - Uses z-50 (MODAL_PRIMARY) instead of z-[1050]
+//   - Consistent layering across all modals
 // v2.2 (2025-12-01): Added badge prop to header
 //   - Badge displays count/summary in header
 //   - Positioned between title and close button
@@ -67,7 +70,7 @@ const KPIDetailModal = ({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 z-[1050] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
                     >
                         {/* Modal Container */}
                         <motion.div

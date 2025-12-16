@@ -1,8 +1,16 @@
-// SecondaryKPICard.jsx v1.6
+// SecondaryKPICard.jsx v1.8
 // Compact KPI card for secondary metrics
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.8 (2025-12-16): Sparkline unique ID fix
+//   - Fixed SVG gradient ID collision when multiple cards render
+//   - Each sparkline now uses React useId() for unique gradient reference
+// v1.7 (2025-12-16): Sparkline support
+//   - NEW: sparklineData prop for mini trend visualization
+//   - SVG-based sparkline with gradient fill
+//   - Auto-scales to data range
+//   - Positioned behind value for layered effect
 // v1.6 (2025-12-13): Informative pill support
 //   - NEW: pill prop for contextual status indicators
 //   - Supports variants: warning, success, info, error
@@ -31,8 +39,68 @@
 //   - Click-to-drill-down support
 //   - Dark mode support
 
-import React from 'react';
+import React, { useMemo, useId } from 'react';
 import TrendBadge from './TrendBadge';
+
+// Mini sparkline component
+const Sparkline = ({ data, width = 80, height = 32, className = '', id }) => {
+  const gradientId = `sparkline-gradient-${id}`;
+
+  const pathData = useMemo(() => {
+    if (!data || data.length < 2) return null;
+
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+
+    const points = data.map((value, index) => {
+      const x = (index / (data.length - 1)) * width;
+      const y = height - ((value - min) / range) * (height * 0.8) - height * 0.1;
+      return `${x},${y}`;
+    });
+
+    return {
+      line: `M${points.join(' L')}`,
+      area: `M0,${height} L${points.join(' L')} L${width},${height} Z`
+    };
+  }, [data, width, height]);
+
+  if (!pathData) return null;
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      className={`absolute right-2 bottom-2 opacity-40 ${className}`}
+      viewBox={`0 0 ${width} ${height}`}
+    >
+      {/* Gradient fill - unique ID per instance */}
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="white" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {/* Area fill */}
+      <path
+        d={pathData.area}
+        fill={`url(#${gradientId})`}
+      />
+
+      {/* Line */}
+      <path
+        d={pathData.line}
+        fill="none"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.8"
+      />
+    </svg>
+  );
+};
 
 const SecondaryKPICard = ({
   title,
@@ -45,7 +113,10 @@ const SecondaryKPICard = ({
   onClick,
   className = '',
   pill, // { text: string, variant: 'warning' | 'success' | 'info' | 'error' }
+  sparklineData, // Array of numbers for trend visualization
 }) => {
+  // Generate unique ID for SVG gradient to avoid collisions
+  const uniqueId = useId();
   // Pill variants - semi-transparent for gradient backgrounds
   const pillVariants = {
     warning: 'bg-white/20 text-white border border-amber-300/50',
@@ -135,11 +206,17 @@ const SecondaryKPICard = ({
         px-3 py-3 sm:px-4
         shadow-sm
         transition-all duration-200
+        relative overflow-hidden
         ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-600' : ''}
         ${className}
       `}
     >
-      <div className="flex flex-col gap-1">
+      {/* Sparkline background */}
+      {sparklineData && sparklineData.length >= 2 && (
+        <Sparkline data={sparklineData} width={100} height={40} id={uniqueId} />
+      )}
+
+      <div className="flex flex-col gap-1 relative z-10">
         {/* Header: Icon + Title */}
         <div className="flex items-center gap-2">
           {Icon && (

@@ -1,8 +1,11 @@
-// CustomerSegmentModal.jsx v1.5
+// CustomerSegmentModal.jsx v1.6
 // Clean modal for displaying filtered customer lists with campaign integration
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.6 (2025-12-16): Standardized z-index system
+//   - Uses z-50 (MODAL_PRIMARY) from shared z-index constants
+//   - Consistent layering: primary modals (50) < child modals (60)
 // v1.5 (2025-12-15): Fixed contacted status display + default filter
 //   - hideContacted now defaults to true (better for campaign targeting)
 //   - Backend updated to include 'queued' status in contacted check
@@ -318,7 +321,7 @@ const CustomerSegmentModal = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[1050] bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
           >
             {/* Centering wrapper with min-height to ensure scroll works */}
             <div className="min-h-full flex items-center justify-center p-4">
@@ -460,7 +463,7 @@ const CustomerSegmentModal = ({
                     className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    Ocultar Contactados
+                    Ocultar Contactados{stats.contacted > 0 && ` (${stats.contacted})`}
                   </span>
                 </label>
 
