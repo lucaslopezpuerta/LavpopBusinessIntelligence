@@ -1,7 +1,18 @@
-// MinimalTopBar.jsx v1.3 - DIRECTORY TAB BREADCRUMB
+// MinimalTopBar.jsx v1.6 - MOBILE SETTINGS ACCESS
 // Compact top bar with location, weather, and widgets
 //
 // CHANGELOG:
+// v1.6 (2025-12-16): Mobile settings access
+//   - Removed redundant hamburger menu (breadcrumb handles navigation)
+//   - Settings button now visible on mobile
+//   - Cleaner right-side controls: Refresh, Theme, Settings
+// v1.5 (2025-12-16): Clickable mobile breadcrumb (UX audit fix)
+//   - Mobile breadcrumb now opens navigation drawer on tap
+//   - Added visual indicator (chevron icon) to show it's interactive
+//   - Better touch target (min 44px height)
+// v1.4 (2025-12-16): Settings modal integration
+//   - Settings button now opens app-wide settings modal
+//   - Receives onOpenSettings prop from App.jsx
 // v1.3 (2025-12-16): Added Directory tab to breadcrumb
 //   - FIXED: Mobile breadcrumb now shows "Diretório" for /diretorio route
 // v1.2 (2025-12-01): Header layout reorganization
@@ -23,7 +34,7 @@
 //   - Glassmorphism backdrop blur
 
 import React from 'react';
-import { MapPin, RefreshCw, Menu, BarChart3, Users, TrendingUp, Settings, FileDown, MessageSquare, Upload, Search } from 'lucide-react';
+import { MapPin, RefreshCw, BarChart3, Users, TrendingUp, Settings, FileDown, MessageSquare, Upload, Search, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import WeatherWidget from './WeatherWidget_API';
 import GoogleBusinessWidget from './GoogleBusinessWidget';
@@ -42,7 +53,7 @@ const TAB_CONFIG = {
   upload: { label: 'Upload', icon: Upload }
 };
 
-const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {
+const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard', onOpenSettings }) => {
   const { toggleMobileSidebar } = useSidebar();
   const currentTab = TAB_CONFIG[activeTab] || TAB_CONFIG.dashboard;
   const TabIcon = currentTab.icon;
@@ -54,15 +65,20 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {
 
         {/* Left: Mobile breadcrumb OR Location + Weather + Widgets */}
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Mobile: Active tab breadcrumb */}
-          <div className="lg:hidden flex items-center gap-2">
+          {/* Mobile: Active tab breadcrumb - Clickable to open nav drawer */}
+          <button
+            onClick={toggleMobileSidebar}
+            className="lg:hidden flex items-center gap-2 h-11 px-2 -ml-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label={`${currentTab.label} - Toque para navegar`}
+          >
             <div className="w-8 h-8 rounded-lg bg-lavpop-blue/10 dark:bg-lavpop-blue/20 flex items-center justify-center">
               <TabIcon className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
             </div>
             <span className="text-sm font-bold text-slate-900 dark:text-white">
               {currentTab.label}
             </span>
-          </div>
+            <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+          </button>
 
           {/* Desktop: Location + Weather + Widgets */}
           <motion.div
@@ -99,10 +115,10 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {
             <FileDown className="w-4 h-4" />
           </button>
 
-          {/* Settings Button (hidden on mobile) */}
+          {/* Settings Button - Visible on all screen sizes */}
           <button
-            onClick={() => {/* TODO: Open settings modal */}}
-            className="hidden sm:flex p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            onClick={onOpenSettings}
+            className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Configurações"
             aria-label="Configurações"
           >
@@ -124,17 +140,6 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard' }) => {
 
           {/* Theme Toggle - Visible on mobile */}
           <ThemeToggle className="no-print" />
-
-          <div className="lg:hidden h-4 w-px bg-slate-200 dark:bg-slate-700" />
-
-          {/* Mobile Menu Button - Opens Sidebar Drawer */}
-          <button
-            onClick={toggleMobileSidebar}
-            className="lg:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            aria-label="Abrir menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
         </div>
       </div>
     </header>

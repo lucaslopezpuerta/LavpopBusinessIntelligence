@@ -1,7 +1,12 @@
-// IconSidebar.jsx v1.3
+// IconSidebar.jsx v1.4 - URL ROUTING SUPPORT
 // Minimalist icon-only sidebar with hover-to-expand functionality
 //
 // CHANGELOG:
+// v1.4 (2025-12-16): URL routing support
+//   - Added path property to navigation items for Link components
+//   - Uses Link from react-router-dom for proper <a> tags
+//   - Enables right-click "Open in new tab"
+//   - Better accessibility and SEO
 // v1.3 (2025-12-16): Added Diretório tab
 //   - New navigation item for customer directory (search icon)
 //   - Positioned after Clientes for logical grouping
@@ -22,6 +27,7 @@
 //   - Tooltip fallback for collapsed state
 
 import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import LogoNoBackground from '../assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -30,17 +36,16 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
   const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar } = useSidebar();
 
   const navigationItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'customers', label: 'Clientes', icon: Users },
-    { id: 'diretorio', label: 'Diretório', icon: Search },
-    { id: 'campaigns', label: 'Campanhas', icon: MessageSquare },
-    { id: 'intelligence', label: 'Inteligência', icon: TrendingUp },
-    { id: 'operations', label: 'Operações', icon: Settings },
-    { id: 'upload', label: 'Importar', icon: Upload }
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/' },
+    { id: 'customers', label: 'Clientes', icon: Users, path: '/customers' },
+    { id: 'diretorio', label: 'Diretório', icon: Search, path: '/diretorio' },
+    { id: 'campaigns', label: 'Campanhas', icon: MessageSquare, path: '/campaigns' },
+    { id: 'intelligence', label: 'Inteligência', icon: TrendingUp, path: '/intelligence' },
+    { id: 'operations', label: 'Operações', icon: Settings, path: '/operations' },
+    { id: 'upload', label: 'Importar', icon: Upload, path: '/upload' }
   ];
 
-  const handleNavigate = (tabId) => {
-    onNavigate(tabId);
+  const handleMobileNavigate = () => {
     if (isMobileOpen) {
       toggleMobileSidebar();
     }
@@ -94,9 +99,9 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
             const isActive = activeTab === item.id;
 
             return (
-              <button
+              <Link
                 key={item.id}
-                onClick={() => handleNavigate(item.id)}
+                to={item.path}
                 className={`
                   relative flex items-center gap-3 h-11 rounded-lg
                   transition-all duration-200
@@ -128,7 +133,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                     </motion.span>
                   )}
                 </AnimatePresence>
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -169,9 +174,10 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                 const isActive = activeTab === item.id;
 
                 return (
-                  <button
+                  <Link
                     key={item.id}
-                    onClick={() => handleNavigate(item.id)}
+                    to={item.path}
+                    onClick={handleMobileNavigate}
                     className={`
                       relative flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all duration-200 text-sm font-semibold
@@ -193,7 +199,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                         <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       </div>
                     )}
-                  </button>
+                  </Link>
                 );
               })}
             </div>

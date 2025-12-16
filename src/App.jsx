@@ -1,4 +1,4 @@
-// App.jsx v7.2 - DATA FRESHNESS FOOTER
+// App.jsx v8.0 - URL ROUTING WITH REACT ROUTER
 // ✅ Added minimalist icon sidebar with hover expansion
 // ✅ Compact top bar with widgets (60px to match sidebar)
 // ✅ Mobile drawer with backdrop overlay
@@ -9,8 +9,20 @@
 // ✅ Auto-refresh every 10 minutes when active
 // ✅ Separate Directory route for customer browsing
 // ✅ Data freshness footer with CSV upload, sync time, build version
+// ✅ View-specific skeleton loading states for better perceived performance
+// ✅ URL-based routing with deep linking support
 //
 // CHANGELOG:
+// v8.0 (2025-12-16): URL routing with React Router
+//   - Added BrowserRouter for client-side routing
+//   - URLs now reflect current view (/, /customers, /campaigns, etc.)
+//   - Browser back/forward navigation works
+//   - Bookmarks and deep links supported
+//   - Refresh maintains current view
+// v7.3 (2025-12-16): View-specific loading skeletons
+//   - Each view now has a matching skeleton during lazy load
+//   - Better perceived performance and less layout shift
+//   - Skeletons match the exact layout of each view
 // v7.2 (2025-12-16): Data freshness footer
 //   - Shows CSV upload date (last imported_at from transactions)
 //   - Shows frontend sync time (when data was last refreshed)
@@ -33,6 +45,7 @@
 // v4.2 (2025-11-21): Reload button added
 
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { RefreshCw, XCircle, Upload, Clock, Code } from 'lucide-react';
 
 // Build timestamp injected by Vite at build time
@@ -44,12 +57,22 @@ import { SidebarProvider } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { DataFreshnessProvider } from './contexts/DataFreshnessContext';
 import { RealtimeSyncProvider } from './contexts/RealtimeSyncContext';
+import { AppSettingsProvider } from './contexts/AppSettingsContext';
 import { loadAllData } from './utils/supabaseLoader';
 import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
 import Backdrop from './components/Backdrop';
 import MinimalTopBar from './components/MinimalTopBar';
 import ErrorBoundary from './components/ErrorBoundary';
+import AppSettingsModal from './components/AppSettingsModal';
+import {
+  DashboardLoadingSkeleton,
+  CustomersLoadingSkeleton,
+  DirectoryLoadingSkeleton,
+  CampaignsLoadingSkeleton,
+  OperationsLoadingSkeleton,
+  IntelligenceLoadingSkeleton
+} from './components/ui/Skeleton';
 
 // Data freshness configuration
 // With Supabase Realtime, polling is now a fallback - increase intervals
@@ -98,8 +121,20 @@ const formatBrDateOnly = (isoDate) => {
   }
 };
 
-// Loading fallback component
-const TabLoadingFallback = () => (
+// View-specific loading skeletons map
+const VIEW_SKELETONS = {
+  dashboard: DashboardLoadingSkeleton,
+  customers: CustomersLoadingSkeleton,
+  diretorio: DirectoryLoadingSkeleton,
+  campaigns: CampaignsLoadingSkeleton,
+  intelligence: IntelligenceLoadingSkeleton,
+  operations: OperationsLoadingSkeleton,
+  // Upload view uses generic fallback (simple form)
+  upload: null
+};
+
+// Generic fallback for views without specific skeleton
+const GenericLoadingFallback = () => (
   <div className="flex items-center justify-center min-h-[400px]">
     <div className="text-center">
       <div className="w-16 h-16 border-4 border-lavpop-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -107,6 +142,12 @@ const TabLoadingFallback = () => (
     </div>
   </div>
 );
+
+// View-specific loading fallback selector
+const getLoadingFallback = (tabId) => {
+  const SkeletonComponent = VIEW_SKELETONS[tabId];
+  return SkeletonComponent ? <SkeletonComponent /> : <GenericLoadingFallback />;
+};
 
 function AppContent() {
   const { activeTab, navigateTo } = useNavigation();
@@ -116,6 +157,7 @@ function AppContent() {
   const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 7, percent: 0 });
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState('complete');
+  const [showSettings, setShowSettings] = useState(false);
 
   // Smart refresh state
   const [lastRefreshed, setLastRefreshed] = useState(null);
@@ -376,7 +418,12 @@ function AppContent() {
       {/* Main Content Area - with sidebar offset */}
       <div className="lg:pl-[60px] min-h-screen flex flex-col">
         {/* Top Bar */}
-        <MinimalTopBar refreshing={refreshing} onRefresh={handleRefresh} activeTab={activeTab} />
+        <MinimalTopBar
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          activeTab={activeTab}
+          onOpenSettings={() => setShowSettings(true)}
+        />
 
         {/* Main Content - Full width with edge-to-edge support */}
         <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
@@ -388,7 +435,7 @@ function AppContent() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
             >
-              <Suspense fallback={<TabLoadingFallback />}>
+              <Suspense fallback={getLoadingFallback(activeTab)}>
                 <ActiveComponent
                   data={data}
                   onNavigate={handleTabChange}
@@ -438,6 +485,12 @@ function AppContent() {
           </div>
         </footer>
       </div>
+
+      {/* Settings Modal */}
+      <AppSettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 }
@@ -445,17 +498,21 @@ function AppContent() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <SidebarProvider>
-          <NavigationProvider>
-            <DataFreshnessProvider>
-              <RealtimeSyncProvider>
-                <AppContent />
-              </RealtimeSyncProvider>
-            </DataFreshnessProvider>
-          </NavigationProvider>
-        </SidebarProvider>
-      </ThemeProvider>
+      <BrowserRouter>
+        <ThemeProvider>
+          <SidebarProvider>
+            <NavigationProvider>
+              <DataFreshnessProvider>
+                <RealtimeSyncProvider>
+                  <AppSettingsProvider>
+                    <AppContent />
+                  </AppSettingsProvider>
+                </RealtimeSyncProvider>
+              </DataFreshnessProvider>
+            </NavigationProvider>
+          </SidebarProvider>
+        </ThemeProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

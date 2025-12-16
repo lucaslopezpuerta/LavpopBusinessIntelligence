@@ -1,8 +1,13 @@
-// Intelligence.jsx v3.9.0 - FULL-WIDTH LAYOUT
+// Intelligence.jsx v3.10.0 - FULL-WIDTH LAYOUT
 // Refactored with unified components and Health Score
 // Design System v3.2 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.10.0 (2025-12-16): Migrated to centralized AppSettings
+//   - REMOVED: Local Settings button (now in top bar via AppSettingsModal)
+//   - REMOVED: Local BusinessSettingsModal import and render
+//   - CHANGED: useBusinessSettings → useAppSettings (from AppSettingsContext)
+//   - Settings now persist to Supabase instead of localStorage
 // v3.9.0 (2025-12-16): Full-width layout
 //   - REMOVED: Redundant padding (now uses App.jsx padding)
 //   - REMOVED: max-w-[1600px] constraint for full-width
@@ -61,11 +66,11 @@
 // v1.2.0 (2025-11-29): Design System v3.0 - Dark mode & Nivo theme
 // v1.0.0 (2025-11-18): Complete redesign with Tailwind + Nivo
 
-import React, { useState, useMemo, Suspense } from 'react';
-import { Settings, Calendar, TrendingUp, Zap, DollarSign, Lightbulb } from 'lucide-react';
+import React, { useMemo, Suspense } from 'react';
+import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb } from 'lucide-react';
 
 // Business logic
-import BusinessSettingsModal, { useBusinessSettings } from '../components/BusinessSettingsModal';
+import { useAppSettings } from '../contexts/AppSettingsContext';
 import {
   calculateProfitability,
   calculateWeatherImpact,
@@ -98,8 +103,7 @@ import SectionNavigation from '../components/intelligence/SectionNavigation';
 // ==================== MAIN COMPONENT ====================
 
 const Intelligence = ({ data }) => {
-  const [showSettings, setShowSettings] = useState(false);
-  const settings = useBusinessSettings();
+  const { settings } = useAppSettings();
 
   // Calculate all metrics
   const profitability = useMemo(() => {
@@ -271,17 +275,6 @@ const Intelligence = ({ data }) => {
               </div>
             </div>
 
-            {/* Header Actions */}
-            <button
-              onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-              aria-label="Abrir configurações de negócio"
-            >
-              <Settings className="w-4 h-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:inline">
-                Configurações
-              </span>
-            </button>
           </header>
 
           {/* Section Navigation - Sticky */}
@@ -446,16 +439,6 @@ const Intelligence = ({ data }) => {
           </Suspense>
 
       </div>
-
-      {/* Settings Modal */}
-      <BusinessSettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        onSave={(newSettings) => {
-          console.log('Settings saved:', newSettings);
-          // Component will auto-reload with new settings via useBusinessSettings hook
-        }}
-      />
     </>
   );
 };

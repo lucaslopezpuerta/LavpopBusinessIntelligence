@@ -1,7 +1,11 @@
-// RFMScatterPlot.jsx v2.9 - PILLS TO HEADER + LABEL SIZING
+// RFMScatterPlot.jsx v3.0 - BLACKLIST VISUAL INDICATOR
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v3.0 (2025-12-16): Blacklist visual indicator
+//   - NEW: Black dotted border for blacklisted customers
+//   - Blacklisted takes visual precedence over contacted
+//   - Added legend entry for blacklisted indicator
 // v2.9 (2025-12-16): Pills relocated to header + responsive labels
 //   - MOVED: Insight pills from bottom to top-right header area
 //   - CHANGED: X-axis domain back to 60 days (matches LOST_THRESHOLD)
@@ -63,6 +67,7 @@ import { getChartColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
+import { useBlacklist } from '../hooks/useBlacklist';
 
 // Desktop breakpoint for responsive chart labels
 const DESKTOP_BREAKPOINT = 1024;
@@ -78,6 +83,9 @@ const RFMScatterPlot = ({
     // Theme-aware chart colors (Design System v3.2)
     const { isDark } = useTheme();
     const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
+
+    // Blacklist check for visual indicator
+    const { isBlacklisted } = useBlacklist();
 
     // Responsive font sizes for chart labels (12px mobile, 14px desktop)
     const [isDesktop, setIsDesktop] = useState(false);
@@ -107,14 +115,15 @@ const RFMScatterPlot = ({
 
     if (!data || data.length === 0) return null;
 
-    // Enrich data with contact status
+    // Enrich data with contact and blacklist status
     const enrichedData = useMemo(() => {
         return data.map(d => ({
             ...d,
             isContacted: contactedIds.has(String(d.id)),
-            contactInfo: pendingContacts[String(d.id)] || null
+            contactInfo: pendingContacts[String(d.id)] || null,
+            isBlacklisted: isBlacklisted(d.phone)
         }));
-    }, [data, contactedIds, pendingContacts]);
+    }, [data, contactedIds, pendingContacts, isBlacklisted]);
 
     // Calculate segment stats
     const highValueAtRiskCustomers = useMemo(() =>
@@ -124,6 +133,7 @@ const RFMScatterPlot = ({
 
     const notContactedHighValue = highValueAtRiskCustomers.filter(d => !d.isContacted).length;
     const totalContacted = enrichedData.filter(d => d.isContacted).length;
+    const totalBlacklisted = enrichedData.filter(d => d.isBlacklisted).length;
 
     // Click handler for bubble - uses shared touch hook
     // Desktop: immediate action, Mobile: tap-to-preview, tap-again-to-action
@@ -307,6 +317,12 @@ const RFMScatterPlot = ({
                             <span className="text-blue-600 dark:text-blue-400 font-medium">Contactado ({totalContacted})</span>
                         </div>
                     )}
+                    {totalBlacklisted > 0 && (
+                        <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
+                            <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dotted border-slate-900 dark:border-slate-100"></div>
+                            <span className="text-slate-700 dark:text-slate-300 font-medium">Bloqueado ({totalBlacklisted})</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -355,21 +371,29 @@ const RFMScatterPlot = ({
                             onClick={(data) => handleBubbleClick(data)}
                             cursor={onOpenCustomerProfile ? 'pointer' : 'default'}
                         >
-                            {enrichedData.map((entry, index) => (
-                                <Cell
-                                    key={`cell-${index}`}
-                                    fill={
-                                        entry.status === 'Healthy' ? '#10b981' :
-                                            entry.status === 'At Risk' ? '#f59e0b' :
-                                                entry.status === 'Churning' ? '#ef4444' :
-                                                    '#94a3b8'
-                                    }
-                                    fillOpacity={0.6}
-                                    stroke={entry.isContacted ? '#3b82f6' : 'transparent'}
-                                    strokeWidth={entry.isContacted ? 3 : 0}
-                                    strokeDasharray={entry.isContacted ? '4 2' : undefined}
-                                />
-                            ))}
+                            {enrichedData.map((entry, index) => {
+                                // Determine stroke style: blacklisted (black dotted) > contacted (blue dashed) > none
+                                const strokeColor = entry.isBlacklisted ? (isDark ? '#f1f5f9' : '#0f172a') :
+                                    entry.isContacted ? '#3b82f6' : 'transparent';
+                                const strokeWidth = entry.isBlacklisted || entry.isContacted ? 3 : 0;
+                                const strokeDash = entry.isBlacklisted ? '2 2' :
+                                    entry.isContacted ? '4 2' : undefined;
+
+                                return (
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={
+                                            entry.status === 'Healthy' ? '#10b981' :
+                                                entry.status === 'At Risk' ? '#f59e0b' :
+                                                    entry.status === 'Churning' ? '#ef4444' :
+                                                        '#94a3b8'
+                                        }
+                                        stroke={strokeColor}
+                                        strokeWidth={strokeWidth}
+                                        strokeDasharray={strokeDash}
+                                    />
+                                );
+                            })}
                         </Scatter>
                     </ScatterChart>
                 </ResponsiveContainer>

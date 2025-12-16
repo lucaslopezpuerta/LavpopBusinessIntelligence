@@ -1,7 +1,10 @@
-// ChurnHistogram.jsx v2.7 - DESIGN SYSTEM COLORS
+// ChurnHistogram.jsx v2.8 - BLACKLIST INTEGRATION
 // Time-to-churn distribution histogram with contact tracking integration
 //
 // CHANGELOG:
+// v2.8 (2025-12-16): Blacklist integration
+//   - Added blacklisted count to bar tooltips
+//   - Uses useBlacklist hook for phone-based blacklist check
 // v2.7 (2025-12-16): Design System v3.2 chart colors
 //   - Added theme-aware colors via getChartColors()
 //   - Fixed fontSize from 10 to 12 (Design System minimum)
@@ -49,6 +52,7 @@ import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { getChartColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
+import { useBlacklist } from '../hooks/useBlacklist';
 
 const ChurnHistogram = ({
     data,
@@ -66,6 +70,9 @@ const ChurnHistogram = ({
     // Theme-aware chart colors (Design System v3.2)
     const { isDark } = useTheme();
     const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
+
+    // Blacklist check for tooltip display
+    const { isBlacklisted } = useBlacklist();
 
     // Helper to convert customer IDs to customer objects (moved up for use in hook callback)
     const getCustomersFromIds = useCallback((customerIds) => {
@@ -189,6 +196,13 @@ const ChurnHistogram = ({
             const notContactedCount = binData.count - contactedCount;
             const isActiveTouchItem = isActiveTouch(binData.bin);
 
+            // Count blacklisted customers in this bin
+            const blacklistedCount = binCustomerIds.filter(id => {
+                const customer = customerMap[String(id)];
+                const phone = customer?.phone || customer?.telefone;
+                return phone && isBlacklisted(phone);
+            }).length;
+
             return (
                 <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
                     <p className="font-bold text-slate-800 dark:text-white mb-1">Intervalo: {label} dias</p>
@@ -199,17 +213,27 @@ const ChurnHistogram = ({
                         retornam geralmente neste período
                     </p>
 
-                    {/* Contact status breakdown - Fixed: text-xs instead of text-[10px] */}
-                    {binData.count > 0 && contactedIds.size > 0 && (
-                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="text-blue-600 dark:text-blue-400">Contactados:</span>
-                                <span className="font-bold text-blue-600 dark:text-blue-400">{contactedCount}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-500 dark:text-slate-400">Sem contato:</span>
-                                <span className="font-bold text-slate-600 dark:text-slate-300">{notContactedCount}</span>
-                            </div>
+                    {/* Contact and blacklist status breakdown */}
+                    {binData.count > 0 && (contactedIds.size > 0 || blacklistedCount > 0) && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1">
+                            {contactedIds.size > 0 && (
+                                <>
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-blue-600 dark:text-blue-400">Contactados:</span>
+                                        <span className="font-bold text-blue-600 dark:text-blue-400">{contactedCount}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-slate-500 dark:text-slate-400">Sem contato:</span>
+                                        <span className="font-bold text-slate-600 dark:text-slate-300">{notContactedCount}</span>
+                                    </div>
+                                </>
+                            )}
+                            {blacklistedCount > 0 && (
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-red-600 dark:text-red-400">Bloqueados:</span>
+                                    <span className="font-bold text-red-600 dark:text-red-400">{blacklistedCount}</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -225,7 +249,7 @@ const ChurnHistogram = ({
             );
         }
         return null;
-    }, [contactedIds, isActiveTouch]);
+    }, [contactedIds, isActiveTouch, customerMap, isBlacklisted]);
 
     return (
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">

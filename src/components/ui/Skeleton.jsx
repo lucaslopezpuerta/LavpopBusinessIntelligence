@@ -1,8 +1,15 @@
-// Skeleton.jsx v1.0
+// Skeleton.jsx v2.0
 // Skeleton loading components for better UX
-// Design System v3.0 compliant
+// Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.0 (2025-12-16): View-specific loading skeletons
+//   - DashboardLoadingSkeleton: KPI grid + chart
+//   - CustomersLoadingSkeleton: Hero cards + scatter + table/charts
+//   - DirectoryLoadingSkeleton: Filter bar + customer cards grid
+//   - CampaignsLoadingSkeleton: Section nav + dashboard cards
+//   - OperationsLoadingSkeleton: Date filter + KPIs + sections
+//   - All skeletons match their respective view layouts
 // v1.0 (2025-11-30): Initial implementation
 //   - Base Skeleton component
 //   - SkeletonCard for stat cards
@@ -151,6 +158,410 @@ const IntelligenceLoadingSkeleton = () => (
   </div>
 );
 
+// ==================== VIEW-SPECIFIC SKELETONS ====================
+
+// Shared header skeleton component (icon box + title + subtitle)
+const SkeletonHeader = ({ color = 'blue' }) => {
+  const colorClasses = {
+    blue: 'bg-blue-100 dark:bg-blue-900/30 border-blue-500',
+    purple: 'bg-purple-100 dark:bg-purple-900/30 border-purple-500',
+    amber: 'bg-amber-100 dark:bg-amber-900/30 border-amber-500',
+    green: 'bg-green-100 dark:bg-green-900/30 border-green-500',
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-l-4 ${colorClasses[color]}`}>
+        <SkeletonCircle size="w-5 h-5" />
+      </div>
+      <div className="space-y-1.5">
+        <SkeletonText width="w-32" height="h-6" />
+        <SkeletonText width="w-48" height="h-3" />
+      </div>
+    </div>
+  );
+};
+
+// Hero KPI Card skeleton (larger, with sparkline area)
+const SkeletonHeroCard = () => (
+  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-5">
+    <div className="flex items-start justify-between mb-3">
+      <div className="space-y-2">
+        <SkeletonText width="w-24" height="h-4" />
+        <SkeletonText width="w-16" height="h-8" />
+        <SkeletonText width="w-20" height="h-3" />
+      </div>
+      <SkeletonCircle size="w-10 h-10" className="rounded-lg" />
+    </div>
+    {/* Sparkline area */}
+    <div className="h-12 mt-2">
+      <div className="flex items-end justify-between gap-1 h-full">
+        {[30, 50, 40, 70, 60, 80, 55].map((h, i) => (
+          <Skeleton key={i} className="flex-1 rounded-t" style={{ height: `${h}%` }} />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// Dashboard skeleton - matches Dashboard.jsx layout
+const DashboardLoadingSkeleton = () => (
+  <div className="space-y-6 sm:space-y-8 animate-pulse">
+    {/* Header */}
+    <SkeletonHeader color="blue" />
+
+    {/* Date Control */}
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-10 w-32 rounded-lg" />
+      <Skeleton className="h-10 w-32 rounded-lg" />
+      <Skeleton className="h-6 w-40 rounded-lg" />
+    </div>
+
+    {/* KPI Cards Grid - 3 hero cards */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[1, 2, 3].map((i) => (
+        <SkeletonHeroCard key={i} />
+      ))}
+    </div>
+
+    {/* Secondary KPI cards - 2x3 grid */}
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+          <SkeletonText width="w-16" height="h-3" className="mb-2" />
+          <SkeletonText width="w-12" height="h-6" className="mb-1" />
+          <SkeletonText width="w-20" height="h-3" />
+        </div>
+      ))}
+    </div>
+
+    {/* Chart section */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <SkeletonText width="w-40" height="h-5" />
+        <SkeletonText width="w-24" height="h-8" className="rounded-lg" />
+      </div>
+      <SkeletonChart height="h-80" />
+    </div>
+  </div>
+);
+
+// Customers skeleton - matches Customers.jsx layout
+const CustomersLoadingSkeleton = () => (
+  <div className="space-y-6 animate-pulse">
+    {/* Header with pills */}
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <SkeletonHeader color="purple" />
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-8 w-24 rounded-full" />
+        <Skeleton className="h-8 w-32 rounded-full" />
+      </div>
+    </div>
+
+    {/* Hero KPI Cards - 2 columns */}
+    <div className="grid grid-cols-2 gap-4">
+      <SkeletonHeroCard />
+      <SkeletonHeroCard />
+    </div>
+
+    {/* RFM Scatter Plot - Full Width Hero */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="space-y-1">
+          <SkeletonText width="w-48" height="h-5" />
+          <SkeletonText width="w-64" height="h-3" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-20 rounded-lg" />
+          <Skeleton className="h-8 w-20 rounded-lg" />
+        </div>
+      </div>
+      <div className="h-[400px] flex items-center justify-center">
+        {/* Scatter plot dots simulation */}
+        <div className="relative w-full h-full">
+          {[...Array(20)].map((_, i) => (
+            <SkeletonCircle
+              key={i}
+              size="w-3 h-3"
+              className="absolute"
+              style={{
+                left: `${10 + Math.random() * 80}%`,
+                top: `${10 + Math.random() * 80}%`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Table + Charts Grid */}
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {/* Table skeleton - 3/5 width */}
+      <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+        <SkeletonText width="w-40" height="h-5" className="mb-4" />
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <SkeletonCircle size="w-10 h-10" />
+              <div className="flex-1 space-y-2">
+                <SkeletonText width="w-32" height="h-4" />
+                <SkeletonText width="w-24" height="h-3" />
+              </div>
+              <SkeletonText width="w-16" height="h-6" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Charts skeleton - 2/5 width */}
+      <div className="lg:col-span-2 space-y-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+          <SkeletonText width="w-32" height="h-4" className="mb-3" />
+          <SkeletonChart height="h-36" />
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+          <SkeletonText width="w-32" height="h-4" className="mb-3" />
+          <SkeletonChart height="h-36" />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Directory skeleton - matches Directory.jsx layout
+const DirectoryLoadingSkeleton = () => (
+  <div className="space-y-6 sm:space-y-8 animate-pulse">
+    {/* Header with stats */}
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <SkeletonHeader color="blue" />
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-8 w-32 rounded-lg" />
+        <Skeleton className="h-8 w-28 rounded-lg" />
+      </div>
+    </div>
+
+    {/* Main content card */}
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Filter bar */}
+      <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+        <div className="flex flex-wrap items-center gap-3">
+          <Skeleton className="h-10 flex-1 min-w-[200px] max-w-md rounded-lg" />
+          <Skeleton className="h-10 w-32 rounded-lg" />
+          <Skeleton className="h-10 w-32 rounded-lg" />
+          <Skeleton className="h-10 w-28 rounded-lg" />
+          <Skeleton className="h-10 w-10 rounded-lg" />
+        </div>
+      </div>
+
+      {/* Customer cards grid */}
+      <div className="p-4 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <SkeletonCircle size="w-12 h-12" />
+                <div className="flex-1 space-y-1.5">
+                  <SkeletonText width="w-28" height="h-4" />
+                  <SkeletonText width="w-20" height="h-3" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <SkeletonText width="w-16" height="h-5" className="rounded-full" />
+                <SkeletonText width="w-20" height="h-4" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-slate-600">
+                <div>
+                  <SkeletonText width="w-12" height="h-3" className="mb-1" />
+                  <SkeletonText width="w-16" height="h-4" />
+                </div>
+                <div>
+                  <SkeletonText width="w-12" height="h-3" className="mb-1" />
+                  <SkeletonText width="w-14" height="h-4" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <SkeletonText width="w-32" height="h-4" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-20 rounded-lg" />
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-8 w-8 rounded-lg" />
+            ))}
+            <Skeleton className="h-8 w-20 rounded-lg" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Campaigns skeleton - matches Campaigns.jsx layout
+const CampaignsLoadingSkeleton = () => (
+  <div className="space-y-6 sm:space-y-8 animate-pulse">
+    {/* Header with button */}
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <SkeletonHeader color="purple" />
+      <Skeleton className="h-10 w-36 rounded-xl" />
+    </div>
+
+    {/* Section navigation */}
+    <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <Skeleton key={i} className="h-9 w-28 rounded-lg flex-shrink-0" />
+      ))}
+    </div>
+
+    {/* Dashboard cards - 4 column grid */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+          <SkeletonText width="w-20" height="h-3" className="mb-2" />
+          <SkeletonText width="w-16" height="h-7" className="mb-1" />
+          <SkeletonText width="w-24" height="h-3" />
+        </div>
+      ))}
+    </div>
+
+    {/* Main content area - charts */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+        <SkeletonText width="w-40" height="h-5" className="mb-4" />
+        <SkeletonChart height="h-64" />
+      </div>
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+        <SkeletonText width="w-40" height="h-5" className="mb-4" />
+        <SkeletonChart height="h-64" />
+      </div>
+    </div>
+
+    {/* Insights row */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <SkeletonCircle size="w-8 h-8" className="rounded-lg" />
+            <div className="flex-1 space-y-2">
+              <SkeletonText width="w-24" height="h-4" />
+              <SkeletonText width="w-full" height="h-3" />
+              <SkeletonText width="w-3/4" height="h-3" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Operations skeleton - matches Operations.jsx layout
+const OperationsLoadingSkeleton = () => (
+  <div className="space-y-6 sm:space-y-8 animate-pulse">
+    {/* Header */}
+    <SkeletonHeader color="amber" />
+
+    {/* Date Range Selector */}
+    <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+      {[1, 2, 3, 4].map((i) => (
+        <Skeleton key={i} className="h-8 w-28 rounded-lg" />
+      ))}
+      <Skeleton className="h-6 w-48 rounded-lg ml-auto" />
+    </div>
+
+    {/* KPI Cards - 4 column grid */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {[1, 2, 3, 4].map((i) => (
+        <SkeletonCard key={i} />
+      ))}
+    </div>
+
+    {/* Section 1: Equipamentos */}
+    <section className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 border-l-4 border-amber-500 flex items-center justify-center">
+          <SkeletonCircle size="w-5 h-5" />
+        </div>
+        <div className="space-y-1">
+          <SkeletonText width="w-28" height="h-4" />
+          <SkeletonText width="w-48" height="h-3" />
+        </div>
+      </div>
+      {/* Machine table */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <SkeletonText key={i} width="w-20" height="h-4" />
+            ))}
+          </div>
+        </div>
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-4 flex gap-4">
+              {[1, 2, 3, 4, 5].map((j) => (
+                <SkeletonText key={j} width="w-20" height="h-4" />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* Section 2: Utilização */}
+    <section className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 border-l-4 border-amber-500 flex items-center justify-center">
+          <SkeletonCircle size="w-5 h-5" />
+        </div>
+        <div className="space-y-1">
+          <SkeletonText width="w-24" height="h-4" />
+          <SkeletonText width="w-40" height="h-3" />
+        </div>
+      </div>
+      {/* Heatmap */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+        <div className="grid grid-cols-8 gap-2">
+          {[...Array(56)].map((_, i) => (
+            <Skeleton key={i} className="aspect-square rounded" />
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* Section 3: Padrões Temporais */}
+    <section className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 border-l-4 border-amber-500 flex items-center justify-center">
+          <SkeletonCircle size="w-5 h-5" />
+        </div>
+        <div className="space-y-1">
+          <SkeletonText width="w-36" height="h-4" />
+          <SkeletonText width="w-52" height="h-3" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <SkeletonText width="w-32" height="h-5" className="mb-4" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                <SkeletonText width="w-20" height="h-4" />
+                <SkeletonText width="w-16" height="h-5" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+          <SkeletonText width="w-32" height="h-5" className="mb-4" />
+          <SkeletonChart height="h-64" />
+        </div>
+      </div>
+    </section>
+  </div>
+);
+
 export {
   Skeleton,
   SkeletonText,
@@ -159,7 +570,15 @@ export {
   SkeletonChart,
   SkeletonSection,
   SkeletonTableRow,
-  IntelligenceLoadingSkeleton
+  SkeletonHeader,
+  SkeletonHeroCard,
+  // View-specific skeletons
+  IntelligenceLoadingSkeleton,
+  DashboardLoadingSkeleton,
+  CustomersLoadingSkeleton,
+  DirectoryLoadingSkeleton,
+  CampaignsLoadingSkeleton,
+  OperationsLoadingSkeleton,
 };
 
 export default Skeleton;
