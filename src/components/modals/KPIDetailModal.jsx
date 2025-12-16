@@ -1,8 +1,11 @@
-// KPIDetailModal.jsx v2.3
+// KPIDetailModal.jsx v2.4
 // Enhanced modal with metric-aware header
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.4 (2025-12-16): Added subtitle prop
+//   - Subtitle displayed below title in header
+//   - Useful for context like "Últimas 8 semanas"
 // v2.3 (2025-12-16): Standardized z-index system
 //   - Uses z-50 (MODAL_PRIMARY) instead of z-[1050]
 //   - Consistent layering across all modals
@@ -36,6 +39,7 @@ const KPIDetailModal = ({
     isOpen,
     onClose,
     title,
+    subtitle,
     children,
     maxWidth = 'max-w-2xl',
     icon: Icon,
@@ -95,9 +99,16 @@ const KPIDetailModal = ({
                                             <Icon className="w-5 h-5" />
                                         </div>
                                     )}
-                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                                        {title}
-                                    </h2>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                            {title}
+                                        </h2>
+                                        {subtitle && (
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                {subtitle}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {badge && (

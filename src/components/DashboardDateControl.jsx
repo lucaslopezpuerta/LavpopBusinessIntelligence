@@ -1,11 +1,14 @@
-// DashboardDateControl.jsx v1.2 - UNIFIED DATE CONTROL
+// DashboardDateControl.jsx v1.3 - NON-STICKY, DESCRIPTIVE LABELS
 // ✅ Compact toggle for Complete/Current week
 // ✅ Date range display
 // ✅ Glassmorphism styling
-// ✅ Fixed sticky positioning (below header)
 // ✅ Consistent styling with DateRangeSelector
 //
 // CHANGELOG:
+// v1.3 (2025-12-16): Improved labels and removed sticky
+//   - Removed sticky positioning
+//   - Labels now "Semana Completa" / "Semana Parcial"
+//   - Bigger text on desktop (text-sm)
 // v1.2 (2025-12-02): Unified design consistency
 //   - Matched visual structure with DateRangeSelector v3.0
 //   - Consistent card styling across app
@@ -22,11 +25,11 @@ const DashboardDateControl = ({ viewMode, setViewMode, dateRange }) => {
     if (!dateRange) return null;
 
     return (
-        <div className="sticky top-14 lg:top-[60px] z-30 -mt-2 mb-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm">
+        <div className="mb-6">
             <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-sm">
                 {/* Date Range Display */}
-                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                    <Calendar className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-lavpop-blue dark:text-blue-400" />
                     <span className="font-medium">
                         {dateRange.start} - {dateRange.end}
                     </span>
@@ -41,7 +44,7 @@ const DashboardDateControl = ({ viewMode, setViewMode, dateRange }) => {
                     <button
                         onClick={() => setViewMode('complete')}
                         className={`
-                            px-3 py-1.5 rounded-md text-xs font-semibold
+                            px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold
                             transition-all duration-200
                             flex items-center gap-1.5
                             ${viewMode === 'complete'
@@ -50,14 +53,14 @@ const DashboardDateControl = ({ viewMode, setViewMode, dateRange }) => {
                         `}
                         title="Últimos 7 dias completos"
                     >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Completa</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Semana Completa</span>
                         <span className="sm:hidden">7d</span>
                     </button>
                     <button
                         onClick={() => setViewMode('current')}
                         className={`
-                            px-3 py-1.5 rounded-md text-xs font-semibold
+                            px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold
                             transition-all duration-200
                             flex items-center gap-1.5
                             ${viewMode === 'current'
@@ -66,9 +69,9 @@ const DashboardDateControl = ({ viewMode, setViewMode, dateRange }) => {
                         `}
                         title="Semana atual (parcial)"
                     >
-                        <Clock className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Parcial</span>
-                        <span className="sm:hidden">Hoje</span>
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Semana Parcial</span>
+                        <span className="sm:hidden">Atual</span>
                     </button>
                 </div>
             </div>

@@ -1,8 +1,16 @@
-// SecondaryKPICard.jsx v1.8
+// SecondaryKPICard.jsx v2.0 - TREND BADGE RELOCATION
 // Compact KPI card for secondary metrics
-// Design System v3.1 compliant
+// Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.1 (2025-12-16): Responsive trend badge position
+//   - FIXED: Desktop (sm+): Badge in header row (avoids sparkline overlap)
+//   - FIXED: Mobile: Badge in footer row (sparklines hidden, more title space)
+//   - Uses responsive visibility classes for position switching
+// v1.9 (2025-12-16): Hide sparklines on mobile
+//   - FIXED: Sparklines now hidden on mobile (hidden sm:block)
+//   - Matches HeroKPICard behavior for consistency
+//   - Better readability on small gradient cards
 // v1.8 (2025-12-16): Sparkline unique ID fix
 //   - Fixed SVG gradient ID collision when multiple cards render
 //   - Each sparkline now uses React useId() for unique gradient reference
@@ -71,7 +79,7 @@ const Sparkline = ({ data, width = 80, height = 32, className = '', id }) => {
     <svg
       width={width}
       height={height}
-      className={`absolute right-2 bottom-2 opacity-40 ${className}`}
+      className={`absolute right-2 bottom-2 opacity-40 hidden sm:block ${className}`}
       viewBox={`0 0 ${width} ${height}`}
     >
       {/* Gradient fill - unique ID per instance */}
@@ -217,7 +225,7 @@ const SecondaryKPICard = ({
       )}
 
       <div className="flex flex-col gap-1 relative z-10">
-        {/* Header: Icon + Title */}
+        {/* Header: Icon + Title + Trend Badge */}
         <div className="flex items-center gap-2">
           {Icon && (
             <div className={`flex-shrink-0 ${colors.icon}`}>
@@ -227,6 +235,12 @@ const SecondaryKPICard = ({
           <div className={`text-xs font-semibold ${colors.title} uppercase tracking-wider leading-tight`}>
             {title}
           </div>
+          {/* Trend Badge - Desktop only (header position avoids sparkline) */}
+          {trend?.show && (
+            <div className="flex-shrink-0 ml-auto hidden sm:block">
+              <TrendBadge value={trend.value} size="xs" inverted />
+            </div>
+          )}
         </div>
 
         {/* Value */}
@@ -234,7 +248,7 @@ const SecondaryKPICard = ({
           {displayValue}
         </div>
 
-        {/* Footer: Subtitle + Pill + Trend Badge */}
+        {/* Footer: Subtitle + Pill + Trend Badge (mobile only) */}
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-2 flex-wrap">
             {subtitle && (
@@ -248,8 +262,9 @@ const SecondaryKPICard = ({
               </span>
             )}
           </div>
+          {/* Trend Badge - Mobile only (footer position, no sparkline overlap) */}
           {trend?.show && (
-            <div className="flex-shrink-0 ml-auto">
+            <div className="flex-shrink-0 ml-auto sm:hidden">
               <TrendBadge value={trend.value} size="xs" inverted />
             </div>
           )}

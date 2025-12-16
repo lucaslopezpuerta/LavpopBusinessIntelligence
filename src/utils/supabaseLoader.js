@@ -1,9 +1,12 @@
 /**
  * Supabase Loader - Loads data from Supabase instead of CSV files
  *
- * VERSION: 2.4
+ * VERSION: 2.5
  *
  * CHANGELOG:
+ * v2.5 (2025-12-16): Added lastImportedAt metadata
+ *   - Returns last CSV import date (MAX(imported_at) from transactions)
+ *   - Used by App.jsx footer for data freshness indicator
  * v2.4 (2025-12-14): Parallel data loading for mobile performance
  *   - Changed sequential loading to Promise.all() for sales, rfm, customer
  *   - Reduces mobile load time by 40-60% (eliminates network waterfall)
@@ -425,6 +428,31 @@ function formatNumberForCSV(value) {
 // RFM segments are now computed directly in Supabase via calculate_rfm_segment()
 // Portuguese segment names: VIP, Frequente, Promissor, Novato, Esfriando, Inativo
 
+// ============== METADATA LOADERS ==============
+
+/**
+ * Get the last CSV import date from transactions table
+ * Returns the most recent imported_at timestamp
+ */
+async function getLastImportDate() {
+  try {
+    const client = await getSupabase();
+    if (!client) return null;
+
+    const { data, error } = await client
+      .from('transactions')
+      .select('imported_at')
+      .order('imported_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .single();
+
+    if (error || !data?.imported_at) return null;
+    return data.imported_at;
+  } catch {
+    return null;
+  }
+}
+
 // ============== MAIN LOADER ==============
 
 /**
@@ -437,6 +465,7 @@ function formatNumberForCSV(value) {
  *
  * @param {function} onProgress - Progress callback
  * @param {boolean} skipCache - Skip cache and force fresh fetch
+ * @returns {Object} { sales, rfm, customer, weather, lastImportedAt }
  */
 export const loadAllData = async (onProgress, skipCache = false) => {
   const data = {};
@@ -461,7 +490,7 @@ export const loadAllData = async (onProgress, skipCache = false) => {
     console.log('[supabaseLoader] Starting parallel data fetch...');
     const startTime = performance.now();
 
-    const [salesResult, rfmResult, customerResult, weatherResult] = await Promise.all([
+    const [salesResult, rfmResult, customerResult, weatherResult, lastImportedAt] = await Promise.all([
       // 1. Load sales from Supabase
       loadSalesFromSupabase().then(result => {
         updateProgress('sales (Supabase)');
@@ -490,13 +519,17 @@ export const loadAllData = async (onProgress, skipCache = false) => {
           console.warn('Warning: Could not load weather.csv:', error.message);
           updateProgress('weather.csv');
           return [];
-        })
+        }),
+
+      // 5. Get last CSV import date (metadata, no progress update)
+      getLastImportDate()
     ]);
 
     data.sales = salesResult;
     data.rfm = rfmResult;
     data.customer = customerResult;
     data.weather = weatherResult;
+    data.lastImportedAt = lastImportedAt;
 
     const elapsed = Math.round(performance.now() - startTime);
     console.log(`[supabaseLoader] Parallel fetch completed in ${elapsed}ms`);

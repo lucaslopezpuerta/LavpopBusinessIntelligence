@@ -1,7 +1,29 @@
-// NewClientsChart.jsx v3.3 - INTERACTIVE INSIGHTS + BAR CLICKS + MOBILE TOUCH
+// NewClientsChart.jsx v3.8 - DESIGN SYSTEM COLORS
 // New customer acquisition with campaign integration
 //
 // CHANGELOG:
+// v3.8 (2025-12-16): Theme-aware chart colors
+//   - ADDED: Uses getChartColors/getSeriesColors from chartColors.js
+//   - FIXED: Grid, axis, labels now respond to dark mode
+//   - FIXED: Bar colors use seriesColors for consistency
+//   - FIXED: fontSize 10 → 12 for axis labels (Design System minimum)
+// v3.7 (2025-12-16): Chart layout improvements
+//   - REMOVED: Redundant WoW metric (now shown in header pill)
+//   - MOVED: Total and average stats to bottom center
+//   - ADDED: X-axis label "Data" and Y-axis label "Novos Clientes"
+//   - ADDED: Bar value labels on top of each bar
+// v3.6 (2025-12-16): Insight pills relocated to header
+//   - MOVED: Insights from bottom InsightBox to compact header pills
+//   - REMOVED: InsightBox component dependency
+//   - Added TrendingUp/TrendingDown icons for week change pill
+// v3.5 (2025-12-16): Tooltip dismiss on action
+//   - FIXED: Tooltip now hides when modal opens
+//   - Uses tooltipHidden from hook to control Recharts Tooltip visibility
+// v3.4 (2025-12-16): Refactored to use useTouchTooltip hook
+//   - REMOVED: Duplicated touch handling logic
+//   - Uses shared hook for consistent desktop/mobile behavior
+//   - Desktop: single click opens modal immediately
+//   - Mobile: tap-to-preview, tap-again-to-action
 // v3.3 (2025-12-16): Mobile touch tooltip support + bar click
 //   - NEW: Click bar → opens modal with customers from that day
 //   - Uses tap-to-preview, tap-again-to-action pattern
@@ -28,11 +50,13 @@
 // v2.1 (2025-11-24): Added actionable insights
 // v2.0 (2025-11-23): Redesign for Customer Intelligence Hub
 
-import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { UserPlus } from 'lucide-react';
-import InsightBox from './ui/InsightBox';
+import React, { useMemo, useCallback, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { UserPlus, AlertTriangle, CheckCircle, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
+import { useTouchTooltip } from '../hooks/useTouchTooltip';
+import { getChartColors, getSeriesColors } from '../utils/chartColors';
+import { useTheme } from '../contexts/ThemeContext';
 
 const NewClientsChart = ({
   data,
@@ -44,6 +68,11 @@ const NewClientsChart = ({
   onMarkContacted,
   onCreateCampaign
 }) => {
+  // Theme-aware chart colors (Design System v3.2)
+  const { isDark } = useTheme();
+  const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
+  const seriesColors = useMemo(() => getSeriesColors(isDark), [isDark]);
+
   // Handle both old format (array) and new format ({ daily, newCustomerIds })
   const dailyData = useMemo(() => {
     if (!data) return [];
@@ -107,34 +136,35 @@ const NewClientsChart = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'newCustomers', color: 'purple' });
 
-  // Touch device detection for mobile-friendly tooltips
-  const isTouchDevice = useRef(false);
-  const [activeTouch, setActiveTouch] = useState(null); // Stores displayDate of active touch
-  const touchTimeoutRef = useRef(null);
-
-  // Detect touch device
-  useEffect(() => {
-    const handleTouchStart = () => {
-      isTouchDevice.current = true;
-    };
-    window.addEventListener('touchstart', handleTouchStart, { once: true });
-    return () => window.removeEventListener('touchstart', handleTouchStart);
-  }, []);
-
-  // Auto-dismiss touch tooltip after 5 seconds
-  useEffect(() => {
-    if (activeTouch) {
-      touchTimeoutRef.current = setTimeout(() => setActiveTouch(null), 5000);
-      return () => clearTimeout(touchTimeoutRef.current);
-    }
-  }, [activeTouch]);
-
-  // Helper to convert customer IDs to customer objects
+  // Helper to convert customer IDs to customer objects (moved up for use in hook callback)
   const getCustomersFromIds = useCallback((customerIds) => {
     return customerIds
       .map(id => customerMap[String(id)] || { id, name: `Cliente ${String(id).slice(-4)}` })
       .filter(Boolean);
   }, [customerMap]);
+
+  // Use shared touch tooltip hook for mobile-friendly interactions
+  // Desktop: single click opens modal immediately
+  // Mobile: tap-to-preview, tap-again-to-action
+  const { handleTouch, isActive: isActiveTouch, tooltipHidden } = useTouchTooltip({
+    onAction: (dayData) => {
+      if (!dayData || !dayData.customerIds || dayData.customerIds.length === 0) return;
+
+      const customers = getCustomersFromIds(dayData.customerIds);
+      if (customers.length === 0) return;
+
+      setModalData({
+        title: `Novos Clientes: ${dayData.displayDate}`,
+        subtitle: `${customers.length} clientes`,
+        customers,
+        audienceType: 'newCustomers',
+        color: 'blue',
+        icon: UserPlus
+      });
+      setModalOpen(true);
+    },
+    dismissTimeout: 5000
+  });
 
   // Click handler for new customers insight - passes ALL new customers
   const handleNewCustomersClick = useCallback(() => {
@@ -156,76 +186,13 @@ const NewClientsChart = ({
     setModalOpen(true);
   }, [allNewCustomerIds, getCustomersFromIds]);
 
-  // Click handler for bar - mobile-friendly with tap-to-preview
+  // Click handler for bar - uses shared touch hook
+  // Desktop: immediate action, Mobile: tap-to-preview, tap-again-to-action
   const handleBarClick = useCallback((dayData) => {
     if (!dayData || !dayData.customerIds || dayData.customerIds.length === 0) return;
+    handleTouch(dayData, dayData.displayDate);
+  }, [handleTouch]);
 
-    // On touch devices: first tap shows tooltip, second tap opens modal
-    if (isTouchDevice.current) {
-      if (activeTouch === dayData.displayDate) {
-        // Second tap - open modal
-        setActiveTouch(null);
-      } else {
-        // First tap - just show tooltip (set active for hint)
-        setActiveTouch(dayData.displayDate);
-        return; // Don't open modal on first tap
-      }
-    }
-
-    const customers = getCustomersFromIds(dayData.customerIds);
-
-    if (customers.length === 0) return;
-
-    setModalData({
-      title: `Novos Clientes: ${dayData.displayDate}`,
-      subtitle: `${customers.length} clientes`,
-      customers,
-      audienceType: 'newCustomers',
-      color: 'blue',
-      icon: UserPlus
-    });
-    setModalOpen(true);
-  }, [getCustomersFromIds, activeTouch]);
-
-  // Generate simplified insights (reduced from 4 to 2)
-  const insights = useMemo(() => {
-    const result = [];
-
-    // Primary insight: Unwelcomed customers (clickable if > 0)
-    if (stats.notWelcomed > 0) {
-      result.push({
-        type: 'warning',
-        text: `${stats.notWelcomed} novos clientes sem mensagem de boas-vindas`,
-        onClick: handleNewCustomersClick,
-        customerCount: stats.notWelcomed
-      });
-    } else if (stats.welcomeCount > 0) {
-      result.push({
-        type: 'success',
-        text: `${stats.welcomeCount} novos clientes receberam boas-vindas (${stats.welcomePct}%)`
-      });
-    } else {
-      result.push({
-        type: 'success',
-        text: `${stats.totalNew} novos clientes (media ${stats.avgNew}/dia)`
-      });
-    }
-
-    // Secondary insight: Return rate (info only)
-    if (stats.returnedCount > 0) {
-      result.push({
-        type: stats.returnPct >= 50 ? 'success' : 'info',
-        text: `${stats.returnedCount} novos clientes ja retornaram (${stats.returnPct}% conversao)`
-      });
-    } else if (stats.weekChange !== 0) {
-      result.push({
-        type: stats.weekChange > 0 ? 'success' : 'info',
-        text: `${stats.weekChange > 0 ? '+' : ''}${stats.weekChange}% vs semana anterior`
-      });
-    }
-
-    return result;
-  }, [stats, handleNewCustomersClick]);
 
   // Memoize CustomTooltip - with mobile hint support
   const CustomTooltip = useCallback(({ active, payload }) => {
@@ -233,7 +200,7 @@ const NewClientsChart = ({
       const dayData = payload[0].payload;
       const dayCustomerIds = dayData.customerIds || [];
       const welcomed = dayCustomerIds.filter(id => welcomeContactedIds.has(String(id))).length;
-      const isActiveTouchItem = activeTouch === dayData.displayDate;
+      const isActiveTouchItem = isActiveTouch(dayData.displayDate);
 
       return (
         <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
@@ -268,20 +235,84 @@ const NewClientsChart = ({
       );
     }
     return null;
-  }, [welcomeContactedIds, activeTouch]);
+  }, [welcomeContactedIds, isActiveTouch]);
 
   if (!dailyData || dailyData.length === 0) return null;
 
   return (
     <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
       <div className="mb-4">
-        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-          Novos Clientes
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Aquisição nos últimos 30 dias.
-        </p>
+        {/* Header row with title and insight pills */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              Novos Clientes
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Aquisição nos últimos 30 dias.
+            </p>
+          </div>
+
+          {/* Insight Pills - relocated to header */}
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+            {/* Welcome status pill */}
+            {stats.notWelcomed > 0 ? (
+              <button
+                onClick={handleNewCustomersClick}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                  {stats.notWelcomed} sem boas-vindas
+                </span>
+                <ChevronRight className="w-3 h-3 text-amber-500 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            ) : stats.welcomeCount > 0 ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                  {stats.welcomePct}% com boas-vindas
+                </span>
+              </div>
+            ) : null}
+
+            {/* Return/trend pill */}
+            {stats.returnedCount > 0 ? (
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
+                stats.returnPct >= 50
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800'
+                  : 'bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
+              }`}>
+                <CheckCircle className={`w-3.5 h-3.5 ${
+                  stats.returnPct >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'
+                }`} />
+                <span className={`text-xs font-medium whitespace-nowrap ${
+                  stats.returnPct >= 50 ? 'text-emerald-700 dark:text-emerald-300' : 'text-blue-700 dark:text-blue-300'
+                }`}>
+                  {stats.returnPct}% retornaram
+                </span>
+              </div>
+            ) : stats.weekChange !== 0 ? (
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
+                stats.weekChange > 0
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800'
+                  : 'bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
+              }`}>
+                {stats.weekChange > 0 ? (
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <TrendingDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                )}
+                <span className={`text-xs font-medium whitespace-nowrap ${
+                  stats.weekChange > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400'
+                }`}>
+                  {stats.weekChange > 0 ? '+' : ''}{stats.weekChange}% vs semana
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
 
         {/* Welcome coverage legend - Design System compliant (min text-xs) */}
         {welcomeContactedIds.size > 0 && allNewCustomerIds.length > 0 && (
@@ -299,45 +330,30 @@ const NewClientsChart = ({
         )}
       </div>
 
-      <div className="flex items-end gap-4 mb-4">
-        <div>
-          <div className="text-3xl font-black text-slate-800 dark:text-white">{stats.totalNew}</div>
-          <div className="text-xs font-bold text-slate-400 uppercase">Total</div>
-        </div>
-        <div>
-          <div className="text-3xl font-black text-slate-800 dark:text-white">{stats.avgNew}</div>
-          <div className="text-xs font-bold text-slate-400 uppercase">Média/Dia</div>
-        </div>
-        {stats.weekChange !== 0 && (
-          <div>
-            <div className={`text-xl font-bold ${stats.weekChange > 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {stats.weekChange > 0 ? '+' : ''}{stats.weekChange}%
-            </div>
-            <div className="text-xs font-bold text-slate-400 uppercase">vs Semana</div>
-          </div>
-        )}
-      </div>
-
       <div className="flex-1 min-h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={dailyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          <BarChart data={dailyData} margin={{ top: 20, right: 10, left: 0, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
             <XAxis
               dataKey="displayDate"
-              stroke="#94a3b8"
-              fontSize={10}
+              stroke={chartColors.axis}
+              fontSize={12}
               tickLine={false}
               axisLine={false}
               interval={6}
+              tick={{ fill: chartColors.tickText }}
+              label={{ value: 'Data', position: 'bottom', offset: 0, fontSize: 12, fill: chartColors.tickText }}
             />
             <YAxis
-              stroke="#94a3b8"
-              fontSize={10}
+              stroke={chartColors.axis}
+              fontSize={12}
               tickLine={false}
               axisLine={false}
               allowDecimals={false}
+              tick={{ fill: chartColors.tickText }}
+              label={{ value: 'Novos Clientes', angle: -90, position: 'insideLeft', offset: 10, fontSize: 12, fill: chartColors.tickText }}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: chartColors.cursorFill }} wrapperStyle={{ visibility: tooltipHidden ? 'hidden' : 'visible' }} />
             <Bar
               dataKey="count"
               radius={[4, 4, 0, 0]}
@@ -347,15 +363,27 @@ const NewClientsChart = ({
               {dailyData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={entry.count > stats.avgNew ? '#3b82f6' : '#93c5fd'}
+                  fill={entry.count > stats.avgNew ? seriesColors[0] : chartColors.info}
                 />
               ))}
+              <LabelList dataKey="count" position="top" fontSize={10} fill={chartColors.tickText} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      <InsightBox insights={insights} />
+      {/* Bottom stats - centered */}
+      <div className="flex justify-center items-center gap-6 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+        <div className="text-center">
+          <div className="text-2xl font-black text-slate-800 dark:text-white">{stats.totalNew}</div>
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Total</div>
+        </div>
+        <div className="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
+        <div className="text-center">
+          <div className="text-2xl font-black text-slate-800 dark:text-white">{stats.avgNew}</div>
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Média/Dia</div>
+        </div>
+      </div>
 
       {/* Customer Segment Modal */}
       <CustomerSegmentModal

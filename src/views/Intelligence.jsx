@@ -1,8 +1,12 @@
-// Intelligence.jsx v3.8.0 - IMPROVED LAYOUT
+// Intelligence.jsx v3.9.0 - FULL-WIDTH LAYOUT
 // Refactored with unified components and Health Score
-// Design System v3.1 compliant with dark mode support
+// Design System v3.2 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.9.0 (2025-12-16): Full-width layout
+//   - REMOVED: Redundant padding (now uses App.jsx padding)
+//   - REMOVED: max-w-[1600px] constraint for full-width
+//   - Consistent with Dashboard.jsx layout pattern
 // v3.8.0 (2025-12-02): Layout improvements
 //   - RevenueForecast now full-width (removed max-w-xl constraint)
 //   - Better horizontal space usage on desktop screens
@@ -249,7 +253,7 @@ const Intelligence = ({ data }) => {
 
   return (
     <>
-      <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 sm:space-y-8 animate-fade-in">
+      <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
           {/* Header */}
           <header className="flex items-center justify-between gap-4">

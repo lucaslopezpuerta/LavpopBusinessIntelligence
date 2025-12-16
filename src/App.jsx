@@ -1,4 +1,4 @@
-// App.jsx v7.1 - SMART DATA REFRESH
+// App.jsx v7.2 - DATA FRESHNESS FOOTER
 // ✅ Added minimalist icon sidebar with hover expansion
 // ✅ Compact top bar with widgets (60px to match sidebar)
 // ✅ Mobile drawer with backdrop overlay
@@ -8,8 +8,13 @@
 // ✅ Smart data refresh with visibility detection
 // ✅ Auto-refresh every 10 minutes when active
 // ✅ Separate Directory route for customer browsing
+// ✅ Data freshness footer with CSV upload, sync time, build version
 //
 // CHANGELOG:
+// v7.2 (2025-12-16): Data freshness footer
+//   - Shows CSV upload date (last imported_at from transactions)
+//   - Shows frontend sync time (when data was last refreshed)
+//   - Shows build timestamp (auto-generated at build time)
 // v7.1 (2025-12-16): Added Directory route
 //   - New /diretorio tab for customer browsing
 //   - Extracted from Customers view for better UX
@@ -28,7 +33,10 @@
 // v4.2 (2025-11-21): Reload button added
 
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { RefreshCw, XCircle } from 'lucide-react';
+import { RefreshCw, XCircle, Upload, Clock, Code } from 'lucide-react';
+
+// Build timestamp injected by Vite at build time
+const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : null;
 import LogoNoBackground from './assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -57,6 +65,38 @@ const Campaigns = lazy(() => import('./views/Campaigns'));
 const Operations = lazy(() => import('./views/Operations'));
 const Intelligence = lazy(() => import('./views/Intelligence'));
 const DataUploadView = lazy(() => import('./views/DataUploadView'));
+
+// Format date in Brazilian format (DD/MM/YYYY HH:mm)
+const formatBrDate = (isoDate) => {
+  if (!isoDate) return '—';
+  try {
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return '—';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  } catch {
+    return '—';
+  }
+};
+
+// Format timestamp as date only for build version
+const formatBrDateOnly = (isoDate) => {
+  if (!isoDate) return '—';
+  try {
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return '—';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return '—';
+  }
+};
 
 // Loading fallback component
 const TabLoadingFallback = () => (
@@ -363,10 +403,38 @@ function AppContent() {
 
         {/* Footer */}
         <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto">
-          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-4">
-            <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-              Powered by <span className="font-semibold text-slate-700 dark:text-slate-300">Nova Lopez Lavanderia Ltd.</span>
-            </p>
+          <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3">
+            {/* Mobile: Compact with labels */}
+            <div className="flex sm:hidden items-center justify-center gap-4 text-[10px] text-slate-400 dark:text-slate-500">
+              <span>Dados: {formatBrDateOnly(data?.lastImportedAt)}</span>
+              <span>•</span>
+              <span>Build: {formatBrDateOnly(BUILD_TIME)}</span>
+            </div>
+
+            {/* Desktop: Full details with company name */}
+            <div className="hidden sm:flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+              {/* CSV Upload Date */}
+              <div className="flex items-center gap-1.5" title="Última importação de dados CSV">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Dados: {formatBrDate(data?.lastImportedAt)}</span>
+              </div>
+
+              {/* Frontend Sync Time */}
+              <div className="flex items-center gap-1.5" title="Última sincronização do frontend">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Sync: {lastRefreshed ? formatBrDate(lastRefreshed) : '—'}</span>
+              </div>
+
+              {/* Build Version */}
+              <div className="flex items-center gap-1.5" title="Data do deploy">
+                <Code className="w-3.5 h-3.5" />
+                <span>Build: {formatBrDateOnly(BUILD_TIME)}</span>
+              </div>
+
+              {/* Company Name */}
+              <span className="text-slate-400 dark:text-slate-500">•</span>
+              <span className="font-medium text-slate-600 dark:text-slate-300">Nova Lopez Lavanderia Ltd.</span>
+            </div>
           </div>
         </footer>
       </div>

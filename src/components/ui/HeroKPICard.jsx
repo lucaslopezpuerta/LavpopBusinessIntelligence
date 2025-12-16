@@ -1,8 +1,15 @@
-// HeroKPICard.jsx v2.0 - SPARKLINE + VISUAL ENHANCEMENTS
+// HeroKPICard.jsx v2.2 - TREND BADGE RELOCATION
 // Primary KPI card for hero metrics (Revenue, Cycles, etc.)
 // Design System v3.2 compliant - Clean design with sparkline trends
 //
 // CHANGELOG:
+// v2.3 (2025-12-16): Responsive trend badge position
+//   - FIXED: Desktop (sm+): Badge in header row (avoids sparkline overlap)
+//   - FIXED: Mobile: Badge in footer row (sparklines hidden, more title space)
+//   - Uses responsive visibility classes for position switching
+// v2.1 (2025-12-16): Dark mode border visibility fix
+//   - FIXED: Border accent now uses brighter colors in dark mode
+//   - border-l-*-500 → border-l-*-400 for dark mode
 // v2.0 (2025-12-16): Sparkline + visual enhancements
 //   - NEW: sparklineData prop for mini trend visualization
 //   - NEW: Subtle left border accent for visual hierarchy
@@ -106,42 +113,42 @@ const HeroKPICard = ({
     blue: {
       bg: 'bg-blue-100 dark:bg-blue-900/30',
       text: 'text-blue-600 dark:text-blue-400',
-      border: 'border-l-blue-500',
+      border: 'border-l-blue-500 dark:border-l-blue-400',
       sparkline: '#3b82f6',
       ring: 'ring-blue-500',
     },
     green: {
       bg: 'bg-emerald-100 dark:bg-emerald-900/30',
       text: 'text-emerald-600 dark:text-emerald-400',
-      border: 'border-l-emerald-500',
+      border: 'border-l-emerald-500 dark:border-l-emerald-400',
       sparkline: '#10b981',
       ring: 'ring-emerald-500',
     },
     purple: {
       bg: 'bg-purple-100 dark:bg-purple-900/30',
       text: 'text-purple-600 dark:text-purple-400',
-      border: 'border-l-purple-500',
+      border: 'border-l-purple-500 dark:border-l-purple-400',
       sparkline: '#8b5cf6',
       ring: 'ring-purple-500',
     },
     amber: {
       bg: 'bg-amber-100 dark:bg-amber-900/30',
       text: 'text-amber-600 dark:text-amber-400',
-      border: 'border-l-amber-500',
+      border: 'border-l-amber-500 dark:border-l-amber-400',
       sparkline: '#f59e0b',
       ring: 'ring-amber-500',
     },
     red: {
       bg: 'bg-red-100 dark:bg-red-900/30',
       text: 'text-red-600 dark:text-red-400',
-      border: 'border-l-red-500',
+      border: 'border-l-red-500 dark:border-l-red-400',
       sparkline: '#ef4444',
       ring: 'ring-red-500',
     },
     slate: {
       bg: 'bg-slate-100 dark:bg-slate-700',
       text: 'text-slate-600 dark:text-slate-400',
-      border: 'border-l-slate-500',
+      border: 'border-l-slate-500 dark:border-l-slate-400',
       sparkline: '#64748b',
       ring: 'ring-slate-500',
     },
@@ -188,7 +195,7 @@ const HeroKPICard = ({
         />
       )}
 
-      {/* Header: Icon + Title */}
+      {/* Header: Icon + Title + Trend Badge */}
       <div className="flex items-center gap-1.5 sm:gap-3 mb-1 sm:mb-3 relative z-10">
         {Icon && (
           <div className={`p-1 sm:p-2.5 rounded-lg flex-shrink-0 ${colors.bg} ${colors.text}`}>
@@ -203,6 +210,12 @@ const HeroKPICard = ({
             <MousePointerClick className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hidden sm:block" />
           )}
         </h3>
+        {/* Trend Badge - Desktop only (header position avoids sparkline) */}
+        {trend?.show && (
+          <div className="flex-shrink-0 ml-auto hidden sm:block">
+            <TrendBadge value={trend.value} size="sm" />
+          </div>
+        )}
       </div>
 
       {/* Value */}
@@ -210,17 +223,17 @@ const HeroKPICard = ({
         {displayValue}
       </div>
 
-      {/* Footer: Subtitle + Trend Badge */}
+      {/* Footer: Subtitle + Trend Badge (mobile only) */}
       <div className="flex items-center justify-between gap-1 relative z-10">
         {subtitle && (
           <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
             {subtitle}
           </div>
         )}
+        {/* Trend Badge - Mobile only (footer position, no sparkline overlap) */}
         {trend?.show && (
-          <div className="flex-shrink-0 ml-auto">
-            <TrendBadge value={trend.value} size="xs" className="sm:hidden" />
-            <TrendBadge value={trend.value} size="sm" className="hidden sm:flex" />
+          <div className="flex-shrink-0 ml-auto sm:hidden">
+            <TrendBadge value={trend.value} size="xs" />
           </div>
         )}
       </div>

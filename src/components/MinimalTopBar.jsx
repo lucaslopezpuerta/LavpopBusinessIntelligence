@@ -1,7 +1,9 @@
-// MinimalTopBar.jsx v1.2
+// MinimalTopBar.jsx v1.3 - DIRECTORY TAB BREADCRUMB
 // Compact top bar with location, weather, and widgets
 //
 // CHANGELOG:
+// v1.3 (2025-12-16): Added Directory tab to breadcrumb
+//   - FIXED: Mobile breadcrumb now shows "Diretório" for /diretorio route
 // v1.2 (2025-12-01): Header layout reorganization
 //   - Moved Google & Social widgets to left (next to Weather)
 //   - Added Settings and Export icons to right controls
@@ -21,7 +23,7 @@
 //   - Glassmorphism backdrop blur
 
 import React from 'react';
-import { MapPin, RefreshCw, Menu, BarChart3, Users, TrendingUp, Settings, FileDown, MessageSquare, Upload } from 'lucide-react';
+import { MapPin, RefreshCw, Menu, BarChart3, Users, TrendingUp, Settings, FileDown, MessageSquare, Upload, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import WeatherWidget from './WeatherWidget_API';
 import GoogleBusinessWidget from './GoogleBusinessWidget';
@@ -33,6 +35,7 @@ import { useSidebar } from '../contexts/SidebarContext';
 const TAB_CONFIG = {
   dashboard: { label: 'Dashboard', icon: BarChart3 },
   customers: { label: 'Clientes', icon: Users },
+  diretorio: { label: 'Diretório', icon: Search },
   campaigns: { label: 'Campanhas', icon: MessageSquare },
   intelligence: { label: 'Inteligência', icon: TrendingUp },
   operations: { label: 'Operações', icon: Settings },

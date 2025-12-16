@@ -1,4 +1,4 @@
-// OPERATIONS TAB V5.5.0 - CATEGORICAL SECTION HEADERS
+// OPERATIONS TAB V5.6.0 - FULL WIDTH LAYOUT
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
@@ -11,8 +11,13 @@
 // ✅ Sticky date control matching Dashboard
 // ✅ Section headers with icons (Design System v3.1)
 // ✅ Category-level naming for future expansion
+// ✅ Full-width layout consistent with other views
 //
 // CHANGELOG:
+// v5.6.0 (2025-12-16): Full-width layout
+//   - REMOVED: max-w-[100rem] constraint for full-width
+//   - REMOVED: Redundant padding (now uses App.jsx padding)
+//   - Consistent with Dashboard.jsx and Customers.jsx layout
 // v5.5.0 (2025-12-02): Categorical section header naming
 //   - Renamed sections to general categories for future expansion
 //   - "Desempenho de Máquinas" → "Equipamentos" (allows: maintenance, health)
@@ -133,9 +138,9 @@ const Operations = ({ data }) => {
   }
 
   return (
-    <div className="max-w-[100rem] mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:p-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <header className="flex items-center gap-3 mb-6">
+      <header className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
           <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
         </div>

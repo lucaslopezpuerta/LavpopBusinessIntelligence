@@ -1,8 +1,12 @@
-// Campaigns.jsx v2.2.0
+// Campaigns.jsx v2.3.0 - FULL-WIDTH LAYOUT
 // Customer Messaging & Campaign Management Tab
-// Design System v3.1 compliant
+// Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.3.0 (2025-12-16): Full-width layout
+//   - REMOVED: Redundant padding (now uses App.jsx padding)
+//   - REMOVED: max-w-[1600px] constraint for full-width
+//   - Consistent with Dashboard.jsx layout pattern
 // v2.2.0 (2025-12-11): Unified campaign creation flow
 //   - Messages tab now only browses templates (no direct send)
 //   - "Usar este template" opens wizard with template pre-selected
@@ -175,7 +179,7 @@ const Campaigns = ({ data }) => {
   }
 
   return (
-    <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 sm:space-y-8 animate-fade-in">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

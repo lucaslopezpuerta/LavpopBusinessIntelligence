@@ -1,8 +1,15 @@
-// KPICardsGrid.jsx v3.0 - SPARKLINES + FULL WIDTH
+// KPICardsGrid.jsx v3.2 - SPARKLINES VIA TRANSACTION PARSER
 // Restructured KPI display with visual hierarchy and trend sparklines
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v3.2 (2025-12-16): Use parseSalesRecords for sparkline calculation
+//   - REFACTORED: Use shared parseSalesRecords from transactionParser
+//   - Consistent with FinancialDrilldown calculation approach
+//   - Cleaner code with pre-parsed netValue, washCount, dryCount
+// v3.1 (2025-12-16): Fixed sparkline data calculation
+//   - FIXED: Calculate sparklineData from salesData (not businessMetrics.daily)
+//   - Aggregates last 7 days of sales for trend visualization
 // v3.0 (2025-12-16): Sparklines + visual enhancements
 //   - NEW: Sparkline data calculation for all metrics
 //   - NEW: Pass sparklineData to HeroKPICard and SecondaryKPICard
@@ -28,6 +35,8 @@ import {
   AlertCircle, Heart
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatPercent, getTrendData } from '../utils/formatters';
+import { formatDate } from '../utils/dateUtils';
+import { parseSalesRecords } from '../utils/transactionParser';
 import HeroKPICard from './ui/HeroKPICard';
 import SecondaryKPICard from './ui/SecondaryKPICard';
 import KPIDetailModal from './modals/KPIDetailModal';
@@ -87,26 +96,53 @@ const KPICardsGrid = ({
   const washPercent = totalServices > 0 ? ((washCount / totalServices) * 100).toFixed(0) : 0;
   const dryPercent = totalServices > 0 ? ((dryCount / totalServices) * 100).toFixed(0) : 0;
 
-  // Calculate sparkline data from daily metrics (last 7 days)
+  // Calculate sparkline data using parseSalesRecords (same as FinancialDrilldown)
   const sparklineData = useMemo(() => {
-    const dailyData = businessMetrics.daily || [];
-    if (!dailyData.length) return {};
+    if (!salesData || salesData.length === 0) return {};
 
-    // Sort by date and take last 7 entries
-    const sortedDaily = [...dailyData].sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return dateA - dateB;
-    }).slice(-7);
+    // Use shared parser for consistent date/value handling
+    const records = parseSalesRecords(salesData);
+
+    // Get last 7 days window
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    // Initialize dailyMap for last 7 days using formatDate (local timezone)
+    const dailyMap = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sevenDaysAgo);
+      d.setDate(d.getDate() + i);
+      const dateKey = formatDate(d); // YYYY-MM-DD in local timezone
+      dailyMap[dateKey] = { revenue: 0, wash: 0, dry: 0 };
+    }
+
+    // Aggregate from parsed records (uses dateStr which matches formatDate)
+    records.forEach(record => {
+      if (record.date >= sevenDaysAgo && record.date <= today) {
+        const dateKey = record.dateStr;
+        if (dailyMap[dateKey]) {
+          dailyMap[dateKey].revenue += record.netValue;
+          dailyMap[dateKey].wash += record.washCount || 0;
+          dailyMap[dateKey].dry += record.dryCount || 0;
+        }
+      }
+    });
+
+    // Convert to sorted arrays
+    const sortedDays = Object.keys(dailyMap).sort();
 
     return {
-      revenue: sortedDaily.map(d => d.netRevenue || d.revenue || 0),
-      cycles: sortedDaily.map(d => (d.washServices || 0) + (d.dryServices || 0) || d.totalServices || 0),
-      utilization: sortedDaily.map(d => d.utilization || 0),
-      wash: sortedDaily.map(d => d.washServices || 0),
-      dry: sortedDaily.map(d => d.dryServices || 0),
+      revenue: sortedDays.map(k => Math.max(0, Math.round(dailyMap[k].revenue * 100) / 100)),
+      cycles: sortedDays.map(k => dailyMap[k].wash + dailyMap[k].dry),
+      wash: sortedDays.map(k => dailyMap[k].wash),
+      dry: sortedDays.map(k => dailyMap[k].dry),
+      // Utilization not available per-day without complex calculation
+      utilization: [],
     };
-  }, [businessMetrics.daily]);
+  }, [salesData]);
 
   // Time subtitle
   const getTimeSubtitle = () => {

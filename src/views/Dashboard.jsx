@@ -1,4 +1,4 @@
-// Dashboard.jsx v9.1 - UNIFIED HEADER
+// Dashboard.jsx v9.3 - SIMPLIFIED LAYOUT
 // ✅ Integrated KPICardsGrid with visual hierarchy
 // ✅ Hero cards for primary metrics
 // ✅ Secondary cards in compact grid
@@ -6,6 +6,12 @@
 // ✅ Consistent header matching all views
 //
 // CHANGELOG:
+// v9.3 (2025-12-16): Simplified layout
+//   - Removed Operations section title
+//   - Updated subtitle to "lavanderia"
+// v9.2 (2025-12-16): Removed footer
+//   - Removed "Última atualização" footer
+//   - Cleaned up unused imports and state
 // v9.1 (2025-12-02): Unified header design
 //   - Added header with icon box and left border accent
 //   - Consistent styling across all app views
@@ -29,7 +35,7 @@
 //   - Cleaner visual hierarchy (3 hero + 6 secondary)
 //   - Non-gradient design per Design System audit
 // v8.5: Fixed layout & metrics
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { useMemo, Suspense } from 'react';
 import { LayoutDashboard } from 'lucide-react';
 import KPICardsGrid from '../components/KPICardsGrid';
 import DashboardDateControl from '../components/DashboardDateControl';
@@ -37,22 +43,12 @@ import { LazyOperatingCyclesChart, ChartLoadingFallback } from '../utils/lazyCha
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
-import { useNavigation } from '../contexts/NavigationContext';
 
 const Dashboard = ({ data, viewMode, setViewMode }) => {
-  const { navigateTo } = useNavigation();
-  const [lastUpdated, setLastUpdated] = useState(null);
-
   // Extract data from props
   const salesData = data?.sales || [];
   const rfmData = data?.rfm || [];
   const customerData = data?.customer || [];
-
-  useEffect(() => {
-    if (data) {
-      setLastUpdated(new Date());
-    }
-  }, [data]);
 
   // Split memoization for better performance
   // Each calculation only recalculates when its specific dependencies change
@@ -85,13 +81,6 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
       operations: operationsMetricsCalc
     };
   }, [businessMetricsCalc, customerMetricsCalc, operationsMetricsCalc]);
-
-  // Handle tab navigation from drill-downs
-  const handleTabChange = (tabId) => {
-    navigateTo(tabId);
-  };
-
-
 
   // Get date range based on view mode
   const getDateRange = () => {
@@ -138,7 +127,7 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
             Visão Geral
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Métricas principais do seu negócio
+            Métricas principais da sua lavanderia
           </p>
         </div>
       </header>
@@ -162,23 +151,15 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
         />
       </section>
 
-      {/* Operations Section */}
+      {/* Operations Chart */}
       <section aria-labelledby="operations-heading">
-        <h2 id="operations-heading" className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-          <span className="w-1 h-5 bg-lavpop-blue rounded-full"></span>
-          Operações
-        </h2>
+        <h2 id="operations-heading" className="sr-only">Operações</h2>
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
           <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
             <LazyOperatingCyclesChart salesData={salesData} />
           </Suspense>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="text-center text-xs text-slate-500 dark:text-slate-400 mt-8 pb-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-        Última atualização: {lastUpdated ? lastUpdated.toLocaleTimeString('pt-BR') : '-'} • Lavpop BI v9.0
-      </footer>
     </div>
   );
 };

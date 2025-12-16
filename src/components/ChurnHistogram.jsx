@@ -1,7 +1,23 @@
-// ChurnHistogram.jsx v2.3 - INTERACTIVE INSIGHTS + BAR CLICKS + MOBILE TOUCH
+// ChurnHistogram.jsx v2.7 - DESIGN SYSTEM COLORS
 // Time-to-churn distribution histogram with contact tracking integration
 //
 // CHANGELOG:
+// v2.7 (2025-12-16): Design System v3.2 chart colors
+//   - Added theme-aware colors via getChartColors()
+//   - Fixed fontSize from 10 to 12 (Design System minimum)
+//   - Updated grid, axis, and cursor colors
+// v2.6 (2025-12-16): Insight pills relocated to header
+//   - MOVED: Insights from bottom InsightBox to compact header pills
+//   - REMOVED: InsightBox component dependency
+//   - Added DollarSign icon for revenue at risk pill
+// v2.5 (2025-12-16): Tooltip dismiss on action
+//   - FIXED: Tooltip now hides when modal opens
+//   - Uses tooltipHidden from hook to control Recharts Tooltip visibility
+// v2.4 (2025-12-16): Refactored to use useTouchTooltip hook
+//   - REMOVED: Duplicated touch handling logic
+//   - Uses shared hook for consistent desktop/mobile behavior
+//   - Desktop: single click opens modal immediately
+//   - Mobile: tap-to-preview, tap-again-to-action
 // v2.3 (2025-12-16): Mobile touch tooltip support
 //   - Uses tap-to-preview, tap-again-to-action pattern
 //   - First tap shows tooltip with "Toque novamente" hint on mobile
@@ -26,11 +42,13 @@
 // v1.1 (2025-11-24): Added actionable insights
 // v1.0 (2025-11-23): Initial implementation
 
-import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { AlertCircle } from 'lucide-react';
-import InsightBox from './ui/InsightBox';
+import { AlertCircle, AlertTriangle, CheckCircle, ChevronRight, DollarSign } from 'lucide-react';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
+import { useTouchTooltip } from '../hooks/useTouchTooltip';
+import { getChartColors } from '../utils/chartColors';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ChurnHistogram = ({
     data,
@@ -45,27 +63,39 @@ const ChurnHistogram = ({
     const [modalOpen, setModalOpen] = useState(false);
     const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'atRisk', color: 'red' });
 
-    // Touch device detection for mobile-friendly tooltips
-    const isTouchDevice = useRef(false);
-    const [activeTouch, setActiveTouch] = useState(null); // Stores bin label of active touch
-    const touchTimeoutRef = useRef(null);
+    // Theme-aware chart colors (Design System v3.2)
+    const { isDark } = useTheme();
+    const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
 
-    // Detect touch device
-    useEffect(() => {
-        const handleTouchStart = () => {
-            isTouchDevice.current = true;
-        };
-        window.addEventListener('touchstart', handleTouchStart, { once: true });
-        return () => window.removeEventListener('touchstart', handleTouchStart);
-    }, []);
+    // Helper to convert customer IDs to customer objects (moved up for use in hook callback)
+    const getCustomersFromIds = useCallback((customerIds) => {
+        return customerIds
+            .map(id => customerMap[String(id)] || { id, name: `Cliente ${String(id).slice(-4)}` })
+            .filter(Boolean);
+    }, [customerMap]);
 
-    // Auto-dismiss touch tooltip after 5 seconds
-    useEffect(() => {
-        if (activeTouch) {
-            touchTimeoutRef.current = setTimeout(() => setActiveTouch(null), 5000);
-            return () => clearTimeout(touchTimeoutRef.current);
-        }
-    }, [activeTouch]);
+    // Use shared touch tooltip hook for mobile-friendly interactions
+    // Desktop: single click opens modal immediately
+    // Mobile: tap-to-preview, tap-again-to-action
+    const { handleTouch, isActive: isActiveTouch, tooltipHidden } = useTouchTooltip({
+        onAction: (binData) => {
+            if (!binData || !binData.customerIds || binData.customerIds.length === 0) return;
+
+            const customers = getCustomersFromIds(binData.customerIds);
+            if (customers.length === 0) return;
+
+            setModalData({
+                title: `Clientes: ${binData.bin} dias`,
+                subtitle: `${customers.length} clientes`,
+                customers,
+                audienceType: 'atRisk',
+                color: binData.min >= 30 ? 'red' : binData.min >= 20 ? 'amber' : 'green',
+                icon: AlertCircle
+            });
+            setModalOpen(true);
+        },
+        dismissTimeout: 5000
+    });
 
     if (!data || data.length === 0) return null;
 
@@ -112,44 +142,12 @@ const ChurnHistogram = ({
         };
     }, [data, contactedIds, customerSpending]);
 
-    // Helper to convert customer IDs to customer objects
-    const getCustomersFromIds = useCallback((customerIds) => {
-        return customerIds
-            .map(id => customerMap[String(id)] || { id, name: `Cliente ${String(id).slice(-4)}` })
-            .filter(Boolean);
-    }, [customerMap]);
-
-    // Click handler for bar - mobile-friendly with tap-to-preview
+    // Click handler for bar - uses shared touch hook
+    // Desktop: immediate action, Mobile: tap-to-preview, tap-again-to-action
     const handleBarClick = useCallback((binData) => {
         if (!binData || !binData.customerIds || binData.customerIds.length === 0) return;
-
-        // On touch devices: first tap shows tooltip, second tap opens modal
-        if (isTouchDevice.current) {
-            if (activeTouch === binData.bin) {
-                // Second tap - open modal
-                setActiveTouch(null);
-            } else {
-                // First tap - just show tooltip (set active for hint)
-                setActiveTouch(binData.bin);
-                return; // Don't open modal on first tap
-            }
-        }
-
-        // v2.2: Pass ALL customers, let modal's hideContacted filter handle it
-        const customers = getCustomersFromIds(binData.customerIds);
-
-        if (customers.length === 0) return;
-
-        setModalData({
-            title: `Clientes: ${binData.bin} dias`,
-            subtitle: `${customers.length} clientes`,
-            customers,
-            audienceType: 'atRisk',
-            color: binData.min >= 30 ? 'red' : binData.min >= 20 ? 'amber' : 'green',
-            icon: AlertCircle
-        });
-        setModalOpen(true);
-    }, [getCustomersFromIds, activeTouch]);
+        handleTouch(binData, binData.bin);
+    }, [handleTouch]);
 
     // Click handler for danger zone insight
     const handleDangerZoneClick = useCallback(() => {
@@ -181,45 +179,6 @@ const ChurnHistogram = ({
         }).format(value);
     };
 
-    // Generate simplified insights (reduced from 6 to 2)
-    const insights = useMemo(() => {
-        const result = [];
-
-        // Primary insight: Danger zone customers (clickable if > 0)
-        if (stats.notContactedInDanger > 0) {
-            result.push({
-                type: 'warning',
-                text: `${stats.notContactedInDanger} clientes em zona de perigo sem contato`,
-                onClick: handleDangerZoneClick,
-                customerCount: stats.notContactedInDanger
-            });
-        } else if (stats.dangerCount > 0) {
-            result.push({
-                type: 'success',
-                text: `${stats.dangerCount} clientes em zona de perigo - todos contactados`
-            });
-        } else {
-            result.push({
-                type: 'success',
-                text: 'Nenhum cliente em zona de perigo'
-            });
-        }
-
-        // Secondary insight: Revenue at risk (info only)
-        if (stats.revenueAtRisk > 0) {
-            result.push({
-                type: 'info',
-                text: `${formatCurrency(stats.revenueAtRisk)} em risco na zona de perigo`
-            });
-        } else {
-            result.push({
-                type: 'success',
-                text: `${stats.healthyPct}% dos clientes retornam em ate 20 dias`
-            });
-        }
-
-        return result;
-    }, [stats, handleDangerZoneClick]);
 
     // Memoized tooltip - with mobile hint support
     const CustomTooltip = useCallback(({ active, payload, label }) => {
@@ -228,7 +187,7 @@ const ChurnHistogram = ({
             const binCustomerIds = binData.customerIds || [];
             const contactedCount = binCustomerIds.filter(id => contactedIds.has(String(id))).length;
             const notContactedCount = binData.count - contactedCount;
-            const isActiveTouchItem = activeTouch === binData.bin;
+            const isActiveTouchItem = isActiveTouch(binData.bin);
 
             return (
                 <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
@@ -266,20 +225,73 @@ const ChurnHistogram = ({
             );
         }
         return null;
-    }, [contactedIds, activeTouch]);
+    }, [contactedIds, isActiveTouch]);
 
     return (
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
             <div className="mb-4">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                    Zona de Perigo (Churn)
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Distribuição do tempo de retorno. A maioria dos clientes volta em <span className="font-bold text-slate-700 dark:text-slate-300">0-20 dias</span>.
-                    <br />
-                    Após <span className="font-bold text-red-500">30 dias</span>, a chance de retorno cai drasticamente.
-                </p>
+                {/* Header row with title and insight pills */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                            Zona de Perigo (Churn)
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Distribuição do tempo de retorno. A maioria dos clientes volta em <span className="font-bold text-slate-700 dark:text-slate-300">0-20 dias</span>.
+                            <br />
+                            Após <span className="font-bold text-red-500">30 dias</span>, a chance de retorno cai drasticamente.
+                        </p>
+                    </div>
+
+                    {/* Insight Pills - relocated to header */}
+                    <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                        {/* Danger zone status pill */}
+                        {stats.notContactedInDanger > 0 ? (
+                            <button
+                                onClick={handleDangerZoneClick}
+                                className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
+                            >
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                                <span className="text-xs font-medium text-red-700 dark:text-red-300 whitespace-nowrap">
+                                    {stats.notContactedInDanger} em perigo sem contato
+                                </span>
+                                <ChevronRight className="w-3 h-3 text-red-500 dark:text-red-400 group-hover:translate-x-0.5 transition-transform" />
+                            </button>
+                        ) : stats.dangerCount > 0 ? (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full">
+                                <CheckCircle className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span className="text-xs font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap">
+                                    Todos em perigo contactados
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                                    Sem clientes em perigo
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Revenue at risk / healthy rate pill */}
+                        {stats.revenueAtRisk > 0 ? (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full">
+                                <DollarSign className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                                    {formatCurrency(stats.revenueAtRisk)} em risco
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                                    {stats.healthyPct}% retornam em 20d
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Contact status legend - Design System compliant (min text-xs) */}
                 {contactedIds.size > 0 && stats.dangerCount > 0 && (
@@ -300,21 +312,23 @@ const ChurnHistogram = ({
             <div className="flex-1 min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
                         <XAxis
                             dataKey="bin"
-                            stroke="#94a3b8"
-                            fontSize={10}
+                            stroke={chartColors.axis}
+                            fontSize={12}
+                            tick={{ fill: chartColors.tickText }}
                             tickLine={false}
                             axisLine={false}
                         />
                         <YAxis
-                            stroke="#94a3b8"
-                            fontSize={10}
+                            stroke={chartColors.axis}
+                            fontSize={12}
+                            tick={{ fill: chartColors.tickText }}
                             tickLine={false}
                             axisLine={false}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: chartColors.cursorFill }} wrapperStyle={{ visibility: tooltipHidden ? 'hidden' : 'visible' }} />
                         <Bar
                             dataKey="count"
                             radius={[4, 4, 0, 0]}
@@ -335,8 +349,6 @@ const ChurnHistogram = ({
                     </BarChart>
                 </ResponsiveContainer>
             </div>
-
-            <InsightBox insights={insights} />
 
             {/* Customer Segment Modal */}
             <CustomerSegmentModal

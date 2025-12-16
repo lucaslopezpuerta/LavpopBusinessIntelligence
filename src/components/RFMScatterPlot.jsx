@@ -1,7 +1,35 @@
-// RFMScatterPlot.jsx v2.2 - INTERACTIVE INSIGHTS + MOBILE TOUCH
+// RFMScatterPlot.jsx v2.9 - PILLS TO HEADER + LABEL SIZING
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v2.9 (2025-12-16): Pills relocated to header + responsive labels
+//   - MOVED: Insight pills from bottom to top-right header area
+//   - CHANGED: X-axis domain back to 60 days (matches LOST_THRESHOLD)
+//   - IMPROVED: Responsive font sizes (12px mobile, 14px desktop)
+// v2.8 (2025-12-16): Compact insight pills + Y-axis fix
+//   - FIXED: Y-axis no longer shows duplicate "R$" (removed unit prop)
+//   - CHANGED: Bottom banners replaced with compact inline insight pills
+//   - Preserved onClick action for at-risk customers pill
+// v2.7 (2025-12-16): Design System v3.2 compliance
+//   - FIXED: fontSize 10 → 12 (minimum text-xs per Design System)
+//   - FIXED: Now uses centralized getChartColors for theme-aware colors
+//   - Grid, axis, and label colors now respond to dark mode
+// v2.6 (2025-12-16): Desktop visual enhancements
+//   - NEW: Responsive height (350px mobile, 420px desktop)
+//   - NEW: Extended X-axis to 90 days for better long-term visibility
+//   - Better use of full-width layout on desktop
+// v2.5 (2025-12-16): Fixed layout overflow issue
+//   - REMOVED: h-full flex flex-col (caused overflow when relocated)
+//   - CHANGED: Chart container from flex-1 min-h-[300px] to fixed h-[350px]
+//   - Component now sizes naturally without parent height dependency
+// v2.4 (2025-12-16): Tooltip dismiss on action
+//   - FIXED: Tooltip now hides when modal opens
+//   - Uses tooltipHidden from hook to control Recharts Tooltip visibility
+// v2.3 (2025-12-16): Refactored to use useTouchTooltip hook
+//   - REMOVED: Duplicated touch handling logic
+//   - Uses shared hook for consistent desktop/mobile behavior
+//   - Desktop: single click opens profile
+//   - Mobile: tap-to-preview, tap-again-to-action
 // v2.2 (2025-12-16): Mobile touch tooltip support
 //   - Uses useTouchTooltip hook for tap-to-preview, tap-again-to-action
 //   - First tap shows tooltip with "Toque novamente" hint on mobile
@@ -27,13 +55,17 @@
 // v1.1 (2025-11-24): Portuguese translations
 // v1.0 (2025-11-23): Initial implementation
 
-import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
-import { AlertTriangle, Trophy } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
-import InsightBox from './ui/InsightBox';
+import { getChartColors } from '../utils/chartColors';
+import { useTheme } from '../contexts/ThemeContext';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
+
+// Desktop breakpoint for responsive chart labels
+const DESKTOP_BREAKPOINT = 1024;
 
 const RFMScatterPlot = ({
     data,
@@ -43,31 +75,35 @@ const RFMScatterPlot = ({
     onMarkContacted,
     onCreateCampaign
 }) => {
+    // Theme-aware chart colors (Design System v3.2)
+    const { isDark } = useTheme();
+    const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
+
+    // Responsive font sizes for chart labels (12px mobile, 14px desktop)
+    const [isDesktop, setIsDesktop] = useState(false);
+    useEffect(() => {
+        const checkDesktop = () => setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
+        checkDesktop();
+        window.addEventListener('resize', checkDesktop);
+        return () => window.removeEventListener('resize', checkDesktop);
+    }, []);
+    const labelFontSize = isDesktop ? 14 : 12;
+
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
     const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'atRisk', color: 'amber' });
 
-    // Touch device detection for mobile-friendly tooltips
-    const isTouchDevice = useRef(false);
-    const [activeTouch, setActiveTouch] = useState(null);
-    const touchTimeoutRef = useRef(null);
-
-    // Detect touch device
-    useEffect(() => {
-        const handleTouchStart = () => {
-            isTouchDevice.current = true;
-        };
-        window.addEventListener('touchstart', handleTouchStart, { once: true });
-        return () => window.removeEventListener('touchstart', handleTouchStart);
-    }, []);
-
-    // Auto-dismiss touch tooltip after 5 seconds
-    useEffect(() => {
-        if (activeTouch) {
-            touchTimeoutRef.current = setTimeout(() => setActiveTouch(null), 5000);
-            return () => clearTimeout(touchTimeoutRef.current);
-        }
-    }, [activeTouch]);
+    // Use shared touch tooltip hook for mobile-friendly interactions
+    // Desktop: single click opens profile immediately
+    // Mobile: tap-to-preview, tap-again-to-action
+    const { handleTouch, isActive: isActiveTouch, tooltipHidden } = useTouchTooltip({
+        onAction: (entry) => {
+            if (entry?.id && onOpenCustomerProfile) {
+                onOpenCustomerProfile(entry.id);
+            }
+        },
+        dismissTimeout: 5000
+    });
 
     if (!data || data.length === 0) return null;
 
@@ -89,29 +125,12 @@ const RFMScatterPlot = ({
     const notContactedHighValue = highValueAtRiskCustomers.filter(d => !d.isContacted).length;
     const totalContacted = enrichedData.filter(d => d.isContacted).length;
 
-    // Click handler for bubble - mobile-friendly with tap-to-preview
+    // Click handler for bubble - uses shared touch hook
+    // Desktop: immediate action, Mobile: tap-to-preview, tap-again-to-action
     const handleBubbleClick = useCallback((entry) => {
         if (!entry?.id) return;
-
-        // On touch devices: first tap shows tooltip, second tap opens profile
-        if (isTouchDevice.current) {
-            if (activeTouch === entry.id) {
-                // Second tap - open profile
-                setActiveTouch(null);
-                if (onOpenCustomerProfile) {
-                    onOpenCustomerProfile(entry.id);
-                }
-            } else {
-                // First tap - just show tooltip (set active for hint)
-                setActiveTouch(entry.id);
-            }
-        } else {
-            // Desktop: direct click opens profile
-            if (onOpenCustomerProfile) {
-                onOpenCustomerProfile(entry.id);
-            }
-        }
-    }, [onOpenCustomerProfile, activeTouch]);
+        handleTouch(entry, entry.id);
+    }, [handleTouch]);
 
     // Click handler for high-value at-risk insight - passes ALL high-value at-risk customers
     const handleHighValueAtRiskClick = useCallback(() => {
@@ -129,46 +148,11 @@ const RFMScatterPlot = ({
         setModalOpen(true);
     }, [highValueAtRiskCustomers]);
 
-    // Generate simplified insights (reduced from 4 to 2)
-    const insights = useMemo(() => {
-        const result = [];
-
-        // Primary insight: High-value at risk (clickable if > 0)
-        if (notContactedHighValue > 0) {
-            result.push({
-                type: 'warning',
-                text: `${notContactedHighValue} clientes de alto valor em risco sem contato`,
-                onClick: handleHighValueAtRiskClick,
-                customerCount: notContactedHighValue
-            });
-        } else if (highValueAtRiskCustomers.length === 0) {
-            result.push({
-                type: 'success',
-                text: 'Nenhum cliente de alto valor em risco no momento'
-            });
-        } else {
-            result.push({
-                type: 'info',
-                text: `${highValueAtRiskCustomers.length} clientes de alto valor em risco - todos contactados`
-            });
-        }
-
-        // Secondary insight: Champions count (info only)
-        if (championsCustomers.length > 0) {
-            result.push({
-                type: 'success',
-                text: `${championsCustomers.length} campeoes ativos - mantenha o relacionamento`
-            });
-        }
-
-        return result;
-    }, [notContactedHighValue, highValueAtRiskCustomers, championsCustomers, handleHighValueAtRiskClick]);
-
     // Custom Tooltip - with mobile hint support
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
-            const isActiveTouchItem = activeTouch === d.id;
+            const isActiveTouchItem = isActiveTouch(d.id);
 
             // Translate risk status to Portuguese
             const getRiskLabel = (status) => {
@@ -244,18 +228,64 @@ const RFMScatterPlot = ({
     };
 
     return (
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm">
             <div className="mb-4">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-lavpop-blue"></span>
-                    Mapa de Risco (RFM)
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Identifique visualmente onde estão seus clientes de maior valor.
-                    <br />
-                    <span className="font-semibold text-green-600">Topo-Esquerda:</span> Campeões |
-                    <span className="font-semibold text-red-500 ml-1">Topo-Direita:</span> Em Perigo
-                </p>
+                {/* Header row with title and insight pills */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-lavpop-blue"></span>
+                            Mapa de Risco (RFM)
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Identifique visualmente onde estão seus clientes de maior valor.
+                            <br />
+                            <span className="font-semibold text-green-600">Topo-Esquerda:</span> Campeões |
+                            <span className="font-semibold text-red-500 ml-1">Topo-Direita:</span> Em Perigo
+                        </p>
+                    </div>
+
+                    {/* Insight Pills - relocated to header */}
+                    <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                        {/* At-Risk High-Value Pill */}
+                        {notContactedHighValue > 0 ? (
+                            <button
+                                onClick={handleHighValueAtRiskClick}
+                                className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
+                            >
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                                    {notContactedHighValue} em risco sem contato
+                                </span>
+                                <ChevronRight className="w-3 h-3 text-amber-500 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+                            </button>
+                        ) : highValueAtRiskCustomers.length > 0 ? (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full">
+                                <CheckCircle className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span className="text-xs font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap">
+                                    Todos contactados
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                                    Sem alto valor em risco
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Champions Pill */}
+                        {championsCustomers.length > 0 && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                                    {championsCustomers.length} campeões
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Legend for contact status - Design System compliant (min text-xs) */}
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
@@ -278,49 +308,44 @@ const RFMScatterPlot = ({
                         </div>
                     )}
                 </div>
-
-                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                        💡 <span className="font-bold">Nota:</span> A classificação considera o padrão individual de cada cliente.
-                        Clientes "saudáveis" podem aparecer à direita se naturalmente visitam com menos frequência.
-                    </p>
-                </div>
             </div>
 
-            <div className="flex-1 min-h-[300px]">
+            <div className="h-[350px] lg:h-[420px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                         <XAxis
                             type="number"
                             dataKey="x"
                             name="Recência"
                             unit=" dias"
-                            stroke="#94a3b8"
-                            fontSize={10}
-                            label={{ value: 'Dias sem visitar (Recência)', position: 'bottom', offset: 0, fontSize: 10, fill: '#64748b' }}
+                            domain={[0, 60]}
+                            stroke={chartColors.axis}
+                            fontSize={labelFontSize}
+                            tick={{ fill: chartColors.tickText }}
+                            label={{ value: 'Dias sem visitar (Recência)', position: 'bottom', offset: 0, fontSize: labelFontSize, fill: chartColors.tickText }}
                         />
                         <YAxis
                             type="number"
                             dataKey="y"
                             name="Valor"
-                            unit=" R$"
-                            stroke="#94a3b8"
-                            fontSize={10}
+                            stroke={chartColors.axis}
+                            fontSize={labelFontSize}
+                            tick={{ fill: chartColors.tickText }}
                             tickFormatter={(val) => `R$${val}`}
                         />
                         {/* ZAxis controls bubble size based on frequency (r = transactions count) */}
                         <ZAxis
                             type="number"
                             dataKey="r"
-                            range={[40, 400]}
+                            range={isDesktop ? [80, 600] : [40, 400]}
                             name="Frequência"
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} wrapperStyle={{ visibility: tooltipHidden ? 'hidden' : 'visible' }} />
 
                         {/* Danger Zone Reference Line */}
-                        <ReferenceLine x={30} stroke="#ef4444" strokeDasharray="3 3">
-                            <Label value="Zona de Perigo (>30d)" position="insideTopRight" fill="#ef4444" fontSize={10} />
+                        <ReferenceLine x={30} stroke={chartColors.error} strokeDasharray="3 3">
+                            <Label value="Zona de Perigo (>30d)" position="insideTopRight" fill={chartColors.error} fontSize={labelFontSize} />
                         </ReferenceLine>
 
                         <Scatter
@@ -349,8 +374,6 @@ const RFMScatterPlot = ({
                     </ScatterChart>
                 </ResponsiveContainer>
             </div>
-
-            <InsightBox insights={insights} />
 
             {/* Customer Segment Modal */}
             <CustomerSegmentModal

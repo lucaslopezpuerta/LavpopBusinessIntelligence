@@ -1,42 +1,43 @@
-// Customers View v4.0 - INTELLIGENCE HUB REDESIGN
+// Customers View v5.0 - SIMPLIFIED LAYOUT
 // Customer analytics and insights dashboard
-// Directory moved to separate view for better UX
+// Clean, focused design with RFM hero and integrated table
 //
 // CHANGELOG:
+// v5.0 (2025-12-16): Simplified layout redesign
+//   - REMOVED: Sticky navigation bar
+//   - REMOVED: Section titles (visual hierarchy via layout)
+//   - REMOVED: At-Risk and Health KPI cards (info in header pills)
+//   - NEW: HealthPill in header (matches RetentionPulse)
+//   - NEW: HeroKPICards for New/Active clients with drilldown
+//   - NEW: RFM Scatter Plot full-width hero treatment
+//   - NEW: Integrated layout - Table + Charts side by side
+// v4.3 (2025-12-16): At-Risk table integration
+// v4.2 (2025-12-16): Optimized At-Risk section layout
+// v4.1 (2025-12-16): Full-width layout
 // v4.0 (2025-12-16): Intelligence Hub Redesign
-//   - REMOVED: Directory section (now separate /diretorio route)
-//   - NEW: RetentionPulse in header (replaces full chart)
-//   - NEW: Asymmetric chart layout (RFM hero + 2 secondary)
-//   - NEW: At-Risk Preview mode (compact cards, not full table)
-//   - NEW: Sparkline data for KPI cards
-//   - UPDATED: Section navigation (removed Diretório)
-// v3.4.0 (2025-12-15): Chart-to-campaign integration
-//   - NEW: onCreateCampaign handler opens NewCampaignModal with pre-selected customers
-//   - NEW: Customers selected from chart modals can be added to new campaigns
-//   - NEW: Dynamic custom audience segment for pre-selected customers
-// v3.3.0 (2025-12-15): Interactive chart insights
-//   - NEW: Charts now have clickable insights that open CustomerSegmentModal
-//   - NEW: customerMap prop passed to charts for ID-to-customer lookups
-//   - NEW: onOpenCustomerProfile, onMarkContacted, onCreateCampaign handlers
 
 import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
-import { Users as UsersIcon, UserPlus, AlertTriangle, Heart, BarChart3, LayoutGrid, ChevronRight } from 'lucide-react';
+import { Users as UsersIcon, UserPlus } from 'lucide-react';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend } from '../utils/customerMetrics';
-import SecondaryKPICard from '../components/ui/SecondaryKPICard';
+import HeroKPICard from '../components/ui/HeroKPICard';
 import RetentionPulse from '../components/RetentionPulse';
-import { formatNumber, formatPercent, formatCurrency } from '../utils/formatters';
+import HealthPill from '../components/HealthPill';
+import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
+import { formatNumber } from '../utils/formatters';
 import { isValidBrazilianMobile } from '../utils/phoneUtils';
 
-// Lazy-load heavy modals
+// Lazy-load heavy modals and components
 const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
 const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
-import CustomerSectionNavigation from '../components/customers/CustomerSectionNavigation';
+const KPIDetailModal = lazy(() => import('../components/modals/KPIDetailModal'));
+const CustomerTrendDrilldown = lazy(() => import('../components/drilldowns/CustomerTrendDrilldown'));
 import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, ChartLoadingFallback } from '../utils/lazyCharts';
 import { useContactTracking } from '../hooks/useContactTracking';
 
 const Customers = ({ data }) => {
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedKPI, setSelectedKPI] = useState(null); // For KPI drilldown modal
 
   // Campaign modal state
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
@@ -178,14 +179,6 @@ const Customers = ({ data }) => {
   const kpiPills = useMemo(() => {
     if (!metrics) return {};
 
-    // At-risk customers (At Risk + Churning) WITHOUT contact
-    const atRiskCustomers = metrics.activeCustomers.filter(
-      c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning'
-    );
-    const atRiskWithoutContact = atRiskCustomers.filter(
-      c => !contactedIds.has(String(c.doc))
-    ).length;
-
     // New customers (last 30 days) with welcome coverage
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -194,11 +187,10 @@ const Customers = ({ data }) => {
     const welcomePct = newCustomers.length > 0 ? Math.round((newWithWelcome / newCustomers.length) * 100) : 0;
 
     return {
-      atRiskWithoutContact,
       welcomePct,
       newCustomersTotal: newCustomers.length
     };
-  }, [metrics, contactedIds, welcomeContactedIds]);
+  }, [metrics, welcomeContactedIds]);
 
   // Calculate New Clients (last 30 days based on first visit)
   const newClientsCount = useMemo(() => {
@@ -249,22 +241,25 @@ const Customers = ({ data }) => {
     };
   }, [metrics]);
 
-  // At-Risk Preview Data (top 5 by value, not contacted)
-  const atRiskPreview = useMemo(() => {
-    if (!metrics) return [];
-
-    return metrics.activeCustomers
-      .filter(c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning')
-      .filter(c => !contactedIds.has(String(c.doc)))
-      .sort((a, b) => b.netTotal - a.netTotal)
-      .slice(0, 5);
-  }, [metrics, contactedIds]);
-
-  // Calculate total revenue at risk (from preview)
-  const revenueAtRisk = useMemo(() => {
-    if (!atRiskPreview.length) return 0;
-    return atRiskPreview.reduce((sum, c) => sum + (c.netTotal || 0), 0);
-  }, [atRiskPreview]);
+  // KPI definitions for drilldown
+  const kpiDefinitions = useMemo(() => ({
+    newClients: {
+      id: 'newClients',
+      title: 'Novos Clientes',
+      subtitle: 'Aquisição nas últimas 8 semanas',
+      icon: UserPlus,
+      color: 'purple',
+      metricType: 'newClients'
+    },
+    activeClients: {
+      id: 'activeClients',
+      title: 'Clientes Ativos',
+      subtitle: 'Evolução da base ativa',
+      icon: UsersIcon,
+      color: 'blue',
+      metricType: 'activeClients'
+    }
+  }), []);
 
   if (!metrics) {
     return (
@@ -275,9 +270,9 @@ const Customers = ({ data }) => {
   }
 
   return (
-    <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 sm:space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
 
-      {/* Header with Retention Pulse */}
+      {/* Header with RetentionPulse + HealthPill */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center border-l-4 border-purple-500">
@@ -293,208 +288,118 @@ const Customers = ({ data }) => {
           </div>
         </div>
 
-        {/* Retention Pulse Widget */}
-        <RetentionPulse data={intelligence?.retention} />
+        {/* Header Pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <RetentionPulse data={intelligence?.retention} />
+          <HealthPill
+            healthRate={metrics.healthRate}
+            activeCount={metrics.activeCount}
+            atRiskCount={metrics.needsAttentionCount}
+          />
+        </div>
       </header>
 
-      {/* Section Navigation - Sticky */}
-      <CustomerSectionNavigation hasAtRisk={metrics.needsAttentionCount > 0} />
+      {/* Hero KPI Cards - New Clients + Active Clients */}
+      <div className="grid grid-cols-2 gap-4">
+        <HeroKPICard
+          title="Novos Clientes"
+          shortTitle="Novos"
+          value={newClientsCount}
+          displayValue={formatNumber(newClientsCount)}
+          subtitle="Últimos 30 dias"
+          icon={UserPlus}
+          color="purple"
+          sparklineData={sparklineData.newCustomers}
+          onClick={() => setSelectedKPI(kpiDefinitions.newClients)}
+          tooltip={kpiPills.newCustomersTotal > 0 ? `${kpiPills.welcomePct}% receberam boas-vindas` : undefined}
+        />
+        <HeroKPICard
+          title="Clientes Ativos"
+          shortTitle="Ativos"
+          value={metrics.activeCount}
+          displayValue={formatNumber(metrics.activeCount)}
+          subtitle="Base ativa total"
+          icon={UsersIcon}
+          color="blue"
+          sparklineData={sparklineData.activeCustomers}
+          onClick={() => setSelectedKPI(kpiDefinitions.activeClients)}
+        />
+      </div>
 
-      {/* Section 1: Resumo - KPI Cards with Sparklines */}
-      <section id="resumo-section" aria-labelledby="resumo-heading">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-lavpop-blue/10 dark:bg-lavpop-blue/20 flex items-center justify-center border-l-4 border-lavpop-blue">
-            <LayoutGrid className="w-5 h-5 text-lavpop-blue" />
+      {/* RFM Scatter Plot - Full Width Hero */}
+      <Suspense fallback={<ChartLoadingFallback height="h-[400px]" />}>
+        <LazyRFMScatterPlot
+          data={intelligence.rfm}
+          contactedIds={contactedIds}
+          pendingContacts={pendingContacts}
+          onOpenCustomerProfile={handleOpenCustomerProfile}
+          onMarkContacted={handleMarkContacted}
+          onCreateCampaign={handleCreateCampaign}
+        />
+      </Suspense>
+
+      {/* Integrated Layout: AtRiskTable + Secondary Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* At-Risk Customers Table - 3/5 width on desktop, spans 2 rows */}
+        {metrics.needsAttentionCount > 0 && (
+          <div className="lg:col-span-3 lg:row-span-2">
+            <AtRiskCustomersTable
+              customerMetrics={metrics}
+              salesData={data.sales}
+            />
           </div>
-          <div>
-            <h2 id="resumo-heading" className="text-base font-bold text-slate-900 dark:text-white">
-              Resumo de Clientes
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Visão geral da base de clientes
-            </p>
-          </div>
+        )}
+
+        {/* Secondary Charts - 2/5 width on desktop (or full if no at-risk) */}
+        <div className={`${metrics.needsAttentionCount > 0 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
+          <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
+            <LazyChurnHistogram
+              data={intelligence.histogram}
+              contactedIds={contactedIds}
+              customerSpending={customerSpending}
+              customerMap={customerMap}
+              onOpenCustomerProfile={handleOpenCustomerProfile}
+              onMarkContacted={handleMarkContacted}
+              onCreateCampaign={handleCreateCampaign}
+              compact
+            />
+          </Suspense>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <SecondaryKPICard
-            title="Novos Clientes"
-            displayValue={formatNumber(newClientsCount)}
-            subtitle="Últimos 30 dias"
-            icon={UserPlus}
-            color="purple"
-            sparklineData={sparklineData.newCustomers}
-            pill={kpiPills.newCustomersTotal > 0 ? {
-              text: `${kpiPills.welcomePct}% boas-vindas`,
-              variant: kpiPills.welcomePct >= 80 ? 'success' : 'warning'
-            } : undefined}
-          />
-          <SecondaryKPICard
-            title="Clientes Ativos"
-            displayValue={formatNumber(metrics.activeCount)}
-            subtitle="Não perdidos"
-            icon={UsersIcon}
-            color="blue"
-            sparklineData={sparklineData.activeCustomers}
-          />
-          <SecondaryKPICard
-            title="Em Risco"
-            displayValue={formatNumber(metrics.needsAttentionCount)}
-            subtitle="Risco + Crítico"
-            icon={AlertTriangle}
-            color="red"
-            pill={kpiPills.atRiskWithoutContact > 0 ? {
-              text: `${kpiPills.atRiskWithoutContact} sem contato`,
-              variant: 'warning'
-            } : undefined}
-          />
-          <SecondaryKPICard
-            title="Taxa de Saúde"
-            displayValue={formatPercent(metrics.healthRate)}
-            subtitle="Clientes saudáveis"
-            icon={Heart}
-            color="green"
-          />
+
+        <div className={`${metrics.needsAttentionCount > 0 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
+          <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
+            <LazyNewClientsChart
+              data={intelligence.acquisition}
+              welcomeContactedIds={welcomeContactedIds}
+              returnedCustomerIds={returnedCustomerIds}
+              customerMap={customerMap}
+              onOpenCustomerProfile={handleOpenCustomerProfile}
+              onMarkContacted={handleMarkContacted}
+              onCreateCampaign={handleCreateCampaign}
+              compact
+            />
+          </Suspense>
         </div>
-      </section>
+      </div>
 
-      {/* Section 2: Ação Imediata - At-Risk Preview (Compact) */}
-      {atRiskPreview.length > 0 && (
-        <section id="acao-section" aria-labelledby="acao-heading">
-          <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-2xl border border-red-200/50 dark:border-red-800/30 p-4 sm:p-5">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                </div>
-                <div>
-                  <h2 id="acao-heading" className="text-base font-bold text-slate-900 dark:text-white">
-                    {metrics.needsAttentionCount} Clientes em Risco
-                  </h2>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Receita em risco: {formatCurrency(revenueAtRisk)}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleCreateCampaign(atRiskPreview.map(c => c.doc))}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                Contatar Todos
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Preview Cards */}
-            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {atRiskPreview.map((customer) => (
-                <button
-                  key={customer.doc}
-                  onClick={() => setSelectedCustomer(customer)}
-                  className="flex-shrink-0 flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700 hover:shadow-md transition-all min-w-[100px]"
-                >
-                  {/* Avatar */}
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 flex items-center justify-center border-2 border-red-200 dark:border-red-800">
-                    <span className="text-sm font-bold text-red-700 dark:text-red-300">
-                      {customer.name?.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?'}
-                    </span>
-                  </div>
-                  {/* Info */}
-                  <div className="text-center">
-                    <p className="text-xs font-semibold text-slate-800 dark:text-white truncate max-w-[90px]">
-                      {customer.name?.split(' ')[0] || 'Cliente'}
-                    </p>
-                    <p className="text-xs font-bold text-red-600 dark:text-red-400">
-                      {formatCurrency(customer.netTotal)}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {customer.daysSinceLastVisit || 0}d
-                    </p>
-                  </div>
-                </button>
-              ))}
-
-              {/* Show remaining count */}
-              {metrics.needsAttentionCount > 5 && (
-                <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1 p-3 bg-slate-100 dark:bg-slate-700/50 rounded-xl min-w-[80px] min-h-[120px]">
-                  <span className="text-xl font-bold text-slate-600 dark:text-slate-300">
-                    +{metrics.needsAttentionCount - 5}
-                  </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                    mais
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+      {/* KPI Drilldown Modal */}
+      {selectedKPI && (
+        <Suspense fallback={null}>
+          <KPIDetailModal
+            isOpen={!!selectedKPI}
+            onClose={() => setSelectedKPI(null)}
+            title={selectedKPI.title}
+            subtitle={selectedKPI.subtitle}
+            icon={selectedKPI.icon}
+            color={selectedKPI.color}
+          >
+            <CustomerTrendDrilldown
+              customers={metrics.activeCustomers}
+              metricType={selectedKPI.metricType}
+            />
+          </KPIDetailModal>
+        </Suspense>
       )}
-
-      {/* Section 3: Análise - Asymmetric Chart Layout */}
-      <section id="analise-section" aria-labelledby="analise-heading">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center border-l-4 border-purple-500">
-            <BarChart3 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div>
-            <h2 id="analise-heading" className="text-base font-bold text-slate-900 dark:text-white">
-              Análise Comportamental
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Segmentação RFM e tendências de aquisição
-            </p>
-          </div>
-        </div>
-
-        {/* Asymmetric Grid: RFM Hero (60%) + 2 Secondary (40%) */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* RFM Scatter Plot - Hero Chart (3/5 width = 60%) */}
-          <div className="lg:col-span-3 h-full">
-            <Suspense fallback={<ChartLoadingFallback height="h-[400px]" />}>
-              <LazyRFMScatterPlot
-                data={intelligence.rfm}
-                contactedIds={contactedIds}
-                pendingContacts={pendingContacts}
-                onOpenCustomerProfile={handleOpenCustomerProfile}
-                onMarkContacted={handleMarkContacted}
-                onCreateCampaign={handleCreateCampaign}
-              />
-            </Suspense>
-          </div>
-
-          {/* Secondary Charts Stack (2/5 width = 40%) */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <div className="flex-1">
-              <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
-                <LazyChurnHistogram
-                  data={intelligence.histogram}
-                  contactedIds={contactedIds}
-                  customerSpending={customerSpending}
-                  customerMap={customerMap}
-                  onOpenCustomerProfile={handleOpenCustomerProfile}
-                  onMarkContacted={handleMarkContacted}
-                  onCreateCampaign={handleCreateCampaign}
-                  compact
-                />
-              </Suspense>
-            </div>
-            <div className="flex-1">
-              <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
-                <LazyNewClientsChart
-                  data={intelligence.acquisition}
-                  welcomeContactedIds={welcomeContactedIds}
-                  returnedCustomerIds={returnedCustomerIds}
-                  customerMap={customerMap}
-                  onOpenCustomerProfile={handleOpenCustomerProfile}
-                  onMarkContacted={handleMarkContacted}
-                  onCreateCampaign={handleCreateCampaign}
-                  compact
-                />
-              </Suspense>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Customer Profile Modal */}
       {selectedCustomer && (

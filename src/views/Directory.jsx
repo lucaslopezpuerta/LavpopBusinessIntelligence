@@ -1,8 +1,12 @@
-// Directory.jsx v1.0 - CUSTOMER DIRECTORY VIEW
+// Directory.jsx v1.1 - FULL-WIDTH LAYOUT
 // Dedicated view for browsing and searching customers
 // Extracted from Customers.jsx for better separation of concerns
 //
 // CHANGELOG:
+// v1.1 (2025-12-16): Full-width layout
+//   - REMOVED: Redundant padding (now uses App.jsx padding)
+//   - REMOVED: max-w-[1600px] constraint for full-width
+//   - Consistent with Dashboard.jsx layout pattern
 // v1.0 (2025-12-16): Initial implementation
 //   - Extracted from Customers.jsx (was Section 4: Diretório)
 //   - Dedicated route in App.jsx
@@ -146,7 +150,7 @@ const Directory = ({ data }) => {
   }
 
   return (
-    <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 animate-fade-in">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
