@@ -607,9 +607,9 @@ export const api = {
 
     /**
      * Trigger backfill of WABA analytics from a specific date
-     * @param {string} from - Start date (YYYY-MM-DD), defaults to 2024-12-09
+     * @param {string} from - Start date (YYYY-MM-DD), defaults to 2025-12-09
      */
-    async triggerBackfill(from = '2024-12-09') {
+    async triggerBackfill(from = '2025-12-09') {
       try {
         const response = await fetch(`/.netlify/functions/waba-analytics?action=backfill&from=${from}`, {
           method: 'GET',

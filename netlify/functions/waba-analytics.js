@@ -1,16 +1,14 @@
 // netlify/functions/waba-analytics.js
 // WhatsApp Business API Analytics - Meta Graph API integration
 //
-// v1.0 (2025-12-17): Initial implementation
-//   - Fetches conversation analytics (billable conversations + costs)
-//   - Fetches message analytics (sent, delivered, read)
-//   - Supports manual sync and daily automated sync
-//   - Backfill support for historical data
+// v1.1 (2025-12-17): Production cleanup
+//   - Message analytics: sent, delivered metrics from Meta API
+//   - Note: Read metrics not available at account level (only per-template)
+//   - Note: Conversation costs not returned by Meta API for this account
 //
 // Environment variables required:
 // - META_ACCESS_TOKEN: Meta Graph API access token
 // - META_WABA_ID: WhatsApp Business Account ID
-// - META_WHATSAPP_PHONE_ID: Campaign phone number ID (optional, filters by phone)
 // - SUPABASE_URL: Supabase project URL
 // - SUPABASE_SERVICE_KEY: Supabase service role key
 
@@ -18,6 +16,28 @@ const { createClient } = require('@supabase/supabase-js');
 
 const GRAPH_API_VERSION = 'v21.0';
 const GRAPH_API_BASE = 'https://graph.facebook.com';
+
+// Granularity for message analytics (HALF_HOUR, DAY, MONTH)
+const MSG_GRANULARITY = 'DAY';
+
+// Business timezone for date bucket alignment
+const BUSINESS_TIMEZONE = 'America/Sao_Paulo';
+
+/**
+ * Convert epoch seconds to local date string (YYYY-MM-DD) in business timezone
+ * Avoids UTC day-shift issues for São Paulo (UTC-3)
+ */
+function epochToLocalDate(epochSeconds) {
+  const date = new Date(epochSeconds * 1000);
+  // Format in São Paulo timezone
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BUSINESS_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(date); // Returns YYYY-MM-DD
+}
 
 // Initialize Supabase client
 function getSupabase() {
@@ -79,66 +99,20 @@ function parseMetaError(errorData) {
   };
 }
 
+
 /**
- * Fetch conversation analytics (billable conversations with costs)
- * @param {number} start - Start timestamp in epoch seconds
- * @param {number} end - End timestamp in epoch seconds
- * @param {string} wabaId - WhatsApp Business Account ID
- * @param {string} accessToken - Meta Graph API access token
- * @param {string} phoneNumberId - Optional phone number ID filter
+ * Fetch message analytics (sent, delivered)
+ * Note: READ metrics not available at account level (only per-template)
  */
-async function fetchConversationAnalytics(start, end, wabaId, accessToken, phoneNumberId = null) {
-  // Build the fields parameter for conversation_analytics
-  let fields = `conversation_analytics.start(${start}).end(${end}).granularity(DAILY).dimensions(["CONVERSATION_CATEGORY","COUNTRY"])`;
-
-  // Add phone number filter if provided
-  if (phoneNumberId) {
-    fields = `conversation_analytics.start(${start}).end(${end}).granularity(DAILY).phone_numbers(["${phoneNumberId}"]).dimensions(["CONVERSATION_CATEGORY","COUNTRY"])`;
-  }
-
+async function fetchMessageAnalytics(start, end, wabaId, accessToken) {
+  const fields = `analytics.start(${start}).end(${end}).granularity(${MSG_GRANULARITY}).metrics(["SENT","DELIVERED"])`;
   const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${wabaId}?fields=${encodeURIComponent(fields)}&access_token=${accessToken}`;
-
-  console.log(`Fetching conversation analytics: ${start} to ${end}`);
 
   const response = await fetchWithRetry(url);
   const data = await response.json();
 
   if (!response.ok) {
     const errorInfo = parseMetaError(data);
-    console.error('Conversation analytics API error:', errorInfo);
-    throw new Error(`Meta API error: ${errorInfo.message} (code: ${errorInfo.code}, fbtrace_id: ${errorInfo.fbtrace_id})`);
-  }
-
-  return data.conversation_analytics || null;
-}
-
-/**
- * Fetch message analytics (sent, delivered, read)
- * @param {number} start - Start timestamp in epoch seconds
- * @param {number} end - End timestamp in epoch seconds
- * @param {string} wabaId - WhatsApp Business Account ID
- * @param {string} accessToken - Meta Graph API access token
- * @param {string} phoneNumberId - Optional phone number ID filter
- */
-async function fetchMessageAnalytics(start, end, wabaId, accessToken, phoneNumberId = null) {
-  // Build the fields parameter for analytics
-  let fields = `analytics.start(${start}).end(${end}).granularity(DAILY).metrics(["SENT","DELIVERED","READ"])`;
-
-  // Add phone number filter if provided
-  if (phoneNumberId) {
-    fields = `analytics.start(${start}).end(${end}).granularity(DAILY).phone_numbers(["${phoneNumberId}"]).metrics(["SENT","DELIVERED","READ"])`;
-  }
-
-  const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${wabaId}?fields=${encodeURIComponent(fields)}&access_token=${accessToken}`;
-
-  console.log(`Fetching message analytics: ${start} to ${end}`);
-
-  const response = await fetchWithRetry(url);
-  const data = await response.json();
-
-  if (!response.ok) {
-    const errorInfo = parseMetaError(data);
-    console.error('Message analytics API error:', errorInfo);
     throw new Error(`Meta API error: ${errorInfo.message} (code: ${errorInfo.code}, fbtrace_id: ${errorInfo.fbtrace_id})`);
   }
 
@@ -146,136 +120,52 @@ async function fetchMessageAnalytics(start, end, wabaId, accessToken, phoneNumbe
 }
 
 /**
- * Normalize conversation analytics response to database rows
- */
-function normalizeConversationData(analyticsData, wabaId, phoneNumberId) {
-  const rows = [];
-
-  if (!analyticsData || !analyticsData.data_points) {
-    return rows;
-  }
-
-  for (const dataPoint of analyticsData.data_points) {
-    const bucketDate = new Date(dataPoint.start * 1000).toISOString().split('T')[0];
-
-    // Each data point has conversation_category and country breakdowns
-    if (dataPoint.conversation_category && dataPoint.country) {
-      rows.push({
-        waba_id: wabaId,
-        phone_number_id: phoneNumberId || null,
-        bucket_date: bucketDate,
-        conversation_category: dataPoint.conversation_category,
-        country_code: dataPoint.country,
-        conversation_count: dataPoint.conversation || 0,
-        cost: dataPoint.cost || 0
-      });
-    } else {
-      // Fallback for flat response structure
-      rows.push({
-        waba_id: wabaId,
-        phone_number_id: phoneNumberId || null,
-        bucket_date: bucketDate,
-        conversation_category: dataPoint.conversation_category || 'UNKNOWN',
-        country_code: dataPoint.country || null,
-        conversation_count: dataPoint.conversation || 0,
-        cost: dataPoint.cost || 0
-      });
-    }
-  }
-
-  return rows;
-}
-
-/**
  * Normalize message analytics response to database rows
  */
-function normalizeMessageData(analyticsData, wabaId, phoneNumberId) {
-  const rows = [];
+function normalizeMessageData(analyticsData, wabaId) {
+  if (!analyticsData) return [];
 
-  if (!analyticsData || !analyticsData.data_points) {
-    return rows;
-  }
+  const dataArray = analyticsData.data_points || analyticsData.data || [];
+  if (dataArray.length === 0) return [];
 
-  for (const dataPoint of analyticsData.data_points) {
-    const bucketDate = new Date(dataPoint.start * 1000).toISOString().split('T')[0];
-
-    rows.push({
-      waba_id: wabaId,
-      phone_number_id: phoneNumberId || null,
-      bucket_date: bucketDate,
-      sent: dataPoint.sent || 0,
-      delivered: dataPoint.delivered || 0,
-      read_count: dataPoint.read || 0
-    });
-  }
-
-  return rows;
+  return dataArray.map(dataPoint => ({
+    waba_id: wabaId,
+    phone_number_id: '',
+    bucket_date: dataPoint.start
+      ? epochToLocalDate(dataPoint.start)
+      : new Date().toISOString().split('T')[0],
+    sent: dataPoint.sent || 0,
+    delivered: dataPoint.delivered || 0,
+    read_count: 0 // Not available at account level
+  }));
 }
 
 /**
- * Sync analytics data from Meta API to database
- * @param {number} startEpoch - Start timestamp in epoch seconds
- * @param {number} endEpoch - End timestamp in epoch seconds
+ * Sync message analytics from Meta API to database
  */
 async function syncAnalytics(startEpoch, endEpoch) {
   const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
   const WABA_ID = process.env.META_WABA_ID;
-  const PHONE_ID = process.env.META_WHATSAPP_PHONE_ID || null;
 
   if (!ACCESS_TOKEN || !WABA_ID) {
     throw new Error('Meta API credentials not configured (META_ACCESS_TOKEN, META_WABA_ID required)');
   }
 
   const supabase = getSupabase();
-  const results = {
-    conversations: { fetched: 0, upserted: 0 },
-    messages: { fetched: 0, upserted: 0 }
-  };
+  const results = { messages: { fetched: 0, upserted: 0 } };
 
-  // Fetch conversation analytics (billable)
-  try {
-    const convData = await fetchConversationAnalytics(startEpoch, endEpoch, WABA_ID, ACCESS_TOKEN, PHONE_ID);
-    const convRows = normalizeConversationData(convData, WABA_ID, PHONE_ID);
-    results.conversations.fetched = convRows.length;
+  // Fetch message analytics (sent, delivered)
+  const msgData = await fetchMessageAnalytics(startEpoch, endEpoch, WABA_ID, ACCESS_TOKEN);
+  const msgRows = normalizeMessageData(msgData, WABA_ID);
+  results.messages.fetched = msgRows.length;
 
-    if (convRows.length > 0) {
-      const { data, error } = await supabase.rpc('upsert_waba_conversations', {
-        p_data: convRows
-      });
+  if (msgRows.length > 0) {
+    const { data, error } = await supabase.rpc('upsert_waba_messages', {
+      p_data: msgRows
+    });
 
-      if (error) {
-        console.error('Error upserting conversation data:', error);
-        throw error;
-      }
-
-      results.conversations.upserted = data || convRows.length;
-    }
-  } catch (error) {
-    console.error('Conversation analytics sync failed:', error.message);
-    results.conversations.error = error.message;
-  }
-
-  // Fetch message analytics (delivery metrics)
-  try {
-    const msgData = await fetchMessageAnalytics(startEpoch, endEpoch, WABA_ID, ACCESS_TOKEN, PHONE_ID);
-    const msgRows = normalizeMessageData(msgData, WABA_ID, PHONE_ID);
-    results.messages.fetched = msgRows.length;
-
-    if (msgRows.length > 0) {
-      const { data, error } = await supabase.rpc('upsert_waba_messages', {
-        p_data: msgRows
-      });
-
-      if (error) {
-        console.error('Error upserting message data:', error);
-        throw error;
-      }
-
-      results.messages.upserted = data || msgRows.length;
-    }
-  } catch (error) {
-    console.error('Message analytics sync failed:', error.message);
-    results.messages.error = error.message;
+    if (error) throw error;
+    results.messages.upserted = data || msgRows.length;
   }
 
   // Update last sync timestamp
@@ -314,8 +204,17 @@ exports.handler = async (event, context) => {
         const now = Math.floor(Date.now() / 1000);
         const threeDaysAgo = now - (3 * 24 * 60 * 60);
 
-        const start = params.start ? parseInt(params.start, 10) : threeDaysAgo;
-        const end = params.end ? parseInt(params.end, 10) : now;
+        const start = params.start ? Number(params.start) : threeDaysAgo;
+        const end = params.end ? Number(params.end) : now;
+
+        // Validate: start/end must be valid numbers
+        if (!Number.isFinite(start) || !Number.isFinite(end)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid start or end timestamp' })
+          };
+        }
 
         // Validate: start must be within 365 days
         const maxLookback = now - (365 * 24 * 60 * 60);
@@ -348,72 +247,16 @@ exports.handler = async (event, context) => {
         };
       }
 
-      case 'backfill': {
-        // Backfill from a specific date (December 9, 2024)
-        const backfillStart = params.from
-          ? new Date(params.from).getTime() / 1000
-          : new Date('2024-12-09').getTime() / 1000;
-
-        const now = Math.floor(Date.now() / 1000);
-
-        // Process in 7-day chunks to avoid timeouts
-        const chunkSize = 7 * 24 * 60 * 60; // 7 days in seconds
-        const allResults = [];
-        let currentStart = backfillStart;
-
-        while (currentStart < now) {
-          const currentEnd = Math.min(currentStart + chunkSize, now);
-
-          console.log(`Backfill chunk: ${new Date(currentStart * 1000).toISOString()} to ${new Date(currentEnd * 1000).toISOString()}`);
-
-          const chunkResults = await syncAnalytics(currentStart, currentEnd);
-          allResults.push({
-            period: {
-              start: new Date(currentStart * 1000).toISOString(),
-              end: new Date(currentEnd * 1000).toISOString()
-            },
-            results: chunkResults
-          });
-
-          currentStart = currentEnd;
-
-          // Small delay between chunks to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-
-        // Update backfill cursor
-        const supabase = getSupabase();
-        await supabase
-          .from('app_settings')
-          .update({ waba_backfill_cursor: new Date().toISOString().split('T')[0] })
-          .eq('id', 'default');
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: true,
-            chunks: allResults.length,
-            results: allResults
-          })
-        };
-      }
-
       case 'status': {
-        // Return sync status
         const supabase = getSupabase();
 
         const { data: settings } = await supabase
           .from('app_settings')
-          .select('waba_last_sync, waba_backfill_cursor')
+          .select('waba_last_sync')
           .eq('id', 'default')
           .single();
 
-        const { data: convCount } = await supabase
-          .from('waba_conversation_analytics')
-          .select('*', { count: 'exact', head: true });
-
-        const { data: msgCount } = await supabase
+        const { count: msgCount } = await supabase
           .from('waba_message_analytics')
           .select('*', { count: 'exact', head: true });
 
@@ -422,11 +265,7 @@ exports.handler = async (event, context) => {
           headers,
           body: JSON.stringify({
             lastSync: settings?.waba_last_sync,
-            backfillCursor: settings?.waba_backfill_cursor,
-            recordCounts: {
-              conversations: convCount,
-              messages: msgCount
-            }
+            messageRecords: msgCount
           })
         };
       }

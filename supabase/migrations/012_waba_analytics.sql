@@ -2,17 +2,19 @@
 -- Version: 3.21 (2025-12-17)
 --
 -- Stores WhatsApp Business analytics from Meta Graph API for:
--- - Billable conversation tracking (costs by category/country)
--- - Message delivery metrics (sent, delivered, read)
+-- - Message delivery metrics (sent, delivered) - Primary use case
+-- - Billable conversation tracking (may not be available for all accounts)
+--
+-- Note: Read metrics not available at account level (only per-template via Meta API)
 --
 -- Tables:
--- - waba_conversation_analytics: Billable conversations with costs
--- - waba_message_analytics: Message delivery metrics
+-- - waba_message_analytics: Message delivery metrics (sent, delivered)
+-- - waba_conversation_analytics: Billable conversations (data availability varies by account)
 --
 -- Design:
--- - Daily granularity for cost tracking
+-- - Daily granularity for metrics tracking
 -- - Unique indexes prevent duplicate data on re-sync
--- - Idempotent upsert functions for safe backfill operations
+-- - Idempotent upsert functions for safe sync operations
 
 -- ==================== CONVERSATION ANALYTICS (BILLABLE) ====================
 
@@ -79,7 +81,7 @@ ON waba_message_analytics(waba_id, bucket_date, phone_number_id);
 -- Index for date-based queries
 CREATE INDEX IF NOT EXISTS idx_waba_msg_date ON waba_message_analytics(bucket_date);
 
-COMMENT ON TABLE waba_message_analytics IS 'WhatsApp Business message delivery analytics from Meta Graph API. Tracks sent, delivered, and read counts.';
+COMMENT ON TABLE waba_message_analytics IS 'WhatsApp Business message delivery analytics from Meta Graph API. Tracks sent and delivered counts. Note: read_count is always 0 (not available at account level).';
 
 -- ==================== SYNC TRACKING (in app_settings) ====================
 
@@ -88,7 +90,7 @@ ADD COLUMN IF NOT EXISTS waba_last_sync TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS waba_backfill_cursor DATE;
 
 COMMENT ON COLUMN app_settings.waba_last_sync IS 'Timestamp of last WABA analytics sync from Meta API';
-COMMENT ON COLUMN app_settings.waba_backfill_cursor IS 'Progress marker for WABA backfill job (date to resume from)';
+COMMENT ON COLUMN app_settings.waba_backfill_cursor IS '(Deprecated) Progress marker for WABA backfill job';
 
 -- ==================== UPSERT FUNCTION: CONVERSATIONS ====================
 
@@ -122,7 +124,7 @@ BEGIN
       COALESCE((v_row->>'cost')::DECIMAL, 0),
       NOW()
     )
-    ON CONFLICT (waba_id, bucket_date, conversation_category, COALESCE(country_code, ''), COALESCE(phone_number_id, ''))
+    ON CONFLICT (waba_id, bucket_date, conversation_category, country_code, phone_number_id)
     DO UPDATE SET
       conversation_count = EXCLUDED.conversation_count,
       cost = EXCLUDED.cost,
@@ -167,7 +169,7 @@ BEGIN
       COALESCE((v_row->>'read_count')::INTEGER, 0),
       NOW()
     )
-    ON CONFLICT (waba_id, bucket_date, COALESCE(phone_number_id, ''))
+    ON CONFLICT (waba_id, bucket_date, phone_number_id)
     DO UPDATE SET
       sent = EXCLUDED.sent,
       delivered = EXCLUDED.delivered,

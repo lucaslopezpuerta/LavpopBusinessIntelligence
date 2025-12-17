@@ -1,22 +1,19 @@
-// WhatsAppAnalytics.jsx v1.0
+// WhatsAppAnalytics.jsx v1.1
 // WhatsApp Business API Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-12-17): Updated for available data
+//   - Message metrics: sent, delivered (read not available at account level)
+//   - Daily trend chart for message volume
+//   - Delivery funnel visualization
 // v1.0 (2025-12-17): Initial implementation
-//   - KPI cards: Total conversations, cost, delivery rate, read rate
-//   - Cost trend line chart
-//   - Delivery funnel (sent → delivered → read)
-//   - Date range filter (7d, 30d, custom)
-//   - Sync status and manual sync trigger
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   MessageCircle,
-  DollarSign,
   Send,
   CheckCircle2,
-  Eye,
   RefreshCw,
   TrendingUp,
   AlertCircle,
@@ -27,14 +24,11 @@ import {
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  Cell
+  ResponsiveContainer
 } from 'recharts';
 
 // UI Components
@@ -44,28 +38,17 @@ import SectionCard from '../ui/SectionCard';
 // Services
 import { api } from '../../utils/apiService';
 
-// Chart colors (from chartColors.js)
+// Chart colors
 const COLORS = {
   primary: '#10306B',
   accent: '#53be33',
-  amber: '#f59f0b',
   gray: '#6b7280',
   lightGray: '#d1d5db',
   sent: '#6366f1',
-  delivered: '#10b981',
-  read: '#3b82f6'
+  delivered: '#10b981'
 };
 
 // ==================== HELPER FUNCTIONS ====================
-
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value || 0);
-};
 
 const formatNumber = (value) => {
   return new Intl.NumberFormat('pt-BR').format(value || 0);
@@ -96,7 +79,7 @@ const getDateRange = (filter) => {
       break;
     case 'all':
     default:
-      from = '2024-12-09'; // Start date
+      from = '2025-12-09'; // Start date (first templates created)
       break;
   }
 
@@ -133,15 +116,15 @@ const DateFilter = ({ value, onChange }) => {
   );
 };
 
-// ==================== COST TREND CHART ====================
+// ==================== MESSAGE TREND CHART ====================
 
-const CostTrendChart = ({ data, isLoading }) => {
+const MessageTrendChart = ({ data, isLoading }) => {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
     return data.map(d => ({
       date: formatDate(d.bucket_date),
-      cost: parseFloat(d.cost) || 0,
-      conversations: d.conversations || 0
+      sent: d.sent || 0,
+      delivered: d.delivered || 0
     }));
   }, [data]);
 
@@ -170,11 +153,11 @@ const CostTrendChart = ({ data, isLoading }) => {
     return (
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3 text-sm">
         <p className="font-medium text-slate-900 dark:text-white mb-1">{label}</p>
-        <p className="text-green-600 dark:text-green-400">
-          Custo: {formatCurrency(payload[0]?.value)}
+        <p className="text-indigo-600 dark:text-indigo-400">
+          Enviadas: {formatNumber(payload[0]?.payload?.sent)}
         </p>
-        <p className="text-slate-600 dark:text-slate-400">
-          Conversas: {formatNumber(payload[0]?.payload?.conversations)}
+        <p className="text-emerald-600 dark:text-emerald-400">
+          Entregues: {formatNumber(payload[0]?.payload?.delivered)}
         </p>
       </div>
     );
@@ -194,16 +177,23 @@ const CostTrendChart = ({ data, isLoading }) => {
           tick={{ fontSize: 11, fill: COLORS.gray }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `R$${value}`}
         />
         <Tooltip content={<CustomTooltip />} />
         <Line
           type="monotone"
-          dataKey="cost"
-          stroke={COLORS.accent}
+          dataKey="sent"
+          stroke={COLORS.sent}
           strokeWidth={2}
-          dot={{ fill: COLORS.accent, strokeWidth: 0, r: 3 }}
-          activeDot={{ r: 5, fill: COLORS.accent }}
+          dot={{ fill: COLORS.sent, strokeWidth: 0, r: 3 }}
+          activeDot={{ r: 5, fill: COLORS.sent }}
+        />
+        <Line
+          type="monotone"
+          dataKey="delivered"
+          stroke={COLORS.delivered}
+          strokeWidth={2}
+          dot={{ fill: COLORS.delivered, strokeWidth: 0, r: 3 }}
+          activeDot={{ r: 5, fill: COLORS.delivered }}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -216,7 +206,7 @@ const DeliveryFunnel = ({ summary, isLoading }) => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
+        {[...Array(2)].map((_, i) => (
           <div key={i} className="h-16 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
         ))}
       </div>
@@ -237,18 +227,11 @@ const DeliveryFunnel = ({ summary, isLoading }) => {
       color: COLORS.delivered,
       icon: CheckCircle2,
       percentage: summary?.deliveryRate || 0
-    },
-    {
-      label: 'Lidas',
-      value: summary?.totalRead || 0,
-      color: COLORS.read,
-      icon: Eye,
-      percentage: summary?.readRate || 0
     }
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {funnelData.map((stage, index) => {
         const Icon = stage.icon;
         const width = Math.max(30, stage.percentage);
@@ -257,7 +240,7 @@ const DeliveryFunnel = ({ summary, isLoading }) => {
           <div key={stage.label} className="relative">
             {/* Arrow connector */}
             {index > 0 && (
-              <div className="absolute -top-3 left-6 text-slate-300 dark:text-slate-600">
+              <div className="absolute -top-4 left-6 text-slate-300 dark:text-slate-600">
                 <ArrowRight className="w-4 h-4 rotate-90" />
               </div>
             )}
@@ -283,7 +266,7 @@ const DeliveryFunnel = ({ summary, isLoading }) => {
                 </div>
 
                 {/* Progress bar */}
-                <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -317,10 +300,8 @@ const WhatsAppAnalytics = () => {
   const [error, setError] = useState(null);
 
   // Data states
-  const [summary, setSummary] = useState(null);
   const [dailyMetrics, setDailyMetrics] = useState([]);
   const [messageSummary, setMessageSummary] = useState(null);
-  const [conversationSummary, setConversationSummary] = useState(null);
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -330,18 +311,14 @@ const WhatsAppAnalytics = () => {
     try {
       const { from, to } = getDateRange(dateFilter);
 
-      // Fetch all data in parallel
-      const [summaryRes, dailyRes, messagesRes, conversationsRes] = await Promise.all([
-        api.waba.getSummary(),
+      // Fetch message data
+      const [dailyRes, messagesRes] = await Promise.all([
         api.waba.getDailyMetrics(from, to),
-        api.waba.getMessages(from, to),
-        api.waba.getConversations({ from, to })
+        api.waba.getMessages(from, to)
       ]);
 
-      setSummary(summaryRes.summary);
       setDailyMetrics(dailyRes.metrics || []);
       setMessageSummary(messagesRes.summary);
-      setConversationSummary(conversationsRes.summary);
     } catch (err) {
       console.error('Failed to fetch WABA analytics:', err);
       setError(err.message);
@@ -369,18 +346,17 @@ const WhatsAppAnalytics = () => {
     }
   };
 
-  // Calculate KPIs from current period data
+  // Calculate KPIs from message data
   const kpis = useMemo(() => {
     return {
-      totalConversations: conversationSummary?.totalConversations || 0,
-      totalCost: conversationSummary?.totalCost || 0,
-      deliveryRate: messageSummary?.deliveryRate || 0,
-      readRate: messageSummary?.readRate || 0
+      totalSent: messageSummary?.totalSent || 0,
+      totalDelivered: messageSummary?.totalDelivered || 0,
+      deliveryRate: messageSummary?.deliveryRate || 0
     };
-  }, [conversationSummary, messageSummary]);
+  }, [messageSummary]);
 
   // Check if we have any data
-  const hasData = summary?.total_conversations > 0 || dailyMetrics.length > 0;
+  const hasData = dailyMetrics.length > 0 || messageSummary?.totalSent > 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -395,7 +371,7 @@ const WhatsAppAnalytics = () => {
               WhatsApp Business Analytics
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Custos e métricas de entrega
+              Métricas de envio e entrega de mensagens
             </p>
           </div>
         </div>
@@ -450,46 +426,36 @@ const WhatsAppAnalytics = () => {
 
       {/* KPI Cards */}
       {(hasData || isLoading) && (
-        <KPIGrid columns={4}>
+        <KPIGrid columns={3}>
           <KPICard
-            label="Conversas"
-            value={formatNumber(kpis.totalConversations)}
-            icon={MessageCircle}
+            label="Mensagens Enviadas"
+            value={formatNumber(kpis.totalSent)}
+            icon={Send}
             variant="gradient"
-            gradientFrom="from-green-500"
-            gradientTo="to-emerald-600"
+            gradientFrom="from-indigo-500"
+            gradientTo="to-purple-600"
             isLoading={isLoading}
             subtitle="Total no período"
           />
           <KPICard
-            label="Custo Total"
-            value={formatCurrency(kpis.totalCost)}
-            icon={DollarSign}
+            label="Mensagens Entregues"
+            value={formatNumber(kpis.totalDelivered)}
+            icon={CheckCircle2}
             variant="gradient"
-            gradientFrom="from-amber-500"
-            gradientTo="to-orange-600"
+            gradientFrom="from-emerald-500"
+            gradientTo="to-green-600"
             isLoading={isLoading}
-            subtitle="Marketing + outros"
+            subtitle="Chegaram ao destinatário"
           />
           <KPICard
             label="Taxa de Entrega"
             value={formatPercent(kpis.deliveryRate)}
-            icon={CheckCircle2}
+            icon={TrendingUp}
             variant="gradient"
             gradientFrom="from-blue-500"
-            gradientTo="to-indigo-600"
+            gradientTo="to-cyan-600"
             isLoading={isLoading}
-            subtitle="Msgs entregues"
-          />
-          <KPICard
-            label="Taxa de Leitura"
-            value={formatPercent(kpis.readRate)}
-            icon={Eye}
-            variant="gradient"
-            gradientFrom="from-purple-500"
-            gradientTo="to-violet-600"
-            isLoading={isLoading}
-            subtitle="Msgs lidas"
+            subtitle="Entregues / Enviadas"
           />
         </KPIGrid>
       )}
@@ -497,52 +463,24 @@ const WhatsAppAnalytics = () => {
       {/* Charts row */}
       {(hasData || isLoading) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Cost Trend Chart */}
+          {/* Message Trend Chart */}
           <SectionCard
-            title="Evolução de Custos"
-            subtitle="Custo diário de conversas"
+            title="Volume de Mensagens"
+            subtitle="Enviadas e entregues por dia"
             icon={TrendingUp}
           >
-            <CostTrendChart data={dailyMetrics} isLoading={isLoading} />
+            <MessageTrendChart data={dailyMetrics} isLoading={isLoading} />
           </SectionCard>
 
           {/* Delivery Funnel */}
           <SectionCard
             title="Funil de Entrega"
-            subtitle="Enviadas → Entregues → Lidas"
+            subtitle="Enviadas → Entregues"
             icon={Send}
           >
             <DeliveryFunnel summary={messageSummary} isLoading={isLoading} />
           </SectionCard>
         </div>
-      )}
-
-      {/* Category breakdown (if multiple categories exist) */}
-      {(hasData || isLoading) && conversationSummary?.byCategory && Object.keys(conversationSummary.byCategory).length > 1 && (
-        <SectionCard
-          title="Por Categoria"
-          subtitle="Breakdown por tipo de conversa"
-          icon={MessageCircle}
-        >
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {Object.entries(conversationSummary.byCategory).map(([category, data]) => (
-              <div
-                key={category}
-                className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-center"
-              >
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
-                  {category}
-                </p>
-                <p className="text-xl font-bold text-slate-900 dark:text-white">
-                  {formatNumber(data.conversations)}
-                </p>
-                <p className="text-sm text-green-600 dark:text-green-400">
-                  {formatCurrency(data.cost)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
       )}
     </div>
   );
