@@ -1,7 +1,10 @@
-// MinimalTopBar.jsx v1.6 - MOBILE SETTINGS ACCESS
+// MinimalTopBar.jsx v1.7 - EXPORT MODAL INTEGRATION
 // Compact top bar with location, weather, and widgets
 //
 // CHANGELOG:
+// v1.7 (2025-12-17): Export modal integration
+//   - Export button now opens modal instead of browser print
+//   - Supports CSV and PDF export per view
 // v1.6 (2025-12-16): Mobile settings access
 //   - Removed redundant hamburger menu (breadcrumb handles navigation)
 //   - Settings button now visible on mobile
@@ -53,7 +56,7 @@ const TAB_CONFIG = {
   upload: { label: 'Upload', icon: Upload }
 };
 
-const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard', onOpenSettings }) => {
+const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard', onOpenSettings, onOpenExport }) => {
   const { toggleMobileSidebar } = useSidebar();
   const currentTab = TAB_CONFIG[activeTab] || TAB_CONFIG.dashboard;
   const TabIcon = currentTab.icon;
@@ -107,10 +110,10 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard', onOpenS
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Export Report Button (hidden on mobile) */}
           <button
-            onClick={() => window.print()}
+            onClick={onOpenExport}
             className="hidden sm:flex p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            title="Exportar Relatório"
-            aria-label="Exportar relatório"
+            title="Exportar Dados (CSV/PDF)"
+            aria-label="Exportar dados"
           >
             <FileDown className="w-4 h-4" />
           </button>

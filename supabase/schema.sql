@@ -1,6 +1,14 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.19 (2025-12-15)
+-- Version: 3.20 (2025-12-16)
+--
+-- v3.20: App Settings Table
+--   - Added app_settings table for centralized configuration
+--   - Stores business settings (service price, cashback, fixed costs, maintenance)
+--   - Replaces localStorage-based settings from BusinessSettingsModal
+--   - Single-row table (id='default') for simplicity
+--   - Auto-updates updated_at timestamp on changes
+--   - See migrations/011_app_settings.sql
 --
 -- v3.19: Fix Duplicate Queue Entries
 --   - record_automation_contact() now checks for existing queued entries
@@ -643,6 +651,57 @@ COMMENT ON COLUMN webhook_events.event_type IS 'Event type: delivery_status, but
 COMMENT ON COLUMN webhook_events.payload IS 'For delivery_status: sent/delivered/read/failed/undelivered. For button_click: the payload.';
 COMMENT ON COLUMN webhook_events.error_code IS 'Twilio error code for failed messages (e.g., 63024)';
 COMMENT ON COLUMN webhook_events.campaign_id IS 'Campaign ID for direct linking (alternative to joining via campaign_contacts)';
+
+-- ==================== APP SETTINGS TABLE (v3.20) ====================
+-- Centralized app configuration settings
+-- Replaces localStorage-based settings from BusinessSettingsModal
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+
+  -- Business Settings (Pricing)
+  service_price DECIMAL(10,2) DEFAULT 17.90,
+  cashback_percent DECIMAL(5,2) DEFAULT 7.5,
+  cashback_start_date DATE DEFAULT '2024-06-01',
+
+  -- Fixed Costs (Monthly)
+  rent_cost DECIMAL(10,2) DEFAULT 2000,
+  electricity_cost DECIMAL(10,2) DEFAULT 500,
+  water_cost DECIMAL(10,2) DEFAULT 200,
+  internet_cost DECIMAL(10,2) DEFAULT 100,
+  other_fixed_costs DECIMAL(10,2) DEFAULT 200,
+
+  -- Maintenance
+  maintenance_interval_days INTEGER DEFAULT 45,
+  maintenance_downtime_hours INTEGER DEFAULT 6,
+  maintenance_cost_per_session DECIMAL(10,2) DEFAULT 300,
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Initialize with defaults if table is empty
+INSERT INTO app_settings (id)
+VALUES ('default')
+ON CONFLICT (id) DO NOTHING;
+
+-- Trigger to update updated_at on changes
+CREATE OR REPLACE FUNCTION update_app_settings_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS app_settings_updated_at ON app_settings;
+CREATE TRIGGER app_settings_updated_at
+  BEFORE UPDATE ON app_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION update_app_settings_timestamp();
+
+COMMENT ON TABLE app_settings IS 'App-wide settings including business parameters, costs, and maintenance configuration. Single-row table (id=default).';
 
 -- ==================== VIEWS ====================
 -- Drop existing views first to allow column changes
@@ -2361,6 +2420,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON campaign_contacts TO authenticated;
 -- v3.8: Webhook events for delivery tracking
 GRANT SELECT, INSERT, UPDATE ON webhook_events TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE webhook_events_id_seq TO authenticated;
+-- v3.20: App settings
+GRANT SELECT, INSERT, UPDATE ON app_settings TO authenticated;
 
 -- NEW v3.0: Core data tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON transactions TO authenticated;
@@ -2417,3 +2478,5 @@ GRANT EXECUTE ON FUNCTION calculate_customer_risk_on_insert TO authenticated;
 -- v3.14: Smart customer upsert functions
 GRANT EXECUTE ON FUNCTION upsert_customer_profile TO authenticated;
 GRANT EXECUTE ON FUNCTION upsert_customer_profiles_batch TO authenticated;
+-- v3.20: App settings trigger function
+GRANT EXECUTE ON FUNCTION update_app_settings_timestamp TO authenticated;

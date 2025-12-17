@@ -1,7 +1,28 @@
-// IconSidebar.jsx v1.4 - URL ROUTING SUPPORT
+// IconSidebar.jsx v1.9 - ACCESSIBILITY IMPROVEMENTS
 // Minimalist icon-only sidebar with hover-to-expand functionality
 //
 // CHANGELOG:
+// v1.9 (2025-12-17): Accessibility improvements
+//   - Added aria-current="page" to active nav items
+//   - Improves screen reader navigation
+// v1.8 (2025-12-17): Remove label animations
+//   - Removed AnimatePresence and motion.span from nav labels
+//   - Labels now appear/disappear instantly with sidebar width
+//   - Fixes flicker when clicking nav items while pinned
+//   - Sidebar width transition still smooth (handled by aside)
+// v1.7 (2025-12-17): Pinned hover flicker fix
+//   - Skip hover state updates when sidebar is pinned (irrelevant)
+//   - Added initial={false} to prevent mount animation
+//   - Fixes flicker when hovering over pinned sidebar
+// v1.6 (2025-12-17): Collapse on navigate fix
+//   - Sidebar now collapses after clicking a nav item (when not pinned)
+//   - Fixes issue where sidebar stayed expanded after navigation
+//   - Better UX: click to navigate, sidebar gets out of the way
+// v1.5 (2025-12-17): Pin toggle support
+//   - Added pin button at bottom of sidebar
+//   - When pinned, sidebar stays expanded (240px) regardless of hover
+//   - Pin preference persists via SidebarContext (localStorage)
+//   - Improves discoverability for users who prefer always-visible labels
 // v1.4 (2025-12-16): URL routing support
 //   - Added path property to navigation items for Link components
 //   - Uses Link from react-router-dom for proper <a> tags
@@ -26,14 +47,17 @@
 //   - Dark mode support
 //   - Tooltip fallback for collapsed state
 
-import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import LogoNoBackground from '../assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
 
 const IconSidebar = ({ activeTab, onNavigate }) => {
-  const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar } = useSidebar();
+  const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar, isPinned, togglePinned } = useSidebar();
+
+  // Sidebar is expanded when pinned OR hovered
+  const isExpanded = isPinned || isHovered;
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/' },
@@ -51,43 +75,47 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
     }
   };
 
+  // Collapse sidebar after clicking a nav item (unless pinned)
+  const handleDesktopNavigate = () => {
+    if (!isPinned) {
+      setIsHovered(false);
+    }
+  };
+
   // Desktop Sidebar
   const DesktopSidebar = () => (
     <motion.aside
       className="hidden lg:flex fixed left-0 top-0 h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex-col"
-      initial={{ width: 60 }}
-      animate={{ width: isHovered ? 240 : 60 }}
+      initial={false}
+      animate={{ width: isExpanded ? 240 : 60 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => !isPinned && setIsHovered(true)}
+      onMouseLeave={() => !isPinned && setIsHovered(false)}
     >
       {/* Logo - Height matches top bar exactly (60px) */}
       <div className="h-[60px] flex items-center justify-center border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
         <motion.div
           className="flex items-center gap-2 overflow-hidden px-2"
           initial={false}
-          animate={{ justifyContent: isHovered ? 'flex-start' : 'center' }}
+          animate={{ justifyContent: isExpanded ? 'flex-start' : 'center' }}
         >
           <img
             src={LogoNoBackground}
             alt="Lavpop"
             className="w-10 h-10 object-contain flex-shrink-0"
           />
-          <AnimatePresence>
-            {isHovered && (
-              <motion.div
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden whitespace-nowrap"
-              >
-                <span className="text-lg font-bold text-slate-900 dark:text-white">
-                  Lavpop<span className="text-lavpop-blue">BI</span>
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={false}
+              animate={{ opacity: 1, width: 'auto' }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+              <span className="text-lg font-bold text-slate-900 dark:text-white">
+                Lavpop<span className="text-lavpop-blue">BI</span>
+              </span>
+            </motion.div>
+          )}
         </motion.div>
       </div>
 
@@ -102,6 +130,8 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
               <Link
                 key={item.id}
                 to={item.path}
+                onClick={handleDesktopNavigate}
+                aria-current={isActive ? 'page' : undefined}
                 className={`
                   relative flex items-center gap-3 h-11 rounded-lg
                   transition-all duration-200
@@ -111,33 +141,51 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }
                 `}
-                title={!isHovered ? item.label : undefined}
+                title={!isExpanded ? item.label : undefined}
               >
                 {/* Active indicator - left accent bar when collapsed */}
-                {isActive && !isHovered && (
+                {isActive && !isExpanded && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full shadow-md" />
                 )}
-                <div className={`flex items-center justify-center ${isHovered ? 'ml-3' : 'mx-auto'}`}>
+                <div className={`flex items-center justify-center ${isExpanded ? 'ml-3' : 'mx-auto'}`}>
                   <Icon className="w-5 h-5" />
                 </div>
-                <AnimatePresence>
-                  {isHovered && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden whitespace-nowrap text-sm font-semibold"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                {isExpanded && (
+                  <span className="whitespace-nowrap text-sm font-semibold">
+                    {item.label}
+                  </span>
+                )}
               </Link>
             );
           })}
         </div>
       </nav>
+
+      {/* Pin Toggle Button */}
+      <div className="p-2 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
+        <button
+          onClick={togglePinned}
+          className={`
+            w-full flex items-center gap-3 h-10 rounded-lg
+            transition-all duration-200
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2
+            ${isPinned
+              ? 'text-lavpop-blue bg-lavpop-blue/10'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }
+          `}
+          title={!isExpanded ? (isPinned ? 'Desafixar menu' : 'Fixar menu') : undefined}
+        >
+          <div className={`flex items-center justify-center ${isExpanded ? 'ml-3' : 'mx-auto'}`}>
+            {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+          </div>
+          {isExpanded && (
+            <span className="whitespace-nowrap text-xs font-medium">
+              {isPinned ? 'Desafixar menu' : 'Fixar menu'}
+            </span>
+          )}
+        </button>
+      </div>
     </motion.aside>
   );
 
@@ -178,6 +226,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                     key={item.id}
                     to={item.path}
                     onClick={handleMobileNavigate}
+                    aria-current={isActive ? 'page' : undefined}
                     className={`
                       relative flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all duration-200 text-sm font-semibold

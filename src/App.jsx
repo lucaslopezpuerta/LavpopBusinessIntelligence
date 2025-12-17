@@ -1,4 +1,4 @@
-// App.jsx v8.0 - URL ROUTING WITH REACT ROUTER
+// App.jsx v8.4 - CSV/PDF EXPORT
 // ✅ Added minimalist icon sidebar with hover expansion
 // ✅ Compact top bar with widgets (60px to match sidebar)
 // ✅ Mobile drawer with backdrop overlay
@@ -11,8 +11,29 @@
 // ✅ Data freshness footer with CSV upload, sync time, build version
 // ✅ View-specific skeleton loading states for better perceived performance
 // ✅ URL-based routing with deep linking support
+// ✅ Sidebar pin toggle for always-visible labels
+// ✅ Keyboard shortcuts for power users
+// ✅ Accessibility: prefers-reduced-motion support
+// ✅ Real CSV/PDF export per view
 //
 // CHANGELOG:
+// v8.4 (2025-12-17): CSV/PDF export
+//   - Export modal with format selection (CSV/PDF)
+//   - View-specific export options (customers, transactions, KPIs, etc.)
+//   - jsPDF + jspdf-autotable for PDF reports
+//   - papaparse for CSV with UTF-8 BOM (Excel compatible)
+// v8.3 (2025-12-17): Reduced motion support
+//   - Respects prefers-reduced-motion system preference
+//   - Disables all Framer Motion animations when enabled
+//   - View transitions simplified for accessibility
+// v8.2 (2025-12-17): Keyboard shortcuts
+//   - Press 1-7 to navigate between views
+//   - Press , to open settings modal
+//   - Shortcuts disabled when typing in inputs
+// v8.1 (2025-12-17): Sidebar pin toggle support
+//   - Content area padding dynamically adjusts when sidebar is pinned
+//   - Smooth 300ms transition for padding changes
+//   - Works seamlessly with all views
 // v8.0 (2025-12-16): URL routing with React Router
 //   - Added BrowserRouter for client-side routing
 //   - URLs now reflect current view (/, /customers, /campaigns, etc.)
@@ -51,9 +72,10 @@ import { RefreshCw, XCircle, Upload, Clock, Code } from 'lucide-react';
 // Build timestamp injected by Vite at build time
 const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : null;
 import LogoNoBackground from './assets/LogoNoBackground.svg';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
+import { useReducedMotion } from './hooks/useReducedMotion';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { SidebarProvider } from './contexts/SidebarContext';
+import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { DataFreshnessProvider } from './contexts/DataFreshnessContext';
 import { RealtimeSyncProvider } from './contexts/RealtimeSyncContext';
@@ -65,6 +87,7 @@ import Backdrop from './components/Backdrop';
 import MinimalTopBar from './components/MinimalTopBar';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppSettingsModal from './components/AppSettingsModal';
+import ExportModal from './components/ExportModal';
 import {
   DashboardLoadingSkeleton,
   CustomersLoadingSkeleton,
@@ -151,6 +174,8 @@ const getLoadingFallback = (tabId) => {
 
 function AppContent() {
   const { activeTab, navigateTo } = useNavigation();
+  const { isPinned } = useSidebar();
+  const prefersReducedMotion = useReducedMotion();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -158,6 +183,7 @@ function AppContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState('complete');
   const [showSettings, setShowSettings] = useState(false);
+  const [showExport, setShowExport] = useState(false);
 
   // Smart refresh state
   const [lastRefreshed, setLastRefreshed] = useState(null);
@@ -270,6 +296,47 @@ function AppContent() {
 
     return () => clearInterval(intervalId);
   }, [loading, loadData]);
+
+  // Keyboard shortcuts for navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger shortcuts when typing in inputs
+      const target = e.target;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      // Don't trigger if modifier keys are pressed (except for ?)
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
+      const shortcuts = {
+        '1': 'dashboard',
+        '2': 'customers',
+        '3': 'diretorio',
+        '4': 'campaigns',
+        '5': 'intelligence',
+        '6': 'operations',
+        '7': 'upload',
+      };
+
+      const tabId = shortcuts[e.key];
+      if (tabId) {
+        e.preventDefault();
+        navigateTo(tabId);
+      }
+
+      // Comma opens settings
+      if (e.key === ',') {
+        e.preventDefault();
+        setShowSettings(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigateTo]);
 
   // Note: Realtime sync for contact_tracking is handled by useContactTracking hook
   // which listens to 'contactTrackingUpdate' events dispatched by RealtimeSyncProvider
@@ -408,45 +475,47 @@ function AppContent() {
 
   // Main App
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-      {/* Sidebar Navigation */}
-      <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} />
+    <MotionConfig reducedMotion={prefersReducedMotion ? 'always' : 'never'}>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+        {/* Sidebar Navigation */}
+        <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} />
 
-      {/* Mobile Backdrop */}
-      <Backdrop />
+        {/* Mobile Backdrop */}
+        <Backdrop />
 
-      {/* Main Content Area - with sidebar offset */}
-      <div className="lg:pl-[60px] min-h-screen flex flex-col">
-        {/* Top Bar */}
-        <MinimalTopBar
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          activeTab={activeTab}
-          onOpenSettings={() => setShowSettings(true)}
-        />
+        {/* Main Content Area - with sidebar offset (dynamic when pinned) */}
+        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-[60px]'}`}>
+          {/* Top Bar */}
+          <MinimalTopBar
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            activeTab={activeTab}
+            onOpenSettings={() => setShowSettings(true)}
+            onOpenExport={() => setShowExport(true)}
+          />
 
-        {/* Main Content - Full width with edge-to-edge support */}
-        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Suspense fallback={getLoadingFallback(activeTab)}>
-                <ActiveComponent
-                  data={data}
-                  onNavigate={handleTabChange}
-                  viewMode={viewMode}
-                  setViewMode={setViewMode}
-                  onDataChange={refreshAfterAction}
-                />
-              </Suspense>
-            </motion.div>
-          </AnimatePresence>
-        </main>
+          {/* Main Content - Full width with edge-to-edge support */}
+          <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
+              >
+                <Suspense fallback={getLoadingFallback(activeTab)}>
+                  <ActiveComponent
+                    data={data}
+                    onNavigate={handleTabChange}
+                    viewMode={viewMode}
+                    setViewMode={setViewMode}
+                    onDataChange={refreshAfterAction}
+                  />
+                </Suspense>
+              </motion.div>
+            </AnimatePresence>
+          </main>
 
         {/* Footer */}
         <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto">
@@ -486,12 +555,21 @@ function AppContent() {
         </footer>
       </div>
 
-      {/* Settings Modal */}
-      <AppSettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
-    </div>
+        {/* Settings Modal */}
+        <AppSettingsModal
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+        />
+
+        {/* Export Modal */}
+        <ExportModal
+          isOpen={showExport}
+          onClose={() => setShowExport(false)}
+          activeView={activeTab}
+          data={data}
+        />
+      </div>
+    </MotionConfig>
   );
 }
 
