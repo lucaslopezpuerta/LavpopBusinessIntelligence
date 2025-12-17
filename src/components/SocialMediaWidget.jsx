@@ -1,6 +1,6 @@
-// SocialMediaWidget.jsx v7.0 - META API WITH HOVER DROPDOWN
+// SocialMediaWidget.jsx v7.1 - PROFILE PICTURE IN DROPDOWN
 // Fetches Instagram/Facebook metrics including insights (profile views, reach, etc.)
-// Shows hover dropdown with detailed metrics
+// Shows hover dropdown with detailed metrics and Instagram profile picture
 import React, { useState, useEffect } from 'react';
 import { Instagram, Facebook, Users, Loader, Eye, Link2, Radio, Image, Heart, ExternalLink } from 'lucide-react';
 
@@ -18,6 +18,7 @@ const SocialMediaWidget = ({ compact = false }) => {
     instagramFollowers: null,
     instagramUsername: null,
     instagramMediaCount: null,
+    instagramProfilePicture: null,
     instagramUrl: null,
     instagramInsights: null,
     facebookFollowers: null,
@@ -80,6 +81,7 @@ const SocialMediaWidget = ({ compact = false }) => {
           instagramFollowers: null,
           instagramUsername: null,
           instagramMediaCount: null,
+          instagramProfilePicture: null,
           instagramUrl: null,
           instagramInsights: null,
           facebookFollowers: null,
@@ -101,6 +103,7 @@ const SocialMediaWidget = ({ compact = false }) => {
         instagramFollowers: apiData.instagram?.followers || 0,
         instagramUsername: apiData.instagram?.username || null,
         instagramMediaCount: apiData.instagram?.mediaCount || 0,
+        instagramProfilePicture: apiData.instagram?.profilePicture || null,
         instagramUrl: apiData.instagram?.url || SOCIAL_MEDIA_CONFIG.FALLBACK_INSTAGRAM_URL,
         instagramInsights: apiData.instagram?.insights || null,
         facebookFollowers: apiData.facebook?.followers || 0,
@@ -169,9 +172,17 @@ const SocialMediaWidget = ({ compact = false }) => {
     <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
       {/* Header */}
       <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-700">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-          <Instagram className="w-4 h-4 text-white" />
-        </div>
+        {socialData.instagramProfilePicture ? (
+          <img
+            src={socialData.instagramProfilePicture}
+            alt={socialData.instagramUsername || 'Instagram'}
+            className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/30"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <Instagram className="w-5 h-5 text-white" />
+          </div>
+        )}
         <div>
           <div className="text-sm font-bold text-slate-900 dark:text-white">Instagram</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">@{socialData.instagramUsername || 'lavpopcaxiasdosul'}</div>

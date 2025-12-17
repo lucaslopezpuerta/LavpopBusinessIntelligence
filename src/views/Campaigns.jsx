@@ -1,8 +1,12 @@
-// Campaigns.jsx v2.3.0 - FULL-WIDTH LAYOUT
+// Campaigns.jsx v2.4.0 - WhatsApp Analytics
 // Customer Messaging & Campaign Management Tab
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.4.0 (2025-12-17): WhatsApp Business Analytics
+//   - Added WhatsApp tab for WABA analytics
+//   - Shows conversation costs, delivery metrics
+//   - Lazy-loaded WhatsAppAnalytics component
 // v2.3.0 (2025-12-16): Full-width layout
 //   - REMOVED: Redundant padding (now uses App.jsx padding)
 //   - REMOVED: max-w-[1600px] constraint for full-width
@@ -61,6 +65,7 @@ import CampaignDashboard from '../components/campaigns/CampaignDashboard';
 // Lazy-loaded heavy components (60KB + 50KB savings)
 const AutomationRules = lazy(() => import('../components/campaigns/AutomationRules'));
 const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
+const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAnalytics'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback = () => (
@@ -218,6 +223,13 @@ const Campaigns = ({ data }) => {
         <CampaignDashboard
           audienceSegments={audienceSegments}
         />
+      )}
+
+      {/* WhatsApp Business Analytics Section */}
+      {activeSection === 'whatsapp' && (
+        <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div>}>
+          <WhatsAppAnalytics />
+        </Suspense>
       )}
 
       {/* Automation Rules Section */}

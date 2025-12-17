@@ -1,6 +1,14 @@
-// apiService.js v2.1
+// apiService.js v2.2
 // Unified API service for Supabase backend communication
 // Provides fallback to localStorage when backend is unavailable
+//
+// Version: 2.2 (2025-12-17) - WABA analytics
+//   - Added api.waba.getSummary() - aggregated KPIs
+//   - Added api.waba.getDailyMetrics() - time series data
+//   - Added api.waba.getConversations() - billable conversations
+//   - Added api.waba.getMessages() - delivery metrics
+//   - Added api.waba.triggerSync() - manual sync
+//   - Added api.waba.triggerBackfill() - historical data backfill
 //
 // Version: 2.1 (2025-12-13) - Unified campaign contact tracking
 //   - Added campaignContacts.record for manual campaigns
@@ -511,6 +519,107 @@ export const api = {
   migrate: {
     async importFromLocalStorage(data) {
       return await apiRequest('migrate.import', { data });
+    }
+  },
+
+  // ==================== WABA ANALYTICS ====================
+  // WhatsApp Business API analytics from Meta Graph API
+  waba: {
+    /**
+     * Get aggregated WABA analytics summary (KPIs)
+     * Returns total conversations, costs, delivery rates
+     */
+    async getSummary() {
+      try {
+        const result = await apiRequest('waba.getSummary');
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch WABA summary:', error);
+        return { hasData: false, summary: null };
+      }
+    },
+
+    /**
+     * Get daily WABA metrics for time series charts
+     * @param {string} from - Start date (YYYY-MM-DD)
+     * @param {string} to - End date (YYYY-MM-DD)
+     */
+    async getDailyMetrics(from = null, to = null) {
+      try {
+        const params = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        const result = await apiRequest('waba.getDailyMetrics', params, 'GET');
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch WABA daily metrics:', error);
+        return { metrics: [], count: 0 };
+      }
+    },
+
+    /**
+     * Get conversation analytics (billable conversations)
+     * @param {object} filters - { from, to, category, country }
+     */
+    async getConversations(filters = {}) {
+      try {
+        const result = await apiRequest('waba.getConversations', filters, 'GET');
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch WABA conversations:', error);
+        return { data: [], count: 0, summary: { totalConversations: 0, totalCost: 0, byCategory: {} } };
+      }
+    },
+
+    /**
+     * Get message analytics (delivery metrics)
+     * @param {string} from - Start date (YYYY-MM-DD)
+     * @param {string} to - End date (YYYY-MM-DD)
+     */
+    async getMessages(from = null, to = null) {
+      try {
+        const params = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        const result = await apiRequest('waba.getMessages', params, 'GET');
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch WABA messages:', error);
+        return { data: [], count: 0, summary: { totalSent: 0, totalDelivered: 0, totalRead: 0, deliveryRate: 0, readRate: 0 } };
+      }
+    },
+
+    /**
+     * Trigger manual sync of WABA analytics (calls waba-analytics function)
+     */
+    async triggerSync() {
+      try {
+        const response = await fetch('/.netlify/functions/waba-analytics?action=sync', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to trigger WABA sync:', error);
+        return { success: false, error: error.message };
+      }
+    },
+
+    /**
+     * Trigger backfill of WABA analytics from a specific date
+     * @param {string} from - Start date (YYYY-MM-DD), defaults to 2024-12-09
+     */
+    async triggerBackfill(from = '2024-12-09') {
+      try {
+        const response = await fetch(`/.netlify/functions/waba-analytics?action=backfill&from=${from}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to trigger WABA backfill:', error);
+        return { success: false, error: error.message };
+      }
     }
   },
 

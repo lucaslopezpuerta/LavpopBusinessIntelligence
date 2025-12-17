@@ -1,6 +1,12 @@
 // netlify/functions/supabase-api.js
 // Unified API for Supabase database operations
-// Handles campaigns, blacklist, communication logs, and scheduled campaigns
+// Handles campaigns, blacklist, communication logs, scheduled campaigns, and WABA analytics
+//
+// Version: 3.3 (2025-12-17) - WABA analytics routes
+//   - Added waba.getSummary - aggregated KPIs from waba_analytics_summary view
+//   - Added waba.getDailyMetrics - time series data from waba_daily_metrics view
+//   - Added waba.getConversations - billable conversation data with category breakdown
+//   - Added waba.getMessages - delivery metrics (sent, delivered, read)
 //
 // Version: 3.2 (2025-12-14) - Risk level capture at time of contact
 //   - recordCampaignContactWithTracking now fetches customer risk_level from customers table
@@ -321,6 +327,19 @@ exports.handler = async (event, context) => {
       case 'migrate.import':
         return await migrateFromLocalStorage(supabase, data, headers);
 
+      // ==================== WABA ANALYTICS ====================
+      case 'waba.getSummary':
+        return await getWabaSummary(supabase, headers);
+
+      case 'waba.getDailyMetrics':
+        return await getWabaDailyMetrics(supabase, params, headers);
+
+      case 'waba.getConversations':
+        return await getWabaConversations(supabase, params, headers);
+
+      case 'waba.getMessages':
+        return await getWabaMessages(supabase, params, headers);
+
       default:
         return {
           statusCode: 400,
@@ -343,7 +362,8 @@ exports.handler = async (event, context) => {
               'eligibility.check', 'eligibility.checkBatch',
               'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics', 'webhook_events.getEngagementStats',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
-              'migrate.import'
+              'migrate.import',
+              'waba.getSummary', 'waba.getDailyMetrics', 'waba.getConversations', 'waba.getMessages'
             ]
           })
         };
@@ -2562,6 +2582,228 @@ async function checkBatchEligibilityFallback(supabase, customerIds, campaignType
         ),
         error: error.message
       })
+    };
+  }
+}
+
+// ==================== WABA ANALYTICS FUNCTIONS ====================
+
+/**
+ * Get WABA analytics summary (aggregated KPIs)
+ */
+async function getWabaSummary(supabase, headers) {
+  console.log('[API] waba.getSummary');
+
+  try {
+    // Get summary from view
+    const { data, error } = await supabase
+      .from('waba_analytics_summary')
+      .select('*')
+      .single();
+
+    if (error) {
+      // View might not have data yet
+      if (error.code === 'PGRST116') {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            hasData: false,
+            summary: null
+          })
+        };
+      }
+      throw error;
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        hasData: true,
+        summary: data
+      })
+    };
+  } catch (error) {
+    console.error('[API] waba.getSummary error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to fetch WABA summary' })
+    };
+  }
+}
+
+/**
+ * Get WABA daily metrics for time series charts
+ * @param {Object} params - Query params (from, to)
+ */
+async function getWabaDailyMetrics(supabase, params, headers) {
+  console.log('[API] waba.getDailyMetrics', params);
+
+  try {
+    let query = supabase
+      .from('waba_daily_metrics')
+      .select('*')
+      .order('bucket_date', { ascending: true });
+
+    // Optional date filters
+    if (params.from) {
+      query = query.gte('bucket_date', params.from);
+    }
+    if (params.to) {
+      query = query.lte('bucket_date', params.to);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        metrics: data || [],
+        count: data?.length || 0
+      })
+    };
+  } catch (error) {
+    console.error('[API] waba.getDailyMetrics error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to fetch WABA daily metrics' })
+    };
+  }
+}
+
+/**
+ * Get WABA conversation analytics (billable conversations)
+ * @param {Object} params - Query params (from, to, category, country)
+ */
+async function getWabaConversations(supabase, params, headers) {
+  console.log('[API] waba.getConversations', params);
+
+  try {
+    let query = supabase
+      .from('waba_conversation_analytics')
+      .select('*')
+      .order('bucket_date', { ascending: false });
+
+    // Optional filters
+    if (params.from) {
+      query = query.gte('bucket_date', params.from);
+    }
+    if (params.to) {
+      query = query.lte('bucket_date', params.to);
+    }
+    if (params.category) {
+      query = query.eq('conversation_category', params.category);
+    }
+    if (params.country) {
+      query = query.eq('country_code', params.country);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Aggregate by category for summary
+    const byCategory = {};
+    let totalConversations = 0;
+    let totalCost = 0;
+
+    (data || []).forEach(row => {
+      const cat = row.conversation_category;
+      if (!byCategory[cat]) {
+        byCategory[cat] = { conversations: 0, cost: 0 };
+      }
+      byCategory[cat].conversations += row.conversation_count || 0;
+      byCategory[cat].cost += parseFloat(row.cost) || 0;
+      totalConversations += row.conversation_count || 0;
+      totalCost += parseFloat(row.cost) || 0;
+    });
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        data: data || [],
+        count: data?.length || 0,
+        summary: {
+          totalConversations,
+          totalCost,
+          byCategory
+        }
+      })
+    };
+  } catch (error) {
+    console.error('[API] waba.getConversations error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to fetch WABA conversations' })
+    };
+  }
+}
+
+/**
+ * Get WABA message analytics (delivery metrics)
+ * @param {Object} params - Query params (from, to)
+ */
+async function getWabaMessages(supabase, params, headers) {
+  console.log('[API] waba.getMessages', params);
+
+  try {
+    let query = supabase
+      .from('waba_message_analytics')
+      .select('*')
+      .order('bucket_date', { ascending: false });
+
+    // Optional date filters
+    if (params.from) {
+      query = query.gte('bucket_date', params.from);
+    }
+    if (params.to) {
+      query = query.lte('bucket_date', params.to);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Calculate totals
+    let totalSent = 0;
+    let totalDelivered = 0;
+    let totalRead = 0;
+
+    (data || []).forEach(row => {
+      totalSent += row.sent || 0;
+      totalDelivered += row.delivered || 0;
+      totalRead += row.read_count || 0;
+    });
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        data: data || [],
+        count: data?.length || 0,
+        summary: {
+          totalSent,
+          totalDelivered,
+          totalRead,
+          deliveryRate: totalSent > 0 ? Math.round((totalDelivered / totalSent) * 1000) / 10 : 0,
+          readRate: totalDelivered > 0 ? Math.round((totalRead / totalDelivered) * 1000) / 10 : 0
+        }
+      })
+    };
+  } catch (error) {
+    console.error('[API] waba.getMessages error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to fetch WABA messages' })
     };
   }
 }

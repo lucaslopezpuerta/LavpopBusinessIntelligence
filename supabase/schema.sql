@@ -1,6 +1,15 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.20 (2025-12-16)
+-- Version: 3.21 (2025-12-17)
+--
+-- v3.21: WhatsApp Business API Analytics (WABA)
+--   - Added waba_conversation_analytics table for billable conversation tracking
+--   - Added waba_message_analytics table for delivery metrics (sent, delivered, read)
+--   - Added waba_analytics_summary view for KPI aggregation
+--   - Added waba_daily_metrics view for time series charts
+--   - Added upsert_waba_conversations() and upsert_waba_messages() functions
+--   - Added waba_last_sync and waba_backfill_cursor columns to app_settings
+--   - See migrations/012_waba_analytics.sql
 --
 -- v3.20: App Settings Table
 --   - Added app_settings table for centralized configuration
@@ -151,11 +160,17 @@
 -- - contact_tracking: Customer contact outcome tracking
 -- - automation_rules: Automation configurations
 --
+-- WHATSAPP BUSINESS ANALYTICS (v3.21):
+-- - waba_conversation_analytics: Billable conversation tracking (costs by category/country)
+-- - waba_message_analytics: Message delivery metrics (sent, delivered, read)
+--
 -- Views:
 -- - campaign_performance: Campaign metrics with return rates AND delivery metrics (v3.17)
 -- - campaign_effectiveness: Aggregated by campaign for effectiveness metrics
 -- - contact_effectiveness_summary: Overall contact tracking summary
 -- - campaign_delivery_metrics: Per-campaign delivery stats (legacy, use campaign_performance instead)
+-- - waba_analytics_summary: WABA KPI aggregation (v3.21)
+-- - waba_daily_metrics: WABA time series for charts (v3.21)
 -- - customer_summary: Customer metrics computed from transactions (NEW in v3.0)
 
 -- ==================== TRANSACTIONS TABLE (NEW v3.0) ====================
@@ -676,10 +691,18 @@ CREATE TABLE IF NOT EXISTS app_settings (
   maintenance_downtime_hours INTEGER DEFAULT 6,
   maintenance_cost_per_session DECIMAL(10,2) DEFAULT 300,
 
+  -- v3.21: WABA Analytics Sync Tracking
+  waba_last_sync TIMESTAMPTZ,              -- Last successful WABA analytics sync from Meta API
+  waba_backfill_cursor DATE,               -- Progress marker for WABA backfill job (date to resume from)
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- v3.21: Add WABA sync tracking columns (for migration)
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waba_last_sync TIMESTAMPTZ;
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waba_backfill_cursor DATE;
 
 -- Initialize with defaults if table is empty
 INSERT INTO app_settings (id)
@@ -702,6 +725,77 @@ CREATE TRIGGER app_settings_updated_at
   EXECUTE FUNCTION update_app_settings_timestamp();
 
 COMMENT ON TABLE app_settings IS 'App-wide settings including business parameters, costs, and maintenance configuration. Single-row table (id=default).';
+
+-- ==================== WABA CONVERSATION ANALYTICS TABLE (v3.21) ====================
+-- WhatsApp Business billable conversation analytics from Meta Graph API
+-- Tracks conversation counts and costs by category (MARKETING, UTILITY, etc.) and country
+
+CREATE TABLE IF NOT EXISTS waba_conversation_analytics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  -- Identifiers
+  waba_id TEXT NOT NULL,
+  phone_number_id TEXT DEFAULT '',  -- Campaign phone number (empty string for account-level)
+
+  -- Time bucket
+  bucket_date DATE NOT NULL,
+
+  -- Dimensions
+  conversation_category TEXT NOT NULL,  -- MARKETING, UTILITY, AUTHENTICATION, SERVICE
+  country_code TEXT DEFAULT '',          -- ISO 3166-1 alpha-2 (e.g., 'BR'), empty if not specified
+
+  -- Metrics
+  conversation_count INTEGER NOT NULL DEFAULT 0,
+  cost DECIMAL(10,4) NOT NULL DEFAULT 0,  -- Cost in account currency (BRL)
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Unique index to prevent duplicates on re-sync
+CREATE UNIQUE INDEX IF NOT EXISTS idx_waba_conv_unique
+ON waba_conversation_analytics(waba_id, bucket_date, conversation_category, country_code, phone_number_id);
+
+-- Indexes for dashboard queries
+CREATE INDEX IF NOT EXISTS idx_waba_conv_date ON waba_conversation_analytics(bucket_date);
+CREATE INDEX IF NOT EXISTS idx_waba_conv_category ON waba_conversation_analytics(conversation_category);
+CREATE INDEX IF NOT EXISTS idx_waba_conv_country ON waba_conversation_analytics(country_code) WHERE country_code != '';
+
+COMMENT ON TABLE waba_conversation_analytics IS 'WhatsApp Business billable conversation analytics from Meta Graph API. Tracks conversation counts and costs by category and country.';
+
+-- ==================== WABA MESSAGE ANALYTICS TABLE (v3.21) ====================
+-- WhatsApp Business message delivery analytics from Meta Graph API
+-- Tracks sent, delivered, and read counts per day
+
+CREATE TABLE IF NOT EXISTS waba_message_analytics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  -- Identifiers
+  waba_id TEXT NOT NULL,
+  phone_number_id TEXT DEFAULT '',  -- Campaign phone number (empty string for account-level)
+
+  -- Time bucket
+  bucket_date DATE NOT NULL,
+
+  -- Metrics
+  sent INTEGER NOT NULL DEFAULT 0,
+  delivered INTEGER NOT NULL DEFAULT 0,
+  read_count INTEGER NOT NULL DEFAULT 0,
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Unique index to prevent duplicates on re-sync
+CREATE UNIQUE INDEX IF NOT EXISTS idx_waba_msg_unique
+ON waba_message_analytics(waba_id, bucket_date, phone_number_id);
+
+-- Index for date-based queries
+CREATE INDEX IF NOT EXISTS idx_waba_msg_date ON waba_message_analytics(bucket_date);
+
+COMMENT ON TABLE waba_message_analytics IS 'WhatsApp Business message delivery analytics from Meta Graph API. Tracks sent, delivered, and read counts.';
 
 -- ==================== VIEWS ====================
 -- Drop existing views first to allow column changes
@@ -941,6 +1035,83 @@ FROM contact_tracking ct
 JOIN campaigns c ON c.id = ct.campaign_id
 WHERE ct.campaign_id IS NOT NULL
 GROUP BY ct.campaign_id, c.name;
+
+-- ==================== WABA ANALYTICS SUMMARY VIEW (v3.21) ====================
+-- Aggregated WABA analytics summary across all time. Use for KPI cards.
+
+CREATE OR REPLACE VIEW waba_analytics_summary AS
+SELECT
+  -- Date range
+  MIN(c.bucket_date) AS first_date,
+  MAX(c.bucket_date) AS last_date,
+
+  -- Conversation metrics (billable)
+  SUM(c.conversation_count) AS total_conversations,
+  SUM(c.cost) AS total_cost,
+
+  -- By category
+  SUM(CASE WHEN c.conversation_category = 'MARKETING' THEN c.conversation_count ELSE 0 END) AS marketing_conversations,
+  SUM(CASE WHEN c.conversation_category = 'MARKETING' THEN c.cost ELSE 0 END) AS marketing_cost,
+  SUM(CASE WHEN c.conversation_category = 'UTILITY' THEN c.conversation_count ELSE 0 END) AS utility_conversations,
+  SUM(CASE WHEN c.conversation_category = 'UTILITY' THEN c.cost ELSE 0 END) AS utility_cost,
+  SUM(CASE WHEN c.conversation_category = 'SERVICE' THEN c.conversation_count ELSE 0 END) AS service_conversations,
+  SUM(CASE WHEN c.conversation_category = 'SERVICE' THEN c.cost ELSE 0 END) AS service_cost,
+
+  -- Message metrics
+  (SELECT SUM(sent) FROM waba_message_analytics) AS total_sent,
+  (SELECT SUM(delivered) FROM waba_message_analytics) AS total_delivered,
+  (SELECT SUM(read_count) FROM waba_message_analytics) AS total_read,
+
+  -- Delivery rates
+  CASE
+    WHEN (SELECT SUM(sent) FROM waba_message_analytics) > 0
+    THEN ROUND((SELECT SUM(delivered)::DECIMAL FROM waba_message_analytics) / (SELECT SUM(sent) FROM waba_message_analytics) * 100, 1)
+    ELSE 0
+  END AS delivery_rate,
+  CASE
+    WHEN (SELECT SUM(delivered) FROM waba_message_analytics) > 0
+    THEN ROUND((SELECT SUM(read_count)::DECIMAL FROM waba_message_analytics) / (SELECT SUM(delivered) FROM waba_message_analytics) * 100, 1)
+    ELSE 0
+  END AS read_rate
+
+FROM waba_conversation_analytics c;
+
+COMMENT ON VIEW waba_analytics_summary IS 'Aggregated WABA analytics summary across all time. Use for KPI cards.';
+
+-- ==================== WABA DAILY METRICS VIEW (v3.21) ====================
+-- Daily WABA metrics for time series charts. Joins conversation and message analytics.
+
+CREATE OR REPLACE VIEW waba_daily_metrics AS
+SELECT
+  COALESCE(c.bucket_date, m.bucket_date) AS bucket_date,
+
+  -- Conversation metrics
+  COALESCE(SUM(c.conversation_count), 0) AS conversations,
+  COALESCE(SUM(c.cost), 0) AS cost,
+
+  -- Category breakdown
+  COALESCE(SUM(CASE WHEN c.conversation_category = 'MARKETING' THEN c.conversation_count ELSE 0 END), 0) AS marketing_conversations,
+  COALESCE(SUM(CASE WHEN c.conversation_category = 'MARKETING' THEN c.cost ELSE 0 END), 0) AS marketing_cost,
+
+  -- Message metrics
+  COALESCE(m.sent, 0) AS sent,
+  COALESCE(m.delivered, 0) AS delivered,
+  COALESCE(m.read_count, 0) AS read_count,
+
+  -- Daily rates
+  CASE WHEN m.sent > 0 THEN ROUND(m.delivered::DECIMAL / m.sent * 100, 1) ELSE 0 END AS delivery_rate,
+  CASE WHEN m.delivered > 0 THEN ROUND(m.read_count::DECIMAL / m.delivered * 100, 1) ELSE 0 END AS read_rate
+
+FROM waba_conversation_analytics c
+FULL OUTER JOIN (
+  SELECT bucket_date, SUM(sent) as sent, SUM(delivered) as delivered, SUM(read_count) as read_count
+  FROM waba_message_analytics
+  GROUP BY bucket_date
+) m ON c.bucket_date = m.bucket_date
+GROUP BY COALESCE(c.bucket_date, m.bucket_date), m.sent, m.delivered, m.read_count
+ORDER BY bucket_date DESC;
+
+COMMENT ON VIEW waba_daily_metrics IS 'Daily WABA metrics for time series charts. Joins conversation and message analytics.';
 
 -- ==================== HELPER FUNCTIONS ====================
 
@@ -2296,6 +2467,101 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ==================== WABA UPSERT FUNCTIONS (v3.21) ====================
+
+-- Idempotent upsert for WABA conversation analytics
+-- Safe to call multiple times with same data (uses ON CONFLICT)
+CREATE OR REPLACE FUNCTION upsert_waba_conversations(p_data JSONB)
+RETURNS INTEGER AS $$
+DECLARE
+  v_row JSONB;
+  v_count INTEGER := 0;
+BEGIN
+  -- p_data is an array of conversation records:
+  -- [{waba_id, phone_number_id, bucket_date, conversation_category, country_code, conversation_count, cost}, ...]
+
+  FOR v_row IN SELECT * FROM jsonb_array_elements(p_data)
+  LOOP
+    INSERT INTO waba_conversation_analytics (
+      waba_id,
+      phone_number_id,
+      bucket_date,
+      conversation_category,
+      country_code,
+      conversation_count,
+      cost,
+      updated_at
+    ) VALUES (
+      v_row->>'waba_id',
+      COALESCE(v_row->>'phone_number_id', ''),
+      (v_row->>'bucket_date')::DATE,
+      v_row->>'conversation_category',
+      COALESCE(v_row->>'country_code', ''),
+      COALESCE((v_row->>'conversation_count')::INTEGER, 0),
+      COALESCE((v_row->>'cost')::DECIMAL, 0),
+      NOW()
+    )
+    ON CONFLICT (waba_id, bucket_date, conversation_category, country_code, phone_number_id)
+    DO UPDATE SET
+      conversation_count = EXCLUDED.conversation_count,
+      cost = EXCLUDED.cost,
+      updated_at = NOW();
+
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION upsert_waba_conversations IS 'Idempotent upsert for WABA conversation analytics. Safe to call multiple times with same data.';
+
+-- Idempotent upsert for WABA message analytics
+-- Safe to call multiple times with same data (uses ON CONFLICT)
+CREATE OR REPLACE FUNCTION upsert_waba_messages(p_data JSONB)
+RETURNS INTEGER AS $$
+DECLARE
+  v_row JSONB;
+  v_count INTEGER := 0;
+BEGIN
+  -- p_data is an array of message records:
+  -- [{waba_id, phone_number_id, bucket_date, sent, delivered, read_count}, ...]
+
+  FOR v_row IN SELECT * FROM jsonb_array_elements(p_data)
+  LOOP
+    INSERT INTO waba_message_analytics (
+      waba_id,
+      phone_number_id,
+      bucket_date,
+      sent,
+      delivered,
+      read_count,
+      updated_at
+    ) VALUES (
+      v_row->>'waba_id',
+      COALESCE(v_row->>'phone_number_id', ''),
+      (v_row->>'bucket_date')::DATE,
+      COALESCE((v_row->>'sent')::INTEGER, 0),
+      COALESCE((v_row->>'delivered')::INTEGER, 0),
+      COALESCE((v_row->>'read_count')::INTEGER, 0),
+      NOW()
+    )
+    ON CONFLICT (waba_id, bucket_date, phone_number_id)
+    DO UPDATE SET
+      sent = EXCLUDED.sent,
+      delivered = EXCLUDED.delivered,
+      read_count = EXCLUDED.read_count,
+      updated_at = NOW();
+
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION upsert_waba_messages IS 'Idempotent upsert for WABA message analytics. Safe to call multiple times with same data.';
+
 -- ==================== TRIGGERS ====================
 
 DROP TRIGGER IF EXISTS update_blacklist_updated_at ON blacklist;
@@ -2422,6 +2688,9 @@ GRANT SELECT, INSERT, UPDATE ON webhook_events TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE webhook_events_id_seq TO authenticated;
 -- v3.20: App settings
 GRANT SELECT, INSERT, UPDATE ON app_settings TO authenticated;
+-- v3.21: WABA analytics tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON waba_conversation_analytics TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON waba_message_analytics TO authenticated;
 
 -- NEW v3.0: Core data tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON transactions TO authenticated;
@@ -2443,6 +2712,9 @@ GRANT SELECT ON coupon_effectiveness TO authenticated;
 GRANT SELECT ON daily_revenue TO authenticated;
 -- v3.8: Delivery metrics view
 GRANT SELECT ON campaign_delivery_metrics TO authenticated;
+-- v3.21: WABA analytics views
+GRANT SELECT ON waba_analytics_summary TO authenticated;
+GRANT SELECT ON waba_daily_metrics TO authenticated;
 
 -- Grant execute on functions
 GRANT EXECUTE ON FUNCTION update_updated_at_column TO authenticated;
@@ -2480,3 +2752,6 @@ GRANT EXECUTE ON FUNCTION upsert_customer_profile TO authenticated;
 GRANT EXECUTE ON FUNCTION upsert_customer_profiles_batch TO authenticated;
 -- v3.20: App settings trigger function
 GRANT EXECUTE ON FUNCTION update_app_settings_timestamp TO authenticated;
+-- v3.21: WABA analytics functions
+GRANT EXECUTE ON FUNCTION upsert_waba_conversations TO authenticated;
+GRANT EXECUTE ON FUNCTION upsert_waba_messages TO authenticated;

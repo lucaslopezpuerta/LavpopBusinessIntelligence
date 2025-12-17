@@ -2,6 +2,13 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.11 (2025-12-17): WABA analytics sync
+//   - Added automatic sync of WhatsApp Business analytics every 4 hours
+//   - Syncs conversation analytics (billable conversations + costs)
+//   - Syncs message analytics (sent, delivered, read counts)
+//   - Requires META_WABA_ID and META_ACCESS_TOKEN env vars
+//   - Uses waba-analytics.js module for API calls and DB upserts
+//
 // v2.10 (2025-12-15): Duplicate prevention for automation sends
 //   - Added check for existing contact_tracking records before sending
 //   - Prevents duplicates when manual inclusion was created via CustomerSegmentModal
@@ -102,6 +109,7 @@
 // - SUPABASE_SERVICE_KEY: Your Supabase service role key
 
 const { createClient } = require('@supabase/supabase-js');
+const { syncWabaAnalytics } = require('./waba-analytics');
 
 // Template ContentSid mapping for automation rules
 // Must match messageTemplates.js twilioContentSid values
@@ -253,14 +261,23 @@ exports.handler = async (event, context) => {
       console.log('Skipping campaign return processing (not scheduled time)');
     }
 
+    // v2.11: Sync WABA analytics every 4 hours
+    let wabaResults = { skipped: true };
+    if (await shouldSyncWabaAnalytics(supabase)) {
+      wabaResults = await runWabaSync();
+    } else {
+      console.log('Skipping WABA analytics sync (not due yet or not configured)');
+    }
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}`,
+        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}${wabaResults.skipped ? '' : ', WABA synced'}`,
         campaigns: results,
         priorityQueue: priorityResults,
         automation: automationResults,
-        returns: returnResults
+        returns: returnResults,
+        waba: wabaResults
       })
     };
 
@@ -440,6 +457,68 @@ function shouldRunReturnsProcessing() {
 
   // Run in the first 5-minute window of every hour
   return minute < 5;
+}
+
+/**
+ * Check if WABA analytics sync should run
+ * Runs every 4 hours (at 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 Brazil time)
+ * @param {Object} supabase - Supabase client
+ * @returns {Promise<boolean>} True if it's time to sync WABA analytics
+ */
+async function shouldSyncWabaAnalytics(supabase) {
+  try {
+    // Check if META_WABA_ID is configured
+    if (!process.env.META_WABA_ID || !process.env.META_ACCESS_TOKEN) {
+      return false;
+    }
+
+    // Get last sync time from app_settings
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('waba_last_sync')
+      .eq('id', 'default')
+      .single();
+
+    if (!settings?.waba_last_sync) {
+      // Never synced, should sync
+      return true;
+    }
+
+    // Check if 4 hours have passed
+    const lastSync = new Date(settings.waba_last_sync);
+    const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
+
+    return hoursSinceSync >= 4;
+  } catch (error) {
+    console.warn('Error checking WABA sync status:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Sync WABA analytics from Meta API
+ * Fetches last 3 days of data to catch any finalization delays
+ */
+async function runWabaSync() {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const threeDaysAgo = now - (3 * 24 * 60 * 60);
+
+    console.log('Syncing WABA analytics (last 3 days)...');
+    const results = await syncWabaAnalytics(threeDaysAgo, now);
+
+    return {
+      success: true,
+      conversations: results.conversations,
+      messages: results.messages
+    };
+  } catch (error) {
+    console.error('WABA sync error:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }
 
 /**
