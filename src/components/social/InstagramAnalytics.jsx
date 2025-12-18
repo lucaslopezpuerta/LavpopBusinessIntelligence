@@ -1,7 +1,11 @@
-// InstagramAnalytics.jsx v3.0
+// InstagramAnalytics.jsx v3.1
 // Instagram Business Analytics Dashboard
 // Design System v3.3 compliant - Instagram-coherent design
 //
+// v3.1 (2025-12-18): Smart Instagram links
+//   - Desktop: opens Instagram website
+//   - Mobile: opens Instagram app via deep link (instagram://)
+//   - Applied to profile and post links
 // v3.0 (2025-12-18): Instagram design overhaul
 //   - Compact KPI cards with better contrast
 //   - Posts section 2/3 width, comments 1/3
@@ -57,6 +61,27 @@ import {
 import { api } from '../../utils/apiService';
 
 // ==================== UTILITIES ====================
+
+// Detect mobile device
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Get Instagram link - app deep link on mobile, web on desktop
+const getInstagramProfileUrl = (username, webUrl) => {
+  if (isMobileDevice() && username) {
+    return `instagram://user?username=${username}`;
+  }
+  return webUrl || `https://www.instagram.com/${username}`;
+};
+
+const getInstagramPostUrl = (permalink, mediaId) => {
+  if (isMobileDevice() && mediaId) {
+    return `instagram://media?id=${mediaId}`;
+  }
+  return permalink;
+};
 
 const formatNumber = (value) => {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
@@ -146,8 +171,8 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">@{profile?.username || 'instagram'}</h2>
-            {profile?.url && (
-              <a href={profile.url} target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:text-pink-600">
+            {profile?.username && (
+              <a href={getInstagramProfileUrl(profile.username, profile.url)} target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:text-pink-600">
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
@@ -190,8 +215,8 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
         {/* Username row */}
         <div className="flex items-center gap-3 mb-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">@{profile?.username || 'instagram'}</h2>
-          {profile?.url && (
-            <a href={profile.url} target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:text-pink-600 transition-colors">
+          {profile?.username && (
+            <a href={getInstagramProfileUrl(profile.username, profile.url)} target="_blank" rel="noopener noreferrer" className="text-pink-500 hover:text-pink-600 transition-colors">
               <ExternalLink className="w-4 h-4" />
             </a>
           )}
@@ -576,7 +601,7 @@ const PostCard = ({ post }) => {
 
   return (
     <a
-      href={post.permalink}
+      href={getInstagramPostUrl(post.permalink, post.id)}
       target="_blank"
       rel="noopener noreferrer"
       className="group relative block aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700"

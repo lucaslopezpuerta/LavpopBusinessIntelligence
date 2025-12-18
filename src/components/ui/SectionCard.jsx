@@ -28,6 +28,16 @@ const SECTION_COLORS = {
     border: 'border-emerald-500',
     icon: 'text-emerald-600 dark:text-emerald-400'
   },
+  green: {
+    bg: 'bg-green-100 dark:bg-green-900/30',
+    border: 'border-green-500',
+    icon: 'text-green-600 dark:text-green-400'
+  },
+  teal: {
+    bg: 'bg-teal-100 dark:bg-teal-900/30',
+    border: 'border-teal-500',
+    icon: 'text-teal-600 dark:text-teal-400'
+  },
   amber: {
     bg: 'bg-amber-100 dark:bg-amber-900/30',
     border: 'border-amber-500',

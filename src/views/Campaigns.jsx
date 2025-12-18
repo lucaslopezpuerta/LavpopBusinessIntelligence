@@ -51,9 +51,6 @@ import {
   Plus
 } from 'lucide-react';
 
-// UI components
-import InsightBox from '../components/ui/InsightBox';
-
 // Campaign-specific components
 import CampaignList from '../components/campaigns/CampaignList';
 import AudienceSelector from '../components/campaigns/AudienceSelector';
@@ -65,7 +62,6 @@ import CampaignDashboard from '../components/campaigns/CampaignDashboard';
 // Lazy-loaded heavy components (60KB + 50KB savings)
 const AutomationRules = lazy(() => import('../components/campaigns/AutomationRules'));
 const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
-const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAnalytics'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback = () => (
@@ -223,13 +219,6 @@ const Campaigns = ({ data }) => {
         <CampaignDashboard
           audienceSegments={audienceSegments}
         />
-      )}
-
-      {/* WhatsApp Business Analytics Section */}
-      {activeSection === 'whatsapp' && (
-        <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div>}>
-          <WhatsAppAnalytics />
-        </Suspense>
       )}
 
       {/* Automation Rules Section */}

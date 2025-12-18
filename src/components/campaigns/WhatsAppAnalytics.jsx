@@ -1,8 +1,27 @@
-// WhatsAppAnalytics.jsx v1.2
+// WhatsAppAnalytics.jsx v1.6
 // WhatsApp Business API Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.6 (2025-12-18): Fixed KPICard color props
+//   - Changed from invalid gradientFrom/gradientTo to color prop
+//   - Uses whatsapp, whatsappTeal, whatsappDark, whatsappRead from colorMapping.js
+// v1.5 (2025-12-18): Layout and WhatsApp branding
+//   - Message chart now full-width
+//   - Funnel and Template table side-by-side on desktop
+//   - WhatsApp green color theme (green→teal→cyan gradient)
+//   - Updated section card colors (green/teal/emerald)
+// v1.4 (2025-12-18): Table UX improvements
+//   - Template names now readable: "lavpop_winback_desconto_hx..." → "Winback Desconto"
+//   - Category badge inline with name (MKT/UTIL), consistent fuchsia color
+//   - Center-aligned numeric columns (headers + data)
+//   - Fixed column widths with table-fixed layout
+// v1.3 (2025-12-18): Mobile responsiveness improvements
+//   - Template table: hide Entregues/Lidas columns on mobile
+//   - Shorter column headers for mobile (Env., % Ent., % Leit.)
+//   - Template name constrained width (120px mobile, 200px desktop)
+//   - Added tabular-nums for number alignment
+//   - Edge-to-edge table on mobile (-mx-2)
 // v1.2 (2025-12-18): Per-template analytics with READ metrics
 //   - Added 4th KPI card: "Taxa de Leitura" (from template-level data)
 //   - Added template analytics table with per-template metrics
@@ -44,14 +63,20 @@ import SectionCard from '../ui/SectionCard';
 // Services
 import { api } from '../../utils/apiService';
 
-// Chart colors
+// WhatsApp brand colors
 const COLORS = {
-  primary: '#10306B',
-  accent: '#53be33',
+  // WhatsApp greens
+  waPrimary: '#25D366',    // WhatsApp green
+  waDark: '#128C7E',       // Teal green
+  waDeep: '#075E54',       // Deep teal
+  waBubble: '#DCF8C6',     // Chat bubble green
+  // Chart colors
+  sent: '#25D366',         // WhatsApp green for sent
+  delivered: '#128C7E',    // Teal for delivered
+  read: '#075E54',         // Deep teal for read
+  // Neutral
   gray: '#6b7280',
-  lightGray: '#d1d5db',
-  sent: '#6366f1',
-  delivered: '#10b981'
+  lightGray: '#d1d5db'
 };
 
 // ==================== HELPER FUNCTIONS ====================
@@ -159,10 +184,10 @@ const MessageTrendChart = ({ data, isLoading }) => {
     return (
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3 text-sm">
         <p className="font-medium text-slate-900 dark:text-white mb-1">{label}</p>
-        <p className="text-indigo-600 dark:text-indigo-400">
+        <p style={{ color: COLORS.sent }}>
           Enviadas: {formatNumber(payload[0]?.payload?.sent)}
         </p>
-        <p className="text-emerald-600 dark:text-emerald-400">
+        <p style={{ color: COLORS.delivered }}>
           Entregues: {formatNumber(payload[0]?.payload?.delivered)}
         </p>
       </div>
@@ -299,6 +324,21 @@ const DeliveryFunnel = ({ summary, isLoading }) => {
 
 // ==================== TEMPLATE ANALYTICS TABLE ====================
 
+// Format template name: "lavpop_winback_desconto_hx123..." -> "Winback Desconto"
+const formatTemplateName = (name) => {
+  if (!name) return 'N/A';
+  // Remove "lavpop_" prefix and hash suffix (e.g., "_hx123abc...")
+  const cleaned = name
+    .replace(/^lavpop_/, '')
+    .replace(/_hx[a-f0-9]+$/i, '')
+    .replace(/_/g, ' ');
+  // Capitalize each word
+  return cleaned
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const TemplateAnalyticsTable = ({ templates, isLoading }) => {
   if (isLoading) {
     return (
@@ -332,30 +372,17 @@ const TemplateAnalyticsTable = ({ templates, isLoading }) => {
     return 'text-slate-500 dark:text-slate-400';
   };
 
-  // Category badge
-  const CategoryBadge = ({ category }) => {
-    const colors = {
-      'MARKETING': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-      'UTILITY': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-    };
-    return (
-      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${colors[category] || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
-        {category || 'N/A'}
-      </span>
-    );
-  };
-
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="-mx-2 sm:mx-0">
+      <table className="w-full text-sm table-fixed">
         <thead>
-          <tr className="border-b border-slate-200 dark:border-slate-700">
+          <tr className="border-b border-slate-200 dark:border-slate-700 text-xs sm:text-sm">
             <th className="text-left py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Template</th>
-            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Enviadas</th>
-            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Entregues</th>
-            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Lidas</th>
-            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">% Entrega</th>
-            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">% Leitura</th>
+            <th className="text-center py-3 px-1.5 sm:px-3 font-medium text-slate-500 dark:text-slate-400 w-12 sm:w-[72px]">Env.</th>
+            <th className="hidden sm:table-cell text-center py-3 px-3 font-medium text-slate-500 dark:text-slate-400 sm:w-[72px]">Entreg.</th>
+            <th className="hidden sm:table-cell text-center py-3 px-3 font-medium text-slate-500 dark:text-slate-400 sm:w-[72px]">Lidas</th>
+            <th className="text-center py-3 px-1.5 sm:px-3 font-medium text-slate-500 dark:text-slate-400 w-14 sm:w-[72px]">Ent.</th>
+            <th className="text-center py-3 px-1.5 sm:px-3 font-medium text-slate-500 dark:text-slate-400 w-14 sm:w-[72px]">Leit.</th>
           </tr>
         </thead>
         <tbody>
@@ -365,26 +392,28 @@ const TemplateAnalyticsTable = ({ templates, isLoading }) => {
               className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
               <td className="py-3 px-2">
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]" title={template.templateName}>
-                    {template.templateName}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                  <span className="font-medium text-slate-900 dark:text-white truncate text-sm" title={template.templateName}>
+                    {formatTemplateName(template.templateName)}
                   </span>
-                  <CategoryBadge category={template.category} />
+                  <span className="self-start flex-shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400 uppercase">
+                    {template.category === 'MARKETING' ? 'MKT' : template.category === 'UTILITY' ? 'UTIL' : template.category || 'N/A'}
+                  </span>
                 </div>
               </td>
-              <td className="text-right py-3 px-2 text-slate-900 dark:text-white font-medium">
+              <td className="text-center py-3 px-1.5 sm:px-3 text-slate-900 dark:text-white font-semibold tabular-nums text-sm">
                 {formatNumber(template.sent)}
               </td>
-              <td className="text-right py-3 px-2 text-slate-700 dark:text-slate-300">
+              <td className="hidden sm:table-cell text-center py-3 px-3 text-slate-700 dark:text-slate-300 tabular-nums text-sm">
                 {formatNumber(template.delivered)}
               </td>
-              <td className="text-right py-3 px-2 text-slate-700 dark:text-slate-300">
+              <td className="hidden sm:table-cell text-center py-3 px-3 text-slate-700 dark:text-slate-300 tabular-nums text-sm">
                 {formatNumber(template.readCount)}
               </td>
-              <td className={`text-right py-3 px-2 font-medium ${getRateColor(template.deliveryRate, 'delivery')}`}>
+              <td className={`text-center py-3 px-1.5 sm:px-3 font-semibold tabular-nums text-sm ${getRateColor(template.deliveryRate, 'delivery')}`}>
                 {formatPercent(template.deliveryRate)}
               </td>
-              <td className={`text-right py-3 px-2 font-medium ${getRateColor(template.readRate, 'read')}`}>
+              <td className={`text-center py-3 px-1.5 sm:px-3 font-semibold tabular-nums text-sm ${getRateColor(template.readRate, 'read')}`}>
                 {formatPercent(template.readRate)}
               </td>
             </tr>
@@ -541,7 +570,7 @@ const WhatsAppAnalytics = () => {
         </SectionCard>
       )}
 
-      {/* KPI Cards */}
+      {/* KPI Cards - WhatsApp green theme */}
       {(hasData || isLoading) && (
         <KPIGrid columns={4}>
           <KPICard
@@ -549,8 +578,7 @@ const WhatsAppAnalytics = () => {
             value={formatNumber(kpis.totalSent)}
             icon={Send}
             variant="gradient"
-            gradientFrom="from-indigo-500"
-            gradientTo="to-purple-600"
+            color="whatsapp"
             isLoading={isLoading}
             subtitle="Total no período"
           />
@@ -559,8 +587,7 @@ const WhatsAppAnalytics = () => {
             value={formatNumber(kpis.totalDelivered)}
             icon={CheckCircle2}
             variant="gradient"
-            gradientFrom="from-emerald-500"
-            gradientTo="to-green-600"
+            color="whatsappTeal"
             isLoading={isLoading}
             subtitle="Chegaram ao destinatário"
           />
@@ -569,8 +596,7 @@ const WhatsAppAnalytics = () => {
             value={formatPercent(kpis.deliveryRate)}
             icon={TrendingUp}
             variant="gradient"
-            gradientFrom="from-blue-500"
-            gradientTo="to-cyan-600"
+            color="whatsappDark"
             isLoading={isLoading}
             subtitle="Entregues / Enviadas"
           />
@@ -579,46 +605,48 @@ const WhatsAppAnalytics = () => {
             value={formatPercent(kpis.readRate)}
             icon={Eye}
             variant="gradient"
-            gradientFrom="from-purple-500"
-            gradientTo="to-pink-600"
+            color="whatsappRead"
             isLoading={isLoading}
             subtitle="Lidas / Entregues"
           />
         </KPIGrid>
       )}
 
-      {/* Charts row */}
+      {/* Message Volume Chart - Full Width */}
+      {(hasData || isLoading) && (
+        <SectionCard
+          title="Volume de Mensagens"
+          subtitle="Enviadas e entregues por dia"
+          icon={TrendingUp}
+          color="green"
+        >
+          <MessageTrendChart data={dailyMetrics} isLoading={isLoading} />
+        </SectionCard>
+      )}
+
+      {/* Funnel + Template Table Row */}
       {(hasData || isLoading) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Message Trend Chart */}
-          <SectionCard
-            title="Volume de Mensagens"
-            subtitle="Enviadas e entregues por dia"
-            icon={TrendingUp}
-          >
-            <MessageTrendChart data={dailyMetrics} isLoading={isLoading} />
-          </SectionCard>
-
           {/* Delivery Funnel */}
           <SectionCard
             title="Funil de Entrega"
             subtitle="Enviadas → Entregues"
             icon={Send}
+            color="teal"
           >
             <DeliveryFunnel summary={messageSummary} isLoading={isLoading} />
           </SectionCard>
-        </div>
-      )}
 
-      {/* Template Analytics Table */}
-      {(hasData || isLoading) && (
-        <SectionCard
-          title="Métricas por Template"
-          subtitle="Desempenho individual de cada template (inclui taxa de leitura)"
-          icon={FileText}
-        >
-          <TemplateAnalyticsTable templates={templateData.templates} isLoading={isLoading} />
-        </SectionCard>
+          {/* Template Analytics Table */}
+          <SectionCard
+            title="Métricas por Template"
+            subtitle="Desempenho por template"
+            icon={FileText}
+            color="emerald"
+          >
+            <TemplateAnalyticsTable templates={templateData.templates} isLoading={isLoading} />
+          </SectionCard>
+        </div>
       )}
     </div>
   );

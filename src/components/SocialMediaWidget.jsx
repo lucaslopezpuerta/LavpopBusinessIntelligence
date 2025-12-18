@@ -1,8 +1,17 @@
-// SocialMediaWidget.jsx v7.1 - PROFILE PICTURE IN DROPDOWN
+// SocialMediaWidget.jsx v7.2 - NAVIGATE TO SOCIAL TAB
 // Fetches Instagram/Facebook metrics including insights (profile views, reach, etc.)
 // Shows hover dropdown with detailed metrics and Instagram profile picture
+// Click navigates to Social Media tab in app
+//
+// CHANGELOG:
+// v7.2 (2025-12-18): Navigate to Social Media tab on click
+//   - Click on widget navigates to Social Media view
+//   - Hover still shows dropdown with stats
+//   - Removed external link behavior from main widget
+// v7.1 (previous): Profile picture in dropdown
 import React, { useState, useEffect } from 'react';
 import { Instagram, Facebook, Users, Loader, Eye, Link2, Radio, Image, Heart, ExternalLink } from 'lucide-react';
+import { useNavigation } from '../contexts/NavigationContext';
 
 const SOCIAL_MEDIA_CONFIG = {
   CACHE_DURATION: 4 * 60 * 60 * 1000, // 4 hours (insights are daily metrics)
@@ -14,6 +23,7 @@ const SOCIAL_MEDIA_CONFIG = {
 };
 
 const SocialMediaWidget = ({ compact = false }) => {
+  const { navigateTo } = useNavigation();
   const [socialData, setSocialData] = useState({
     instagramFollowers: null,
     instagramUsername: null,
@@ -353,6 +363,7 @@ const SocialMediaWidget = ({ compact = false }) => {
           onMouseLeave={() => setShowInstagramDropdown(false)}
         >
           <div
+            onClick={() => navigateTo('social')}
             className="
               bg-slate-100 dark:bg-slate-800
               rounded-lg px-2 py-1.5
@@ -362,6 +373,10 @@ const SocialMediaWidget = ({ compact = false }) => {
               h-9
               hover:bg-slate-200 dark:hover:bg-slate-700
             "
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && navigateTo('social')}
+            title="Ver Redes Sociais"
           >
             {/* Mobile: Show followers only */}
             <div className="sm:hidden flex items-center">
@@ -396,6 +411,7 @@ const SocialMediaWidget = ({ compact = false }) => {
             onMouseLeave={() => setShowFacebookDropdown(false)}
           >
             <div
+              onClick={() => navigateTo('social')}
               className="
                 bg-slate-100 dark:bg-slate-800
                 rounded-lg px-2 py-1.5
@@ -405,6 +421,10 @@ const SocialMediaWidget = ({ compact = false }) => {
                 h-9
                 hover:bg-slate-200 dark:hover:bg-slate-700
               "
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigateTo('social')}
+              title="Ver Redes Sociais"
             >
               {/* Mobile: Show followers only */}
               <div className="sm:hidden flex items-center">
@@ -439,20 +459,22 @@ const SocialMediaWidget = ({ compact = false }) => {
   return (
     <div className="flex items-center gap-2">
       {/* Instagram */}
-      <a
-        href={socialData.instagramUrl || SOCIAL_MEDIA_CONFIG.FALLBACK_INSTAGRAM_URL}
-        target="_blank"
-        rel="noopener noreferrer"
+      <div
+        onClick={() => navigateTo('social')}
         className="
           bg-white/15 backdrop-blur-md
           rounded-lg px-3 py-2
           border border-white/25
           flex items-center gap-2.5
-          no-underline cursor-pointer
+          cursor-pointer
           transition-all duration-200
           h-9
           hover:bg-white/25 hover:-translate-y-px
         "
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && navigateTo('social')}
+        title="Ver Redes Sociais"
       >
         <div className="w-7 h-7 rounded-md bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
           <Instagram className="w-[15px] h-[15px] text-white" />
@@ -469,24 +491,26 @@ const SocialMediaWidget = ({ compact = false }) => {
             </span>
           </div>
         </div>
-      </a>
+      </div>
 
       {/* Facebook */}
       {socialData.facebookFollowers > 0 && (
-        <a
-          href={socialData.facebookUrl || SOCIAL_MEDIA_CONFIG.FALLBACK_FACEBOOK_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+        <div
+          onClick={() => navigateTo('social')}
           className="
             bg-white/15 backdrop-blur-md
             rounded-lg px-3 py-2
             border border-white/25
             flex items-center gap-2.5
-            no-underline cursor-pointer
+            cursor-pointer
             transition-all duration-200
             h-9
             hover:bg-white/25 hover:-translate-y-px
           "
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && navigateTo('social')}
+          title="Ver Redes Sociais"
         >
           <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center shrink-0">
             <Facebook className="w-[15px] h-[15px] text-white" />
@@ -503,7 +527,7 @@ const SocialMediaWidget = ({ compact = false }) => {
               </span>
             </div>
           </div>
-        </a>
+        </div>
       )}
     </div>
   );

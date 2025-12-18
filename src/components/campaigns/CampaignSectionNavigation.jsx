@@ -1,8 +1,10 @@
-// CampaignSectionNavigation.jsx v2.1
+// CampaignSectionNavigation.jsx v2.2
 // Tab navigation for Campaigns view
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.2 (2025-12-18): Moved WhatsApp to Social Media view
+//   - Removed 'whatsapp' tab (now in SocialMediaNavigation)
 // v2.1 (2025-12-17): Added WhatsApp analytics tab
 //   - New 'whatsapp' section for WABA analytics
 //   - Shows conversation costs and delivery metrics
@@ -15,7 +17,7 @@
 // v1.1 (2025-12-08): Added Blacklist section
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Target, Zap, Users, MessageSquare, History, ShieldOff, MessageCircle } from 'lucide-react';
+import { Target, Zap, Users, MessageSquare, History, ShieldOff } from 'lucide-react';
 
 const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
   const scrollRef = useRef(null);
@@ -24,7 +26,6 @@ const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
 
   const sections = [
     { id: 'overview', label: 'Visão Geral', icon: Target, mobileLabel: 'Geral' },
-    { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, mobileLabel: 'WA' },
     { id: 'automations', label: 'Automações', icon: Zap, mobileLabel: 'Auto' },
     { id: 'audience', label: 'Audiência', icon: Users, mobileLabel: 'Público' },
     { id: 'templates', label: 'Mensagens', icon: MessageSquare, mobileLabel: 'Msgs' },

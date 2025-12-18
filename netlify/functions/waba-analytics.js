@@ -20,11 +20,13 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const GRAPH_API_VERSION = 'v21.0';
+const GRAPH_API_VERSION = 'v24.0';
 const GRAPH_API_BASE = 'https://graph.facebook.com';
 
-// Granularity for message analytics (HALF_HOUR, DAY, MONTH)
-const MSG_GRANULARITY = 'DAY';
+// Granularity for message analytics
+// v21.0 and earlier: HALF_HOUR, DAY, MONTH
+// v24.0: HALF_HOUR, DAILY, MONTHLY
+const MSG_GRANULARITY = 'DAILY';
 
 // Business timezone for date bucket alignment
 const BUSINESS_TIMEZONE = 'America/Sao_Paulo';
@@ -221,24 +223,32 @@ async function fetchMessageTemplates(wabaId, accessToken) {
 }
 
 /**
- * Fetch per-template analytics (sent, delivered, READ)
- * GET /{TEMPLATE_ID}?fields=analytics.start().end().granularity(DAY).metrics(["SENT","DELIVERED","READ"])
+ * Fetch per-template analytics (sent, delivered, READ) for ALL templates at once
+ * Uses WABA-level template_analytics endpoint (not per-template)
+ * GET /{WABA_ID}?fields=template_analytics.start().end().granularity(DAY).template_ids([...]).metrics(["SENT","DELIVERED","READ"])
+ *
+ * @param {string[]} templateIds - Array of template IDs to fetch analytics for
+ * @param {number} start - Start epoch timestamp
+ * @param {number} end - End epoch timestamp
+ * @param {string} wabaId - WhatsApp Business Account ID
+ * @param {string} accessToken - Meta access token
+ * @returns {Object|null} Template analytics data or null on error
  */
-async function fetchTemplateAnalytics(templateId, start, end, accessToken) {
-  const fields = `analytics.start(${start}).end(${end}).granularity(${MSG_GRANULARITY}).metrics(["SENT","DELIVERED","READ"])`;
-  const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${templateId}?fields=${encodeURIComponent(fields)}&access_token=${accessToken}`;
+async function fetchAllTemplateAnalytics(templateIds, start, end, wabaId, accessToken) {
+  const templateIdsParam = JSON.stringify(templateIds);
+  const fields = `template_analytics.start(${start}).end(${end}).granularity(${MSG_GRANULARITY}).template_ids(${templateIdsParam}).metrics(["SENT","DELIVERED","READ"])`;
+  const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${wabaId}?fields=${encodeURIComponent(fields)}&access_token=${accessToken}`;
 
   const response = await fetchWithRetry(url);
   const data = await response.json();
 
   if (!response.ok) {
     const errorInfo = parseMetaError(data);
-    // Some templates may not have analytics data - log warning and return null
-    console.warn(`Template ${templateId} analytics error: ${errorInfo.message}`);
+    console.warn(`Template analytics error: ${errorInfo.message} (code: ${errorInfo.code})`);
     return null;
   }
 
-  return data.analytics || null;
+  return data.template_analytics || null;
 }
 
 /**
@@ -258,22 +268,40 @@ function normalizeTemplateData(templates, wabaId) {
 
 /**
  * Normalize template analytics data for database
+ * Handles the template_analytics response format from WABA endpoint
+ *
+ * Response structure (v24.0):
+ * {
+ *   data: [{
+ *     granularity: "DAILY",
+ *     product_type: "cloud_api",
+ *     data_points: [
+ *       { template_id: "...", start: epoch, sent: N, delivered: N, read: N, ... },
+ *       ...
+ *     ]
+ *   }]
+ * }
  */
-function normalizeTemplateAnalyticsData(analyticsData, templateId, wabaId) {
+function normalizeTemplateAnalyticsData(analyticsData, wabaId) {
   if (!analyticsData) return [];
 
-  const dataArray = analyticsData.data_points || analyticsData.data || [];
-  if (dataArray.length === 0) return [];
+  // v24.0: data is an array with one element containing data_points
+  const dataWrapper = analyticsData.data || [];
+  if (dataWrapper.length === 0) return [];
 
-  return dataArray.map(dataPoint => ({
-    template_id: templateId,
+  // Get the actual data points from the first element
+  const dataPoints = dataWrapper[0]?.data_points || [];
+  if (dataPoints.length === 0) return [];
+
+  return dataPoints.map(dataPoint => ({
+    template_id: dataPoint.template_id || dataPoint.hsm_id,
     waba_id: wabaId,
     bucket_date: dataPoint.start
       ? epochToLocalDate(dataPoint.start)
       : new Date().toISOString().split('T')[0],
     sent: dataPoint.sent || 0,
     delivered: dataPoint.delivered || 0,
-    read_count: dataPoint.read || 0 // Now available at template level!
+    read_count: dataPoint.read || 0 // Available at template level!
   }));
 }
 
@@ -291,7 +319,7 @@ async function syncTemplateAnalytics(startEpoch, endEpoch) {
   const supabase = getSupabase();
   const results = {
     templates: { fetched: 0, upserted: 0 },
-    analytics: { templatesProcessed: 0, rowsUpserted: 0 }
+    analytics: { templatesProcessed: 0, rowsUpserted: 0, errors: [] }
   };
 
   // Step 1: Fetch and cache templates
@@ -310,34 +338,41 @@ async function syncTemplateAnalytics(startEpoch, endEpoch) {
     console.log(`Cached ${results.templates.upserted} templates to database`);
   }
 
-  // Step 2: Fetch per-template analytics
-  console.log(`Fetching analytics for ${templates.length} templates...`);
-  const allAnalyticsRows = [];
+  // Step 2: Fetch per-template analytics (batch request via WABA endpoint)
+  let allAnalyticsRows = [];
 
-  for (const template of templates) {
+  if (templates.length > 0) {
     try {
-      const analytics = await fetchTemplateAnalytics(template.id, startEpoch, endEpoch, ACCESS_TOKEN);
+      const templateIds = templates.map(t => t.id);
+      const analytics = await fetchAllTemplateAnalytics(templateIds, startEpoch, endEpoch, WABA_ID, ACCESS_TOKEN);
+
       if (analytics) {
-        const rows = normalizeTemplateAnalyticsData(analytics, template.id, WABA_ID);
-        allAnalyticsRows.push(...rows);
-        results.analytics.templatesProcessed++;
+        allAnalyticsRows = normalizeTemplateAnalyticsData(analytics, WABA_ID);
+        const templatesWithData = new Set(allAnalyticsRows.map(r => r.template_id));
+        results.analytics.templatesProcessed = templatesWithData.size;
       }
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
     } catch (err) {
-      console.warn(`Failed to fetch analytics for template ${template.name}: ${err.message}`);
+      console.warn(`Failed to fetch template analytics: ${err.message}`);
+      results.analytics.errors.push({ error: err.message });
     }
   }
 
   // Step 3: Upsert all analytics rows
   if (allAnalyticsRows.length > 0) {
-    const { data, error } = await supabase.rpc('upsert_waba_template_analytics', {
-      p_data: allAnalyticsRows
-    });
+    const validRows = allAnalyticsRows.filter(r => r.template_id);
 
-    if (error) throw error;
-    results.analytics.rowsUpserted = data || allAnalyticsRows.length;
-    console.log(`Upserted ${results.analytics.rowsUpserted} template analytics rows`);
+    if (validRows.length > 0) {
+      const { data, error } = await supabase.rpc('upsert_waba_template_analytics', {
+        p_data: validRows
+      });
+
+      if (error) {
+        console.error('Template analytics upsert error:', error.message);
+        results.analytics.errors.push({ error: error.message });
+      } else {
+        results.analytics.rowsUpserted = data || validRows.length;
+      }
+    }
   }
 
   // Update last sync timestamp

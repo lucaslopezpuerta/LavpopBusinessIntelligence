@@ -1,14 +1,18 @@
-// SocialMediaNavigation.jsx v1.0
+// SocialMediaNavigation.jsx v1.1
 // Tab navigation for Social Media view
 // Design System v4.0 compliant
 //
+// CHANGELOG:
+// v1.1 (2025-12-18): Added WhatsApp tab
+//   - Moved WhatsApp analytics from Campaigns view
+//   - WhatsApp Business API metrics now under Social Media
 // v1.0 (2025-12-18): Initial implementation
 //   - Instagram tab (active)
 //   - Facebook tab (placeholder for future)
 //   - Same design pattern as CampaignSectionNavigation
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Instagram, Facebook } from 'lucide-react';
+import { Instagram, Facebook, MessageCircle } from 'lucide-react';
 
 const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
   const scrollRef = useRef(null);
@@ -16,8 +20,39 @@ const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
   const [showRightFade, setShowRightFade] = useState(false);
 
   const sections = [
-    { id: 'instagram', label: 'Instagram', icon: Instagram, mobileLabel: 'IG', available: true },
-    { id: 'facebook', label: 'Facebook', icon: Facebook, mobileLabel: 'FB', available: false }
+    {
+      id: 'instagram',
+      label: 'Instagram',
+      icon: Instagram,
+      mobileLabel: 'IG',
+      available: true,
+      colors: {
+        active: 'bg-gradient-to-r from-pink-500 to-rose-500 shadow-pink-500/25',
+        hover: 'hover:border-pink-300 dark:hover:border-pink-700 hover:text-pink-600 dark:hover:text-pink-400'
+      }
+    },
+    {
+      id: 'whatsapp',
+      label: 'WhatsApp',
+      icon: MessageCircle,
+      mobileLabel: 'WA',
+      available: true,
+      colors: {
+        active: 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-green-500/25',
+        hover: 'hover:border-green-300 dark:hover:border-green-700 hover:text-green-600 dark:hover:text-green-400'
+      }
+    },
+    {
+      id: 'facebook',
+      label: 'Facebook',
+      icon: Facebook,
+      mobileLabel: 'FB',
+      available: false,
+      colors: {
+        active: 'bg-gradient-to-r from-blue-500 to-indigo-500 shadow-blue-500/25',
+        hover: 'hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400'
+      }
+    }
   ];
 
   // Check scroll position for fade indicators
@@ -90,8 +125,8 @@ const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
                   ${!section.available
                     ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-60'
                     : isActive
-                      ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/25'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-pink-300 dark:hover:border-pink-700 hover:text-pink-600 dark:hover:text-pink-400'
+                      ? `${section.colors.active} text-white shadow-lg`
+                      : `bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 ${section.colors.hover}`
                   }
                 `}
                 aria-current={isActive ? 'true' : undefined}

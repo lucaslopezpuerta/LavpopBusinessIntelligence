@@ -15,6 +15,7 @@ import SocialMediaNavigation from '../components/social/SocialMediaNavigation';
 
 // Lazy-loaded platform components
 const InstagramAnalytics = lazy(() => import('../components/social/InstagramAnalytics'));
+const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAnalytics'));
 
 // Loading fallback for lazy components
 const LoadingFallback = () => (
@@ -74,6 +75,13 @@ const SocialMedia = ({ data }) => {
       {activeSection === 'instagram' && (
         <Suspense fallback={<LoadingFallback />}>
           <InstagramAnalytics />
+        </Suspense>
+      )}
+
+      {/* WhatsApp Business Analytics Section */}
+      {activeSection === 'whatsapp' && (
+        <Suspense fallback={<LoadingFallback />}>
+          <WhatsAppAnalytics />
         </Suspense>
       )}
 
