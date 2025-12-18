@@ -1,11 +1,16 @@
-// useTouchTooltip.js v1.2 - TOOLTIP DISMISS ON ACTION
+// useTouchTooltip.js v1.4 - ROBUST TOOLTIP DISMISS
 // Shared hook for mobile-friendly tooltip interactions on charts
 //
 // CHANGELOG:
+// v1.4 (2025-12-18): Robust tooltip dismiss when modal opens
+//   - FIXED: Tooltip now properly hides before modal opens (using rAF delay)
+//   - FIXED: Hover tooltips work again after modal closes (mousemove listener)
+//   - NEW: Chart wrapper ref for scoped event handling
+//   - NEW: resetTooltipVisibility() for explicit reset from components
+// v1.3 (2025-12-18): Attempted fix (incomplete)
 // v1.2 (2025-12-16): Tooltip dismiss when action triggers
 //   - NEW: tooltipHidden state to control Recharts tooltip visibility
 //   - FIXED: Tooltip now hides when modal opens (desktop & mobile)
-//   - Tooltip re-enables after 300ms (after modal animation)
 // v1.1 (2025-12-16): Desktop vs mobile behavior fix
 //   - FIXED: Desktop now triggers action immediately on click
 //   - FIXED: Only touch devices use two-tap behavior
@@ -31,13 +36,13 @@ import { useState, useCallback, useEffect, useRef } from 'react';
  * @param {Object} options
  * @param {Function} options.onAction - Callback when user double-taps (opens modal)
  * @param {number} options.dismissTimeout - Auto-dismiss timeout in ms (default: 5000)
- * @returns {Object} { activeTooltip, handleTouch, clearTooltip, tooltipHidden, isTouchDevice }
+ * @returns {Object} { activeTooltip, handleTouch, clearTooltip, tooltipHidden, resetTooltipVisibility, isTouchDevice }
  */
 export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [tooltipHidden, setTooltipHidden] = useState(false);
   const timeoutRef = useRef(null);
-  const hideTimeoutRef = useRef(null);
+  const actionPendingRef = useRef(false);
   const isTouchDevice = useRef(false);
 
   // Detect touch device on first touch
@@ -88,23 +93,52 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
     };
   }, [activeTooltip]);
 
+  // Re-enable tooltip visibility when mouse moves over chart after modal closes
+  // This ensures hover tooltips work again after using click-to-action
+  useEffect(() => {
+    if (!tooltipHidden) return;
+
+    const handleMouseMove = (e) => {
+      // Only reset if mouse is over a chart area and no action is pending
+      if (actionPendingRef.current) return;
+
+      const isOverChart = e.target.closest('.recharts-wrapper');
+      if (isOverChart) {
+        // Delay reset slightly to avoid showing tooltip during modal close animation
+        setTimeout(() => {
+          if (!actionPendingRef.current) {
+            setTooltipHidden(false);
+          }
+        }, 100);
+      }
+    };
+
+    // Add listener after a delay (wait for modal to fully open)
+    const setupTimeout = setTimeout(() => {
+      document.addEventListener('mousemove', handleMouseMove, { passive: true });
+    }, 500);
+
+    return () => {
+      clearTimeout(setupTimeout);
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [tooltipHidden]);
+
   /**
-   * Hide tooltip temporarily (used when action triggers)
+   * Reset tooltip visibility manually (call from modal onClose)
+   */
+  const resetTooltipVisibility = useCallback(() => {
+    actionPendingRef.current = false;
+    setTooltipHidden(false);
+  }, []);
+
+  /**
+   * Hide tooltip when action triggers (e.g., modal opens)
    */
   const hideTooltip = useCallback(() => {
-    // Clear any pending hide timeout
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-    }
-
-    // Hide tooltip immediately
     setTooltipHidden(true);
     setActiveTooltip(null);
-
-    // Re-enable after modal animation (300ms)
-    hideTimeoutRef.current = setTimeout(() => {
-      setTooltipHidden(false);
-    }, 300);
+    actionPendingRef.current = true;
   }, []);
 
   /**
@@ -115,9 +149,18 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
   const handleTouch = useCallback((data, id) => {
     // On desktop (non-touch), always trigger action immediately
     if (!isTouchDevice.current) {
-      hideTooltip(); // Hide tooltip when opening modal
+      // Hide tooltip first
+      hideTooltip();
+
+      // Delay action by one animation frame to ensure tooltip hides first
       if (onAction) {
-        onAction(data);
+        requestAnimationFrame(() => {
+          onAction(data);
+          // Clear action pending after a short delay (modal animation time)
+          setTimeout(() => {
+            actionPendingRef.current = false;
+          }, 300);
+        });
       }
       return true; // Action was triggered
     }
@@ -125,17 +168,27 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
     // On touch devices: two-tap behavior
     // If tapping the same point that's already active, trigger action
     if (activeTooltip?.id === id) {
-      hideTooltip(); // Hide tooltip when opening modal
+      hideTooltip();
+
       if (onAction) {
-        onAction(data);
+        requestAnimationFrame(() => {
+          onAction(data);
+          setTimeout(() => {
+            actionPendingRef.current = false;
+          }, 300);
+        });
       }
       return true; // Action was triggered
     }
 
-    // First tap - show tooltip
+    // First tap - show tooltip (reset hidden state if needed)
+    if (tooltipHidden) {
+      setTooltipHidden(false);
+    }
+    actionPendingRef.current = false;
     setActiveTooltip({ id, data });
     return false; // Just showing tooltip
-  }, [activeTooltip, onAction, hideTooltip]);
+  }, [activeTooltip, onAction, hideTooltip, tooltipHidden]);
 
   /**
    * Clear the active tooltip
@@ -158,6 +211,7 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
     isActive,
     isTouchDevice: isTouchDevice.current,
     tooltipHidden, // Use to control Recharts Tooltip visibility
+    resetTooltipVisibility, // Optional: call from modal onClose
   };
 }
 

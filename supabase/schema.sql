@@ -1,6 +1,22 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.22 (2025-12-17)
+-- Version: 3.24 (2025-12-18)
+--
+-- v3.24: Instagram Analytics (Meta Graph API v24.0)
+--   - Added instagram_daily_metrics table for historical tracking
+--   - Added instagram_metrics_with_growth view with day-over-day growth
+--   - Added upsert_instagram_daily_metrics() function for idempotent inserts
+--   - Added instagram_last_sync column to app_settings
+--   - Metrics: followers, reach, views, engagement, likes, comments, shares, saves, replies
+--   - See migrations/015_instagram_analytics.sql and 016_instagram_v24_columns.sql
+--
+-- v3.23: WhatsApp Template Analytics
+--   - Added waba_templates table (cache of Meta API templates)
+--   - Added waba_template_analytics table (per-template metrics with READ)
+--   - Added waba_template_analytics_view for UI display
+--   - Added upsert_waba_templates() and upsert_waba_template_analytics() functions
+--   - Added waba_template_last_sync column to app_settings
+--   - See migrations/014_waba_template_analytics.sql
 --
 -- v3.22: WABA Analytics Cleanup
 --   - Removed waba_conversation_analytics table (Meta API doesn't return data)
@@ -166,8 +182,10 @@
 -- - contact_tracking: Customer contact outcome tracking
 -- - automation_rules: Automation configurations
 --
--- WHATSAPP BUSINESS ANALYTICS (v3.22):
--- - waba_message_analytics: Message delivery metrics (sent, delivered)
+-- WHATSAPP BUSINESS ANALYTICS (v3.23):
+-- - waba_message_analytics: Account-level delivery metrics (sent, delivered)
+-- - waba_templates: Cache of Meta API message templates
+-- - waba_template_analytics: Per-template metrics with READ data
 --
 -- Views:
 -- - campaign_performance: Campaign metrics with return rates AND delivery metrics (v3.17)
@@ -176,6 +194,7 @@
 -- - campaign_delivery_metrics: Per-campaign delivery stats (legacy, use campaign_performance instead)
 -- - waba_analytics_summary: WABA message totals (v3.22)
 -- - waba_daily_metrics: WABA daily message metrics (v3.22)
+-- - waba_template_analytics_view: Per-template metrics with names (v3.23)
 -- - customer_summary: Customer metrics computed from transactions (NEW in v3.0)
 
 -- ==================== TRANSACTIONS TABLE (NEW v3.0) ====================
@@ -698,6 +717,10 @@ CREATE TABLE IF NOT EXISTS app_settings (
 
   -- v3.21: WABA Analytics Sync Tracking
   waba_last_sync TIMESTAMPTZ,             -- Last successful WABA analytics sync from Meta API
+  waba_template_last_sync TIMESTAMPTZ,    -- Last successful template analytics sync (v3.23)
+
+  -- v3.24: Instagram Analytics Sync Tracking
+  instagram_last_sync TIMESTAMPTZ,        -- Last successful Instagram analytics sync from Meta API
 
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -706,6 +729,10 @@ CREATE TABLE IF NOT EXISTS app_settings (
 
 -- v3.21: Add WABA sync tracking column (for migration)
 ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waba_last_sync TIMESTAMPTZ;
+-- v3.23: Add template sync tracking column
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waba_template_last_sync TIMESTAMPTZ;
+-- v3.24: Add Instagram sync tracking column
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS instagram_last_sync TIMESTAMPTZ;
 
 -- Initialize with defaults if table is empty
 INSERT INTO app_settings (id)
@@ -761,6 +788,99 @@ ON waba_message_analytics(waba_id, bucket_date, phone_number_id);
 CREATE INDEX IF NOT EXISTS idx_waba_msg_date ON waba_message_analytics(bucket_date);
 
 COMMENT ON TABLE waba_message_analytics IS 'WhatsApp Business message delivery analytics from Meta Graph API. Tracks sent and delivered counts. Note: read_count is always 0 (not available at account level).';
+
+-- ==================== WABA TEMPLATES CACHE TABLE (v3.23) ====================
+
+CREATE TABLE IF NOT EXISTS waba_templates (
+  id TEXT PRIMARY KEY,                    -- Meta template UUID
+  waba_id TEXT NOT NULL,
+  name TEXT NOT NULL,                     -- e.g., 'lavpop_winback_desconto'
+  status TEXT DEFAULT 'APPROVED',         -- APPROVED, PENDING, REJECTED
+  category TEXT,                          -- MARKETING, UTILITY
+  language TEXT DEFAULT 'pt_BR',
+  local_template_id TEXT,                 -- Maps to messageTemplates.js
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_waba_templates_waba ON waba_templates(waba_id);
+CREATE INDEX IF NOT EXISTS idx_waba_templates_name ON waba_templates(name);
+CREATE INDEX IF NOT EXISTS idx_waba_templates_local ON waba_templates(local_template_id) WHERE local_template_id IS NOT NULL;
+
+COMMENT ON TABLE waba_templates IS 'Cached WhatsApp message templates from Meta API.';
+
+-- ==================== WABA TEMPLATE ANALYTICS TABLE (v3.23) ====================
+
+CREATE TABLE IF NOT EXISTS waba_template_analytics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  template_id TEXT NOT NULL REFERENCES waba_templates(id) ON DELETE CASCADE,
+  waba_id TEXT NOT NULL,
+  bucket_date DATE NOT NULL,
+  sent INTEGER NOT NULL DEFAULT 0,
+  delivered INTEGER NOT NULL DEFAULT 0,
+  read_count INTEGER NOT NULL DEFAULT 0,  -- Available at template level!
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_waba_template_analytics_unique
+ON waba_template_analytics(template_id, bucket_date);
+
+CREATE INDEX IF NOT EXISTS idx_waba_template_analytics_date
+ON waba_template_analytics(bucket_date);
+
+COMMENT ON TABLE waba_template_analytics IS 'Per-template WhatsApp analytics with READ metrics.';
+
+-- ==================== INSTAGRAM DAILY METRICS TABLE (v3.24) ====================
+-- Stores daily Instagram account metrics from Meta Graph API
+-- Synced every 4 hours via campaign-scheduler.js
+
+CREATE TABLE IF NOT EXISTS instagram_daily_metrics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  account_id TEXT NOT NULL,                    -- Meta Instagram Account ID
+  bucket_date DATE NOT NULL,
+
+  -- Profile metrics
+  followers INTEGER NOT NULL DEFAULT 0,
+  following INTEGER NOT NULL DEFAULT 0,
+  posts INTEGER NOT NULL DEFAULT 0,
+
+  -- Core insights metrics (daily values)
+  reach INTEGER NOT NULL DEFAULT 0,
+  views INTEGER NOT NULL DEFAULT 0,                  -- v24.0: replaces impressions
+  profile_views INTEGER NOT NULL DEFAULT 0,
+  website_clicks INTEGER NOT NULL DEFAULT 0,
+  accounts_engaged INTEGER NOT NULL DEFAULT 0,
+  total_interactions INTEGER NOT NULL DEFAULT 0,
+
+  -- Engagement breakdown
+  likes INTEGER NOT NULL DEFAULT 0,
+  comments INTEGER NOT NULL DEFAULT 0,
+  shares INTEGER NOT NULL DEFAULT 0,
+  saves INTEGER NOT NULL DEFAULT 0,
+  replies INTEGER NOT NULL DEFAULT 0,                -- v24.0: story replies
+
+  -- Growth & actions
+  follows_and_unfollows INTEGER NOT NULL DEFAULT 0,  -- Net follower change
+  profile_links_taps INTEGER NOT NULL DEFAULT 0,     -- External link taps
+
+  -- Computed metrics
+  engagement_rate DECIMAL(5,2) DEFAULT 0,      -- (interactions / followers) * 100
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Unique constraint prevents duplicates on re-sync
+CREATE UNIQUE INDEX IF NOT EXISTS idx_instagram_metrics_unique
+ON instagram_daily_metrics(account_id, bucket_date);
+
+-- Index for date-based queries
+CREATE INDEX IF NOT EXISTS idx_instagram_metrics_date
+ON instagram_daily_metrics(bucket_date);
+
+COMMENT ON TABLE instagram_daily_metrics IS 'Daily Instagram account metrics from Meta Graph API. Enables historical trend analysis.';
 
 -- ==================== VIEWS ====================
 -- Drop existing views first to allow column changes
@@ -1048,6 +1168,67 @@ GROUP BY bucket_date
 ORDER BY bucket_date DESC;
 
 COMMENT ON VIEW waba_daily_metrics IS 'Daily WABA message metrics for time series charts.';
+
+-- ==================== WABA TEMPLATE ANALYTICS VIEW (v3.23) ====================
+
+CREATE OR REPLACE VIEW waba_template_analytics_view AS
+SELECT
+  ta.id,
+  ta.template_id,
+  t.name AS template_name,
+  t.local_template_id,
+  t.category,
+  t.status,
+  ta.waba_id,
+  ta.bucket_date,
+  ta.sent,
+  ta.delivered,
+  ta.read_count,
+  CASE WHEN ta.sent > 0
+    THEN ROUND(ta.delivered::DECIMAL / ta.sent * 100, 1)
+    ELSE 0
+  END AS delivery_rate,
+  CASE WHEN ta.delivered > 0
+    THEN ROUND(ta.read_count::DECIMAL / ta.delivered * 100, 1)
+    ELSE 0
+  END AS read_rate,
+  ta.created_at,
+  ta.updated_at
+FROM waba_template_analytics ta
+JOIN waba_templates t ON ta.template_id = t.id
+ORDER BY ta.bucket_date DESC, t.name;
+
+COMMENT ON VIEW waba_template_analytics_view IS 'Template analytics with template names and computed rates.';
+
+-- ==================== INSTAGRAM METRICS WITH GROWTH VIEW (v3.24) ====================
+
+CREATE OR REPLACE VIEW instagram_metrics_with_growth AS
+SELECT
+  m.*,
+  -- Day-over-day follower growth
+  LAG(m.followers) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date) AS prev_followers,
+  m.followers - COALESCE(LAG(m.followers) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date), m.followers) AS followers_change,
+  CASE
+    WHEN LAG(m.followers) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date) > 0
+    THEN ROUND(
+      ((m.followers - LAG(m.followers) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date))::DECIMAL
+      / LAG(m.followers) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date)) * 100, 2
+    )
+    ELSE 0
+  END AS followers_growth_pct,
+  -- Day-over-day reach growth
+  LAG(m.reach) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date) AS prev_reach,
+  m.reach - COALESCE(LAG(m.reach) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date), m.reach) AS reach_change,
+  -- Day-over-day views growth
+  LAG(m.views) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date) AS prev_views,
+  m.views - COALESCE(LAG(m.views) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date), m.views) AS views_change,
+  -- Day-over-day engagement growth
+  LAG(m.total_interactions) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date) AS prev_interactions,
+  m.total_interactions - COALESCE(LAG(m.total_interactions) OVER (PARTITION BY m.account_id ORDER BY m.bucket_date), m.total_interactions) AS interactions_change
+FROM instagram_daily_metrics m
+ORDER BY m.bucket_date DESC;
+
+COMMENT ON VIEW instagram_metrics_with_growth IS 'Instagram metrics with day-over-day growth calculations for followers, reach, views, and engagement.';
 
 -- ==================== HELPER FUNCTIONS ====================
 
@@ -2451,6 +2632,142 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION upsert_waba_messages IS 'Idempotent upsert for WABA message analytics. Safe to call multiple times with same data.';
 
+-- ==================== WABA TEMPLATE UPSERT FUNCTIONS (v3.23) ====================
+
+-- Idempotent upsert for WABA templates cache
+CREATE OR REPLACE FUNCTION upsert_waba_templates(p_data JSONB)
+RETURNS INTEGER AS $$
+DECLARE
+  v_row JSONB;
+  v_count INTEGER := 0;
+BEGIN
+  FOR v_row IN SELECT * FROM jsonb_array_elements(p_data)
+  LOOP
+    INSERT INTO waba_templates (
+      id, waba_id, name, status, category, language, local_template_id, updated_at
+    ) VALUES (
+      v_row->>'id',
+      v_row->>'waba_id',
+      v_row->>'name',
+      COALESCE(v_row->>'status', 'APPROVED'),
+      v_row->>'category',
+      COALESCE(v_row->>'language', 'pt_BR'),
+      v_row->>'local_template_id',
+      NOW()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name,
+      status = EXCLUDED.status,
+      category = EXCLUDED.category,
+      language = EXCLUDED.language,
+      local_template_id = EXCLUDED.local_template_id,
+      updated_at = NOW();
+    v_count := v_count + 1;
+  END LOOP;
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION upsert_waba_templates IS 'Idempotent upsert for WABA templates cache.';
+
+-- Idempotent upsert for per-template WABA analytics
+CREATE OR REPLACE FUNCTION upsert_waba_template_analytics(p_data JSONB)
+RETURNS INTEGER AS $$
+DECLARE
+  v_row JSONB;
+  v_count INTEGER := 0;
+BEGIN
+  FOR v_row IN SELECT * FROM jsonb_array_elements(p_data)
+  LOOP
+    INSERT INTO waba_template_analytics (
+      template_id, waba_id, bucket_date, sent, delivered, read_count, updated_at
+    ) VALUES (
+      v_row->>'template_id',
+      v_row->>'waba_id',
+      (v_row->>'bucket_date')::DATE,
+      COALESCE((v_row->>'sent')::INTEGER, 0),
+      COALESCE((v_row->>'delivered')::INTEGER, 0),
+      COALESCE((v_row->>'read_count')::INTEGER, 0),
+      NOW()
+    )
+    ON CONFLICT (template_id, bucket_date) DO UPDATE SET
+      sent = EXCLUDED.sent,
+      delivered = EXCLUDED.delivered,
+      read_count = EXCLUDED.read_count,
+      updated_at = NOW();
+    v_count := v_count + 1;
+  END LOOP;
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION upsert_waba_template_analytics IS 'Idempotent upsert for per-template WABA analytics.';
+
+-- ==================== INSTAGRAM UPSERT FUNCTION (v3.24) ====================
+
+-- Idempotent upsert for Instagram daily metrics
+CREATE OR REPLACE FUNCTION upsert_instagram_daily_metrics(p_data JSONB)
+RETURNS INTEGER AS $$
+DECLARE
+  v_row JSONB;
+  v_count INTEGER := 0;
+BEGIN
+  FOR v_row IN SELECT * FROM jsonb_array_elements(p_data)
+  LOOP
+    INSERT INTO instagram_daily_metrics (
+      account_id, bucket_date, followers, following, posts,
+      reach, views, profile_views, website_clicks, accounts_engaged, total_interactions,
+      likes, comments, shares, saves, replies, follows_and_unfollows, profile_links_taps,
+      engagement_rate, updated_at
+    ) VALUES (
+      v_row->>'account_id',
+      (v_row->>'bucket_date')::DATE,
+      COALESCE((v_row->>'followers')::INTEGER, 0),
+      COALESCE((v_row->>'following')::INTEGER, 0),
+      COALESCE((v_row->>'posts')::INTEGER, 0),
+      COALESCE((v_row->>'reach')::INTEGER, 0),
+      COALESCE((v_row->>'views')::INTEGER, 0),
+      COALESCE((v_row->>'profile_views')::INTEGER, 0),
+      COALESCE((v_row->>'website_clicks')::INTEGER, 0),
+      COALESCE((v_row->>'accounts_engaged')::INTEGER, 0),
+      COALESCE((v_row->>'total_interactions')::INTEGER, 0),
+      COALESCE((v_row->>'likes')::INTEGER, 0),
+      COALESCE((v_row->>'comments')::INTEGER, 0),
+      COALESCE((v_row->>'shares')::INTEGER, 0),
+      COALESCE((v_row->>'saves')::INTEGER, 0),
+      COALESCE((v_row->>'replies')::INTEGER, 0),
+      COALESCE((v_row->>'follows_and_unfollows')::INTEGER, 0),
+      COALESCE((v_row->>'profile_links_taps')::INTEGER, 0),
+      COALESCE((v_row->>'engagement_rate')::DECIMAL, 0),
+      NOW()
+    )
+    ON CONFLICT (account_id, bucket_date) DO UPDATE SET
+      followers = EXCLUDED.followers,
+      following = EXCLUDED.following,
+      posts = EXCLUDED.posts,
+      reach = EXCLUDED.reach,
+      views = EXCLUDED.views,
+      profile_views = EXCLUDED.profile_views,
+      website_clicks = EXCLUDED.website_clicks,
+      accounts_engaged = EXCLUDED.accounts_engaged,
+      total_interactions = EXCLUDED.total_interactions,
+      likes = EXCLUDED.likes,
+      comments = EXCLUDED.comments,
+      shares = EXCLUDED.shares,
+      saves = EXCLUDED.saves,
+      replies = EXCLUDED.replies,
+      follows_and_unfollows = EXCLUDED.follows_and_unfollows,
+      profile_links_taps = EXCLUDED.profile_links_taps,
+      engagement_rate = EXCLUDED.engagement_rate,
+      updated_at = NOW();
+    v_count := v_count + 1;
+  END LOOP;
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION upsert_instagram_daily_metrics IS 'Idempotent upsert for Instagram daily metrics (v24.0 with views and replies).';
+
 -- ==================== TRIGGERS ====================
 
 DROP TRIGGER IF EXISTS update_blacklist_updated_at ON blacklist;
@@ -2579,6 +2896,11 @@ GRANT USAGE, SELECT ON SEQUENCE webhook_events_id_seq TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON app_settings TO authenticated;
 -- v3.21: WABA analytics table
 GRANT SELECT, INSERT, UPDATE, DELETE ON waba_message_analytics TO authenticated;
+-- v3.23: WABA template analytics tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON waba_templates TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON waba_template_analytics TO authenticated;
+-- v3.24: Instagram analytics table
+GRANT SELECT, INSERT, UPDATE, DELETE ON instagram_daily_metrics TO authenticated;
 
 -- NEW v3.0: Core data tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON transactions TO authenticated;
@@ -2603,6 +2925,10 @@ GRANT SELECT ON campaign_delivery_metrics TO authenticated;
 -- v3.21: WABA analytics views
 GRANT SELECT ON waba_analytics_summary TO authenticated;
 GRANT SELECT ON waba_daily_metrics TO authenticated;
+-- v3.23: WABA template analytics view
+GRANT SELECT ON waba_template_analytics_view TO authenticated;
+-- v3.24: Instagram analytics view
+GRANT SELECT ON instagram_metrics_with_growth TO authenticated;
 
 -- Grant execute on functions
 GRANT EXECUTE ON FUNCTION update_updated_at_column TO authenticated;
@@ -2642,3 +2968,8 @@ GRANT EXECUTE ON FUNCTION upsert_customer_profiles_batch TO authenticated;
 GRANT EXECUTE ON FUNCTION update_app_settings_timestamp TO authenticated;
 -- v3.21: WABA analytics function
 GRANT EXECUTE ON FUNCTION upsert_waba_messages TO authenticated;
+-- v3.23: WABA template analytics functions
+GRANT EXECUTE ON FUNCTION upsert_waba_templates TO authenticated;
+GRANT EXECUTE ON FUNCTION upsert_waba_template_analytics TO authenticated;
+-- v3.24: Instagram analytics function
+GRANT EXECUTE ON FUNCTION upsert_instagram_daily_metrics TO authenticated;

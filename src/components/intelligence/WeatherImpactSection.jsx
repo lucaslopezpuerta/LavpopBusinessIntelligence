@@ -37,7 +37,7 @@
 // v2.0 (2025-11-30): Major refactor with unified components
 // v1.0 (2025-11-30): Initial extraction from Intelligence.jsx
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import {
   Cloud,
@@ -227,6 +227,43 @@ const CorrelationCard = ({
   );
 };
 
+// Tooltip header with tap support for mobile
+const WeatherTooltipHeader = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+        Receita por Condição Climática
+      </h3>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+          className="p-1 -m-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
+          aria-label="Informações sobre classificação climática"
+        >
+          <Info className="w-4 h-4" />
+        </button>
+        {isOpen && (
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 dark:bg-slate-700 text-white text-xs rounded-lg w-72 z-10 text-left shadow-xl">
+            <p className="font-semibold mb-1.5">Classificação por Conforto Térmico</p>
+            <ul className="space-y-0.5 text-[11px] text-slate-300">
+              <li>🥵 <strong>Abafado:</strong> sensação ≥27°C</li>
+              <li>☀️ <strong>Quente:</strong> temperatura ≥23°C</li>
+              <li>😌 <strong>Ameno:</strong> 10–23°C (baseline)</li>
+              <li>❄️ <strong>Frio:</strong> temperatura ≤10°C</li>
+              <li>💧 <strong>Úmido:</strong> umidade ≥80% + precipitação</li>
+              <li>🌧️ <strong>Chuvoso:</strong> precipitação &gt;5mm</li>
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const WeatherImpactSection = ({
   weatherImpact,       // Legacy precipitation-based (kept for fallback)
   comfortWeatherImpact, // New comfort-based analysis
@@ -369,25 +406,7 @@ const WeatherImpactSection = ({
         {/* Comfort Categories Grid */}
         {hasComfortData && (
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Receita por Condição Climática
-              </h3>
-              <div className="group relative">
-                <Info className="w-4 h-4 text-slate-400 cursor-help" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 dark:bg-slate-700 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all w-72 z-10 text-left">
-                  <p className="font-semibold mb-1.5">Classificação por Conforto Térmico</p>
-                  <ul className="space-y-0.5 text-[11px] text-slate-300">
-                    <li>🥵 <strong>Abafado:</strong> sensação ≥27°C</li>
-                    <li>☀️ <strong>Quente:</strong> temperatura ≥23°C</li>
-                    <li>😌 <strong>Ameno:</strong> 10–23°C (baseline)</li>
-                    <li>❄️ <strong>Frio:</strong> temperatura ≤10°C</li>
-                    <li>💧 <strong>Úmido:</strong> umidade ≥80% + precipitação</li>
-                    <li>🌧️ <strong>Chuvoso:</strong> precipitação &gt;5mm</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <WeatherTooltipHeader />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
               {categoryArray.map(cat => (
                 <ComfortWeatherCard

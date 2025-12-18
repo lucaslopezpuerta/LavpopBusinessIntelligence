@@ -85,6 +85,8 @@ import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
 import Backdrop from './components/Backdrop';
 import MinimalTopBar from './components/MinimalTopBar';
+import BottomNavBar from './components/navigation/BottomNavBar';
+import OfflineIndicator from './components/OfflineIndicator';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppSettingsModal from './components/AppSettingsModal';
 import ExportModal from './components/ExportModal';
@@ -108,6 +110,7 @@ const Dashboard = lazy(() => import('./views/Dashboard'));
 const Customers = lazy(() => import('./views/Customers'));
 const Directory = lazy(() => import('./views/Directory'));
 const Campaigns = lazy(() => import('./views/Campaigns'));
+const SocialMedia = lazy(() => import('./views/SocialMedia'));
 const Operations = lazy(() => import('./views/Operations'));
 const Intelligence = lazy(() => import('./views/Intelligence'));
 const DataUploadView = lazy(() => import('./views/DataUploadView'));
@@ -150,6 +153,7 @@ const VIEW_SKELETONS = {
   customers: CustomersLoadingSkeleton,
   diretorio: DirectoryLoadingSkeleton,
   campaigns: CampaignsLoadingSkeleton,
+  social: CampaignsLoadingSkeleton, // Reuse campaigns skeleton (similar layout)
   intelligence: IntelligenceLoadingSkeleton,
   operations: OperationsLoadingSkeleton,
   // Upload view uses generic fallback (simple form)
@@ -316,9 +320,10 @@ function AppContent() {
         '2': 'customers',
         '3': 'diretorio',
         '4': 'campaigns',
-        '5': 'intelligence',
-        '6': 'operations',
-        '7': 'upload',
+        '5': 'social',
+        '6': 'intelligence',
+        '7': 'operations',
+        '8': 'upload',
       };
 
       const tabId = shortcuts[e.key];
@@ -348,6 +353,7 @@ function AppContent() {
     customers: Customers,
     diretorio: Directory,
     campaigns: Campaigns,
+    social: SocialMedia,
     intelligence: Intelligence,
     operations: Operations,
     upload: DataUploadView
@@ -483,6 +489,9 @@ function AppContent() {
         {/* Mobile Backdrop */}
         <Backdrop />
 
+        {/* Offline Indicator */}
+        <OfflineIndicator lastSyncTime={lastRefreshed} />
+
         {/* Main Content Area - with sidebar offset (dynamic when pinned) */}
         <div className={`min-h-screen flex flex-col transition-[padding] duration-300 ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-[60px]'}`}>
           {/* Top Bar */}
@@ -495,7 +504,8 @@ function AppContent() {
           />
 
           {/* Main Content - Full width with edge-to-edge support */}
-          <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
+          {/* pb-24 on mobile for bottom nav clearance (64px nav + 16px breathing room) */}
+          <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 pb-24 lg:pb-6">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -517,8 +527,8 @@ function AppContent() {
             </AnimatePresence>
           </main>
 
-        {/* Footer */}
-        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto">
+        {/* Footer - extra padding on mobile for bottom nav */}
+        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto mb-16 lg:mb-0">
           <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3">
             {/* Mobile: Compact with labels */}
             <div className="flex sm:hidden items-center justify-center gap-4 text-[10px] text-slate-400 dark:text-slate-500">
@@ -553,6 +563,9 @@ function AppContent() {
             </div>
           </div>
         </footer>
+
+        {/* Bottom Navigation Bar (mobile only) */}
+        <BottomNavBar />
       </div>
 
         {/* Settings Modal */}

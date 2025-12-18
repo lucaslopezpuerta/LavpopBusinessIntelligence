@@ -1,8 +1,12 @@
-// WhatsAppAnalytics.jsx v1.1
+// WhatsAppAnalytics.jsx v1.2
 // WhatsApp Business API Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.2 (2025-12-18): Per-template analytics with READ metrics
+//   - Added 4th KPI card: "Taxa de Leitura" (from template-level data)
+//   - Added template analytics table with per-template metrics
+//   - Read metrics now available via template analytics API
 // v1.1 (2025-12-17): Updated for available data
 //   - Message metrics: sent, delivered (read not available at account level)
 //   - Daily trend chart for message volume
@@ -19,7 +23,9 @@ import {
   AlertCircle,
   Calendar,
   ArrowRight,
-  Loader2
+  Loader2,
+  Eye,
+  FileText
 } from 'lucide-react';
 import {
   LineChart,
@@ -291,6 +297,104 @@ const DeliveryFunnel = ({ summary, isLoading }) => {
   );
 };
 
+// ==================== TEMPLATE ANALYTICS TABLE ====================
+
+const TemplateAnalyticsTable = ({ templates, isLoading }) => {
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!templates || templates.length === 0) {
+    return (
+      <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+        <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
+        <p>Nenhum template com dados no período</p>
+      </div>
+    );
+  }
+
+  // Color-code rates
+  const getRateColor = (rate, type) => {
+    if (type === 'delivery') {
+      if (rate >= 95) return 'text-emerald-600 dark:text-emerald-400';
+      if (rate >= 90) return 'text-amber-600 dark:text-amber-400';
+      return 'text-red-600 dark:text-red-400';
+    }
+    // Read rate
+    if (rate >= 50) return 'text-emerald-600 dark:text-emerald-400';
+    if (rate >= 30) return 'text-amber-600 dark:text-amber-400';
+    return 'text-slate-500 dark:text-slate-400';
+  };
+
+  // Category badge
+  const CategoryBadge = ({ category }) => {
+    const colors = {
+      'MARKETING': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      'UTILITY': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    };
+    return (
+      <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${colors[category] || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
+        {category || 'N/A'}
+      </span>
+    );
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 dark:border-slate-700">
+            <th className="text-left py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Template</th>
+            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Enviadas</th>
+            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Entregues</th>
+            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Lidas</th>
+            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">% Entrega</th>
+            <th className="text-right py-3 px-2 font-medium text-slate-500 dark:text-slate-400">% Leitura</th>
+          </tr>
+        </thead>
+        <tbody>
+          {templates.map((template, idx) => (
+            <tr
+              key={template.templateId || idx}
+              className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+            >
+              <td className="py-3 px-2">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]" title={template.templateName}>
+                    {template.templateName}
+                  </span>
+                  <CategoryBadge category={template.category} />
+                </div>
+              </td>
+              <td className="text-right py-3 px-2 text-slate-900 dark:text-white font-medium">
+                {formatNumber(template.sent)}
+              </td>
+              <td className="text-right py-3 px-2 text-slate-700 dark:text-slate-300">
+                {formatNumber(template.delivered)}
+              </td>
+              <td className="text-right py-3 px-2 text-slate-700 dark:text-slate-300">
+                {formatNumber(template.readCount)}
+              </td>
+              <td className={`text-right py-3 px-2 font-medium ${getRateColor(template.deliveryRate, 'delivery')}`}>
+                {formatPercent(template.deliveryRate)}
+              </td>
+              <td className={`text-right py-3 px-2 font-medium ${getRateColor(template.readRate, 'read')}`}>
+                {formatPercent(template.readRate)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 
 const WhatsAppAnalytics = () => {
@@ -302,6 +406,7 @@ const WhatsAppAnalytics = () => {
   // Data states
   const [dailyMetrics, setDailyMetrics] = useState([]);
   const [messageSummary, setMessageSummary] = useState(null);
+  const [templateData, setTemplateData] = useState({ templates: [], summary: null });
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -311,14 +416,19 @@ const WhatsAppAnalytics = () => {
     try {
       const { from, to } = getDateRange(dateFilter);
 
-      // Fetch message data
-      const [dailyRes, messagesRes] = await Promise.all([
+      // Fetch message data and template analytics
+      const [dailyRes, messagesRes, templateRes] = await Promise.all([
         api.waba.getDailyMetrics(from, to),
-        api.waba.getMessages(from, to)
+        api.waba.getMessages(from, to),
+        api.waba.getTemplateAnalyticsSummary(from, to)
       ]);
 
       setDailyMetrics(dailyRes.metrics || []);
       setMessageSummary(messagesRes.summary);
+      setTemplateData({
+        templates: templateRes.templates || [],
+        summary: templateRes.summary || null
+      });
     } catch (err) {
       console.error('Failed to fetch WABA analytics:', err);
       setError(err.message);
@@ -336,7 +446,11 @@ const WhatsAppAnalytics = () => {
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      await api.waba.triggerSync();
+      // Sync both account analytics and template analytics
+      await Promise.all([
+        api.waba.triggerSync(),
+        api.waba.triggerTemplateSync()
+      ]);
       // Refresh data after sync
       await fetchData();
     } catch (err) {
@@ -346,14 +460,17 @@ const WhatsAppAnalytics = () => {
     }
   };
 
-  // Calculate KPIs from message data
+  // Calculate KPIs from message data + template summary
   const kpis = useMemo(() => {
     return {
       totalSent: messageSummary?.totalSent || 0,
       totalDelivered: messageSummary?.totalDelivered || 0,
-      deliveryRate: messageSummary?.deliveryRate || 0
+      deliveryRate: messageSummary?.deliveryRate || 0,
+      // Read rate from template analytics (only available at template level)
+      readRate: templateData.summary?.readRate || 0,
+      totalRead: templateData.summary?.totalRead || 0
     };
-  }, [messageSummary]);
+  }, [messageSummary, templateData.summary]);
 
   // Check if we have any data
   const hasData = dailyMetrics.length > 0 || messageSummary?.totalSent > 0;
@@ -426,7 +543,7 @@ const WhatsAppAnalytics = () => {
 
       {/* KPI Cards */}
       {(hasData || isLoading) && (
-        <KPIGrid columns={3}>
+        <KPIGrid columns={4}>
           <KPICard
             label="Mensagens Enviadas"
             value={formatNumber(kpis.totalSent)}
@@ -457,6 +574,16 @@ const WhatsAppAnalytics = () => {
             isLoading={isLoading}
             subtitle="Entregues / Enviadas"
           />
+          <KPICard
+            label="Taxa de Leitura"
+            value={formatPercent(kpis.readRate)}
+            icon={Eye}
+            variant="gradient"
+            gradientFrom="from-purple-500"
+            gradientTo="to-pink-600"
+            isLoading={isLoading}
+            subtitle="Lidas / Entregues"
+          />
         </KPIGrid>
       )}
 
@@ -481,6 +608,17 @@ const WhatsAppAnalytics = () => {
             <DeliveryFunnel summary={messageSummary} isLoading={isLoading} />
           </SectionCard>
         </div>
+      )}
+
+      {/* Template Analytics Table */}
+      {(hasData || isLoading) && (
+        <SectionCard
+          title="Métricas por Template"
+          subtitle="Desempenho individual de cada template (inclui taxa de leitura)"
+          icon={FileText}
+        >
+          <TemplateAnalyticsTable templates={templateData.templates} isLoading={isLoading} />
+        </SectionCard>
       )}
     </div>
   );

@@ -276,6 +276,96 @@ a:focus-visible {
 }
 
 /* ============================================
+   SAFE AREA INSETS (Notched Devices)
+   ============================================ */
+
+/* Safe area padding utilities for iPhone X+, Android notches */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.safe-area-inset {
+  padding: env(safe-area-inset-top, 0px)
+           env(safe-area-inset-right, 0px)
+           env(safe-area-inset-bottom, 0px)
+           env(safe-area-inset-left, 0px);
+}
+
+/* Bottom nav specific - adds safe area to padding */
+.bottom-nav-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Margin variants */
+.mt-safe {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============================================
+   TOUCH TARGET UTILITIES
+   ============================================ */
+
+/* Minimum 44x44px touch target (Apple HIG) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Larger 48x48dp touch target (Material Design) */
+.touch-target-lg {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* ============================================
+   IOS INPUT ZOOM PREVENTION
+   ============================================ */
+
+/* iOS Safari zooms in on inputs with font-size < 16px
+   This sets minimum font-size to 16px to prevent auto-zoom */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="password"],
+  input[type="search"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Alternative: only on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* ============================================
    REDUCED MOTION (Accessibility + Mobile Performance)
    ============================================ */
 

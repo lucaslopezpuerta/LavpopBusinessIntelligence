@@ -23,7 +23,7 @@ const ThemeToggle = ({ className = '' }) => {
       onClick={toggleTheme}
       className={`
         relative inline-flex items-center justify-center
-        w-10 h-10 rounded-lg
+        w-11 h-11 rounded-lg
         transition-all duration-300 ease-in-out
         hover:scale-105 active:scale-95
         focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2

@@ -282,16 +282,30 @@ const DAY_LABELS = [
   { day: 7, label: 'Dom', fullLabel: 'Domingo' }
 ];
 
-// Tooltip component for help icons - mobile friendly with fixed positioning
-const Tooltip = ({ text }) => (
-  <div className="group relative inline-flex items-center ml-1">
-    <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-help" />
-    <div className="fixed sm:absolute bottom-auto sm:bottom-full left-4 right-4 sm:left-0 sm:right-auto top-1/2 sm:top-auto sm:mb-2 -translate-y-1/2 sm:translate-y-0 px-3 py-2 bg-slate-900 dark:bg-slate-700 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 sm:w-52 z-[100] shadow-xl leading-relaxed pointer-events-none">
-      {text}
-      <div className="hidden sm:block absolute top-full left-4 border-4 border-transparent border-t-slate-900 dark:border-t-slate-700" />
+// Tooltip component for help icons - mobile friendly with tap support
+const Tooltip = ({ text }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  return (
+    <div className="relative inline-flex items-center ml-1">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+        className="p-1 -m-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded"
+        aria-label="Ajuda"
+      >
+        <HelpCircle className="w-3.5 h-3.5" />
+      </button>
+      {isOpen && (
+        <div className="fixed sm:absolute bottom-auto sm:bottom-full left-4 right-4 sm:left-0 sm:right-auto top-1/2 sm:top-auto sm:mb-2 -translate-y-1/2 sm:translate-y-0 px-3 py-2 bg-slate-900 dark:bg-slate-700 text-white text-xs rounded-lg transition-all duration-200 sm:w-52 z-[100] shadow-xl leading-relaxed">
+          {text}
+          <div className="hidden sm:block absolute top-full left-4 border-4 border-transparent border-t-slate-900 dark:border-t-slate-700" />
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // Status pill component
 const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {

@@ -1,10 +1,22 @@
-# LavpopBI Design System v3.2
+# LavpopBI Design System v3.3
 
-> **Last Updated:** December 16, 2025
+> **Last Updated:** December 18, 2025
 > **Status:** Active - All components aligned with this system
-> **Audit Completed:** UX/UI and Code Architecture Audit v2.0
+> **Audit Completed:** UX/UI, Navigation & Mobile Compatibility Audit (Mobile App Readiness)
 
 ## 📋 Changelog
+
+### v3.3 (December 18, 2025) - Mobile App Transformation
+- **NEW:** Bottom Navigation Bar - 5-tab mobile navigation (`BottomNavBar.jsx`)
+- **NEW:** Safe Area CSS utilities for notched devices (iPhone X+, Android)
+- **NEW:** Offline Indicator component with connection status banner
+- **NEW:** Swipe Navigation hook (`useSwipeNavigation.js`) for gesture-based tab switching
+- **NEW:** Pull-to-Refresh hook (`usePullToRefresh.js`) for mobile refresh pattern
+- **UPDATED:** Viewport meta tag with `viewport-fit=cover` for safe areas
+- **UPDATED:** Touch targets - all interactive elements now 44px minimum
+- **UPDATED:** Top bar redesigned - removed breadcrumb, widgets visible on mobile
+- **UPDATED:** Tooltips now use tap-to-toggle pattern (no longer hover-only)
+- **FIXED:** Hover-only interactions in AutomationRules and WeatherImpactSection
 
 ### v3.2 (December 16, 2025)
 - **BREAKING:** Removed `text-[10px]` from allowed font sizes (minimum is now `text-xs`/12px)
@@ -189,13 +201,35 @@ export const Z_INDEX = {
 
 **Mobile Layout (< 1024px):**
 ```
-[Logo + Location] | [Retention Pulse] [Menu Button]
+Top Bar:  [Location] [Weather] | [Settings] [Refresh] [Theme]
+Bottom:   [Dashboard] [Diretório] [Clientes] [Campanhas] [Mais]
 ```
 
-**Mobile Drawer:**
+**Bottom Navigation Bar (`BottomNavBar.jsx`):**
+- Fixed at bottom of viewport with safe area support
+- 5 primary tabs: Dashboard, Diretório, Clientes, Campanhas, Mais
+- "Mais" tab opens drawer for secondary routes (Inteligência, Operações, Upload)
+- Active state: lavpop-blue gradient background on icon
+- 64px height + safe-area-inset-bottom
+- Backdrop blur with dark mode support
+
+```jsx
+// Bottom Nav Specification
+{
+  tabs: [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/' },
+    { id: 'diretorio', label: 'Diretório', icon: Search, path: '/diretorio' },
+    { id: 'customers', label: 'Clientes', icon: Users, path: '/customers' },
+    { id: 'campaigns', label: 'Campanhas', icon: MessageSquare, path: '/campaigns' },
+    { id: 'more', label: 'Mais', icon: Menu, onClick: toggleMobileSidebar }
+  ]
+}
+```
+
+**Mobile Drawer (Secondary Navigation):**
 - Full-screen overlay with backdrop blur
-- Slide-in animation from right
-- Contains all navigation items and widgets
+- Slide-in animation from left
+- Contains secondary routes: Inteligência, Operações, Upload
 - Close on backdrop tap or X button
 
 ### Compact Widgets
@@ -362,9 +396,10 @@ className="bg-white/80 dark:bg-slate-900/80"
 - Hide non-essential elements on mobile
 
 ### 2. **Touch Targets**
-- Minimum height: `h-9` (36px)
-- Minimum tap area: `44x44px` for interactive elements
-- Adequate spacing between clickable items
+- **Minimum size: 44x44px** for all interactive elements (Apple HIG)
+- Use `min-h-[44px] min-w-[44px]` or `touch-target` CSS class
+- Adequate spacing between clickable items (minimum 8px gap)
+- For Material Design compliance: 48x48dp (`touch-target-lg` class)
 
 ### 3. **Content Priority**
 - Show essential data first (temperature, not icon)
@@ -1233,13 +1268,70 @@ focus:ring-offset-2
 ### Viewport & Scaling
 
 ```html
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 ```
 
 **Guidelines:**
-- Allow zoom up to 5x for accessibility
-- Never use `user-scalable=no`
+- `viewport-fit=cover` enables safe area CSS variables
+- Allow zoom for accessibility (don't use `user-scalable=no`)
 - Set initial scale to 1.0
+
+### Safe Area Support (Notched Devices)
+
+For iPhone X+, Android devices with notches/cutouts, use safe area insets:
+
+```css
+/* Safe Area CSS Utilities (src/index.css) */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bottom-nav-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Touch Target Utilities */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.touch-target-lg {
+  min-height: 48px;
+  min-width: 48px;
+}
+```
+
+**Usage:**
+```jsx
+// Top bar with notch support
+<header className="safe-area-top">
+
+// Bottom nav with home indicator support
+<nav className="bottom-nav-safe">
+
+// Button with proper touch target
+<button className="touch-target">
+```
+
+### Offline Indicator (`OfflineIndicator.jsx`)
+
+Shows banner when user loses connection:
+
+```jsx
+// Automatically detects online/offline status
+<OfflineIndicator lastSyncTime={timestamp} />
+
+// Features:
+// - Animated slide-in banner (amber for offline, green for reconnecting)
+// - Shows "última sincronização: há X min" when offline
+// - Auto-hides when connection restored
+// - Uses safe-area-top for notched devices
+```
 
 ### Preventing Horizontal Scroll
 
@@ -1299,28 +1391,67 @@ gap-3  /* 12px - preferred */
 
 ### Mobile Navigation Patterns
 
-**1. Hamburger Menu:**
-```jsx
-<button
-  className="lg:hidden p-2.5 rounded-xl"
-  aria-label="Menu"
-  aria-expanded={isOpen}
->
-  {isOpen ? <X /> : <Menu />}
-</button>
-```
-
-**2. Bottom Navigation (Alternative):**
+**1. Bottom Navigation (Primary - `BottomNavBar.jsx`):**
 ```jsx
 <nav className="
-  fixed bottom-0 left-0 right-0
-  bg-white dark:bg-slate-900
-  border-t border-slate-200 dark:border-slate-700
-  safe-area-inset-bottom
-  lg:hidden
+  lg:hidden fixed bottom-0 inset-x-0 z-40
+  bg-white/95 dark:bg-slate-900/95
+  backdrop-blur-lg
+  border-t border-slate-200/80 dark:border-slate-800/80
+  bottom-nav-safe
 ">
-  {/* Nav items */}
+  <div className="flex items-center justify-around h-16 px-1">
+    {/* 5 nav items: Dashboard, Diretório, Clientes, Campanhas, Mais */}
+  </div>
 </nav>
+```
+
+**2. Secondary Navigation (Drawer via "Mais" tab):**
+- Accessible via "Mais" tab in bottom nav
+- Contains: Inteligência, Operações, Upload
+- Full-screen overlay with backdrop
+
+### Mobile Gesture Hooks
+
+**1. Swipe Navigation (`useSwipeNavigation.js`):**
+```jsx
+import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
+
+const { handlers, isSwipeable } = useSwipeNavigation();
+
+// Wrap content with swipe handlers
+<motion.div {...handlers}>
+  {/* View content - swipe left/right to navigate */}
+</motion.div>
+
+// Configuration:
+// - Swipe threshold: 50px
+// - Velocity threshold: 500px/s
+// - Only active on mobile (< lg breakpoint)
+// - Navigates between: dashboard, diretorio, customers, campaigns
+```
+
+**2. Pull-to-Refresh (`usePullToRefresh.js`):**
+```jsx
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
+
+const { pullDistance, isPulling, isRefreshing, progress, handlers } = usePullToRefresh(onRefresh);
+
+// Wrap scrollable content
+<div {...handlers}>
+  {/* Pull indicator */}
+  {showIndicator && (
+    <div style={{ height: pullDistance }}>
+      <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
+    </div>
+  )}
+  {/* Content */}
+</div>
+
+// Configuration:
+// - Pull threshold: 80px
+// - Resistance factor: 2.5
+// - Only triggers when at top of scroll
 ```
 
 ### Mobile Typography
@@ -1710,12 +1841,20 @@ When creating new components, ensure:
 **Accessibility:**
 - [ ] Accessible markup and labels (`aria-*` attributes)
 - [ ] Keyboard navigation (focus states, escape key for modals)
-- [ ] Minimum touch target size (44x44px)
+- [ ] **Minimum touch target size: 44x44px** (use `touch-target` class)
+- [ ] Focus-visible states for keyboard users
+
+**Mobile Requirements (v3.3+):**
+- [ ] Safe area support for fixed elements (`safe-area-top`, `bottom-nav-safe`)
+- [ ] Touch-friendly tooltips (tap-to-toggle, no hover-only)
+- [ ] Bottom nav clearance (`pb-24 lg:pb-6` for main content)
+- [ ] Works offline (graceful degradation)
 
 **Interactive Elements:**
 - [ ] Loading and error states
 - [ ] Touch-friendly on mobile (tap-to-preview for charts)
 - [ ] Click-outside to close (for modals/dropdowns)
+- [ ] No hover-only interactions (always provide tap fallback)
 
 **Architecture:**
 - [ ] Use semantic z-index from constants (never arbitrary values)
@@ -1729,17 +1868,27 @@ When creating new components, ensure:
 ### Configuration
 - **Tailwind Config:** `tailwind.config.js`
 - **Z-Index Constants:** `src/constants/zIndex.js`
+- **Global CSS:** `src/index.css` (safe areas, touch targets)
 
 ### Contexts & Hooks
 - **Theme Context:** `src/contexts/ThemeContext.jsx`
 - **Sidebar Context:** `src/contexts/SidebarContext.jsx`
+- **Navigation Context:** `src/contexts/NavigationContext.jsx`
 - **Touch Tooltip Hook:** `src/hooks/useTouchTooltip.js`
+- **Swipe Navigation Hook:** `src/hooks/useSwipeNavigation.js` *(NEW v3.3)*
+- **Pull-to-Refresh Hook:** `src/hooks/usePullToRefresh.js` *(NEW v3.3)*
+- **Media Query Hook:** `src/hooks/useMediaQuery.js`
 
 ### Navigation
 - **Main App:** `src/App.jsx`
 - **Icon Sidebar:** `src/components/IconSidebar.jsx`
 - **Top Bar:** `src/components/MinimalTopBar.jsx`
-- **Mobile Drawer:** `src/components/MobileDrawer.jsx`
+- **Bottom Nav Bar:** `src/components/navigation/BottomNavBar.jsx` *(NEW v3.3)*
+- **Bottom Nav Item:** `src/components/navigation/BottomNavItem.jsx` *(NEW v3.3)*
+- **Mobile Backdrop:** `src/components/Backdrop.jsx`
+
+### Mobile Components
+- **Offline Indicator:** `src/components/OfflineIndicator.jsx` *(NEW v3.3)*
 
 ### Modals
 - **KPI Detail Modal:** `src/components/modals/KPIDetailModal.jsx`
@@ -1755,6 +1904,9 @@ When creating new components, ensure:
 - **Retention Pulse:** `src/components/RetentionPulse.jsx`
 - **Secondary KPI Card:** `src/components/ui/SecondaryKPICard.jsx`
 - **Hero KPI Card:** `src/components/ui/HeroKPICard.jsx`
+
+### Documentation
+- **Mobile App Audit:** `docs/mobile-app-audit.md` *(NEW v3.3)*
 
 ---
 

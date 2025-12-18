@@ -1,8 +1,12 @@
-// CustomerSegmentModal.jsx v1.6
+// CustomerSegmentModal.jsx v1.7 - SWIPE-TO-CLOSE
 // Clean modal for displaying filtered customer lists with campaign integration
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.7 (2025-12-18): Added swipe-to-close gesture for mobile
+//   - NEW: Swipe down to close modal on mobile
+//   - Uses useSwipeToClose hook for gesture handling
+//   - Visual feedback during drag
 // v1.6 (2025-12-16): Standardized z-index system
 //   - Uses z-50 (MODAL_PRIMARY) from shared z-index constants
 //   - Consistent layering: primary modals (50) < child modals (60)
@@ -35,10 +39,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Users, Check, ChevronRight,
-  Plus, RefreshCw
+  Plus, RefreshCw, GripHorizontal
 } from 'lucide-react';
 import { useBlacklist } from '../../hooks/useBlacklist';
 import { useActiveCampaigns } from '../../hooks/useActiveCampaigns';
+import { useSwipeToClose } from '../../hooks/useSwipeToClose';
 import { normalizePhone } from '../../utils/phoneUtils';
 import { api } from '../../utils/apiService';
 
@@ -84,6 +89,13 @@ const CustomerSegmentModal = ({
   // Hooks
   const { isBlacklisted, getBlacklistReason } = useBlacklist();
   const { getCampaignsForAudience, isLoading: campaignsLoading } = useActiveCampaigns();
+
+  // Swipe-to-close for mobile
+  const { handlers: swipeHandlers, style: swipeStyle, isDragging, progress } = useSwipeToClose({
+    onClose,
+    threshold: 120,
+    resistance: 0.6,
+  });
 
   // Get matching campaigns for this audience type
   const { automated, manual } = useMemo(() => {
@@ -333,7 +345,18 @@ const CustomerSegmentModal = ({
                 transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[85vh] my-4"
+                style={swipeStyle}
+                {...swipeHandlers}
               >
+              {/* Swipe handle indicator (mobile only) */}
+              <div className="lg:hidden flex justify-center pt-2 pb-1">
+                <div
+                  className={`w-10 h-1 rounded-full transition-colors ${
+                    isDragging ? 'bg-slate-400 dark:bg-slate-500' : 'bg-slate-300 dark:bg-slate-600'
+                  }`}
+                />
+              </div>
+
               {/* Header */}
               <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-3">

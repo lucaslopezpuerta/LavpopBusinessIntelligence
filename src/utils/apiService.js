@@ -1,6 +1,20 @@
-// apiService.js v2.2
+// apiService.js v2.4
 // Unified API service for Supabase backend communication
 // Provides fallback to localStorage when backend is unavailable
+//
+// Version: 2.4 (2025-12-18) - Instagram historical tracking
+//   - Added api.instagram.getHistory() - historical metrics from DB
+//   - Added api.instagram.triggerSync() - manual sync trigger
+//   - Added api.instagram.getStatus() - last sync timestamp
+//
+// Version: 2.3 (2025-12-18) - Instagram analytics
+//   - Added api.instagram.getDashboard() - combined profile, insights, media
+//   - Added api.instagram.getProfile() - basic profile data
+//   - Added api.instagram.getInsights() - account-level metrics
+//   - Added api.instagram.getMedia() - recent posts
+//   - Added api.instagram.getMediaInsights() - per-post metrics
+//   - Added api.instagram.getComments() - recent comments
+//   - Added api.instagram.getMessagesCount() - DM conversation count
 //
 // Version: 2.2 (2025-12-17) - WABA analytics
 //   - Added api.waba.getSummary() - aggregated KPIs
@@ -619,6 +633,254 @@ export const api = {
       } catch (error) {
         console.error('Failed to trigger WABA backfill:', error);
         return { success: false, error: error.message };
+      }
+    },
+
+    // ==================== TEMPLATE ANALYTICS ====================
+
+    /**
+     * Get cached templates list from Meta API
+     */
+    async getTemplates() {
+      try {
+        const result = await apiRequest('waba.getTemplates');
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch WABA templates:', error);
+        return { templates: [], count: 0 };
+      }
+    },
+
+    /**
+     * Get raw per-template analytics data
+     * @param {string} from - Start date (YYYY-MM-DD)
+     * @param {string} to - End date (YYYY-MM-DD)
+     * @param {string} templateId - Optional template ID filter
+     */
+    async getTemplateAnalytics(from = null, to = null, templateId = null) {
+      try {
+        const params = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        if (templateId) params.templateId = templateId;
+        const result = await apiRequest('waba.getTemplateAnalytics', params, 'GET');
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch WABA template analytics:', error);
+        return { analytics: [] };
+      }
+    },
+
+    /**
+     * Get aggregated template analytics summary with rates
+     * @param {string} from - Start date (YYYY-MM-DD)
+     * @param {string} to - End date (YYYY-MM-DD)
+     */
+    async getTemplateAnalyticsSummary(from = null, to = null) {
+      try {
+        const params = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        const result = await apiRequest('waba.getTemplateAnalyticsSummary', params, 'GET');
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch WABA template summary:', error);
+        return {
+          templates: [],
+          summary: { totalSent: 0, totalDelivered: 0, totalRead: 0, deliveryRate: 0, readRate: 0, templateCount: 0 }
+        };
+      }
+    },
+
+    /**
+     * Trigger manual sync of template analytics (calls waba-analytics function)
+     */
+    async triggerTemplateSync() {
+      try {
+        const response = await fetch('/.netlify/functions/waba-analytics?action=sync-templates', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to trigger WABA template sync:', error);
+        return { success: false, error: error.message };
+      }
+    }
+  },
+
+  // ==================== INSTAGRAM ANALYTICS ====================
+  // Instagram Business API analytics from Meta Graph API
+  instagram: {
+    /**
+     * Get combined dashboard data (profile, insights, media, top posts)
+     * This is the recommended endpoint for the dashboard view
+     */
+    async getDashboard() {
+      try {
+        const response = await fetch('/.netlify/functions/instagram-analytics?action=dashboard', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Instagram dashboard:', error);
+        return { profile: null, insights: null, media: [], topPosts: [] };
+      }
+    },
+
+    /**
+     * Get Instagram profile data
+     */
+    async getProfile() {
+      try {
+        const response = await fetch('/.netlify/functions/instagram-analytics?action=profile', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Instagram profile:', error);
+        return { profile: null };
+      }
+    },
+
+    /**
+     * Get account-level insights (reach, impressions, engagement)
+     */
+    async getInsights() {
+      try {
+        const response = await fetch('/.netlify/functions/instagram-analytics?action=insights', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Instagram insights:', error);
+        return { insights: null };
+      }
+    },
+
+    /**
+     * Get recent media (posts)
+     * @param {number} limit - Max posts to fetch (default 25, max 50)
+     */
+    async getMedia(limit = 25) {
+      try {
+        const response = await fetch(`/.netlify/functions/instagram-analytics?action=media&limit=${limit}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Instagram media:', error);
+        return { media: [] };
+      }
+    },
+
+    /**
+     * Get per-post insights
+     * @param {string} mediaId - Instagram media ID
+     */
+    async getMediaInsights(mediaId) {
+      try {
+        const response = await fetch(`/.netlify/functions/instagram-analytics?action=media-insights&mediaId=${mediaId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch media insights:', error);
+        return { insights: null };
+      }
+    },
+
+    /**
+     * Get recent comments across posts
+     * @param {number} limit - Max comments to fetch (default 50, max 100)
+     */
+    async getComments(limit = 50) {
+      try {
+        const response = await fetch(`/.netlify/functions/instagram-analytics?action=comments&limit=${limit}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Instagram comments:', error);
+        return { comments: [] };
+      }
+    },
+
+    /**
+     * Get DM conversation count (read-only)
+     */
+    async getMessagesCount() {
+      try {
+        const response = await fetch('/.netlify/functions/instagram-analytics?action=messages-count', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch messages count:', error);
+        return { messages: { count: 0 } };
+      }
+    },
+
+    // ==================== HISTORICAL DATA ====================
+
+    /**
+     * Get historical Instagram metrics from database
+     * @param {number} days - Number of days to fetch (default 30)
+     * @returns {Promise<object>} { history: [...], summary: {...}, count: number }
+     */
+    async getHistory(days = 30) {
+      try {
+        // Add cache buster to ensure fresh data on filter change
+        const cacheBuster = Date.now();
+        const response = await fetch(`/.netlify/functions/instagram-analytics?action=history&days=${days}&_t=${cacheBuster}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await response.json();
+        return result;
+      } catch (error) {
+        console.error('Failed to fetch Instagram history:', error);
+        return { history: [], summary: null, count: 0 };
+      }
+    },
+
+    /**
+     * Trigger manual sync of Instagram analytics
+     * Stores current metrics in database for historical tracking
+     */
+    async triggerSync() {
+      try {
+        const response = await fetch('/.netlify/functions/instagram-analytics?action=sync', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to trigger Instagram sync:', error);
+        return { success: false, error: error.message };
+      }
+    },
+
+    /**
+     * Get sync status (last sync timestamp)
+     */
+    async getStatus() {
+      try {
+        const response = await fetch('/.netlify/functions/instagram-analytics?action=status', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Instagram sync status:', error);
+        return { lastSync: null };
       }
     }
   },

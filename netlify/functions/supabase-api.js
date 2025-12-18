@@ -2,6 +2,11 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, scheduled campaigns, and WABA analytics
 //
+// Version: 3.4 (2025-12-18) - WABA template analytics routes
+//   - Added waba.getTemplates - list cached templates from Meta API
+//   - Added waba.getTemplateAnalytics - raw daily per-template metrics
+//   - Added waba.getTemplateAnalyticsSummary - aggregated metrics with READ rates
+//
 // Version: 3.3 (2025-12-17) - WABA analytics routes
 //   - Added waba.getSummary - aggregated KPIs from waba_analytics_summary view
 //   - Added waba.getDailyMetrics - time series data from waba_daily_metrics view
@@ -340,6 +345,15 @@ exports.handler = async (event, context) => {
       case 'waba.getMessages':
         return await getWabaMessages(supabase, params, headers);
 
+      case 'waba.getTemplates':
+        return await getWabaTemplates(supabase, headers);
+
+      case 'waba.getTemplateAnalytics':
+        return await getWabaTemplateAnalytics(supabase, params, headers);
+
+      case 'waba.getTemplateAnalyticsSummary':
+        return await getWabaTemplateAnalyticsSummary(supabase, params, headers);
+
       default:
         return {
           statusCode: 400,
@@ -363,7 +377,8 @@ exports.handler = async (event, context) => {
               'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics', 'webhook_events.getEngagementStats',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
               'migrate.import',
-              'waba.getSummary', 'waba.getDailyMetrics', 'waba.getConversations', 'waba.getMessages'
+              'waba.getSummary', 'waba.getDailyMetrics', 'waba.getConversations', 'waba.getMessages',
+              'waba.getTemplates', 'waba.getTemplateAnalytics', 'waba.getTemplateAnalyticsSummary'
             ]
           })
         };
@@ -2804,6 +2819,180 @@ async function getWabaMessages(supabase, params, headers) {
       statusCode: 500,
       headers,
       body: JSON.stringify({ error: 'Failed to fetch WABA messages' })
+    };
+  }
+}
+
+// ==================== WABA TEMPLATE ANALYTICS ====================
+
+/**
+ * Get cached WABA templates list
+ */
+async function getWabaTemplates(supabase, headers) {
+  console.log('[API] waba.getTemplates');
+
+  try {
+    const { data, error } = await supabase
+      .from('waba_templates')
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        templates: data || [],
+        count: data?.length || 0
+      })
+    };
+  } catch (error) {
+    console.error('[API] waba.getTemplates error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to fetch WABA templates' })
+    };
+  }
+}
+
+/**
+ * Get WABA template analytics (raw daily data)
+ * @param {Object} params - Query params (from, to, templateId)
+ */
+async function getWabaTemplateAnalytics(supabase, params, headers) {
+  console.log('[API] waba.getTemplateAnalytics', params);
+
+  try {
+    let query = supabase
+      .from('waba_template_analytics_view')
+      .select('*');
+
+    // Filter by date range
+    if (params.from) {
+      query = query.gte('bucket_date', params.from);
+    }
+    if (params.to) {
+      query = query.lte('bucket_date', params.to);
+    }
+
+    // Filter by template ID
+    if (params.templateId) {
+      query = query.eq('template_id', params.templateId);
+    }
+
+    const { data, error } = await query.order('bucket_date', { ascending: false });
+
+    if (error) throw error;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        analytics: data || []
+      })
+    };
+  } catch (error) {
+    console.error('[API] waba.getTemplateAnalytics error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to fetch WABA template analytics' })
+    };
+  }
+}
+
+/**
+ * Get WABA template analytics summary (aggregated by template)
+ * @param {Object} params - Query params (from, to)
+ */
+async function getWabaTemplateAnalyticsSummary(supabase, params, headers) {
+  console.log('[API] waba.getTemplateAnalyticsSummary', params);
+
+  try {
+    // First get the raw data from view
+    let query = supabase
+      .from('waba_template_analytics_view')
+      .select('template_id, template_name, local_template_id, category, status, sent, delivered, read_count, bucket_date');
+
+    // Filter by date range
+    if (params.from) {
+      query = query.gte('bucket_date', params.from);
+    }
+    if (params.to) {
+      query = query.lte('bucket_date', params.to);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Aggregate by template
+    const templateMap = new Map();
+
+    for (const row of data || []) {
+      const key = row.template_id;
+      if (!templateMap.has(key)) {
+        templateMap.set(key, {
+          templateId: row.template_id,
+          templateName: row.template_name,
+          localTemplateId: row.local_template_id,
+          category: row.category,
+          status: row.status,
+          sent: 0,
+          delivered: 0,
+          readCount: 0
+        });
+      }
+      const agg = templateMap.get(key);
+      agg.sent += row.sent || 0;
+      agg.delivered += row.delivered || 0;
+      agg.readCount += row.read_count || 0;
+    }
+
+    // Convert to array and calculate rates
+    const templates = Array.from(templateMap.values()).map(t => ({
+      ...t,
+      deliveryRate: t.sent > 0 ? Math.round((t.delivered / t.sent) * 1000) / 10 : 0,
+      readRate: t.delivered > 0 ? Math.round((t.readCount / t.delivered) * 1000) / 10 : 0
+    }));
+
+    // Sort by sent (descending)
+    templates.sort((a, b) => b.sent - a.sent);
+
+    // Calculate overall totals
+    const totals = templates.reduce((acc, t) => {
+      acc.sent += t.sent;
+      acc.delivered += t.delivered;
+      acc.readCount += t.readCount;
+      return acc;
+    }, { sent: 0, delivered: 0, readCount: 0 });
+
+    const overallDeliveryRate = totals.sent > 0 ? Math.round((totals.delivered / totals.sent) * 1000) / 10 : 0;
+    const overallReadRate = totals.delivered > 0 ? Math.round((totals.readCount / totals.delivered) * 1000) / 10 : 0;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        templates,
+        summary: {
+          totalSent: totals.sent,
+          totalDelivered: totals.delivered,
+          totalRead: totals.readCount,
+          deliveryRate: overallDeliveryRate,
+          readRate: overallReadRate,
+          templateCount: templates.length
+        }
+      })
+    };
+  } catch (error) {
+    console.error('[API] waba.getTemplateAnalyticsSummary error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to fetch WABA template analytics summary' })
     };
   }
 }
