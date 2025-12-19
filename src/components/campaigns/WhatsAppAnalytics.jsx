@@ -1,8 +1,82 @@
-// WhatsAppAnalytics.jsx v1.6
+// WhatsAppAnalytics.jsx v3.2
 // WhatsApp Business API Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.2 (2025-12-19): Mobile sort asc/desc support
+//   - Mobile sort: Split into field selector + direction toggle button
+//   - Direction button: Green gradient with up/down chevron
+//   - Tap field name to switch Data/Tipo, tap arrow to toggle asc/desc
+// v3.1 (2025-12-19): Mobile filter/sort layout fix
+//   - Mobile filter: Single pill container with flex-1 buttons (Todos, Sim, Não, Outro)
+//   - Mobile sort: Compact toggle button showing current sort field
+//   - Desktop: Clean separation of filter pills and sort controls
+//   - Removed arrow icons from inactive sort buttons (cleaner look)
+// v3.0 (2025-12-19): Received Messages filter/sort branding
+//   - Filter pills: WhatsApp green gradient active state
+//   - Mobile: 4-column grid layout with short labels (Interes., Opt-out)
+//   - Desktop: Pill container with rounded-full design
+//   - Sort controls: Matching pill container style
+//   - SectionCard color: Changed from purple to green (WhatsApp brand)
+// v2.9 (2025-12-19): Pagination consistency with BlacklistManager
+//   - Added "Mostrar X por página" selector (5/10/25, default 10)
+//   - Added "Mostrando X-Y de Z entradas" info with filter count
+//   - Updated button styling: rounded-lg, transition-colors
+//   - Page number buttons: w-8 h-8 with green-600 active state (WhatsApp brand)
+//   - Select focus ring: green-500 (WhatsApp brand)
+//   - Responsive layout: stacks vertically on mobile
+// v2.8 (2025-12-19): Fixed pagination button icons
+//   - Replaced double ChevronLeft/Right with ChevronsLeft/ChevronsRight icons
+//   - Consistent p-1.5 padding on all pagination buttons
+// v2.7 (2025-12-19): Mobile layout refinement for Received Answers table
+//   - Fixed text-[10px] → text-xs (Design System compliance: min 12px)
+//   - Restructured card layout: Name/Phone + Badge on top row
+//   - Phone + Date on second row (only phone shown if name exists)
+//   - Better spacing and visual hierarchy for narrow screens
+// v2.6 (2025-12-19): Display customer name in Received Answers table
+//   - Shows customer name (from customers table lookup) when available
+//   - Name displayed prominently before phone number
+//   - Phone becomes secondary text when name is present
+// v2.5 (2025-12-19): Filter, sort, and pagination for Received Answers table
+//   - Added filter pills: Todos, Interessados, Opt-out, Outros
+//   - Added sort controls: Date (default desc), Type
+//   - Added pagination: 10 items per page with numbered navigation
+//   - Auto-reset to page 1 when filter changes
+// v2.4 (2025-12-19): Fixed sync resilience with Promise.allSettled
+//   - Changed from Promise.all to Promise.allSettled for sync operations
+//   - WABA sync failure (500 error) no longer blocks Twilio sync
+//   - Each sync service now runs independently and logs failures
+// v2.3 (2025-12-19): Database-cached Twilio sync (aligned with WABA pattern)
+//   - Now reads engagement/cost data from Supabase (fast) instead of Twilio API (slow)
+//   - Uses api.twilio.getStoredEngagementAndCosts() for database reads
+//   - Uses api.twilio.triggerSync() for manual sync button
+//   - Falls back to direct API if database is empty (first-time load)
+//   - Follows same pattern as WABA analytics and Instagram
+// v2.2 (2025-12-19): Engagement & Cost Tracking (Twilio)
+//   - Added engagement detection: positive button clicks, opt-outs, custom messages
+//   - Added cost tracking: per-message cost from Twilio API
+//   - New KPI cards: Engajamentos Positivos, Opt-outs, Taxa de Resposta, Custo Total
+//   - New "Respostas Recebidas" section showing inbound messages with classification
+//   - Uses api.twilio.getEngagementAndCosts() for real-time Twilio data
+// v2.1 (2025-12-19): Date filter consistency with Instagram
+//   - "Tudo" now fetches all available data (no hardcoded date limit)
+//   - All KPIs and charts respond to the date filter
+// v2.0 (2025-12-18): Date filter design consistency
+//   - Pill-style date filter matching Instagram design
+//   - WhatsApp green gradient for active state
+// v1.9 (2025-12-18): Layout coherence with Instagram
+//   - Removed redundant stats row from desktop (KPI cards show same data)
+//   - Mobile: Removed badges, show date filter + sync time like Instagram
+//   - Cleaner ProfileHeader with just name, phone, badges (desktop), about
+// v1.8 (2025-12-18): Sync date display and label consistency
+//   - Added last sync timestamp display (like Instagram tab)
+//   - Changed button labels to "Atualizar" for consistency with Instagram
+//   - Fetches status from API to show actual last sync time
+// v1.7 (2025-12-18): Profile header similar to Instagram
+//   - Added ProfileHeader component with business profile data
+//   - Shows: verified name, phone number, quality rating, messaging tier, about
+//   - Mobile and desktop responsive layouts
+//   - WhatsApp green gradient branding
 // v1.6 (2025-12-18): Fixed KPICard color props
 //   - Changed from invalid gradientFrom/gradientTo to color prop
 //   - Uses whatsapp, whatsappTeal, whatsappDark, whatsappRead from colorMapping.js
@@ -44,7 +118,24 @@ import {
   ArrowRight,
   Loader2,
   Eye,
-  FileText
+  FileText,
+  ExternalLink,
+  Phone,
+  Shield,
+  Zap,
+  BadgeCheck,
+  ThumbsUp,
+  ThumbsDown,
+  DollarSign,
+  MessageSquare,
+  Users,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown
 } from 'lucide-react';
 import {
   LineChart,
@@ -96,6 +187,7 @@ const formatDate = (dateStr) => {
 };
 
 // Get date range based on filter
+// Returns null for 'from' when 'all' is selected to fetch all available data
 const getDateRange = (filter) => {
   const now = new Date();
   const to = now.toISOString().split('T')[0];
@@ -110,7 +202,7 @@ const getDateRange = (filter) => {
       break;
     case 'all':
     default:
-      from = '2025-12-09'; // Start date (first templates created)
+      from = null; // No date limit - fetch all available data
       break;
   }
 
@@ -127,22 +219,197 @@ const DateFilter = ({ value, onChange }) => {
   ];
 
   return (
-    <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+    <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5">
       {options.map((option) => (
         <button
           key={option.id}
           onClick={() => onChange(option.id)}
-          className={`
-            px-3 py-1.5 text-xs font-medium rounded-md transition-all
-            ${value === option.id
-              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-            }
-          `}
+          className={`px-3 py-1 text-xs font-semibold rounded-full transition-all min-h-[28px] ${
+            value === option.id
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
         >
           {option.label}
         </button>
       ))}
+    </div>
+  );
+};
+
+// ==================== QUALITY RATING BADGE ====================
+
+const QualityBadge = ({ rating }) => {
+  const config = {
+    GREEN: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', label: 'Alta' },
+    YELLOW: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', label: 'Média' },
+    RED: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', label: 'Baixa' }
+  };
+  const { bg, text, label } = config[rating] || config.GREEN;
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${bg} ${text}`}>
+      <Shield className="w-3 h-3" />
+      {label}
+    </span>
+  );
+};
+
+// ==================== MESSAGING TIER BADGE ====================
+
+const TierBadge = ({ tier }) => {
+  const tierMap = {
+    'TIER_250': '250/dia',
+    'TIER_1K': '1K/dia',
+    'TIER_10K': '10K/dia',
+    'TIER_100K': '100K/dia',
+    'UNLIMITED': 'Ilimitado'
+  };
+  const label = tierMap[tier] || tier || 'N/A';
+
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+      <Zap className="w-3 h-3" />
+      {label}
+    </span>
+  );
+};
+
+// ==================== PROFILE HEADER ====================
+
+const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRefresh, isSyncing, isLoading, lastSync }) => {
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return '';
+    const diff = Date.now() - new Date(timestamp).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    if (days > 0) return `${days}d`;
+    if (hours > 0) return `${hours}h`;
+    return 'agora';
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5">
+      {/* ===== MOBILE LAYOUT ===== */}
+      <div className="sm:hidden">
+        {/* Row 1: Avatar + Name + Refresh */}
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 rounded-full p-[2px] bg-gradient-to-tr from-green-400 via-emerald-500 to-teal-600 flex-shrink-0">
+            {profile?.profilePictureUrl ? (
+              <img src={profile.profilePictureUrl} alt={profile.verifiedName} className="w-full h-full rounded-full object-cover border-2 border-white dark:border-slate-800" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center border-2 border-white dark:border-slate-800">
+                <MessageCircle className="w-5 h-5 text-green-500" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate">{profile?.verifiedName || 'WhatsApp Business'}</h2>
+              {profile?.verifiedName && <BadgeCheck className="w-4 h-4 text-green-500 flex-shrink-0" />}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <Phone className="w-3 h-3" />
+              <span>{profile?.displayPhoneNumber || 'N/A'}</span>
+            </div>
+          </div>
+          <button onClick={onRefresh} disabled={isSyncing} className="w-9 h-9 flex items-center justify-center bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 disabled:opacity-50 text-white rounded-full shadow-md flex-shrink-0">
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+        {/* Row 2: About */}
+        {profile?.about && <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-2">{profile.about}</p>}
+        {/* Row 3: Date filter + Sync time (like Instagram) */}
+        <div className="flex items-center justify-between mt-3 gap-2">
+          <DateFilter value={dateFilter} onChange={onDateFilterChange} />
+          <span className="text-slate-400 text-[10px] flex-shrink-0">{lastSync ? formatTimeAgo(lastSync) : ''}</span>
+        </div>
+      </div>
+
+      {/* ===== DESKTOP LAYOUT ===== */}
+      <div className="hidden sm:flex sm:items-start sm:gap-6">
+        {/* Left: Large Avatar */}
+        <div className="flex-shrink-0">
+          <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-full p-[3px] bg-gradient-to-tr from-green-400 via-emerald-500 to-teal-600">
+            {profile?.profilePictureUrl ? (
+              <img src={profile.profilePictureUrl} alt={profile.verifiedName} className="w-full h-full rounded-full object-cover border-[3px] border-white dark:border-slate-800" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center border-[3px] border-white dark:border-slate-800">
+                <MessageCircle className="w-8 h-8 text-green-500" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Center: Profile Info */}
+        <div className="flex-1 min-w-0">
+          {/* Name row */}
+          <div className="flex items-center gap-3 mb-2">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{profile?.verifiedName || 'WhatsApp Business'}</h2>
+            {profile?.verifiedName && <BadgeCheck className="w-5 h-5 text-green-500" />}
+          </div>
+
+          {/* Phone + Badges */}
+          <div className="flex items-center gap-3 mb-2">
+            <span className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <Phone className="w-4 h-4 text-green-500" />
+              {profile?.displayPhoneNumber || 'N/A'}
+            </span>
+            {profile?.qualityRating && <QualityBadge rating={profile.qualityRating} />}
+            {profile?.messagingLimitTier && <TierBadge tier={profile.messagingLimitTier} />}
+          </div>
+
+          {/* About */}
+          {profile?.about && (
+            <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl line-clamp-2">{profile.about}</p>
+          )}
+        </div>
+
+        {/* Right: Date filter */}
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <DateFilter value={dateFilter} onChange={onDateFilterChange} />
+        </div>
+      </div>
+
+      {/* ===== SUMMARY BAR (shared) ===== */}
+      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+          <span className="text-slate-400 flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            {dateFilter === '7d' ? '7 dias' : dateFilter === '30d' ? '30 dias' : 'Todo período'}
+          </span>
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-slate-400">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Carregando...</span>
+            </div>
+          ) : summary ? (
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 font-medium text-[11px] sm:text-xs">
+                Enviadas: {formatNumber(summary.totalSent || 0)}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium text-[11px] sm:text-xs">
+                Entregues: {formatNumber(summary.totalDelivered || 0)}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 font-medium text-[11px] sm:text-xs">
+                Lidas: {formatNumber(summary.totalRead || 0)}
+              </span>
+            </div>
+          ) : (
+            <span className="text-slate-400">Sem dados</span>
+          )}
+          {/* Desktop: Sync button and last sync time */}
+          <div className="hidden sm:flex items-center gap-2 ml-auto">
+            {lastSync && (
+              <span className="text-slate-400 text-[10px]">Sync: {formatTimeAgo(lastSync)}</span>
+            )}
+            <button onClick={onRefresh} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all">
+              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Atualizando...' : 'Atualizar'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -433,9 +700,42 @@ const WhatsAppAnalytics = () => {
   const [error, setError] = useState(null);
 
   // Data states
+  const [profile, setProfile] = useState(null);
   const [dailyMetrics, setDailyMetrics] = useState([]);
   const [messageSummary, setMessageSummary] = useState(null);
   const [templateData, setTemplateData] = useState({ templates: [], summary: null });
+  const [lastSync, setLastSync] = useState(null);
+
+  // v3.25: Engagement and cost data from Twilio
+  const [engagementData, setEngagementData] = useState({
+    engagements: [],
+    optOuts: [],
+    inboundMessages: [],
+    costSummary: { outboundCount: 0, outboundCost: 0, inboundCount: 0, inboundCost: 0, currency: 'USD' }
+  });
+  const [engagementLoading, setEngagementLoading] = useState(true); // Start true so section shows while loading
+
+  // v2.5: Inbound messages table state (filter, sort, pagination)
+  const [inboundFilter, setInboundFilter] = useState('all'); // all, button_positive, button_optout, other
+  const [inboundSort, setInboundSort] = useState({ field: 'dateSent', direction: 'desc' });
+  const [inboundPage, setInboundPage] = useState(1);
+  const [inboundPageSize, setInboundPageSize] = useState(10);
+  const INBOUND_PAGE_SIZE_OPTIONS = [5, 10, 25];
+
+  // Fetch profile and status (once on mount)
+  const fetchProfileAndStatus = useCallback(async () => {
+    try {
+      const [profileData, statusData] = await Promise.all([
+        api.waba.getProfile(),
+        fetch('/.netlify/functions/waba-analytics?action=status').then(r => r.json())
+      ]);
+      setProfile(profileData);
+      // Use template sync time as it's more relevant for analytics
+      setLastSync(statusData?.lastTemplateSync || statusData?.lastSync || null);
+    } catch (err) {
+      console.error('Failed to fetch WABA profile/status:', err);
+    }
+  }, []);
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -458,6 +758,7 @@ const WhatsAppAnalytics = () => {
         templates: templateRes.templates || [],
         summary: templateRes.summary || null
       });
+      // Don't update lastSync here - it should only reflect actual Meta API sync time
     } catch (err) {
       console.error('Failed to fetch WABA analytics:', err);
       setError(err.message);
@@ -466,22 +767,79 @@ const WhatsAppAnalytics = () => {
     }
   }, [dateFilter]);
 
-  // Initial fetch and on filter change
+  // v2.3: Fetch Twilio engagement and cost data from database (fast)
+  // Falls back to direct API if database is empty
+  const fetchEngagementData = useCallback(async () => {
+    setEngagementLoading(true);
+    try {
+      const { from, to } = getDateRange(dateFilter);
+      // For 'all' filter (from is null), use 90 days as default
+      const dateFrom = from || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const dateTo = to || new Date().toISOString().split('T')[0];
+
+      // First try to read from database (fast, cached)
+      let result = await api.twilio.getStoredEngagementAndCosts(dateFrom, dateTo);
+
+      // If database has data, use it
+      if (result.inboundMessages?.length > 0 || result.costSummary?.outboundCount > 0) {
+        setEngagementData(result);
+      } else {
+        // Database empty - fall back to direct API for first-time load
+        const directResult = await api.twilio.getEngagementAndCosts({ dateSentAfter: dateFrom, pageSize: 200 });
+        setEngagementData(directResult);
+
+        // Trigger async sync to populate database for next time (non-blocking)
+        api.twilio.triggerSync({ dateSentAfter: dateFrom, force: true }).catch(console.error);
+      }
+    } catch (err) {
+      console.error('Failed to fetch Twilio engagement data:', err);
+      // Don't set error state - engagement data is optional
+    } finally {
+      setEngagementLoading(false);
+    }
+  }, [dateFilter]);
+
+  // Fetch profile and status once on mount
+  useEffect(() => {
+    fetchProfileAndStatus();
+  }, [fetchProfileAndStatus]);
+
+  // Fetch data on filter change
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchEngagementData();
+  }, [fetchData, fetchEngagementData]);
 
-  // Manual sync handler
+  // Manual sync handler - syncs WABA + Twilio data
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      // Sync both account analytics and template analytics
-      await Promise.all([
+      // Get date range for Twilio sync
+      const { from } = getDateRange(dateFilter);
+      const dateSentAfter = from || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      // Sync WABA analytics, templates, and Twilio engagement/costs in parallel
+      // Use allSettled so one failure doesn't block the others (e.g., WABA 500 shouldn't block Twilio)
+      const syncResults = await Promise.allSettled([
         api.waba.triggerSync(),
-        api.waba.triggerTemplateSync()
+        api.waba.triggerTemplateSync(),
+        api.twilio.triggerSync({ dateSentAfter, force: true })
       ]);
-      // Refresh data after sync
-      await fetchData();
+
+      // Log any sync failures for debugging
+      syncResults.forEach((result, index) => {
+        const syncNames = ['WABA', 'WABA Templates', 'Twilio'];
+        if (result.status === 'rejected') {
+          console.warn(`${syncNames[index]} sync failed:`, result.reason);
+        }
+      });
+
+      // Refresh all data after sync (also use allSettled to be resilient)
+      await Promise.allSettled([
+        fetchData(),
+        fetchEngagementData(),
+        fetchProfileAndStatus()
+      ]);
     } catch (err) {
       console.error('Sync failed:', err);
     } finally {
@@ -501,40 +859,114 @@ const WhatsAppAnalytics = () => {
     };
   }, [messageSummary, templateData.summary]);
 
+  // v3.25: Calculate engagement KPIs from Twilio data
+  const engagementKpis = useMemo(() => {
+    const { engagements, optOuts, inboundMessages, costSummary } = engagementData;
+    const positiveCount = engagements.length;
+    const optOutCount = optOuts.length;
+    const otherCount = inboundMessages.filter(m => m.engagementType === 'other').length;
+    const totalResponses = inboundMessages.length;
+
+    // Calculate rates based on outbound messages in this period
+    const outboundCount = costSummary.outboundCount || 0;
+    const engagementRate = outboundCount > 0 ? (positiveCount / outboundCount) * 100 : 0;
+    const optOutRate = outboundCount > 0 ? (optOutCount / outboundCount) * 100 : 0;
+    const responseRate = outboundCount > 0 ? (totalResponses / outboundCount) * 100 : 0;
+
+    // Cost metrics
+    const totalCost = costSummary.outboundCost || 0;
+    const costPerMessage = outboundCount > 0 ? totalCost / outboundCount : 0;
+
+    return {
+      positiveCount,
+      optOutCount,
+      otherCount,
+      totalResponses,
+      engagementRate,
+      optOutRate,
+      responseRate,
+      outboundCount,
+      totalCost,
+      costPerMessage,
+      currency: costSummary.currency || 'USD'
+    };
+  }, [engagementData]);
+
   // Check if we have any data
   const hasData = dailyMetrics.length > 0 || messageSummary?.totalSent > 0;
+  const hasEngagementData = engagementData.inboundMessages.length > 0 || engagementData.costSummary.outboundCount > 0;
+
+  // v2.5: Filter, sort, and paginate inbound messages
+  const processedInboundMessages = useMemo(() => {
+    let messages = [...engagementData.inboundMessages];
+
+    // Filter by engagement type
+    if (inboundFilter !== 'all') {
+      messages = messages.filter(m => m.engagementType === inboundFilter);
+    }
+
+    // Sort
+    messages.sort((a, b) => {
+      let aVal, bVal;
+      if (inboundSort.field === 'dateSent') {
+        aVal = new Date(a.dateSent).getTime();
+        bVal = new Date(b.dateSent).getTime();
+      } else if (inboundSort.field === 'type') {
+        // Sort order: button_positive, button_optout, other
+        const typeOrder = { button_positive: 0, button_optout: 1, other: 2 };
+        aVal = typeOrder[a.engagementType] ?? 3;
+        bVal = typeOrder[b.engagementType] ?? 3;
+      } else if (inboundSort.field === 'phone') {
+        aVal = a.phone || '';
+        bVal = b.phone || '';
+      }
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return inboundSort.direction === 'asc' ? cmp : -cmp;
+    });
+
+    // Calculate pagination
+    const totalPages = Math.ceil(messages.length / inboundPageSize);
+    const startIdx = (inboundPage - 1) * inboundPageSize;
+    const endIdx = Math.min(startIdx + inboundPageSize, messages.length);
+    const paginatedMessages = messages.slice(startIdx, endIdx);
+
+    return {
+      messages: paginatedMessages,
+      totalCount: messages.length,
+      totalPages,
+      currentPage: inboundPage,
+      startIdx: startIdx + 1,
+      endIdx
+    };
+  }, [engagementData.inboundMessages, inboundFilter, inboundSort, inboundPage, inboundPageSize]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setInboundPage(1);
+  }, [inboundFilter]);
+
+  // Create summary for ProfileHeader
+  const profileSummary = useMemo(() => ({
+    totalSent: kpis.totalSent,
+    totalDelivered: kpis.totalDelivered,
+    totalRead: kpis.totalRead,
+    deliveryRate: kpis.deliveryRate,
+    readRate: kpis.readRate
+  }), [kpis]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header with date filter and sync button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-              WhatsApp Business Analytics
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Métricas de envio e entrega de mensagens
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <DateFilter value={dateFilter} onChange={setDateFilter} />
-
-          <button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Sincronizar</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-4 animate-fade-in">
+      {/* Profile Header */}
+      <ProfileHeader
+        profile={profile}
+        summary={profileSummary}
+        dateFilter={dateFilter}
+        onDateFilterChange={setDateFilter}
+        onRefresh={handleSync}
+        isSyncing={isSyncing}
+        isLoading={isLoading}
+        lastSync={lastSync}
+      />
 
       {/* Error state */}
       {error && (
@@ -556,7 +988,7 @@ const WhatsAppAnalytics = () => {
             </h3>
             <p className="text-slate-500 dark:text-slate-400 mb-4 max-w-md mx-auto">
               Os dados do WhatsApp Business serão sincronizados automaticamente a cada 4 horas.
-              Clique em "Sincronizar" para buscar os dados agora.
+              Clique em "Atualizar" para buscar os dados agora.
             </p>
             <button
               onClick={handleSync}
@@ -564,7 +996,7 @@ const WhatsAppAnalytics = () => {
               className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Sincronizando...' : 'Sincronizar Agora'}
+              {isSyncing ? 'Atualizando...' : 'Atualizar Agora'}
             </button>
           </div>
         </SectionCard>
@@ -647,6 +1079,359 @@ const WhatsAppAnalytics = () => {
             <TemplateAnalyticsTable templates={templateData.templates} isLoading={isLoading} />
           </SectionCard>
         </div>
+      )}
+
+      {/* v3.25: Engagement & Cost Section */}
+      {(hasEngagementData || engagementLoading) && (
+        <>
+          {/* Engagement KPI Cards */}
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Engajamento & Custos (Twilio)
+            </h3>
+            <KPIGrid columns={4}>
+              <KPICard
+                label="Engajamentos Positivos"
+                value={engagementKpis.positiveCount}
+                icon={ThumbsUp}
+                variant="gradient"
+                color="success"
+                isLoading={engagementLoading}
+                subtitle={`${formatPercent(engagementKpis.engagementRate)} das enviadas`}
+              />
+              <KPICard
+                label="Opt-outs"
+                value={engagementKpis.optOutCount}
+                icon={ThumbsDown}
+                variant="gradient"
+                color="warning"
+                isLoading={engagementLoading}
+                subtitle={`${formatPercent(engagementKpis.optOutRate)} das enviadas`}
+              />
+              <KPICard
+                label="Taxa de Resposta"
+                value={formatPercent(engagementKpis.responseRate)}
+                icon={Users}
+                variant="gradient"
+                color="purple"
+                isLoading={engagementLoading}
+                subtitle={`${engagementKpis.totalResponses} respostas`}
+              />
+              <KPICard
+                label="Custo Total"
+                value={`$${engagementKpis.totalCost.toFixed(2)}`}
+                icon={DollarSign}
+                variant="gradient"
+                color="blue"
+                isLoading={engagementLoading}
+                subtitle={`$${engagementKpis.costPerMessage.toFixed(4)}/msg`}
+              />
+            </KPIGrid>
+          </div>
+
+          {/* Inbound Messages List - v2.5 with filter, sort, pagination */}
+          {engagementData.inboundMessages.length > 0 && (
+            <SectionCard
+              title="Respostas Recebidas"
+              subtitle={`${processedInboundMessages.totalCount} de ${engagementData.inboundMessages.length} mensagens`}
+              icon={MessageSquare}
+              color="green"
+            >
+              {/* Filter and Sort Controls */}
+              <div className="flex flex-col gap-2 mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+                {/* Mobile: Filter row */}
+                <div className="sm:hidden flex items-center gap-2">
+                  <div className="flex-1 inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 gap-0.5">
+                    {[
+                      { value: 'all', short: 'Todos' },
+                      { value: 'button_positive', short: 'Sim' },
+                      { value: 'button_optout', short: 'Não' },
+                      { value: 'other', short: 'Outro' }
+                    ].map(({ value, short }) => (
+                      <button
+                        key={value}
+                        onClick={() => setInboundFilter(value)}
+                        className={`flex-1 px-2 py-1.5 text-xs font-semibold rounded-full transition-all text-center ${
+                          inboundFilter === value
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        {short}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Mobile sort: field selector + direction toggle */}
+                  <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-full p-0.5">
+                    <button
+                      onClick={() => setInboundSort(prev => ({
+                        field: prev.field === 'dateSent' ? 'type' : 'dateSent',
+                        direction: 'desc'
+                      }))}
+                      className="px-2.5 py-1 text-xs font-semibold rounded-full text-slate-600 dark:text-slate-300"
+                    >
+                      {inboundSort.field === 'dateSent' ? 'Data' : 'Tipo'}
+                    </button>
+                    <button
+                      onClick={() => setInboundSort(prev => ({
+                        ...prev,
+                        direction: prev.direction === 'desc' ? 'asc' : 'desc'
+                      }))}
+                      className="p-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                    >
+                      {inboundSort.direction === 'desc' ? (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Desktop: Filter + Sort in one row */}
+                <div className="hidden sm:flex items-center justify-between gap-3">
+                  {/* Filter pills */}
+                  <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 gap-0.5">
+                    {[
+                      { value: 'all', label: 'Todos' },
+                      { value: 'button_positive', label: 'Interessados' },
+                      { value: 'button_optout', label: 'Opt-out' },
+                      { value: 'other', label: 'Outros' }
+                    ].map(({ value, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => setInboundFilter(value)}
+                        className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
+                          inboundFilter === value
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Sort Controls */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-400">Ordenar:</span>
+                    <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 gap-0.5">
+                      {[
+                        { field: 'dateSent', label: 'Data' },
+                        { field: 'type', label: 'Tipo' }
+                      ].map(({ field, label }) => (
+                        <button
+                          key={field}
+                          onClick={() => setInboundSort(prev => ({
+                            field,
+                            direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
+                          }))}
+                          className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full transition-all ${
+                            inboundSort.field === field
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
+                              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                          }`}
+                        >
+                          {label}
+                          {inboundSort.field === field && (
+                            inboundSort.direction === 'desc' ? (
+                              <ChevronDown className="w-3 h-3" />
+                            ) : (
+                              <ChevronUp className="w-3 h-3" />
+                            )
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages List */}
+              <div className="space-y-2">
+                {processedInboundMessages.messages.length === 0 ? (
+                  <p className="text-sm text-center text-slate-500 dark:text-slate-400 py-8">
+                    Nenhuma mensagem encontrada com este filtro
+                  </p>
+                ) : (
+                  processedInboundMessages.messages.map((msg, idx) => (
+                    <div
+                      key={msg.messageSid || idx}
+                      className={`flex items-start gap-3 p-3 rounded-lg ${
+                        msg.engagementType === 'button_positive'
+                          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                          : msg.engagementType === 'button_optout'
+                          ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                          : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      {/* Icon */}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        msg.engagementType === 'button_positive'
+                          ? 'bg-green-100 dark:bg-green-800'
+                          : msg.engagementType === 'button_optout'
+                          ? 'bg-amber-100 dark:bg-amber-800'
+                          : 'bg-slate-200 dark:bg-slate-700'
+                      }`}>
+                        {msg.engagementType === 'button_positive' ? (
+                          <ThumbsUp className="w-4 h-4 text-green-600 dark:text-green-300" />
+                        ) : msg.engagementType === 'button_optout' ? (
+                          <ThumbsDown className="w-4 h-4 text-amber-600 dark:text-amber-300" />
+                        ) : (
+                          <MessageCircle className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Header row: Name/Phone + Badge */}
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="min-w-0 flex-1">
+                            {msg.customerName ? (
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-200 block truncate">
+                                {msg.customerName}
+                              </span>
+                            ) : (
+                              <span className="text-sm font-medium text-slate-600 dark:text-slate-300 block">
+                                {msg.phone?.replace(/^\+55/, '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}
+                              </span>
+                            )}
+                          </div>
+                          {/* Badge */}
+                          <span className={`px-2 py-0.5 text-xs font-semibold rounded-full flex-shrink-0 ${
+                            msg.engagementType === 'button_positive'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200'
+                              : msg.engagementType === 'button_optout'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-200'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                          }`}>
+                            {msg.engagementType === 'button_positive' ? 'Interessado' :
+                             msg.engagementType === 'button_optout' ? 'Opt-out' : 'Outro'}
+                          </span>
+                        </div>
+                        {/* Secondary info: Phone (if name shown) + Date */}
+                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1">
+                          {msg.customerName && (
+                            <span>{msg.phone?.replace(/^\+55/, '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}</span>
+                          )}
+                          <span>{new Date(msg.dateSent).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        {/* Message body */}
+                        <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+                          {msg.body}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Pagination Controls */}
+              {processedInboundMessages.totalCount > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  {/* Items per page selector */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Mostrar</span>
+                    <select
+                      value={inboundPageSize}
+                      onChange={(e) => {
+                        setInboundPageSize(Number(e.target.value));
+                        setInboundPage(1);
+                      }}
+                      className="px-2 py-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      {INBOUND_PAGE_SIZE_OPTIONS.map(option => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">por página</span>
+                  </div>
+
+                  {/* Page info */}
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    Mostrando {processedInboundMessages.startIdx}-{processedInboundMessages.endIdx} de {processedInboundMessages.totalCount} entradas
+                    {processedInboundMessages.totalCount !== engagementData.inboundMessages.length && (
+                      <span className="text-slate-400 dark:text-slate-500"> (filtrado de {engagementData.inboundMessages.length})</span>
+                    )}
+                  </div>
+
+                  {/* Page navigation */}
+                  {processedInboundMessages.totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setInboundPage(1)}
+                        disabled={inboundPage === 1}
+                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Primeira página"
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setInboundPage(p => Math.max(1, p - 1))}
+                        disabled={inboundPage === 1}
+                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Página anterior"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+
+                      {/* Page numbers */}
+                      <div className="flex items-center gap-1 mx-2">
+                        {Array.from({ length: Math.min(5, processedInboundMessages.totalPages) }, (_, i) => {
+                          let pageNum;
+                          const total = processedInboundMessages.totalPages;
+                          const current = processedInboundMessages.currentPage;
+
+                          if (total <= 5) {
+                            pageNum = i + 1;
+                          } else if (current <= 3) {
+                            pageNum = i + 1;
+                          } else if (current >= total - 2) {
+                            pageNum = total - 4 + i;
+                          } else {
+                            pageNum = current - 2 + i;
+                          }
+
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setInboundPage(pageNum)}
+                              className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                                pageNum === current
+                                  ? 'bg-green-600 text-white'
+                                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        onClick={() => setInboundPage(p => Math.min(processedInboundMessages.totalPages, p + 1))}
+                        disabled={inboundPage === processedInboundMessages.totalPages}
+                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Próxima página"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setInboundPage(processedInboundMessages.totalPages)}
+                        disabled={inboundPage === processedInboundMessages.totalPages}
+                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Última página"
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </SectionCard>
+          )}
+        </>
       )}
     </div>
   );

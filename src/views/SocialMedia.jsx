@@ -1,7 +1,11 @@
-// SocialMedia.jsx v1.0
+// SocialMedia.jsx v1.1
 // Social Media Analytics Tab
 // Design System v4.0 compliant
 //
+// CHANGELOG:
+// v1.1 (2025-12-19): Added Blacklist tab
+//   - Moved BlacklistManager from Campaigns view
+//   - Blacklist logically belongs with WhatsApp messaging
 // v1.0 (2025-12-18): Initial implementation
 //   - Instagram analytics dashboard
 //   - Platform sub-tab navigation
@@ -16,6 +20,7 @@ import SocialMediaNavigation from '../components/social/SocialMediaNavigation';
 // Lazy-loaded platform components
 const InstagramAnalytics = lazy(() => import('../components/social/InstagramAnalytics'));
 const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAnalytics'));
+const BlacklistManager = lazy(() => import('../components/campaigns/BlacklistManager'));
 
 // Loading fallback for lazy components
 const LoadingFallback = () => (
@@ -82,6 +87,13 @@ const SocialMedia = ({ data }) => {
       {activeSection === 'whatsapp' && (
         <Suspense fallback={<LoadingFallback />}>
           <WhatsAppAnalytics />
+        </Suspense>
+      )}
+
+      {/* Blacklist Manager Section */}
+      {activeSection === 'blacklist' && (
+        <Suspense fallback={<LoadingFallback />}>
+          <BlacklistManager customerData={data?.customer} />
         </Suspense>
       )}
 

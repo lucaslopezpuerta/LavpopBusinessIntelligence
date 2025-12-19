@@ -1,6 +1,14 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.24 (2025-12-18)
+-- Version: 3.25 (2025-12-19)
+--
+-- v3.25: Engagement & Cost Tracking
+--   - Added engagement_type and engaged_at columns to contact_tracking
+--   - Added message_cost and message_cost_currency columns to contact_tracking
+--   - Added twilio_daily_costs table for aggregated cost reporting
+--   - Added upsert_twilio_daily_costs() function
+--   - Enables tracking: button clicks, positive engagement, messaging costs
+--   - See migrations/018_engagement_and_cost_tracking.sql
 --
 -- v3.24: Instagram Analytics (Meta Graph API v24.0)
 --   - Added instagram_daily_metrics table for historical tracking
@@ -433,7 +441,15 @@ CREATE TABLE IF NOT EXISTS contact_tracking (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
 
   -- v3.18: Priority queue for manual inclusions
-  priority_source TEXT                    -- 'manual_inclusion' (user clicked Incluir), 'automation' (scheduler), NULL (legacy)
+  priority_source TEXT,                   -- 'manual_inclusion' (user clicked Incluir), 'automation' (scheduler), NULL (legacy)
+
+  -- v3.25: Engagement tracking
+  engagement_type TEXT,                   -- button_positive, button_optout, other
+  engaged_at TIMESTAMPTZ,                 -- When customer responded
+
+  -- v3.25: Cost tracking per message
+  message_cost DECIMAL(10,6),             -- Cost in currency (from Twilio price field)
+  message_cost_currency TEXT              -- Currency code (usually USD)
 );
 
 CREATE INDEX IF NOT EXISTS idx_contact_tracking_customer ON contact_tracking(customer_id);
@@ -690,6 +706,56 @@ COMMENT ON COLUMN webhook_events.event_type IS 'Event type: delivery_status, but
 COMMENT ON COLUMN webhook_events.payload IS 'For delivery_status: sent/delivered/read/failed/undelivered. For button_click: the payload.';
 COMMENT ON COLUMN webhook_events.error_code IS 'Twilio error code for failed messages (e.g., 63024)';
 COMMENT ON COLUMN webhook_events.campaign_id IS 'Campaign ID for direct linking (alternative to joining via campaign_contacts)';
+
+-- ==================== TWILIO DAILY COSTS TABLE (v3.25) ====================
+-- Aggregated daily costs for budget tracking
+
+CREATE TABLE IF NOT EXISTS twilio_daily_costs (
+  id SERIAL PRIMARY KEY,
+  date DATE NOT NULL,                    -- The day
+  outbound_count INT DEFAULT 0,          -- Number of outbound messages
+  outbound_cost DECIMAL(10,4) DEFAULT 0, -- Total outbound cost
+  inbound_count INT DEFAULT 0,           -- Number of inbound messages
+  inbound_cost DECIMAL(10,4) DEFAULT 0,  -- Total inbound cost (usually $0)
+  currency TEXT DEFAULT 'USD',           -- Currency (from Twilio)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  CONSTRAINT twilio_daily_costs_date_key UNIQUE (date)
+);
+
+-- Index for date range queries
+CREATE INDEX IF NOT EXISTS idx_twilio_daily_costs_date
+ON twilio_daily_costs (date DESC);
+
+-- Function to upsert daily costs (called after fetching Twilio data)
+CREATE OR REPLACE FUNCTION upsert_twilio_daily_costs(
+  p_date DATE,
+  p_outbound_count INT DEFAULT 0,
+  p_outbound_cost DECIMAL DEFAULT 0,
+  p_inbound_count INT DEFAULT 0,
+  p_inbound_cost DECIMAL DEFAULT 0,
+  p_currency TEXT DEFAULT 'USD'
+)
+RETURNS twilio_daily_costs AS $$
+DECLARE
+  result twilio_daily_costs;
+BEGIN
+  INSERT INTO twilio_daily_costs (date, outbound_count, outbound_cost, inbound_count, inbound_cost, currency)
+  VALUES (p_date, p_outbound_count, p_outbound_cost, p_inbound_count, p_inbound_cost, p_currency)
+  ON CONFLICT (date) DO UPDATE SET
+    outbound_count = twilio_daily_costs.outbound_count + EXCLUDED.outbound_count,
+    outbound_cost = twilio_daily_costs.outbound_cost + EXCLUDED.outbound_cost,
+    inbound_count = twilio_daily_costs.inbound_count + EXCLUDED.inbound_count,
+    inbound_cost = twilio_daily_costs.inbound_cost + EXCLUDED.inbound_cost,
+    updated_at = NOW()
+  RETURNING * INTO result;
+
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON TABLE twilio_daily_costs IS 'Aggregated daily messaging costs from Twilio for budget tracking';
 
 -- ==================== APP SETTINGS TABLE (v3.20) ====================
 -- Centralized app configuration settings
@@ -1663,6 +1729,11 @@ $$ LANGUAGE plpgsql;
 CREATE INDEX IF NOT EXISTS idx_contact_tracking_queued_lookup
 ON contact_tracking(customer_id, campaign_id, status)
 WHERE status = 'queued';
+
+-- v3.25: Index for engagement analytics
+CREATE INDEX IF NOT EXISTS idx_contact_tracking_engagement
+ON contact_tracking (engagement_type, engaged_at DESC)
+WHERE engagement_type IS NOT NULL;
 
 -- ==================== UNIFIED CONTACT ELIGIBILITY (v3.12) ====================
 -- Functions to check if a customer is eligible for campaign contact

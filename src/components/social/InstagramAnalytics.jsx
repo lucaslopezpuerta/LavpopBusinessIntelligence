@@ -1,7 +1,13 @@
-// InstagramAnalytics.jsx v3.1
+// InstagramAnalytics.jsx v3.3
 // Instagram Business Analytics Dashboard
 // Design System v3.3 compliant - Instagram-coherent design
 //
+// v3.3 (2025-12-19): Date filter consistency
+//   - Changed options to 7/30/Tudo (matching WhatsApp)
+//   - "Tudo" fetches all available data (no 365-day limit)
+// v3.2 (2025-12-18): Date filter consistency with WhatsApp
+//   - Changed labels from "7d/14d/30d" to "7 dias/14 dias/Tudo"
+//   - "Tudo" shows all available history
 // v3.1 (2025-12-18): Smart Instagram links
 //   - Desktop: opens Instagram website
 //   - Mobile: opens Instagram app via deep link (instagram://)
@@ -116,23 +122,31 @@ const IG_COLORS = {
 
 // ==================== SMALL COMPONENTS ====================
 
-const DateFilter = ({ value, onChange }) => (
-  <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5">
-    {[7, 14, 30].map((days) => (
-      <button
-        key={days}
-        onClick={() => onChange(days)}
-        className={`px-3 py-1 text-xs font-semibold rounded-full transition-all min-h-[28px] ${
-          value === days
-            ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
-            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-        }`}
-      >
-        {days}d
-      </button>
-    ))}
-  </div>
-);
+const DateFilter = ({ value, onChange }) => {
+  const options = [
+    { id: 7, label: '7 dias' },
+    { id: 30, label: '30 dias' },
+    { id: 'all', label: 'Tudo' }
+  ];
+
+  return (
+    <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5">
+      {options.map((option) => (
+        <button
+          key={option.id}
+          onClick={() => onChange(option.id)}
+          className={`px-3 py-1 text-xs font-semibold rounded-full transition-all min-h-[28px] ${
+            value === option.id
+              ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
+              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const TrendBadge = ({ value, compact = false }) => {
   if (value === undefined || value === null) return null;
@@ -255,7 +269,7 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
         <span className="text-slate-400 flex items-center gap-1">
           <Calendar className="w-3 h-3" />
-          {historyDays}d
+          {historyDays === 'all' ? 'Todo período' : `${historyDays} dias`}
         </span>
         {isLoadingHistory ? (
           <div className="flex items-center gap-2 text-slate-400">
@@ -284,7 +298,7 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
           )}
           <button onClick={onRefresh} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 hover:from-pink-600 hover:via-rose-600 hover:to-orange-500 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all">
             <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Sync...' : 'Atualizar'}
+            {isSyncing ? 'Atualizando...' : 'Atualizar'}
           </button>
         </div>
       </div>
@@ -757,7 +771,7 @@ const InstagramAnalytics = () => {
   const [media, setMedia] = useState([]);
   const [comments, setComments] = useState([]);
 
-  const [historyDays, setHistoryDays] = useState(14);
+  const [historyDays, setHistoryDays] = useState(30);
   const [historyData, setHistoryData] = useState([]);
   const [lastSync, setLastSync] = useState(null);
 
@@ -806,8 +820,10 @@ const InstagramAnalytics = () => {
   const fetchHistory = useCallback(async (days) => {
     setIsLoadingHistory(true);
     try {
+      // 'all' means fetch all available history (null = no limit)
+      const daysToFetch = days === 'all' ? null : days;
       const [historyResult, statusResult] = await Promise.all([
-        api.instagram.getHistory(days),
+        api.instagram.getHistory(daysToFetch),
         api.instagram.getStatus()
       ]);
 
@@ -870,7 +886,7 @@ const InstagramAnalytics = () => {
       {/* Main Chart */}
       <ChartCard
         title="Visibilidade & Engajamento"
-        subtitle={`Alcance, views e interações • ${historyDays} dias`}
+        subtitle={`Alcance, views e interações • ${historyDays === 'all' ? 'Todo período' : `${historyDays} dias`}`}
         icon={Sparkles}
         iconColor="text-purple-500"
         iconBg="bg-gradient-to-br from-purple-500/20 to-violet-500/20 dark:from-purple-500/30 dark:to-violet-500/30"

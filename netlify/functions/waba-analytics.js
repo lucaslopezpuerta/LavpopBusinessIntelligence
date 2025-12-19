@@ -1,6 +1,14 @@
 // netlify/functions/waba-analytics.js
 // WhatsApp Business API Analytics - Meta Graph API integration
 //
+// v1.4 (2025-12-18): Profile caching for faster loads
+//   - Added Cache-Control header to profile endpoint (1 hour, like Instagram)
+//   - Reduces redundant Meta API calls on page refresh
+// v1.3 (2025-12-18): Business profile fetching
+//   - Added fetchBusinessProfile to get WABA profile data
+//   - Returns: verified_name, quality_rating, messaging_limit_tier, profile_picture_url, about
+//   - Used for ProfileHeader component similar to Instagram
+//
 // v1.2 (2025-12-18): Per-template analytics with READ metrics
 //   - Added template sync functions to fetch template list and per-template analytics
 //   - READ metrics now available via per-template analytics (not at account level)
@@ -183,6 +191,75 @@ async function syncAnalytics(startEpoch, endEpoch) {
     .eq('id', 'default');
 
   return results;
+}
+
+// ==================== BUSINESS PROFILE ====================
+
+/**
+ * Fetch WhatsApp Business profile data
+ * GET /{phone-number-id}?fields=verified_name,display_phone_number,quality_rating,messaging_limit_tier
+ * GET /{phone-number-id}/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical
+ */
+async function fetchBusinessProfile(wabaId, phoneNumberId, accessToken) {
+  // First, get phone number info (verified name, quality, etc.)
+  const phoneFields = 'verified_name,display_phone_number,quality_rating,messaging_limit_tier,name_status';
+  const phoneUrl = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${phoneNumberId}?fields=${phoneFields}&access_token=${accessToken}`;
+
+  const phoneResponse = await fetchWithRetry(phoneUrl);
+  const phoneData = await phoneResponse.json();
+
+  if (!phoneResponse.ok) {
+    const errorInfo = parseMetaError(phoneData);
+    throw new Error(`Meta API error fetching phone info: ${errorInfo.message} (code: ${errorInfo.code})`);
+  }
+
+  // Then, get business profile (about, profile picture, etc.)
+  const profileFields = 'about,address,description,email,profile_picture_url,websites,vertical';
+  const profileUrl = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${phoneNumberId}/whatsapp_business_profile?fields=${profileFields}&access_token=${accessToken}`;
+
+  const profileResponse = await fetchWithRetry(profileUrl);
+  const profileData = await profileResponse.json();
+
+  // Profile data is optional - some accounts may not have it configured
+  let businessProfile = {};
+  if (profileResponse.ok && profileData.data && profileData.data.length > 0) {
+    businessProfile = profileData.data[0];
+  }
+
+  // Combine both responses
+  return {
+    verifiedName: phoneData.verified_name || null,
+    displayPhoneNumber: phoneData.display_phone_number || null,
+    qualityRating: phoneData.quality_rating || null,
+    messagingLimitTier: phoneData.messaging_limit_tier || null,
+    nameStatus: phoneData.name_status || null,
+    // From business profile
+    about: businessProfile.about || null,
+    description: businessProfile.description || null,
+    email: businessProfile.email || null,
+    profilePictureUrl: businessProfile.profile_picture_url || null,
+    websites: businessProfile.websites || [],
+    address: businessProfile.address || null,
+    vertical: businessProfile.vertical || null
+  };
+}
+
+/**
+ * Get phone number IDs associated with WABA
+ * GET /{WABA_ID}/phone_numbers
+ */
+async function fetchPhoneNumbers(wabaId, accessToken) {
+  const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${wabaId}/phone_numbers?access_token=${accessToken}`;
+
+  const response = await fetchWithRetry(url);
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorInfo = parseMetaError(data);
+    throw new Error(`Meta API error fetching phone numbers: ${errorInfo.message} (code: ${errorInfo.code})`);
+  }
+
+  return data.data || [];
 }
 
 // ==================== TEMPLATE ANALYTICS (READ metrics) ====================
@@ -485,6 +562,43 @@ exports.handler = async (event, context) => {
             templates: templateCount,
             templateAnalyticsRecords: templateAnalyticsCount
           })
+        };
+      }
+
+      case 'profile': {
+        // Fetch WhatsApp Business profile
+        const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
+        const WABA_ID = process.env.META_WABA_ID;
+        const PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
+
+        if (!ACCESS_TOKEN || !WABA_ID) {
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ error: 'Meta API credentials not configured' })
+          };
+        }
+
+        // Get phone numbers if not configured
+        let phoneNumberId = PHONE_NUMBER_ID;
+        if (!phoneNumberId) {
+          const phoneNumbers = await fetchPhoneNumbers(WABA_ID, ACCESS_TOKEN);
+          if (phoneNumbers.length === 0) {
+            return {
+              statusCode: 404,
+              headers,
+              body: JSON.stringify({ error: 'No phone numbers found for this WABA' })
+            };
+          }
+          phoneNumberId = phoneNumbers[0].id;
+        }
+
+        const profile = await fetchBusinessProfile(WABA_ID, phoneNumberId, ACCESS_TOKEN);
+
+        return {
+          statusCode: 200,
+          headers: { ...headers, 'Cache-Control': 'private, max-age=3600' }, // 1 hour cache like Instagram
+          body: JSON.stringify({ profile })
         };
       }
 

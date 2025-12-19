@@ -2,6 +2,20 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.15 (2025-12-19): Blacklist sync
+//   - Added automatic sync of Twilio blacklist (opt-outs + undelivered) every 4 hours
+//   - Detects opt-out keywords in inbound messages
+//   - Detects undelivered/failed outbound messages
+//   - Stores to blacklist table with reason and source
+//   - Uses blacklist_last_sync in app_settings for scheduling
+//
+// v2.14 (2025-12-19): Twilio engagement & cost sync
+//   - Added automatic sync of Twilio engagement and cost data every 4 hours
+//   - Stores engagement data to contact_tracking table
+//   - Stores cost data to twilio_daily_costs table
+//   - Follows same pattern as WABA and Instagram sync
+//   - Uses syncTwilioEngagementAndCosts from twilio-whatsapp.js
+//
 // v2.13 (2025-12-18): Instagram analytics sync
 //   - Added automatic sync of Instagram metrics every 4 hours
 //   - Stores daily snapshots in instagram_daily_metrics table
@@ -298,17 +312,35 @@ exports.handler = async (event, context) => {
       console.log('Skipping Instagram sync (not due yet or not configured)');
     }
 
+    // v2.14: Sync Twilio engagement & cost data every 4 hours
+    let twilioResults = { skipped: true };
+    if (await shouldSyncTwilioEngagement(supabase)) {
+      twilioResults = await runTwilioSync(supabase);
+    } else {
+      console.log('Skipping Twilio sync (not due yet or not configured)');
+    }
+
+    // v2.15: Sync blacklist (opt-outs + undelivered) every 4 hours
+    let blacklistResults = { skipped: true };
+    if (await shouldSyncBlacklist(supabase)) {
+      blacklistResults = await runBlacklistSync(supabase);
+    } else {
+      console.log('Skipping blacklist sync (not due yet or not configured)');
+    }
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}${wabaResults.skipped ? '' : ', WABA synced'}${wabaTemplateResults.skipped ? '' : ', templates synced'}${instagramResults.skipped ? '' : ', Instagram synced'}`,
+        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}${wabaResults.skipped ? '' : ', WABA synced'}${wabaTemplateResults.skipped ? '' : ', templates synced'}${instagramResults.skipped ? '' : ', Instagram synced'}${twilioResults.skipped ? '' : ', Twilio synced'}${blacklistResults.skipped ? '' : ', blacklist synced'}`,
         campaigns: results,
         priorityQueue: priorityResults,
         automation: automationResults,
         returns: returnResults,
         waba: wabaResults,
         wabaTemplates: wabaTemplateResults,
-        instagram: instagramResults
+        instagram: instagramResults,
+        twilio: twilioResults,
+        blacklist: blacklistResults
       })
     };
 
@@ -666,6 +698,416 @@ async function runInstagramSync() {
     };
   } catch (error) {
     console.error('Instagram sync error:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Check if Twilio engagement/cost sync should run
+ * Runs every 4 hours (same schedule as WABA and Instagram)
+ * @param {Object} supabase - Supabase client
+ * @returns {Promise<boolean>} True if it's time to sync Twilio data
+ */
+async function shouldSyncTwilioEngagement(supabase) {
+  try {
+    // Check if TWILIO_ACCOUNT_SID is configured
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+      return false;
+    }
+
+    // Get last sync time from app_settings
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('twilio_last_sync')
+      .eq('id', 'default')
+      .single();
+
+    if (!settings?.twilio_last_sync) {
+      // Never synced, should sync
+      return true;
+    }
+
+    // Check if 4 hours have passed
+    const lastSync = new Date(settings.twilio_last_sync);
+    const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
+
+    return hoursSinceSync >= 4;
+  } catch (error) {
+    console.warn('Error checking Twilio sync status:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Sync Twilio engagement and cost data
+ * Fetches from Twilio API and stores to Supabase
+ * @param {Object} supabase - Supabase client
+ */
+async function runTwilioSync(supabase) {
+  try {
+    console.log('Syncing Twilio engagement & cost data...');
+
+    // Fetch last 7 days of messages from Twilio
+    const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+    const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+    const credentials = Buffer.from(`${ACCOUNT_SID}:${AUTH_TOKEN}`).toString('base64');
+
+    let hasMore = true;
+    let pageToken = null;
+    let allInboundMessages = [];
+    let costByDay = {};
+    let totalProcessed = 0;
+
+    // Fetch all pages of messages
+    while (hasMore) {
+      const params = new URLSearchParams();
+      params.append('PageSize', '500');
+      params.append('DateSent>', startDate);
+      if (pageToken) params.append('PageToken', pageToken);
+
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/Messages.json?${params.toString()}`,
+        { headers: { 'Authorization': `Basic ${credentials}` } }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Twilio API error');
+      }
+
+      // Process messages for engagement and cost
+      const optOutKeywords = ['parar', 'pare', 'stop', 'cancelar', 'sair', 'remover', 'desinscrever', 'unsubscribe', 'nao quero', 'nao tenho interesse'];
+      const positiveKeywords = ['quero usar', 'vou aproveitar', 'quero', 'sim', 'interessado', 'aceito', 'quero saber', 'me conta', 'como funciona'];
+      const normalizeText = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+      for (const msg of data.messages || []) {
+        const direction = (msg.direction || '').toLowerCase();
+        const body = normalizeText(msg.body);
+        const from = (msg.from || '').replace(/^whatsapp:/, '');
+        const dateKey = msg.date_sent?.split('T')[0];
+        const price = msg.price ? Math.abs(parseFloat(msg.price)) : 0;
+        const priceUnit = msg.price_unit || 'USD';
+
+        // Track costs by day
+        if (dateKey) {
+          if (!costByDay[dateKey]) {
+            costByDay[dateKey] = { outbound: { count: 0, cost: 0 }, inbound: { count: 0, cost: 0 }, currency: priceUnit };
+          }
+          const dir = direction.startsWith('outbound') ? 'outbound' : 'inbound';
+          costByDay[dateKey][dir].count++;
+          costByDay[dateKey][dir].cost += price;
+        }
+
+        // Track inbound messages for engagement
+        if (direction === 'inbound') {
+          const hasOptOut = optOutKeywords.some(kw => body.includes(kw));
+          const hasPositive = positiveKeywords.some(kw => body.includes(kw));
+          allInboundMessages.push({
+            phone: from,
+            engagementType: hasOptOut ? 'button_optout' : (hasPositive ? 'button_positive' : 'other'),
+            dateSent: msg.date_sent,
+            price,
+            priceUnit
+          });
+        }
+      }
+
+      totalProcessed += data.messages?.length || 0;
+      hasMore = !!data.next_page_uri;
+      if (data.next_page_uri) {
+        const nextUrl = new URL(`https://api.twilio.com${data.next_page_uri}`);
+        pageToken = nextUrl.searchParams.get('PageToken');
+      }
+
+      // Safety limit
+      if (totalProcessed >= 5000) break;
+    }
+
+    // Store engagement data to contact_tracking
+    let engagementsStored = 0;
+    for (const eng of allInboundMessages) {
+      const phone = normalizePhoneForSync(eng.phone);
+      if (!phone) continue;
+
+      // Find and update existing contact_tracking record
+      const { data: existing } = await supabase
+        .from('contact_tracking')
+        .select('id')
+        .eq('phone', phone)
+        .order('contacted_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existing) {
+        await supabase
+          .from('contact_tracking')
+          .update({
+            engagement_type: eng.engagementType,
+            engaged_at: eng.dateSent,
+            message_cost: eng.price || null,
+            message_cost_currency: eng.priceUnit || 'USD'
+          })
+          .eq('id', existing.id);
+        engagementsStored++;
+      }
+    }
+
+    // Store cost data to twilio_daily_costs
+    let costDaysStored = 0;
+    for (const [dateKey, costs] of Object.entries(costByDay)) {
+      const { error } = await supabase
+        .from('twilio_daily_costs')
+        .upsert({
+          date: dateKey,
+          outbound_count: costs.outbound?.count || 0,
+          outbound_cost: costs.outbound?.cost || 0,
+          inbound_count: costs.inbound?.count || 0,
+          inbound_cost: costs.inbound?.cost || 0,
+          currency: costs.currency || 'USD',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'date' });
+
+      if (!error) costDaysStored++;
+    }
+
+    // Update last sync time
+    await supabase
+      .from('app_settings')
+      .update({ twilio_last_sync: new Date().toISOString() })
+      .eq('id', 'default');
+
+    console.log(`Twilio sync complete: ${engagementsStored} engagements, ${costDaysStored} cost days stored`);
+
+    return {
+      success: true,
+      messagesProcessed: totalProcessed,
+      engagementsStored,
+      costDaysStored
+    };
+  } catch (error) {
+    console.error('Twilio sync error:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Normalize phone for sync (same logic as twilio-whatsapp.js)
+ */
+function normalizePhoneForSync(phone) {
+  if (!phone) return null;
+  let cleaned = phone.replace(/^whatsapp:/, '').replace(/\D/g, '');
+  if (cleaned.length === 10 || cleaned.length === 11) {
+    cleaned = '55' + cleaned;
+  }
+  return '+' + cleaned;
+}
+
+/**
+ * Check if blacklist sync should run
+ * Runs every 4 hours (same schedule as WABA, Instagram, Twilio)
+ * @param {Object} supabase - Supabase client
+ * @returns {Promise<boolean>} True if it's time to sync blacklist
+ */
+async function shouldSyncBlacklist(supabase) {
+  try {
+    // Check if TWILIO_ACCOUNT_SID is configured
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+      return false;
+    }
+
+    // Get last sync time from app_settings
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('blacklist_last_sync')
+      .eq('id', 'default')
+      .single();
+
+    if (!settings?.blacklist_last_sync) {
+      // Never synced, should sync
+      return true;
+    }
+
+    // Check if 4 hours have passed
+    const lastSync = new Date(settings.blacklist_last_sync);
+    const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
+
+    return hoursSinceSync >= 4;
+  } catch (error) {
+    console.warn('Error checking blacklist sync status:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Sync blacklist from Twilio (opt-outs + undelivered messages)
+ * Detects opt-out keywords in inbound messages and failed/undelivered outbound messages
+ * @param {Object} supabase - Supabase client
+ */
+async function runBlacklistSync(supabase) {
+  try {
+    console.log('Syncing blacklist (opt-outs + undelivered)...');
+
+    // Fetch last 7 days of messages from Twilio
+    const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+    const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+    const credentials = Buffer.from(`${ACCOUNT_SID}:${AUTH_TOKEN}`).toString('base64');
+
+    let hasMore = true;
+    let pageToken = null;
+    let optOuts = [];
+    let undelivered = [];
+    let totalProcessed = 0;
+
+    // Opt-out keywords (same as blacklistService.js)
+    const optOutKeywords = ['parar', 'pare', 'stop', 'cancelar', 'sair', 'remover', 'desinscrever', 'unsubscribe', 'nao quero', 'nao tenho interesse'];
+    const normalizeText = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    // Fetch all pages of messages
+    while (hasMore) {
+      const params = new URLSearchParams();
+      params.append('PageSize', '500');
+      params.append('DateSent>', startDate);
+      if (pageToken) params.append('PageToken', pageToken);
+
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/Messages.json?${params.toString()}`,
+        { headers: { 'Authorization': `Basic ${credentials}` } }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Twilio API error');
+      }
+
+      // Process messages for opt-outs and undelivered
+      for (const msg of data.messages || []) {
+        const direction = (msg.direction || '').toLowerCase();
+        const status = (msg.status || '').toLowerCase();
+        const body = normalizeText(msg.body);
+        const from = (msg.from || '').replace(/^whatsapp:/, '');
+        const to = (msg.to || '').replace(/^whatsapp:/, '');
+        const errorCode = msg.error_code;
+
+        // Check for opt-out in inbound messages
+        if (direction === 'inbound') {
+          const isOptOut = optOutKeywords.some(kw => body.includes(kw));
+          if (isOptOut) {
+            optOuts.push({
+              phone: from,
+              reason: 'opt-out',
+              dateSent: msg.date_sent,
+              messageSid: msg.sid,
+              body: (msg.body || '').substring(0, 100)
+            });
+          }
+        }
+
+        // Check for undelivered/failed outbound messages
+        if (direction.startsWith('outbound') && ['undelivered', 'failed'].includes(status)) {
+          // Check if it's a number-blocked error (63016, 63018, 63032)
+          const blockedCodes = ['63016', '63018', '63032', '21211', '21214', '21217'];
+          const isBlocked = blockedCodes.includes(String(errorCode));
+
+          undelivered.push({
+            phone: to,
+            reason: isBlocked ? 'number-blocked' : 'undelivered',
+            dateSent: msg.date_sent,
+            messageSid: msg.sid,
+            errorCode: errorCode,
+            errorMessage: msg.error_message
+          });
+        }
+      }
+
+      totalProcessed += data.messages?.length || 0;
+      hasMore = !!data.next_page_uri;
+      if (data.next_page_uri) {
+        const nextUrl = new URL(`https://api.twilio.com${data.next_page_uri}`);
+        pageToken = nextUrl.searchParams.get('PageToken');
+      }
+
+      // Safety limit
+      if (totalProcessed >= 5000) break;
+    }
+
+    // Get existing blacklist to avoid duplicates
+    const { data: existingBlacklist } = await supabase
+      .from('blacklist')
+      .select('phone');
+    const existingPhones = new Set((existingBlacklist || []).map(b => b.phone));
+
+    // Store opt-outs to blacklist
+    let optOutsStored = 0;
+    for (const entry of optOuts) {
+      const phone = normalizePhoneForSync(entry.phone);
+      if (!phone || existingPhones.has(phone)) continue;
+
+      const { error } = await supabase
+        .from('blacklist')
+        .insert({
+          phone,
+          reason: 'opt-out',
+          source: 'scheduled-sync',
+          added_at: entry.dateSent || new Date().toISOString(),
+          notes: entry.body ? `Message: ${entry.body}` : null
+        });
+
+      if (!error) {
+        optOutsStored++;
+        existingPhones.add(phone);
+      }
+    }
+
+    // Store undelivered to blacklist
+    let undeliveredStored = 0;
+    for (const entry of undelivered) {
+      const phone = normalizePhoneForSync(entry.phone);
+      if (!phone || existingPhones.has(phone)) continue;
+
+      const { error } = await supabase
+        .from('blacklist')
+        .insert({
+          phone,
+          reason: entry.reason,
+          source: 'scheduled-sync',
+          added_at: entry.dateSent || new Date().toISOString(),
+          error_code: entry.errorCode,
+          notes: entry.errorMessage ? `Error: ${entry.errorMessage}` : null
+        });
+
+      if (!error) {
+        undeliveredStored++;
+        existingPhones.add(phone);
+      }
+    }
+
+    // Update last sync time
+    await supabase
+      .from('app_settings')
+      .update({ blacklist_last_sync: new Date().toISOString() })
+      .eq('id', 'default');
+
+    console.log(`Blacklist sync complete: ${optOutsStored} opt-outs, ${undeliveredStored} undelivered stored`);
+
+    return {
+      success: true,
+      messagesProcessed: totalProcessed,
+      optOutsStored,
+      undeliveredStored,
+      totalNewEntries: optOutsStored + undeliveredStored
+    };
+  } catch (error) {
+    console.error('Blacklist sync error:', error.message);
     return {
       success: false,
       error: error.message

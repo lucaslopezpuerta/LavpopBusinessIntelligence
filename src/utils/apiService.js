@@ -1,6 +1,16 @@
-// apiService.js v2.4
+// apiService.js v2.6
 // Unified API service for Supabase backend communication
 // Provides fallback to localStorage when backend is unavailable
+//
+// Version: 2.6 (2025-12-19) - App settings API
+//   - Added api.settings.get() - fetch app_settings (sync timestamps)
+//   - Used by BlacklistManager to display scheduled sync time
+//
+// Version: 2.5 (2025-12-19) - Twilio database-cached sync
+//   - Added api.twilio.getStoredEngagementAndCosts() - read from DB (fast)
+//   - Added api.twilio.triggerSync() - manual sync to DB
+//   - Added api.twilio.getCostSummary() - aggregated cost data
+//   - Follows same pattern as WABA and Instagram analytics
 //
 // Version: 2.4 (2025-12-18) - Instagram historical tracking
 //   - Added api.instagram.getHistory() - historical metrics from DB
@@ -706,6 +716,212 @@ export const api = {
         console.error('Failed to trigger WABA template sync:', error);
         return { success: false, error: error.message };
       }
+    },
+
+    /**
+     * Get WhatsApp Business profile data
+     * Returns: verified name, phone number, quality rating, messaging tier, about, profile picture
+     */
+    async getProfile() {
+      try {
+        const response = await fetch('/.netlify/functions/waba-analytics?action=profile', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        return data.profile || null;
+      } catch (error) {
+        console.error('Failed to fetch WABA profile:', error);
+        return null;
+      }
+    }
+  },
+
+  // ==================== TWILIO ENGAGEMENT & COST ====================
+  // Direct Twilio message analytics (engagement, costs)
+  twilio: {
+    /**
+     * Fetch messages with engagement classification and cost data
+     * @param {object} options - { dateSentAfter, dateSentBefore, pageSize, pageToken }
+     * @returns {Promise<object>} { engagements, optOuts, inboundMessages, costSummary, summary }
+     */
+    async getEngagementAndCosts(options = {}) {
+      try {
+        const body = {
+          action: 'fetch_messages',
+          dateSentAfter: options.dateSentAfter || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          pageSize: options.pageSize || 100
+        };
+        if (options.dateSentBefore) body.dateSentBefore = options.dateSentBefore;
+        if (options.pageToken) body.pageToken = options.pageToken;
+
+        const response = await fetch('/.netlify/functions/twilio-whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to fetch Twilio data');
+        }
+
+        return {
+          engagements: data.blacklistCandidates?.engagements || [],
+          optOuts: data.blacklistCandidates?.optOuts || [],
+          inboundMessages: data.blacklistCandidates?.inboundMessages || [],
+          costSummary: data.costSummary || { outboundCount: 0, outboundCost: 0, inboundCount: 0, inboundCost: 0, currency: 'USD' },
+          summary: data.summary || {},
+          pagination: data.pagination || {}
+        };
+      } catch (error) {
+        console.error('Failed to fetch Twilio engagement/costs:', error);
+        return {
+          engagements: [],
+          optOuts: [],
+          inboundMessages: [],
+          costSummary: { outboundCount: 0, outboundCost: 0, inboundCount: 0, inboundCost: 0, currency: 'USD' },
+          summary: {},
+          pagination: {},
+          error: error.message
+        };
+      }
+    },
+
+    /**
+     * Fetch all pages of engagement data for comprehensive analytics
+     * @param {string} dateSentAfter - Start date (YYYY-MM-DD)
+     * @returns {Promise<object>} Aggregated engagement and cost data
+     */
+    async getAllEngagementAndCosts(dateSentAfter) {
+      let allEngagements = [];
+      let allOptOuts = [];
+      let allInbound = [];
+      let totalOutboundCount = 0;
+      let totalOutboundCost = 0;
+      let totalInboundCount = 0;
+      let currency = 'USD';
+      let pageToken = null;
+      let hasMore = true;
+
+      while (hasMore) {
+        const result = await this.getEngagementAndCosts({
+          dateSentAfter,
+          pageSize: 100,
+          pageToken
+        });
+
+        allEngagements = [...allEngagements, ...result.engagements];
+        allOptOuts = [...allOptOuts, ...result.optOuts];
+        allInbound = [...allInbound, ...result.inboundMessages];
+        totalOutboundCount += result.costSummary.outboundCount;
+        totalOutboundCost += result.costSummary.outboundCost;
+        totalInboundCount += result.costSummary.inboundCount;
+        currency = result.costSummary.currency;
+
+        hasMore = result.pagination?.hasMore || false;
+        pageToken = result.pagination?.nextPageToken || null;
+
+        // Safety limit to prevent infinite loops
+        if (allEngagements.length + allOptOuts.length + allInbound.length > 1000) {
+          break;
+        }
+      }
+
+      return {
+        engagements: allEngagements,
+        optOuts: allOptOuts,
+        inboundMessages: allInbound,
+        costSummary: {
+          outboundCount: totalOutboundCount,
+          outboundCost: totalOutboundCost,
+          inboundCount: totalInboundCount,
+          inboundCost: 0, // Inbound is typically free
+          currency
+        }
+      };
+    },
+
+    // ==================== DATABASE-CACHED METHODS ====================
+    // These methods read from Supabase (fast) instead of Twilio API (slow)
+    // Use triggerSync() to refresh the database cache
+
+    /**
+     * Get engagement and cost data from database (fast, cached)
+     * Reads from contact_tracking and twilio_daily_costs tables
+     * @param {string} dateFrom - Start date (YYYY-MM-DD)
+     * @param {string} dateTo - End date (YYYY-MM-DD)
+     * @returns {Promise<object>} { engagements, optOuts, inboundMessages, costSummary, dailyCosts }
+     */
+    async getStoredEngagementAndCosts(dateFrom = null, dateTo = null) {
+      try {
+        const response = await fetch('/.netlify/functions/twilio-whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'get_stored_data',
+            dateFrom,
+            dateTo
+          })
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to get stored data');
+        }
+
+        return data;
+      } catch (error) {
+        console.error('Failed to get stored Twilio data:', error);
+        return {
+          engagements: [],
+          optOuts: [],
+          inboundMessages: [],
+          costSummary: { outboundCount: 0, outboundCost: 0, inboundCount: 0, inboundCost: 0, currency: 'USD' },
+          dailyCosts: [],
+          error: error.message
+        };
+      }
+    },
+
+    /**
+     * Trigger sync of Twilio data to database
+     * Fetches from Twilio API and stores to Supabase
+     * @param {object} options - { dateSentAfter, force }
+     * @returns {Promise<object>} Sync results
+     */
+    async triggerSync(options = {}) {
+      try {
+        // Import sync service dynamically
+        const { syncEngagementAndCosts } = await import('./twilioSyncService');
+        return await syncEngagementAndCosts(options);
+      } catch (error) {
+        console.error('Failed to trigger Twilio sync:', error);
+        return { success: false, error: error.message };
+      }
+    },
+
+    /**
+     * Get daily cost breakdown from database
+     * @param {string} dateFrom - Start date (YYYY-MM-DD)
+     * @param {string} dateTo - End date (YYYY-MM-DD)
+     * @returns {Promise<object>} { dailyCosts, summary }
+     */
+    async getCostSummary(dateFrom = null, dateTo = null) {
+      try {
+        const data = await this.getStoredEngagementAndCosts(dateFrom, dateTo);
+        return {
+          dailyCosts: data.dailyCosts || [],
+          summary: data.costSummary || { outboundCount: 0, outboundCost: 0, inboundCount: 0, inboundCost: 0, currency: 'USD' }
+        };
+      } catch (error) {
+        console.error('Failed to get cost summary:', error);
+        return {
+          dailyCosts: [],
+          summary: { outboundCount: 0, outboundCost: 0, inboundCount: 0, inboundCost: 0, currency: 'USD' },
+          error: error.message
+        };
+      }
     }
   },
 
@@ -832,14 +1048,16 @@ export const api = {
 
     /**
      * Get historical Instagram metrics from database
-     * @param {number} days - Number of days to fetch (default 30)
+     * @param {number|null} days - Number of days to fetch, or null for all data
      * @returns {Promise<object>} { history: [...], summary: {...}, count: number }
      */
     async getHistory(days = 30) {
       try {
         // Add cache buster to ensure fresh data on filter change
         const cacheBuster = Date.now();
-        const response = await fetch(`/.netlify/functions/instagram-analytics?action=history&days=${days}&_t=${cacheBuster}`, {
+        // Use 'all' for null to fetch all available history
+        const daysParam = days === null ? 'all' : days;
+        const response = await fetch(`/.netlify/functions/instagram-analytics?action=history&days=${daysParam}&_t=${cacheBuster}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -881,6 +1099,24 @@ export const api = {
       } catch (error) {
         console.error('Failed to fetch Instagram sync status:', error);
         return { lastSync: null };
+      }
+    }
+  },
+
+  // ==================== APP SETTINGS ====================
+  // App-wide settings from app_settings table
+  settings: {
+    /**
+     * Get app settings (sync timestamps, etc.)
+     * @returns {Promise<object>} Settings object with blacklist_last_sync, twilio_last_sync, etc.
+     */
+    async get() {
+      try {
+        const result = await apiRequest('settings.get');
+        return result.settings || {};
+      } catch (error) {
+        console.error('Failed to fetch app settings:', error);
+        return {};
       }
     }
   },

@@ -2,6 +2,10 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, scheduled campaigns, and WABA analytics
 //
+// Version: 3.5 (2025-12-19) - App settings route
+//   - Added settings.get - fetch app_settings (sync timestamps)
+//   - Used by BlacklistManager to display scheduled sync time
+//
 // Version: 3.4 (2025-12-18) - WABA template analytics routes
 //   - Added waba.getTemplates - list cached templates from Meta API
 //   - Added waba.getTemplateAnalytics - raw daily per-template metrics
@@ -353,6 +357,10 @@ exports.handler = async (event, context) => {
 
       case 'waba.getTemplateAnalyticsSummary':
         return await getWabaTemplateAnalyticsSummary(supabase, params, headers);
+
+      // ==================== APP SETTINGS ====================
+      case 'settings.get':
+        return await getAppSettings(supabase, headers);
 
       default:
         return {
@@ -2993,6 +3001,44 @@ async function getWabaTemplateAnalyticsSummary(supabase, params, headers) {
       statusCode: 500,
       headers,
       body: JSON.stringify({ error: 'Failed to fetch WABA template analytics summary' })
+    };
+  }
+}
+
+// ==================== APP SETTINGS ====================
+
+/**
+ * Get app settings (sync timestamps, etc.)
+ * Fetches from app_settings table (id='default')
+ */
+async function getAppSettings(supabase, headers) {
+  console.log('[API] settings.get');
+
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('*')
+      .eq('id', 'default')
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows returned (settings not initialized yet)
+      throw error;
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        settings: data || {}
+      })
+    };
+  } catch (error) {
+    console.error('[API] settings.get error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to fetch app settings' })
     };
   }
 }

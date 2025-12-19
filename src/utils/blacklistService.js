@@ -1,9 +1,14 @@
-// blacklistService.js v3.0
+// blacklistService.js v3.1
 // WhatsApp blacklist management service
 // Integrates with Twilio API for automatic opt-out and undelivered detection
 // Backend-only storage (Supabase) - no localStorage for data
 //
 // CHANGELOG:
+// v3.1 (2025-12-19): Fixed customer name mapping for blacklist sync
+//   - buildCustomerNameMap now handles both naming conventions:
+//     - Supabase format: Telefone, Nome (from loadCustomersFromSupabase)
+//     - Generic format: phone, name
+//   - Fixes issue where customer names weren't linked to blacklist entries
 // v3.0 (2025-12-12): Removed localStorage data storage - backend only
 //   - All blacklist data now stored exclusively in Supabase
 //   - Removed localStorage fallbacks for data operations
@@ -345,9 +350,15 @@ export function buildCustomerNameMap(customers) {
   const nameMap = {};
 
   for (const customer of customers || []) {
-    const normalized = normalizeBlacklistPhone(customer.phone);
-    if (normalized && customer.name) {
-      nameMap[normalized] = customer.name;
+    // Support both naming conventions:
+    // - CSV/Supabase format: Telefone, Nome (from loadCustomersFromSupabase)
+    // - Generic format: phone, name
+    const phone = customer.Telefone || customer.telefone || customer.phone || customer['phone number'];
+    const name = customer.Nome || customer.nome || customer.name || customer['client name'];
+
+    const normalized = normalizeBlacklistPhone(phone);
+    if (normalized && name) {
+      nameMap[normalized] = name;
     }
   }
 

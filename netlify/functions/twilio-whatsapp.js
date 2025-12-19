@@ -1,7 +1,29 @@
-// netlify/functions/twilio-whatsapp.js v1.4
+// netlify/functions/twilio-whatsapp.js v1.9
 // Twilio WhatsApp Business API integration for campaign messaging
 //
 // CHANGELOG:
+// v1.9 (2025-12-19): Separate inbound messages from contact_tracking
+//   - NEW: All inbound messages stored in twilio_inbound_messages table
+//   - storeEngagement only UPDATES contact_tracking (no INSERT)
+//   - contact_tracking stays clean: only outbound campaign recipients
+//   - getStoredData reads from twilio_inbound_messages for inbound data
+//   - Better separation of concerns for analytics
+// v1.8 (2025-12-19): Enhanced engagement storage with customer lookup
+//   - storeEngagement looks for contact_tracking records with twilio_sid (outbound msgs)
+//   - Uses flexible phone matching (last 10-11 digits) to handle format differences
+//   - Falls back to customers table lookup if no contact_tracking match
+//   - Can INSERT new records for known customers (from customers table)
+//   - Returns stored/updated/skipped counts for debugging
+// v1.7 (2025-12-19): Fixed engagement data storage
+//   - storeEngagement now uses created_at (not sent_at which doesn't exist)
+// v1.6 (2025-12-19): Fixed cost data overwrite bug + added clear_costs action
+//   - storeCosts supports freshLoad mode for batch replace vs incremental add
+//   - Added clear_costs action to reset corrupted data before repopulating
+// v1.5 (2025-12-19): Database-cached engagement and cost sync
+//   - Added store_engagement action: stores engagement data to contact_tracking
+//   - Added store_costs action: stores cost data to twilio_daily_costs
+//   - Added get_stored_data action: reads engagement/cost from Supabase
+//   - Follows same pattern as WABA analytics (sync to DB, read from DB)
 // v1.4 (2025-12-14): Fixed false positive opt-out detection
 //   - Removed "quero" (I want) from opt-out keywords - it's a positive word
 //   - "Quero usar" was being incorrectly flagged as opt-out
@@ -27,6 +49,20 @@
 // - TWILIO_ACCOUNT_SID: Your Twilio Account SID
 // - TWILIO_AUTH_TOKEN: Your Twilio Auth Token
 // - TWILIO_WHATSAPP_NUMBER: Your approved WhatsApp number (format: +5554999999999)
+// - SUPABASE_URL: Supabase project URL
+// - SUPABASE_SERVICE_KEY: Supabase service role key
+
+const { createClient } = require('@supabase/supabase-js');
+
+// Initialize Supabase client
+function getSupabaseClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase credentials not configured');
+  }
+  return createClient(url, key);
+}
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -81,11 +117,23 @@ exports.handler = async (event, context) => {
       case 'fetch_messages':
         return await fetchMessages(body, ACCOUNT_SID, AUTH_TOKEN, headers);
 
+      case 'store_engagement':
+        return await storeEngagement(body, headers);
+
+      case 'store_costs':
+        return await storeCosts(body, headers);
+
+      case 'get_stored_data':
+        return await getStoredData(body, headers);
+
+      case 'clear_costs':
+        return await clearCosts(body, headers);
+
       default:
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Invalid action. Use: send_message, send_bulk, check_status, fetch_messages' })
+          body: JSON.stringify({ error: 'Invalid action. Use: send_message, send_bulk, check_status, fetch_messages, store_engagement, store_costs, get_stored_data, clear_costs' })
         };
     }
   } catch (error) {
@@ -404,11 +452,22 @@ async function fetchMessages(body, accountSid, authToken, headers) {
       };
     }
 
-    // Process messages to identify blacklist candidates
+    // Process messages to identify blacklist candidates and engagement
     const blacklistCandidates = {
-      optOuts: [],      // Inbound messages with opt-out keywords
-      undelivered: [],  // Outbound messages that failed
-      allMessages: []   // Raw message data for debugging
+      optOuts: [],        // Inbound messages with opt-out keywords
+      engagements: [],    // Inbound messages with positive engagement (button clicks)
+      undelivered: [],    // Outbound messages that failed
+      allMessages: [],    // Raw message data with body and price
+      inboundMessages: [] // All inbound messages for analysis
+    };
+
+    // Cost tracking
+    const costSummary = {
+      outboundCount: 0,
+      outboundCost: 0,
+      inboundCount: 0,
+      inboundCost: 0,
+      currency: 'USD'
     };
 
     // Opt-out keywords - must be negative phrases, not positive words like "quero" (I want)
@@ -418,6 +477,14 @@ async function fetchMessages(body, accountSid, authToken, headers) {
       'parar', 'pare', 'stop', 'cancelar', 'sair', 'remover', 'desinscrever', 'unsubscribe',
       'nao quero', 'nao tenho interesse'  // Quick reply opt-out button texts (normalized without accents)
     ];
+
+    // Positive engagement keywords - quick reply button texts indicating interest
+    // Must match the positive button texts from messageTemplates.js
+    const positiveKeywords = [
+      'quero usar', 'vou aproveitar', 'quero', 'sim', 'interessado', 'aceito',
+      'quero saber', 'me conta', 'como funciona'
+    ];
+
     const normalizeText = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
     for (const msg of data.messages || []) {
@@ -429,9 +496,35 @@ async function fetchMessages(body, accountSid, authToken, headers) {
       const from = (msg.from || '').replace(/^whatsapp:/, '');
       const to = (msg.to || '').replace(/^whatsapp:/, '');
 
-      // Check for opt-outs (inbound messages with keywords)
+      // Track costs (price is negative string like "-0.00750")
+      const price = msg.price ? Math.abs(parseFloat(msg.price)) : 0;
+      const priceUnit = msg.price_unit || 'USD';
+      if (priceUnit && costSummary.currency === 'USD') {
+        costSummary.currency = priceUnit;
+      }
+
+      // Check for inbound messages (customer responses)
       if (direction === 'inbound') {
         const hasOptOutKeyword = optOutKeywords.some(kw => body.includes(kw));
+        const hasPositiveKeyword = positiveKeywords.some(kw => body.includes(kw));
+
+        // Track all inbound messages
+        const inboundData = {
+          phone: from,
+          body: msg.body,
+          dateSent: msg.date_sent,
+          messageSid: msg.sid,
+          engagementType: hasOptOutKeyword ? 'button_optout' : (hasPositiveKeyword ? 'button_positive' : 'other'),
+          price: price,
+          priceUnit: priceUnit
+        };
+        blacklistCandidates.inboundMessages.push(inboundData);
+
+        // Cost tracking for inbound
+        costSummary.inboundCount++;
+        costSummary.inboundCost += price;
+
+        // Categorize by engagement type
         if (hasOptOutKeyword) {
           blacklistCandidates.optOuts.push({
             phone: from,
@@ -440,7 +533,19 @@ async function fetchMessages(body, accountSid, authToken, headers) {
             messageSid: msg.sid,
             reason: 'opt-out'
           });
+        } else if (hasPositiveKeyword) {
+          blacklistCandidates.engagements.push({
+            phone: from,
+            body: msg.body,
+            dateSent: msg.date_sent,
+            messageSid: msg.sid,
+            reason: 'positive-engagement'
+          });
         }
+      } else if (direction.startsWith('outbound')) {
+        // Cost tracking for outbound
+        costSummary.outboundCount++;
+        costSummary.outboundCost += price;
       }
 
       // Check for undelivered outbound messages
@@ -456,15 +561,18 @@ async function fetchMessages(body, accountSid, authToken, headers) {
         });
       }
 
-      // Store all messages for optional debugging
+      // Store all messages with body and price for analytics
       blacklistCandidates.allMessages.push({
         sid: msg.sid,
         direction: direction,
         status: status,
         from: from,
         to: to,
+        body: msg.body,
         errorCode: errorCode,
-        dateSent: msg.date_sent
+        dateSent: msg.date_sent,
+        price: price,
+        priceUnit: priceUnit
       });
     }
 
@@ -490,9 +598,12 @@ async function fetchMessages(body, accountSid, authToken, headers) {
         summary: {
           totalFetched: data.messages?.length || 0,
           optOutsFound: blacklistCandidates.optOuts.length,
+          engagementsFound: blacklistCandidates.engagements.length,
+          inboundMessagesFound: blacklistCandidates.inboundMessages.length,
           undeliveredFound: blacklistCandidates.undelivered.length,
           startDate
-        }
+        },
+        costSummary
       })
     };
   } catch (error) {
@@ -663,4 +774,447 @@ function formatCurrency(value) {
     style: 'currency',
     currency: 'BRL'
   }).format(value || 0);
+}
+
+// ==================== DATABASE SYNC FUNCTIONS ====================
+
+/**
+ * Store engagement data from inbound Twilio messages
+ * Called by twilioSyncService.js after fetching from Twilio API
+ *
+ * v1.9: Two-table approach:
+ * 1. ALL inbound messages → twilio_inbound_messages (for analytics display)
+ * 2. If matching outbound exists → UPDATE contact_tracking engagement fields
+ *
+ * This keeps contact_tracking clean (only outbound campaign recipients)
+ * while still capturing all inbound messages for analytics.
+ */
+async function storeEngagement(body, headers) {
+  const { engagements } = body;
+
+  if (!engagements || !Array.isArray(engagements) || engagements.length === 0) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, stored: 0, message: 'No engagements to store' })
+    };
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    let stored = 0;   // Inbound messages stored in twilio_inbound_messages
+    let updated = 0;  // Existing contact_tracking records updated
+    let skipped = 0;  // Duplicate message_sid (already in DB)
+    let errors = [];
+
+    // Process each engagement (inbound message)
+    for (const eng of engagements) {
+      const phone = normalizePhoneForDb(eng.phone);
+      if (!phone) continue;
+
+      const messageSid = eng.messageSid;
+      const receivedAt = eng.dateSent;
+
+      // 1. ALWAYS insert into twilio_inbound_messages (dedupe by message_sid)
+      // First check if already exists
+      if (messageSid) {
+        const { data: existingMsg } = await supabase
+          .from('twilio_inbound_messages')
+          .select('id')
+          .eq('message_sid', messageSid)
+          .single();
+
+        if (existingMsg) {
+          skipped++;
+          continue; // Already stored this message
+        }
+      }
+
+      // Look up customer by phone for name/ID enrichment
+      const phoneDigits = phone.replace(/\D/g, '');
+      const last11 = phoneDigits.slice(-11);
+      const last10 = phoneDigits.slice(-10);
+
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('doc, nome')
+        .or(`telefone.ilike.%${last11},telefone.ilike.%${last10}`)
+        .limit(1)
+        .single();
+
+      // Try to find matching outbound contact_tracking record
+      // Must be: same phone, has twilio_sid, sent BEFORE the inbound was received
+      let linkedContactTrackingId = null;
+      const { data: existingOutbound } = await supabase
+        .from('contact_tracking')
+        .select('id')
+        .not('twilio_sid', 'is', null)
+        .or(`phone.ilike.%${last11},phone.ilike.%${last10}`)
+        .lt('created_at', receivedAt)  // Outbound must be before inbound reply
+        .order('created_at', { ascending: false })  // Get most recent before inbound
+        .limit(1)
+        .single();
+
+      if (existingOutbound) {
+        linkedContactTrackingId = existingOutbound.id;
+      }
+
+      // Insert into twilio_inbound_messages
+      const { error: insertError } = await supabase
+        .from('twilio_inbound_messages')
+        .insert({
+          message_sid: messageSid,
+          phone: phone,
+          customer_name: customer?.nome || null,
+          customer_id: customer?.doc || null,
+          body: eng.body ? eng.body.substring(0, 500) : null, // Truncate for privacy
+          engagement_type: eng.engagementType,
+          received_at: receivedAt,
+          linked_contact_tracking_id: linkedContactTrackingId
+        });
+
+      if (insertError) {
+        errors.push({ phone, error: `Insert inbound: ${insertError.message}` });
+      } else {
+        stored++;
+      }
+
+      // 2. If we found a matching outbound record, UPDATE its engagement fields
+      if (existingOutbound) {
+        const { error: updateError } = await supabase
+          .from('contact_tracking')
+          .update({
+            engagement_type: eng.engagementType,
+            engaged_at: receivedAt,
+            message_cost: eng.price || null,
+            message_cost_currency: eng.priceUnit || 'USD'
+          })
+          .eq('id', existingOutbound.id);
+
+        if (updateError) {
+          errors.push({ phone, error: `Update contact_tracking: ${updateError.message}` });
+        } else {
+          updated++;
+        }
+      }
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        stored,   // Inbound messages stored in twilio_inbound_messages
+        updated,  // Existing contact_tracking records updated with engagement
+        skipped,  // Duplicate message_sid (already in DB)
+        total: engagements.length,
+        errors: errors.length > 0 ? errors : undefined
+      })
+    };
+  } catch (error) {
+    console.error('Store engagement error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to store engagement data', details: error.message })
+    };
+  }
+}
+
+/**
+ * Store daily cost data to twilio_daily_costs table
+ * Called by twilioSyncService.js after fetching from Twilio API
+ *
+ * Modes:
+ * - freshLoad=true: Direct insert/upsert (replaces existing data) - faster for bulk loads
+ * - freshLoad=false: Uses RPC to ADD to existing values (for incremental syncs)
+ */
+async function storeCosts(body, headers) {
+  const { costsByDay, freshLoad = false } = body;
+
+  if (!costsByDay || Object.keys(costsByDay).length === 0) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, daysStored: 0, message: 'No costs to store' })
+    };
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    let daysStored = 0;
+    let errors = [];
+
+    if (freshLoad) {
+      // Fresh load mode: batch upsert (replaces existing data)
+      // Much faster for initial loads or after clearing
+      const records = Object.entries(costsByDay).map(([dateKey, costs]) => ({
+        date: dateKey,
+        outbound_count: costs.outbound?.count || 0,
+        outbound_cost: costs.outbound?.cost || 0,
+        inbound_count: costs.inbound?.count || 0,
+        inbound_cost: costs.inbound?.cost || 0,
+        currency: costs.currency || 'USD'
+      }));
+
+      const { error: upsertError } = await supabase
+        .from('twilio_daily_costs')
+        .upsert(records, { onConflict: 'date' });
+
+      if (upsertError) {
+        console.error('Batch upsert error:', upsertError);
+        errors.push({ error: upsertError.message });
+      } else {
+        daysStored = records.length;
+      }
+    } else {
+      // Incremental mode: use RPC to ADD to existing values
+      for (const [dateKey, costs] of Object.entries(costsByDay)) {
+        const { error: upsertError } = await supabase.rpc('upsert_twilio_daily_costs', {
+          p_date: dateKey,
+          p_outbound_count: costs.outbound?.count || 0,
+          p_outbound_cost: costs.outbound?.cost || 0,
+          p_inbound_count: costs.inbound?.count || 0,
+          p_inbound_cost: costs.inbound?.cost || 0,
+          p_currency: costs.currency || 'USD'
+        });
+
+        if (upsertError) {
+          console.error(`Cost upsert error for ${dateKey}:`, upsertError);
+          errors.push({ date: dateKey, error: upsertError.message });
+        } else {
+          daysStored++;
+        }
+      }
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        daysStored,
+        total: Object.keys(costsByDay).length,
+        mode: freshLoad ? 'fresh' : 'incremental',
+        errors: errors.length > 0 ? errors : undefined
+      })
+    };
+  } catch (error) {
+    console.error('Store costs error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to store cost data', details: error.message })
+    };
+  }
+}
+
+/**
+ * Clear all cost data from twilio_daily_costs table
+ * Used to reset corrupted data before repopulating
+ */
+async function clearCosts(body, headers) {
+  try {
+    const supabase = getSupabaseClient();
+
+    // Delete all rows from twilio_daily_costs
+    const { error } = await supabase
+      .from('twilio_daily_costs')
+      .delete()
+      .gte('date', '2000-01-01'); // Delete all dates (required filter for delete)
+
+    if (error) {
+      console.error('Clear costs error:', error);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'Failed to clear costs', details: error.message })
+      };
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, message: 'All cost data cleared' })
+    };
+  } catch (error) {
+    console.error('Clear costs error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to clear costs', details: error.message })
+    };
+  }
+}
+
+/**
+ * Get stored engagement and cost data from Supabase
+ * Called by UI to read cached data instead of fetching from Twilio
+ *
+ * v1.9: Reads inbound messages from twilio_inbound_messages table
+ * This matches the UI's expected format for WhatsAppAnalytics.jsx
+ */
+async function getStoredData(body, headers) {
+  const { dateFrom, dateTo } = body;
+
+  try {
+    const supabase = getSupabaseClient();
+
+    // Build date filter
+    const fromDate = dateFrom || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const toDate = dateTo || new Date().toISOString().split('T')[0];
+
+    // Fetch inbound messages from twilio_inbound_messages (NEW in v1.9)
+    let inboundQuery = supabase
+      .from('twilio_inbound_messages')
+      .select('id, message_sid, phone, customer_name, body, engagement_type, received_at');
+
+    if (fromDate) {
+      inboundQuery = inboundQuery.gte('received_at', fromDate);
+    }
+    if (toDate) {
+      inboundQuery = inboundQuery.lte('received_at', toDate + 'T23:59:59');
+    }
+
+    const { data: inboundData, error: inboundError } = await inboundQuery
+      .order('received_at', { ascending: false })
+      .limit(500);
+
+    if (inboundError) {
+      console.error('Inbound messages query error:', inboundError);
+    }
+
+    // Fetch cost data from twilio_daily_costs
+    let costQuery = supabase
+      .from('twilio_daily_costs')
+      .select('*');
+
+    if (fromDate) {
+      costQuery = costQuery.gte('date', fromDate);
+    }
+    if (toDate) {
+      costQuery = costQuery.lte('date', toDate);
+    }
+
+    const { data: costData, error: costError } = await costQuery
+      .order('date', { ascending: false });
+
+    if (costError) {
+      console.error('Cost query error:', costError);
+    }
+
+    // Process inbound messages for UI
+    // Maps to WhatsAppAnalytics.jsx expected format:
+    // - messageSid, phone, dateSent, body, engagementType
+    const inboundMessages = (inboundData || []).map(m => ({
+      messageSid: m.message_sid,
+      phone: m.phone,
+      dateSent: m.received_at,
+      body: m.body || '',
+      engagementType: m.engagement_type,
+      customerName: m.customer_name
+    }));
+
+    // Filter by engagement type for KPI calculations
+    const engagements = inboundMessages.filter(m => m.engagementType === 'button_positive');
+    const optOuts = inboundMessages.filter(m => m.engagementType === 'button_optout');
+
+    // Aggregate cost summary
+    const costSummary = (costData || []).reduce((acc, day) => {
+      acc.outboundCount += day.outbound_count || 0;
+      acc.outboundCost += parseFloat(day.outbound_cost) || 0;
+      acc.inboundCount += day.inbound_count || 0;
+      acc.inboundCost += parseFloat(day.inbound_cost) || 0;
+      acc.currency = day.currency || 'USD';
+      return acc;
+    }, {
+      outboundCount: 0,
+      outboundCost: 0,
+      inboundCount: 0,
+      inboundCost: 0,
+      currency: 'USD'
+    });
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        engagements,
+        optOuts,
+        inboundMessages,
+        costSummary,
+        dailyCosts: costData || [],
+        dateRange: { from: fromDate, to: toDate }
+      })
+    };
+  } catch (error) {
+    console.error('Get stored data error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to get stored data', details: error.message })
+    };
+  }
+}
+
+/**
+ * Normalize phone number for database storage
+ * Removes whatsapp: prefix and ensures +55 format
+ */
+// Brazilian mobile phone pattern: 55 + [1-9][1-9] + 9 + 8 digits
+const BR_MOBILE_PATTERN = /^55[1-9]{2}9\d{8}$/;
+
+/**
+ * Normalize phone to +55XXXXXXXXXXX format
+ * Matches src/utils/phoneUtils.js normalizePhone() exactly
+ * Handles legacy formats by adding missing 9 prefix when needed
+ *
+ * @param {string} phone - Raw phone input (may include whatsapp: prefix)
+ * @returns {string|null} Normalized phone or null if invalid
+ */
+function normalizePhoneForDb(phone) {
+  if (!phone) return null;
+
+  // Remove whatsapp: prefix and all non-digits
+  let digits = String(phone).replace(/^whatsapp:/i, '').replace(/\D/g, '');
+
+  // Handle different length formats
+  switch (digits.length) {
+    case 13:
+      // Already full format: 55 AA 9 NNNNNNNN
+      if (!digits.startsWith('55')) return null;
+      break;
+
+    case 12:
+      // 55 AA NNNNNNNN - missing 9 prefix
+      if (digits.startsWith('55')) {
+        // Insert 9 after area code: 55 AA -> 55 AA 9
+        digits = digits.slice(0, 4) + '9' + digits.slice(4);
+      } else {
+        return null;
+      }
+      break;
+
+    case 11:
+      // AA 9 NNNNNNNN - missing country code
+      digits = '55' + digits;
+      break;
+
+    case 10:
+      // AA NNNNNNNN - missing country code AND 9 prefix
+      // Add 55 and insert 9: AA -> 55 AA 9
+      digits = '55' + digits.slice(0, 2) + '9' + digits.slice(2);
+      break;
+
+    default:
+      return null;
+  }
+
+  // Validate against Brazilian mobile pattern
+  if (!BR_MOBILE_PATTERN.test(digits)) {
+    return null;
+  }
+
+  return '+' + digits;
 }

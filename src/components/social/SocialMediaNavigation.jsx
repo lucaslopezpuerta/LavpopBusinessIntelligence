@@ -1,8 +1,11 @@
-// SocialMediaNavigation.jsx v1.1
+// SocialMediaNavigation.jsx v1.2
 // Tab navigation for Social Media view
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.2 (2025-12-19): Added Blacklist tab
+//   - Moved BlacklistManager from Campaigns view
+//   - Blacklist logically belongs with WhatsApp messaging
 // v1.1 (2025-12-18): Added WhatsApp tab
 //   - Moved WhatsApp analytics from Campaigns view
 //   - WhatsApp Business API metrics now under Social Media
@@ -12,7 +15,7 @@
 //   - Same design pattern as CampaignSectionNavigation
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Instagram, Facebook, MessageCircle } from 'lucide-react';
+import { Instagram, Facebook, MessageCircle, ShieldOff } from 'lucide-react';
 
 const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
   const scrollRef = useRef(null);
@@ -40,6 +43,17 @@ const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
       colors: {
         active: 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-green-500/25',
         hover: 'hover:border-green-300 dark:hover:border-green-700 hover:text-green-600 dark:hover:text-green-400'
+      }
+    },
+    {
+      id: 'blacklist',
+      label: 'Blacklist',
+      icon: ShieldOff,
+      mobileLabel: 'BL',
+      available: true,
+      colors: {
+        active: 'bg-gradient-to-r from-red-500 to-rose-500 shadow-red-500/25',
+        hover: 'hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400'
       }
     },
     {

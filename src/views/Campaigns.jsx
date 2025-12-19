@@ -1,8 +1,11 @@
-// Campaigns.jsx v2.4.0 - WhatsApp Analytics
+// Campaigns.jsx v2.5.0 - Blacklist moved to Social Media
 // Customer Messaging & Campaign Management Tab
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.5.0 (2025-12-19): Moved Blacklist to Social Media view
+//   - Removed BlacklistManager (now in SocialMedia.jsx)
+//   - Blacklist logically belongs with WhatsApp messaging
 // v2.4.0 (2025-12-17): WhatsApp Business Analytics
 //   - Added WhatsApp tab for WABA analytics
 //   - Shows conversation costs, delivery metrics
@@ -56,7 +59,6 @@ import CampaignList from '../components/campaigns/CampaignList';
 import AudienceSelector from '../components/campaigns/AudienceSelector';
 import MessageComposer from '../components/campaigns/MessageComposer';
 import CampaignSectionNavigation from '../components/campaigns/CampaignSectionNavigation';
-import BlacklistManager from '../components/campaigns/BlacklistManager';
 import CampaignDashboard from '../components/campaigns/CampaignDashboard';
 
 // Lazy-loaded heavy components (60KB + 50KB savings)
@@ -245,13 +247,6 @@ const Campaigns = ({ data }) => {
           selectedAudience={selectedAudience}
           audienceSegments={audienceSegments}
           onUseTemplate={handleUseTemplate}
-        />
-      )}
-
-      {/* Blacklist Manager Section */}
-      {activeSection === 'blacklist' && (
-        <BlacklistManager
-          customerData={customerMetrics?.allCustomers || []}
         />
       )}
 

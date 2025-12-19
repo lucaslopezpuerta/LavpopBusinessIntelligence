@@ -658,20 +658,25 @@ async function syncInstagramAnalytics() {
 
 /**
  * Get historical metrics from database
+ * @param {number|null} days - Number of days to fetch, or null for all data
  */
 async function getHistoricalMetrics(days = 30) {
   const supabase = getSupabase();
   const INSTAGRAM_ID = process.env.META_INSTAGRAM_ACCOUNT_ID;
 
-  const fromDate = new Date();
-  fromDate.setDate(fromDate.getDate() - days);
-
-  const { data, error } = await supabase
+  let query = supabase
     .from('instagram_metrics_with_growth')
     .select('*')
-    .eq('account_id', INSTAGRAM_ID)
-    .gte('bucket_date', fromDate.toISOString().split('T')[0])
-    .order('bucket_date', { ascending: true });
+    .eq('account_id', INSTAGRAM_ID);
+
+  // If days is specified (not null), filter by date
+  if (days !== null) {
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+    query = query.gte('bucket_date', fromDate.toISOString().split('T')[0]);
+  }
+
+  const { data, error } = await query.order('bucket_date', { ascending: true });
 
   if (error) throw error;
 
@@ -806,8 +811,12 @@ exports.handler = async (event, context) => {
 
       case 'history': {
         // Get historical metrics from database
-        const days = parseInt(params.days || '30', 10);
-        const history = await getHistoricalMetrics(Math.min(days, 365));
+        // 'all' or null = fetch all data, otherwise limit to specified days
+        const daysParam = params.days;
+        const days = (daysParam === 'all' || daysParam === 'null' || daysParam === null)
+          ? null
+          : parseInt(daysParam || '30', 10);
+        const history = await getHistoricalMetrics(days);
 
         // Calculate summary stats
         const summary = history.length > 0 ? {
