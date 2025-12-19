@@ -1,8 +1,11 @@
-// SocialMedia.jsx v1.1
+// SocialMedia.jsx v1.2
 // Social Media Analytics Tab
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.2 (2025-12-19): Added Google Business tab
+//   - Google Business Profile analytics with OAuth
+//   - Rating, reviews, search/views/actions metrics
 // v1.1 (2025-12-19): Added Blacklist tab
 //   - Moved BlacklistManager from Campaigns view
 //   - Blacklist logically belongs with WhatsApp messaging
@@ -21,6 +24,7 @@ import SocialMediaNavigation from '../components/social/SocialMediaNavigation';
 const InstagramAnalytics = lazy(() => import('../components/social/InstagramAnalytics'));
 const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAnalytics'));
 const BlacklistManager = lazy(() => import('../components/campaigns/BlacklistManager'));
+const GoogleBusinessAnalytics = lazy(() => import('../components/social/GoogleBusinessAnalytics'));
 
 // Loading fallback for lazy components
 const LoadingFallback = () => (
@@ -94,6 +98,13 @@ const SocialMedia = ({ data }) => {
       {activeSection === 'blacklist' && (
         <Suspense fallback={<LoadingFallback />}>
           <BlacklistManager customerData={data?.customer} />
+        </Suspense>
+      )}
+
+      {/* Google Business Profile Section */}
+      {activeSection === 'google' && (
+        <Suspense fallback={<LoadingFallback />}>
+          <GoogleBusinessAnalytics />
         </Suspense>
       )}
 

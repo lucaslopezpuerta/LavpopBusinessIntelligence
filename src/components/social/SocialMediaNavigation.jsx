@@ -1,8 +1,11 @@
-// SocialMediaNavigation.jsx v1.2
+// SocialMediaNavigation.jsx v1.3
 // Tab navigation for Social Media view
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.3 (2025-12-19): Added Google Business tab
+//   - Google Business Profile analytics integration
+//   - Google-branded blue color scheme
 // v1.2 (2025-12-19): Added Blacklist tab
 //   - Moved BlacklistManager from Campaigns view
 //   - Blacklist logically belongs with WhatsApp messaging
@@ -15,7 +18,7 @@
 //   - Same design pattern as CampaignSectionNavigation
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Instagram, Facebook, MessageCircle, ShieldOff } from 'lucide-react';
+import { Instagram, Facebook, MessageCircle, ShieldOff, Building2 } from 'lucide-react';
 
 const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
   const scrollRef = useRef(null);
@@ -54,6 +57,18 @@ const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
       colors: {
         active: 'bg-gradient-to-r from-red-500 to-rose-500 shadow-red-500/25',
         hover: 'hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400'
+      }
+    },
+    {
+      id: 'google',
+      label: 'Google Business',
+      icon: Building2,
+      mobileLabel: 'GMB',
+      available: true,
+      colors: {
+        // Google blue: #4285F4
+        active: 'bg-gradient-to-r from-blue-500 to-blue-600 shadow-blue-500/25',
+        hover: 'hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400'
       }
     },
     {

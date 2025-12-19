@@ -31,10 +31,11 @@ const { createClient } = require('@supabase/supabase-js');
 const GRAPH_API_VERSION = 'v24.0';
 const GRAPH_API_BASE = 'https://graph.facebook.com';
 
-// Granularity for message analytics
-// v21.0 and earlier: HALF_HOUR, DAY, MONTH
-// v24.0: HALF_HOUR, DAILY, MONTHLY
-const MSG_GRANULARITY = 'DAILY';
+// Granularity for analytics endpoints (Meta API is inconsistent!)
+// Message analytics: HALF_HOUR, DAY, MONTH
+// Template analytics: HALF_HOUR, DAILY, MONTHLY
+const MSG_GRANULARITY = 'DAY';
+const TEMPLATE_GRANULARITY = 'DAILY';
 
 // Business timezone for date bucket alignment
 const BUSINESS_TIMEZONE = 'America/Sao_Paulo';
@@ -138,7 +139,7 @@ async function fetchMessageAnalytics(start, end, wabaId, accessToken) {
 /**
  * Normalize message analytics response to database rows
  */
-function normalizeMessageData(analyticsData, wabaId) {
+function normalizeMessageData(analyticsData, wabaId, phoneNumberId) {
   if (!analyticsData) return [];
 
   const dataArray = analyticsData.data_points || analyticsData.data || [];
@@ -146,7 +147,7 @@ function normalizeMessageData(analyticsData, wabaId) {
 
   return dataArray.map(dataPoint => ({
     waba_id: wabaId,
-    phone_number_id: '',
+    phone_number_id: phoneNumberId || '',
     bucket_date: dataPoint.start
       ? epochToLocalDate(dataPoint.start)
       : new Date().toISOString().split('T')[0],
@@ -162,6 +163,7 @@ function normalizeMessageData(analyticsData, wabaId) {
 async function syncAnalytics(startEpoch, endEpoch) {
   const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
   const WABA_ID = process.env.META_WABA_ID;
+  const PHONE_NUMBER_ID = process.env.META_WHATSAPP_PHONE_ID || '';
 
   if (!ACCESS_TOKEN || !WABA_ID) {
     throw new Error('Meta API credentials not configured (META_ACCESS_TOKEN, META_WABA_ID required)');
@@ -172,7 +174,7 @@ async function syncAnalytics(startEpoch, endEpoch) {
 
   // Fetch message analytics (sent, delivered)
   const msgData = await fetchMessageAnalytics(startEpoch, endEpoch, WABA_ID, ACCESS_TOKEN);
-  const msgRows = normalizeMessageData(msgData, WABA_ID);
+  const msgRows = normalizeMessageData(msgData, WABA_ID, PHONE_NUMBER_ID);
   results.messages.fetched = msgRows.length;
 
   if (msgRows.length > 0) {
@@ -185,10 +187,14 @@ async function syncAnalytics(startEpoch, endEpoch) {
   }
 
   // Update last sync timestamp
-  await supabase
+  const { error: updateError } = await supabase
     .from('app_settings')
     .update({ waba_last_sync: new Date().toISOString() })
     .eq('id', 'default');
+
+  if (updateError) {
+    console.error('Failed to update waba_last_sync:', updateError.message);
+  }
 
   return results;
 }
@@ -313,11 +319,15 @@ async function fetchMessageTemplates(wabaId, accessToken) {
  */
 async function fetchAllTemplateAnalytics(templateIds, start, end, wabaId, accessToken) {
   const templateIdsParam = JSON.stringify(templateIds);
-  const fields = `template_analytics.start(${start}).end(${end}).granularity(${MSG_GRANULARITY}).template_ids(${templateIdsParam}).metrics(["SENT","DELIVERED","READ"])`;
+  const fields = `template_analytics.start(${start}).end(${end}).granularity(${TEMPLATE_GRANULARITY}).template_ids(${templateIdsParam}).metrics(["SENT","DELIVERED","READ"])`;
   const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${wabaId}?fields=${encodeURIComponent(fields)}&access_token=${accessToken}`;
+
+  console.log('Template analytics request URL:', url.replace(accessToken, 'TOKEN_HIDDEN'));
 
   const response = await fetchWithRetry(url);
   const data = await response.json();
+
+  console.log('Template analytics raw response:', JSON.stringify(data, null, 2).substring(0, 2000));
 
   if (!response.ok) {
     const errorInfo = parseMetaError(data);
@@ -344,6 +354,15 @@ function normalizeTemplateData(templates, wabaId) {
 }
 
 /**
+ * Convert epoch seconds to UTC date string (YYYY-MM-DD)
+ * Used for template analytics where Meta returns UTC midnight timestamps
+ */
+function epochToUtcDate(epochSeconds) {
+  const date = new Date(epochSeconds * 1000);
+  return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD in UTC
+}
+
+/**
  * Normalize template analytics data for database
  * Handles the template_analytics response format from WABA endpoint
  *
@@ -358,6 +377,9 @@ function normalizeTemplateData(templates, wabaId) {
  *     ]
  *   }]
  * }
+ *
+ * NOTE: Template analytics uses UTC midnight timestamps, so we use UTC dates
+ * to align with message analytics (which uses business timezone-aligned timestamps)
  */
 function normalizeTemplateAnalyticsData(analyticsData, wabaId) {
   if (!analyticsData) return [];
@@ -373,8 +395,9 @@ function normalizeTemplateAnalyticsData(analyticsData, wabaId) {
   return dataPoints.map(dataPoint => ({
     template_id: dataPoint.template_id || dataPoint.hsm_id,
     waba_id: wabaId,
+    // Use UTC date since Meta returns UTC midnight timestamps for template analytics
     bucket_date: dataPoint.start
-      ? epochToLocalDate(dataPoint.start)
+      ? epochToUtcDate(dataPoint.start)
       : new Date().toISOString().split('T')[0],
     sent: dataPoint.sent || 0,
     delivered: dataPoint.delivered || 0,
@@ -453,10 +476,14 @@ async function syncTemplateAnalytics(startEpoch, endEpoch) {
   }
 
   // Update last sync timestamp
-  await supabase
+  const { error: updateError } = await supabase
     .from('app_settings')
     .update({ waba_template_last_sync: new Date().toISOString() })
     .eq('id', 'default');
+
+  if (updateError) {
+    console.error('Failed to update waba_template_last_sync:', updateError.message);
+  }
 
   return results;
 }
@@ -634,6 +661,114 @@ exports.handler = async (event, context) => {
             },
             results
           })
+        };
+      }
+
+      case 'debug-templates': {
+        // Debug endpoint to see raw template analytics response
+        const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
+        const WABA_ID = process.env.META_WABA_ID;
+
+        if (!ACCESS_TOKEN || !WABA_ID) {
+          return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing credentials' }) };
+        }
+
+        // Get templates first
+        const templates = await fetchMessageTemplates(WABA_ID, ACCESS_TOKEN);
+        const templateIds = templates.map(t => t.id);
+
+        // Fetch analytics with raw response
+        const now = Math.floor(Date.now() / 1000);
+        const threeDaysAgo = now - (3 * 24 * 60 * 60);
+        const templateIdsParam = JSON.stringify(templateIds);
+        const fields = `template_analytics.start(${threeDaysAgo}).end(${now}).granularity(${TEMPLATE_GRANULARITY}).template_ids(${templateIdsParam}).metrics(["SENT","DELIVERED","READ"])`;
+        const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${WABA_ID}?fields=${encodeURIComponent(fields)}&access_token=${ACCESS_TOKEN}`;
+
+        const response = await fetch(url);
+        const rawData = await response.json();
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            templateCount: templates.length,
+            templateIds: templateIds,
+            rawResponse: rawData,
+            hasTemplateAnalytics: !!rawData.template_analytics
+          }, null, 2)
+        };
+      }
+
+      case 'diagnose': {
+        // Diagnostic endpoint to debug sync issues
+        const supabase = getSupabase();
+        const diagnostics = {
+          timestamp: new Date().toISOString(),
+          environment: {
+            hasMetaAccessToken: !!process.env.META_ACCESS_TOKEN,
+            hasWabaId: !!process.env.META_WABA_ID,
+            wabaId: process.env.META_WABA_ID || 'NOT_SET'
+          },
+          appSettings: null,
+          latestData: null,
+          metaApiTest: null
+        };
+
+        // Check app_settings
+        try {
+          const { data: settings, error: settingsError } = await supabase
+            .from('app_settings')
+            .select('id, waba_last_sync, waba_template_last_sync')
+            .eq('id', 'default')
+            .single();
+
+          if (settingsError) {
+            diagnostics.appSettings = { error: settingsError.message, code: settingsError.code };
+          } else {
+            diagnostics.appSettings = settings;
+          }
+        } catch (e) {
+          diagnostics.appSettings = { error: e.message };
+        }
+
+        // Check latest data
+        try {
+          const { data: latestMsg } = await supabase
+            .from('waba_message_analytics')
+            .select('bucket_date, updated_at')
+            .order('bucket_date', { ascending: false })
+            .limit(1)
+            .single();
+
+          diagnostics.latestData = latestMsg || { message: 'No data found' };
+        } catch (e) {
+          diagnostics.latestData = { error: e.message };
+        }
+
+        // Test Meta API connectivity
+        if (process.env.META_ACCESS_TOKEN && process.env.META_WABA_ID) {
+          try {
+            const testUrl = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${process.env.META_WABA_ID}?fields=id,name&access_token=${process.env.META_ACCESS_TOKEN}`;
+            const response = await fetch(testUrl);
+            const data = await response.json();
+
+            if (response.ok) {
+              diagnostics.metaApiTest = { success: true, wabaName: data.name };
+            } else {
+              const errorInfo = parseMetaError(data);
+              diagnostics.metaApiTest = { success: false, error: errorInfo.message, code: errorInfo.code };
+            }
+          } catch (e) {
+            diagnostics.metaApiTest = { success: false, error: e.message };
+          }
+        } else {
+          diagnostics.metaApiTest = { skipped: true, reason: 'Missing credentials' };
+        }
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(diagnostics, null, 2)
         };
       }
 

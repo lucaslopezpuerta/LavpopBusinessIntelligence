@@ -1,6 +1,10 @@
-// apiService.js v2.6
+// apiService.js v2.7
 // Unified API service for Supabase backend communication
 // Provides fallback to localStorage when backend is unavailable
+//
+// Version: 2.7 (2025-12-19) - Google Business Profile analytics
+//   - Added api.googleBusiness.* namespace for GBP API integration
+//   - OAuth flow, metrics, reviews, historical tracking
 //
 // Version: 2.6 (2025-12-19) - App settings API
 //   - Added api.settings.get() - fetch app_settings (sync timestamps)
@@ -1099,6 +1103,207 @@ export const api = {
       } catch (error) {
         console.error('Failed to fetch Instagram sync status:', error);
         return { lastSync: null };
+      }
+    }
+  },
+
+  // ==================== GOOGLE BUSINESS PROFILE ====================
+  // Google Business Profile API analytics with OAuth
+  googleBusiness: {
+    /**
+     * Get combined dashboard data (profile, metrics, reviews, summary)
+     * This is the recommended endpoint for the dashboard view
+     */
+    async getDashboard() {
+      try {
+        const response = await fetch('/.netlify/functions/google-business-analytics?action=dashboard', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Google Business dashboard:', error);
+        return { profile: null, metrics: [], reviews: [], summary: null };
+      }
+    },
+
+    /**
+     * Get business profile data (name, address, hours, photos)
+     */
+    async getProfile() {
+      try {
+        const response = await fetch('/.netlify/functions/google-business-analytics?action=profile', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Google Business profile:', error);
+        return { profile: null };
+      }
+    },
+
+    /**
+     * Get reviews with pagination
+     * @param {number} pageSize - Number of reviews per page (default 10, max 50)
+     * @param {string} pageToken - Token for next page
+     */
+    async getReviews(pageSize = 10, pageToken = null) {
+      try {
+        let url = `/.netlify/functions/google-business-analytics?action=reviews&pageSize=${pageSize}`;
+        if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Google Business reviews:', error);
+        return { reviews: [], nextPageToken: null };
+      }
+    },
+
+    /**
+     * Reply to a review
+     * @param {string} reviewId - Google review ID
+     * @param {string} comment - Reply text
+     */
+    async replyToReview(reviewId, comment) {
+      try {
+        const response = await fetch('/.netlify/functions/google-business-analytics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'reply',
+            reviewId,
+            comment
+          })
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to reply to review:', error);
+        return { success: false, error: error.message };
+      }
+    },
+
+    /**
+     * Get historical metrics from database
+     * @param {number|null} days - Number of days to fetch, or null for all data
+     */
+    async getHistory(days = 30) {
+      try {
+        const daysParam = days === null ? 'all' : days;
+        const cacheBuster = Date.now();
+        const response = await fetch(`/.netlify/functions/google-business-analytics?action=history&days=${daysParam}&_t=${cacheBuster}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Google Business history:', error);
+        return { history: [], summary: null, count: 0 };
+      }
+    },
+
+    /**
+     * Trigger manual sync of GBP analytics
+     * Stores current metrics in database for historical tracking
+     */
+    async triggerSync() {
+      try {
+        const response = await fetch('/.netlify/functions/google-business-analytics?action=sync', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to trigger Google Business sync:', error);
+        return { success: false, error: error.message };
+      }
+    },
+
+    /**
+     * Get sync status (last sync timestamp)
+     */
+    async getStatus() {
+      try {
+        const response = await fetch('/.netlify/functions/google-business-analytics?action=status', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch Google Business sync status:', error);
+        return { lastSync: null };
+      }
+    },
+
+    // ==================== OAUTH MANAGEMENT ====================
+
+    /**
+     * Get OAuth authorization URL
+     * Redirects user to Google consent screen
+     */
+    async getOAuthUrl() {
+      try {
+        const response = await fetch('/.netlify/functions/google-business-analytics?action=oauth-init', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to get OAuth URL:', error);
+        return { authUrl: null, error: error.message };
+      }
+    },
+
+    /**
+     * Check OAuth token status
+     * Returns whether tokens exist and are valid
+     */
+    async getOAuthStatus() {
+      try {
+        const response = await fetch('/.netlify/functions/google-business-analytics?action=oauth-status', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to check OAuth status:', error);
+        return { authenticated: false, error: error.message };
+      }
+    },
+
+    /**
+     * Get list of GBP accounts (for account selection)
+     */
+    async getAccounts() {
+      try {
+        const response = await fetch('/.netlify/functions/google-business-analytics?action=accounts', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch GBP accounts:', error);
+        return { accounts: [] };
+      }
+    },
+
+    /**
+     * Get locations for an account
+     * @param {string} accountId - GBP account ID
+     */
+    async getLocations(accountId) {
+      try {
+        const response = await fetch(`/.netlify/functions/google-business-analytics?action=locations&accountId=${accountId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch GBP locations:', error);
+        return { locations: [] };
       }
     }
   },
