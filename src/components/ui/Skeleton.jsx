@@ -456,6 +456,94 @@ const CampaignsLoadingSkeleton = () => (
   </div>
 );
 
+// Weather skeleton - matches Weather.jsx layout
+const WeatherLoadingSkeleton = () => (
+  <div className="space-y-6 animate-pulse">
+    {/* Header */}
+    <div className="flex items-center justify-between">
+      <div className="space-y-2">
+        <SkeletonText width="w-48" height="h-8" />
+        <SkeletonText width="w-64" height="h-4" />
+      </div>
+      <SkeletonText width="w-32" height="h-4" />
+    </div>
+
+    {/* Hero + Hourly row */}
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {/* Weather Hero - 2 columns */}
+      <div className="lg:col-span-2">
+        <Skeleton className="h-64 rounded-2xl" />
+      </div>
+
+      {/* Hourly Forecast - 3 columns */}
+      <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          <SkeletonText width="w-36" height="h-5" />
+        </div>
+        <div className="p-4">
+          <div className="flex gap-2 overflow-hidden">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex-shrink-0 w-20 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-2">
+                <SkeletonText width="w-12" height="h-3" />
+                <SkeletonCircle size="w-8 h-8" className="mx-auto" />
+                <SkeletonText width="w-8" height="h-5" className="mx-auto" />
+              </div>
+            ))}
+          </div>
+          <div className="h-40 mt-4">
+            <SkeletonChart height="h-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Daily + Metrics row */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Daily Forecast */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          <SkeletonText width="w-32" height="h-5" />
+        </div>
+        <div className="p-2 space-y-1">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/30 rounded-lg">
+              <SkeletonText width="w-16" height="h-4" />
+              <SkeletonCircle size="w-6 h-6" />
+              <SkeletonText width="w-12" height="h-4" />
+              <div className="flex-1">
+                <Skeleton className="h-1.5 rounded-full" />
+              </div>
+              <SkeletonText width="w-8" height="h-4" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Metrics Grid */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          <SkeletonText width="w-40" height="h-5" />
+        </div>
+        <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-2">
+              <SkeletonCircle size="w-9 h-9" className="rounded-lg" />
+              <SkeletonText width="w-16" height="h-3" />
+              <SkeletonText width="w-12" height="h-6" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Business Impact Section */}
+    <div className="space-y-4">
+      <SkeletonText width="w-48" height="h-6" />
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
+  </div>
+);
+
 // Operations skeleton - matches Operations.jsx layout
 const OperationsLoadingSkeleton = () => (
   <div className="space-y-6 sm:space-y-8 animate-pulse">
@@ -578,6 +666,7 @@ export {
   CustomersLoadingSkeleton,
   DirectoryLoadingSkeleton,
   CampaignsLoadingSkeleton,
+  WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
 };
 

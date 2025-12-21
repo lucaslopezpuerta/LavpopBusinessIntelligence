@@ -1,7 +1,14 @@
 /**
- * Brazilian Date Utilities
- * Timezone-independent for BI analytics
+ * Brazilian Date Utilities v1.1
+ * Timezone-aware for BI analytics
  * Format: DD/MM/YYYY or DD-MM-YYYY
+ *
+ * CHANGELOG:
+ * v1.1 (2025-12-20): Brazil timezone support for "now" calculations
+ *   - getDateWindows(), getDateRange() use Brazil timezone
+ *   - isCurrentMonth(), getDaysElapsedInMonth() use Brazil timezone
+ *   - Ensures consistent behavior regardless of viewer's browser timezone
+ * v1.0: Initial implementation with parseBrDate and .brazil property
  *
  * IMPORTANT: All timestamps in this BI tool represent Brazil business time.
  * The raw time values (hour, day, month) are preserved exactly as recorded,
@@ -110,34 +117,39 @@ export const formatBrDate = (date) => {
 
 /**
  * Get date windows for Sunday-Saturday business week
+ * NOTE: For most use cases, prefer dateWindows.js getDateWindows() which is more complete
+ * Uses Brazil timezone for consistent "today" calculation
  */
 export const getDateWindows = () => {
-  const currentDate = new Date();
-  
+  // Use Brazil timezone for "today"
+  const brazilParts = getBrazilDateParts();
+  const currentDate = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day);
+  const brazilDayOfWeek = brazilParts.dayOfWeek;
+
   // Find the most recent Saturday (end of current business week)
   let lastSaturday = new Date(currentDate);
-  const daysFromSaturday = (currentDate.getDay() + 1) % 7; // 0 if today is Saturday
+  const daysFromSaturday = (brazilDayOfWeek + 1) % 7; // 0 if today is Saturday
   lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
   lastSaturday.setHours(23, 59, 59, 999);
-  
+
   // Find the Sunday that starts this week (6 days before Saturday)
   let startSunday = new Date(lastSaturday);
   startSunday.setDate(startSunday.getDate() - 6);
   startSunday.setHours(0, 0, 0, 0);
-  
+
   // Previous week
   const prevWeekEnd = new Date(startSunday);
   prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
   prevWeekEnd.setHours(23, 59, 59, 999);
-  
+
   const prevWeekStart = new Date(prevWeekEnd);
-  prevWeekStart.setDate(prevWeekStart.getDate() - 6);
+  prevWeekStart.setDate(prevWeekEnd.getDate() - 6);
   prevWeekStart.setHours(0, 0, 0, 0);
-  
+
   // Four week window
   const fourWeekStart = new Date(startSunday);
   fourWeekStart.setDate(fourWeekStart.getDate() - 21);
-  
+
   return {
     currentWeek: {
       start: startSunday,
@@ -162,54 +174,61 @@ export const getDateWindows = () => {
 
 /**
  * Get various date ranges
+ * Uses Brazil timezone for all "now" calculations
  */
 export const getDateRange = (type) => {
-  const now = new Date();
-  
+  // Use Brazil timezone for "now"
+  const brazilParts = getBrazilDateParts();
+  const now = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day, brazilParts.hour, brazilParts.minute, brazilParts.second);
+
   switch (type) {
     case 'today':
       return {
-        start: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+        start: new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day),
         end: now
       };
-      
-    case 'yesterday':
-      const yesterday = new Date(now);
+
+    case 'yesterday': {
+      const yesterday = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day);
       yesterday.setDate(yesterday.getDate() - 1);
       return {
         start: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()),
         end: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59)
       };
-      
-    case 'last7days':
-      const start7 = new Date(now);
+    }
+
+    case 'last7days': {
+      const start7 = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day);
       start7.setDate(start7.getDate() - 6);
       start7.setHours(0, 0, 0, 0);
       return { start: start7, end: now };
-      
-    case 'last30days':
-      const start30 = new Date(now);
+    }
+
+    case 'last30days': {
+      const start30 = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day);
       start30.setDate(start30.getDate() - 29);
       start30.setHours(0, 0, 0, 0);
       return { start: start30, end: now };
-      
+    }
+
     case 'thisMonth':
       return {
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
+        start: new Date(brazilParts.year, brazilParts.month - 1, 1),
         end: now
       };
-      
-    case 'lastMonth':
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    case 'lastMonth': {
+      const lastMonth = new Date(brazilParts.year, brazilParts.month - 1 - 1, 1);
+      const lastMonthEnd = new Date(brazilParts.year, brazilParts.month - 1, 0);
       return { start: lastMonth, end: lastMonthEnd };
-      
+    }
+
     case 'ytd':
       return {
-        start: new Date(now.getFullYear(), 0, 1),
+        start: new Date(brazilParts.year, 0, 1),
         end: now
       };
-      
+
     case 'allTime':
     default:
       return { start: null, end: null };
@@ -261,22 +280,24 @@ export const formatMonthKey = (monthKey, format = 'medium') => {
 
 /**
  * Check if a month key represents the current month
+ * Uses Brazil timezone for current month determination
  * @param {string} monthKey - Month in YYYY-MM format
  * @returns {boolean} True if current month
  */
 export const isCurrentMonth = (monthKey) => {
   if (!monthKey) return false;
-  const now = new Date();
-  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const brazilParts = getBrazilDateParts();
+  const currentKey = `${brazilParts.year}-${String(brazilParts.month).padStart(2, '0')}`;
   return monthKey === currentKey;
 };
 
 /**
  * Get days elapsed in current month (for partial month detection)
+ * Uses Brazil timezone for day calculation
  * @returns {number} Days elapsed in current month
  */
 export const getDaysElapsedInMonth = () => {
-  return new Date().getDate();
+  return getBrazilDateParts().day;
 };
 
 /**
@@ -318,6 +339,115 @@ export const isWithinRange = (date, start, end) => {
  * São Paulo is the reference timezone for business operations
  */
 export const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
+
+/**
+ * Get current date/time parts in Brazil timezone
+ * @returns {Object} { year, month, day, hour, minute, second, dayOfWeek }
+ */
+export const getBrazilDateParts = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BRAZIL_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    weekday: 'short',
+    hour12: false
+  }).formatToParts(date);
+
+  const getPart = (type) => parts.find(p => p.type === type)?.value || '';
+
+  const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  return {
+    year: parseInt(getPart('year'), 10),
+    month: parseInt(getPart('month'), 10),
+    day: parseInt(getPart('day'), 10),
+    hour: parseInt(getPart('hour'), 10),
+    minute: parseInt(getPart('minute'), 10),
+    second: parseInt(getPart('second'), 10),
+    dayOfWeek: weekdayMap[getPart('weekday')] ?? 0
+  };
+};
+
+/**
+ * Get start of today in Brazil timezone
+ * Returns a Date object where getDate/getMonth/getFullYear represent Brazil's today
+ * @returns {Date}
+ */
+export const getBrazilToday = () => {
+  const parts = getBrazilDateParts();
+  return new Date(parts.year, parts.month - 1, parts.day, 0, 0, 0, 0);
+};
+
+/**
+ * Get end of today in Brazil timezone (23:59:59.999)
+ * @returns {Date}
+ */
+export const getBrazilTodayEnd = () => {
+  const parts = getBrazilDateParts();
+  return new Date(parts.year, parts.month - 1, parts.day, 23, 59, 59, 999);
+};
+
+/**
+ * Get the day of week in Brazil timezone (0=Sunday, 6=Saturday)
+ * @param {Date} date - Date to check (defaults to now)
+ * @returns {number}
+ */
+export const getBrazilDayOfWeek = (date = new Date()) => {
+  return getBrazilDateParts(date).dayOfWeek;
+};
+
+/**
+ * Create a Date from Brazil date parts
+ * Useful for creating dates that represent specific days in Brazil
+ * @param {number} year
+ * @param {number} month - 1-12 (NOT 0-indexed)
+ * @param {number} day
+ * @param {number} hour
+ * @param {number} minute
+ * @param {number} second
+ * @returns {Date}
+ */
+export const createBrazilDate = (year, month, day, hour = 0, minute = 0, second = 0) => {
+  return new Date(year, month - 1, day, hour, minute, second, 0);
+};
+
+/**
+ * Convert a Date to Brazil date string (YYYY-MM-DD)
+ * @param {Date} date
+ * @returns {string}
+ */
+export const toBrazilDateString = (date = new Date()) => {
+  const parts = getBrazilDateParts(date);
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+};
+
+/**
+ * Format a Date for display in Brazil timezone
+ * This is the PRIMARY function for displaying dates to users
+ * @param {Date|string} date - Date to format
+ * @param {Object} options - Intl.DateTimeFormat options (without timeZone)
+ * @returns {string}
+ */
+export const formatDateBrazil = (date, options = {}) => {
+  if (!date) return '-';
+
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(dateObj.getTime())) return '-';
+
+  const defaultOptions = {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    ...options,
+    timeZone: BRAZIL_TIMEZONE
+  };
+
+  return new Intl.DateTimeFormat('pt-BR', defaultOptions).format(dateObj);
+};
 
 /**
  * Create a Date object representing a specific Brazil time

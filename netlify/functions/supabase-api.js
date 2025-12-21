@@ -2,6 +2,10 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, scheduled campaigns, and WABA analytics
 //
+// Version: 3.6 (2025-12-20) - Removed localStorage migration
+//   - Removed migrateFromLocalStorage function (no longer needed)
+//   - All data now exclusively from Supabase
+//
 // Version: 3.5 (2025-12-19) - App settings route
 //   - Added settings.get - fetch app_settings (sync timestamps)
 //   - Used by BlacklistManager to display scheduled sync time
@@ -332,10 +336,6 @@ exports.handler = async (event, context) => {
       case 'rpc.mark_customer_returned':
         return await markCustomerReturnedRpc(supabase, body, headers);
 
-      // ==================== DATA MIGRATION ====================
-      case 'migrate.import':
-        return await migrateFromLocalStorage(supabase, data, headers);
-
       // ==================== WABA ANALYTICS ====================
       case 'waba.getSummary':
         return await getWabaSummary(supabase, headers);
@@ -384,7 +384,6 @@ exports.handler = async (event, context) => {
               'eligibility.check', 'eligibility.checkBatch',
               'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics', 'webhook_events.getEngagementStats',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
-              'migrate.import',
               'waba.getSummary', 'waba.getDailyMetrics', 'waba.getConversations', 'waba.getMessages',
               'waba.getTemplates', 'waba.getTemplateAnalytics', 'waba.getTemplateAnalyticsSummary'
             ]
@@ -1015,165 +1014,6 @@ function getDefaultAutomationRules() {
       wallet_balance_max: null
     }
   ];
-}
-
-// ==================== DATA MIGRATION ====================
-
-async function migrateFromLocalStorage(supabase, data, headers) {
-  const results = {
-    blacklist: { imported: 0, errors: [] },
-    campaigns: { imported: 0, errors: [] },
-    campaignSends: { imported: 0, errors: [] },
-    scheduledCampaigns: { imported: 0, errors: [] },
-    commLogs: { imported: 0, errors: [] },
-    automationRules: { imported: 0, errors: [] }
-  };
-
-  // Migrate blacklist
-  if (data.blacklist && data.blacklist.length > 0) {
-    try {
-      const { error } = await supabase
-        .from('blacklist')
-        .upsert(data.blacklist.map(([phone, entry]) => ({
-          phone,
-          customer_name: entry.name,
-          reason: entry.reason,
-          source: entry.source || 'migration',
-          error_code: entry.errorCode,
-          added_at: entry.addedAt || new Date().toISOString()
-        })), { onConflict: 'phone' });
-
-      if (error) throw error;
-      results.blacklist.imported = data.blacklist.length;
-    } catch (e) {
-      results.blacklist.errors.push(e.message);
-    }
-  }
-
-  // Migrate campaigns
-  // Note: 'opened' and 'converted' columns removed in schema cleanup v3.13
-  if (data.campaigns && data.campaigns.length > 0) {
-    try {
-      const { error } = await supabase
-        .from('campaigns')
-        .upsert(data.campaigns.map(c => ({
-          id: c.id,
-          name: c.name,
-          template_id: c.templateId,
-          audience: c.audience,
-          audience_count: c.audienceCount,
-          status: c.status,
-          sends: c.sends,
-          delivered: c.delivered,
-          created_at: c.createdAt,
-          updated_at: c.updatedAt,
-          last_sent_at: c.lastSentAt
-        })), { onConflict: 'id' });
-
-      if (error) throw error;
-      results.campaigns.imported = data.campaigns.length;
-    } catch (e) {
-      results.campaigns.errors.push(e.message);
-    }
-  }
-
-  // Migrate campaign sends
-  if (data.campaignSends && data.campaignSends.length > 0) {
-    try {
-      const { error } = await supabase
-        .from('campaign_sends')
-        .insert(data.campaignSends.map(s => ({
-          campaign_id: s.campaignId,
-          recipients: s.recipients,
-          success_count: s.successCount,
-          failed_count: s.failedCount,
-          sent_at: s.timestamp
-        })));
-
-      if (error) throw error;
-      results.campaignSends.imported = data.campaignSends.length;
-    } catch (e) {
-      results.campaignSends.errors.push(e.message);
-    }
-  }
-
-  // Migrate scheduled campaigns
-  if (data.scheduledCampaigns && data.scheduledCampaigns.length > 0) {
-    try {
-      const { error } = await supabase
-        .from('scheduled_campaigns')
-        .upsert(data.scheduledCampaigns.map(s => ({
-          id: s.id,
-          campaign_id: s.campaignId,
-          template_id: s.templateId,
-          audience: s.audience,
-          message_body: s.messageBody,
-          recipients: s.recipients,
-          scheduled_for: s.scheduledFor,
-          status: s.status,
-          created_at: s.createdAt
-        })), { onConflict: 'id' });
-
-      if (error) throw error;
-      results.scheduledCampaigns.imported = data.scheduledCampaigns.length;
-    } catch (e) {
-      results.scheduledCampaigns.errors.push(e.message);
-    }
-  }
-
-  // Migrate comm logs
-  if (data.commLogs && data.commLogs.length > 0) {
-    try {
-      const { error } = await supabase
-        .from('comm_logs')
-        .insert(data.commLogs.map(l => ({
-          phone: l.phone,
-          customer_id: l.customerId,
-          channel: l.channel,
-          direction: 'outbound',
-          message: l.message?.substring(0, 500),
-          external_id: l.externalId,
-          status: l.status || 'sent',
-          sent_at: l.timestamp
-        })));
-
-      if (error) throw error;
-      results.commLogs.imported = data.commLogs.length;
-    } catch (e) {
-      results.commLogs.errors.push(e.message);
-    }
-  }
-
-  // Migrate automation rules
-  if (data.automationRules && data.automationRules.length > 0) {
-    try {
-      const { error } = await supabase
-        .from('automation_rules')
-        .upsert(data.automationRules.map(r => ({
-          id: r.id,
-          name: r.name,
-          enabled: r.enabled,
-          trigger_type: r.trigger?.type,
-          trigger_value: r.trigger?.value,
-          action_template: r.action?.template,
-          action_channel: r.action?.channel
-        })), { onConflict: 'id' });
-
-      if (error) throw error;
-      results.automationRules.imported = data.automationRules.length;
-    } catch (e) {
-      results.automationRules.errors.push(e.message);
-    }
-  }
-
-  return {
-    statusCode: 200,
-    headers,
-    body: JSON.stringify({
-      success: true,
-      results
-    })
-  };
 }
 
 // ==================== CAMPAIGN EFFECTIVENESS FUNCTIONS ====================

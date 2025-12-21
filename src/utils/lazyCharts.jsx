@@ -87,12 +87,9 @@ export const LazyDayOfWeekChart = lazy(() =>
 );
 
 // Intelligence sections (these include charts)
+// Note: WeatherImpactSection moved to Weather tab as WeatherImpactAnalytics
 export const LazyProfitabilitySection = lazy(() =>
   import('../components/intelligence/ProfitabilitySection')
-);
-
-export const LazyWeatherImpactSection = lazy(() =>
-  import('../components/intelligence/WeatherImpactSection')
 );
 
 export const LazyGrowthTrendsSection = lazy(() =>

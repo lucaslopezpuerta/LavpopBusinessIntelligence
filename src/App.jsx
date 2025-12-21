@@ -1,9 +1,10 @@
-// App.jsx v8.4 - CSV/PDF EXPORT
-// ✅ Added minimalist icon sidebar with hover expansion
+// App.jsx v8.7 - Stale-While-Revalidate Caching (Stable)
+// ✅ Premium loading screen with animated data source indicators
+// ✅ Smart error categorization with user-friendly messages
+// ✅ Minimalist icon sidebar with hover expansion
 // ✅ Compact top bar with widgets (60px to match sidebar)
 // ✅ Mobile drawer with backdrop overlay
 // ✅ Maximized horizontal space for data visualizations
-// ✅ Integrated Lavpop logo in loading and error screens
 // ✅ Mobile breadcrumb shows current tab
 // ✅ Smart data refresh with visibility detection
 // ✅ Auto-refresh every 10 minutes when active
@@ -15,8 +16,23 @@
 // ✅ Keyboard shortcuts for power users
 // ✅ Accessibility: prefers-reduced-motion support
 // ✅ Real CSV/PDF export per view
+// ✅ SWR caching: instant load from IndexedDB, silent cache refresh
 //
 // CHANGELOG:
+// v8.7 (2025-12-21): Fix browser crash on SWR background update
+//   - Removed background state update (was crashing during navigation)
+//   - Cache still updates silently in background
+//   - Next page load gets fresh cached data
+// v8.6 (2025-12-21): Stale-While-Revalidate caching
+//   - Instant render from IndexedDB cache on page load
+//   - Background fetch updates data silently
+//   - 24-hour cache TTL with automatic revalidation
+//   - Offline support via cached data
+// v8.5 (2025-12-20): Enhanced loading & error screens
+//   - New LoadingScreen with animated data source indicators
+//   - New ErrorScreen with smart error categorization
+//   - User-friendly error messages and recovery suggestions
+//   - Dark mode support for both screens
 // v8.4 (2025-12-17): CSV/PDF export
 //   - Export modal with format selection (CSV/PDF)
 //   - View-specific export options (customers, transactions, KPIs, etc.)
@@ -67,13 +83,16 @@
 
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { RefreshCw, XCircle, Upload, Clock, Code } from 'lucide-react';
+import { Upload, Clock, Code } from 'lucide-react';
 
 // Build timestamp injected by Vite at build time
 const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : null;
-import LogoNoBackground from './assets/LogoNoBackground.svg';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { useReducedMotion } from './hooks/useReducedMotion';
+
+// Loading and Error screens
+import LoadingScreen from './components/ui/LoadingScreen';
+import ErrorScreen from './components/ui/ErrorScreen';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
@@ -95,6 +114,7 @@ import {
   CustomersLoadingSkeleton,
   DirectoryLoadingSkeleton,
   CampaignsLoadingSkeleton,
+  WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
   IntelligenceLoadingSkeleton
 } from './components/ui/Skeleton';
@@ -111,6 +131,7 @@ const Customers = lazy(() => import('./views/Customers'));
 const Directory = lazy(() => import('./views/Directory'));
 const Campaigns = lazy(() => import('./views/Campaigns'));
 const SocialMedia = lazy(() => import('./views/SocialMedia'));
+const Weather = lazy(() => import('./views/Weather'));
 const Operations = lazy(() => import('./views/Operations'));
 const Intelligence = lazy(() => import('./views/Intelligence'));
 const DataUploadView = lazy(() => import('./views/DataUploadView'));
@@ -154,6 +175,7 @@ const VIEW_SKELETONS = {
   diretorio: DirectoryLoadingSkeleton,
   campaigns: CampaignsLoadingSkeleton,
   social: CampaignsLoadingSkeleton, // Reuse campaigns skeleton (similar layout)
+  weather: WeatherLoadingSkeleton,
   intelligence: IntelligenceLoadingSkeleton,
   operations: OperationsLoadingSkeleton,
   // Upload view uses generic fallback (simple form)
@@ -183,7 +205,7 @@ function AppContent() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 7, percent: 0 });
+  const [loadProgress, setLoadProgress] = useState({ loaded: 0, total: 3, percent: 0, tableStates: {} });
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState('complete');
   const [showSettings, setShowSettings] = useState(false);
@@ -232,15 +254,26 @@ function AppContent() {
       setError(null);
 
       console.log(`[App] Loading data (skipCache: ${skipCache}, silent: ${silent})...`);
-      const loadedData = await loadAllData((progress) => {
-        if (isInitial) {
-          setLoadProgress(progress);
-        }
-      }, skipCache);
+      // SWR: No background state update - cache updates silently, next load gets fresh data
+      // Background setState was causing browser crashes during navigation
+      const loadedData = await loadAllData(
+        (progress) => {
+          if (isInitial) {
+            setLoadProgress(progress);
+          }
+        },
+        skipCache,
+        null // No background callback - cache updates silently
+      );
 
       setData(loadedData);
       setLastRefreshed(Date.now());
-      console.log('[App] Data loaded successfully');
+      console.log(`[App] Data loaded successfully (fromCache: ${loadedData.fromCache || false})`);
+
+      // Brief pause at 100% so user sees completed state before transition
+      if (isInitial) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
 
     } catch (err) {
       console.error('[App] Failed to load data:', err);
@@ -321,9 +354,10 @@ function AppContent() {
         '3': 'diretorio',
         '4': 'campaigns',
         '5': 'social',
-        '6': 'intelligence',
-        '7': 'operations',
-        '8': 'upload',
+        '6': 'weather',
+        '7': 'intelligence',
+        '8': 'operations',
+        '9': 'upload',
       };
 
       const tabId = shortcuts[e.key];
@@ -354,6 +388,7 @@ function AppContent() {
     diretorio: Directory,
     campaigns: Campaigns,
     social: SocialMedia,
+    weather: Weather,
     intelligence: Intelligence,
     operations: Operations,
     upload: DataUploadView
@@ -385,98 +420,12 @@ function AppContent() {
 
   // Loading Screen
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-lavpop-blue to-lavpop-green">
-        <div className="text-center text-white px-4">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="mb-8 inline-block"
-          >
-            <motion.div
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-24 h-24 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 p-3"
-            >
-              <img
-                src={LogoNoBackground}
-                alt="Lavpop"
-                className="w-full h-full object-contain"
-              />
-            </motion.div>
-          </motion.div>
-
-          <h2 className="text-3xl font-bold mb-8 tracking-tight">Carregando Lavpop BI</h2>
-
-          <div className="w-80 max-w-full mx-auto">
-            <div className="h-2 bg-black/20 rounded-full overflow-hidden mb-4 backdrop-blur-sm">
-              <motion.div
-                className="h-full bg-white rounded-full shadow-lg"
-                initial={{ width: 0 }}
-                animate={{ width: `${loadProgress.percent}%` }}
-                transition={{ type: "spring", stiffness: 50 }}
-              />
-            </div>
-            <p className="text-sm font-medium opacity-90">
-              {loadProgress.loaded} de {loadProgress.total} dados sincronizados
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen progress={loadProgress} />;
   }
 
   // Error Screen
   if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4">
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="text-center max-w-md w-full"
-        >
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-100 dark:border-slate-700">
-            {/* Logo */}
-            <div className="w-16 h-16 mx-auto mb-4">
-              <img
-                src={LogoNoBackground}
-                alt="Lavpop"
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <XCircle className="w-10 h-10 text-red-500 dark:text-red-400" />
-            </div>
-
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-              Erro ao carregar dados
-            </h2>
-
-            <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-              Não foi possível carregar os dados do dashboard. Verifique sua conexão e tente novamente.
-            </p>
-
-            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 mb-8 text-left border border-slate-100 dark:border-slate-700">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                Detalhes do erro
-              </p>
-              <pre className="text-xs text-slate-700 dark:text-slate-300 overflow-auto font-mono">
-                {error}
-              </pre>
-            </div>
-
-            <button
-              onClick={handleRetry}
-              className="w-full py-3.5 px-6 bg-gradient-to-r from-lavpop-blue to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-xl transition-all duration-200 shadow-lg hover:shadow-blue-500/25 active:scale-[0.98]"
-            >
-              Tentar Novamente
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    );
+    return <ErrorScreen error={error} onRetry={handleRetry} />;
   }
 
   // Main App

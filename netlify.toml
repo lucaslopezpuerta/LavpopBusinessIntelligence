@@ -7,6 +7,11 @@
 [functions."campaign-scheduler"]
   schedule = "*/5 * * * *"
 
+# Scheduled function to sync weather data from Visual Crossing API
+# Runs daily at 09:00 UTC (06:00 Brazil time)
+[functions."weather-sync"]
+  schedule = "0 9 * * *"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

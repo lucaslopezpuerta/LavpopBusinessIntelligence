@@ -47,7 +47,7 @@
 //   - Dark mode support
 //   - Tooltip fallback for collapsed state
 
-import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2 } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2, CloudSun } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import LogoNoBackground from '../assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -65,6 +65,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
     { id: 'diretorio', label: 'Diretório', icon: Search, path: '/diretorio' },
     { id: 'campaigns', label: 'Campanhas', icon: MessageSquare, path: '/campaigns' },
     { id: 'social', label: 'Redes Sociais', icon: Share2, path: '/social' },
+    { id: 'weather', label: 'Clima', icon: CloudSun, path: '/weather' },
     { id: 'intelligence', label: 'Inteligência', icon: TrendingUp, path: '/intelligence' },
     { id: 'operations', label: 'Operações', icon: Settings, path: '/operations' },
     { id: 'upload', label: 'Importar', icon: Upload, path: '/upload' }

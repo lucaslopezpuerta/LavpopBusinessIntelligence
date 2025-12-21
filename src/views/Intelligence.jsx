@@ -1,8 +1,12 @@
-// Intelligence.jsx v3.10.0 - FULL-WIDTH LAYOUT
+// Intelligence.jsx v3.11.0 - FULL-WIDTH LAYOUT
 // Refactored with unified components and Health Score
 // Design System v3.2 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.11.0 (2025-12-20): Weather Impact moved to Weather tab
+//   - REMOVED: WeatherImpactSection (now in Weather tab)
+//   - REMOVED: weatherImpact and comfortWeatherImpact calculations
+//   - Weather analytics now uses Supabase weather data
 // v3.10.0 (2025-12-16): Migrated to centralized AppSettings
 //   - REMOVED: Local Settings button (now in top bar via AppSettingsModal)
 //   - REMOVED: Local BusinessSettingsModal import and render
@@ -73,8 +77,6 @@ import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb } from 'lucide-react';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import {
   calculateProfitability,
-  calculateWeatherImpact,
-  calculateComfortWeatherImpact,
   calculateGrowthTrends,
   calculateCampaignROI,
   calculateHealthScore,
@@ -88,9 +90,9 @@ import KPICard, { KPIGrid } from '../components/ui/KPICard';
 import { IntelligenceLoadingSkeleton } from '../components/ui/Skeleton';
 
 // Lazy-loaded section components (contain charts)
+// Note: WeatherImpactSection moved to Weather tab
 import {
   LazyProfitabilitySection,
-  LazyWeatherImpactSection,
   LazyGrowthTrendsSection,
   LazyCampaignROISection,
   SectionLoadingFallback
@@ -116,26 +118,7 @@ const Intelligence = ({ data }) => {
     }
   }, [data?.sales, settings]);
 
-  const weatherImpact = useMemo(() => {
-    if (!data?.sales || !data?.weather) return null;
-    try {
-      return calculateWeatherImpact(data.sales, data.weather);
-    } catch (error) {
-      console.error('Weather impact calculation error:', error);
-      return null;
-    }
-  }, [data?.sales, data?.weather]);
-
-  // Comfort-based weather impact (heat index classification)
-  const comfortWeatherImpact = useMemo(() => {
-    if (!data?.sales || !data?.weather) return null;
-    try {
-      return calculateComfortWeatherImpact(data.sales, data.weather);
-    } catch (error) {
-      console.error('Comfort weather impact calculation error:', error);
-      return null;
-    }
-  }, [data?.sales, data?.weather]);
+  // Note: Weather impact analysis moved to Weather tab
 
   const growthTrends = useMemo(() => {
     if (!data?.sales) return null;
@@ -410,17 +393,9 @@ const Intelligence = ({ data }) => {
             />
           </Suspense>
 
-          {/* Section 2: Weather Impact (Comfort-based) */}
-          <Suspense fallback={<SectionLoadingFallback />}>
-            <LazyWeatherImpactSection
-              weatherImpact={weatherImpact}
-              comfortWeatherImpact={comfortWeatherImpact}
-              formatCurrency={formatCurrency}
-              formatPercent={formatPercent}
-            />
-          </Suspense>
+          {/* Note: Weather Impact section moved to Weather tab */}
 
-          {/* Section 3: Growth & Trends */}
+          {/* Section 2: Growth & Trends */}
           <Suspense fallback={<SectionLoadingFallback />}>
             <LazyGrowthTrendsSection
               growthTrends={growthTrends}
@@ -429,7 +404,7 @@ const Intelligence = ({ data }) => {
             />
           </Suspense>
 
-          {/* Section 4: Campaign Effectiveness */}
+          {/* Section 3: Campaign Effectiveness */}
           <Suspense fallback={<SectionLoadingFallback />}>
             <LazyCampaignROISection
               campaignROI={campaignROI}

@@ -1,6 +1,13 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.25 (2025-12-19)
+-- Version: 3.26 (2025-12-21)
+--
+-- v3.26: Revenue Prediction Model Persistence
+--   - Added model_coefficients table for storing OLS regression coefficients
+--   - Added model_training_history table for drift detection
+--   - Added revenue_model_last_trained column to app_settings
+--   - Added cleanup_old_training_history() function
+--   - See migrations/026_model_coefficients.sql
 --
 -- v3.25: Engagement & Cost Tracking
 --   - Added engagement_type and engaged_at columns to contact_tracking
@@ -1144,17 +1151,27 @@ LEFT JOIN campaigns c ON cr.campaign_id = c.id
 LEFT JOIN transactions t ON cr.transaction_id = t.id
 GROUP BY cr.codigo_cupom, c.name, c.discount_percent, c.service_type;
 
--- Daily revenue summary view - NEW v3.0
+-- Daily revenue summary view - v3.1 (added total_revenue)
+-- v3.1 (2025-12-21): Added total_revenue = service_revenue + recarga_revenue
+--   - Used by weather impact prediction model for daily cash flow forecasting
+-- v3.0: Initial implementation
 CREATE OR REPLACE VIEW daily_revenue AS
 SELECT
   DATE(data_hora) as date,
+  -- Transaction counts
   COUNT(*) FILTER (WHERE NOT is_recarga) as transactions,
   COUNT(*) FILTER (WHERE is_recarga) as recargas,
+  -- Service counts
   SUM(total_services) as total_services,
   SUM(wash_count) as washes,
   SUM(dry_count) as drys,
+  -- Revenue breakdown
   COALESCE(SUM(net_value) FILTER (WHERE NOT is_recarga), 0) as service_revenue,
   COALESCE(SUM(valor_pago) FILTER (WHERE is_recarga), 0) as recarga_revenue,
+  -- Total revenue (service + recarga) - for prediction models
+  COALESCE(SUM(net_value) FILTER (WHERE NOT is_recarga), 0) +
+    COALESCE(SUM(valor_pago) FILTER (WHERE is_recarga), 0) as total_revenue,
+  -- Other metrics
   COALESCE(SUM(cashback_amount), 0) as cashback_given,
   COUNT(*) FILTER (WHERE usou_cupom) as coupon_uses
 FROM transactions
@@ -2972,6 +2989,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON waba_templates TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON waba_template_analytics TO authenticated;
 -- v3.24: Instagram analytics table
 GRANT SELECT, INSERT, UPDATE, DELETE ON instagram_daily_metrics TO authenticated;
+-- v3.26: Revenue prediction model tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON model_coefficients TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON model_training_history TO authenticated;
 
 -- NEW v3.0: Core data tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON transactions TO authenticated;
@@ -3044,3 +3064,5 @@ GRANT EXECUTE ON FUNCTION upsert_waba_templates TO authenticated;
 GRANT EXECUTE ON FUNCTION upsert_waba_template_analytics TO authenticated;
 -- v3.24: Instagram analytics function
 GRANT EXECUTE ON FUNCTION upsert_instagram_daily_metrics TO authenticated;
+-- v3.26: Revenue prediction model function
+GRANT EXECUTE ON FUNCTION cleanup_old_training_history TO authenticated;

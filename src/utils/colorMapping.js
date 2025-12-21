@@ -447,4 +447,193 @@ export const chartColors = {
   neutral: '#64748b',
 };
 
+/**
+ * Atmospheric weather colors - NEW DESIGN
+ * Fresh, modern palette that evokes weather moods
+ */
+export const weatherColors = {
+  // Clear sky conditions
+  clearSky: {
+    light: 'from-sky-400 via-blue-400 to-indigo-500',
+    dark: 'from-sky-600 via-blue-700 to-indigo-800',
+    accent: '#0ea5e9',  // sky-500
+    bg: 'bg-gradient-to-br from-sky-50 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/40',
+    text: 'text-sky-600 dark:text-sky-400',
+    icon: 'text-sky-500 dark:text-sky-400',
+  },
+
+  // Sunny/hot conditions
+  goldenSun: {
+    light: 'from-amber-300 via-orange-400 to-rose-400',
+    dark: 'from-amber-500 via-orange-600 to-rose-700',
+    accent: '#f59e0b',  // amber-500
+    bg: 'bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/40',
+    text: 'text-amber-600 dark:text-amber-400',
+    icon: 'text-amber-500 dark:text-amber-400',
+  },
+
+  // Cloudy/overcast
+  stormCloud: {
+    light: 'from-slate-400 via-gray-500 to-zinc-600',
+    dark: 'from-slate-600 via-gray-700 to-zinc-800',
+    accent: '#64748b',  // slate-500
+    bg: 'bg-gradient-to-br from-slate-100 to-gray-200 dark:from-slate-800/50 dark:to-gray-900/60',
+    text: 'text-slate-600 dark:text-slate-400',
+    icon: 'text-slate-500 dark:text-slate-400',
+  },
+
+  // Rain/precipitation
+  rainDrop: {
+    light: 'from-blue-400 via-cyan-500 to-teal-500',
+    dark: 'from-blue-600 via-cyan-700 to-teal-800',
+    accent: '#06b6d4',  // cyan-500
+    bg: 'bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/40',
+    text: 'text-blue-600 dark:text-blue-400',
+    icon: 'text-blue-500 dark:text-blue-400',
+  },
+
+  // Cold/frost
+  frostCold: {
+    light: 'from-cyan-300 via-sky-400 to-blue-400',
+    dark: 'from-cyan-500 via-sky-600 to-blue-700',
+    accent: '#22d3ee',  // cyan-400
+    bg: 'bg-gradient-to-br from-cyan-50 to-sky-100 dark:from-cyan-900/30 dark:to-sky-900/40',
+    text: 'text-cyan-600 dark:text-cyan-400',
+    icon: 'text-cyan-400 dark:text-cyan-300',
+  },
+
+  // Mild/pleasant
+  warmBreeze: {
+    light: 'from-emerald-400 via-teal-400 to-cyan-400',
+    dark: 'from-emerald-600 via-teal-700 to-cyan-700',
+    accent: '#14b8a6',  // teal-500
+    bg: 'bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/40',
+    text: 'text-teal-600 dark:text-teal-400',
+    icon: 'text-teal-500 dark:text-teal-400',
+  },
+
+  // Humid/muggy
+  humidHaze: {
+    light: 'from-violet-400 via-purple-400 to-fuchsia-400',
+    dark: 'from-violet-600 via-purple-700 to-fuchsia-700',
+    accent: '#a855f7',  // purple-500
+    bg: 'bg-gradient-to-br from-violet-50 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/40',
+    text: 'text-violet-600 dark:text-violet-400',
+    icon: 'text-purple-500 dark:text-purple-400',
+  },
+};
+
+/**
+ * Weather chart colors for Recharts visualization
+ */
+export const weatherChartColors = {
+  temperature: {
+    stroke: '#f59e0b',      // amber-500
+    fill: 'url(#tempGradient)',
+    gradient: ['#fbbf24', '#f59e0b', '#d97706'], // amber scale
+  },
+  precipitation: {
+    stroke: '#0ea5e9',      // sky-500
+    fill: '#0ea5e9',
+    opacity: 0.6,
+  },
+  humidity: {
+    stroke: '#8b5cf6',      // violet-500
+    fill: 'url(#humidityGradient)',
+  },
+  wind: {
+    stroke: '#14b8a6',      // teal-500
+    fill: '#14b8a6',
+    opacity: 0.4,
+  },
+  uv: {
+    stroke: '#f97316',      // orange-500
+    fill: '#f97316',
+  },
+};
+
+/**
+ * Hero gradient mapping based on weather condition
+ */
+export const heroGradients = {
+  'clear-day': 'bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600',
+  'clear-night': 'bg-gradient-to-br from-indigo-600 via-purple-700 to-slate-800',
+  'partly-cloudy-day': 'bg-gradient-to-br from-slate-300 via-blue-400 to-sky-500',
+  'partly-cloudy-night': 'bg-gradient-to-br from-slate-500 via-indigo-600 to-purple-700',
+  'cloudy': 'bg-gradient-to-br from-slate-400 via-gray-500 to-slate-600',
+  'rain': 'bg-gradient-to-br from-slate-500 via-blue-600 to-cyan-700',
+  'showers-day': 'bg-gradient-to-br from-slate-400 via-blue-500 to-cyan-600',
+  'showers-night': 'bg-gradient-to-br from-slate-600 via-blue-700 to-cyan-800',
+  'thunder-rain': 'bg-gradient-to-br from-slate-600 via-purple-700 to-indigo-800',
+  'snow': 'bg-gradient-to-br from-slate-200 via-blue-200 to-cyan-300',
+  'fog': 'bg-gradient-to-br from-slate-300 via-gray-400 to-slate-500',
+  'wind': 'bg-gradient-to-br from-teal-400 via-cyan-500 to-sky-600',
+  // Temperature-based overrides
+  'hot': 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500',
+  'cold': 'bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-600',
+};
+
+/**
+ * Comfort category color mapping (Portuguese labels)
+ */
+export const comfortCategoryColors = {
+  abafado: {
+    bg: 'bg-orange-50 dark:bg-orange-900/20',
+    border: 'border-orange-200 dark:border-orange-800',
+    text: 'text-orange-700 dark:text-orange-300',
+    icon: 'text-orange-500 dark:text-orange-400',
+    badge: 'bg-orange-100 dark:bg-orange-900/40',
+    chart: '#f97316', // orange-500
+  },
+  quente: {
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+    border: 'border-amber-200 dark:border-amber-800',
+    text: 'text-amber-700 dark:text-amber-300',
+    icon: 'text-amber-500 dark:text-amber-400',
+    badge: 'bg-amber-100 dark:bg-amber-900/40',
+    chart: '#f59e0b', // amber-500
+  },
+  ameno: {
+    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+    border: 'border-emerald-200 dark:border-emerald-800',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    icon: 'text-emerald-500 dark:text-emerald-400',
+    badge: 'bg-emerald-100 dark:bg-emerald-900/40',
+    chart: '#10b981', // emerald-500
+  },
+  frio: {
+    bg: 'bg-cyan-50 dark:bg-cyan-900/20',
+    border: 'border-cyan-200 dark:border-cyan-800',
+    text: 'text-cyan-700 dark:text-cyan-300',
+    icon: 'text-cyan-500 dark:text-cyan-400',
+    badge: 'bg-cyan-100 dark:bg-cyan-900/40',
+    chart: '#06b6d4', // cyan-500
+  },
+  umido: {
+    bg: 'bg-teal-50 dark:bg-teal-900/20',
+    border: 'border-teal-200 dark:border-teal-800',
+    text: 'text-teal-700 dark:text-teal-300',
+    icon: 'text-teal-500 dark:text-teal-400',
+    badge: 'bg-teal-100 dark:bg-teal-900/40',
+    chart: '#14b8a6', // teal-500
+  },
+  chuvoso: {
+    bg: 'bg-blue-50 dark:bg-blue-900/20',
+    border: 'border-blue-200 dark:border-blue-800',
+    text: 'text-blue-700 dark:text-blue-300',
+    icon: 'text-blue-500 dark:text-blue-400',
+    badge: 'bg-blue-100 dark:bg-blue-900/40',
+    chart: '#3b82f6', // blue-500
+  },
+};
+
+/**
+ * Get comfort category color object
+ * @param {string} category - Comfort category key
+ * @returns {object} Color mapping object
+ */
+export const getComfortCategoryColor = (category) => {
+  return comfortCategoryColors[category] || comfortCategoryColors.ameno;
+};
+
 export default semanticColors;

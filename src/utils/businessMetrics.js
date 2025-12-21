@@ -1,4 +1,4 @@
-// Business Metrics Calculator v2.7 - HYBRID VIEW WITH CURRENT WEEK
+// Business Metrics Calculator v2.8 - HYBRID VIEW WITH CURRENT WEEK
 // ✅ NEW: Current partial week calculations (Sunday → Today)
 // ✅ NEW: Weekly projection based on current pace
 // ✅ FIXED: Windows include Date objects (start/end) for KPICards
@@ -8,6 +8,10 @@
 // ✅ Includes Recarga in revenue totals
 //
 // CHANGELOG:
+// v2.8 (2025-12-20): Brazil timezone support
+//   - All "now" calculations use Brazil timezone (America/Sao_Paulo)
+//   - getDateWindows() and getCurrentPartialWeek() use getBrazilDateParts()
+//   - Ensures consistent week boundaries regardless of viewer's browser timezone
 // v2.7 (2025-11-19): HYBRID VIEW - Current week + projection
 //   - Added getCurrentPartialWeek() for real-time tracking
 //   - Added projection calculations for the current week
@@ -19,6 +23,7 @@
 
 import { parseSalesRecords, filterByType, filterWithServices } from './transactionParser';
 import { BUSINESS_PARAMS } from './operationsMetrics';
+import { getBrazilDateParts } from './dateUtils';
 
 // Derived constant for convenience
 const OPERATING_HOURS_PER_DAY = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
@@ -26,13 +31,17 @@ const OPERATING_HOURS_PER_DAY = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_P
 /**
  * Get date windows for calculations
  * BUSINESS WEEK: Sunday 00:00 → Saturday 23:59
+ * Uses Brazil timezone for consistent "today" calculation
  */
 function getDateWindows() {
-  const currentDate = new Date();
-  
+  // Use Brazil timezone for "today"
+  const brazilParts = getBrazilDateParts();
+  const currentDate = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day);
+  const brazilDayOfWeek = brazilParts.dayOfWeek;
+
   // LAST COMPLETE WEEK: Most recent Sunday → Most recent Saturday
   let lastSaturday = new Date(currentDate);
-  const daysFromSaturday = (currentDate.getDay() + 1) % 7;
+  const daysFromSaturday = (brazilDayOfWeek + 1) % 7;
   lastSaturday.setDate(lastSaturday.getDate() - daysFromSaturday);
   lastSaturday.setHours(23, 59, 59, 999);
   
@@ -96,37 +105,40 @@ function getDateWindows() {
 /**
  * Get current partial week window (Sunday → Today)
  * ✅ NEW in v2.7
+ * Uses Brazil timezone for consistent "today" calculation
  */
 function getCurrentPartialWeek() {
-  const now = new Date();
-  
+  // Use Brazil timezone for "now"
+  const brazilParts = getBrazilDateParts();
+  const now = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day, brazilParts.hour, brazilParts.minute, brazilParts.second);
+  const dayOfWeek = brazilParts.dayOfWeek; // 0 = Sunday, 1 = Monday, etc.
+
   // Find the start of current week (last or this Sunday)
-  let currentWeekStart = new Date(now);
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  
+  let currentWeekStart = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day);
+
   if (dayOfWeek === 0) {
     // Today is Sunday - start today
     currentWeekStart.setHours(0, 0, 0, 0);
   } else {
     // Go back to last Sunday
-    currentWeekStart.setDate(now.getDate() - dayOfWeek);
+    currentWeekStart.setDate(currentWeekStart.getDate() - dayOfWeek);
     currentWeekStart.setHours(0, 0, 0, 0);
   }
-  
+
   // End is now (today at current time)
   const currentWeekEnd = new Date(now);
   currentWeekEnd.setHours(23, 59, 59, 999);
-  
+
   // Calculate days elapsed (including today as partial day)
   const daysElapsed = Math.floor((currentWeekEnd - currentWeekStart) / (1000 * 60 * 60 * 24)) + 1;
-  
+
   const formatDate = (d) => {
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   };
-  
+
   return {
     start: currentWeekStart,
     end: currentWeekEnd,

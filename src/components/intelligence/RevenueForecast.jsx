@@ -1,8 +1,11 @@
-// RevenueForecast.jsx v2.2
+// RevenueForecast.jsx v2.3
 // Revenue projection card for Intelligence tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.3 (2025-12-20): Brazil timezone support
+//   - Uses getBrazilDateParts() for current month/year
+//   - Ensures consistent month display regardless of browser timezone
 // v2.2 (2025-12-02): Improved data distribution layout
 //   - Temperature insight now integrated as stat card (not separate box)
 //   - Cleaner 3-4 column stats grid on desktop
@@ -31,6 +34,7 @@
 
 import React from 'react';
 import { Target, AlertCircle, Info, Thermometer } from 'lucide-react';
+import { getBrazilDateParts } from '../../utils/dateUtils';
 
 const RevenueForecast = ({
   currentMonth,
@@ -48,9 +52,10 @@ const RevenueForecast = ({
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
-  const now = new Date();
-  const currentMonthName = MONTH_NAMES[now.getMonth()];
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  // Use Brazil timezone for current month calculations
+  const brazilParts = getBrazilDateParts();
+  const currentMonthName = MONTH_NAMES[brazilParts.month - 1];
+  const daysInMonth = new Date(brazilParts.year, brazilParts.month, 0).getDate();
   const daysRemaining = daysInMonth - currentMonth.daysElapsed;
 
   // Use weighted projection if available, otherwise fallback to linear

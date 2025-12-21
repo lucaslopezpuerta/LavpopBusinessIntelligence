@@ -1,109 +1,55 @@
 /**
- * Supabase Loader - Loads data from Supabase instead of CSV files
+ * Supabase Loader - Loads all data from Supabase
  *
- * VERSION: 2.5
+ * VERSION: 3.1
  *
  * CHANGELOG:
+ * v3.1 (2025-12-21): Stale-While-Revalidate caching
+ *   - Return cached data immediately if available (instant render)
+ *   - Background fetch updates cache silently
+ *   - 24-hour cache TTL (data updates daily anyway)
+ *   - Offline support via IndexedDB cache
+ * v3.0 (2025-12-20): Removed all CSV/localStorage loading
+ *   - All data now comes exclusively from Supabase
+ *   - Removed loadCSVFile fallback function
+ *   - Weather data loaded via useWeatherHistory hook from weather_daily_metrics
+ * v2.6 (2025-12-20): Removed weather CSV loading
  * v2.5 (2025-12-16): Added lastImportedAt metadata
- *   - Returns last CSV import date (MAX(imported_at) from transactions)
- *   - Used by App.jsx footer for data freshness indicator
  * v2.4 (2025-12-14): Parallel data loading for mobile performance
- *   - Changed sequential loading to Promise.all() for sales, rfm, customer
- *   - Reduces mobile load time by 40-60% (eliminates network waterfall)
  * v2.3 (2025-12-10): Timezone-independent time display
- *   - formatDateForCSV now extracts time directly from ISO string
- *   - NO timezone conversion - displays actual recorded purchase time
- *   - Works correctly regardless of viewer's browser timezone
- *   - Supabase stores Brazil time with +00 offset, we preserve it as-is
- * v2.2 (2025-12-10): Brazil timezone fix (superseded by v2.3)
- * v2.1 (2025-12-10): Fixed pagination - fetch ALL records, not just 1000
- *   - Added fetchAllRecords() helper with pagination
- *   - Updated all loaders to use pagination (Supabase defaults to 1000 rows)
+ * v2.1 (2025-12-10): Fixed pagination - fetch ALL records
  * v2.0 (2025-12-10): Portuguese RFM segment names
- *
- * This module provides the same interface as csvLoader but fetches
- * data from Supabase tables instead of CSV files.
  *
  * Tables used:
  * - transactions → sales data
  * - customers → customer data + RFM segments
+ * - weather_daily_metrics → weather data (via useWeatherHistory hook)
  *
  * Data flow:
- * - Sales, Customer, RFM from Supabase
- * - Weather from CSV (not yet migrated)
- * - Blacklist/Campaigns managed via separate services
+ * - Sales, Customer, RFM from Supabase (parallel loading)
+ * - Weather: useWeatherHistory hook (not in loadAllData)
+ * - Blacklist/Campaigns: separate services (apiService.js)
  *
- * RFM Segments (Portuguese marketing names - distinct from Churn Risk Levels):
- * - VIP: Champion (R=5, F≥4, M≥4) - Best customers, top tier
- * - Frequente: Loyal (R≥4, F≥3, M≥3) - Regular visitors
- * - Promissor: Potential (R≥3, F≥2, M≥2) - Growing customers
- * - Novato: New customer (≤30 days, ≤2 transactions) - Newcomers
- * - Esfriando: At Risk (R=2, F=2 or M=2) - Cooling off, needs attention
- * - Inativo: Lost (all others) - No recent engagement
+ * RFM Segments (Portuguese):
+ * - VIP, Frequente, Promissor, Novato, Esfriando, Inativo
  *
- * Churn Risk Levels (computed client-side in customerMetrics.js):
+ * Churn Risk Levels (customerMetrics.js):
  * - Healthy, Monitor, At Risk, Churning, Lost, New Customer
  */
 
 import Papa from 'papaparse';
-import { getCachedData, setCachedData } from './dataCache';
 import { normalizeCpf } from './cpfUtils';
 import { getSupabaseClient } from './supabaseClient';
+import { getCachedData, setCachedData } from './dataCache';
 
 // Use shared Supabase client to avoid multiple GoTrueClient instances
 const getSupabase = getSupabaseClient;
 
-// ============== CSV FALLBACK (for non-migrated files) ==============
-
-/**
- * Load a CSV file from /data folder (fallback for non-migrated data)
- */
-async function loadCSVFile(filename, skipCache = false) {
-  // Check cache first
-  if (!skipCache) {
-    const cachedData = await getCachedData(filename);
-    if (cachedData) {
-      return cachedData;
-    }
-  }
-
-  const basePath = import.meta.env.BASE_URL;
-  const url = `${basePath}data/${filename}`;
-
-  console.log(`Loading ${filename} from ${url}`);
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: Failed to load ${filename}`);
-  }
-
-  const csvText = await response.text();
-  if (!csvText || csvText.trim().length === 0) {
-    throw new Error(`${filename} is empty`);
-  }
-
-  return new Promise((resolve, reject) => {
-    Papa.parse(csvText, {
-      header: true,
-      skipEmptyLines: true,
-      delimiter: "",
-      delimitersToGuess: [',', ';', '\t', '|'],
-      transformHeader: (header) => header.trim(),
-      complete: async (results) => {
-        if (!results.data || results.data.length === 0) {
-          reject(new Error(`${filename} contains no valid data`));
-          return;
-        }
-        console.log(`✓ Loaded ${filename}: ${results.data.length} rows`);
-        await setCachedData(filename, results.data);
-        resolve(results.data);
-      },
-      error: (error) => {
-        reject(new Error(`Error parsing ${filename}: ${error.message}`));
-      }
-    });
-  });
-}
+// ============== CACHE CONFIGURATION ==============
+const CACHE_KEY_SALES = 'supabase_transactions';
+const CACHE_KEY_CUSTOMERS = 'supabase_customers';
+const CACHE_KEY_RFM = 'supabase_rfm';
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 // ============== SUPABASE LOADERS ==============
 
@@ -456,90 +402,196 @@ async function getLastImportDate() {
 // ============== MAIN LOADER ==============
 
 /**
- * Load all required data
- * - sales, customer, rfm from Supabase
- * - weather from CSV (not migrated to Supabase)
+ * Load all required data with Stale-While-Revalidate caching
+ * - Returns cached data immediately if available (instant render)
+ * - Background fetch updates cache silently
+ * - 24-hour cache TTL
+ *
+ * Note: Weather data is now loaded via useWeatherHistory hook directly
+ * from Supabase weather_daily_metrics table (not in this loader).
  *
  * Note: blacklist and campaigns are managed separately via apiService.js
  * and blacklistService.js - they're not loaded here.
  *
+ * Progress callback receives:
+ * {
+ *   tableName: string,      // 'transactions', 'customers', 'rfm'
+ *   status: string,         // 'loading', 'complete'
+ *   rowCount: number|null,  // Number of rows loaded (null while loading)
+ *   loaded: number,         // Tables completed so far
+ *   total: number,          // Total tables to load
+ *   percent: number,        // Overall progress percentage
+ *   fromCache: boolean      // True if data came from cache
+ * }
+ *
  * @param {function} onProgress - Progress callback
  * @param {boolean} skipCache - Skip cache and force fresh fetch
- * @returns {Object} { sales, rfm, customer, weather, lastImportedAt }
+ * @param {function} onBackgroundUpdate - Called when background fetch completes (SWR pattern)
+ * @returns {Object} { sales, rfm, customer, lastImportedAt, fromCache }
  */
-export const loadAllData = async (onProgress, skipCache = false) => {
+export const loadAllData = async (onProgress, skipCache = false, onBackgroundUpdate = null) => {
+  const totalSteps = 3; // transactions, customers, rfm
+
+  // ============== SWR: Check cache first ==============
+  if (!skipCache) {
+    try {
+      const [cachedSales, cachedCustomers, cachedRfm] = await Promise.all([
+        getCachedData(CACHE_KEY_SALES, CACHE_TTL),
+        getCachedData(CACHE_KEY_CUSTOMERS, CACHE_TTL),
+        getCachedData(CACHE_KEY_RFM, CACHE_TTL)
+      ]);
+
+      // If ALL cached data exists, return immediately and revalidate in background
+      if (cachedSales && cachedCustomers && cachedRfm) {
+        console.log('[supabaseLoader] Cache HIT - returning cached data, fetching in background');
+
+        // Signal progress as complete (from cache)
+        if (onProgress) {
+          onProgress({
+            loaded: totalSteps,
+            total: totalSteps,
+            percent: 100,
+            fromCache: true,
+            tableStates: {
+              transactions: { status: 'complete', rowCount: cachedSales.length },
+              customers: { status: 'complete', rowCount: cachedCustomers.length },
+              rfm: { status: 'complete', rowCount: cachedRfm.length }
+            }
+          });
+        }
+
+        // Start background revalidation (fire and forget)
+        fetchAndCacheAll(null, onBackgroundUpdate).catch(err => {
+          console.warn('[supabaseLoader] Background revalidation failed:', err.message);
+        });
+
+        return {
+          sales: cachedSales,
+          customer: cachedCustomers,
+          rfm: cachedRfm,
+          lastImportedAt: null, // Will be updated on background fetch
+          fromCache: true
+        };
+      }
+
+      console.log('[supabaseLoader] Cache MISS - fetching from Supabase');
+    } catch (cacheError) {
+      console.warn('[supabaseLoader] Cache check failed:', cacheError.message);
+    }
+  } else {
+    console.log('[supabaseLoader] Cache SKIP - forced refresh');
+  }
+
+  // ============== Cache miss or forced refresh: fetch from Supabase ==============
+  return fetchAndCacheAll(onProgress, null);
+};
+
+/**
+ * Fetch all data from Supabase and update cache
+ * @param {function} onProgress - Progress callback (null for background fetch)
+ * @param {function} onComplete - Called when fetch completes (for SWR background update)
+ * @returns {Object} { sales, rfm, customer, lastImportedAt, fromCache: false }
+ */
+async function fetchAndCacheAll(onProgress, onComplete) {
   const data = {};
   let loaded = 0;
-  const totalSteps = 4; // sales, rfm, customer, weather
+  const totalSteps = 3;
 
-  const updateProgress = (file) => {
-    loaded++;
+  // Track loading state for each table
+  const tableStates = {
+    transactions: { status: 'pending', rowCount: null },
+    customers: { status: 'pending', rowCount: null },
+    rfm: { status: 'pending', rowCount: null }
+  };
+
+  const updateProgress = (tableName, status, rowCount = null) => {
+    tableStates[tableName] = { status, rowCount };
+
+    if (status === 'complete') {
+      loaded++;
+    }
+
     if (onProgress) {
       onProgress({
-        file,
+        tableName,
+        status,
+        rowCount,
         loaded,
         total: totalSteps,
-        percent: Math.round((loaded / totalSteps) * 100)
+        percent: Math.round((loaded / totalSteps) * 100),
+        fromCache: false,
+        tableStates: { ...tableStates }
       });
     }
   };
 
   try {
     // Load all data in PARALLEL for faster mobile performance
-    // This eliminates the network waterfall that was causing 3-6s delays on mobile
     console.log('[supabaseLoader] Starting parallel data fetch...');
     const startTime = performance.now();
 
-    const [salesResult, rfmResult, customerResult, weatherResult, lastImportedAt] = await Promise.all([
-      // 1. Load sales from Supabase
+    // Signal loading started for all tables
+    if (onProgress) {
+      updateProgress('transactions', 'loading');
+      updateProgress('customers', 'loading');
+      updateProgress('rfm', 'loading');
+    }
+
+    const [salesResult, rfmResult, customerResult, lastImportedAt] = await Promise.all([
+      // 1. Load sales from Supabase (transactions table)
       loadSalesFromSupabase().then(result => {
-        updateProgress('sales (Supabase)');
+        updateProgress('transactions', 'complete', result.length);
         return result;
       }),
 
       // 2. Load RFM from Supabase (computed from customers)
       loadRFMFromSupabase().then(result => {
-        updateProgress('rfm (Supabase)');
+        updateProgress('rfm', 'complete', result.length);
         return result;
       }),
 
       // 3. Load customers from Supabase
       loadCustomersFromSupabase().then(result => {
-        updateProgress('customer (Supabase)');
+        updateProgress('customers', 'complete', result.length);
         return result;
       }),
 
-      // 4. Load weather from CSV (used by Intelligence.jsx for weather impact)
-      loadCSVFile('weather.csv', skipCache)
-        .then(result => {
-          updateProgress('weather.csv');
-          return result;
-        })
-        .catch(error => {
-          console.warn('Warning: Could not load weather.csv:', error.message);
-          updateProgress('weather.csv');
-          return [];
-        }),
-
-      // 5. Get last CSV import date (metadata, no progress update)
+      // 4. Get last CSV import date (metadata, no progress update)
       getLastImportDate()
     ]);
 
     data.sales = salesResult;
     data.rfm = rfmResult;
     data.customer = customerResult;
-    data.weather = weatherResult;
     data.lastImportedAt = lastImportedAt;
+    data.fromCache = false;
 
     const elapsed = Math.round(performance.now() - startTime);
     console.log(`[supabaseLoader] Parallel fetch completed in ${elapsed}ms`);
 
+    // ============== Save to IndexedDB cache ==============
+    try {
+      await Promise.all([
+        setCachedData(CACHE_KEY_SALES, salesResult),
+        setCachedData(CACHE_KEY_CUSTOMERS, customerResult),
+        setCachedData(CACHE_KEY_RFM, rfmResult)
+      ]);
+      console.log('[supabaseLoader] Cache updated');
+    } catch (cacheError) {
+      console.warn('[supabaseLoader] Failed to update cache:', cacheError.message);
+    }
+
+    // ============== Call background update callback (SWR) ==============
+    if (onComplete) {
+      onComplete(data);
+    }
+
     return data;
   } catch (error) {
-    console.error('Failed to load data:', error);
+    console.error('[supabaseLoader] Failed to load data:', error);
     throw error;
   }
-};
+}
 
 // ============== RE-EXPORTS FOR COMPATIBILITY ==============
 

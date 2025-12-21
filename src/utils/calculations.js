@@ -1,15 +1,18 @@
 /**
- * Core Business Calculations v1.1
+ * Core Business Calculations v1.2
  * Ported from Calculate_Metrics.js
  *
  * CHANGELOG:
+ * v1.2 (2025-12-20): Brazil timezone support
+ *   - "now" calculations use getBrazilDateParts()
+ *   - Ensures consistent recency calculations regardless of viewer's browser timezone
  * v1.1 (2025-12-10): CRITICAL FIX - Timezone-independent calculations
  *   - dayOfWeek, hour, isWeekend now use date.brazil components
  *   - Ensures correct values regardless of viewer's browser timezone
  * v1.0: Initial port from Calculate_Metrics.js
  */
 
-import { parseBrDate, isWithinRange, daysBetween } from './dateUtils';
+import { parseBrDate, isWithinRange, daysBetween, getBrazilDateParts } from './dateUtils';
 import { toNum, sum, avg } from './numberUtils';
 import { normalizeDoc, countMachines } from './csvLoader';
 
@@ -231,8 +234,10 @@ export const calculateCustomerMetrics = (salesData, customerDoc) => {
   
   const firstVisit = customerSales[0].date;
   const lastVisit = customerSales[customerSales.length - 1].date;
-  const now = new Date();
-  
+  // Use Brazil timezone for "now"
+  const brazilNow = getBrazilDateParts();
+  const now = new Date(brazilNow.year, brazilNow.month - 1, brazilNow.day);
+
   const daysSinceFirst = daysBetween(firstVisit, now);
   const daysSinceLast = daysBetween(lastVisit, now);
   

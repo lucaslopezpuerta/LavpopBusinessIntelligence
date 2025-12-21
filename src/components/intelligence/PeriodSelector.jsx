@@ -1,8 +1,11 @@
-// PeriodSelector.jsx v1.0
+// PeriodSelector.jsx v1.1
 // Period selector dropdown for Intelligence tab
 // Design System v3.0 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-12-20): Brazil timezone support
+//   - getPeriodDateRange() now uses Brazil timezone for "now"
+//   - Ensures consistent date ranges regardless of browser timezone
 // v1.0 (2025-11-30): Initial implementation
 //   - Period options: current month, last month, last 90 days, YTD
 //   - Responsive design (full-width on mobile)
@@ -11,6 +14,7 @@
 
 import React from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
+import { getBrazilDateParts } from '../../utils/dateUtils';
 
 const PERIOD_OPTIONS = [
   { value: 'current-month', label: 'Mês Atual', shortLabel: 'Atual' },
@@ -22,16 +26,19 @@ const PERIOD_OPTIONS = [
 
 /**
  * Get date range for a given period
+ * Uses Brazil timezone for consistent "now" calculations
  * @param {string} period - Period identifier
  * @returns {{ startDate: Date, endDate: Date, label: string }}
  */
 export const getPeriodDateRange = (period) => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Use Brazil timezone for "now"
+  const brazilParts = getBrazilDateParts();
+  const now = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day);
+  const today = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day);
 
   switch (period) {
     case 'current-month': {
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startDate = new Date(brazilParts.year, brazilParts.month - 1, 1);
       return {
         startDate,
         endDate: today,
@@ -39,8 +46,8 @@ export const getPeriodDateRange = (period) => {
       };
     }
     case 'last-month': {
-      const startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+      const startDate = new Date(brazilParts.year, brazilParts.month - 2, 1);
+      const endDate = new Date(brazilParts.year, brazilParts.month - 1, 0);
       return {
         startDate,
         endDate,
@@ -57,11 +64,11 @@ export const getPeriodDateRange = (period) => {
       };
     }
     case 'ytd': {
-      const startDate = new Date(now.getFullYear(), 0, 1);
+      const startDate = new Date(brazilParts.year, 0, 1);
       return {
         startDate,
         endDate: today,
-        label: `Jan - ${now.toLocaleDateString('pt-BR', { month: 'short' })} ${now.getFullYear()}`
+        label: `Jan - ${now.toLocaleDateString('pt-BR', { month: 'short' })} ${brazilParts.year}`
       };
     }
     case 'all-time':

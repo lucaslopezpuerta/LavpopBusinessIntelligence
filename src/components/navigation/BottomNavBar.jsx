@@ -37,7 +37,7 @@ const BOTTOM_NAV_ITEMS = [
 ];
 
 // Routes accessible via "More" drawer
-const MORE_ROUTES = ['social', 'intelligence', 'operations', 'upload'];
+const MORE_ROUTES = ['social', 'weather', 'intelligence', 'operations', 'upload'];
 
 const BottomNavBar = () => {
   const { activeTab } = useNavigation();

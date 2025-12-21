@@ -2,6 +2,12 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.16 (2025-12-21): Revenue model training
+//   - Added daily model retraining at midnight Brazil time (03:00 UTC)
+//   - Stores coefficients to model_coefficients table
+//   - Logs training history to model_training_history table
+//   - Uses OLS regression with lag features (matches revenue-predict.js)
+//
 // v2.15 (2025-12-19): Blacklist sync
 //   - Added automatic sync of Twilio blacklist (opt-outs + undelivered) every 4 hours
 //   - Detects opt-out keywords in inbound messages
@@ -328,10 +334,17 @@ exports.handler = async (event, context) => {
       console.log('Skipping blacklist sync (not due yet or not configured)');
     }
 
+    // v2.16: Train revenue prediction model (daily at midnight Brazil time)
+    let modelTrainingResults = { skipped: true };
+    modelTrainingResults = await runRevenueModelTraining(supabase);
+    if (!modelTrainingResults.skipped) {
+      console.log('Revenue model training:', modelTrainingResults.success ? 'completed' : 'failed');
+    }
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}${wabaResults.skipped ? '' : ', WABA synced'}${wabaTemplateResults.skipped ? '' : ', templates synced'}${instagramResults.skipped ? '' : ', Instagram synced'}${twilioResults.skipped ? '' : ', Twilio synced'}${blacklistResults.skipped ? '' : ', blacklist synced'}`,
+        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}${wabaResults.skipped ? '' : ', WABA synced'}${wabaTemplateResults.skipped ? '' : ', templates synced'}${instagramResults.skipped ? '' : ', Instagram synced'}${twilioResults.skipped ? '' : ', Twilio synced'}${blacklistResults.skipped ? '' : ', blacklist synced'}${modelTrainingResults.skipped ? '' : ', model trained'}`,
         campaigns: results,
         priorityQueue: priorityResults,
         automation: automationResults,
@@ -340,7 +353,8 @@ exports.handler = async (event, context) => {
         wabaTemplates: wabaTemplateResults,
         instagram: instagramResults,
         twilio: twilioResults,
-        blacklist: blacklistResults
+        blacklist: blacklistResults,
+        modelTraining: modelTrainingResults
       })
     };
 
@@ -1113,6 +1127,381 @@ async function runBlacklistSync(supabase) {
       error: error.message
     };
   }
+}
+
+// ==================== REVENUE MODEL TRAINING (v2.16) ====================
+
+/**
+ * Configuration for revenue prediction model
+ */
+const TRAINING_DAYS = 90;
+const MIN_TRAINING_SAMPLES = 30;
+
+/**
+ * Get local date in São Paulo timezone
+ */
+function getLocalDate(offsetDays = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+
+  return formatter.format(date);
+}
+
+/**
+ * Check if date is weekend (Sat/Sun)
+ */
+function isWeekendDay(dateStr) {
+  const date = new Date(dateStr + 'T12:00:00Z');
+  const dow = (date.getUTCDay() + 6) % 7; // Mon=0, Sun=6
+  return dow >= 5;
+}
+
+/**
+ * Calculate Drying Pain Index
+ * Measures difficulty of drying clothes outdoors
+ */
+function calculateDryingPain(weather) {
+  const humidity = parseFloat(weather.humidity_avg) || 60;
+  const precip = parseFloat(weather.precipitation) || 0;
+  const cloudCover = parseFloat(weather.cloud_cover) || 50;
+  const sunHoursEst = Math.max(0, 8 - (cloudCover / 100) * 8);
+  return 0.03 * humidity + 0.08 * precip + 0.20 * Math.max(0, 8 - sunHoursEst);
+}
+
+/**
+ * Build training features from revenue and weather data
+ */
+function buildTrainingFeatures(revenueRows, weatherRows) {
+  const revenueMap = {};
+  revenueRows.forEach(r => {
+    revenueMap[r.date] = parseFloat(r.total_revenue) || 0;
+  });
+
+  const weatherMap = {};
+  weatherRows.forEach(w => {
+    weatherMap[w.date] = w;
+  });
+
+  const dates = Object.keys(revenueMap).sort();
+  const features = [];
+
+  for (let i = 7; i < dates.length; i++) {
+    const date = dates[i];
+    const w = weatherMap[date];
+    if (!w) continue;
+
+    const revenue = revenueMap[date];
+    const revLag1 = revenueMap[dates[i - 1]] || revenue;
+    const revLag7 = revenueMap[dates[i - 7]] || revenue;
+
+    if (revLag1 === 0 || revLag7 === 0) continue;
+
+    const dryingPain = calculateDryingPain(w);
+    const precip = parseFloat(w.precipitation) || 0;
+
+    features.push({
+      date,
+      y: revenue,
+      x: [1, revLag1, revLag7, isWeekendDay(date) ? 1 : 0, dryingPain, precip >= 2 ? 1 : 0, precip >= 10 ? 1 : 0]
+    });
+  }
+
+  return features;
+}
+
+/**
+ * Matrix operations for OLS regression
+ */
+function transposeMatrix(A) {
+  const rows = A.length;
+  const cols = A[0].length;
+  const T = [];
+  for (let j = 0; j < cols; j++) {
+    T[j] = [];
+    for (let i = 0; i < rows; i++) {
+      T[j][i] = A[i][j];
+    }
+  }
+  return T;
+}
+
+function multiplyMatrices(A, B) {
+  const rowsA = A.length;
+  const colsA = A[0].length;
+  const colsB = B[0].length;
+  const C = [];
+  for (let i = 0; i < rowsA; i++) {
+    C[i] = [];
+    for (let j = 0; j < colsB; j++) {
+      let sum = 0;
+      for (let k = 0; k < colsA; k++) {
+        sum += A[i][k] * B[k][j];
+      }
+      C[i][j] = sum;
+    }
+  }
+  return C;
+}
+
+function multiplyMatrixVector(A, v) {
+  const rows = A.length;
+  const cols = A[0].length;
+  const result = [];
+  for (let i = 0; i < rows; i++) {
+    let sum = 0;
+    for (let j = 0; j < cols; j++) {
+      sum += A[i][j] * v[j];
+    }
+    result[i] = sum;
+  }
+  return result;
+}
+
+function invertMatrix(A) {
+  const n = A.length;
+  const aug = [];
+  for (let i = 0; i < n; i++) {
+    aug[i] = [...A[i]];
+    for (let j = 0; j < n; j++) {
+      aug[i][n + j] = i === j ? 1 : 0;
+    }
+  }
+
+  for (let col = 0; col < n; col++) {
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(aug[row][col]) > Math.abs(aug[maxRow][col])) {
+        maxRow = row;
+      }
+    }
+    [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
+
+    if (Math.abs(aug[col][col]) < 1e-10) {
+      throw new Error('Matrix is singular');
+    }
+
+    const pivot = aug[col][col];
+    for (let j = 0; j < 2 * n; j++) {
+      aug[col][j] /= pivot;
+    }
+
+    for (let row = 0; row < n; row++) {
+      if (row !== col) {
+        const factor = aug[row][col];
+        for (let j = 0; j < 2 * n; j++) {
+          aug[row][j] -= factor * aug[col][j];
+        }
+      }
+    }
+  }
+
+  const inv = [];
+  for (let i = 0; i < n; i++) {
+    inv[i] = aug[i].slice(n);
+  }
+  return inv;
+}
+
+/**
+ * Fit OLS regression model: β = (X'X)^(-1) X'y
+ */
+function fitOLSModel(data) {
+  const n = data.length;
+  const p = data[0].x.length;
+
+  const X = data.map(d => d.x);
+  const y = data.map(d => d.y);
+
+  const Xt = transposeMatrix(X);
+  const XtX = multiplyMatrices(Xt, X);
+  const XtX_inv = invertMatrix(XtX);
+  const Xty = multiplyMatrixVector(Xt, y);
+  const beta = multiplyMatrixVector(XtX_inv, Xty);
+
+  // Calculate metrics
+  const meanY = y.reduce((s, v) => s + v, 0) / n;
+  let ssRes = 0;
+  let ssTot = 0;
+  let absErrors = [];
+
+  for (let i = 0; i < n; i++) {
+    let pred = 0;
+    for (let j = 0; j < p; j++) {
+      pred += beta[j] * X[i][j];
+    }
+    const residual = y[i] - pred;
+    ssRes += residual * residual;
+    ssTot += (y[i] - meanY) * (y[i] - meanY);
+    absErrors.push(Math.abs(residual));
+  }
+
+  const rSquared = 1 - (ssRes / ssTot);
+  const rmse = Math.sqrt(ssRes / n);
+  const mae = absErrors.reduce((s, v) => s + v, 0) / n;
+
+  return {
+    beta,
+    mae: Math.round(mae),
+    rmse: Math.round(rmse),
+    rSquared: Math.round(rSquared * 1000) / 1000,
+    n,
+    meanRevenue: Math.round(meanY)
+  };
+}
+
+/**
+ * Check if revenue model should be retrained
+ * Runs at midnight Brazil time (first 5-minute window)
+ */
+async function shouldRetrainRevenueModel(supabase) {
+  const brazilNow = getBrazilNow();
+  const hour = brazilNow.getHours();
+  const minute = brazilNow.getMinutes();
+
+  // Only run in the midnight window (00:00 - 00:05)
+  if (hour !== 0 || minute >= 5) {
+    return false;
+  }
+
+  try {
+    // Get last training time
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('revenue_model_last_trained')
+      .eq('id', 'default')
+      .single();
+
+    if (!settings?.revenue_model_last_trained) {
+      return true; // Never trained
+    }
+
+    // Check if last training was before today (Brazil time)
+    const lastTrained = new Date(settings.revenue_model_last_trained);
+    const todayStart = new Date(brazilNow);
+    todayStart.setHours(0, 0, 0, 0);
+
+    return lastTrained < todayStart;
+  } catch (error) {
+    console.warn('Error checking model training status:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Train the revenue prediction model and store coefficients
+ */
+async function trainRevenueModel(supabase) {
+  console.log('Training revenue prediction model...');
+
+  try {
+    const today = getLocalDate(0);
+    const trainingStart = getLocalDate(-TRAINING_DAYS);
+
+    // Fetch training data
+    const { data: revenueData, error: revError } = await supabase
+      .from('daily_revenue')
+      .select('date, total_revenue')
+      .gte('date', trainingStart)
+      .lte('date', today)
+      .order('date');
+
+    if (revError) throw new Error(`Failed to fetch revenue: ${revError.message}`);
+
+    const { data: weatherData, error: weatherError } = await supabase
+      .from('weather_daily_metrics')
+      .select('date, temp_avg, humidity_avg, precipitation, cloud_cover')
+      .gte('date', trainingStart)
+      .lte('date', today)
+      .order('date');
+
+    if (weatherError) throw new Error(`Failed to fetch weather: ${weatherError.message}`);
+
+    // Build training features
+    const trainingData = buildTrainingFeatures(revenueData, weatherData);
+
+    if (trainingData.length < MIN_TRAINING_SAMPLES) {
+      console.log(`Insufficient training data: ${trainingData.length} samples (need ${MIN_TRAINING_SAMPLES})`);
+      return {
+        success: false,
+        error: 'Insufficient data',
+        n_samples: trainingData.length
+      };
+    }
+
+    // Train model
+    const model = fitOLSModel(trainingData);
+    const featureNames = ['intercept', 'rev_lag_1', 'rev_lag_7', 'is_weekend', 'drying_pain', 'is_rainy', 'heavy_rain'];
+
+    // Store coefficients
+    await supabase
+      .from('model_coefficients')
+      .upsert({
+        id: 'revenue_prediction',
+        beta: JSON.stringify(model.beta),
+        feature_names: JSON.stringify(featureNames),
+        r_squared: model.rSquared,
+        mae: model.mae,
+        rmse: model.rmse,
+        mean_revenue: model.meanRevenue,
+        n_training_samples: model.n,
+        trained_at: new Date().toISOString(),
+        training_period_start: trainingStart,
+        training_period_end: today,
+        updated_at: new Date().toISOString()
+      });
+
+    // Add to training history
+    await supabase
+      .from('model_training_history')
+      .insert({
+        model_id: 'revenue_prediction',
+        r_squared: model.rSquared,
+        mae: model.mae,
+        rmse: model.rmse,
+        n_training_samples: model.n,
+        training_period_start: trainingStart,
+        training_period_end: today
+      });
+
+    // Update last trained timestamp in app_settings
+    await supabase
+      .from('app_settings')
+      .update({ revenue_model_last_trained: new Date().toISOString() })
+      .eq('id', 'default');
+
+    console.log(`Model trained: R²=${model.rSquared}, MAE=R$${model.mae}, samples=${model.n}`);
+
+    return {
+      success: true,
+      r_squared: model.rSquared,
+      mae: model.mae,
+      rmse: model.rmse,
+      n_samples: model.n
+    };
+  } catch (error) {
+    console.error('Model training error:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Run revenue model training (wrapper for scheduler)
+ */
+async function runRevenueModelTraining(supabase) {
+  if (await shouldRetrainRevenueModel(supabase)) {
+    return await trainRevenueModel(supabase);
+  }
+  return { skipped: true };
 }
 
 /**

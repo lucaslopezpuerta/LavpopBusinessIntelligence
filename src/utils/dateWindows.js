@@ -1,8 +1,12 @@
-// Date Windows Utility v1.2
+// Date Windows Utility v1.3
 // Centralized date calculations for all tabs
 // Week-based system: Sunday-Saturday (Brazilian business standard)
 //
 // CHANGELOG:
+// v1.3 (2025-12-20): Brazil timezone support
+//   - All "now" calculations use Brazil timezone (America/Sao_Paulo)
+//   - Ensures consistent week boundaries regardless of viewer's browser timezone
+//   - Uses getBrazilDateParts() for timezone-aware day-of-week
 // v1.2 (2025-11-30): Operations-specific options
 //   - Added excludeAllTime parameter to getDateOptions()
 //   - Operations tab excludes "Todo Período" (not actionable for operations)
@@ -14,35 +18,51 @@
 //   - Brazilian date format (DD/MM/YYYY)
 //   - Sunday-Saturday business weeks
 
+import { getBrazilDateParts } from './dateUtils';
+
+/**
+ * Get Brazil's current date as a Date object for arithmetic
+ * This ensures all calculations use Brazil's "today", not the browser's
+ * @returns {{ today: Date, dayOfWeek: number }} Brazil's today and day of week
+ */
+function getBrazilToday() {
+  const brazil = getBrazilDateParts();
+  // Create Date using Brazil's date components (for consistent arithmetic)
+  const today = new Date(brazil.year, brazil.month - 1, brazil.day);
+  return {
+    today,
+    dayOfWeek: brazil.dayOfWeek // 0 = Sunday, 6 = Saturday
+  };
+}
+
 /**
  * Get current week boundaries (Sunday to Saturday)
  * @param {boolean} includePartial - If true, includes current day (partial week)
  */
 function getCurrentWeek(includePartial = true) {
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 = Sunday
-  
+  const { today, dayOfWeek } = getBrazilToday();
+
   // Start: Most recent Sunday
   const startSunday = new Date(today);
   startSunday.setDate(today.getDate() - dayOfWeek);
   startSunday.setHours(0, 0, 0, 0);
-  
+
   // End: This Saturday or Today
   const endSaturday = new Date(startSunday);
   endSaturday.setDate(startSunday.getDate() + 6);
   endSaturday.setHours(23, 59, 59, 999);
-  
+
   if (includePartial) {
     // Use today as end if it's before Saturday
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999);
-    
+
     return {
       start: startSunday,
       end: todayEnd < endSaturday ? todayEnd : endSaturday
     };
   }
-  
+
   return {
     start: startSunday,
     end: endSaturday
@@ -53,9 +73,8 @@ function getCurrentWeek(includePartial = true) {
  * Get last complete week (Sunday to Saturday)
  */
 function getLastWeek() {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  
+  const { today, dayOfWeek } = getBrazilToday();
+
   // Get last Saturday
   let lastSaturday = new Date(today);
   if (dayOfWeek === 6) {
@@ -67,12 +86,12 @@ function getLastWeek() {
     lastSaturday.setDate(lastSaturday.getDate() - daysToLastSaturday);
   }
   lastSaturday.setHours(23, 59, 59, 999);
-  
+
   // Get Sunday of that week
   const startSunday = new Date(lastSaturday);
   startSunday.setDate(lastSaturday.getDate() - 6);
   startSunday.setHours(0, 0, 0, 0);
-  
+
   return {
     start: startSunday,
     end: lastSaturday
@@ -83,9 +102,8 @@ function getLastWeek() {
  * Get last 4 complete weeks (28 days)
  */
 function getLast4Weeks() {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  
+  const { today, dayOfWeek } = getBrazilToday();
+
   // Get last Saturday
   let lastSaturday = new Date(today);
   if (dayOfWeek === 6) {
@@ -95,12 +113,12 @@ function getLast4Weeks() {
     lastSaturday.setDate(lastSaturday.getDate() - daysToLastSaturday);
   }
   lastSaturday.setHours(23, 59, 59, 999);
-  
+
   // Go back 28 days (4 weeks) from last Saturday
   const startDate = new Date(lastSaturday);
   startDate.setDate(lastSaturday.getDate() - 27); // 27 days back + 1 (lastSaturday) = 28 days
   startDate.setHours(0, 0, 0, 0);
-  
+
   return {
     start: startDate,
     end: lastSaturday
@@ -108,16 +126,17 @@ function getLast4Weeks() {
 }
 
 /**
- * Get all-time window (from business start to today)
+ * Get all-time window (from business start to today in Brazil)
  */
 function getAllTime() {
   const startDate = new Date(2024, 5, 1, 0, 0, 0, 0); // June 1, 2024
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  
+  const { today } = getBrazilToday();
+  const endDate = new Date(today);
+  endDate.setHours(23, 59, 59, 999);
+
   return {
     start: startDate,
-    end: today
+    end: endDate
   };
 }
 
@@ -126,16 +145,16 @@ function getAllTime() {
  */
 function getTwoWeeksAgo() {
   const lastWeek = getLastWeek();
-  
+
   // Go back 7 more days from last week's start
   const startSunday = new Date(lastWeek.start);
   startSunday.setDate(startSunday.getDate() - 7);
   startSunday.setHours(0, 0, 0, 0);
-  
+
   const endSaturday = new Date(lastWeek.end);
   endSaturday.setDate(endSaturday.getDate() - 7);
   endSaturday.setHours(23, 59, 59, 999);
-  
+
   return {
     start: startSunday,
     end: endSaturday
@@ -147,16 +166,16 @@ function getTwoWeeksAgo() {
  */
 function getPrevious4Weeks() {
   const last4 = getLast4Weeks();
-  
+
   // Go back 28 more days from last4Weeks start
   const startDate = new Date(last4.start);
   startDate.setDate(startDate.getDate() - 28);
   startDate.setHours(0, 0, 0, 0);
-  
+
   const endDate = new Date(last4.end);
   endDate.setDate(endDate.getDate() - 28);
   endDate.setHours(23, 59, 59, 999);
-  
+
   return {
     start: startDate,
     end: endDate
@@ -180,16 +199,16 @@ export function formatDateRange(start, end) {
   const startDay = String(start.getDate()).padStart(2, '0');
   const startMonth = String(start.getMonth() + 1).padStart(2, '0');
   const startYear = start.getFullYear();
-  
+
   const endDay = String(end.getDate()).padStart(2, '0');
   const endMonth = String(end.getMonth() + 1).padStart(2, '0');
   const endYear = end.getFullYear();
-  
+
   // If same year, show year only once
   if (startYear === endYear) {
     return `${startDay}/${startMonth} - ${endDay}/${endMonth}/${endYear}`;
   }
-  
+
   return `${startDay}/${startMonth}/${startYear} - ${endDay}/${endMonth}/${endYear}`;
 }
 
@@ -201,7 +220,7 @@ export function formatDateRange(start, end) {
 export function getDateWindows(option = 'currentWeek') {
   let window;
   let label;
-  
+
   switch(option) {
     case 'currentWeek':
       window = getCurrentWeek(true);
@@ -231,9 +250,9 @@ export function getDateWindows(option = 'currentWeek') {
       window = getCurrentWeek(true);
       label = 'Semana Atual';
   }
-  
+
   const dateRange = formatDateRange(window.start, window.end);
-  
+
   return {
     ...window,
     label,

@@ -1,12 +1,16 @@
-// intelligenceCalculations.js v3.6 - TIMEZONE-INDEPENDENT CALCULATIONS
+// intelligenceCalculations.js v3.7 - TIMEZONE-INDEPENDENT CALCULATIONS
 // ✅ Uses existing transactionParser.js for consistent data handling
 // ✅ Uses existing businessMetrics.js patterns
 // ✅ Reuses proven math instead of reinventing
 // ✅ Timezone-independent calculations using date.brazil/dateStr
+// ✅ Brazil timezone for all "now" calculations
 // Strategic business intelligence calculations
 // Profitability, Weather Impact, Campaign ROI, Growth Analysis
 //
 // CHANGELOG:
+// v3.7 (2025-12-20): Brazil timezone support for "now" calculations
+//   - All "now" calculations use getBrazilDateParts()
+//   - Ensures consistent date boundaries regardless of viewer's browser timezone
 // v3.6 (2025-12-10): CRITICAL FIX - Timezone-independent monthly aggregation
 //   - calculateGrowthTrends uses record.dateStr.slice(0,7) for month key
 //   - Fixes revenue discrepancy caused by browser timezone affecting month boundaries
@@ -44,28 +48,8 @@
 // v2.0: Initial refactor with Health Score
 
 import { parseSalesRecords, filterWithServices } from './transactionParser';
-import { parseBrDate, formatDate } from './dateUtils';
-
-/**
- * Parse weather data CSV
- */
-export function parseWeatherData(weatherData) {
-  if (!weatherData || weatherData.length === 0) return [];
-  
-  return weatherData.map(row => {
-    const precip = parseFloat(row['PRECIPITACAO TOTAL, DIARIO(mm)'] || row.precipitation || 0);
-    
-    return {
-      date: new Date(row['Data Medicao'] || row.date),
-      precipitation: precip,
-      temperature: parseFloat(row['TEMPERATURA MEDIA COMPENSADA, DIARIA(°C)'] || row.temperature || 0),
-      humidity: parseFloat(row['UMIDADE RELATIVA DO AR, MEDIA DIARIA(%)'] || row.humidity || 0),
-      isRainy: precip > 5,
-      isCloudy: precip > 0 && precip <= 5,
-      isSunny: precip === 0
-    };
-  });
-}
+import { parseBrDate, formatDate, getBrazilDateParts } from './dateUtils';
+import { parseWeatherData, calculateTemperatureCorrelation } from './weatherUtils';
 
 /**
  * Parse campaign data CSV
@@ -107,11 +91,11 @@ export function calculateProfitability(salesData, businessSettings, dateRange = 
       r.date >= periodStart && r.date <= periodEnd
     );
   } else {
-    // Default: Current calendar month
-    const now = new Date();
-    periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    daysInPeriod = now.getDate(); // Days elapsed in current month
+    // Default: Current calendar month (using Brazil timezone)
+    const brazilNow = getBrazilDateParts();
+    periodStart = new Date(brazilNow.year, brazilNow.month - 1, 1);
+    periodEnd = new Date(brazilNow.year, brazilNow.month, 0, 23, 59, 59);
+    daysInPeriod = brazilNow.day; // Days elapsed in current month
 
     filteredRecords = records.filter(r =>
       r.date >= periodStart && r.date <= periodEnd
@@ -205,8 +189,9 @@ export function calculateWeatherImpact(salesData, weatherData) {
   const allRecords = parseSalesRecords(salesData);
   const weather = parseWeatherData(weatherData);
 
-  // ✅ FILTER: Only use last 90 days for seasonal relevance
-  const ninetyDaysAgo = new Date();
+  // ✅ FILTER: Only use last 90 days for seasonal relevance (using Brazil timezone)
+  const brazilNow = getBrazilDateParts();
+  const ninetyDaysAgo = new Date(brazilNow.year, brazilNow.month - 1, brazilNow.day);
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   const records = allRecords.filter(r => r.date >= ninetyDaysAgo);
 
@@ -329,10 +314,11 @@ export function calculateCampaignROI(salesData, campaignData, businessSettings =
   const records = parseSalesRecords(salesData);
   const allCampaigns = parseCampaignData(campaignData);
 
-  // ✅ FILTER: Only show active campaigns + those ended within last 6 months
-  const sixMonthsAgo = new Date();
+  // ✅ FILTER: Only show active campaigns + those ended within last 6 months (using Brazil timezone)
+  const brazilNow = getBrazilDateParts();
+  const sixMonthsAgo = new Date(brazilNow.year, brazilNow.month - 1, brazilNow.day);
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const now = new Date();
+  const now = new Date(brazilNow.year, brazilNow.month - 1, brazilNow.day);
 
   const campaigns = allCampaigns.filter(c => {
     const isActive = now >= c.startDate && now <= c.endDate;
@@ -578,12 +564,12 @@ export function calculateGrowthTrends(salesData) {
   // ✅ FILTER: Only return last 12 months for display
   const monthlyWithGrowth = allMonthlyWithGrowth.slice(-12);
 
-  // ✅ FIXED: Detect current month for partial month handling FIRST
+  // ✅ FIXED: Detect current month for partial month handling FIRST (using Brazil timezone)
   // This must happen before avgGrowth/trend calculations to exclude partial data
-  const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const daysElapsed = now.getDate();
-  const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const nowParts = getBrazilDateParts();
+  const currentMonthKey = `${nowParts.year}-${String(nowParts.month).padStart(2, '0')}`;
+  const daysElapsed = nowParts.day;
+  const daysInCurrentMonth = new Date(nowParts.year, nowParts.month, 0).getDate();
   const isCurrentMonthPartial = daysElapsed < daysInCurrentMonth;
 
   // Mark current month as partial if applicable
@@ -650,11 +636,12 @@ export function calculateGrowthTrends(salesData) {
 /**
  * Get current month metrics
  * ✅ Uses existing transactionParser for data handling
+ * Uses Brazil timezone for "now" calculations
  */
 export function getCurrentMonthMetrics(salesData) {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const brazilNow = getBrazilDateParts();
+  const startOfMonth = new Date(brazilNow.year, brazilNow.month - 1, 1);
+  const endOfMonth = new Date(brazilNow.year, brazilNow.month, 0, 23, 59, 59);
   
   // ✅ Use existing proven parser
   const records = parseSalesRecords(salesData);
@@ -670,23 +657,23 @@ export function getCurrentMonthMetrics(salesData) {
   const services = sum(serviceRecords, r => r.totalServices);
   
   return {
-    month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    month: `${brazilNow.year}-${String(brazilNow.month).padStart(2, '0')}`,
     revenue,
     services,
-    daysElapsed: now.getDate(),
-    dailyAverage: revenue / now.getDate()
+    daysElapsed: brazilNow.day,
+    dailyAverage: revenue / brazilNow.day
   };
 }
 
 /**
  * Get previous month metrics
  * ✅ Uses existing transactionParser for data handling
+ * Uses Brazil timezone for "now" calculations
  */
 export function getPreviousMonthMetrics(salesData) {
-  const now = new Date();
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const startOfMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-  const endOfMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59);
+  const brazilNow = getBrazilDateParts();
+  const startOfMonth = new Date(brazilNow.year, brazilNow.month - 2, 1);
+  const endOfMonth = new Date(brazilNow.year, brazilNow.month - 1, 0, 23, 59, 59);
   
   // ✅ Use existing proven parser
   const records = parseSalesRecords(salesData);
@@ -871,6 +858,7 @@ export function calculateHealthScore(profitability, growthTrends, currentMonth, 
 
 /**
  * Calculate revenue forecast for end of month
+ * Uses Brazil timezone for "now" calculations
  * @param {object} currentMonth - Current month metrics
  * @returns {object} Forecast data
  */
@@ -879,8 +867,8 @@ export function calculateRevenueForecast(currentMonth) {
     return null;
   }
 
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const brazilNow = getBrazilDateParts();
+  const daysInMonth = new Date(brazilNow.year, brazilNow.month, 0).getDate();
   const daysRemaining = daysInMonth - currentMonth.daysElapsed;
   const dailyAverage = currentMonth.revenue / currentMonth.daysElapsed;
 
@@ -919,471 +907,12 @@ export function calculateRevenueForecast(currentMonth) {
   };
 }
 
-/**
- * Calculate temperature-revenue correlation from all historical data
- * Uses ALL available data to find: "X% revenue change per 1°C temperature change"
- *
- * @param {Array} salesData - Sales records
- * @param {Array} weatherData - Weather records with temperature
- * @returns {object} Correlation data
- */
-export function calculateTemperatureCorrelation(salesData, weatherData) {
-  const records = parseSalesRecords(salesData);
-  const weather = parseWeatherData(weatherData);
-
-  if (records.length === 0 || weather.length === 0) {
-    return { correlation: 0, percentPerDegree: 0, hasEnoughData: false };
-  }
-
-  // Create date -> weather map
-  const weatherMap = new Map();
-  weather.forEach(w => {
-    const dateKey = formatDate(w.date);
-    weatherMap.set(dateKey, w);
-  });
-
-  // Group sales by date and join with temperature
-  const dailyData = new Map();
-
-  records.forEach(record => {
-    const dateKey = record.dateStr;
-    const w = weatherMap.get(dateKey);
-
-    if (w && w.temperature > 0) { // Only include days with valid temperature
-      if (!dailyData.has(dateKey)) {
-        dailyData.set(dateKey, { revenue: 0, temperature: w.temperature });
-      }
-      dailyData.get(dateKey).revenue += record.netValue;
-    }
-  });
-
-  const dataPoints = Array.from(dailyData.values());
-
-  if (dataPoints.length < 30) {
-    return {
-      correlation: 0,
-      percentPerDegree: 0,
-      hasEnoughData: false,
-      daysAnalyzed: dataPoints.length,
-      message: 'Menos de 30 dias com dados de temperatura'
-    };
-  }
-
-  // Calculate means
-  const n = dataPoints.length;
-  const meanRevenue = dataPoints.reduce((s, d) => s + d.revenue, 0) / n;
-  const meanTemp = dataPoints.reduce((s, d) => s + d.temperature, 0) / n;
-
-  // Calculate Pearson correlation and regression slope
-  let sumXY = 0, sumX2 = 0, sumY2 = 0;
-
-  dataPoints.forEach(d => {
-    const xDiff = d.temperature - meanTemp;
-    const yDiff = d.revenue - meanRevenue;
-    sumXY += xDiff * yDiff;
-    sumX2 += xDiff * xDiff;
-    sumY2 += yDiff * yDiff;
-  });
-
-  // Pearson correlation coefficient (-1 to 1)
-  const correlation = sumX2 > 0 && sumY2 > 0
-    ? sumXY / Math.sqrt(sumX2 * sumY2)
-    : 0;
-
-  // Regression slope: revenue change per 1°C
-  const slope = sumX2 > 0 ? sumXY / sumX2 : 0;
-
-  // Convert to percentage: X% change per 1°C
-  const percentPerDegree = meanRevenue > 0
-    ? (slope / meanRevenue) * 100
-    : 0;
-
-  // Temperature range in data
-  const temps = dataPoints.map(d => d.temperature);
-  const minTemp = Math.min(...temps);
-  const maxTemp = Math.max(...temps);
-
-  return {
-    correlation: Math.round(correlation * 100) / 100,
-    percentPerDegree: Math.round(percentPerDegree * 100) / 100,
-    slope: Math.round(slope * 100) / 100, // R$ per 1°C
-    meanRevenue: Math.round(meanRevenue),
-    meanTemperature: Math.round(meanTemp * 10) / 10,
-    temperatureRange: { min: minTemp, max: maxTemp },
-    daysAnalyzed: n,
-    hasEnoughData: true,
-    // Interpretation
-    interpretation: correlation < -0.3
-      ? 'Forte correlação negativa: dias frios = mais receita'
-      : correlation < -0.1
-        ? 'Correlação negativa moderada: frio tende a aumentar receita'
-        : correlation > 0.1
-          ? 'Correlação positiva: calor tende a aumentar receita'
-          : 'Sem correlação significativa com temperatura'
-  };
-}
-
-/**
- * Calculate heat index (feels-like temperature)
- * Simplified Steadman formula for heat index
- * @param {number} T - Temperature in Celsius
- * @param {number} RH - Relative humidity in percent
- * @returns {number} Heat index in Celsius
- */
-function calculateHeatIndex(T, RH) {
-  // Heat index only applies when T >= 27°C and RH >= 40%
-  if (T < 27 || RH < 40) return T;
-
-  // Rothfusz regression (converted to Celsius)
-  // Original formula is for Fahrenheit, so we convert
-  const TF = T * 9/5 + 32;
-
-  const HI_F = -42.379 + 2.04901523 * TF + 10.14333127 * RH
-    - 0.22475541 * TF * RH - 0.00683783 * TF * TF
-    - 0.05481717 * RH * RH + 0.00122874 * TF * TF * RH
-    + 0.00085282 * TF * RH * RH - 0.00000199 * TF * TF * RH * RH;
-
-  // Convert back to Celsius
-  return (HI_F - 32) * 5/9;
-}
-
-/**
- * Classify weather condition by thermal comfort
- * Thresholds calibrated for Caxias do Sul, RS, Brazil:
- * - Subtropical highland climate (Cfb), elevation ~800m
- * - Average temperature: 16.5°C, range: 1.1°C to 26.5°C
- * - Thresholds based on local percentile analysis (P10/P90)
- *
- * @param {object} weather - Weather data point with temp, humidity, precipitation
- * @returns {string} Comfort category: 'muggy' | 'hot' | 'cold' | 'mild' | 'humid' | 'rainy'
- */
-function classifyComfortCondition(weather) {
-  const { temperature, humidity, precipitation } = weather;
-
-  // Rain trumps all other conditions
-  if (precipitation > 5) return 'rainy';
-
-  // Calculate heat index for hot conditions
-  const heatIndex = calculateHeatIndex(temperature, humidity);
-
-  // Classify by thermal comfort (priority order matters)
-  // Thresholds adjusted for Caxias do Sul climate:
-  if (heatIndex >= 27) return 'muggy';      // Abafado: feels >= 27°C (local: rarely reaches 32°C)
-  if (temperature >= 23) return 'hot';       // Quente: >= 23°C (local P90, was 28°C)
-  if (temperature <= 10) return 'cold';      // Frio: <= 10°C (local P10, was 12°C)
-  if (humidity >= 80 && precipitation > 0) return 'humid';  // Úmido: high humidity + some precip
-  return 'mild';                             // Ameno: 10-23°C comfortable baseline
-}
-
-/**
- * Calculate humidity-revenue correlation
- * @param {Array} salesData - Sales records
- * @param {Array} weatherData - Weather records
- * @returns {object} Humidity correlation data
- */
-export function calculateHumidityCorrelation(salesData, weatherData) {
-  const records = parseSalesRecords(salesData);
-  const weather = parseWeatherData(weatherData);
-
-  if (records.length === 0 || weather.length === 0) {
-    return { correlation: 0, percentPerPercent: 0, hasEnoughData: false };
-  }
-
-  // Create date -> weather map
-  const weatherMap = new Map();
-  weather.forEach(w => {
-    const dateKey = formatDate(w.date);
-    weatherMap.set(dateKey, w);
-  });
-
-  // Group sales by date and join with humidity
-  const dailyData = new Map();
-
-  records.forEach(record => {
-    const dateKey = record.dateStr;
-    const w = weatherMap.get(dateKey);
-
-    if (w && w.humidity > 0) {
-      if (!dailyData.has(dateKey)) {
-        dailyData.set(dateKey, { revenue: 0, humidity: w.humidity });
-      }
-      dailyData.get(dateKey).revenue += record.netValue;
-    }
-  });
-
-  const dataPoints = Array.from(dailyData.values());
-
-  if (dataPoints.length < 30) {
-    return {
-      correlation: 0,
-      percentPerPercent: 0,
-      hasEnoughData: false,
-      daysAnalyzed: dataPoints.length
-    };
-  }
-
-  // Calculate means
-  const n = dataPoints.length;
-  const meanRevenue = dataPoints.reduce((s, d) => s + d.revenue, 0) / n;
-  const meanHumidity = dataPoints.reduce((s, d) => s + d.humidity, 0) / n;
-
-  // Calculate Pearson correlation
-  let sumXY = 0, sumX2 = 0, sumY2 = 0;
-
-  dataPoints.forEach(d => {
-    const xDiff = d.humidity - meanHumidity;
-    const yDiff = d.revenue - meanRevenue;
-    sumXY += xDiff * yDiff;
-    sumX2 += xDiff * xDiff;
-    sumY2 += yDiff * yDiff;
-  });
-
-  const correlation = sumX2 > 0 && sumY2 > 0
-    ? sumXY / Math.sqrt(sumX2 * sumY2)
-    : 0;
-
-  const slope = sumX2 > 0 ? sumXY / sumX2 : 0;
-  const percentPerPercent = meanRevenue > 0
-    ? (slope / meanRevenue) * 100
-    : 0;
-
-  return {
-    correlation: Math.round(correlation * 100) / 100,
-    percentPerPercent: Math.round(percentPerPercent * 100) / 100,
-    meanHumidity: Math.round(meanHumidity),
-    daysAnalyzed: n,
-    hasEnoughData: true,
-    interpretation: correlation > 0.15
-      ? 'Correlação positiva: umidade alta tende a aumentar receita'
-      : correlation < -0.15
-        ? 'Correlação negativa: umidade alta tende a reduzir receita'
-        : 'Sem correlação significativa com umidade'
-  };
-}
-
-/**
- * Calculate comfort-based weather impact on business
- * Uses heat index classification instead of just precipitation
- * ✅ Replaces simple sunny/cloudy/rainy with thermal comfort categories
- * ✅ ADAPTIVE WINDOW: 90 days default, extends to 180 days for rare conditions
- *
- * @param {Array} salesData - Sales records
- * @param {Array} weatherData - Weather records
- * @returns {object} Comfort weather impact data
- */
-export function calculateComfortWeatherImpact(salesData, weatherData) {
-  const allRecords = parseSalesRecords(salesData);
-  const weather = parseWeatherData(weatherData);
-
-  const MIN_SAMPLE_DAYS = 3;
-  const PRIMARY_WINDOW_DAYS = 90;
-  const EXTENDED_WINDOW_DAYS = 180;
-
-  // Create date -> weather map
-  const weatherMap = new Map();
-  weather.forEach(w => {
-    const dateKey = formatDate(w.date);
-    weatherMap.set(dateKey, w);
-  });
-
-  // Helper: Categorize records within a date range
-  const categorizeRecords = (records, weatherMap) => {
-    const salesByComfort = {
-      muggy: [], hot: [], cold: [], mild: [], humid: [], rainy: []
-    };
-    const weatherByComfort = {
-      muggy: [], hot: [], cold: [], mild: [], humid: [], rainy: []
-    };
-
-    records.forEach(record => {
-      const dateKey = record.dateStr;
-      const w = weatherMap.get(dateKey);
-
-      if (w) {
-        const condition = classifyComfortCondition(w);
-        salesByComfort[condition].push(record);
-
-        // Track unique days with weather data
-        if (!weatherByComfort[condition].some(d => formatDate(d.date) === dateKey)) {
-          weatherByComfort[condition].push(w);
-        }
-      }
-    });
-
-    return { salesByComfort, weatherByComfort };
-  };
-
-  // Helper: Calculate category averages
-  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
-
-  const calculateCategoryAverage = (salesArray, weatherArray) => {
-    if (salesArray.length === 0) return { revenue: 0, services: 0, days: 0, avgTemp: 0, avgHumidity: 0 };
-
-    // Group by date
-    const dayMap = new Map();
-    salesArray.forEach(record => {
-      const dateKey = record.dateStr;
-      if (!dayMap.has(dateKey)) {
-        dayMap.set(dateKey, { revenue: 0, services: 0 });
-      }
-      const day = dayMap.get(dateKey);
-      day.revenue += record.netValue;
-      if (!record.isRecarga) {
-        day.services += record.totalServices;
-      }
-    });
-
-    const days = dayMap.size;
-    const totalRevenue = sum(Array.from(dayMap.values()), d => d.revenue);
-    const totalServices = sum(Array.from(dayMap.values()), d => d.services);
-
-    // Calculate average weather for this category
-    const avgTemp = weatherArray.length > 0
-      ? weatherArray.reduce((s, w) => s + w.temperature, 0) / weatherArray.length
-      : 0;
-    const avgHumidity = weatherArray.length > 0
-      ? weatherArray.reduce((s, w) => s + w.humidity, 0) / weatherArray.length
-      : 0;
-
-    return {
-      revenue: days > 0 ? totalRevenue / days : 0,
-      services: days > 0 ? totalServices / days : 0,
-      days,
-      avgTemp: Math.round(avgTemp * 10) / 10,
-      avgHumidity: Math.round(avgHumidity)
-    };
-  };
-
-  // --- PASS 1: Primary window (90 days) ---
-  const primaryCutoff = new Date();
-  primaryCutoff.setDate(primaryCutoff.getDate() - PRIMARY_WINDOW_DAYS);
-  const primaryRecords = allRecords.filter(r => r.date >= primaryCutoff);
-  const { salesByComfort: primarySales, weatherByComfort: primaryWeather } = categorizeRecords(primaryRecords, weatherMap);
-
-  // Calculate primary categories
-  const categoryKeys = ['muggy', 'hot', 'cold', 'mild', 'humid', 'rainy'];
-  const categories = {};
-  const extendedWindowUsed = {};
-
-  categoryKeys.forEach(key => {
-    categories[key] = calculateCategoryAverage(primarySales[key], primaryWeather[key]);
-    extendedWindowUsed[key] = false;
-  });
-
-  // --- PASS 2: Extended window (180 days) for categories with insufficient data ---
-  const extendedCutoff = new Date();
-  extendedCutoff.setDate(extendedCutoff.getDate() - EXTENDED_WINDOW_DAYS);
-  const extendedRecords = allRecords.filter(r => r.date >= extendedCutoff);
-  const { salesByComfort: extendedSales, weatherByComfort: extendedWeather } = categorizeRecords(extendedRecords, weatherMap);
-
-  categoryKeys.forEach(key => {
-    if (categories[key].days < MIN_SAMPLE_DAYS) {
-      const extendedResult = calculateCategoryAverage(extendedSales[key], extendedWeather[key]);
-      // Only use extended if it actually provides more data
-      if (extendedResult.days > categories[key].days) {
-        categories[key] = extendedResult;
-        extendedWindowUsed[key] = true;
-      }
-    }
-  });
-
-  // Determine baseline: prefer 'mild', then find category with most data
-  let baselineKey = 'mild';
-  if (categories.mild.days < MIN_SAMPLE_DAYS || categories.mild.revenue === 0) {
-    // Find category with most sample days as fallback
-    const fallbackKey = categoryKeys
-      .filter(k => categories[k].days >= MIN_SAMPLE_DAYS && categories[k].revenue > 0)
-      .sort((a, b) => categories[b].days - categories[a].days)[0];
-    baselineKey = fallbackKey || 'mild';
-  }
-  const baselineRevenue = categories[baselineKey].revenue;
-
-  // Calculate impact percentages relative to baseline
-  const calculateImpact = (cat) => {
-    if (cat.days < MIN_SAMPLE_DAYS || baselineRevenue === 0) return null;
-    return ((cat.revenue - baselineRevenue) / baselineRevenue) * 100;
-  };
-
-  // Add impact to each category
-  Object.keys(categories).forEach(key => {
-    categories[key].impact = calculateImpact(categories[key]);
-    categories[key].hasEnoughData = categories[key].days >= MIN_SAMPLE_DAYS;
-  });
-
-  // Find best and worst conditions
-  const validCategories = Object.entries(categories)
-    .filter(([_, cat]) => cat.hasEnoughData)
-    .sort((a, b) => b[1].revenue - a[1].revenue);
-
-  const bestCondition = validCategories.length > 0 ? validCategories[0][0] : 'mild';
-  const worstCondition = validCategories.length > 0 ? validCategories[validCategories.length - 1][0] : 'rainy';
-
-  // Calculate temperature and humidity correlations
-  const tempCorrelation = calculateTemperatureCorrelation(salesData, weatherData);
-  const humidityCorrelation = calculateHumidityCorrelation(salesData, weatherData);
-
-  // Total days analyzed
-  const totalDaysAnalyzed = Object.values(categories).reduce((s, c) => s + c.days, 0);
-
-  // Labels and emojis for UI
-  // Descriptions reflect Caxias do Sul-specific thresholds
-  const categoryLabels = {
-    muggy: { label: 'Abafado', emoji: '🥵', description: 'Quente e úmido (sensação ≥27°C)' },
-    hot: { label: 'Quente', emoji: '☀️', description: 'Temperatura ≥23°C' },
-    cold: { label: 'Frio', emoji: '❄️', description: 'Temperatura ≤10°C' },
-    mild: { label: 'Ameno', emoji: '😌', description: 'Temperatura 10-23°C' },
-    humid: { label: 'Úmido', emoji: '💧', description: 'Alta umidade (≥80%)' },
-    rainy: { label: 'Chuvoso', emoji: '🌧️', description: 'Precipitação >5mm' }
-  };
-
-  // Enrich categories with labels and extended window flag
-  Object.keys(categories).forEach(key => {
-    categories[key] = {
-      ...categories[key],
-      ...categoryLabels[key],
-      extendedWindow: extendedWindowUsed[key]
-    };
-  });
-
-  // Count how many categories used extended window
-  const extendedCategories = Object.entries(extendedWindowUsed)
-    .filter(([_, used]) => used)
-    .map(([key]) => categoryLabels[key]?.label || key);
-
-  return {
-    // Comfort-based categories
-    categories,
-
-    // Best/worst conditions
-    bestCondition,
-    worstCondition,
-    bestCaseScenario: categories[bestCondition]?.revenue || 0,
-    worstCaseScenario: categories[worstCondition]?.revenue || 0,
-
-    // Correlations
-    temperatureCorrelation: tempCorrelation,
-    humidityCorrelation,
-
-    // Context
-    primaryWindowDays: PRIMARY_WINDOW_DAYS,
-    extendedWindowDays: EXTENDED_WINDOW_DAYS,
-    totalDaysAnalyzed,
-    minSampleDays: MIN_SAMPLE_DAYS,
-    baselineCondition: baselineKey,
-
-    // Adaptive window info
-    extendedWindowUsed: extendedCategories.length > 0,
-    extendedCategories,
-
-    // Data quality
-    hasEnoughData: totalDaysAnalyzed >= 30,
-    warning: totalDaysAnalyzed < 30
-      ? `Dados limitados: apenas ${totalDaysAnalyzed} dias analisados nos últimos 90 dias`
-      : extendedCategories.length > 0
-        ? `${extendedCategories.join(', ')}: janela estendida (180 dias) por dados insuficientes`
-        : null
-  };
-}
+// Weather calculation functions moved to weatherUtils.js
+// - calculateTemperatureCorrelation
+// - calculateHumidityCorrelation
+// - calculateComfortWeatherImpact
+// - parseWeatherData
+// Import from './weatherUtils' if needed
 
 /**
  * Calculate weighted revenue projection combining:
@@ -1402,12 +931,13 @@ export function calculateWeightedProjection(salesData, weatherData, currentMonth
 
   const records = parseSalesRecords(salesData);
   const weather = parseWeatherData(weatherData);
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  // Use Brazil timezone for "now" calculations
+  const brazilNow = getBrazilDateParts();
+  const daysInMonth = new Date(brazilNow.year, brazilNow.month, 0).getDate();
   const daysRemaining = daysInMonth - currentMonth.daysElapsed;
 
   // --- 1. Calculate day-of-week averages from current month ---
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfMonth = new Date(brazilNow.year, brazilNow.month - 1, 1);
   const currentMonthRecords = records.filter(r => r.date >= startOfMonth);
 
   // Group by day of week (0=Sunday, 6=Saturday)

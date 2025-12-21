@@ -149,6 +149,45 @@ export default {
           '0%': { opacity: '0', transform: 'scale(0.95)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
+        // Weather animations
+        'sun-pulse': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.1)', opacity: '0.9' },
+        },
+        'sun-spin': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        'cloud-drift': {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '50%': { transform: 'translateX(4px)' },
+        },
+        'rain-fall': {
+          '0%': { transform: 'translateY(-2px)', opacity: '0.7' },
+          '50%': { transform: 'translateY(2px)', opacity: '1' },
+          '100%': { transform: 'translateY(-2px)', opacity: '0.7' },
+        },
+        'snow-fall': {
+          '0%, 100%': { transform: 'translateY(0) rotate(0deg)', opacity: '1' },
+          '25%': { transform: 'translateY(2px) rotate(90deg)', opacity: '0.8' },
+          '50%': { transform: 'translateY(0) rotate(180deg)', opacity: '1' },
+          '75%': { transform: 'translateY(-2px) rotate(270deg)', opacity: '0.8' },
+        },
+        'lightning-flash': {
+          '0%, 90%, 100%': { opacity: '1' },
+          '92%, 94%': { opacity: '0.4' },
+          '96%, 98%': { opacity: '0.7' },
+        },
+        'wind-blow': {
+          '0%, 100%': { transform: 'rotate(-5deg) translateX(0)' },
+          '25%': { transform: 'rotate(0deg) translateX(2px)' },
+          '50%': { transform: 'rotate(5deg) translateX(0)' },
+          '75%': { transform: 'rotate(0deg) translateX(-2px)' },
+        },
+        'fog-drift': {
+          '0%, 100%': { transform: 'translateX(0)', opacity: '0.7' },
+          '50%': { transform: 'translateX(6px)', opacity: '0.5' },
+        },
       },
       animation: {
         'slide-up': 'slide-up 0.3s ease-out',
@@ -156,6 +195,15 @@ export default {
         'fade-in': 'fade-in 0.2s ease-out',
         'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite',
         'scale-in': 'scale-in 0.2s ease-out',
+        // Weather animations
+        'sun-pulse': 'sun-pulse 3s ease-in-out infinite',
+        'sun-spin': 'sun-spin 20s linear infinite',
+        'cloud-drift': 'cloud-drift 4s ease-in-out infinite',
+        'rain-fall': 'rain-fall 1.5s ease-in-out infinite',
+        'snow-fall': 'snow-fall 4s ease-in-out infinite',
+        'lightning-flash': 'lightning-flash 3s ease-in-out infinite',
+        'wind-blow': 'wind-blow 2s ease-in-out infinite',
+        'fog-drift': 'fog-drift 6s ease-in-out infinite',
       },
 
       backgroundImage: {
