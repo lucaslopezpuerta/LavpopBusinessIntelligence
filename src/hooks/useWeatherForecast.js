@@ -154,7 +154,7 @@ function transformWeatherData(apiData) {
     windDirection: currentRaw.winddir || 0,
     pressure: currentRaw.pressure || 0,
     uvIndex: currentRaw.uvindex || 0,
-    visibility: currentRaw.visibility || 0,
+    visibility: currentRaw.visibility || apiData.days?.[0]?.visibility || null,
     cloudCover: currentRaw.cloudcover || 0,
     dewPoint: currentRaw.dew ? Math.round(currentRaw.dew * 10) / 10 : null,
     conditions: currentRaw.conditions || '',

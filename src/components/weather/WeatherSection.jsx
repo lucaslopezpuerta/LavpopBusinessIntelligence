@@ -1,7 +1,13 @@
-// WeatherSection.jsx v1.4
+// WeatherSection.jsx v1.6
 // Main Weather Intelligence Section orchestrator
 // Combines real-time forecast with backend revenue predictions
 //
+// v1.6 (2025-12-21): Balanced Hero + Metrics layout
+//   - Hero 1/2 + MetricsGrid 1/2 (side by side, fills space)
+//   - HourlyForecast full width (horizontal scroll UX)
+//   - DailyForecast full width (7-day overview)
+//   - WeatherBusinessImpact full width (business insights)
+// v1.5 (2025-12-21): Hero-first layout redesign
 // v1.4 (2025-12-21): Backend OLS model integration
 //   - Removed frontend calculateComfortWeatherImpact (backend handles this)
 //   - WeatherBusinessImpact now uses useRevenuePrediction hook
@@ -63,16 +69,19 @@ const ErrorState = ({ error, onRetry }) => (
  */
 const LoadingSkeleton = () => (
   <div className="space-y-6 animate-pulse">
-    {/* Hero skeleton */}
-    <div className="rounded-2xl bg-slate-200 dark:bg-slate-700 h-64" />
-
-    {/* Forecast grid skeleton */}
+    {/* Hero + Metrics row skeleton */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-80" />
-      <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-80" />
+      <div className="rounded-2xl bg-slate-200 dark:bg-slate-700 h-48 sm:h-56" />
+      <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-48 sm:h-56" />
     </div>
 
-    {/* Metrics skeleton */}
+    {/* Hourly forecast skeleton - full width */}
+    <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-32 sm:h-40" />
+
+    {/* Daily forecast skeleton - full width */}
+    <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-64 sm:h-72" />
+
+    {/* Business impact skeleton */}
     <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-48" />
   </div>
 );
@@ -207,36 +216,29 @@ const WeatherSection = ({
         </div>
       )}
 
-      {/* Hero + Hourly forecast row */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Weather Hero - 2 columns */}
-        <div className="lg:col-span-2">
-          <WeatherHero
-            current={current}
-            location={location}
-            lastUpdated={lastFetched}
-            loading={forecastLoading}
-            isStale={isStale}
-            onRefresh={handleRefresh}
-          />
-        </div>
-
-        {/* Hourly Forecast - 3 columns */}
-        <div className="lg:col-span-3">
-          <HourlyForecast hourly={hourly} />
-        </div>
-      </div>
-
-      {/* Daily forecast + Metrics row */}
+      {/* Row 1: Hero (1/2) + Metrics (1/2) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Daily Forecast */}
-        <DailyForecast daily={daily} />
+        <WeatherHero
+          current={current}
+          location={location}
+          tempMax={daily[0]?.tempMax}
+          tempMin={daily[0]?.tempMin}
+          lastUpdated={lastFetched}
+          loading={forecastLoading}
+          isStale={isStale}
+          onRefresh={handleRefresh}
+        />
 
-        {/* Detailed Metrics */}
         {showMetrics && (
           <WeatherMetricsGrid current={current} />
         )}
       </div>
+
+      {/* Row 2: Hourly Forecast - full width */}
+      <HourlyForecast hourly={hourly} />
+
+      {/* Row 3: Daily Forecast - full width */}
+      <DailyForecast daily={daily} />
 
       {/* Business Impact Analytics - Forward-looking 7-day prediction from backend OLS model */}
       {showAnalytics && (

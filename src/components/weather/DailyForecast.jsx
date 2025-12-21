@@ -1,6 +1,11 @@
-// DailyForecast.jsx v1.0
+// DailyForecast.jsx v1.1
 // 7-day forecast display with expandable day cards
 //
+// v1.1 (2025-12-21): Mobile-first responsive improvements
+//   - Compact mobile layout with stacked day/date
+//   - Responsive padding, font sizes, and gaps
+//   - Improved touch targets
+//   - Better temperature range visibility on small screens
 // v1.0 (2025-12-20): Initial implementation
 //   - 7-day forecast cards
 //   - Temperature range bars
@@ -28,12 +33,12 @@ const TempRangeBar = ({ min, max, dayMin, dayMax }) => {
   const widthPercent = range > 0 ? ((max - min) / range) * 100 : 50;
 
   return (
-    <div className="relative h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+    <div className="relative h-1 sm:h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
       <div
         className="absolute h-full rounded-full bg-gradient-to-r from-blue-400 via-amber-400 to-red-400"
         style={{
           left: `${leftPercent}%`,
-          width: `${Math.max(widthPercent, 10)}%`
+          width: `${Math.max(widthPercent, 15)}%`
         }}
       />
     </div>
@@ -49,46 +54,47 @@ const DayCard = ({ day, isToday, weeklyMin, weeklyMax, expanded, onToggle }) => 
     : 'bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/50';
 
   return (
-    <div className={`rounded-xl transition-all duration-200 ${bgClass}`}>
-      {/* Main row */}
+    <div className={`rounded-lg sm:rounded-xl transition-all duration-200 ${bgClass}`}>
+      {/* Main row - touch-friendly min height */}
       <button
         onClick={onToggle}
-        className="w-full p-4 flex items-center gap-4 text-left"
+        className="w-full p-3 sm:p-4 flex items-center gap-2 sm:gap-4 text-left min-h-[56px] sm:min-h-0"
       >
-        {/* Day name */}
-        <div className="w-20 flex-shrink-0">
-          <div className={`font-semibold ${isToday ? 'text-sky-600 dark:text-sky-400' : 'text-slate-900 dark:text-white'}`}>
+        {/* Day name - compact on mobile */}
+        <div className="w-14 sm:w-20 flex-shrink-0">
+          <div className={`text-sm sm:text-base font-semibold ${isToday ? 'text-sky-600 dark:text-sky-400' : 'text-slate-900 dark:text-white'}`}>
             {day.dayName}
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
             {formatDateShort(day.date)}
           </div>
         </div>
 
-        {/* Weather icon */}
+        {/* Weather icon - smaller on mobile */}
         <div className="flex-shrink-0">
           <AnimatedWeatherIcon
             icon={day.icon}
             size="sm"
+            className="scale-90 sm:scale-100"
             animated={isToday}
           />
         </div>
 
-        {/* Precipitation */}
-        <div className="w-14 flex-shrink-0 text-center">
+        {/* Precipitation - compact on mobile */}
+        <div className="w-10 sm:w-14 flex-shrink-0 text-center">
           {day.precipProb > 0 ? (
-            <div className="flex items-center justify-center gap-1 text-blue-500 dark:text-blue-400">
-              <Droplets className="w-3.5 h-3.5" />
-              <span className="text-sm font-medium">{Math.round(day.precipProb)}%</span>
+            <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-blue-500 dark:text-blue-400">
+              <Droplets className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="text-xs sm:text-sm font-medium">{Math.round(day.precipProb)}%</span>
             </div>
           ) : (
-            <span className="text-sm text-slate-400 dark:text-slate-500">—</span>
+            <span className="text-xs sm:text-sm text-slate-400 dark:text-slate-500">—</span>
           )}
         </div>
 
         {/* Temperature range */}
-        <div className="flex-1 flex items-center gap-3">
-          <span className="text-sm text-blue-500 dark:text-blue-400 w-8 text-right">
+        <div className="flex-1 flex items-center gap-1.5 sm:gap-3">
+          <span className="text-xs sm:text-sm text-blue-500 dark:text-blue-400 w-6 sm:w-8 text-right font-medium">
             {formatTemperature(day.tempMin, false)}
           </span>
           <div className="flex-1">
@@ -99,7 +105,7 @@ const DayCard = ({ day, isToday, weeklyMin, weeklyMax, expanded, onToggle }) => 
               dayMax={weeklyMax}
             />
           </div>
-          <span className="text-sm text-amber-600 dark:text-amber-400 w-8">
+          <span className="text-xs sm:text-sm text-amber-600 dark:text-amber-400 w-6 sm:w-8 font-medium">
             {formatTemperature(day.tempMax, false)}
           </span>
         </div>
@@ -107,51 +113,51 @@ const DayCard = ({ day, isToday, weeklyMin, weeklyMax, expanded, onToggle }) => 
         {/* Expand button */}
         <div className="flex-shrink-0 text-slate-400">
           {expanded ? (
-            <ChevronUp className="w-5 h-5" />
+            <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" />
           ) : (
-            <ChevronDown className="w-5 h-5" />
+            <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />
           )}
         </div>
       </button>
 
       {/* Expanded details */}
       {expanded && (
-        <div className="px-4 pb-4 pt-0 border-t border-slate-100 dark:border-slate-700/50">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+        <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0 border-t border-slate-100 dark:border-slate-700/50">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-3">
             {/* Condition */}
             <div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Condição</div>
-              <div className="text-sm font-medium text-slate-900 dark:text-white capitalize">
+              <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5 sm:mb-1">Condição</div>
+              <div className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white capitalize">
                 {day.conditions || 'Parcialmente nublado'}
               </div>
             </div>
 
             {/* Humidity */}
             <div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Umidade</div>
-              <div className="text-sm font-medium text-slate-900 dark:text-white">
+              <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5 sm:mb-1">Umidade</div>
+              <div className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white">
                 {day.humidity}%
               </div>
             </div>
 
             {/* Sunrise */}
             <div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
-                <Sunrise className="w-3 h-3" />
+              <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5 sm:mb-1 flex items-center gap-1">
+                <Sunrise className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 Nascer
               </div>
-              <div className="text-sm font-medium text-slate-900 dark:text-white">
+              <div className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white">
                 {formatTime(day.sunrise) || '—'}
               </div>
             </div>
 
             {/* Sunset */}
             <div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
-                <Sunset className="w-3 h-3" />
+              <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5 sm:mb-1 flex items-center gap-1">
+                <Sunset className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 Pôr do sol
               </div>
-              <div className="text-sm font-medium text-slate-900 dark:text-white">
+              <div className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white">
                 {formatTime(day.sunset) || '—'}
               </div>
             </div>
@@ -159,15 +165,15 @@ const DayCard = ({ day, isToday, weeklyMin, weeklyMax, expanded, onToggle }) => 
 
           {/* Description */}
           {day.description && (
-            <div className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            <div className="mt-2 sm:mt-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
               {day.description}
             </div>
           )}
 
           {/* Precipitation amount */}
           {day.precipitation > 0 && (
-            <div className="mt-3 text-sm text-blue-600 dark:text-blue-400">
-              Precipitação esperada: {day.precipitation.toFixed(1)} mm
+            <div className="mt-2 sm:mt-3 text-xs sm:text-sm text-blue-600 dark:text-blue-400">
+              Precipitação: {day.precipitation.toFixed(1)} mm
             </div>
           )}
         </div>
@@ -188,8 +194,8 @@ const DailyForecast = ({ daily = [], className = '' }) => {
 
   if (!daily.length) {
     return (
-      <div className={`bg-white dark:bg-slate-900 rounded-xl p-6 ${className}`}>
-        <div className="text-center text-slate-500 dark:text-slate-400 py-8">
+      <div className={`bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-6 ${className}`}>
+        <div className="text-center text-slate-500 dark:text-slate-400 py-6 sm:py-8 text-sm sm:text-base">
           Carregando previsão semanal...
         </div>
       </div>
@@ -208,14 +214,14 @@ const DailyForecast = ({ daily = [], className = '' }) => {
   return (
     <div className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm ${className}`}>
       {/* Header */}
-      <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+      <div className="px-3 py-3 sm:p-4 border-b border-slate-100 dark:border-slate-800">
+        <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
           Previsão 7 dias
         </h3>
       </div>
 
       {/* Day cards */}
-      <div className="p-2 space-y-1">
+      <div className="p-1.5 sm:p-2 space-y-0.5 sm:space-y-1">
         {daily.slice(0, 7).map((day, idx) => (
           <DayCard
             key={day.date}
@@ -230,8 +236,8 @@ const DailyForecast = ({ daily = [], className = '' }) => {
       </div>
 
       {/* Weekly summary */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-        <div className="flex items-center justify-between text-sm">
+      <div className="px-3 py-3 sm:p-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between text-xs sm:text-sm">
           <span className="text-slate-500 dark:text-slate-400">
             Variação da semana
           </span>

@@ -308,7 +308,7 @@ export function formatPrecipitation(mm) {
  * Format visibility
  */
 export function formatVisibility(km) {
-  if (km === null || km === undefined) return '—';
+  if (km === null || km === undefined || km === 0) return '—';
   if (km >= 10) return 'Excelente';
   if (km >= 5) return 'Boa';
   if (km >= 2) return 'Moderada';
