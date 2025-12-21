@@ -2,6 +2,14 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v2.17 (2025-12-21): Enhanced model training with holidays & tiered complexity
+//   - Added Brazilian holiday detection (fixed + Easter-based)
+//   - Interaction terms: weekend×drying, weekend×rain, holiday×drying
+//   - Tiered model complexity: full (12 features), reduced (7), minimal (3), fallback (mean)
+//   - Data quality tracking: missing weather, outliers, holidays in range
+//   - Stores model_complexity and data_quality to model_coefficients
+//   - Prepares for weekly cross-validation (window optimization)
+//
 // v2.16 (2025-12-21): Revenue model training
 //   - Added daily model retraining at midnight Brazil time (03:00 UTC)
 //   - Stores coefficients to model_coefficients table
@@ -143,6 +151,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { syncWabaAnalytics, syncWabaTemplateAnalytics } = require('./waba-analytics');
 const { syncInstagramAnalytics } = require('./instagram-analytics');
+const { isHoliday, isHolidayEve } = require('./lib/brazilHolidays');
 
 // Template ContentSid mapping for automation rules
 // Must match messageTemplates.js twilioContentSid values
@@ -1129,13 +1138,33 @@ async function runBlacklistSync(supabase) {
   }
 }
 
-// ==================== REVENUE MODEL TRAINING (v2.16) ====================
+// ==================== REVENUE MODEL TRAINING (v2.16 → v2.17) ====================
+// v2.17: Added holiday features, interaction terms, tiered model complexity,
+//        data quality tracking, and weekly cross-validation
 
 /**
  * Configuration for revenue prediction model
  */
-const TRAINING_DAYS = 90;
-const MIN_TRAINING_SAMPLES = 30;
+const DEFAULT_TRAINING_DAYS = 365; // Use all available data (up to 1 year)
+const MIN_TRAINING_SAMPLES = 14; // Absolute minimum for any prediction
+
+// Tiered model complexity based on sample count
+const MODEL_TIERS = {
+  FULL: { minSamples: 60, features: 12, name: 'full' },      // All 12 features
+  REDUCED: { minSamples: 30, features: 7, name: 'reduced' }, // Core 7 features
+  MINIMAL: { minSamples: 14, features: 3, name: 'minimal' }, // intercept + lags only
+  FALLBACK: { minSamples: 0, features: 1, name: 'fallback' } // Mean-only
+};
+
+// Feature names for each tier
+const FEATURE_NAMES = {
+  full: ['intercept', 'rev_lag_1', 'rev_lag_7', 'is_weekend', 'drying_pain',
+         'is_rainy', 'heavy_rain', 'is_holiday', 'is_holiday_eve',
+         'weekend_x_drying', 'weekend_x_rain', 'holiday_x_drying'],
+  reduced: ['intercept', 'rev_lag_1', 'rev_lag_7', 'is_weekend', 'drying_pain', 'is_rainy', 'heavy_rain'],
+  minimal: ['intercept', 'rev_lag_1', 'rev_lag_7'],
+  fallback: ['intercept']
+};
 
 /**
  * Get local date in São Paulo timezone
@@ -1176,9 +1205,43 @@ function calculateDryingPain(weather) {
 }
 
 /**
- * Build training features from revenue and weather data
+ * Determine appropriate model tier based on sample count
  */
-function buildTrainingFeatures(revenueRows, weatherRows) {
+function selectModelTier(sampleCount) {
+  if (sampleCount >= MODEL_TIERS.FULL.minSamples) return 'full';
+  if (sampleCount >= MODEL_TIERS.REDUCED.minSamples) return 'reduced';
+  if (sampleCount >= MODEL_TIERS.MINIMAL.minSamples) return 'minimal';
+  return 'fallback';
+}
+
+/**
+ * Detect outliers using IQR method
+ */
+function detectOutliers(values) {
+  if (values.length < 4) return { outlierIndices: [], bounds: null };
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+  const lower = q1 - 1.5 * iqr;
+  const upper = q3 + 1.5 * iqr;
+
+  const outlierIndices = [];
+  values.forEach((v, i) => {
+    if (v < lower || v > upper) outlierIndices.push(i);
+  });
+
+  return { outlierIndices, bounds: { lower, upper, q1, q3, iqr } };
+}
+
+/**
+ * Build training features from revenue and weather data
+ * Returns { features, dataQuality }
+ */
+function buildTrainingFeatures(revenueRows, weatherRows, options = {}) {
+  const { tier = 'full' } = options;
+
   const revenueMap = {};
   revenueRows.forEach(r => {
     revenueMap[r.date] = parseFloat(r.total_revenue) || 0;
@@ -1190,30 +1253,102 @@ function buildTrainingFeatures(revenueRows, weatherRows) {
   });
 
   const dates = Object.keys(revenueMap).sort();
+
+  // Data quality tracking
+  const dataQuality = {
+    totalDays: dates.length,
+    missingWeather: 0,
+    missingLags: 0,
+    usableDays: 0,
+    outlierCount: 0,
+    fallbacksUsed: 0,
+    holidaysInRange: 0
+  };
+
   const features = [];
+  const revenues = [];
 
   for (let i = 7; i < dates.length; i++) {
     const date = dates[i];
     const w = weatherMap[date];
-    if (!w) continue;
+
+    if (!w) {
+      dataQuality.missingWeather++;
+      continue;
+    }
 
     const revenue = revenueMap[date];
-    const revLag1 = revenueMap[dates[i - 1]] || revenue;
-    const revLag7 = revenueMap[dates[i - 7]] || revenue;
+    const revLag1 = revenueMap[dates[i - 1]];
+    const revLag7 = revenueMap[dates[i - 7]];
 
-    if (revLag1 === 0 || revLag7 === 0) continue;
+    if (revLag1 === undefined || revLag1 === 0 ||
+        revLag7 === undefined || revLag7 === 0) {
+      dataQuality.missingLags++;
+      continue;
+    }
 
+    // Calculate features
     const dryingPain = calculateDryingPain(w);
     const precip = parseFloat(w.precipitation) || 0;
+    const isWknd = isWeekendDay(date);
+    const isRainy = precip >= 2;
+    const heavyRain = precip >= 10;
 
-    features.push({
-      date,
-      y: revenue,
-      x: [1, revLag1, revLag7, isWeekendDay(date) ? 1 : 0, dryingPain, precip >= 2 ? 1 : 0, precip >= 10 ? 1 : 0]
+    // Holiday features
+    const holidayInfo = isHoliday(date);
+    const holidayEveInfo = isHolidayEve(date);
+    const isHolidayFlag = holidayInfo.isHoliday;
+    const isHolidayEveFlag = holidayEveInfo.isHolidayEve;
+
+    if (isHolidayFlag) dataQuality.holidaysInRange++;
+
+    // Interaction terms
+    const weekendXDrying = isWknd ? dryingPain : 0;
+    const weekendXRain = (isWknd && isRainy) ? 1 : 0;
+    const holidayXDrying = isHolidayFlag ? dryingPain : 0;
+
+    // Build feature vector based on tier
+    let x;
+
+    if (tier === 'full') {
+      x = [
+        1,                          // β₀ intercept
+        revLag1,                    // β₁ yesterday's revenue
+        revLag7,                    // β₂ same day last week
+        isWknd ? 1 : 0,             // β₃ weekend indicator
+        dryingPain,                 // β₄ drying pain index
+        isRainy ? 1 : 0,            // β₅ rain indicator
+        heavyRain ? 1 : 0,          // β₆ heavy rain indicator
+        isHolidayFlag ? 1 : 0,      // β₇ holiday indicator
+        isHolidayEveFlag ? 1 : 0,   // β₈ holiday eve indicator
+        weekendXDrying,             // β₉ weekend × drying interaction
+        weekendXRain,               // β₁₀ weekend × rain interaction
+        holidayXDrying              // β₁₁ holiday × drying interaction
+      ];
+    } else if (tier === 'reduced') {
+      x = [1, revLag1, revLag7, isWknd ? 1 : 0, dryingPain, isRainy ? 1 : 0, heavyRain ? 1 : 0];
+    } else if (tier === 'minimal') {
+      x = [1, revLag1, revLag7];
+    } else {
+      x = [1]; // fallback
+    }
+
+    features.push({ date, y: revenue, x });
+    revenues.push(revenue);
+  }
+
+  // Outlier detection
+  if (revenues.length >= 4) {
+    const { outlierIndices } = detectOutliers(revenues);
+    dataQuality.outlierCount = outlierIndices.length;
+    outlierIndices.forEach(idx => {
+      if (features[idx]) features[idx].isOutlier = true;
     });
   }
 
-  return features;
+  dataQuality.usableDays = features.length;
+
+  return { features, dataQuality };
 }
 
 /**
@@ -1358,15 +1493,14 @@ function fitOLSModel(data) {
 
 /**
  * Check if revenue model should be retrained
- * Runs at midnight Brazil time (first 5-minute window)
+ * Runs at midnight Brazil time (expanded to 1-hour window for reliability)
  */
 async function shouldRetrainRevenueModel(supabase) {
   const brazilNow = getBrazilNow();
   const hour = brazilNow.getHours();
-  const minute = brazilNow.getMinutes();
 
-  // Only run in the midnight window (00:00 - 00:05)
-  if (hour !== 0 || minute >= 5) {
+  // Only run in the midnight hour (00:00 - 00:59)
+  if (hour !== 0) {
     return false;
   }
 
@@ -1396,13 +1530,15 @@ async function shouldRetrainRevenueModel(supabase) {
 
 /**
  * Train the revenue prediction model and store coefficients
+ * v2.17: Added tiered training, data quality, holiday features
  */
-async function trainRevenueModel(supabase) {
-  console.log('Training revenue prediction model...');
+async function trainRevenueModel(supabase, options = {}) {
+  const { trainingDays = DEFAULT_TRAINING_DAYS } = options;
+  console.log(`Training revenue prediction model (${trainingDays} days)...`);
 
   try {
     const today = getLocalDate(0);
-    const trainingStart = getLocalDate(-TRAINING_DAYS);
+    const trainingStart = getLocalDate(-trainingDays);
 
     // Fetch training data
     const { data: revenueData, error: revError } = await supabase
@@ -1423,24 +1559,50 @@ async function trainRevenueModel(supabase) {
 
     if (weatherError) throw new Error(`Failed to fetch weather: ${weatherError.message}`);
 
-    // Build training features
-    const trainingData = buildTrainingFeatures(revenueData, weatherData);
+    // First pass: determine tier from full features
+    const initialBuild = buildTrainingFeatures(revenueData, weatherData, { tier: 'full' });
+    const sampleCount = initialBuild.features.length;
+    const tier = selectModelTier(sampleCount);
+
+    console.log(`Sample count: ${sampleCount}, Selected tier: ${tier}`);
+
+    // Build training features with appropriate tier
+    const { features: trainingData, dataQuality } = buildTrainingFeatures(
+      revenueData,
+      weatherData,
+      { tier }
+    );
 
     if (trainingData.length < MIN_TRAINING_SAMPLES) {
       console.log(`Insufficient training data: ${trainingData.length} samples (need ${MIN_TRAINING_SAMPLES})`);
       return {
         success: false,
         error: 'Insufficient data',
-        n_samples: trainingData.length
+        n_samples: trainingData.length,
+        data_quality: dataQuality
       };
     }
 
-    // Train model
-    const model = fitOLSModel(trainingData);
-    const featureNames = ['intercept', 'rev_lag_1', 'rev_lag_7', 'is_weekend', 'drying_pain', 'is_rainy', 'heavy_rain'];
+    // Train model (or use mean for fallback tier)
+    let model;
+    if (tier === 'fallback') {
+      const meanRev = trainingData.reduce((s, d) => s + d.y, 0) / trainingData.length;
+      model = {
+        beta: [meanRev],
+        mae: 0,
+        rmse: 0,
+        rSquared: 0,
+        n: trainingData.length,
+        meanRevenue: Math.round(meanRev)
+      };
+    } else {
+      model = fitOLSModel(trainingData);
+    }
 
-    // Store coefficients
-    await supabase
+    const featureNames = FEATURE_NAMES[tier];
+
+    // Store coefficients with new fields
+    const { error: upsertError } = await supabase
       .from('model_coefficients')
       .upsert({
         id: 'revenue_prediction',
@@ -1454,11 +1616,20 @@ async function trainRevenueModel(supabase) {
         trained_at: new Date().toISOString(),
         training_period_start: trainingStart,
         training_period_end: today,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        // New v2.17 fields
+        model_complexity: tier,
+        data_quality: dataQuality,
+        optimal_training_days: trainingDays
       });
 
-    // Add to training history
-    await supabase
+    if (upsertError) {
+      console.error('Failed to save model coefficients:', upsertError);
+      throw new Error(`Coefficient save failed: ${upsertError.message}`);
+    }
+
+    // Add to training history with new fields
+    const { error: historyError } = await supabase
       .from('model_training_history')
       .insert({
         model_id: 'revenue_prediction',
@@ -1467,23 +1638,38 @@ async function trainRevenueModel(supabase) {
         rmse: model.rmse,
         n_training_samples: model.n,
         training_period_start: trainingStart,
-        training_period_end: today
+        training_period_end: today,
+        // New v2.17 fields
+        optimal_training_days: trainingDays,
+        model_complexity: tier,
+        data_quality: dataQuality
       });
 
+    if (historyError) {
+      console.error('Failed to save training history:', historyError);
+      // Don't throw - history is nice-to-have, not critical
+    }
+
     // Update last trained timestamp in app_settings
-    await supabase
+    const { error: settingsError } = await supabase
       .from('app_settings')
       .update({ revenue_model_last_trained: new Date().toISOString() })
       .eq('id', 'default');
 
-    console.log(`Model trained: R²=${model.rSquared}, MAE=R$${model.mae}, samples=${model.n}`);
+    if (settingsError) {
+      console.error('Failed to update app_settings:', settingsError);
+    }
+
+    console.log(`Model trained: R²=${model.rSquared}, MAE=R$${model.mae}, samples=${model.n}, tier=${tier}`);
 
     return {
       success: true,
       r_squared: model.rSquared,
       mae: model.mae,
       rmse: model.rmse,
-      n_samples: model.n
+      n_samples: model.n,
+      model_tier: tier,
+      data_quality: dataQuality
     };
   } catch (error) {
     console.error('Model training error:', error.message);

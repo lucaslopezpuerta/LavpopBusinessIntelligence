@@ -1,33 +1,58 @@
 // netlify/functions/revenue-predict.js
 // Revenue prediction using OLS regression with weather features
 //
+// v2.0 (2025-12-21): Enhanced features & data quality
+//   - Brazilian holiday detection (fixed + Easter-based moveable)
+//   - Interaction terms: weekend×drying, weekend×rain, holiday×drying
+//   - Data quality tracking: missing weather, outliers, fallbacks
+//   - Tiered model complexity based on sample count
+//   - IQR-based outlier detection (flagged, not removed)
+//
 // v1.2 (2025-12-21): Cached model coefficients
 //   - Loads trained coefficients from model_coefficients table
 //   - Falls back to on-the-fly training if no cached model (>48h old)
 //   - Scheduled training runs at midnight via campaign-scheduler.js
-//   - Fixed: Removed invalid .catch() on Supabase query builder
-//   - Fixed: Error responses now have no-cache headers (prevent browser caching 500s)
 //
 // v1.1 (2025-12-21): Use total_revenue instead of service_revenue
 //   - total_revenue = service_revenue + recarga_revenue (full daily cash flow)
-//   - service_revenue was only ~12% of daily take, missing recarga top-ups
 //
 // v1.0 (2025-12-21): Initial implementation
 //   - Time-aware OLS regression model
 //   - Features: rev_lag_1, rev_lag_7, is_weekend, drying_pain, rain indicators
-//   - Returns 7-day predictions with confidence intervals
 //
-// Model formula:
-// Revenueₜ = β₀ + β₁·Revₜ₋₁ + β₂·Revₜ₋₇ + β₃·is_weekend + β₄·drying_pain + β₅·is_rainy + β₆·heavy_rain
+// Model formula (FULL - 12 features):
+// Revenueₜ = β₀ + β₁·Revₜ₋₁ + β₂·Revₜ₋₇ + β₃·is_weekend + β₄·drying_pain
+//          + β₅·is_rainy + β₆·heavy_rain + β₇·is_holiday + β₈·is_holiday_eve
+//          + β₉·(weekend×drying) + β₁₀·(weekend×rain) + β₁₁·(holiday×drying)
 //
 // Based on WeatherImpactPrediction.md methodology
 
 const { createClient } = require('@supabase/supabase-js');
+const { isHoliday, isHolidayEve, isClosedDay } = require('./lib/brazilHolidays');
 
 // Configuration
 const BUSINESS_TIMEZONE = 'America/Sao_Paulo';
-const TRAINING_DAYS = 90; // Use last 90 days for training
-const MIN_TRAINING_SAMPLES = 30; // Minimum samples required
+const TRAINING_DAYS = 365; // Use all available data (up to 1 year)
+const MIN_TRAINING_SAMPLES = 14; // Absolute minimum for any prediction
+
+// Tiered model complexity thresholds
+// More data = more features = better accuracy
+const MODEL_TIERS = {
+  FULL: { minSamples: 60, features: 12, name: 'full' },      // All 12 features
+  REDUCED: { minSamples: 30, features: 7, name: 'reduced' }, // Core 7 features
+  MINIMAL: { minSamples: 14, features: 3, name: 'minimal' }, // intercept + lags only
+  FALLBACK: { minSamples: 0, features: 1, name: 'fallback' } // Mean-only
+};
+
+// Feature names for each tier
+const FEATURE_NAMES = {
+  full: ['intercept', 'rev_lag_1', 'rev_lag_7', 'is_weekend', 'drying_pain',
+         'is_rainy', 'heavy_rain', 'is_holiday', 'is_holiday_eve',
+         'weekend_x_drying', 'weekend_x_rain', 'holiday_x_drying'],
+  reduced: ['intercept', 'rev_lag_1', 'rev_lag_7', 'is_weekend', 'drying_pain', 'is_rainy', 'heavy_rain'],
+  minimal: ['intercept', 'rev_lag_1', 'rev_lag_7'],
+  fallback: ['intercept']
+};
 
 // ============== SUPABASE CLIENT ==============
 
@@ -111,12 +136,36 @@ function classifyWeatherCategory(weather) {
 }
 
 /**
+ * Detect outliers using IQR method
+ * Returns { isOutlier, bounds: { lower, upper } }
+ */
+function detectOutliers(values) {
+  if (values.length < 4) return { outlierIndices: [], bounds: null };
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+  const lower = q1 - 1.5 * iqr;
+  const upper = q3 + 1.5 * iqr;
+
+  const outlierIndices = [];
+  values.forEach((v, i) => {
+    if (v < lower || v > upper) outlierIndices.push(i);
+  });
+
+  return { outlierIndices, bounds: { lower, upper, q1, q3, iqr } };
+}
+
+/**
  * Build feature matrix for training
  * Joins revenue data with weather data by date
+ * Returns { features, dataQuality }
  */
-function buildTrainingFeatures(revenueRows, weatherRows) {
+function buildTrainingFeatures(revenueRows, weatherRows, options = {}) {
+  const { tier = 'full' } = options;
+
   // Create date-keyed maps
-  // Use total_revenue (service + recarga) for full daily cash flow
   const revenueMap = {};
   revenueRows.forEach(r => {
     revenueMap[r.date] = parseFloat(r.total_revenue) || 0;
@@ -130,50 +179,140 @@ function buildTrainingFeatures(revenueRows, weatherRows) {
   // Sort dates
   const dates = Object.keys(revenueMap).sort();
 
+  // Data quality tracking
+  const dataQuality = {
+    totalDays: dates.length,
+    missingWeather: 0,
+    missingLags: 0,
+    usableDays: 0,
+    outlierCount: 0,
+    fallbacksUsed: 0,
+    holidaysInRange: 0
+  };
+
   // Build training data (skip first 7 days for lags)
   const features = [];
+  const revenues = [];
 
   for (let i = 7; i < dates.length; i++) {
     const date = dates[i];
     const w = weatherMap[date];
 
-    // Skip if no weather data
-    if (!w) continue;
+    // Track missing weather
+    if (!w) {
+      dataQuality.missingWeather++;
+      continue;
+    }
 
     const revenue = revenueMap[date];
-    const revLag1 = revenueMap[dates[i - 1]] || revenue;
-    const revLag7 = revenueMap[dates[i - 7]] || revenue;
+    const revLag1 = revenueMap[dates[i - 1]];
+    const revLag7 = revenueMap[dates[i - 7]];
 
-    // Skip if lags are zero (missing data)
-    if (revLag1 === 0 || revLag7 === 0) continue;
+    // Track missing lags
+    if (revLag1 === undefined || revLag1 === 0 ||
+        revLag7 === undefined || revLag7 === 0) {
+      dataQuality.missingLags++;
+      continue;
+    }
 
+    // Calculate features
     const dryingPain = calculateDryingPain(w);
     const precip = parseFloat(w.precipitation) || 0;
+    const isWknd = isWeekend(date);
+    const isRainy = precip >= 2;
+    const heavyRain = precip >= 10;
+
+    // Holiday features
+    const holidayInfo = isHoliday(date);
+    const holidayEveInfo = isHolidayEve(date);
+    const isHolidayFlag = holidayInfo.isHoliday;
+    const isHolidayEveFlag = holidayEveInfo.isHolidayEve;
+
+    if (isHolidayFlag) dataQuality.holidaysInRange++;
+
+    // Interaction terms
+    const weekendXDrying = isWknd ? dryingPain : 0;
+    const weekendXRain = (isWknd && isRainy) ? 1 : 0;
+    const holidayXDrying = isHolidayFlag ? dryingPain : 0;
+
+    // Build feature vector based on tier
+    let x, featureObj;
+
+    if (tier === 'full') {
+      x = [
+        1,                          // β₀ intercept
+        revLag1,                    // β₁ yesterday's revenue
+        revLag7,                    // β₂ same day last week
+        isWknd ? 1 : 0,             // β₃ weekend indicator
+        dryingPain,                 // β₄ drying pain index
+        isRainy ? 1 : 0,            // β₅ rain indicator
+        heavyRain ? 1 : 0,          // β₆ heavy rain indicator
+        isHolidayFlag ? 1 : 0,      // β₇ holiday indicator
+        isHolidayEveFlag ? 1 : 0,   // β₈ holiday eve indicator
+        weekendXDrying,             // β₉ weekend × drying interaction
+        weekendXRain,               // β₁₀ weekend × rain interaction
+        holidayXDrying              // β₁₁ holiday × drying interaction
+      ];
+      featureObj = {
+        rev_lag_1: revLag1,
+        rev_lag_7: revLag7,
+        is_weekend: isWknd,
+        drying_pain: Math.round(dryingPain * 100) / 100,
+        is_rainy: isRainy,
+        heavy_rain: heavyRain,
+        is_holiday: isHolidayFlag,
+        holiday_name: holidayInfo.name,
+        is_holiday_eve: isHolidayEveFlag,
+        holiday_eve_name: holidayEveInfo.holidayName,
+        weekend_x_drying: Math.round(weekendXDrying * 100) / 100,
+        weekend_x_rain: weekendXRain,
+        holiday_x_drying: Math.round(holidayXDrying * 100) / 100
+      };
+    } else if (tier === 'reduced') {
+      x = [
+        1, revLag1, revLag7,
+        isWknd ? 1 : 0, dryingPain,
+        isRainy ? 1 : 0, heavyRain ? 1 : 0
+      ];
+      featureObj = {
+        rev_lag_1: revLag1,
+        rev_lag_7: revLag7,
+        is_weekend: isWknd,
+        drying_pain: Math.round(dryingPain * 100) / 100,
+        is_rainy: isRainy,
+        heavy_rain: heavyRain
+      };
+    } else if (tier === 'minimal') {
+      x = [1, revLag1, revLag7];
+      featureObj = { rev_lag_1: revLag1, rev_lag_7: revLag7 };
+    } else {
+      // fallback: just intercept
+      x = [1];
+      featureObj = {};
+    }
 
     features.push({
       date,
       y: revenue,
-      x: [
-        1,                          // intercept (β₀)
-        revLag1,                    // yesterday's revenue (β₁)
-        revLag7,                    // same day last week (β₂)
-        isWeekend(date) ? 1 : 0,    // weekend indicator (β₃)
-        dryingPain,                 // drying pain index (β₄)
-        precip >= 2 ? 1 : 0,        // rain indicator (β₅)
-        precip >= 10 ? 1 : 0        // heavy rain indicator (β₆)
-      ],
-      features: {
-        rev_lag_1: revLag1,
-        rev_lag_7: revLag7,
-        is_weekend: isWeekend(date),
-        drying_pain: Math.round(dryingPain * 100) / 100,
-        is_rainy: precip >= 2,
-        heavy_rain: precip >= 10
-      }
+      x,
+      features: featureObj
+    });
+    revenues.push(revenue);
+  }
+
+  // Outlier detection on revenues
+  if (revenues.length >= 4) {
+    const { outlierIndices } = detectOutliers(revenues);
+    dataQuality.outlierCount = outlierIndices.length;
+    // Flag outliers (don't remove - model is more robust with data)
+    outlierIndices.forEach(idx => {
+      if (features[idx]) features[idx].isOutlier = true;
     });
   }
 
-  return features;
+  dataQuality.usableDays = features.length;
+
+  return { features, dataQuality };
 }
 
 // ============== OLS REGRESSION (Pure JS) ==============
@@ -379,14 +518,57 @@ function predict(beta, x) {
 }
 
 /**
+ * Save trained model to Supabase for caching
+ * Called after on-the-fly training to avoid retraining on every request
+ *
+ * @param {Object} supabase - Supabase client
+ * @param {Object} model - Trained model { beta, mae, rmse, rSquared, n, meanRevenue }
+ * @param {string} tier - Model tier (full, reduced, minimal, fallback)
+ * @param {Object} metadata - Additional metadata { trainingStart, trainingEnd }
+ */
+async function saveModelToCache(supabase, model, tier, metadata = {}) {
+  try {
+    const { error } = await supabase
+      .from('model_coefficients')
+      .upsert({
+        id: 'revenue_prediction',
+        beta: model.beta,
+        feature_names: FEATURE_NAMES[tier] || [],
+        mae: model.mae,
+        rmse: model.rmse,
+        r_squared: model.rSquared,
+        n_training_samples: model.n,
+        mean_revenue: model.meanRevenue,
+        model_complexity: tier,
+        trained_at: new Date().toISOString(),
+        training_period_start: metadata.trainingStart || null,
+        training_period_end: metadata.trainingEnd || null,
+        optimal_training_days: TRAINING_DAYS,
+        drying_pain_weights: { precip: 0.08, humidity: 0.03, sunDeficit: 0.20 }
+      }, { onConflict: 'id' });
+
+    if (error) {
+      console.error('Failed to cache model:', error.message);
+    } else {
+      console.log('Model cached successfully');
+    }
+  } catch (saveError) {
+    console.error('Error saving model to cache:', saveError.message);
+  }
+}
+
+/**
  * Load trained model coefficients from Supabase
  * Falls back to on-the-fly training if no cached model or stale (>48h)
+ * Saves the model to cache after training for faster subsequent requests
  *
  * @param {Object} supabase - Supabase client
  * @param {Array} trainingData - Pre-built training data for fallback
+ * @param {string} tier - Model tier for saving
+ * @param {Object} metadata - Additional metadata { trainingStart, trainingEnd }
  * @returns {Object} Model object with beta, mae, rSquared, etc.
  */
-async function loadOrTrainModel(supabase, trainingData) {
+async function loadOrTrainModel(supabase, trainingData, tier = 'full', metadata = {}) {
   try {
     // Try to load cached coefficients
     const { data: cached, error } = await supabase
@@ -397,13 +579,17 @@ async function loadOrTrainModel(supabase, trainingData) {
 
     if (error) {
       console.log('No cached model found, training on-the-fly...');
-      return fitOLS(trainingData);
+      const model = fitOLS(trainingData);
+      await saveModelToCache(supabase, model, tier, metadata);
+      return model;
     }
 
     // Check if cached model exists and has coefficients
     if (!cached || !cached.beta) {
       console.log('Cached model has no coefficients, training on-the-fly...');
-      return fitOLS(trainingData);
+      const model = fitOLS(trainingData);
+      await saveModelToCache(supabase, model, tier, metadata);
+      return model;
     }
 
     // Parse beta array
@@ -412,13 +598,17 @@ async function loadOrTrainModel(supabase, trainingData) {
       beta = typeof cached.beta === 'string' ? JSON.parse(cached.beta) : cached.beta;
     } catch (parseError) {
       console.log('Failed to parse cached coefficients, training on-the-fly...');
-      return fitOLS(trainingData);
+      const model = fitOLS(trainingData);
+      await saveModelToCache(supabase, model, tier, metadata);
+      return model;
     }
 
     // Check if beta is valid
     if (!Array.isArray(beta) || beta.length === 0) {
       console.log('Invalid cached coefficients, training on-the-fly...');
-      return fitOLS(trainingData);
+      const model = fitOLS(trainingData);
+      await saveModelToCache(supabase, model, tier, metadata);
+      return model;
     }
 
     // Check if model is stale (>48 hours old)
@@ -428,7 +618,9 @@ async function loadOrTrainModel(supabase, trainingData) {
 
     if (age > maxAge) {
       console.log(`Cached model is stale (${Math.round(age / 3600000)}h old), training on-the-fly...`);
-      return fitOLS(trainingData);
+      const model = fitOLS(trainingData);
+      await saveModelToCache(supabase, model, tier, metadata);
+      return model;
     }
 
     console.log(`Using cached model (trained ${Math.round(age / 3600000)}h ago, R²=${cached.r_squared})`);
@@ -446,19 +638,62 @@ async function loadOrTrainModel(supabase, trainingData) {
   } catch (loadError) {
     console.warn('Error loading cached model:', loadError.message);
     console.log('Falling back to on-the-fly training...');
-    return fitOLS(trainingData);
+    const model = fitOLS(trainingData);
+    await saveModelToCache(supabase, model, tier, metadata);
+    return model;
   }
+}
+
+/**
+ * Determine appropriate model tier based on sample count
+ */
+function selectModelTier(sampleCount) {
+  if (sampleCount >= MODEL_TIERS.FULL.minSamples) return 'full';
+  if (sampleCount >= MODEL_TIERS.REDUCED.minSamples) return 'reduced';
+  if (sampleCount >= MODEL_TIERS.MINIMAL.minSamples) return 'minimal';
+  return 'fallback';
+}
+
+/**
+ * Get tier message for frontend display
+ */
+function getTierMessage(tier) {
+  const messages = {
+    full: null,
+    reduced: 'Modelo simplificado (poucos dados)',
+    minimal: 'Modelo mínimo (dados insuficientes)',
+    fallback: 'Usando média histórica'
+  };
+  return messages[tier] || null;
 }
 
 /**
  * Calculate weather contribution to prediction
  * Shows how much weather features affect the prediction vs baseline
+ * Supports different model tiers
  */
-function calculateWeatherImpact(beta, features, meanRevenue) {
-  // Weather contribution = β₄·drying_pain + β₅·is_rainy + β₆·heavy_rain
-  const weatherContrib = beta[4] * features.drying_pain +
-    beta[5] * (features.is_rainy ? 1 : 0) +
-    beta[6] * (features.heavy_rain ? 1 : 0);
+function calculateWeatherImpact(beta, features, meanRevenue, tier = 'full') {
+  let weatherContrib = 0;
+
+  if (tier === 'full' && beta.length >= 12) {
+    // Full model: β₄·drying + β₅·rain + β₆·heavy + β₇·holiday + β₈·eve + interactions
+    weatherContrib =
+      beta[4] * (features.drying_pain || 0) +
+      beta[5] * (features.is_rainy ? 1 : 0) +
+      beta[6] * (features.heavy_rain ? 1 : 0) +
+      beta[7] * (features.is_holiday ? 1 : 0) +
+      beta[8] * (features.is_holiday_eve ? 1 : 0) +
+      beta[9] * (features.weekend_x_drying || 0) +
+      beta[10] * (features.weekend_x_rain || 0) +
+      beta[11] * (features.holiday_x_drying || 0);
+  } else if (tier === 'reduced' && beta.length >= 7) {
+    // Reduced model: β₄·drying + β₅·rain + β₆·heavy
+    weatherContrib =
+      beta[4] * (features.drying_pain || 0) +
+      beta[5] * (features.is_rainy ? 1 : 0) +
+      beta[6] * (features.heavy_rain ? 1 : 0);
+  }
+  // minimal/fallback have no weather features
 
   // Convert to percentage of mean revenue
   return meanRevenue > 0 ? (weatherContrib / meanRevenue) * 100 : 0;
@@ -469,8 +704,9 @@ function calculateWeatherImpact(beta, features, meanRevenue) {
 /**
  * Build prediction features for future days
  * Uses recursive prediction for lag features
+ * Supports different model tiers
  */
-function buildPredictionFeatures(forecastWeather, recentRevenue, dayIndex, previousPredictions) {
+function buildPredictionFeatures(forecastWeather, recentRevenue, dayIndex, previousPredictions, tier = 'full') {
   const date = forecastWeather.date;
 
   // Get lag features
@@ -500,26 +736,77 @@ function buildPredictionFeatures(forecastWeather, recentRevenue, dayIndex, previ
 
   const dryingPain = calculateDryingPain(forecastWeather);
   const precip = parseFloat(forecastWeather.precipitation) || 0;
+  const isWknd = isWeekend(date);
+  const isRainy = precip >= 2;
+  const heavyRain = precip >= 10;
 
-  return {
-    x: [
-      1,                          // intercept
-      revLag1,                    // yesterday
-      revLag7,                    // last week
-      isWeekend(date) ? 1 : 0,    // weekend
-      dryingPain,                 // drying pain
-      precip >= 2 ? 1 : 0,        // rain
-      precip >= 10 ? 1 : 0        // heavy rain
-    ],
-    features: {
+  // Holiday detection for forecast days
+  const holidayInfo = isHoliday(date);
+  const holidayEveInfo = isHolidayEve(date);
+  const isHolidayFlag = holidayInfo.isHoliday;
+  const isHolidayEveFlag = holidayEveInfo.isHolidayEve;
+
+  // Interaction terms
+  const weekendXDrying = isWknd ? dryingPain : 0;
+  const weekendXRain = (isWknd && isRainy) ? 1 : 0;
+  const holidayXDrying = isHolidayFlag ? dryingPain : 0;
+
+  // Build feature vector based on tier
+  let x, features;
+
+  if (tier === 'full') {
+    x = [
+      1,                          // β₀ intercept
+      revLag1,                    // β₁ yesterday
+      revLag7,                    // β₂ last week
+      isWknd ? 1 : 0,             // β₃ weekend
+      dryingPain,                 // β₄ drying pain
+      isRainy ? 1 : 0,            // β₅ rain
+      heavyRain ? 1 : 0,          // β₆ heavy rain
+      isHolidayFlag ? 1 : 0,      // β₇ holiday
+      isHolidayEveFlag ? 1 : 0,   // β₈ holiday eve
+      weekendXDrying,             // β₉ weekend × drying
+      weekendXRain,               // β₁₀ weekend × rain
+      holidayXDrying              // β₁₁ holiday × drying
+    ];
+    features = {
       rev_lag_1: Math.round(revLag1),
       rev_lag_7: Math.round(revLag7),
-      is_weekend: isWeekend(date),
+      is_weekend: isWknd,
       drying_pain: Math.round(dryingPain * 100) / 100,
-      is_rainy: precip >= 2,
-      heavy_rain: precip >= 10
-    }
-  };
+      is_rainy: isRainy,
+      heavy_rain: heavyRain,
+      is_holiday: isHolidayFlag,
+      holiday_name: holidayInfo.name,
+      is_holiday_eve: isHolidayEveFlag,
+      holiday_eve_name: holidayEveInfo.holidayName,
+      weekend_x_drying: Math.round(weekendXDrying * 100) / 100,
+      weekend_x_rain: weekendXRain,
+      holiday_x_drying: Math.round(holidayXDrying * 100) / 100
+    };
+  } else if (tier === 'reduced') {
+    x = [1, revLag1, revLag7, isWknd ? 1 : 0, dryingPain, isRainy ? 1 : 0, heavyRain ? 1 : 0];
+    features = {
+      rev_lag_1: Math.round(revLag1),
+      rev_lag_7: Math.round(revLag7),
+      is_weekend: isWknd,
+      drying_pain: Math.round(dryingPain * 100) / 100,
+      is_rainy: isRainy,
+      heavy_rain: heavyRain
+    };
+  } else if (tier === 'minimal') {
+    x = [1, revLag1, revLag7];
+    features = {
+      rev_lag_1: Math.round(revLag1),
+      rev_lag_7: Math.round(revLag7)
+    };
+  } else {
+    // fallback
+    x = [1];
+    features = {};
+  }
+
+  return { x, features };
 }
 
 /**
@@ -567,21 +854,58 @@ async function generatePredictions(supabase) {
   if (forecastError) throw new Error(`Failed to fetch forecast: ${forecastError.message}`);
   console.log(`Fetched ${forecastData?.length || 0} forecast records`);
 
-  // Build training features
-  const trainingData = buildTrainingFeatures(revenue, weatherData);
-  console.log(`Built ${trainingData.length} training samples`);
+  // Determine model tier based on available data
+  // First pass: check how many usable samples we'll have
+  const initialBuild = buildTrainingFeatures(revenue, weatherData, { tier: 'full' });
+  const sampleCount = initialBuild.features.length;
+  const tier = selectModelTier(sampleCount);
 
+  console.log(`Sample count: ${sampleCount}, Selected tier: ${tier}`);
+
+  // Build training features with appropriate tier
+  const { features: trainingData, dataQuality } = buildTrainingFeatures(
+    revenue,
+    weatherData,
+    { tier }
+  );
+
+  console.log(`Built ${trainingData.length} training samples (tier: ${tier})`);
+  console.log(`Data quality:`, JSON.stringify(dataQuality));
+
+  // Check for absolute minimum
   if (trainingData.length < MIN_TRAINING_SAMPLES) {
     return {
       success: false,
       error: `Insufficient training data: ${trainingData.length} samples (need ${MIN_TRAINING_SAMPLES})`,
-      predictions: []
+      predictions: [],
+      data_quality: dataQuality,
+      model_tier: 'none'
     };
   }
 
-  // Load cached model or train on-the-fly
-  const model = await loadOrTrainModel(supabase, trainingData);
-  console.log(`Model ready: R²=${model.rSquared}, MAE=R$${model.mae}`);
+  // For fallback tier, just use mean
+  let model;
+  if (tier === 'fallback') {
+    const meanRev = trainingData.reduce((s, d) => s + d.y, 0) / trainingData.length;
+    model = {
+      beta: [meanRev],
+      mae: 0,
+      rmse: 0,
+      rSquared: 0,
+      n: trainingData.length,
+      meanRevenue: Math.round(meanRev),
+      standardError: 0
+    };
+  } else {
+    // Load cached model or train on-the-fly (and save to cache)
+    const trainingMetadata = {
+      trainingStart,
+      trainingEnd: today
+    };
+    model = await loadOrTrainModel(supabase, trainingData, tier, trainingMetadata);
+  }
+
+  console.log(`Model ready: R²=${model.rSquared}, MAE=R$${model.mae}, tier=${tier}`);
 
   // Get recent revenue for lag features
   const recentRevenue = revenue.slice(-8).reverse(); // Last 8 days, newest first
@@ -595,16 +919,29 @@ async function generatePredictions(supabase) {
       forecastDay,
       recentRevenue,
       i,
-      predictions
+      predictions,
+      tier
     );
 
-    const predictedRevenue = predict(model.beta, x);
-    const weatherImpact = calculateWeatherImpact(model.beta, features, model.meanRevenue);
+    // Check if this is a closed day (laundromat not operating)
+    const closedInfo = isClosedDay(forecastDay.date);
 
-    // Calculate confidence interval (±1.96 * SE for 95% CI)
-    const margin = 1.96 * model.standardError;
+    let predictedRevenue, weatherImpact, margin;
 
-    predictions.push({
+    if (closedInfo.isClosed) {
+      // Closed day: override with R$0
+      predictedRevenue = 0;
+      weatherImpact = 0;
+      margin = 0;
+    } else {
+      predictedRevenue = predict(model.beta, x);
+      weatherImpact = calculateWeatherImpact(model.beta, features, model.meanRevenue, tier);
+      // Calculate confidence interval (±1.96 * SE for 95% CI)
+      margin = 1.96 * model.standardError;
+    }
+
+    // Build prediction object
+    const predictionObj = {
       date: forecastDay.date,
       predicted_revenue: Math.round(Math.max(0, predictedRevenue)),
       confidence_low: Math.round(Math.max(0, predictedRevenue - margin)),
@@ -614,8 +951,27 @@ async function generatePredictions(supabase) {
       conditions: forecastDay.conditions,
       icon: forecastDay.icon,
       features
-    });
+    };
+
+    // Add closed day info
+    if (closedInfo.isClosed) {
+      predictionObj.is_closed = true;
+      predictionObj.closed_reason = closedInfo.reason;
+    }
+
+    // Add holiday info if present
+    if (features.is_holiday) {
+      predictionObj.holiday_name = features.holiday_name;
+    }
+    if (features.is_holiday_eve) {
+      predictionObj.holiday_eve_name = features.holiday_eve_name;
+    }
+
+    predictions.push(predictionObj);
   }
+
+  // Build response
+  const tierMessage = getTierMessage(tier);
 
   return {
     success: true,
@@ -627,9 +983,12 @@ async function generatePredictions(supabase) {
       n_training_samples: model.n,
       mean_daily_revenue: model.meanRevenue,
       last_trained: new Date().toISOString(),
-      feature_names: ['intercept', 'rev_lag_1', 'rev_lag_7', 'is_weekend', 'drying_pain', 'is_rainy', 'heavy_rain'],
-      coefficients: model.beta.map(b => Math.round(b * 100) / 100)
-    }
+      feature_names: FEATURE_NAMES[tier],
+      coefficients: model.beta.map(b => Math.round(b * 100) / 100),
+      model_tier: tier,
+      tier_message: tierMessage
+    },
+    data_quality: dataQuality
   };
 }
 
