@@ -1,7 +1,12 @@
-// Customer Metrics Calculator v3.5.0 - DISTINCT PORTUGUESE RFM SEGMENTS
+// Customer Metrics Calculator v3.6.0 - DISTINCT PORTUGUESE RFM SEGMENTS
 // ✅ Brazilian number parsing added (handles comma decimals)
 // ✅ Cashback rate corrected (7.5%)
 // ✅ Cashback start date corrected (June 1, 2024)
+// ✅ v3.6.0 (2025-12-22): Added visits metric (unique visit days)
+//     - transactions = raw row count (for financial context)
+//     - visits = unique days customer visited (for behavior context)
+//     - servicesPerVisit now uses visits as denominator
+//     - getRFMCoordinates.r now uses visits (was transactions)
 // ✅ v3.5.0 (2025-12-15): getRFMCoordinates includes phone for blacklist filtering
 //     - CustomerSegmentModal from RFMScatterPlot now correctly filters blacklisted
 // ✅ v3.4.0 (2025-12-10): Distinct Portuguese RFM segment names
@@ -288,6 +293,7 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
         doc,
         name: extractName(row) || `Customer ${doc.slice(-4)}`,
         transactions: 0,
+        visitDates: new Set(), // Track unique visit days
         netTotal: 0,
         grossTotal: 0,
         totalCashback: 0,
@@ -306,6 +312,9 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
 
     const customer = customers[doc];
     customer.transactions++;
+    // Track unique visit days (YYYY-MM-DD key)
+    const dateKey = formatDate(date);
+    customer.visitDates.add(dateKey);
     customer.netTotal += netValue;
     customer.grossTotal += grossValue;
     customer.totalCashback += cashback;
@@ -327,6 +336,10 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
 
   // Calculate risk levels (V2.1 algorithm)
   Object.values(customers).forEach(customer => {
+    // Calculate visits (unique days) from Set and cleanup
+    customer.visits = customer.visitDates.size;
+    delete customer.visitDates; // Memory cleanup
+
     customer.dates.sort((a, b) => a - b);
 
     customer.firstVisit = customer.dates[0];
@@ -351,7 +364,10 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
     const daysSinceLastVisit = Math.round((now - customer.lastVisit) / (1000 * 60 * 60 * 24));
     customer.daysSinceLastVisit = daysSinceLastVisit;
 
-    customer.servicesPerVisit = (customer.totalServices / customer.transactions).toFixed(1);
+    // servicesPerVisit uses visits (unique days), not transactions (raw rows)
+    customer.servicesPerVisit = customer.visits > 0
+      ? (customer.totalServices / customer.visits).toFixed(1)
+      : '0.0';
 
     if (customer.totalServices > 0) {
       customer.washPercentage = ((customer.washServices / customer.totalServices) * 100).toFixed(1);
@@ -566,7 +582,7 @@ export function getRFMCoordinates(customers) {
     name: c.name,
     x: c.daysSinceLastVisit, // Recency (Days ago)
     y: c.netTotal,           // Monetary (Total Spend)
-    r: c.transactions,       // Radius (Frequency)
+    r: c.visits,             // Radius (Frequency = unique visit days)
     status: c.riskLevel,
     segment: c.segment,
     phone: c.phone           // For blacklist filtering

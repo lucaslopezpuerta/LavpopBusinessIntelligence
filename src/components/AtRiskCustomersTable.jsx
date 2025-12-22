@@ -75,7 +75,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     return 'days';
   });
   const [showBlacklisted, setShowBlacklisted] = useState(false);
-  const [filterTab, setFilterTab] = useState('notContacted'); // Default to "Sem contato"
+  const [filterTab, setFilterTab] = useState('all'); // Default to "Todos"
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [segmentModalOpen, setSegmentModalOpen] = useState(false);

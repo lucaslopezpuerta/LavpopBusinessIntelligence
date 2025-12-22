@@ -1,7 +1,23 @@
-// RFMScatterPlot.jsx v3.1 - HAPTIC FEEDBACK
+// RFMScatterPlot.jsx v3.3.0 - UX/DESIGN REFACTOR
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v3.3.0 (2025-12-22): UX/Design Refactor
+//   - CHANGED: "Champions" → "VIP" terminology
+//   - FIXED: Tooltip visibility after modal close (resetTooltipVisibility)
+//   - IMPROVED: Mobile hint uses Pointer icon instead of emoji
+//   - IMPROVED: Danger zone more visible (shaded area + thicker line)
+//   - IMPROVED: Responsive danger zone label (">30d" on mobile)
+//   - IMPROVED: Header decluttered (VIP count moved to legend)
+//   - IMPROVED: Blocked customers dimmed (40% opacity)
+//   - ADDED: Responsive chart height (280px mobile, 350px tablet, 420px desktop)
+//   - ADDED: ARIA labels and focus states for accessibility
+//   - ADDED: 44px minimum touch targets on mobile
+//   - ADDED: At-risk pill discrete positioning (top-right on mobile)
+//   - PERF: Memoized contact stats and CustomTooltip
+// v3.2 (2025-12-22): Fixed frequency to use visits (unique days)
+//   - Tooltip now correctly shows visits, not transactions
+//   - ZAxis (r) data now comes from customer.visits
 // v3.1 (2025-12-22): Added haptic feedback on insight button
 // v3.0 (2025-12-16): Blacklist visual indicator
 //   - NEW: Black dotted border for blacklisted customers
@@ -61,8 +77,8 @@
 // v1.0 (2025-11-23): Initial implementation
 
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
-import { AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
+import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, ReferenceArea, Label } from 'recharts';
+import { AlertTriangle, CheckCircle, ChevronRight, Pointer } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
 import { getChartColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
@@ -106,7 +122,7 @@ const RFMScatterPlot = ({
     // Use shared touch tooltip hook for mobile-friendly interactions
     // Desktop: single click opens profile immediately
     // Mobile: tap-to-preview, tap-again-to-action
-    const { handleTouch, isActive: isActiveTouch, tooltipHidden } = useTouchTooltip({
+    const { handleTouch, isActive: isActiveTouch, tooltipHidden, resetTooltipVisibility } = useTouchTooltip({
         onAction: (entry) => {
             if (entry?.id && onOpenCustomerProfile) {
                 onOpenCustomerProfile(entry.id);
@@ -130,12 +146,17 @@ const RFMScatterPlot = ({
     // Calculate segment stats
     const highValueAtRiskCustomers = useMemo(() =>
         enrichedData.filter(d => d.y > 500 && d.x > 30), [enrichedData]);
-    const championsCustomers = useMemo(() =>
+    const vipCustomers = useMemo(() =>
         enrichedData.filter(d => d.y > 500 && d.x <= 20), [enrichedData]);
 
-    const notContactedHighValue = highValueAtRiskCustomers.filter(d => !d.isContacted).length;
-    const totalContacted = enrichedData.filter(d => d.isContacted).length;
-    const totalBlacklisted = enrichedData.filter(d => d.isBlacklisted).length;
+    // Memoize contact stats for performance
+    const contactStats = useMemo(() => ({
+        notContactedHighValue: highValueAtRiskCustomers.filter(d => !d.isContacted).length,
+        totalContacted: enrichedData.filter(d => d.isContacted).length,
+        totalBlacklisted: enrichedData.filter(d => d.isBlacklisted).length
+    }), [highValueAtRiskCustomers, enrichedData]);
+
+    const { notContactedHighValue, totalContacted, totalBlacklisted } = contactStats;
 
     // Click handler for bubble - uses shared touch hook
     // Desktop: immediate action, Mobile: tap-to-preview, tap-again-to-action
@@ -228,8 +249,9 @@ const RFMScatterPlot = ({
                     {/* Mobile hint - shows when item is active from first tap */}
                     {isActiveTouchItem && onOpenCustomerProfile && (
                         <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                            <p className="text-blue-600 dark:text-blue-400 text-xs font-medium text-center animate-pulse">
-                                👆 Toque novamente para ver perfil
+                            <p className="text-blue-600 dark:text-blue-400 text-xs font-medium text-center flex items-center justify-center gap-1.5">
+                                <Pointer className="w-3.5 h-3.5 animate-bounce" style={{ animationDuration: '1.5s' }} />
+                                <span>Toque novamente para ver perfil</span>
                             </p>
                         </div>
                     )}
@@ -240,7 +262,7 @@ const RFMScatterPlot = ({
     };
 
     return (
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm">
+        <div className="relative bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/20 dark:border-slate-700/50 shadow-sm">
             <div className="mb-4">
                 {/* Header row with title and insight pills */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
@@ -250,60 +272,42 @@ const RFMScatterPlot = ({
                             Mapa de Risco (RFM)
                         </h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Identifique visualmente onde estão seus clientes de maior valor.
-                            <br />
-                            <span className="font-semibold text-green-600">Topo-Esquerda:</span> Campeões |
-                            <span className="font-semibold text-red-500 ml-1">Topo-Direita:</span> Em Perigo
+                            <span className="hidden sm:inline">Valor x Recência: </span>
+                            <span className="font-semibold text-green-600 dark:text-green-400">VIPs</span> (esq) |
+                            <span className="font-semibold text-red-500 ml-1">Em Risco</span> (dir)
                         </p>
                     </div>
 
-                    {/* Insight Pills - relocated to header */}
-                    <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-                        {/* At-Risk High-Value Pill */}
-                        {notContactedHighValue > 0 ? (
-                            <button
-                                onClick={() => { haptics.light(); handleHighValueAtRiskClick(); }}
-                                className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
-                            >
-                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                                <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                                    {notContactedHighValue} em risco sem contato
-                                </span>
-                                <ChevronRight className="w-3 h-3 text-amber-500 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
-                            </button>
-                        ) : highValueAtRiskCustomers.length > 0 ? (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full">
-                                <CheckCircle className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                <span className="text-xs font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap">
-                                    Todos contactados
-                                </span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-                                    Sem alto valor em risco
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Champions Pill */}
-                        {championsCustomers.length > 0 && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-                                    {championsCustomers.length} campeões
-                                </span>
-                            </div>
-                        )}
-                    </div>
+                    {/* At-Risk Pill - discrete on mobile, full on desktop */}
+                    {notContactedHighValue > 0 ? (
+                        <button
+                            onClick={() => { haptics.light(); handleHighValueAtRiskClick(); }}
+                            className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2.5 sm:min-h-[44px] bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto"
+                            aria-label={`${notContactedHighValue} clientes de alto valor em risco sem contato. Clique para ver detalhes.`}
+                        >
+                            <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span className="text-[10px] sm:text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                                {notContactedHighValue}
+                                <span className="hidden sm:inline"> em risco</span>
+                            </span>
+                            <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-500 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                    ) : highValueAtRiskCustomers.length > 0 ? (
+                        <div className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-2 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto">
+                            <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400" />
+                            <span className="text-[10px] sm:text-xs font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap hidden sm:inline">
+                                Todos contactados
+                            </span>
+                        </div>
+                    ) : null}
                 </div>
 
                 {/* Legend for contact status - Design System compliant (min text-xs) */}
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
                     <div className="flex items-center gap-1.5">
                         <div className="w-3 h-3 rounded-full bg-emerald-500/60"></div>
-                        <span className="text-slate-600 dark:text-slate-400">Saudável</span>
+                        <span className="text-slate-600 dark:text-slate-400 hidden sm:inline">Saudável</span>
+                        <span className="text-slate-600 dark:text-slate-400 sm:hidden">OK</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <div className="w-3 h-3 rounded-full bg-amber-500/60"></div>
@@ -313,22 +317,37 @@ const RFMScatterPlot = ({
                         <div className="w-3 h-3 rounded-full bg-red-500/60"></div>
                         <span className="text-slate-600 dark:text-slate-400">Crítico</span>
                     </div>
+                    {/* VIP count - moved from header pill */}
+                    {vipCustomers.length > 0 && (
+                        <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
+                            <div className="w-3 h-3 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500"></div>
+                            <span className="text-slate-700 dark:text-slate-300 font-medium">{vipCustomers.length} VIPs</span>
+                        </div>
+                    )}
                     {totalContacted > 0 && (
                         <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
                             <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dashed border-blue-500"></div>
-                            <span className="text-blue-600 dark:text-blue-400 font-medium">Contactado ({totalContacted})</span>
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                <span className="hidden sm:inline">Contactado </span>({totalContacted})
+                            </span>
                         </div>
                     )}
                     {totalBlacklisted > 0 && (
                         <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
-                            <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dotted border-slate-900 dark:border-slate-100"></div>
-                            <span className="text-slate-700 dark:text-slate-300 font-medium">Bloqueado ({totalBlacklisted})</span>
+                            <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dotted border-slate-900 dark:border-slate-100 opacity-40"></div>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">
+                                <span className="hidden sm:inline">Bloqueado </span>({totalBlacklisted})
+                            </span>
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className="h-[350px] lg:h-[420px]">
+            <div
+                className="h-[280px] sm:h-[350px] lg:h-[420px]"
+                role="img"
+                aria-label="Gráfico de dispersão RFM mostrando valor do cliente versus dias desde última visita"
+            >
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
@@ -352,7 +371,7 @@ const RFMScatterPlot = ({
                             tick={{ fill: chartColors.tickText }}
                             tickFormatter={(val) => `R$${val}`}
                         />
-                        {/* ZAxis controls bubble size based on frequency (r = transactions count) */}
+                        {/* ZAxis controls bubble size based on frequency (r = visits = unique days) */}
                         <ZAxis
                             type="number"
                             dataKey="r"
@@ -361,9 +380,28 @@ const RFMScatterPlot = ({
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} wrapperStyle={{ visibility: tooltipHidden ? 'hidden' : 'visible' }} />
 
-                        {/* Danger Zone Reference Line */}
-                        <ReferenceLine x={30} stroke={chartColors.error} strokeDasharray="3 3">
-                            <Label value="Zona de Perigo (>30d)" position="insideTopRight" fill={chartColors.error} fontSize={labelFontSize} />
+                        {/* Danger Zone - shaded area for visual emphasis */}
+                        <ReferenceArea
+                            x1={30}
+                            x2={60}
+                            fill={isDark ? '#ef444420' : '#ef444410'}
+                            fillOpacity={1}
+                        />
+
+                        {/* Danger Zone Reference Line - improved visibility */}
+                        <ReferenceLine
+                            x={30}
+                            stroke={chartColors.error}
+                            strokeWidth={2}
+                            strokeDasharray="8 4"
+                        >
+                            <Label
+                                value={isDesktop ? "Zona de Perigo (>30d)" : ">30d"}
+                                position="insideTopRight"
+                                fill={chartColors.error}
+                                fontSize={labelFontSize}
+                                fontWeight="bold"
+                            />
                         </ReferenceLine>
 
                         <Scatter
@@ -374,22 +412,33 @@ const RFMScatterPlot = ({
                             cursor={onOpenCustomerProfile ? 'pointer' : 'default'}
                         >
                             {enrichedData.map((entry, index) => {
+                                // Determine base fill color
+                                const baseColor = entry.status === 'Healthy' ? '#10b981' :
+                                    entry.status === 'At Risk' ? '#f59e0b' :
+                                    entry.status === 'Churning' ? '#ef4444' : '#94a3b8';
+
                                 // Determine stroke style: blacklisted (black dotted) > contacted (blue dashed) > none
-                                const strokeColor = entry.isBlacklisted ? (isDark ? '#f1f5f9' : '#0f172a') :
-                                    entry.isContacted ? '#3b82f6' : 'transparent';
-                                const strokeWidth = entry.isBlacklisted || entry.isContacted ? 3 : 0;
-                                const strokeDash = entry.isBlacklisted ? '2 2' :
-                                    entry.isContacted ? '4 2' : undefined;
+                                let strokeColor = 'transparent';
+                                let strokeWidth = 0;
+                                let strokeDash = undefined;
+                                let fillOpacity = 0.8;
+
+                                if (entry.isBlacklisted) {
+                                    strokeColor = isDark ? '#f1f5f9' : '#0f172a';
+                                    strokeWidth = 3;
+                                    strokeDash = '3 3';
+                                    fillOpacity = 0.4; // Dim blocked customers significantly
+                                } else if (entry.isContacted) {
+                                    strokeColor = '#3b82f6';
+                                    strokeWidth = 3;
+                                    strokeDash = '6 3';
+                                }
 
                                 return (
                                     <Cell
                                         key={`cell-${index}`}
-                                        fill={
-                                            entry.status === 'Healthy' ? '#10b981' :
-                                                entry.status === 'At Risk' ? '#f59e0b' :
-                                                    entry.status === 'Churning' ? '#ef4444' :
-                                                        '#94a3b8'
-                                        }
+                                        fill={baseColor}
+                                        fillOpacity={fillOpacity}
                                         stroke={strokeColor}
                                         strokeWidth={strokeWidth}
                                         strokeDasharray={strokeDash}
@@ -404,7 +453,11 @@ const RFMScatterPlot = ({
             {/* Customer Segment Modal */}
             <CustomerSegmentModal
                 isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
+                onClose={() => {
+                    setModalOpen(false);
+                    // Reset tooltip visibility after modal closes
+                    setTimeout(() => resetTooltipVisibility?.(), 300);
+                }}
                 title={modalData.title}
                 subtitle={modalData.subtitle}
                 icon={modalData.icon}

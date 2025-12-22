@@ -1,8 +1,21 @@
-// CustomerProfileModal.jsx v2.6 - HAPTIC FEEDBACK
+// CustomerProfileModal.jsx v2.10 - BODY SCROLL LOCK
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v2.10 (2025-12-22): Lock body scroll when modal is open
+//   - Prevents parent page from scrolling while modal is visible
+//   - Restores original overflow on close
+// v2.9 (2025-12-22): Added Recarga badge in transaction history
+//   - parseMachines now detects "recarga" credit top-up transactions
+//   - Shows amber "Recarga" badge instead of empty space
+// v2.8 (2025-12-22): Fixed visits vs transactions distinction
+//   - Behavior tab now uses customer.visits (unique days)
+//   - Financial tab keeps customer.transactions (raw rows)
+// v2.7 (2025-12-22): Added lifetime cycles trend chart
+//   - Click customer name to expand/collapse trend panel
+//   - Uses new CustomerCyclesTrend component
+//   - Smooth animation with framer-motion
 // v2.6 (2025-12-22): Added haptic feedback on tabs, actions, and close
 // v2.5 (2025-12-16): Standardized z-index system
 //   - Uses Z_INDEX.MODAL_CHILD from shared constants
@@ -73,7 +86,9 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Z_INDEX } from '../constants/zIndex';
+import CustomerCyclesTrend from './drilldowns/CustomerCyclesTrend';
 import {
     X,
     Phone,
@@ -103,6 +118,7 @@ import {
     Pause,
     UserMinus,
     Ban,
+    ChevronDown,
 } from 'lucide-react';
 
 // Segment-based avatar configuration
@@ -153,6 +169,7 @@ import { haptics } from '../utils/haptics';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
+    const [showCyclesTrend, setShowCyclesTrend] = useState(false);
     // Initialize with localStorage for immediate display, then fetch from backend
     const [communicationLog, setCommunicationLog] = useState(() => getCommunicationLog(customer.doc));
     const [isLoadingLog, setIsLoadingLog] = useState(true);
@@ -222,6 +239,15 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         return () => document.removeEventListener('keydown', handleEscapeKey);
     }, [onClose]);
 
+    // Lock body scroll when modal is open
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
     // Click-outside handler
     const handleBackdropClick = useCallback((e) => {
         // Only close if clicking the backdrop itself, not the modal content
@@ -229,6 +255,13 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
             onClose();
         }
     }, [onClose]);
+
+    // Toggle cycles trend panel
+    const toggleCyclesTrend = useCallback(() => {
+        haptics.light();
+        setShowCyclesTrend(prev => !prev);
+    }, []);
+
     const blacklisted = isBlacklisted(customer.phone);
     const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
 
@@ -328,8 +361,14 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     };
 
     // Helper for parsing machines - extracts machine codes (e.g., "Lavadora:3" -> "L3")
+    // Also detects "Recarga" (credit top-up) transactions
     const parseMachines = (machineStr) => {
         if (!machineStr || machineStr === 'N/A') return [];
+
+        // Check for Recarga (credit top-up) first
+        if (machineStr.toLowerCase().includes('recarga')) {
+            return [{ code: 'Recarga', type: 'recarga' }];
+        }
 
         const parts = machineStr.split(',').map((s) => s.trim());
         const machines = [];
@@ -379,7 +418,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
             })
             .filter((txn) => txn.dateValid)
             .sort((a, b) => b.date - a.date)
-            .slice(0, isMobile ? 5 : 10); // Limit to 5 on mobile, 10 on desktop
+            .slice(0, 5); // Limit to last 5 transactions
     }, [sales, customer.doc, isMobile]);
 
     // Calculate revenue breakdown
@@ -422,9 +461,16 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 );
                             })()}
                             <div className="flex-1 min-w-0">
-                                <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate">
-                                    {customer.name}
-                                </h2>
+                                <button
+                                    onClick={toggleCyclesTrend}
+                                    className="flex items-center gap-1.5 group text-left"
+                                    title="Ver histórico de ciclos"
+                                >
+                                    <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate group-hover:text-lavpop-blue transition-colors">
+                                        {customer.name}
+                                    </h2>
+                                    <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-lavpop-blue transition-all flex-shrink-0 ${showCyclesTrend ? 'rotate-180' : ''}`} />
+                                </button>
                                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                                     {/* Blacklist indicator (takes precedence) */}
                                     {blacklisted ? (
@@ -508,6 +554,25 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </button>
                     </div>
                 </div>
+
+                {/* Expandable Cycles Trend Panel */}
+                <AnimatePresence>
+                    {showCyclesTrend && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                            className="border-b border-slate-200 dark:border-slate-700 overflow-hidden"
+                        >
+                            <CustomerCyclesTrend
+                                sales={sales}
+                                customerDoc={customer.doc}
+                                onCollapse={toggleCyclesTrend}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Tab Navigation */}
                 <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
@@ -802,7 +867,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
                                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Total Visitas</div>
-                                        <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{customer.transactions}</div>
+                                        <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{customer.visits}</div>
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
                                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Média Entre Visitas</div>
@@ -892,7 +957,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         <div>
                             <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-lavpop-blue" />
-                                {isMobile ? 'Últimas 5 Transações' : 'Últimas 10 Transações'}
+                                Últimas 5 Transações
                             </h3>
 
                             {/* Transaction History Table */}
@@ -922,9 +987,12 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                                     <td className="px-2 py-2 sm:px-3 sm:py-2.5">
                                                         <div className="flex flex-wrap gap-1 justify-center">
                                                             {tx.machines.map((m, idx) => (
-                                                                <span key={idx} className={`inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-[10px] sm:text-xs font-semibold ${m.type === 'dry'
-                                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                                                                    : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
+                                                                <span key={idx} className={`inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-[10px] sm:text-xs font-semibold ${
+                                                                    m.type === 'recarga'
+                                                                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                                                        : m.type === 'dry'
+                                                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                                                            : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
                                                                     }`}>
                                                                     {m.code}
                                                                 </span>
