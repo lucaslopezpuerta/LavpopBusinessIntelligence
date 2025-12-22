@@ -1,8 +1,9 @@
-// PeriodSelector.jsx v1.1
+// PeriodSelector.jsx v1.2 - HAPTIC FEEDBACK
 // Period selector dropdown for Intelligence tab
 // Design System v3.0 compliant
 //
 // CHANGELOG:
+// v1.2 (2025-12-22): Added haptic feedback on period change
 // v1.1 (2025-12-20): Brazil timezone support
 //   - getPeriodDateRange() now uses Brazil timezone for "now"
 //   - Ensures consistent date ranges regardless of browser timezone
@@ -12,9 +13,10 @@
 //   - Dark mode support
 //   - Accessible with proper labels
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 import { getBrazilDateParts } from '../../utils/dateUtils';
+import { haptics } from '../../utils/haptics';
 
 const PERIOD_OPTIONS = [
   { value: 'current-month', label: 'Mês Atual', shortLabel: 'Atual' },
@@ -91,6 +93,12 @@ const PeriodSelector = ({
   showIcon = true,
   size = 'md' // 'sm' | 'md'
 }) => {
+  // Handle change with haptic feedback
+  const handleChange = useCallback((e) => {
+    haptics.tick();
+    onChange(e.target.value);
+  }, [onChange]);
+
   const sizeClasses = {
     sm: 'text-xs py-1.5 pl-2 pr-7',
     md: 'text-sm py-2 pl-3 pr-8'
@@ -111,7 +119,7 @@ const PeriodSelector = ({
       )}
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         className={`
           w-full appearance-none cursor-pointer
           bg-white dark:bg-slate-800

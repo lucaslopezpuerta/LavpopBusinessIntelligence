@@ -1,4 +1,4 @@
-// BottomNavBar.jsx v1.1 - HAPTIC FEEDBACK
+// BottomNavBar.jsx v1.2 - NAV ORDER CONSISTENCY
 // Mobile bottom navigation bar with 5 tabs
 //
 // FEATURES:
@@ -10,14 +10,15 @@
 // - Only renders on mobile (< lg breakpoint)
 // - Haptic feedback on tap (v1.1)
 //
-// TABS:
+// TABS (matches desktop sidebar order):
 // 1. Dashboard (/)
-// 2. Diretório (/diretorio)
-// 3. Clientes (/customers)
+// 2. Clientes (/customers)
+// 3. Diretório (/diretorio)
 // 4. Campanhas (/campaigns)
 // 5. Mais (opens drawer)
 //
 // CHANGELOG:
+// v1.2 (2025-12-22): Reordered tabs to match desktop sidebar (Clientes before Diretório)
 // v1.1 (2025-12-18): Added haptic feedback on tab tap
 // v1.0 (2025-12-18): Initial implementation
 
@@ -29,10 +30,11 @@ import { useSidebar } from '../../contexts/SidebarContext';
 import BottomNavItem from './BottomNavItem';
 
 // Navigation items for bottom bar (5 tabs)
+// Order matches desktop sidebar: Dashboard → Clientes → Diretório → Campanhas
 const BOTTOM_NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/' },
-  { id: 'diretorio', label: 'Diretório', icon: Search, path: '/diretorio' },
   { id: 'customers', label: 'Clientes', icon: Users, path: '/customers' },
+  { id: 'diretorio', label: 'Diretório', icon: Search, path: '/diretorio' },
   { id: 'campaigns', label: 'Campanhas', icon: MessageSquare, path: '/campaigns' },
 ];
 

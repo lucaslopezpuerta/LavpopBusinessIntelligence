@@ -89,34 +89,16 @@ const LoadingSkeleton = () => (
 /**
  * Section header component
  */
-const SectionHeader = ({ title, subtitle, lastSync }) => (
+const SectionHeader = ({ title, subtitle }) => (
   <div className="mb-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="text-slate-500 dark:text-slate-400 mt-1">
-            {subtitle}
-          </p>
-        )}
-      </div>
-
-      {lastSync && (
-        <div className="text-xs text-slate-400 dark:text-slate-500 text-right">
-          Última sincronização
-          <div className="font-medium">
-            {new Date(lastSync).toLocaleString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </div>
-        </div>
-      )}
-    </div>
+    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+      {title}
+    </h1>
+    {subtitle && (
+      <p className="text-slate-500 dark:text-slate-400 mt-1">
+        {subtitle}
+      </p>
+    )}
   </div>
 );
 
@@ -197,9 +179,8 @@ const WeatherSection = ({
     <div className={`p-4 md:p-6 space-y-6 ${className}`}>
       {/* Section header */}
       <SectionHeader
-        title="Clima Caxias do Sul"
+        title="Clima"
         subtitle="Previsão e impacto nos negócios"
-        lastSync={lastFetched}
       />
 
       {/* Stale data warning */}

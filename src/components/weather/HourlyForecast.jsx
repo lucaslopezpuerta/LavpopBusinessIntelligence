@@ -1,13 +1,14 @@
-// HourlyForecast.jsx v1.0
+// HourlyForecast.jsx v1.1 - HAPTIC FEEDBACK
 // 24-hour forecast display with scrollable cards and temperature chart
 //
+// v1.1 (2025-12-22): Added haptic feedback on scroll buttons
 // v1.0 (2025-12-20): Initial implementation
 //   - Horizontal scrollable hour cards
 //   - Temperature + precipitation area chart
 //   - Animated weather icons
 //   - Responsive design
 
-import React, { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   AreaChart,
   Area,
@@ -17,9 +18,10 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
-import { ChevronLeft, ChevronRight, Droplets } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Droplets, Clock } from 'lucide-react';
 import AnimatedWeatherIcon from './AnimatedWeatherIcon';
 import { formatTemperature } from '../../utils/weatherUtils';
+import { haptics } from '../../utils/haptics';
 
 /**
  * Single hour card component
@@ -100,14 +102,16 @@ const ChartTooltip = ({ active, payload, label }) => {
 const HourlyForecast = ({ hourly = [], className = '' }) => {
   const scrollRef = useRef(null);
 
-  // Scroll handlers
-  const scrollLeft = () => {
+  // Scroll handlers with haptic feedback
+  const scrollLeft = useCallback(() => {
+    haptics.tick();
     scrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
-  };
+  }, []);
 
-  const scrollRight = () => {
+  const scrollRight = useCallback(() => {
+    haptics.tick();
     scrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
-  };
+  }, []);
 
   if (!hourly.length) {
     return (
@@ -135,9 +139,14 @@ const HourlyForecast = ({ hourly = [], className = '' }) => {
     <div className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Próximas 24 horas
-        </h3>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30">
+            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+            Próximas 24 horas
+          </h3>
+        </div>
 
         {/* Scroll buttons */}
         <div className="flex gap-1">

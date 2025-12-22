@@ -1,8 +1,10 @@
-// CampaignList.jsx v3.1
+// CampaignList.jsx v3.2 - HAPTIC FEEDBACK
 // Campaign list and history display - Backend only
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.2 (2025-12-22): Haptic feedback on refresh
+//   - haptics.success() after successful campaign fetch
 // v3.1 (2025-12-15): UX enhancements from audit
 //   - Added delivery metrics row (Entregues/Lidas/Falhou) to cards
 //   - Added "Last Sent" with relative time display
@@ -23,6 +25,7 @@ import SectionCard from '../ui/SectionCard';
 import ProgressBar from '../ui/ProgressBar';
 import { getCampaignPerformance } from '../../utils/campaignService';
 import CampaignDetailsModal from './CampaignDetailsModal';
+import { haptics } from '../../utils/haptics';
 
 // Helper: Relative time in Portuguese
 const getRelativeTime = (date) => {
@@ -87,6 +90,7 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
         lastSentAt: c.last_sent_at ? new Date(c.last_sent_at) : null
       }));
       setCampaigns(transformed);
+      haptics.success();
     } catch (error) {
       console.error('Failed to fetch campaigns:', error);
     } finally {

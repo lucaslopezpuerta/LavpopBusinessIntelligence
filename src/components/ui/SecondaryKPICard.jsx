@@ -1,8 +1,9 @@
-// SecondaryKPICard.jsx v2.0 - TREND BADGE RELOCATION
+// SecondaryKPICard.jsx v2.2 - HAPTIC FEEDBACK
 // Compact KPI card for secondary metrics
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.2 (2025-12-22): Added haptic feedback on card click
 // v2.1 (2025-12-16): Responsive trend badge position
 //   - FIXED: Desktop (sm+): Badge in header row (avoids sparkline overlap)
 //   - FIXED: Mobile: Badge in footer row (sparklines hidden, more title space)
@@ -47,8 +48,9 @@
 //   - Click-to-drill-down support
 //   - Dark mode support
 
-import React, { useMemo, useId } from 'react';
+import React, { useMemo, useId, useCallback } from 'react';
 import TrendBadge from './TrendBadge';
+import { haptics } from '../../utils/haptics';
 
 // Mini sparkline component
 const Sparkline = ({ data, width = 80, height = 32, className = '', id }) => {
@@ -195,16 +197,25 @@ const SecondaryKPICard = ({
   const colors = colorMap[color] || colorMap.slate;
   const isClickable = !!onClick;
 
-  const handleKeyDown = (e) => {
-    if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault();
+  // Handle click with haptic feedback
+  const handleClick = useCallback(() => {
+    if (isClickable) {
+      haptics.light();
       onClick();
     }
-  };
+  }, [isClickable, onClick]);
+
+  const handleKeyDown = useCallback((e) => {
+    if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      haptics.light();
+      onClick();
+    }
+  }, [isClickable, onClick]);
 
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={isClickable ? 0 : undefined}
       role={isClickable ? 'button' : undefined}

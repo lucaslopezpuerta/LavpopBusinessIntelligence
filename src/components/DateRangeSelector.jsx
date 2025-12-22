@@ -1,7 +1,8 @@
-// DateRangeSelector Component v3.0.0
+// DateRangeSelector Component v3.1.0 - HAPTIC FEEDBACK
 // Unified date filter - consistent with DashboardDateControl
 //
 // CHANGELOG:
+// v3.1.0 (2025-12-22): Added haptic feedback on date change
 // v3.0.0 (2025-12-02): Unified design with DashboardDateControl
 //   - Compact inline layout matching Dashboard style
 //   - Added sticky positioning support
@@ -16,12 +17,19 @@
 // v2.0 (2025-11-26): Design System alignment
 // v1.0 (2025-11-15): Initial implementation
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Calendar } from 'lucide-react';
 import { getDateOptions } from '../utils/dateWindows';
+import { haptics } from '../utils/haptics';
 
 const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false, sticky = false }) => {
   const options = useMemo(() => getDateOptions({ excludeAllTime }), [excludeAllTime]);
+
+  // Handle change with haptic feedback
+  const handleChange = useCallback((e) => {
+    haptics.tick();
+    onChange(e.target.value);
+  }, [onChange]);
 
   const content = (
     <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-sm">
@@ -40,7 +48,7 @@ const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false
       {/* Right: Dropdown selector */}
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         className="h-9 px-3 bg-slate-100 dark:bg-slate-700/50 border-0 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 transition-all"
       >
         {options.map(opt => (

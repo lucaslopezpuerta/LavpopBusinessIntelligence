@@ -1,12 +1,17 @@
-// lazyCharts.jsx v1.0
+// lazyCharts.jsx v1.1
 // Utility for lazy loading chart components
 //
 // CHANGELOG:
+// v1.1 (2025-12-22): Fix HMR Fast Refresh warning
+//   - Added @refresh reset directive for Vite compatibility
+//   - This file mixes fallback components with lazy() exports,
+//     which is incompatible with Fast Refresh's component detection
 // v1.0 (2025-12-14): Initial implementation
 //   - LazyChartWrapper component for Suspense boundaries
 //   - ChartLoadingFallback for loading states
 //   - Pre-defined lazy imports for all chart components
 
+// @refresh reset
 import React, { lazy, Suspense } from 'react';
 
 // Chart loading fallback component

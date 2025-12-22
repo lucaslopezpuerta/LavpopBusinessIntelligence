@@ -1,4 +1,4 @@
-// usePullToRefresh.js v1.0
+// usePullToRefresh.js v1.1 - HAPTIC FEEDBACK
 // Hook for pull-to-refresh functionality on mobile
 //
 // FEATURES:
@@ -7,15 +7,18 @@
 // - Configurable pull threshold
 // - Only active at top of scroll area
 // - Works with touch events
+// - Haptic feedback when threshold reached (v1.1)
 //
 // USAGE:
 // const { pullDistance, isPulling, isRefreshing, handlers } = usePullToRefresh(onRefresh);
 //
 // CHANGELOG:
+// v1.1 (2025-12-22): Added haptic feedback when pull threshold reached
 // v1.0 (2025-12-18): Initial implementation
 
 import { useState, useCallback, useRef } from 'react';
 import { useMediaQuery } from './useMediaQuery';
+import { haptics } from '../utils/haptics';
 
 // Pull configuration
 const PULL_THRESHOLD = 80;    // Distance in pixels to trigger refresh
@@ -33,6 +36,7 @@ export function usePullToRefresh(onRefresh) {
 
   const startY = useRef(0);
   const currentY = useRef(0);
+  const hasTriggeredHaptic = useRef(false);
   const isMobile = useMediaQuery('(max-width: 1023px)');
 
   const handleTouchStart = useCallback((e) => {
@@ -41,6 +45,7 @@ export function usePullToRefresh(onRefresh) {
     // Only start if at top of scroll
     if (window.scrollY <= 0) {
       startY.current = e.touches[0].clientY;
+      hasTriggeredHaptic.current = false;
       setIsPulling(true);
     }
   }, [isMobile, isRefreshing]);
@@ -54,6 +59,12 @@ export function usePullToRefresh(onRefresh) {
     // Only pull if scrolled to top
     if (window.scrollY <= 0 && distance > 0) {
       setPullDistance(distance);
+
+      // Haptic feedback when crossing threshold
+      if (distance >= PULL_THRESHOLD && !hasTriggeredHaptic.current) {
+        hasTriggeredHaptic.current = true;
+        haptics.tick();
+      }
 
       // Prevent default scroll when pulling
       if (distance > 10) {

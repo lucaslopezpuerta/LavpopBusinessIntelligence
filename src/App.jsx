@@ -1,4 +1,4 @@
-// App.jsx v8.7 - Stale-While-Revalidate Caching (Stable)
+// App.jsx v8.8 - SWIPE NAVIGATION
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -17,8 +17,14 @@
 // ✅ Accessibility: prefers-reduced-motion support
 // ✅ Real CSV/PDF export per view
 // ✅ SWR caching: instant load from IndexedDB, silent cache refresh
+// ✅ Swipe navigation between main tabs on mobile
 //
 // CHANGELOG:
+// v8.8 (2025-12-22): Swipe navigation + UX improvements
+//   - Enabled swipe left/right between main tabs on mobile
+//   - Swipe works on Dashboard, Clientes, Diretório, Campanhas
+//   - Haptic feedback on successful swipe
+//   - Uses useSwipeNavigation hook with Framer Motion
 // v8.7 (2025-12-21): Fix browser crash on SWR background update
 //   - Removed background state update (was crashing during navigation)
 //   - Cache still updates silently in background
@@ -89,6 +95,7 @@ import { Upload, Clock, Code } from 'lucide-react';
 const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : null;
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { useReducedMotion } from './hooks/useReducedMotion';
+import { useSwipeNavigation } from './hooks/useSwipeNavigation';
 
 // Loading and Error screens
 import LoadingScreen from './components/ui/LoadingScreen';
@@ -202,6 +209,7 @@ function AppContent() {
   const { activeTab, navigateTo } = useNavigation();
   const { isPinned } = useSidebar();
   const prefersReducedMotion = useReducedMotion();
+  const { handlers: swipeHandlers, isSwipeable } = useSwipeNavigation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -454,6 +462,7 @@ function AppContent() {
 
           {/* Main Content - Full width with edge-to-edge support */}
           {/* pb-24 on mobile for bottom nav clearance (64px nav + 16px breathing room) */}
+          {/* Swipe navigation enabled on mobile for main tabs */}
           <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 pb-24 lg:pb-6">
             <AnimatePresence mode="wait">
               <motion.div
@@ -462,6 +471,8 @@ function AppContent() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
+                {...(isSwipeable ? swipeHandlers : {})}
+                style={isSwipeable ? { touchAction: 'pan-y' } : undefined}
               >
                 <Suspense fallback={getLoadingFallback(activeTab)}>
                   <ActiveComponent

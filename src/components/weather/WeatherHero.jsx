@@ -1,7 +1,8 @@
-// WeatherHero.jsx v1.4
+// WeatherHero.jsx v1.5 - HAPTIC FEEDBACK
 // Hero section displaying current weather conditions with animated elements
 // Dynamic gradient backgrounds based on weather condition and temperature
 //
+// v1.5 (2025-12-22): Added haptic feedback on refresh button
 // v1.4 (2025-12-21): Larger desktop content
 //   - Increased font sizes on lg breakpoint (temp 8xl, condition 4xl, high/low 2xl)
 //   - Larger icons (lg:scale-[2], lg:w-6 h-6)
@@ -24,7 +25,7 @@
 //   - Accessibility improvements (aria-labels, sr-only)
 // v1.0 (2025-12-20): Initial implementation
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { RefreshCw, Droplets, Sun, Clock, CloudRain, Moon, TrendingUp, TrendingDown } from 'lucide-react';
 import AnimatedWeatherIcon from './AnimatedWeatherIcon';
 import {
@@ -32,6 +33,7 @@ import {
   getWeatherGradient,
   formatTime
 } from '../../utils/weatherUtils';
+import { haptics } from '../../utils/haptics';
 
 /**
  * Get relative time string in Portuguese
@@ -105,6 +107,12 @@ const WeatherHero = ({
   isStale = false,
   onRefresh
 }) => {
+  // Refresh with haptic feedback
+  const handleRefresh = useCallback(() => {
+    haptics.light();
+    onRefresh?.();
+  }, [onRefresh]);
+
   // Show skeleton while loading
   if (!current) {
     return <WeatherHeroSkeleton />;
@@ -180,31 +188,38 @@ const WeatherHero = ({
           </div>
 
           {/* Refresh button - Touch friendly */}
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            aria-label={loading ? 'Atualizando dados do clima' : `Atualizar dados do clima. ${relativeTime}`}
-            className={`
-              flex items-center justify-center gap-1.5 sm:gap-2
-              min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0
-              px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full
-              bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-sm
-              text-white text-xs sm:text-sm font-medium
-              transition-all duration-200 ml-2 flex-shrink-0
-              disabled:opacity-50 disabled:cursor-not-allowed
-              focus:outline-none focus:ring-2 focus:ring-white/50
-              ${loading ? 'animate-pulse' : ''}
-            `}
-            title={lastUpdateText}
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
-              aria-hidden="true"
-            />
-            <span className="hidden sm:inline">
-              {loading ? 'Atualizando...' : 'Atualizar'}
-            </span>
-          </button>
+          <div className="flex flex-col items-end ml-2 flex-shrink-0">
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              aria-label={loading ? 'Atualizando dados do clima' : `Atualizar dados do clima. ${relativeTime}`}
+              className={`
+                flex items-center justify-center gap-1.5 sm:gap-2
+                min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0
+                px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full
+                bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-sm
+                text-white text-xs sm:text-sm font-medium
+                transition-all duration-200
+                disabled:opacity-50 disabled:cursor-not-allowed
+                focus:outline-none focus:ring-2 focus:ring-white/50
+                ${loading ? 'animate-pulse' : ''}
+              `}
+              title={lastUpdateText}
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
+                aria-hidden="true"
+              />
+              <span className="hidden sm:inline">
+                {loading ? 'Atualizando...' : 'Atualizar'}
+              </span>
+            </button>
+            {lastUpdated && (
+              <span className="text-white/50 text-[10px] sm:text-xs mt-1" title={lastUpdateText}>
+                {relativeTime}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Main content grid - 3 columns on desktop */}
@@ -300,13 +315,6 @@ const WeatherHero = ({
             )}
           </div>
         </div>
-
-        {/* Last updated footer with relative time */}
-        {lastUpdated && (
-          <div className="mt-4 sm:mt-6 text-white/50 text-[10px] sm:text-xs text-right">
-            <span title={lastUpdateText}>{relativeTime}</span>
-          </div>
-        )}
       </div>
     </div>
   );

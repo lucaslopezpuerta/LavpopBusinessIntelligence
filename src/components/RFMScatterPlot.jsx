@@ -1,7 +1,8 @@
-// RFMScatterPlot.jsx v3.0 - BLACKLIST VISUAL INDICATOR
+// RFMScatterPlot.jsx v3.1 - HAPTIC FEEDBACK
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v3.1 (2025-12-22): Added haptic feedback on insight button
 // v3.0 (2025-12-16): Blacklist visual indicator
 //   - NEW: Black dotted border for blacklisted customers
 //   - Blacklisted takes visual precedence over contacted
@@ -68,6 +69,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { useBlacklist } from '../hooks/useBlacklist';
+import { haptics } from '../utils/haptics';
 
 // Desktop breakpoint for responsive chart labels
 const DESKTOP_BREAKPOINT = 1024;
@@ -260,7 +262,7 @@ const RFMScatterPlot = ({
                         {/* At-Risk High-Value Pill */}
                         {notContactedHighValue > 0 ? (
                             <button
-                                onClick={handleHighValueAtRiskClick}
+                                onClick={() => { haptics.light(); handleHighValueAtRiskClick(); }}
                                 className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
                             >
                                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />

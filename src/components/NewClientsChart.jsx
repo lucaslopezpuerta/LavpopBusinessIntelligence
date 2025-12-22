@@ -1,7 +1,8 @@
-// NewClientsChart.jsx v3.8 - DESIGN SYSTEM COLORS
+// NewClientsChart.jsx v3.9 - HAPTIC FEEDBACK
 // New customer acquisition with campaign integration
 //
 // CHANGELOG:
+// v3.9 (2025-12-22): Added haptic feedback on insight button
 // v3.8 (2025-12-16): Theme-aware chart colors
 //   - ADDED: Uses getChartColors/getSeriesColors from chartColors.js
 //   - FIXED: Grid, axis, labels now respond to dark mode
@@ -57,6 +58,7 @@ import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { getChartColors, getSeriesColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
+import { haptics } from '../utils/haptics';
 
 const NewClientsChart = ({
   data,
@@ -259,7 +261,7 @@ const NewClientsChart = ({
             {/* Welcome status pill */}
             {stats.notWelcomed > 0 ? (
               <button
-                onClick={handleNewCustomersClick}
+                onClick={() => { haptics.light(); handleNewCustomersClick(); }}
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
               >
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />

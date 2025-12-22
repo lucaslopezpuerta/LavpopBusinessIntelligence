@@ -1,6 +1,7 @@
-// WeatherBusinessImpact.jsx v2.1
+// WeatherBusinessImpact.jsx v2.2 - HAPTIC FEEDBACK
 // Forward-looking weather business impact with OLS regression model
 //
+// v2.2 (2025-12-22): Added haptic feedback on diagnostics modal
 // v2.1 (2025-12-21): Enhanced UX with confidence badges and holiday display
 //   - Confidence quality badge (Excelente/Bom/Razoável/Baixa based on R²)
 //   - Holiday indicator on prediction cards
@@ -35,6 +36,7 @@ import AnimatedWeatherIcon from './AnimatedWeatherIcon';
 import ModelDiagnostics from './ModelDiagnostics';
 import useRevenuePrediction, { calculateWeeklySummary } from '../../hooks/useRevenuePrediction';
 import { formatDateShort, getDayNamePt } from '../../utils/weatherUtils';
+import { haptics } from '../../utils/haptics';
 
 // ============== SUB-COMPONENTS ==============
 
@@ -605,20 +607,25 @@ const WeatherBusinessImpact = ({
       {/* Header */}
       <div className="p-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-              Impacto no Negócio
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Previsão baseada em {modelInfo?.n_training_samples || 0} dias de histórico
-              {modelInfo?.tier_message && (
-                <span className="ml-2 text-amber-600 dark:text-amber-400">
-                  ({modelInfo.tier_message})
-                </span>
-              )}
-            </p>
+          <div className="flex items-start gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30 flex-shrink-0 mt-0.5">
+              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Impacto no Negócio
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Previsão baseada em {modelInfo?.n_training_samples || 0} dias de histórico
+                {modelInfo?.tier_message && (
+                  <span className="ml-2 text-amber-600 dark:text-amber-400">
+                    ({modelInfo.tier_message})
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
-          <ModelBadge modelInfo={modelInfo} onClick={() => setShowDiagnostics(true)} />
+          <ModelBadge modelInfo={modelInfo} onClick={() => { haptics.light(); setShowDiagnostics(true); }} />
         </div>
       </div>
 

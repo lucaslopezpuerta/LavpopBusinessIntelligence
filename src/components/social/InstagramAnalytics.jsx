@@ -1,7 +1,8 @@
-// InstagramAnalytics.jsx v3.3
+// InstagramAnalytics.jsx v3.4 - HAPTIC FEEDBACK
 // Instagram Business Analytics Dashboard
 // Design System v3.3 compliant - Instagram-coherent design
 //
+// v3.4 (2025-12-22): Added haptic feedback on interactive elements
 // v3.3 (2025-12-19): Date filter consistency
 //   - Changed options to 7/30/Tudo (matching WhatsApp)
 //   - "Tudo" fetches all available data (no 365-day limit)
@@ -23,6 +24,7 @@
 // v1.6 (2025-12-18): Design System compliance
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { haptics } from '../../utils/haptics';
 import {
   Instagram,
   Users,
@@ -131,12 +133,17 @@ const DateFilter = ({ value, onChange }) => {
     { id: 'all', label: 'Tudo' }
   ];
 
+  const handleChange = useCallback((id) => {
+    haptics.tick();
+    onChange(id);
+  }, [onChange]);
+
   return (
     <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5">
       {options.map((option) => (
         <button
           key={option.id}
-          onClick={() => onChange(option.id)}
+          onClick={() => handleChange(option.id)}
           className={`px-3 py-1 text-xs font-semibold rounded-full transition-all min-h-[28px] ${
             value === option.id
               ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm'
@@ -198,7 +205,7 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
             <span className="text-slate-600 dark:text-slate-400"><strong className="text-slate-900 dark:text-white">{formatNumber(profile?.followers || 0)}</strong> seg.</span>
           </div>
         </div>
-        <button onClick={onRefresh} disabled={isSyncing} className="w-9 h-9 flex items-center justify-center bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 disabled:opacity-50 text-white rounded-full shadow-md flex-shrink-0">
+        <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="w-9 h-9 flex items-center justify-center bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 disabled:opacity-50 text-white rounded-full shadow-md flex-shrink-0">
           <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
         </button>
       </div>
@@ -298,7 +305,7 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
           {lastSync && (
             <span className="text-slate-400 text-[10px]">Sync: {formatTimeAgo(lastSync)}</span>
           )}
-          <button onClick={onRefresh} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 hover:from-pink-600 hover:via-rose-600 hover:to-orange-500 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all">
+          <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 hover:from-pink-600 hover:via-rose-600 hover:to-orange-500 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all">
             <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Atualizando...' : 'Atualizar'}
           </button>
@@ -700,7 +707,7 @@ const CommentsSection = ({ comments, isLoading }) => {
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
+              onClick={() => { haptics.tick(); setPage(p => Math.max(0, p - 1)); }}
               disabled={page === 0}
               className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
@@ -710,7 +717,7 @@ const CommentsSection = ({ comments, isLoading }) => {
               {page + 1}/{totalPages}
             </span>
             <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              onClick={() => { haptics.tick(); setPage(p => Math.min(totalPages - 1, p + 1)); }}
               disabled={page === totalPages - 1}
               className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >

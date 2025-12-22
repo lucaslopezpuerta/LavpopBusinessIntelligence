@@ -1,4 +1,4 @@
-// DataUpload.jsx v1.2
+// DataUpload.jsx v1.3 - HAPTIC FEEDBACK
 // Upload component for manual CSV data imports
 //
 // Features:
@@ -9,8 +9,12 @@
 //   - Refresh computed metrics button (for both file types)
 //   - Auto-triggers app data refresh after successful upload
 //   - Upload order guidance
+//   - Haptic feedback on success/error (v1.3)
 //
 // CHANGELOG:
+// v1.3 (2025-12-22): Haptic feedback on upload results
+//   - haptics.success() on successful upload
+//   - haptics.error() on validation/upload errors
 // v1.2 (2025-12-13): Improved metric refresh flow
 //   - Show "Sync Metrics" button for BOTH sales and customer uploads
 //   - Added upload order guidance in help section
@@ -20,6 +24,7 @@
 //   - Triggers refresh after successful upload to sync dashboards
 
 import React, { useState, useRef, useCallback } from 'react';
+import { haptics } from '../utils/haptics';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
@@ -85,6 +90,7 @@ const DataUpload = ({ onDataChange }) => {
   const handleFile = async (selectedFile) => {
     // Validate file type
     if (!selectedFile.name.endsWith('.csv')) {
+      haptics.error();
       setResult({
         success: false,
         errors: ['Por favor, selecione um arquivo CSV']
@@ -126,6 +132,13 @@ const DataUpload = ({ onDataChange }) => {
 
       setResult(uploadResult);
 
+      // Haptic feedback based on result
+      if (uploadResult.success) {
+        haptics.success();
+      } else {
+        haptics.error();
+      }
+
       // Auto-trigger app-wide data refresh after successful upload
       if (uploadResult.success && uploadResult.inserted > 0 && onDataChange) {
         console.log('[DataUpload] Triggering app data refresh after successful upload');
@@ -135,6 +148,7 @@ const DataUpload = ({ onDataChange }) => {
         }, 500);
       }
     } catch (err) {
+      haptics.error();
       setResult({
         success: false,
         errors: [err.message]
@@ -152,8 +166,10 @@ const DataUpload = ({ onDataChange }) => {
 
     try {
       const result = await refreshCustomerMetrics();
+      haptics.success();
       setRefreshResult(result);
     } catch (err) {
+      haptics.error();
       setRefreshResult({
         success: false,
         error: err.message

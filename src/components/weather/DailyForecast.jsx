@@ -1,6 +1,7 @@
-// DailyForecast.jsx v1.1
+// DailyForecast.jsx v1.2 - HAPTIC FEEDBACK
 // 7-day forecast display with expandable day cards
 //
+// v1.2 (2025-12-22): Added haptic feedback on expand/collapse
 // v1.1 (2025-12-21): Mobile-first responsive improvements
 //   - Compact mobile layout with stacked day/date
 //   - Responsive padding, font sizes, and gaps
@@ -12,8 +13,8 @@
 //   - Precipitation indicators
 //   - Expandable details
 
-import React, { useState } from 'react';
-import { Droplets, Sunrise, Sunset, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Droplets, Sunrise, Sunset, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react';
 import AnimatedWeatherIcon from './AnimatedWeatherIcon';
 import {
   formatTemperature,
@@ -22,6 +23,7 @@ import {
   formatDateShort,
   getWeatherCardBg
 } from '../../utils/weatherUtils';
+import { haptics } from '../../utils/haptics';
 
 /**
  * Temperature range bar visualization
@@ -207,14 +209,18 @@ const DailyForecast = ({ daily = [], className = '' }) => {
   const weeklyMin = Math.min(...temps);
   const weeklyMax = Math.max(...temps);
 
-  const toggleDay = (date) => {
+  const toggleDay = useCallback((date) => {
+    haptics.tick();
     setExpandedDay(prev => prev === date ? null : date);
-  };
+  }, []);
 
   return (
     <div className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm ${className}`}>
       {/* Header */}
-      <div className="px-3 py-3 sm:p-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="px-3 py-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-sky-500/20 to-blue-500/20 dark:from-sky-500/30 dark:to-blue-500/30">
+          <CalendarDays className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+        </div>
         <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
           Previsão 7 dias
         </h3>

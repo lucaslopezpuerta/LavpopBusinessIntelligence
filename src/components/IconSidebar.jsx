@@ -1,7 +1,11 @@
-// IconSidebar.jsx v1.9 - ACCESSIBILITY IMPROVEMENTS
+// IconSidebar.jsx v2.0 - FOCUS TRAP & COLLAPSE DELAY
 // Minimalist icon-only sidebar with hover-to-expand functionality
 //
 // CHANGELOG:
+// v2.0 (2025-12-22): Focus trap & collapse delay
+//   - Added focus-trap-react to mobile drawer for accessibility (WCAG 2.4.3)
+//   - Added 300ms delay before collapsing sidebar after navigation
+//   - Smoother UX when navigating between tabs
 // v1.9 (2025-12-17): Accessibility improvements
 //   - Added aria-current="page" to active nav items
 //   - Improves screen reader navigation
@@ -47,14 +51,26 @@
 //   - Dark mode support
 //   - Tooltip fallback for collapsed state
 
+import { useRef, useEffect } from 'react';
 import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2, CloudSun } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import FocusTrap from 'focus-trap-react';
 import LogoNoBackground from '../assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
 
 const IconSidebar = ({ activeTab, onNavigate }) => {
   const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar, isPinned, togglePinned } = useSidebar();
+  const collapseTimeoutRef = useRef(null);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (collapseTimeoutRef.current) {
+        clearTimeout(collapseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Sidebar is expanded when pinned OR hovered
   const isExpanded = isPinned || isHovered;
@@ -78,9 +94,17 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
   };
 
   // Collapse sidebar after clicking a nav item (unless pinned)
+  // 300ms delay provides smoother UX when navigating between tabs
   const handleDesktopNavigate = () => {
     if (!isPinned) {
-      setIsHovered(false);
+      // Clear any existing timeout
+      if (collapseTimeoutRef.current) {
+        clearTimeout(collapseTimeoutRef.current);
+      }
+      // Delay collapse to allow user to hover back if needed
+      collapseTimeoutRef.current = setTimeout(() => {
+        setIsHovered(false);
+      }, 300);
     }
   };
 
@@ -191,71 +215,85 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
     </motion.aside>
   );
 
-  // Mobile Drawer
+  // Mobile Drawer with focus trap for accessibility (WCAG 2.4.3)
   const MobileDrawer = () => (
     <AnimatePresence>
       {isMobileOpen && (
-        <motion.aside
-          className="lg:hidden fixed left-0 top-0 h-screen w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex flex-col"
-          initial={{ x: -256 }}
-          animate={{ x: 0 }}
-          exit={{ x: -256 }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
+        <FocusTrap
+          active={isMobileOpen}
+          focusTrapOptions={{
+            allowOutsideClick: true,
+            escapeDeactivates: true,
+            onDeactivate: toggleMobileSidebar,
+            initialFocus: false,
+            returnFocusOnDeactivate: true,
+          }}
         >
-          {/* Logo - Height matches mobile top bar (56px = h-14) */}
-          <div className="h-14 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <img
-                src={LogoNoBackground}
-                alt="Lavpop"
-                className="w-10 h-10 object-contain"
-              />
-              <span className="text-lg font-bold text-slate-900 dark:text-white">
-                Lavpop<span className="text-lavpop-blue">BI</span>
-              </span>
+          <motion.aside
+            className="lg:hidden fixed left-0 top-0 h-screen w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex flex-col"
+            initial={{ x: -256 }}
+            animate={{ x: 0 }}
+            exit={{ x: -256 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu de navegação"
+          >
+            {/* Logo - Height matches mobile top bar (56px = h-14) */}
+            <div className="h-14 flex items-center px-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <img
+                  src={LogoNoBackground}
+                  alt="Lavpop"
+                  className="w-10 h-10 object-contain"
+                />
+                <span className="text-lg font-bold text-slate-900 dark:text-white">
+                  Lavpop<span className="text-lavpop-blue">BI</span>
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Navigation Items */}
-          <nav className="flex-1 py-6 px-3 overflow-y-auto">
-            <div className="flex flex-col gap-2">
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
+            {/* Navigation Items */}
+            <nav className="flex-1 py-6 px-3 overflow-y-auto">
+              <div className="flex flex-col gap-2">
+                {navigationItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
 
-                return (
-                  <Link
-                    key={item.id}
-                    to={item.path}
-                    onClick={handleMobileNavigate}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`
-                      relative flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all duration-200 text-sm font-semibold
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue
-                      ${isActive
-                        ? 'bg-gradient-to-r from-lavpop-blue to-blue-600 text-white shadow-lg shadow-lavpop-blue/25'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                      }
-                    `}
-                  >
-                    {/* Active indicator - left accent bar */}
-                    {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />
-                    )}
-                    <Icon className="w-5 h-5" />
-                    <span>{item.label}</span>
-                    {isActive && (
-                      <div className="ml-auto flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
-        </motion.aside>
+                  return (
+                    <Link
+                      key={item.id}
+                      to={item.path}
+                      onClick={handleMobileNavigate}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`
+                        relative flex items-center gap-3 px-4 py-3 rounded-xl
+                        transition-all duration-200 text-sm font-semibold
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue
+                        ${isActive
+                          ? 'bg-gradient-to-r from-lavpop-blue to-blue-600 text-white shadow-lg shadow-lavpop-blue/25'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }
+                      `}
+                    >
+                      {/* Active indicator - left accent bar */}
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />
+                      )}
+                      <Icon className="w-5 h-5" />
+                      <span>{item.label}</span>
+                      {isActive && (
+                        <div className="ml-auto flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </nav>
+          </motion.aside>
+        </FocusTrap>
       )}
     </AnimatePresence>
   );

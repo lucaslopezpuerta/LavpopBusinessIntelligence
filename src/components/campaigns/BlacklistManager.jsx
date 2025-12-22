@@ -1,8 +1,9 @@
-// BlacklistManager.jsx v3.7
+// BlacklistManager.jsx v3.8 - HAPTIC FEEDBACK
 // WhatsApp blacklist management UI component
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.8 (2025-12-22): Added haptic feedback on interactive elements
 // v3.7 (2025-12-19): Mobile layout reorganization
 //   - Filter: moved under search bar on mobile
 //   - Sync time: now next to sync button (was separate row)
@@ -64,6 +65,7 @@
 //   - CSV import/export
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { haptics } from '../../utils/haptics';
 import {
   ShieldOff,
   RefreshCw,
@@ -128,14 +130,20 @@ const REASON_FILTERS = [
 
 // ==================== REASON FILTER COMPONENT ====================
 
-const ReasonFilter = ({ value, onChange }) => (
+const ReasonFilter = ({ value, onChange }) => {
+  const handleChange = useCallback((id) => {
+    haptics.tick();
+    onChange(id);
+  }, [onChange]);
+
+  return (
   <>
     {/* Mobile: Grid layout */}
     <div className="sm:hidden grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
       {REASON_FILTERS.map((option) => (
         <button
           key={option.id}
-          onClick={() => onChange(option.id)}
+          onClick={() => handleChange(option.id)}
           className={`px-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all text-center ${
             value === option.id
               ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-sm'
@@ -151,7 +159,7 @@ const ReasonFilter = ({ value, onChange }) => (
       {REASON_FILTERS.map((option) => (
         <button
           key={option.id}
-          onClick={() => onChange(option.id)}
+          onClick={() => handleChange(option.id)}
           className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
             value === option.id
               ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-sm'
@@ -163,7 +171,8 @@ const ReasonFilter = ({ value, onChange }) => (
       ))}
     </div>
   </>
-);
+  );
+};
 
 // ==================== DISTRIBUTION BAR CHART ====================
 
@@ -634,7 +643,7 @@ const BlacklistManager = ({ customerData }) => {
             <div className="flex items-center gap-2">
               {lastSync && <span className="text-slate-400 text-xs">{formatTimeAgo(lastSync)}</span>}
               <button
-                onClick={handleSync}
+                onClick={() => { haptics.light(); handleSync(); }}
                 disabled={isSyncing}
                 className="w-9 h-9 flex items-center justify-center bg-gradient-to-r from-red-500 to-rose-500 disabled:opacity-50 text-white rounded-full shadow-sm"
               >
@@ -644,7 +653,7 @@ const BlacklistManager = ({ customerData }) => {
 
             {/* Add button */}
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => { haptics.light(); setShowAddModal(true); }}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white text-sm font-semibold rounded-full shadow-sm"
             >
               <Plus className="w-4 h-4" />
@@ -653,7 +662,7 @@ const BlacklistManager = ({ customerData }) => {
 
             {/* Export */}
             <button
-              onClick={handleExport}
+              onClick={() => { haptics.tick(); handleExport(); }}
               disabled={blacklist.length === 0}
               className="w-9 h-9 flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-full disabled:opacity-50"
             >
@@ -676,7 +685,7 @@ const BlacklistManager = ({ customerData }) => {
                 <span className="text-slate-400 text-[10px]">Sync: {formatTimeAgo(lastSync)}</span>
               )}
               <button
-                onClick={handleSync}
+                onClick={() => { haptics.light(); handleSync(); }}
                 disabled={isSyncing}
                 className="px-3 py-1.5 flex items-center gap-1.5 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 disabled:opacity-50 text-white text-xs font-semibold rounded-full shadow-sm transition-all"
               >
@@ -685,7 +694,7 @@ const BlacklistManager = ({ customerData }) => {
               </button>
 
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={() => { haptics.light(); setShowAddModal(true); }}
                 className="px-3 py-1.5 flex items-center gap-1.5 bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 dark:from-slate-600 dark:to-slate-700 dark:hover:from-slate-500 dark:hover:to-slate-600 text-white text-xs font-semibold rounded-full shadow-sm transition-all"
               >
                 <Plus className="w-3 h-3" />
@@ -693,7 +702,7 @@ const BlacklistManager = ({ customerData }) => {
               </button>
 
               <button
-                onClick={handleExport}
+                onClick={() => { haptics.tick(); handleExport(); }}
                 disabled={blacklist.length === 0}
                 className="px-3 py-1.5 flex items-center gap-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-full hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
               >
@@ -763,7 +772,7 @@ const BlacklistManager = ({ customerData }) => {
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <th
-                  onClick={() => handleSort('phone')}
+                  onClick={() => { haptics.tick(); handleSort('phone'); }}
                   className="text-center py-2.5 px-3 sm:px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[130px] sm:w-[180px]"
                 >
                   <div className="flex items-center justify-center gap-1.5">
@@ -774,7 +783,7 @@ const BlacklistManager = ({ customerData }) => {
                   </div>
                 </th>
                 <th
-                  onClick={() => handleSort('name')}
+                  onClick={() => { haptics.tick(); handleSort('name'); }}
                   className="hidden sm:table-cell text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 >
                   <div className="flex items-center justify-center gap-1.5">
@@ -783,7 +792,7 @@ const BlacklistManager = ({ customerData }) => {
                   </div>
                 </th>
                 <th
-                  onClick={() => handleSort('reason')}
+                  onClick={() => { haptics.tick(); handleSort('reason'); }}
                   className="text-center py-2.5 px-3 sm:px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[100px] sm:w-[140px]"
                 >
                   <div className="flex items-center justify-center gap-1.5">
@@ -792,7 +801,7 @@ const BlacklistManager = ({ customerData }) => {
                   </div>
                 </th>
                 <th
-                  onClick={() => handleSort('date')}
+                  onClick={() => { haptics.tick(); handleSort('date'); }}
                   className="hidden sm:table-cell text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[110px]"
                 >
                   <div className="flex items-center justify-center gap-1.5">
@@ -854,7 +863,7 @@ const BlacklistManager = ({ customerData }) => {
                       </td>
                       <td className="py-3 px-2 sm:px-4 text-center">
                         <button
-                          onClick={() => handleRemove(entry.phone)}
+                          onClick={() => { haptics.warning(); handleRemove(entry.phone); }}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors"
                           title="Remover da blacklist"
                         >
@@ -899,7 +908,7 @@ const BlacklistManager = ({ customerData }) => {
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => goToPage(1)}
+                  onClick={() => { haptics.tick(); goToPage(1); }}
                   disabled={currentPage === 1}
                   className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   title="Primeira página"
@@ -907,7 +916,7 @@ const BlacklistManager = ({ customerData }) => {
                   <ChevronsLeft className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => goToPage(currentPage - 1)}
+                  onClick={() => { haptics.tick(); goToPage(currentPage - 1); }}
                   disabled={currentPage === 1}
                   className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   title="Página anterior"
@@ -932,7 +941,7 @@ const BlacklistManager = ({ customerData }) => {
                     return (
                       <button
                         key={pageNum}
-                        onClick={() => goToPage(pageNum)}
+                        onClick={() => { haptics.tick(); goToPage(pageNum); }}
                         className={`
                           w-8 h-8 rounded-lg text-sm font-medium transition-colors
                           ${currentPage === pageNum
@@ -948,7 +957,7 @@ const BlacklistManager = ({ customerData }) => {
                 </div>
 
                 <button
-                  onClick={() => goToPage(currentPage + 1)}
+                  onClick={() => { haptics.tick(); goToPage(currentPage + 1); }}
                   disabled={currentPage === totalPages}
                   className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   title="Próxima página"
@@ -956,7 +965,7 @@ const BlacklistManager = ({ customerData }) => {
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => goToPage(totalPages)}
+                  onClick={() => { haptics.tick(); goToPage(totalPages); }}
                   disabled={currentPage === totalPages}
                   className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   title="Última página"

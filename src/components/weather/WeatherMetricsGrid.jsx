@@ -18,7 +18,8 @@ import {
   Gauge,
   Eye,
   Cloud,
-  Compass
+  Compass,
+  Activity
 } from 'lucide-react';
 import {
   getUVLevel,
@@ -234,7 +235,10 @@ const WeatherMetricsGrid = ({ current, className = '' }) => {
   return (
     <div className={`bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl shadow-sm ${className}`}>
       {/* Header */}
-      <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-violet-500/20 to-purple-500/20 dark:from-violet-500/30 dark:to-purple-500/30">
+          <Activity className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+        </div>
         <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
           Métricas detalhadas
         </h3>

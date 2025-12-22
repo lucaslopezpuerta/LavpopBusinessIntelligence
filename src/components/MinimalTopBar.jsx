@@ -1,7 +1,11 @@
-// MinimalTopBar.jsx v2.0 - MOBILE WIDGET BAR
+// MinimalTopBar.jsx v2.1 - KEYBOARD HINTS
 // Compact top bar with widgets on all screen sizes
 //
 // CHANGELOG:
+// v2.1 (2025-12-22): Keyboard shortcut hints
+//   - Added KeyboardHints component (desktop only)
+//   - Shows popover with all keyboard shortcuts (1-9, comma)
+//   - Helps users discover navigation shortcuts
 // v2.0 (2025-12-18): Mobile widget bar (UX audit)
 //   - Removed breadcrumb navigation (bottom nav handles this now)
 //   - Added horizontally scrollable widget row for mobile
@@ -26,6 +30,7 @@ import WeatherWidget from './WeatherWidget_API';
 import GoogleBusinessWidget from './GoogleBusinessWidget';
 import SocialMediaWidget from './SocialMediaWidget';
 import ThemeToggle from './ThemeToggle';
+import KeyboardHints from './KeyboardHints';
 
 const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard', onOpenSettings, onOpenExport }) => {
   return (
@@ -78,6 +83,9 @@ const MinimalTopBar = ({ refreshing, onRefresh, activeTab = 'dashboard', onOpenS
           >
             <FileDown className="w-5 h-5" />
           </button>
+
+          {/* Keyboard Hints (desktop only) */}
+          <KeyboardHints />
 
           {/* Settings Button */}
           <button

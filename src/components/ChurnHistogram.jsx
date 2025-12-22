@@ -1,7 +1,8 @@
-// ChurnHistogram.jsx v2.8 - BLACKLIST INTEGRATION
+// ChurnHistogram.jsx v2.9 - HAPTIC FEEDBACK
 // Time-to-churn distribution histogram with contact tracking integration
 //
 // CHANGELOG:
+// v2.9 (2025-12-22): Added haptic feedback on insight button
 // v2.8 (2025-12-16): Blacklist integration
 //   - Added blacklisted count to bar tooltips
 //   - Uses useBlacklist hook for phone-based blacklist check
@@ -53,6 +54,7 @@ import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { getChartColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBlacklist } from '../hooks/useBlacklist';
+import { haptics } from '../utils/haptics';
 
 const ChurnHistogram = ({
     data,
@@ -273,7 +275,7 @@ const ChurnHistogram = ({
                         {/* Danger zone status pill */}
                         {stats.notContactedInDanger > 0 ? (
                             <button
-                                onClick={handleDangerZoneClick}
+                                onClick={() => { haptics.light(); handleDangerZoneClick(); }}
                                 className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
                             >
                                 <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />

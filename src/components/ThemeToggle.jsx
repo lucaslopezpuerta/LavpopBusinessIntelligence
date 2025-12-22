@@ -1,4 +1,4 @@
-// ThemeToggle.jsx v1.0
+// ThemeToggle.jsx v1.1 - HAPTIC FEEDBACK
 // Beautiful theme toggle button with smooth animation
 //
 // FEATURES:
@@ -6,21 +6,29 @@
 // - Smooth color animation
 // - Hover effects
 // - Accessible
+// - Haptic feedback on toggle (v1.1)
 //
 // CHANGELOG:
+// v1.1 (2025-12-22): Added haptic feedback on toggle
 // v1.0 (2025-11-20): Initial theme toggle component
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { haptics } from '../utils/haptics';
 
 const ThemeToggle = ({ className = '' }) => {
   const { theme, toggleTheme } = useTheme();
+
+  const handleToggle = useCallback(() => {
+    haptics.medium();
+    toggleTheme();
+  }, [toggleTheme]);
   const isDark = theme === 'dark';
 
   return (
     <button
-      onClick={toggleTheme}
+      onClick={handleToggle}
       className={`
         relative inline-flex items-center justify-center
         w-11 h-11 rounded-lg

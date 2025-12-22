@@ -1,4 +1,4 @@
-// useSwipeNavigation.js v1.0
+// useSwipeNavigation.js v1.1 - CORRECT TAB ORDER
 // Hook for swipe gesture navigation between tabs
 //
 // FEATURES:
@@ -6,20 +6,25 @@
 // - Uses Framer Motion drag gesture detection
 // - Configurable swipe threshold and velocity
 // - Only active on mobile (< lg breakpoint)
+// - Haptic feedback on successful swipe
 //
 // USAGE:
 // const { handlers, isSwipeable } = useSwipeNavigation();
 // <motion.div {...handlers}>content</motion.div>
 //
 // CHANGELOG:
+// v1.1 (2025-12-22): Corrected tab order to match desktop sidebar
+//   - Order: dashboard → customers → diretorio → campaigns
+//   - Added haptic feedback on successful swipe
 // v1.0 (2025-12-18): Initial implementation
 
 import { useCallback } from 'react';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useMediaQuery } from './useMediaQuery';
+import { haptics } from '../utils/haptics';
 
-// Tab order for swipe navigation (matches bottom nav)
-const SWIPEABLE_TABS = ['dashboard', 'diretorio', 'customers', 'campaigns'];
+// Tab order for swipe navigation (matches desktop sidebar and bottom nav)
+const SWIPEABLE_TABS = ['dashboard', 'customers', 'diretorio', 'campaigns'];
 
 // Swipe configuration
 const SWIPE_THRESHOLD = 50;      // Minimum distance in pixels
@@ -39,12 +44,14 @@ export function useSwipeNavigation() {
 
   const navigateToNext = useCallback(() => {
     if (currentIndex < SWIPEABLE_TABS.length - 1) {
+      haptics.light();
       navigateTo(SWIPEABLE_TABS[currentIndex + 1]);
     }
   }, [currentIndex, navigateTo]);
 
   const navigateToPrev = useCallback(() => {
     if (currentIndex > 0) {
+      haptics.light();
       navigateTo(SWIPEABLE_TABS[currentIndex - 1]);
     }
   }, [currentIndex, navigateTo]);

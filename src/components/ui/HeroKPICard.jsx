@@ -1,8 +1,9 @@
-// HeroKPICard.jsx v2.2 - TREND BADGE RELOCATION
+// HeroKPICard.jsx v2.4 - HAPTIC FEEDBACK
 // Primary KPI card for hero metrics (Revenue, Cycles, etc.)
 // Design System v3.2 compliant - Clean design with sparkline trends
 //
 // CHANGELOG:
+// v2.4 (2025-12-22): Added haptic feedback on card click
 // v2.3 (2025-12-16): Responsive trend badge position
 //   - FIXED: Desktop (sm+): Badge in header row (avoids sparkline overlap)
 //   - FIXED: Mobile: Badge in footer row (sparklines hidden, more title space)
@@ -28,9 +29,10 @@
 // v1.1 (2025-11-30): Accessibility improvements
 // v1.0 (2025-11-30): Initial implementation
 
-import React, { useMemo, useId } from 'react';
+import React, { useMemo, useId, useCallback } from 'react';
 import { MousePointerClick } from 'lucide-react';
 import TrendBadge from './TrendBadge';
+import { haptics } from '../../utils/haptics';
 
 // Mini sparkline component for hero cards
 const HeroSparkline = ({ data, color = '#3b82f6', width = 100, height = 36, id }) => {
@@ -157,16 +159,25 @@ const HeroKPICard = ({
   const colors = colorMap[color] || colorMap.blue;
   const isClickable = !!onClick;
 
-  const handleKeyDown = (e) => {
-    if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault();
+  // Handle click with haptic feedback
+  const handleClick = useCallback(() => {
+    if (isClickable) {
+      haptics.light();
       onClick();
     }
-  };
+  }, [isClickable, onClick]);
+
+  const handleKeyDown = useCallback((e) => {
+    if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      haptics.light();
+      onClick();
+    }
+  }, [isClickable, onClick]);
 
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={isClickable ? 0 : undefined}
       role={isClickable ? 'button' : undefined}

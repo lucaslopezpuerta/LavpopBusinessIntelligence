@@ -1,9 +1,10 @@
-// CampaignDetailsModal.jsx v1.8
+// CampaignDetailsModal.jsx v1.9 - HAPTIC FEEDBACK
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.9 (2025-12-22): Added haptic feedback on filters, sort, pagination
 // v1.8 (2025-12-15): UX enhancements from audit
 //   - Added contact search field (filter by name or phone)
 //   - Reduced metrics grid density (8→6 cols on desktop)
@@ -47,6 +48,7 @@ import {
   Search
 } from 'lucide-react';
 import { getCampaignContacts, getCampaignPerformance } from '../../utils/campaignService';
+import { haptics } from '../../utils/haptics';
 
 // Pagination config
 const CONTACTS_PER_PAGE = 20;
@@ -278,7 +280,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
   // Filter pill component
   const FilterPill = ({ active, onClick, children, activeColor = 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' }) => (
     <button
-      onClick={onClick}
+      onClick={() => { haptics.tick(); onClick(); }}
       className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
         active ? activeColor : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
       }`}
@@ -290,7 +292,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
   // Sort pill component
   const SortPill = ({ field, label }) => (
     <button
-      onClick={() => handleSort(field)}
+      onClick={() => { haptics.tick(); handleSort(field); }}
       className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
         sortBy === field
           ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-800'
@@ -340,7 +342,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button
-              onClick={handleRefresh}
+              onClick={() => { haptics.light(); handleRefresh(); }}
               disabled={isLoading}
               className="p-2 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
               title="Atualizar"
@@ -348,7 +350,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
             <button
-              onClick={onClose}
+              onClick={() => { haptics.light(); onClose(); }}
               className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
@@ -414,7 +416,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
           {/* Collapsed Header */}
           <div className="flex items-center justify-between p-2 sm:p-3">
             <button
-              onClick={() => setFiltersExpanded(!filtersExpanded)}
+              onClick={() => { haptics.tick(); setFiltersExpanded(!filtersExpanded); }}
               className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               <SlidersHorizontal className="w-4 h-4" />
@@ -624,7 +626,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
             </span>
             <div className="flex items-center gap-0.5">
               <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => { haptics.tick(); setCurrentPage(p => Math.max(1, p - 1)); }}
                 disabled={currentPage === 1}
                 className="p-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
@@ -646,7 +648,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                 return (
                   <button
                     key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
+                    onClick={() => { haptics.tick(); setCurrentPage(pageNum); }}
                     className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
                       currentPage === pageNum
                         ? 'bg-purple-600 text-white'
@@ -659,7 +661,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
               })}
 
               <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => { haptics.tick(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
                 disabled={currentPage === totalPages}
                 className="p-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >

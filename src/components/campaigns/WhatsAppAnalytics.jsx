@@ -1,8 +1,9 @@
-// WhatsAppAnalytics.jsx v3.2
+// WhatsAppAnalytics.jsx v3.3 - HAPTIC FEEDBACK
 // WhatsApp Business API Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.3 (2025-12-22): Added haptic feedback on interactive elements
 // v3.2 (2025-12-19): Mobile sort asc/desc support
 //   - Mobile sort: Split into field selector + direction toggle button
 //   - Direction button: Green gradient with up/down chevron
@@ -107,6 +108,7 @@
 // v1.0 (2025-12-17): Initial implementation
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { haptics } from '../../utils/haptics';
 import {
   MessageCircle,
   Send,
@@ -218,12 +220,17 @@ const DateFilter = ({ value, onChange }) => {
     { id: 'all', label: 'Tudo' }
   ];
 
+  const handleChange = useCallback((id) => {
+    haptics.tick();
+    onChange(id);
+  }, [onChange]);
+
   return (
     <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5">
       {options.map((option) => (
         <button
           key={option.id}
-          onClick={() => onChange(option.id)}
+          onClick={() => handleChange(option.id)}
           className={`px-3 py-1 text-xs font-semibold rounded-full transition-all min-h-[28px] ${
             value === option.id
               ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
@@ -315,7 +322,7 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
               <span>{profile?.displayPhoneNumber || 'N/A'}</span>
             </div>
           </div>
-          <button onClick={onRefresh} disabled={isSyncing} className="w-9 h-9 flex items-center justify-center bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 disabled:opacity-50 text-white rounded-full shadow-md flex-shrink-0">
+          <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="w-9 h-9 flex items-center justify-center bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 disabled:opacity-50 text-white rounded-full shadow-md flex-shrink-0">
             <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -405,7 +412,7 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
             {lastSync && (
               <span className="text-slate-400 text-[10px]">Sync: {formatTimeAgo(lastSync)}</span>
             )}
-            <button onClick={onRefresh} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all">
+            <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all">
               <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Atualizando...' : 'Atualizar'}
             </button>
@@ -1153,7 +1160,7 @@ const WhatsAppAnalytics = () => {
                     ].map(({ value, short }) => (
                       <button
                         key={value}
-                        onClick={() => setInboundFilter(value)}
+                        onClick={() => { haptics.tick(); setInboundFilter(value); }}
                         className={`flex-1 px-2 py-1.5 text-xs font-semibold rounded-full transition-all text-center ${
                           inboundFilter === value
                             ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
@@ -1167,19 +1174,19 @@ const WhatsAppAnalytics = () => {
                   {/* Mobile sort: field selector + direction toggle */}
                   <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-full p-0.5">
                     <button
-                      onClick={() => setInboundSort(prev => ({
+                      onClick={() => { haptics.tick(); setInboundSort(prev => ({
                         field: prev.field === 'dateSent' ? 'type' : 'dateSent',
                         direction: 'desc'
-                      }))}
+                      })); }}
                       className="px-2.5 py-1 text-xs font-semibold rounded-full text-slate-600 dark:text-slate-300"
                     >
                       {inboundSort.field === 'dateSent' ? 'Data' : 'Tipo'}
                     </button>
                     <button
-                      onClick={() => setInboundSort(prev => ({
+                      onClick={() => { haptics.tick(); setInboundSort(prev => ({
                         ...prev,
                         direction: prev.direction === 'desc' ? 'asc' : 'desc'
-                      }))}
+                      })); }}
                       className="p-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white"
                     >
                       {inboundSort.direction === 'desc' ? (
@@ -1203,7 +1210,7 @@ const WhatsAppAnalytics = () => {
                     ].map(({ value, label }) => (
                       <button
                         key={value}
-                        onClick={() => setInboundFilter(value)}
+                        onClick={() => { haptics.tick(); setInboundFilter(value); }}
                         className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
                           inboundFilter === value
                             ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
@@ -1225,10 +1232,10 @@ const WhatsAppAnalytics = () => {
                       ].map(({ field, label }) => (
                         <button
                           key={field}
-                          onClick={() => setInboundSort(prev => ({
+                          onClick={() => { haptics.tick(); setInboundSort(prev => ({
                             field,
                             direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
-                          }))}
+                          })); }}
                           className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full transition-all ${
                             inboundSort.field === field
                               ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'

@@ -1,8 +1,12 @@
-// NewCampaignModal.jsx v4.8
+// NewCampaignModal.jsx v4.9 - HAPTIC FEEDBACK
 // Campaign creation wizard modal
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v4.9 (2025-12-22): Haptic feedback for campaign actions
+//   - haptics.heavy() when send button is pressed
+//   - haptics.success() on successful send/schedule
+//   - haptics.error() on send failure
 // v4.8 (2025-12-15): Custom audience support from chart insights
 //   - Added 'custom' audience for pre-selected customers from charts
 //   - Custom audience only shows when audienceSegments.custom has customers
@@ -115,6 +119,7 @@ import {
   getTemplatesByAudience
 } from '../../config/messageTemplates';
 import { TEMPLATE_CAMPAIGN_TYPE_MAP } from '../../config/couponConfig';
+import { haptics } from '../../utils/haptics';
 
 // Icon mapping for templates and audiences
 const ICON_MAP = {
@@ -436,6 +441,9 @@ const NewCampaignModal = ({
   const handleSend = async () => {
     if (!selectedTemplate || !validationStats?.ready?.length) return;
 
+    // Heavy haptic to signal important action start
+    haptics.heavy();
+
     // Handle scheduled campaigns
     if (sendMode === 'scheduled') {
       if (!scheduledDate || !scheduledTime) {
@@ -494,6 +502,7 @@ const NewCampaignModal = ({
           }))
         });
 
+        haptics.success();
         setSendResult({
           success: true,
           scheduled: true,
@@ -501,6 +510,7 @@ const NewCampaignModal = ({
         });
       } catch (error) {
         console.error('Error scheduling campaign:', error);
+        haptics.error();
         setSendResult({
           success: false,
           error: 'Erro ao agendar campanha'
@@ -593,6 +603,13 @@ const NewCampaignModal = ({
       const hasFailed = result.failedCount > 0;
       const hasIneligible = (result.ineligibleCount || 0) > 0;
 
+      // Haptic feedback based on result
+      if (hasSuccess) {
+        haptics.success();
+      } else {
+        haptics.error();
+      }
+
       setSendResult({
         success: hasSuccess,
         partial: hasSuccess && (hasFailed || hasIneligible),
@@ -610,6 +627,7 @@ const NewCampaignModal = ({
 
     } catch (error) {
       console.error('Campaign send error:', error);
+      haptics.error();
       setSendResult({
         success: false,
         error: error.userMessage || error.message || 'Erro ao enviar campanha',

@@ -1,8 +1,9 @@
-// CustomerProfileModal.jsx v2.5 - STANDARDIZED Z-INDEX
+// CustomerProfileModal.jsx v2.6 - HAPTIC FEEDBACK
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v2.6 (2025-12-22): Added haptic feedback on tabs, actions, and close
 // v2.5 (2025-12-16): Standardized z-index system
 //   - Uses Z_INDEX.MODAL_CHILD from shared constants
 //   - Consistent layering: primary modals (50) < child modals (60)
@@ -148,6 +149,7 @@ import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, g
 import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
 import { parseBrDate } from '../utils/dateUtils';
 import { useBlacklist } from '../hooks/useBlacklist';
+import { haptics } from '../utils/haptics';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
@@ -499,7 +501,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </div>
 
                         <button
-                            onClick={onClose}
+                            onClick={() => { haptics.light(); onClose(); }}
                             className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors ml-2 sm:ml-3"
                         >
                             <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
@@ -511,7 +513,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                 <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                     <div className="flex gap-1 px-3 sm:px-4 overflow-x-auto">
                         <button
-                            onClick={() => setActiveTab('profile')}
+                            onClick={() => { haptics.tick(); setActiveTab('profile'); }}
                             className={`px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'profile'
                                 ? 'border-lavpop-blue text-lavpop-blue'
                                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
@@ -521,7 +523,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             <span className="sm:hidden">Perfil</span>
                         </button>
                         <button
-                            onClick={() => setActiveTab('financial')}
+                            onClick={() => { haptics.tick(); setActiveTab('financial'); }}
                             className={`px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'financial'
                                 ? 'border-lavpop-blue text-lavpop-blue'
                                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
@@ -530,7 +532,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             Financeiro
                         </button>
                         <button
-                            onClick={() => setActiveTab('behavior')}
+                            onClick={() => { haptics.tick(); setActiveTab('behavior'); }}
                             className={`px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'behavior'
                                 ? 'border-lavpop-blue text-lavpop-blue'
                                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
@@ -540,7 +542,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             <span className="sm:hidden">Comporta</span>
                         </button>
                         <button
-                            onClick={() => setActiveTab('history')}
+                            onClick={() => { haptics.tick(); setActiveTab('history'); }}
                             className={`px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'history'
                                 ? 'border-lavpop-blue text-lavpop-blue'
                                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
