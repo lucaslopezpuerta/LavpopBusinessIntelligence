@@ -1,17 +1,22 @@
 /**
  * AppSettingsModal - App-wide settings modal
  *
- * VERSION: 1.3
+ * VERSION: 1.4
  *
  * Replaces BusinessSettingsModal with improved UX:
  * - Dark mode support
  * - Tabbed navigation (Negócio, Aparência)
+ * - Dashboard layout toggle (Compact/Expanded)
  * - Escape key to close
  * - Input validation (min/max)
  * - Live total calculation
  * - Styled confirmation dialogs
  *
  * CHANGELOG:
+ * v1.4 (2025-12-23): Added Dashboard Layout toggle
+ *   - New "Layout do Dashboard" section in Appearance tab
+ *   - Compact (single-glance) and Expanded (vertical) options
+ *   - Persisted via ThemeContext (localStorage)
  * v1.3 (2025-12-16): Mobile layout refinements
  *   - Responsive grids: 2-col on mobile, 3-col on sm+
  *   - Shortened labels for mobile (e.g., "Início Cashback", "Custo/Sessão")
@@ -38,9 +43,10 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Save, DollarSign, Wrench, Settings, Palette, Sun, Moon, Monitor, AlertCircle } from 'lucide-react';
+import { X, Save, DollarSign, Wrench, Settings, Palette, Sun, Moon, Monitor, AlertCircle, LayoutGrid, Rows3 } from 'lucide-react';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 // Tab configuration
 const TABS = [
@@ -373,52 +379,101 @@ const BusinessTab = ({ settings, onChange, onNumberChange, totalFixedCosts }) =>
 };
 
 const AppearanceTab = ({ theme, setTheme }) => {
+  const { dashboardLayout, setDashboardLayout } = useTheme();
+  const isMobile = useIsMobile();
+
   const themeOptions = [
     { value: 'light', label: 'Claro', icon: Sun },
     { value: 'dark', label: 'Escuro', icon: Moon },
     { value: 'system', label: 'Sistema', icon: Monitor },
   ];
 
-  // Note: Theme is stored in localStorage via ThemeContext (not Supabase)
-  // This is intentional - theme needs instant toggling without network latency
+  const layoutOptions = [
+    { value: 'compact', label: 'Compacto', icon: LayoutGrid, desc: 'Visão única, sem rolagem' },
+    { value: 'expanded', label: 'Expandido', icon: Rows3, desc: 'Layout vertical completo' },
+  ];
+
+  // Note: Theme and layout are stored in localStorage via ThemeContext (not Supabase)
+  // This is intentional - UI preferences need instant toggling without network latency
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-2 text-lavpop-blue">
-        <Palette className="w-4 h-4" />
-        <h3 className="text-sm font-semibold">Tema</h3>
-      </div>
+    <div className="space-y-6">
+      {/* Theme Section */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-lavpop-blue">
+          <Palette className="w-4 h-4" />
+          <h3 className="text-sm font-semibold">Tema</h3>
+        </div>
 
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-        {themeOptions.map((option) => {
-          const Icon = option.icon;
-          const isActive = theme === option.value ||
-            (option.value === 'system' && !['light', 'dark'].includes(theme));
-          return (
-            <button
-              key={option.value}
-              onClick={() => setTheme(option.value)}
-              className={`
-                flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl border-2 transition-all
-                ${isActive
-                  ? 'border-lavpop-blue bg-lavpop-blue/5 dark:bg-lavpop-blue/10'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                }
-              `}
-            >
-              <Icon className={`w-5 h-5 sm:w-4 sm:h-4 ${isActive ? 'text-lavpop-blue' : 'text-slate-500 dark:text-slate-400'}`} />
-              <span className={`text-xs sm:text-sm font-medium ${isActive ? 'text-lavpop-blue' : 'text-slate-700 dark:text-slate-300'}`}>
-                {option.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+          {themeOptions.map((option) => {
+            const Icon = option.icon;
+            const isActive = theme === option.value ||
+              (option.value === 'system' && !['light', 'dark'].includes(theme));
+            return (
+              <button
+                key={option.value}
+                onClick={() => setTheme(option.value)}
+                className={`
+                  flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl border-2 transition-all
+                  ${isActive
+                    ? 'border-lavpop-blue bg-lavpop-blue/5 dark:bg-lavpop-blue/10'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                  }
+                `}
+              >
+                <Icon className={`w-5 h-5 sm:w-4 sm:h-4 ${isActive ? 'text-lavpop-blue' : 'text-slate-500 dark:text-slate-400'}`} />
+                <span className={`text-xs sm:text-sm font-medium ${isActive ? 'text-lavpop-blue' : 'text-slate-700 dark:text-slate-300'}`}>
+                  {option.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-      <p className="text-xs text-slate-400 dark:text-slate-500">
-        O tema também pode ser alterado pelo botão na barra superior.
-      </p>
-    </section>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          O tema também pode ser alterado pelo botão na barra superior.
+        </p>
+      </section>
+
+      {/* Dashboard Layout Section - Hidden on mobile (compact mode is desktop-only) */}
+      {!isMobile && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 text-lavpop-blue">
+            <LayoutGrid className="w-4 h-4" />
+            <h3 className="text-sm font-semibold">Layout do Dashboard</h3>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {layoutOptions.map((option) => {
+              const Icon = option.icon;
+              const isActive = dashboardLayout === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setDashboardLayout(option.value)}
+                  className={`
+                    flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all
+                    ${isActive
+                      ? 'border-lavpop-blue bg-lavpop-blue/5 dark:bg-lavpop-blue/10'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }
+                  `}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-lavpop-blue' : 'text-slate-500 dark:text-slate-400'}`} />
+                  <span className={`text-sm font-medium ${isActive ? 'text-lavpop-blue' : 'text-slate-700 dark:text-slate-300'}`}>
+                    {option.label}
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    {option.desc}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
   );
 };
 

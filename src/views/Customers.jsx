@@ -1,8 +1,11 @@
-// Customers View v5.0 - SIMPLIFIED LAYOUT
+// Customers View v5.1 - PROPER LOADING SKELETON
 // Customer analytics and insights dashboard
 // Clean, focused design with RFM hero and integrated table
 //
 // CHANGELOG:
+// v5.1 (2025-12-23): Fixed empty tab rendering
+//   - Replaced tiny spinner with CustomersLoadingSkeleton
+//   - Prevents "empty tab" appearance during data loading
 // v5.0 (2025-12-16): Simplified layout redesign
 //   - REMOVED: Sticky navigation bar
 //   - REMOVED: Section titles (visual hierarchy via layout)
@@ -33,6 +36,7 @@ const KPIDetailModal = lazy(() => import('../components/modals/KPIDetailModal'))
 const CustomerTrendDrilldown = lazy(() => import('../components/drilldowns/CustomerTrendDrilldown'));
 import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, ChartLoadingFallback } from '../utils/lazyCharts';
 import { useContactTracking } from '../hooks/useContactTracking';
+import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
 
 const Customers = ({ data }) => {
   // State
@@ -262,11 +266,7 @@ const Customers = ({ data }) => {
   }), []);
 
   if (!metrics) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lavpop-blue"></div>
-      </div>
-    );
+    return <CustomersLoadingSkeleton />;
   }
 
   return (

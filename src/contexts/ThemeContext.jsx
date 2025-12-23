@@ -1,13 +1,15 @@
-// ThemeContext.jsx v1.0
-// Manages dark/light theme state and persistence
+// ThemeContext.jsx v1.1
+// Manages dark/light theme and UI preferences with persistence
 //
 // FEATURES:
 // - Light/Dark mode toggle
+// - Dashboard layout preference (compact/expanded)
 // - LocalStorage persistence
 // - System preference detection
-// - Context provider for global theme access
+// - Context provider for global access
 //
 // CHANGELOG:
+// v1.1 (2025-12-23): Added dashboardLayout preference for compact/expanded views
 // v1.0 (2025-11-20): Initial theme context implementation
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -30,14 +32,24 @@ export const ThemeProvider = ({ children }) => {
     if (savedTheme) {
       return savedTheme;
     }
-    
+
     // Fall back to system preference
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       return 'dark';
     }
-    
+
     return 'light';
   });
+
+  // Dashboard layout preference: 'compact' or 'expanded'
+  const [dashboardLayout, setDashboardLayout] = useState(() => {
+    return localStorage.getItem('lavpop-dashboard-layout') || 'compact';
+  });
+
+  // Persist dashboard layout to localStorage
+  useEffect(() => {
+    localStorage.setItem('lavpop-dashboard-layout', dashboardLayout);
+  }, [dashboardLayout]);
 
   // Apply theme to document root
   useEffect(() => {
@@ -81,6 +93,8 @@ export const ThemeProvider = ({ children }) => {
     toggleTheme,
     isDark: theme === 'dark',
     isLight: theme === 'light',
+    dashboardLayout,
+    setDashboardLayout,
   };
 
   return (

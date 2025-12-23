@@ -1,8 +1,11 @@
-// Directory.jsx v1.1 - FULL-WIDTH LAYOUT
+// Directory.jsx v1.2 - PROPER LOADING SKELETON
 // Dedicated view for browsing and searching customers
 // Extracted from Customers.jsx for better separation of concerns
 //
 // CHANGELOG:
+// v1.2 (2025-12-23): Fixed empty tab rendering
+//   - Replaced tiny spinner with DirectoryLoadingSkeleton
+//   - Prevents "empty tab" appearance during data loading
 // v1.1 (2025-12-16): Full-width layout
 //   - REMOVED: Redundant padding (now uses App.jsx padding)
 //   - REMOVED: max-w-[1600px] constraint for full-width
@@ -20,6 +23,7 @@ import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import CustomerCard from '../components/CustomerCard';
 import FilterBar from '../components/FilterBar';
 import { useContactTracking } from '../hooks/useContactTracking';
+import { DirectoryLoadingSkeleton } from '../components/ui/Skeleton';
 
 // Lazy-load heavy modals
 const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
@@ -142,11 +146,7 @@ const Directory = ({ data }) => {
   };
 
   if (!metrics) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lavpop-blue"></div>
-      </div>
-    );
+    return <DirectoryLoadingSkeleton />;
   }
 
   return (

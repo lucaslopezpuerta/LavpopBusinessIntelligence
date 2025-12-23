@@ -1,8 +1,15 @@
-// HeroKPICard.jsx v2.4 - HAPTIC FEEDBACK
+// HeroKPICard.jsx v2.6 - COMPACT MODE
 // Primary KPI card for hero metrics (Revenue, Cycles, etc.)
-// Design System v3.2 compliant - Clean design with sparkline trends
+// Design System v3.3 compliant - Unified gradient style with secondary cards
 //
 // CHANGELOG:
+// v2.6 (2025-12-23): Compact mode for single-glance dashboard
+//   - Added compact prop for tighter layout
+//   - Compact: smaller padding, smaller text, no sparklines
+// v2.5 (2025-12-22): Gradient backgrounds to match secondary cards
+//   - Changed from light bg with border-l accent to gradient backgrounds
+//   - Unified visual style with SecondaryKPICard
+//   - Text changed to white for gradient readability
 // v2.4 (2025-12-22): Added haptic feedback on card click
 // v2.3 (2025-12-16): Responsive trend badge position
 //   - FIXED: Desktop (sm+): Badge in header row (avoids sparkline overlap)
@@ -107,52 +114,67 @@ const HeroKPICard = ({
   className = '',
   sparklineData, // Array of numbers for trend visualization
   isSelected = false, // Active card highlight
+  compact = false, // Compact mode for single-glance dashboard
 }) => {
   // Generate unique ID for SVG gradient to avoid collisions
   const uniqueId = useId();
 
+  // Modernized 3-stop gradient backgrounds (v2.5)
+  // Uses via- for richer, more premium gradients matching SecondaryKPICard
   const colorMap = {
     blue: {
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      text: 'text-blue-600 dark:text-blue-400',
-      border: 'border-l-blue-500 dark:border-l-blue-400',
-      sparkline: '#3b82f6',
-      ring: 'ring-blue-500',
+      gradient: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 dark:from-blue-600 dark:via-indigo-600 dark:to-violet-700',
+      icon: 'text-white/90',
+      title: 'text-white/80',
+      value: 'text-white',
+      subtitle: 'text-white/70',
+      sparkline: '#ffffff',
+      ring: 'ring-blue-400',
     },
     green: {
-      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-      text: 'text-emerald-600 dark:text-emerald-400',
-      border: 'border-l-emerald-500 dark:border-l-emerald-400',
-      sparkline: '#10b981',
-      ring: 'ring-emerald-500',
+      gradient: 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 dark:from-emerald-600 dark:via-teal-600 dark:to-cyan-700',
+      icon: 'text-white/90',
+      title: 'text-white/80',
+      value: 'text-white',
+      subtitle: 'text-white/70',
+      sparkline: '#ffffff',
+      ring: 'ring-emerald-400',
     },
     purple: {
-      bg: 'bg-purple-100 dark:bg-purple-900/30',
-      text: 'text-purple-600 dark:text-purple-400',
-      border: 'border-l-purple-500 dark:border-l-purple-400',
-      sparkline: '#8b5cf6',
-      ring: 'ring-purple-500',
+      gradient: 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 dark:from-violet-600 dark:via-purple-600 dark:to-fuchsia-700',
+      icon: 'text-white/90',
+      title: 'text-white/80',
+      value: 'text-white',
+      subtitle: 'text-white/70',
+      sparkline: '#ffffff',
+      ring: 'ring-purple-400',
     },
     amber: {
-      bg: 'bg-amber-100 dark:bg-amber-900/30',
-      text: 'text-amber-600 dark:text-amber-400',
-      border: 'border-l-amber-500 dark:border-l-amber-400',
-      sparkline: '#f59e0b',
-      ring: 'ring-amber-500',
+      gradient: 'bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 dark:from-amber-600 dark:via-orange-600 dark:to-rose-600',
+      icon: 'text-white/90',
+      title: 'text-white/80',
+      value: 'text-white',
+      subtitle: 'text-white/70',
+      sparkline: '#ffffff',
+      ring: 'ring-amber-400',
     },
     red: {
-      bg: 'bg-red-100 dark:bg-red-900/30',
-      text: 'text-red-600 dark:text-red-400',
-      border: 'border-l-red-500 dark:border-l-red-400',
-      sparkline: '#ef4444',
-      ring: 'ring-red-500',
+      gradient: 'bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 dark:from-rose-600 dark:via-red-600 dark:to-pink-700',
+      icon: 'text-white/90',
+      title: 'text-white/80',
+      value: 'text-white',
+      subtitle: 'text-white/70',
+      sparkline: '#ffffff',
+      ring: 'ring-red-400',
     },
     slate: {
-      bg: 'bg-slate-100 dark:bg-slate-700',
-      text: 'text-slate-600 dark:text-slate-400',
-      border: 'border-l-slate-500 dark:border-l-slate-400',
-      sparkline: '#64748b',
-      ring: 'ring-slate-500',
+      gradient: 'bg-gradient-to-br from-slate-500 via-gray-500 to-zinc-600 dark:from-slate-600 dark:via-gray-600 dark:to-zinc-700',
+      icon: 'text-white/90',
+      title: 'text-white/80',
+      value: 'text-white',
+      subtitle: 'text-white/70',
+      sparkline: '#ffffff',
+      ring: 'ring-slate-400',
     },
   };
 
@@ -183,16 +205,14 @@ const HeroKPICard = ({
       role={isClickable ? 'button' : undefined}
       className={`
         relative
-        bg-white dark:bg-slate-800
+        ${colors.gradient}
         rounded-xl
-        border border-slate-200 dark:border-slate-700
-        border-l-4 ${colors.border}
-        p-3 sm:p-5
+        ${compact ? 'px-6 pt-4 pb-6' : 'p-3 sm:p-5'}
         shadow-sm
         transition-all duration-200
         overflow-hidden
         ${isSelected ? `ring-2 ${colors.ring} ring-offset-2 shadow-lg` : ''}
-        ${isClickable ? 'cursor-pointer hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 hover:scale-[1.01] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2' : ''}
+        ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-600' : ''}
         ${className}
       `}
       title={tooltip}
@@ -207,44 +227,50 @@ const HeroKPICard = ({
       )}
 
       {/* Header: Icon + Title + Trend Badge */}
-      <div className="flex items-center gap-1.5 sm:gap-3 mb-1 sm:mb-3 relative z-10">
+      <div className={`flex items-center ${compact ? 'gap-1.5 mb-1' : 'gap-1.5 sm:gap-3 mb-1 sm:mb-3'} relative z-10`}>
         {Icon && (
-          <div className={`p-1 sm:p-2.5 rounded-lg flex-shrink-0 ${colors.bg} ${colors.text}`}>
-            <Icon className="w-3 h-3 sm:w-5 sm:h-5" />
+          <div className={`${compact ? 'p-2' : 'p-2 sm:p-2.5'} rounded-lg flex-shrink-0 bg-white/20 ${colors.icon}`}>
+            <Icon className={compact ? 'w-4 h-4' : 'w-4 h-4 sm:w-5 sm:h-5'} />
           </div>
         )}
-        <h3 className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 leading-tight">
-          {/* Short title on mobile, full title on desktop */}
-          <span className="sm:hidden">{shortTitle || title}</span>
-          <span className="hidden sm:inline">{title}</span>
-          {isClickable && (
-            <MousePointerClick className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hidden sm:block" />
+        <h3 className={`text-base ${compact ? '' : 'sm:text-sm'} font-semibold ${colors.title} uppercase tracking-wider flex items-center gap-1.5 leading-tight`}>
+          {/* In compact mode, always show short title; otherwise responsive */}
+          {compact ? (
+            <span>{shortTitle || title}</span>
+          ) : (
+            <>
+              <span className="sm:hidden">{shortTitle || title}</span>
+              <span className="hidden sm:inline">{title}</span>
+            </>
+          )}
+          {isClickable && !compact && (
+            <MousePointerClick className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-white/60 hidden sm:block" />
           )}
         </h3>
-        {/* Trend Badge - Desktop only (header position avoids sparkline) */}
+        {/* Trend Badge - header position (always in compact, desktop-only otherwise) */}
         {trend?.show && (
-          <div className="flex-shrink-0 ml-auto hidden sm:block">
-            <TrendBadge value={trend.value} size="sm" />
+          <div className={`flex-shrink-0 ml-auto ${compact ? '' : 'hidden sm:block'}`}>
+            <TrendBadge value={trend.value} size={compact ? 'base' : 'sm'} inverted />
           </div>
         )}
       </div>
 
       {/* Value */}
-      <div className="text-lg sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-0.5 sm:mb-1 relative z-10">
+      <div className={`${compact ? 'text-3xl' : 'text-lg sm:text-3xl'} font-bold ${colors.value} tracking-tight ${compact ? 'mb-1.5' : 'mb-1.5 sm:mb-1'} relative z-10`}>
         {displayValue}
       </div>
 
-      {/* Footer: Subtitle + Trend Badge (mobile only) */}
+      {/* Footer: Subtitle + Trend Badge (mobile only in expanded mode) */}
       <div className="flex items-center justify-between gap-1 relative z-10">
         {subtitle && (
-          <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+          <div className={`text-sm ${compact ? '' : 'sm:text-sm'} ${colors.subtitle}`}>
             {subtitle}
           </div>
         )}
-        {/* Trend Badge - Mobile only (footer position, no sparkline overlap) */}
-        {trend?.show && (
+        {/* Trend Badge - Mobile only in expanded mode (footer position) */}
+        {!compact && trend?.show && (
           <div className="flex-shrink-0 ml-auto sm:hidden">
-            <TrendBadge value={trend.value} size="xs" />
+            <TrendBadge value={trend.value} size="xs" inverted />
           </div>
         )}
       </div>

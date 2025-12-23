@@ -1,8 +1,12 @@
-// chartColors.js v1.0
+// chartColors.js v1.1 - MODERNIZED GRADIENTS
 // Centralized chart color configuration for Recharts and Nivo
-// Design System v3.0 compliant
+// Design System v3.3 compliant
 //
 // CHANGELOG:
+// v1.1 (2025-12-22): Modernized dashboard gradients
+//   - Added dashboardGradients for KPI cards (3-stop via gradients)
+//   - Richer, more premium gradient palette
+//   - Hero and secondary card color mappings
 // v1.0 (2025-11-30): Initial implementation
 //   - Theme-aware color getters
 //   - Gradient definitions
@@ -76,6 +80,65 @@ export const chartGradients = {
     id: 'costGradient',
     start: '#f87171',  // red-400
     end: '#dc2626',    // red-600
+  },
+};
+
+/**
+ * Modernized dashboard gradients for KPI cards (3-stop via gradients)
+ * Provides richer, more premium look than 2-stop gradients
+ * ✅ NEW in v1.1
+ */
+export const dashboardGradients = {
+  // Hero card metrics
+  revenue: {
+    css: 'from-emerald-500 via-teal-500 to-cyan-600',
+    darkCss: 'from-emerald-600 via-teal-600 to-cyan-700',
+    stops: ['#10b981', '#14b8a6', '#06b6d4'],
+    sparkline: '#10b981',
+  },
+  cycles: {
+    css: 'from-blue-500 via-indigo-500 to-violet-600',
+    darkCss: 'from-blue-600 via-indigo-600 to-violet-700',
+    stops: ['#3b82f6', '#6366f1', '#7c3aed'],
+    sparkline: '#3b82f6',
+  },
+  utilization: {
+    css: 'from-violet-500 via-purple-500 to-fuchsia-600',
+    darkCss: 'from-violet-600 via-purple-600 to-fuchsia-700',
+    stops: ['#8b5cf6', '#a855f7', '#c026d3'],
+    sparkline: '#8b5cf6',
+  },
+  mtd: {
+    css: 'from-amber-500 via-orange-500 to-rose-500',
+    darkCss: 'from-amber-600 via-orange-600 to-rose-600',
+    stops: ['#f59e0b', '#f97316', '#f43f5e'],
+    sparkline: '#f59e0b',
+  },
+
+  // Secondary card metrics
+  wash: {
+    css: 'from-sky-400 via-cyan-500 to-blue-500',
+    darkCss: 'from-sky-500 via-cyan-600 to-blue-600',
+    stops: ['#38bdf8', '#06b6d4', '#3b82f6'],
+    sparkline: '#06b6d4',
+  },
+  dry: {
+    css: 'from-amber-400 via-orange-500 to-rose-500',
+    darkCss: 'from-amber-500 via-orange-600 to-rose-600',
+    stops: ['#fbbf24', '#f97316', '#f43f5e'],
+    sparkline: '#f97316',
+  },
+  atRisk: {
+    css: 'from-rose-500 via-red-500 to-pink-600',
+    darkCss: 'from-rose-600 via-red-600 to-pink-700',
+    stops: ['#f43f5e', '#ef4444', '#db2777'],
+    sparkline: '#ef4444',
+  },
+  health: {
+    css: 'from-lime-400 via-emerald-500 to-teal-500',
+    darkCss: 'from-lime-500 via-emerald-600 to-teal-600',
+    stops: ['#a3e635', '#10b981', '#14b8a6'],
+    sparkline: '#10b981',
   },
 };
 
@@ -177,6 +240,7 @@ export const chartHeights = {
 export default {
   getChartColors,
   chartGradients,
+  dashboardGradients,
   seriesColors,
   getSeriesColors,
   comparisonColors,

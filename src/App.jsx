@@ -1,4 +1,4 @@
-// App.jsx v8.8 - SWIPE NAVIGATION
+// App.jsx v8.9 - STABLE TAB NAVIGATION
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -20,6 +20,11 @@
 // ✅ Swipe navigation between main tabs on mobile
 //
 // CHANGELOG:
+// v8.9 (2025-12-22): Stable tab navigation
+//   - FIXED: Removed lastRefreshed from motion.div key
+//   - Prevents unnecessary remounts on data refresh
+//   - Tab animations now only trigger on actual navigation
+//   - Eliminates animation flicker during background refresh
 // v8.8 (2025-12-22): Swipe navigation + UX improvements
 //   - Enabled swipe left/right between main tabs on mobile
 //   - Swipe works on Dashboard, Clientes, Diretório, Campanhas
@@ -450,12 +455,11 @@ function AppContent() {
         <OfflineIndicator lastSyncTime={lastRefreshed} />
 
         {/* Main Content Area - with sidebar offset (dynamic when pinned) */}
-        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-[60px]'}`}>
+        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-16'}`}>
           {/* Top Bar */}
           <MinimalTopBar
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            activeTab={activeTab}
             onOpenSettings={() => setShowSettings(true)}
             onOpenExport={() => setShowExport(true)}
           />
@@ -466,7 +470,7 @@ function AppContent() {
           <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 pb-24 lg:pb-6">
             <AnimatePresence mode="wait">
               <motion.div
-                key={`${activeTab}-${lastRefreshed || 0}`}
+                key={activeTab}
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}

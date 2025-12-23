@@ -1,6 +1,8 @@
-// Business Metrics Calculator v2.8 - HYBRID VIEW WITH CURRENT WEEK
-// ✅ NEW: Current partial week calculations (Sunday → Today)
-// ✅ NEW: Weekly projection based on current pace
+// Business Metrics Calculator v2.9 - MONTH-TO-DATE + YOY COMPARISON
+// ✅ NEW: Month-to-date gross revenue calculation
+// ✅ NEW: Year-over-year comparison for MTD
+// ✅ Current partial week calculations (Sunday → Today)
+// ✅ Weekly projection based on current pace
 // ✅ FIXED: Windows include Date objects (start/end) for KPICards
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ TIME-BASED utilization formula (machine-minutes, not service-weighted)
@@ -8,6 +10,10 @@
 // ✅ Includes Recarga in revenue totals
 //
 // CHANGELOG:
+// v2.9 (2025-12-22): Month-to-date with YoY comparison
+//   - Added getMonthToDateWindow() for MTD calculations
+//   - Added monthToDate object to return with grossRevenue, YoY change
+//   - Compares current MTD to same period last year
 // v2.8 (2025-12-20): Brazil timezone support
 //   - All "now" calculations use Brazil timezone (America/Sao_Paulo)
 //   - getDateWindows() and getCurrentPartialWeek() use getBrazilDateParts()
@@ -147,6 +153,59 @@ function getCurrentPartialWeek() {
     daysElapsed,
     isPartial: daysElapsed < 7,
     dayOfWeek: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][dayOfWeek]
+  };
+}
+
+/**
+ * Get Month-to-Date window for MTD calculations
+ * ✅ NEW in v2.9
+ * Uses Brazil timezone for consistent "today" calculation
+ * Includes same period last year for YoY comparison
+ */
+function getMonthToDateWindow() {
+  const brazilParts = getBrazilDateParts();
+  const now = new Date(brazilParts.year, brazilParts.month - 1, brazilParts.day, 23, 59, 59, 999);
+
+  // Current month: 1st of month → today
+  const mtdStart = new Date(brazilParts.year, brazilParts.month - 1, 1);
+  mtdStart.setHours(0, 0, 0, 0);
+
+  // Same period last year: 1st of same month last year → same day last year
+  const lastYearStart = new Date(brazilParts.year - 1, brazilParts.month - 1, 1);
+  lastYearStart.setHours(0, 0, 0, 0);
+
+  const lastYearEnd = new Date(brazilParts.year - 1, brazilParts.month - 1, brazilParts.day);
+  lastYearEnd.setHours(23, 59, 59, 999);
+
+  const formatDate = (d) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const monthNames = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+  ];
+
+  return {
+    current: {
+      start: mtdStart,
+      end: now,
+      startDate: formatDate(mtdStart),
+      endDate: formatDate(now)
+    },
+    lastYear: {
+      start: lastYearStart,
+      end: lastYearEnd,
+      startDate: formatDate(lastYearStart),
+      endDate: formatDate(lastYearEnd)
+    },
+    daysElapsed: brazilParts.day,
+    monthName: monthNames[brazilParts.month - 1],
+    year: brazilParts.year,
+    lastYearValue: brazilParts.year - 1
   };
 }
 
@@ -352,10 +411,12 @@ export function calculateBusinessMetrics(salesData) {
   // Get windows
   const windows = getDateWindows();
   const currentPartialWeek = getCurrentPartialWeek();
-  
+  const mtdWindow = getMonthToDateWindow();
+
   console.log('Date windows:', {
     lastCompleteWeek: `${windows.weekly.startDate} - ${windows.weekly.endDate}`,
     currentPartialWeek: `${currentPartialWeek.startDate} - ${currentPartialWeek.endDate} (${currentPartialWeek.daysElapsed} dias)`,
+    mtd: `${mtdWindow.current.startDate} - ${mtdWindow.current.endDate} (${mtdWindow.daysElapsed} dias)`,
     today: currentPartialWeek.dayOfWeek
   });
   
@@ -365,13 +426,17 @@ export function calculateBusinessMetrics(salesData) {
   const twoWeeksAgoRecords = filterByWindow(records, windows.twoWeeksAgo);
   const fourWeekRecords = filterByWindow(records, windows.fourWeek);
   const currentWeekRecords = filterByWindow(records, currentPartialWeek);
-  
+  const mtdRecords = filterByWindow(records, mtdWindow.current);
+  const mtdLastYearRecords = filterByWindow(records, mtdWindow.lastYear);
+
   console.log('Records per window:', {
     lastCompleteWeek: weekRecords.length,
     previousWeek: prevWeekRecords.length,
     twoWeeksAgo: twoWeeksAgoRecords.length,
     fourWeeks: fourWeekRecords.length,
-    currentPartialWeek: currentWeekRecords.length
+    currentPartialWeek: currentWeekRecords.length,
+    mtd: mtdRecords.length,
+    mtdLastYear: mtdLastYearRecords.length
   });
   
   // Calculate metrics for each window
@@ -380,6 +445,8 @@ export function calculateBusinessMetrics(salesData) {
   const twoWeeksAgoTotals = calculateTotals(twoWeeksAgoRecords, windows.twoWeeksAgo);
   const fourWeekTotals = calculateTotals(fourWeekRecords, windows.fourWeek);
   const currentWeekTotals = calculateTotals(currentWeekRecords, currentPartialWeek);
+  const mtdTotals = calculateTotals(mtdRecords, mtdWindow.current);
+  const mtdLastYearTotals = calculateTotals(mtdLastYearRecords, mtdWindow.lastYear);
   
   const weeklyUtil = calculateUtilization(weekRecords, windows.weekly);
   const prevWeeklyUtil = calculateUtilization(prevWeekRecords, windows.previousWeekly);
@@ -421,7 +488,20 @@ export function calculateBusinessMetrics(salesData) {
       trend: projection.trend
     });
   }
-  
+
+  // Calculate MTD YoY change
+  const mtdYoYChange = mtdLastYearTotals.grossRevenue > 0
+    ? ((mtdTotals.grossRevenue - mtdLastYearTotals.grossRevenue) / mtdLastYearTotals.grossRevenue) * 100
+    : (mtdTotals.grossRevenue > 0 ? 100 : 0);
+
+  console.log('Month-to-Date:', {
+    grossRevenue: `R$ ${mtdTotals.grossRevenue.toFixed(2)}`,
+    netRevenue: `R$ ${mtdTotals.netRevenue.toFixed(2)}`,
+    daysElapsed: mtdWindow.daysElapsed,
+    lastYearGross: `R$ ${mtdLastYearTotals.grossRevenue.toFixed(2)}`,
+    yoyChange: `${mtdYoYChange > 0 ? '+' : ''}${mtdYoYChange.toFixed(1)}%`
+  });
+
   console.log('=== END BUSINESS METRICS ===\n');
   
   return {
@@ -450,7 +530,21 @@ export function calculateBusinessMetrics(salesData) {
       window: currentPartialWeek,
       projection
     },
-    
+
+    // ✅ NEW in v2.9: Month-to-Date with YoY comparison
+    monthToDate: {
+      grossRevenue: mtdTotals.grossRevenue,
+      netRevenue: mtdTotals.netRevenue,
+      totalServices: mtdTotals.totalServices,
+      daysElapsed: mtdWindow.daysElapsed,
+      monthName: mtdWindow.monthName,
+      year: mtdWindow.year,
+      lastYearGrossRevenue: mtdLastYearTotals.grossRevenue,
+      lastYearNetRevenue: mtdLastYearTotals.netRevenue,
+      yearOverYearChange: mtdYoYChange,
+      window: mtdWindow
+    },
+
     weekOverWeek,
     
     // Windows with both Date objects and formatted strings

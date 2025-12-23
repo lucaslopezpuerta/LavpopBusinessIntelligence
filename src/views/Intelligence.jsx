@@ -1,8 +1,11 @@
-// Intelligence.jsx v3.11.0 - FULL-WIDTH LAYOUT
+// Intelligence.jsx v3.12.0 - REMOVED SECTION NAVIGATION
 // Refactored with unified components and Health Score
 // Design System v3.2 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.12.0 (2025-12-23): Removed SectionNavigation
+//   - REMOVED: SectionNavigation component (sticky nav bar)
+//   - Cleaner layout without redundant navigation
 // v3.11.0 (2025-12-20): Weather Impact moved to Weather tab
 //   - REMOVED: WeatherImpactSection (now in Weather tab)
 //   - REMOVED: weatherImpact and comfortWeatherImpact calculations
@@ -100,7 +103,6 @@ import {
 
 // UX Enhancement components
 import RevenueForecast from '../components/intelligence/RevenueForecast';
-import SectionNavigation from '../components/intelligence/SectionNavigation';
 
 // ==================== MAIN COMPONENT ====================
 
@@ -259,9 +261,6 @@ const Intelligence = ({ data }) => {
             </div>
 
           </header>
-
-          {/* Section Navigation - Sticky */}
-          <SectionNavigation />
 
           {/* Health Score Hero Card */}
           {healthScore && (

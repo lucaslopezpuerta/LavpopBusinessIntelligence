@@ -102,15 +102,8 @@ const WeatherWidget = ({ compact = false, showLocation = false }) => {
         "
         title={`${weather.conditions} • ${weather.temp}°C • ${weather.humidity}% umidade • Sensação: ${weather.feelsLike}°C`}
       >
-        {/* Mobile: Show temp only */}
-        <div className="sm:hidden flex items-center">
-          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-            {weather.temp}°
-          </span>
-        </div>
-
-        {/* Desktop: Icon + Full Metrics */}
-        <div className="hidden sm:flex items-center gap-1.5">
+        {/* Full metrics on all screen sizes */}
+        <div className="flex items-center gap-1.5">
           <div className="w-5 h-5 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
             <Icon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
           </div>

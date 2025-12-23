@@ -1,11 +1,20 @@
-// Dashboard.jsx v9.3 - SIMPLIFIED LAYOUT
-// ✅ Integrated KPICardsGrid with visual hierarchy
+// Dashboard.jsx v10.1 - DUAL LAYOUT SUPPORT
+// ✅ Compact (stacked rows) and Expanded (vertical) layouts
+// ✅ DateControl integrated in header for both layouts
+// ✅ Layout preference from ThemeContext (localStorage)
 // ✅ Hero cards for primary metrics
 // ✅ Secondary cards in compact grid
 // ✅ Optimized layout spacing
 // ✅ Consistent header matching all views
 //
 // CHANGELOG:
+// v10.1 (2025-12-23): Compact layout revision
+//   - Changed compact from 2-column to stacked rows
+//   - Row 1: KPIs full width, Row 2: Chart full width
+//   - Better use of horizontal space for chart
+// v10.0 (2025-12-23): Dual layout support
+//   - Added compact/expanded layout toggle via ThemeContext
+//   - DateControl integrated into header for both layouts
 // v9.3 (2025-12-16): Simplified layout
 //   - Removed Operations section title
 //   - Updated subtitle to "lavanderia"
@@ -37,6 +46,8 @@
 // v8.5: Fixed layout & metrics
 import { useMemo, Suspense } from 'react';
 import { LayoutDashboard } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import KPICardsGrid from '../components/KPICardsGrid';
 import DashboardDateControl from '../components/DashboardDateControl';
 import { LazyOperatingCyclesChart, ChartLoadingFallback } from '../utils/lazyCharts';
@@ -45,6 +56,12 @@ import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 
 const Dashboard = ({ data, viewMode, setViewMode }) => {
+  // Get layout preference from ThemeContext
+  const { dashboardLayout } = useTheme();
+  const isMobile = useIsMobile();
+  // Compact mode only on desktop - mobile always shows expanded layout
+  const isCompact = dashboardLayout === 'compact' && !isMobile;
+
   // Extract data from props
   const salesData = data?.sales || [];
   const rfmData = data?.rfm || [];
@@ -116,50 +133,85 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
   const operationsMetrics = metrics?.operations;
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Header */}
-      <header className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-lavpop-blue/10 dark:bg-lavpop-blue/20 flex items-center justify-center border-l-4 border-lavpop-blue">
-          <LayoutDashboard className="w-5 h-5 text-lavpop-blue" />
+    <div className={isCompact ? 'space-y-4' : 'space-y-6 sm:space-y-8'}>
+      {/* SHARED HEADER - DateControl integrated for both layouts */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`${isCompact ? 'w-8 h-8' : 'w-10 h-10'} rounded-xl bg-lavpop-blue/10 dark:bg-lavpop-blue/20 flex items-center justify-center border-l-4 border-lavpop-blue`}>
+            <LayoutDashboard className={`${isCompact ? 'w-4 h-4' : 'w-5 h-5'} text-lavpop-blue`} />
+          </div>
+          <div>
+            <h1 className={`${isCompact ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold text-slate-900 dark:text-white`}>
+              Visão Geral
+            </h1>
+            {!isCompact && (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Métricas principais da sua lavanderia
+              </p>
+            )}
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-            Visão Geral
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Métricas principais da sua lavanderia
-          </p>
-        </div>
+        <DashboardDateControl
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          dateRange={dateRange}
+          inline={true}
+        />
       </header>
 
-      {/* Date Control */}
-      <DashboardDateControl
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        dateRange={dateRange}
-      />
+      {/* LAYOUT-SPECIFIC CONTENT */}
+      {isCompact ? (
+        /* COMPACT LAYOUT: Stacked rows - KPIs full width, then chart full width */
+        <div className="space-y-4">
+          {/* Row 1: KPIs - Full width */}
+          <section aria-labelledby="kpi-heading-compact">
+            <h2 id="kpi-heading-compact" className="sr-only">Indicadores Principais de Performance</h2>
+            <KPICardsGrid
+              businessMetrics={businessMetrics}
+              customerMetrics={customerMetrics}
+              operationsMetrics={operationsMetrics}
+              salesData={salesData}
+              viewMode={viewMode}
+              compact={true}
+            />
+          </section>
 
-      {/* KPI Cards Section - Hero + Secondary Grid */}
-      <section aria-labelledby="kpi-heading">
-        <h2 id="kpi-heading" className="sr-only">Indicadores Principais de Performance</h2>
-        <KPICardsGrid
-          businessMetrics={businessMetrics}
-          customerMetrics={customerMetrics}
-          operationsMetrics={operationsMetrics}
-          salesData={salesData}
-          viewMode={viewMode}
-        />
-      </section>
-
-      {/* Operations Chart */}
-      <section aria-labelledby="operations-heading">
-        <h2 id="operations-heading" className="sr-only">Operações</h2>
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-          <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
-            <LazyOperatingCyclesChart salesData={salesData} />
-          </Suspense>
+          {/* Row 2: Chart - Full width */}
+          <section aria-labelledby="operations-heading-compact">
+            <h2 id="operations-heading-compact" className="sr-only">Operações</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+              <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
+                <LazyOperatingCyclesChart salesData={salesData} compact={true} />
+              </Suspense>
+            </div>
+          </section>
         </div>
-      </section>
+      ) : (
+        /* EXPANDED LAYOUT: Vertical stacked (original) */
+        <>
+          {/* KPI Cards Section - Hero + Secondary Grid */}
+          <section aria-labelledby="kpi-heading">
+            <h2 id="kpi-heading" className="sr-only">Indicadores Principais de Performance</h2>
+            <KPICardsGrid
+              businessMetrics={businessMetrics}
+              customerMetrics={customerMetrics}
+              operationsMetrics={operationsMetrics}
+              salesData={salesData}
+              viewMode={viewMode}
+            />
+          </section>
+
+          {/* Operations Chart */}
+          <section aria-labelledby="operations-heading">
+            <h2 id="operations-heading" className="sr-only">Operações</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
+                <LazyOperatingCyclesChart salesData={salesData} />
+              </Suspense>
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 };

@@ -1,11 +1,29 @@
-// FinancialDrilldown.jsx v2.4 - SERVICE BREAKDOWN
+// FinancialDrilldown.jsx v2.8 - UTILIZATION AVERAGE
 // ✅ Daily revenue and cycle tracking
 // ✅ Uses shared parseSalesRecords for consistent date handling
 // ✅ Gradient area chart with centralized colors
 // ✅ Separate wash/dry metric support
-// ✅ Design System v3.1 compliant
+// ✅ MTD gross revenue tracking
+// ✅ Daily utilization tracking
+// ✅ Design System v3.3 compliant
 //
 // CHANGELOG:
+// v2.8 (2025-12-22): Utilization shows average (not sum)
+//   - FIXED: First card shows "Média 30 dias" for utilization (average, not sum)
+//   - Hide redundant "Média Diária" card for utilization
+//   - 2-column layout for utilization drilldown
+// v2.7 (2025-12-22): Fixed utilization to show percentage
+//   - FIXED: 'utilization' now shows daily utilization % (not machine-minutes)
+//   - Uses BUSINESS_PARAMS for accurate capacity calculation
+//   - Weighted average across washers and dryers
+// v2.6 (2025-12-22): Added utilization metric type
+//   - NEW: 'utilization' metricType shows daily utilization trend
+//   - Calculates machine-minutes utilization per day
+//   - Uses purple color scheme for utilization
+// v2.5 (2025-12-22): Added MTD gross revenue metric type
+//   - NEW: 'mtd' metricType shows gross revenue trend
+//   - Tracks grossRevenue separately from netRevenue
+//   - Uses amber color scheme for MTD
 // v2.4 (2025-12-10): Fixed date key mismatch (UTC vs local timezone)
 //   - Changed dailyMap initialization from toISOString() to formatDate()
 //   - Ensures consistent local timezone keys matching record.dateStr
@@ -26,6 +44,7 @@ import { parseSalesRecords } from '../../utils/transactionParser';
 import { formatDate } from '../../utils/dateUtils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getChartColors, getSeriesColors } from '../../utils/chartColors';
+import { BUSINESS_PARAMS } from '../../utils/operationsMetrics';
 
 const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
     const { isDark } = useTheme();
@@ -51,7 +70,7 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
             const d = new Date(startDate);
             d.setDate(d.getDate() + i);
             const dateKey = formatDate(d); // LOCAL timezone: YYYY-MM-DD
-            dailyMap[dateKey] = { revenue: 0, cycles: 0, wash: 0, dry: 0 };
+            dailyMap[dateKey] = { revenue: 0, grossRevenue: 0, cycles: 0, wash: 0, dry: 0 };
         }
 
         records.forEach(record => {
@@ -60,6 +79,7 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
 
                 if (dailyMap[dateKey]) {
                     dailyMap[dateKey].revenue += record.netValue;
+                    dailyMap[dateKey].grossRevenue += record.grossValue || record.netValue;
                     dailyMap[dateKey].cycles += record.totalServices;
                     dailyMap[dateKey].wash += record.washCount || 0;
                     dailyMap[dateKey].dry += record.dryCount || 0;
@@ -67,19 +87,53 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
             }
         });
 
-        return Object.keys(dailyMap).sort().map(dateKey => ({
-            date: dateKey,
-            revenue: Math.round(dailyMap[dateKey].revenue * 100) / 100,
-            cycles: dailyMap[dateKey].cycles,
-            wash: dailyMap[dateKey].wash,
-            dry: dailyMap[dateKey].dry
-        }));
+        // Calculate daily utilization % using business parameters
+        const operatingHours = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
+        const minutesPerDay = operatingHours * 60;
+        const efficiencyFactor = BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+
+        // Daily available minutes per machine type (with efficiency factor)
+        const washerMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * minutesPerDay * efficiencyFactor;
+        const dryerMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * minutesPerDay * efficiencyFactor;
+        const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+
+        return Object.keys(dailyMap).sort().map(dateKey => {
+            const day = dailyMap[dateKey];
+
+            // Calculate machine-minutes used
+            const washerMinutesUsed = day.wash * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES;
+            const dryerMinutesUsed = day.dry * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES;
+
+            // Calculate weighted utilization %
+            const washerUtil = washerMinutesAvailable > 0
+                ? (washerMinutesUsed / washerMinutesAvailable) * 100 : 0;
+            const dryerUtil = dryerMinutesAvailable > 0
+                ? (dryerMinutesUsed / dryerMinutesAvailable) * 100 : 0;
+
+            // Weighted average by machine count
+            const utilization = (
+                (washerUtil * BUSINESS_PARAMS.TOTAL_WASHERS) +
+                (dryerUtil * BUSINESS_PARAMS.TOTAL_DRYERS)
+            ) / totalMachines;
+
+            return {
+                date: dateKey,
+                revenue: Math.round(day.revenue * 100) / 100,
+                grossRevenue: Math.round(day.grossRevenue * 100) / 100,
+                cycles: day.cycles,
+                wash: day.wash,
+                dry: day.dry,
+                utilization: Math.round(utilization * 10) / 10 // 1 decimal place
+            };
+        });
     }, [salesData]);
 
     // Helper to get value based on metric type
     const getMetricValue = (day) => {
         switch (metricType) {
             case 'revenue': return day.revenue;
+            case 'mtd': return day.grossRevenue; // MTD shows gross revenue
+            case 'utilization': return day.utilization; // Daily utilization %
             case 'wash': return day.wash;
             case 'dry': return day.dry;
             case 'cycles':
@@ -91,8 +145,11 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
     const stats = useMemo(() => {
         if (dailyData.length === 0) return { total: 0, average: 0, bestDay: null, bestValue: 0 };
 
-        const total = dailyData.reduce((sum, day) => sum + getMetricValue(day), 0);
-        const average = dailyData.length > 0 ? total / dailyData.length : 0;
+        const sum = dailyData.reduce((acc, day) => acc + getMetricValue(day), 0);
+        const average = dailyData.length > 0 ? sum / dailyData.length : 0;
+
+        // For utilization %, "total" should be average (summing % doesn't make sense)
+        const total = metricType === 'utilization' ? average : sum;
 
         const best = dailyData.reduce((max, day) => {
             return getMetricValue(day) > getMetricValue(max) ? day : max;
@@ -114,17 +171,23 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
 
     // Metric configuration using centralized colors
     const metricConfig = useMemo(() => ({
-        revenue: { label: 'Receita', unit: '', color: seriesColors[1] },      // Emerald/green
-        cycles: { label: 'Ciclos', unit: ' ciclos', color: seriesColors[0] }, // Primary blue
-        wash: { label: 'Lavagens', unit: ' lavagens', color: seriesColors[5] }, // Cyan
-        dry: { label: 'Secagens', unit: ' secagens', color: seriesColors[3] },  // Amber
+        revenue: { label: 'Receita Líquida', unit: '', color: seriesColors[1] },      // Emerald/green
+        mtd: { label: 'Receita Bruta', unit: '', color: seriesColors[3] },            // Amber for MTD
+        cycles: { label: 'Ciclos', unit: ' ciclos', color: seriesColors[0] },         // Primary blue
+        utilization: { label: 'Utilização', unit: '%', color: seriesColors[2] }, // Purple/violet
+        wash: { label: 'Lavagens', unit: ' lavagens', color: seriesColors[5] },       // Cyan
+        dry: { label: 'Secagens', unit: ' secagens', color: seriesColors[3] },        // Amber
     }), [seriesColors]);
 
     const config = metricConfig[metricType] || metricConfig.cycles;
 
     const formatValue = (val) => {
-        if (metricType === 'revenue') {
+        if (metricType === 'revenue' || metricType === 'mtd') {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
+        }
+        if (metricType === 'utilization') {
+            // Format as percentage with 1 decimal place
+            return `${val.toFixed(1)}%`;
         }
         return `${val}${config.unit}`;
     };
@@ -149,18 +212,23 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
             {/* Summary Stats - responsive grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Últimos 30 dias</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        {metricType === 'utilization' ? 'Média 30 dias' : 'Últimos 30 dias'}
+                    </p>
                     <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
                         {formatValue(stats.total)}
                     </p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Média Diária</p>
-                    <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
-                        {formatValue(Math.round(stats.average * 10) / 10)}
-                    </p>
-                </div>
-                <div className="col-span-2 sm:col-span-1 bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                {/* Hide "Média Diária" for utilization since it's the same as "Média 30 dias" */}
+                {metricType !== 'utilization' && (
+                    <div className="bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Média Diária</p>
+                        <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
+                            {formatValue(Math.round(stats.average * 10) / 10)}
+                        </p>
+                    </div>
+                )}
+                <div className={`${metricType === 'utilization' ? '' : 'col-span-2 sm:col-span-1'} bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700`}>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Melhor Dia</p>
                     <div className="flex items-baseline gap-1">
                         <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">

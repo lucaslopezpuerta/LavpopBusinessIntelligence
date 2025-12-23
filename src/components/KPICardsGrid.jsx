@@ -1,8 +1,28 @@
-// KPICardsGrid.jsx v3.2 - SPARKLINES VIA TRANSACTION PARSER
+// KPICardsGrid.jsx v3.7 - 4-COLUMN LAYOUT
 // Restructured KPI display with visual hierarchy and trend sparklines
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v3.7 (2025-12-23): 4-column layout for both compact and expanded
+//   - Hero cards: 4-column row in both layouts
+//   - Secondary cards: 4-column row in both layouts
+//   - Consistent column count across view modes
+// v3.6 (2025-12-23): Compact mode for single-glance dashboard
+//   - Added compact prop for dashboard layout
+//   - Tighter gaps: gap-2 instead of gap-3/4
+//   - Passes compact prop to child cards
+// v3.5 (2025-12-22): Utilization sparkline shows % (not machine-minutes)
+//   - FIXED: Sparkline now shows daily utilization % matching drilldown
+//   - Uses BUSINESS_PARAMS for accurate capacity calculation
+// v3.4 (2025-12-22): Utilization card uses financial drilldown
+//   - Changed utilization drilldownType from 'explainer' to 'financial'
+//   - Added machineMinutes calculation for utilization sparkline
+//   - Sparkline now shows daily machine-minutes trend
+// v3.3 (2025-12-22): MTD Revenue hero card + 4-column layout
+//   - NEW: 4th hero card showing MTD Gross Revenue with YoY comparison
+//   - Desktop: 4 hero cards in 12-col grid (span 3 each)
+//   - Mobile: 2x2 grid for hero cards
+//   - Added mtdDaily sparkline calculation
 // v3.2 (2025-12-16): Use parseSalesRecords for sparkline calculation
 //   - REFACTORED: Use shared parseSalesRecords from transactionParser
 //   - Consistent with FinancialDrilldown calculation approach
@@ -32,11 +52,12 @@
 import { useState, useMemo } from 'react';
 import {
   DollarSign, WashingMachine, Percent, Droplet, Flame,
-  AlertCircle, Heart
+  AlertCircle, Heart, CalendarDays
 } from 'lucide-react';
 import { formatCurrency, formatNumber, formatPercent, getTrendData } from '../utils/formatters';
 import { formatDate } from '../utils/dateUtils';
 import { parseSalesRecords } from '../utils/transactionParser';
+import { BUSINESS_PARAMS } from '../utils/operationsMetrics';
 import HeroKPICard from './ui/HeroKPICard';
 import SecondaryKPICard from './ui/SecondaryKPICard';
 import KPIDetailModal from './modals/KPIDetailModal';
@@ -48,17 +69,18 @@ const KPICardsGrid = ({
   customerMetrics,
   operationsMetrics,
   salesData,
-  viewMode = 'complete'
+  viewMode = 'complete',
+  compact = false
 }) => {
   const [selectedKPI, setSelectedKPI] = useState(null);
 
-  // Loading state
+  // Loading state - 4 hero cards + 4 secondary cards
   if (!businessMetrics || !customerMetrics) {
     return (
       <div className="animate-pulse space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded-xl" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-24 lg:h-32 bg-slate-200 dark:bg-slate-700 rounded-xl" />
           ))}
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -88,6 +110,11 @@ const KPICardsGrid = ({
   // Use combined count (At Risk + Churning) to match drilldown list
   const needsAttentionCount = customerMetrics.needsAttentionCount || 0;
   const healthRate = customerMetrics.healthRate || 0;
+  // Total active customers for percentage calculations
+  const totalActiveCustomers = customerMetrics.activeCustomers?.length || 0;
+  const atRiskPercent = totalActiveCustomers > 0
+    ? Math.round((needsAttentionCount / totalActiveCustomers) * 100)
+    : 0;
 
   // Service breakdown
   const washCount = metricsSource.washServices || 0;
@@ -134,13 +161,57 @@ const KPICardsGrid = ({
     // Convert to sorted arrays
     const sortedDays = Object.keys(dailyMap).sort();
 
+    // Calculate daily utilization % using business parameters
+    const operatingHours = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
+    const minutesPerDay = operatingHours * 60;
+    const efficiencyFactor = BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+    const washerMinutesAvailable = BUSINESS_PARAMS.TOTAL_WASHERS * minutesPerDay * efficiencyFactor;
+    const dryerMinutesAvailable = BUSINESS_PARAMS.TOTAL_DRYERS * minutesPerDay * efficiencyFactor;
+    const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+
+    const utilizationData = sortedDays.map(k => {
+      const day = dailyMap[k];
+      const washerMinutesUsed = day.wash * BUSINESS_PARAMS.WASHER_CYCLE_MINUTES;
+      const dryerMinutesUsed = day.dry * BUSINESS_PARAMS.DRYER_CYCLE_MINUTES;
+      const washerUtil = washerMinutesAvailable > 0 ? (washerMinutesUsed / washerMinutesAvailable) * 100 : 0;
+      const dryerUtil = dryerMinutesAvailable > 0 ? (dryerMinutesUsed / dryerMinutesAvailable) * 100 : 0;
+      return Math.round(((washerUtil * BUSINESS_PARAMS.TOTAL_WASHERS) + (dryerUtil * BUSINESS_PARAMS.TOTAL_DRYERS)) / totalMachines * 10) / 10;
+    });
+
+    // Calculate MTD daily data (current month only)
+    const mtdMap = {};
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const mtdStart = new Date(currentYear, currentMonth, 1);
+    mtdStart.setHours(0, 0, 0, 0);
+
+    // Initialize mtdMap for current month (up to today)
+    for (let d = new Date(mtdStart); d <= today; d.setDate(d.getDate() + 1)) {
+      const dateKey = formatDate(d);
+      mtdMap[dateKey] = { grossRevenue: 0 };
+    }
+
+    // Aggregate MTD from parsed records
+    records.forEach(record => {
+      if (record.date >= mtdStart && record.date <= today) {
+        const dateKey = record.dateStr;
+        if (mtdMap[dateKey]) {
+          mtdMap[dateKey].grossRevenue += record.grossValue || record.netValue || 0;
+        }
+      }
+    });
+
+    const sortedMtdDays = Object.keys(mtdMap).sort();
+
     return {
       revenue: sortedDays.map(k => Math.max(0, Math.round(dailyMap[k].revenue * 100) / 100)),
       cycles: sortedDays.map(k => dailyMap[k].wash + dailyMap[k].dry),
       wash: sortedDays.map(k => dailyMap[k].wash),
       dry: sortedDays.map(k => dailyMap[k].dry),
-      // Utilization not available per-day without complex calculation
-      utilization: [],
+      // Daily utilization % for sparkline
+      utilization: utilizationData,
+      // MTD daily gross revenue
+      mtdDaily: sortedMtdDays.map(k => Math.max(0, Math.round(mtdMap[k].grossRevenue * 100) / 100)),
     };
   }, [salesData]);
 
@@ -181,6 +252,7 @@ const KPICardsGrid = ({
   const showTrends = viewMode === 'complete';
 
   // Hero KPIs (primary metrics) - with sparkline data
+  // Now includes 4 cards: Revenue, Cycles, Utilization, MTD Revenue
   const heroKPIs = [
     {
       id: 'revenue',
@@ -220,9 +292,24 @@ const KPICardsGrid = ({
       subtitle: getTimeSubtitle(),
       icon: Percent,
       color: 'purple',
-      drilldownType: 'explainer',
+      drilldownType: 'financial',
       metricType: 'utilization',
       sparklineData: sparklineData.utilization,
+    },
+    {
+      id: 'mtd-revenue',
+      title: 'Receita MTD',
+      shortTitle: 'MTD',
+      value: businessMetrics?.monthToDate?.grossRevenue || 0,
+      displayValue: formatCurrency(businessMetrics?.monthToDate?.grossRevenue),
+      // MTD uses YoY comparison (vs same month last year)
+      trend: getTrendData(businessMetrics?.monthToDate?.yearOverYearChange),
+      subtitle: `${businessMetrics?.monthToDate?.daysElapsed || 0} dias (${businessMetrics?.monthToDate?.monthName || ''})`,
+      icon: CalendarDays,
+      color: 'amber',
+      drilldownType: 'financial',
+      metricType: 'mtd',
+      sparklineData: sparklineData.mtdDaily,
     }
   ];
 
@@ -256,7 +343,7 @@ const KPICardsGrid = ({
       id: 'atrisk',
       title: 'Em Risco',
       displayValue: formatNumber(needsAttentionCount),
-      subtitle: 'Precisam atenção',
+      subtitle: atRiskPercent > 0 ? `${atRiskPercent}% da base` : 'Nenhum em risco',
       icon: AlertCircle,
       color: 'red',
       drilldownType: 'customer',
@@ -267,7 +354,7 @@ const KPICardsGrid = ({
       id: 'health',
       title: 'Taxa de Saúde',
       displayValue: formatPercent(healthRate),
-      subtitle: 'Clientes saudáveis',
+      subtitle: `${totalActiveCustomers} clientes ativos`,
       icon: Heart,
       color: 'green',
       drilldownType: 'explainer',
@@ -278,51 +365,14 @@ const KPICardsGrid = ({
 
   return (
     <>
-      {/* Mobile & Tablet Layout (< lg): Stacked grids */}
-      <div className="lg:hidden space-y-4">
-        {/* Hero cards: 3 columns */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          {heroKPIs.map(kpi => (
-            <HeroKPICard
-              key={kpi.id}
-              title={kpi.title}
-              shortTitle={kpi.shortTitle}
-              value={kpi.value}
-              displayValue={kpi.displayValue}
-              subtitle={kpi.subtitle}
-              trend={kpi.trend}
-              icon={kpi.icon}
-              color={kpi.color}
-              sparklineData={kpi.sparklineData}
-              onClick={() => handleCardClick(kpi)}
-            />
-          ))}
-        </div>
-        {/* Secondary cards: 2 columns on mobile, 4 on sm */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {secondaryKPIs.map(kpi => (
-            <SecondaryKPICard
-              key={kpi.id}
-              title={kpi.title}
-              displayValue={kpi.displayValue}
-              subtitle={kpi.subtitle}
-              trend={kpi.trend}
-              icon={kpi.icon}
-              color={kpi.color}
-              sparklineData={kpi.sparklineData}
-              onClick={() => handleCardClick(kpi)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Desktop Layout (lg+): Unified 12-column grid */}
-      <div className="hidden lg:block space-y-4">
-        {/* Hero cards: span 4 cols each (3 × 4 = 12) */}
-        <div className="grid grid-cols-12 gap-4">
-          {heroKPIs.map(kpi => (
-            <div key={kpi.id} className="col-span-4">
+      {compact ? (
+        /* COMPACT LAYOUT: Tighter spacing for single-glance dashboard */
+        <div className="space-y-2">
+          {/* Hero cards: 4-column row */}
+          <div className="grid grid-cols-4 gap-2">
+            {heroKPIs.map(kpi => (
               <HeroKPICard
+                key={kpi.id}
                 title={kpi.title}
                 shortTitle={kpi.shortTitle}
                 value={kpi.value}
@@ -332,16 +382,16 @@ const KPICardsGrid = ({
                 icon={kpi.icon}
                 color={kpi.color}
                 sparklineData={kpi.sparklineData}
+                compact={true}
                 onClick={() => handleCardClick(kpi)}
               />
-            </div>
-          ))}
-        </div>
-        {/* Secondary cards: span 3 cols each (4 × 3 = 12) */}
-        <div className="grid grid-cols-12 gap-4">
-          {secondaryKPIs.map(kpi => (
-            <div key={kpi.id} className="col-span-3">
+            ))}
+          </div>
+          {/* Secondary cards: 4-column row */}
+          <div className="grid grid-cols-4 gap-2">
+            {secondaryKPIs.map(kpi => (
               <SecondaryKPICard
+                key={kpi.id}
                 title={kpi.title}
                 displayValue={kpi.displayValue}
                 subtitle={kpi.subtitle}
@@ -349,12 +399,94 @@ const KPICardsGrid = ({
                 icon={kpi.icon}
                 color={kpi.color}
                 sparklineData={kpi.sparklineData}
+                compact={true}
                 onClick={() => handleCardClick(kpi)}
               />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        /* EXPANDED LAYOUT: Original full layout */
+        <>
+          {/* Mobile & Tablet Layout (< lg): Stacked grids */}
+          <div className="lg:hidden space-y-4">
+            {/* Hero cards: 2x2 grid for 4 cards */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              {heroKPIs.map(kpi => (
+                <HeroKPICard
+                  key={kpi.id}
+                  title={kpi.title}
+                  shortTitle={kpi.shortTitle}
+                  value={kpi.value}
+                  displayValue={kpi.displayValue}
+                  subtitle={kpi.subtitle}
+                  trend={kpi.trend}
+                  icon={kpi.icon}
+                  color={kpi.color}
+                  sparklineData={kpi.sparklineData}
+                  onClick={() => handleCardClick(kpi)}
+                />
+              ))}
+            </div>
+            {/* Secondary cards: 2 columns on mobile, 4 on sm */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {secondaryKPIs.map(kpi => (
+                <SecondaryKPICard
+                  key={kpi.id}
+                  title={kpi.title}
+                  displayValue={kpi.displayValue}
+                  subtitle={kpi.subtitle}
+                  trend={kpi.trend}
+                  icon={kpi.icon}
+                  color={kpi.color}
+                  sparklineData={kpi.sparklineData}
+                  onClick={() => handleCardClick(kpi)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop Layout (lg+): Unified 12-column grid */}
+          <div className="hidden lg:block space-y-4">
+            {/* Hero cards: span 3 cols each (4 × 3 = 12) */}
+            <div className="grid grid-cols-12 gap-4">
+              {heroKPIs.map(kpi => (
+                <div key={kpi.id} className="col-span-3">
+                  <HeroKPICard
+                    title={kpi.title}
+                    shortTitle={kpi.shortTitle}
+                    value={kpi.value}
+                    displayValue={kpi.displayValue}
+                    subtitle={kpi.subtitle}
+                    trend={kpi.trend}
+                    icon={kpi.icon}
+                    color={kpi.color}
+                    sparklineData={kpi.sparklineData}
+                    onClick={() => handleCardClick(kpi)}
+                  />
+                </div>
+              ))}
+            </div>
+            {/* Secondary cards: span 3 cols each (4 × 3 = 12) */}
+            <div className="grid grid-cols-12 gap-4">
+              {secondaryKPIs.map(kpi => (
+                <div key={kpi.id} className="col-span-3">
+                  <SecondaryKPICard
+                    title={kpi.title}
+                    displayValue={kpi.displayValue}
+                    subtitle={kpi.subtitle}
+                    trend={kpi.trend}
+                    icon={kpi.icon}
+                    color={kpi.color}
+                    sparklineData={kpi.sparklineData}
+                    onClick={() => handleCardClick(kpi)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Drill-down Modal */}
       {(() => {

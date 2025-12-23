@@ -1,8 +1,16 @@
-// Skeleton.jsx v2.0
+// Skeleton.jsx v2.1
 // Skeleton loading components for better UX
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.1 (2025-12-23): Full-width layout fixes
+//   - WeatherLoadingSkeleton: Restructured to match WeatherSection.jsx v1.6
+//     - Row 1: Hero (1/2) + Metrics Grid (1/2)
+//     - Row 2-4: Full-width sections (Hourly, Daily, BusinessImpact)
+//   - IntelligenceLoadingSkeleton: Matches Intelligence.jsx v3.12.0
+//     - Removed max-w-7xl constraint for full-width
+//     - Removed Section Navigation (removed from view)
+//     - Added Health Score Hero, Revenue Forecast
 // v2.0 (2025-12-16): View-specific loading skeletons
 //   - DashboardLoadingSkeleton: KPI grid + chart
 //   - CustomersLoadingSkeleton: Hero cards + scatter + table/charts
@@ -125,36 +133,58 @@ const SkeletonTableRow = ({ columns = 5 }) => (
   </tr>
 );
 
-// Full page loading skeleton for Intelligence
+// Intelligence skeleton - matches Intelligence.jsx full-width layout (v3.12.0)
 const IntelligenceLoadingSkeleton = () => (
-  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-slate-900 dark:to-slate-800">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-      {/* Header skeleton */}
-      <div className="mb-6 sm:mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <SkeletonText width="w-24" height="h-6" className="rounded-full" />
-              <SkeletonText width="w-40" height="h-4" />
-            </div>
-            <SkeletonText width="w-64" height="h-10" />
-            <SkeletonText width="w-96 max-w-full" height="h-4" />
+  <div className="space-y-6 sm:space-y-8 animate-pulse">
+    {/* Header */}
+    <SkeletonHeader color="green" />
+
+    {/* Health Score Hero Card */}
+    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl" />
+          <div className="space-y-2">
+            <SkeletonText width="w-24" height="h-3" />
+            <SkeletonText width="w-20" height="h-7" />
           </div>
-          <Skeleton className="w-32 h-10 rounded-lg" />
+        </div>
+        <div className="flex-1 sm:border-l sm:border-slate-200 dark:sm:border-slate-600 sm:pl-6 space-y-2">
+          <SkeletonText width="w-full max-w-md" height="h-4" />
+          <SkeletonText width="w-3/4 max-w-sm" height="h-3" />
         </div>
       </div>
-
-      {/* Quick stats skeleton */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-        {[1, 2, 3, 4].map((i) => (
-          <SkeletonCard key={i} />
-        ))}
-      </div>
-
-      {/* Sections skeleton */}
-      <SkeletonSection className="mb-6 sm:mb-8" />
-      <SkeletonSection className="mb-6 sm:mb-8" />
     </div>
+
+    {/* Quick stats - 4 column KPI grid */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {[1, 2, 3, 4].map((i) => (
+        <SkeletonCard key={i} />
+      ))}
+    </div>
+
+    {/* Revenue Forecast */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <SkeletonText width="w-40" height="h-5" />
+        <SkeletonText width="w-24" height="h-4" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg flex justify-between">
+              <SkeletonText width="w-28" height="h-4" />
+              <SkeletonText width="w-20" height="h-5" />
+            </div>
+          ))}
+        </div>
+        <SkeletonChart height="h-40" />
+      </div>
+    </div>
+
+    {/* Section skeletons */}
+    <SkeletonSection />
+    <SkeletonSection />
   </div>
 );
 
@@ -456,90 +486,91 @@ const CampaignsLoadingSkeleton = () => (
   </div>
 );
 
-// Weather skeleton - matches Weather.jsx layout
+// Weather skeleton - matches WeatherSection.jsx layout (v1.6)
+// Row 1: Hero (1/2) + Metrics (1/2)
+// Row 2: HourlyForecast (full width)
+// Row 3: DailyForecast (full width)
+// Row 4: BusinessImpact (full width)
 const WeatherLoadingSkeleton = () => (
   <div className="space-y-6 animate-pulse">
     {/* Header */}
-    <div className="flex items-center justify-between">
-      <div className="space-y-2">
-        <SkeletonText width="w-48" height="h-8" />
-        <SkeletonText width="w-64" height="h-4" />
-      </div>
-      <SkeletonText width="w-32" height="h-4" />
+    <div className="space-y-2">
+      <SkeletonText width="w-32" height="h-8" />
+      <SkeletonText width="w-56" height="h-4" />
     </div>
 
-    {/* Hero + Hourly row */}
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      {/* Weather Hero - 2 columns */}
-      <div className="lg:col-span-2">
-        <Skeleton className="h-64 rounded-2xl" />
-      </div>
-
-      {/* Hourly Forecast - 3 columns */}
-      <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-          <SkeletonText width="w-36" height="h-5" />
-        </div>
-        <div className="p-4">
-          <div className="flex gap-2 overflow-hidden">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="flex-shrink-0 w-20 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-2">
-                <SkeletonText width="w-12" height="h-3" />
-                <SkeletonCircle size="w-8 h-8" className="mx-auto" />
-                <SkeletonText width="w-8" height="h-5" className="mx-auto" />
-              </div>
-            ))}
-          </div>
-          <div className="h-40 mt-4">
-            <SkeletonChart height="h-full" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Daily + Metrics row */}
+    {/* Row 1: Hero (1/2) + Metrics Grid (1/2) */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Daily Forecast */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-          <SkeletonText width="w-32" height="h-5" />
-        </div>
-        <div className="p-2 space-y-1">
-          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/30 rounded-lg">
-              <SkeletonText width="w-16" height="h-4" />
-              <SkeletonCircle size="w-6 h-6" />
-              <SkeletonText width="w-12" height="h-4" />
-              <div className="flex-1">
-                <Skeleton className="h-1.5 rounded-full" />
-              </div>
-              <SkeletonText width="w-8" height="h-4" />
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Weather Hero */}
+      <Skeleton className="h-48 sm:h-56 rounded-2xl" />
 
       {/* Metrics Grid */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-          <SkeletonText width="w-40" height="h-5" />
-        </div>
-        <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 h-full">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-2">
-              <SkeletonCircle size="w-9 h-9" className="rounded-lg" />
-              <SkeletonText width="w-16" height="h-3" />
-              <SkeletonText width="w-12" height="h-6" />
+            <div key={i} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-2">
+              <SkeletonCircle size="w-8 h-8" className="rounded-lg" />
+              <SkeletonText width="w-14" height="h-3" />
+              <SkeletonText width="w-10" height="h-5" />
             </div>
           ))}
         </div>
       </div>
     </div>
 
-    {/* Business Impact Section */}
-    <div className="space-y-4">
-      <SkeletonText width="w-48" height="h-6" />
-      <Skeleton className="h-64 rounded-xl" />
+    {/* Row 2: Hourly Forecast - full width */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+        <SkeletonText width="w-36" height="h-5" />
+      </div>
+      <div className="p-4">
+        <div className="flex gap-2 overflow-hidden">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="flex-shrink-0 w-16 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-2">
+              <SkeletonText width="w-10" height="h-3" />
+              <SkeletonCircle size="w-6 h-6" className="mx-auto" />
+              <SkeletonText width="w-8" height="h-4" className="mx-auto" />
+            </div>
+          ))}
+        </div>
+        <div className="h-32 mt-4">
+          <SkeletonChart height="h-full" />
+        </div>
+      </div>
+    </div>
+
+    {/* Row 3: Daily Forecast - full width */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+        <SkeletonText width="w-32" height="h-5" />
+      </div>
+      <div className="p-2 space-y-1">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/30 rounded-lg">
+            <SkeletonText width="w-16" height="h-4" />
+            <SkeletonCircle size="w-6 h-6" />
+            <SkeletonText width="w-12" height="h-4" />
+            <div className="flex-1">
+              <Skeleton className="h-1.5 rounded-full" />
+            </div>
+            <SkeletonText width="w-8" height="h-4" />
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Row 4: Business Impact - full width */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <SkeletonText width="w-48" height="h-6" className="mb-4" />
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <div key={i} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-2">
+            <SkeletonText width="w-12" height="h-3" />
+            <SkeletonCircle size="w-8 h-8" className="mx-auto" />
+            <SkeletonText width="w-14" height="h-4" className="mx-auto" />
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 );

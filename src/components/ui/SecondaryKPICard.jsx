@@ -1,8 +1,14 @@
-// SecondaryKPICard.jsx v2.2 - HAPTIC FEEDBACK
+// SecondaryKPICard.jsx v2.4 - COMPACT MODE
 // Compact KPI card for secondary metrics
-// Design System v3.2 compliant
+// Design System v3.3 compliant
 //
 // CHANGELOG:
+// v2.4 (2025-12-23): Compact mode for single-glance dashboard
+//   - Added compact prop for tighter layout
+//   - Compact: smaller padding, smaller text, no sparklines
+// v2.3 (2025-12-22): Modernized 3-stop gradients
+//   - Updated colorMap to use via gradients for richer look
+//   - from-X via-Y to-Z pattern for premium feel
 // v2.2 (2025-12-22): Added haptic feedback on card click
 // v2.1 (2025-12-16): Responsive trend badge position
 //   - FIXED: Desktop (sm+): Badge in header row (avoids sparkline overlap)
@@ -124,6 +130,7 @@ const SecondaryKPICard = ({
   className = '',
   pill, // { text: string, variant: 'warning' | 'success' | 'info' | 'error' }
   sparklineData, // Array of numbers for trend visualization
+  compact = false, // Compact mode for single-glance dashboard
 }) => {
   // Generate unique ID for SVG gradient to avoid collisions
   const uniqueId = useId();
@@ -134,59 +141,60 @@ const SecondaryKPICard = ({
     info: 'bg-white/20 text-white border border-blue-300/50',
     error: 'bg-white/20 text-white border border-red-300/50',
   };
-  // Gradient backgrounds matching original KPICards design
+  // Modernized 3-stop gradient backgrounds (v2.3)
+  // Uses via- for richer, more premium gradients
   const colorMap = {
     cyan: {
-      gradient: 'bg-gradient-to-br from-cyan-500 to-blue-600 dark:from-cyan-600 dark:to-blue-700',
+      gradient: 'bg-gradient-to-br from-sky-400 via-cyan-500 to-blue-500 dark:from-sky-500 dark:via-cyan-600 dark:to-blue-600',
       icon: 'text-white/90',
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
     },
     orange: {
-      gradient: 'bg-gradient-to-br from-orange-500 to-red-600 dark:from-orange-600 dark:to-red-700',
+      gradient: 'bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 dark:from-amber-500 dark:via-orange-600 dark:to-rose-600',
       icon: 'text-white/90',
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
     },
     purple: {
-      gradient: 'bg-gradient-to-br from-purple-500 to-violet-600 dark:from-purple-600 dark:to-violet-700',
+      gradient: 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 dark:from-violet-600 dark:via-purple-600 dark:to-fuchsia-700',
       icon: 'text-white/90',
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
     },
     blue: {
-      gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700',
+      gradient: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 dark:from-blue-600 dark:via-indigo-600 dark:to-violet-700',
       icon: 'text-white/90',
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
     },
     amber: {
-      gradient: 'bg-gradient-to-br from-amber-500 to-yellow-600 dark:from-amber-600 dark:to-yellow-700',
+      gradient: 'bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 dark:from-amber-600 dark:via-orange-600 dark:to-rose-600',
       icon: 'text-white/90',
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
     },
     red: {
-      gradient: 'bg-gradient-to-br from-red-500 to-rose-600 dark:from-red-600 dark:to-rose-700',
+      gradient: 'bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 dark:from-rose-600 dark:via-red-600 dark:to-pink-700',
       icon: 'text-white/90',
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
     },
     green: {
-      gradient: 'bg-gradient-to-br from-green-500 to-emerald-600 dark:from-green-600 dark:to-emerald-700',
+      gradient: 'bg-gradient-to-br from-lime-400 via-emerald-500 to-teal-500 dark:from-lime-500 dark:via-emerald-600 dark:to-teal-600',
       icon: 'text-white/90',
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
     },
     slate: {
-      gradient: 'bg-gradient-to-br from-slate-500 to-gray-600 dark:from-slate-600 dark:to-gray-700',
+      gradient: 'bg-gradient-to-br from-slate-500 via-gray-500 to-zinc-600 dark:from-slate-600 dark:via-gray-600 dark:to-zinc-700',
       icon: 'text-white/90',
       title: 'text-white/80',
       value: 'text-white',
@@ -222,7 +230,7 @@ const SecondaryKPICard = ({
       className={`
         ${colors.gradient}
         rounded-xl
-        px-3 py-3 sm:px-4
+        ${compact ? 'px-4 py-4' : 'px-3 py-3 sm:px-4'}
         shadow-sm
         transition-all duration-200
         relative overflow-hidden
@@ -240,41 +248,41 @@ const SecondaryKPICard = ({
         <div className="flex items-center gap-2">
           {Icon && (
             <div className={`flex-shrink-0 ${colors.icon}`}>
-              <Icon className="w-4 h-4" />
+              <Icon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
             </div>
           )}
-          <div className={`text-xs font-semibold ${colors.title} uppercase tracking-wider leading-tight`}>
+          <div className={`text-sm font-semibold ${colors.title} uppercase tracking-wider leading-tight`}>
             {title}
           </div>
-          {/* Trend Badge - Desktop only (header position avoids sparkline) */}
+          {/* Trend Badge - header position (always in compact, desktop-only otherwise) */}
           {trend?.show && (
-            <div className="flex-shrink-0 ml-auto hidden sm:block">
+            <div className={`flex-shrink-0 ml-auto ${compact ? '' : 'hidden sm:block'}`}>
               <TrendBadge value={trend.value} size="xs" inverted />
             </div>
           )}
         </div>
 
         {/* Value */}
-        <div className={`text-xl sm:text-2xl font-bold ${colors.value}`}>
+        <div className={`${compact ? 'text-2xl' : 'text-xl sm:text-2xl'} font-bold ${colors.value}`}>
           {displayValue}
         </div>
 
-        {/* Footer: Subtitle + Pill + Trend Badge (mobile only) */}
+        {/* Footer: Subtitle + Pill + Trend Badge (mobile only in expanded mode) */}
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-2 flex-wrap">
-            {subtitle && (
+            {subtitle && !compact && (
               <div className={`text-xs ${colors.subtitle} leading-tight`}>
                 {subtitle}
               </div>
             )}
-            {pill && (
+            {pill && !compact && (
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pillVariants[pill.variant] || pillVariants.info}`}>
                 {pill.text}
               </span>
             )}
           </div>
-          {/* Trend Badge - Mobile only (footer position, no sparkline overlap) */}
-          {trend?.show && (
+          {/* Trend Badge - Mobile only in expanded mode (footer position) */}
+          {!compact && trend?.show && (
             <div className="flex-shrink-0 ml-auto sm:hidden">
               <TrendBadge value={trend.value} size="xs" inverted />
             </div>

@@ -1,11 +1,25 @@
-// OperatingCyclesChart.jsx v5.3 - MOBILE HEADER FIX
+// OperatingCyclesChart.jsx v5.7 - COMPACT MODE FULL CONTROLS
 // ✅ NEW: Split by filter (All/Wash Only/Dry Only)
-// ✅ Previous month comparison lines (dashed)
+// ✅ Same month last year comparison (YoY)
 // ✅ Gradient bars for visual depth
+// ✅ Compact mode for single-glance dashboard
 // ✅ Mobile responsive adjustments
-// ✅ Design System v3.2 compliant
+// ✅ Design System v3.3 compliant
 //
 // CHANGELOG:
+// v5.7 (2025-12-23): Show controls in compact mode
+//   - Chart height increased to 300px in compact mode
+//   - Controls (filters, month selector) now visible in all modes
+// v5.6 (2025-12-23): Fixed compact mode rendering
+//   - Removed conflicting flex-1 from compact chart height
+//   - Removed h-full from wrapper in compact mode (no parent height)
+// v5.5 (2025-12-23): Compact mode for single-glance dashboard
+//   - Added compact prop for reduced height layout
+//   - Compact: h-[300px], simplified header, inline stats
+// v5.4 (2025-12-22): Year-over-year comparison
+//   - CHANGED: Comparison lines now show same month from last year (not previous month)
+//   - Updated legend text from "Mês Ant." to year reference
+//   - More meaningful seasonal comparison for business analysis
 // v5.3 (2025-12-16): Mobile header layout fix
 //   - FIXED: Controls stack below title on mobile to prevent overlap
 //   - Better spacing between filter groups
@@ -64,7 +78,8 @@ function getMonthName(monthIndex) {
 const OperatingCyclesChart = ({
   salesData,
   month: propMonth = null,
-  year: propYear = null
+  year: propYear = null,
+  compact = false // Compact mode for single-glance dashboard
 }) => {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
@@ -110,18 +125,15 @@ const OperatingCyclesChart = ({
     const targetMonth = month !== null ? month : now.getMonth();
     const targetYear = year !== null ? year : now.getFullYear();
 
-    // Previous month calculation
-    let prevMonth = targetMonth - 1;
-    let prevYear = targetYear;
-    if (prevMonth < 0) {
-      prevMonth = 11;
-      prevYear -= 1;
-    }
+    // Year-over-Year: Same month from last year
+    const comparisonYear = targetYear - 1;
 
     const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+    // Get days in comparison month (handles leap years, etc.)
+    const daysInComparisonMonth = new Date(comparisonYear, targetMonth + 1, 0).getDate();
 
     const dailyMap = {};
-    const prevMonthMap = {};
+    const lastYearMap = {};
 
     // Initialize maps
     for (let day = 1; day <= daysInMonth; day++) {
@@ -131,11 +143,14 @@ const OperatingCyclesChart = ({
         Lavagens: 0,
         Secagens: 0,
         Total: 0,
-        PrevWash: 0,
-        PrevDry: 0,
-        PreviousTotal: 0
+        LastYearWash: 0,
+        LastYearDry: 0,
+        LastYearTotal: 0
       };
-      prevMonthMap[day] = { wash: 0, dry: 0, total: 0 };
+    }
+    // Initialize last year map (may have different days if leap year)
+    for (let day = 1; day <= daysInComparisonMonth; day++) {
+      lastYearMap[day] = { wash: 0, dry: 0, total: 0 };
     }
 
     salesData.forEach(row => {
@@ -155,21 +170,21 @@ const OperatingCyclesChart = ({
         }
       }
 
-      // Previous Month Data (for comparison)
-      if (date.getMonth() === prevMonth && date.getFullYear() === prevYear) {
-        if (prevMonthMap[dayNum]) {
-          prevMonthMap[dayNum].wash += machineInfo.wash;
-          prevMonthMap[dayNum].dry += machineInfo.dry;
-          prevMonthMap[dayNum].total += totalCycles;
+      // Same Month Last Year Data (for YoY comparison)
+      if (date.getMonth() === targetMonth && date.getFullYear() === comparisonYear) {
+        if (lastYearMap[dayNum]) {
+          lastYearMap[dayNum].wash += machineInfo.wash;
+          lastYearMap[dayNum].dry += machineInfo.dry;
+          lastYearMap[dayNum].total += totalCycles;
         }
       }
     });
 
-    // Merge previous month data into dailyMap
+    // Merge last year data into dailyMap
     Object.keys(dailyMap).forEach(day => {
-      dailyMap[day].PrevWash = prevMonthMap[day]?.wash || 0;
-      dailyMap[day].PrevDry = prevMonthMap[day]?.dry || 0;
-      dailyMap[day].PreviousTotal = prevMonthMap[day]?.total || 0;
+      dailyMap[day].LastYearWash = lastYearMap[day]?.wash || 0;
+      dailyMap[day].LastYearDry = lastYearMap[day]?.dry || 0;
+      dailyMap[day].LastYearTotal = lastYearMap[day]?.total || 0;
     });
 
     let allData = Object.values(dailyMap).sort((a, b) => a.dayNum - b.dayNum);
@@ -177,7 +192,7 @@ const OperatingCyclesChart = ({
     // Calculate FULL MONTH totals (always)
     const totalWash = allData.reduce((sum, d) => sum + d.Lavagens, 0);
     const totalDry = allData.reduce((sum, d) => sum + d.Secagens, 0);
-    const totalPrevious = allData.reduce((sum, d) => sum + d.PreviousTotal, 0);
+    const totalLastYear = allData.reduce((sum, d) => sum + d.LastYearTotal, 0);
 
     // For mobile: show last 7 days (rolling window)
     // This prevents sparse charts at month start
@@ -200,11 +215,11 @@ const OperatingCyclesChart = ({
     const info = {
       month: getMonthName(targetMonth),
       year: targetYear,
-      prevMonth: getMonthName(prevMonth),
+      comparisonYear: comparisonYear,
       totalWash,
       totalDry,
       totalCycles: totalWash + totalDry,
-      totalPrevious
+      totalLastYear
     };
 
     return { chartData: displayData, periodInfo: info };
@@ -217,10 +232,10 @@ const OperatingCyclesChart = ({
       const filteredPayload = payload.filter(entry => {
         if (splitBy === 'all') return true;
         if (splitBy === 'wash') {
-          return entry.dataKey === 'Lavagens' || entry.dataKey === 'PrevWash';
+          return entry.dataKey === 'Lavagens' || entry.dataKey === 'LastYearWash';
         }
         if (splitBy === 'dry') {
-          return entry.dataKey === 'Secagens' || entry.dataKey === 'PrevDry';
+          return entry.dataKey === 'Secagens' || entry.dataKey === 'LastYearDry';
         }
         return true;
       });
@@ -235,28 +250,28 @@ const OperatingCyclesChart = ({
           </div>
           {filteredPayload.map((entry, index) => {
             // Skip rendering if value is 0 and it's not the comparison line
-            if (entry.value === 0 && !entry.dataKey.startsWith('Prev')) return null;
+            if (entry.value === 0 && !entry.dataKey.startsWith('LastYear')) return null;
 
             let labelText = entry.name;
-            let isPrev = false;
+            let isLastYear = false;
 
-            if (entry.dataKey === 'PrevWash') {
-              labelText = `Lavagens (${periodInfo?.prevMonth || ''})`;
-              isPrev = true;
-            } else if (entry.dataKey === 'PrevDry') {
-              labelText = `Secagens (${periodInfo?.prevMonth || ''})`;
-              isPrev = true;
+            if (entry.dataKey === 'LastYearWash') {
+              labelText = `Lavagens (${periodInfo?.comparisonYear || ''})`;
+              isLastYear = true;
+            } else if (entry.dataKey === 'LastYearDry') {
+              labelText = `Secagens (${periodInfo?.comparisonYear || ''})`;
+              isLastYear = true;
             }
 
-            const color = isPrev
-              ? (entry.dataKey === 'PrevWash' ? colors.info : colors.warning)
+            const color = isLastYear
+              ? (entry.dataKey === 'LastYearWash' ? colors.info : colors.warning)
               : (entry.dataKey === 'Lavagens' ? colors.primary : colors.secondary);
 
             return (
               <div key={index} className="flex items-center justify-between gap-3 text-xs mb-1 last:mb-0">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 ${isPrev ? 'rounded-full' : 'rounded-sm'}`}
+                    className={`w-2 h-2 ${isLastYear ? 'rounded-full' : 'rounded-sm'}`}
                     style={{ backgroundColor: color }}
                   />
                   <span className="text-slate-600 dark:text-slate-400 font-medium">
@@ -273,7 +288,7 @@ const OperatingCyclesChart = ({
       );
     }
     return null;
-  }, [periodInfo?.prevMonth, splitBy]);
+  }, [periodInfo?.comparisonYear, splitBy]);
 
   // Memoize renderLabel to prevent recreation on every render
   const renderLabel = useCallback((props) => {
@@ -307,19 +322,21 @@ const OperatingCyclesChart = ({
   }
 
   return (
-    <div className="transition-all duration-300">
-      {/* Header - Stacked on mobile */}
-      <div className="mb-4 sm:mb-6">
+    <div className={`transition-all duration-300 flex flex-col ${compact ? '' : 'h-full'}`}>
+      {/* Header - Simplified in compact mode */}
+      <div className={compact ? 'mb-2' : 'mb-4 sm:mb-6'}>
         {/* Title row */}
-        <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <WashingMachine className="w-4 h-4 sm:w-5 sm:h-5 text-lavpop-blue dark:text-blue-400 flex-shrink-0" />
+            <h3 className={`${compact ? 'text-sm' : 'text-base sm:text-lg'} font-semibold text-slate-900 dark:text-white flex items-center gap-2`}>
+              <WashingMachine className={`${compact ? 'w-4 h-4' : 'w-4 h-4 sm:w-5 sm:h-5'} text-lavpop-blue dark:text-blue-400 flex-shrink-0`} />
               <span className="truncate">Ciclos de Operação</span>
             </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5 sm:hidden">
-              {periodInfo.month}/{periodInfo.year}
-            </p>
+            {!compact && (
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5 sm:hidden">
+                {periodInfo.month}/{periodInfo.year}
+              </p>
+            )}
           </div>
 
           {/* Desktop: Controls inline with title */}
@@ -474,13 +491,13 @@ const OperatingCyclesChart = ({
             <>
               <div className="flex items-center gap-1" role="listitem">
                 <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colors.primary }} aria-hidden="true"></div>
-                <span className="text-slate-600 dark:text-slate-400">Lav</span>
+                <span className="text-slate-600 dark:text-slate-400">Lav {periodInfo?.year}</span>
               </div>
               <div className="flex items-center gap-1" role="listitem">
                 <svg className="w-3 h-2" aria-hidden="true" viewBox="0 0 12 8">
                   <line x1="0" y1="4" x2="12" y2="4" stroke={colors.info} strokeWidth="2" strokeDasharray="3 2" />
                 </svg>
-                <span className="text-slate-500 dark:text-slate-500 hidden sm:inline">Mês Ant.</span>
+                <span className="text-slate-500 dark:text-slate-500 hidden sm:inline">{periodInfo?.comparisonYear}</span>
               </div>
             </>
           )}
@@ -488,25 +505,25 @@ const OperatingCyclesChart = ({
             <>
               <div className="flex items-center gap-1" role="listitem">
                 <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colors.secondary }} aria-hidden="true"></div>
-                <span className="text-slate-600 dark:text-slate-400">Sec</span>
+                <span className="text-slate-600 dark:text-slate-400">Sec {periodInfo?.year}</span>
               </div>
               <div className="flex items-center gap-1" role="listitem">
                 <svg className="w-3 h-2" aria-hidden="true" viewBox="0 0 12 8">
                   <line x1="0" y1="4" x2="12" y2="4" stroke={colors.warning} strokeWidth="2" strokeDasharray="3 2" />
                 </svg>
-                <span className="text-slate-500 dark:text-slate-500 hidden sm:inline">Mês Ant.</span>
+                <span className="text-slate-500 dark:text-slate-500 hidden sm:inline">{periodInfo?.comparisonYear}</span>
               </div>
             </>
           )}
         </div>
       </div>
 
-      {/* Chart - Responsive height */}
-      <div className="h-[280px] sm:h-[350px] lg:h-[400px]">
+      {/* Chart - Responsive height, reduced in compact mode */}
+      <div className={compact ? 'h-[370px]' : 'h-[280px] sm:h-[350px] lg:h-[400px]'}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={chartData}
-            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+            margin={{ top: 20, right: 10, bottom: 10, left: 5 }}
           >
             <defs>
               <linearGradient id="washGradient" x1="0" y1="0" x2="0" y2="1">
@@ -538,7 +555,7 @@ const OperatingCyclesChart = ({
               axisLine={false}
               tickLine={false}
               label={{
-                value: 'Ciclos',
+                value: '# Ciclos',
                 angle: -90,
                 position: 'insideLeft',
                 offset: 0,
@@ -551,12 +568,12 @@ const OperatingCyclesChart = ({
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: colors.cursorFill }} />
 
-            {/* Previous Month Wash Trend - conditional on splitBy */}
+            {/* Last Year Wash Trend - conditional on splitBy */}
             {(splitBy === 'all' || splitBy === 'wash') && (
               <Line
                 type="monotone"
-                dataKey="PrevWash"
-                name="Lavagens (Mês Anterior)"
+                dataKey="LastYearWash"
+                name={`Lavagens (${periodInfo?.comparisonYear || 'Ano Anterior'})`}
                 stroke={colors.info}
                 strokeWidth={2}
                 strokeDasharray="4 4"
@@ -564,12 +581,12 @@ const OperatingCyclesChart = ({
                 activeDot={false}
               />
             )}
-            {/* Previous Month Dry Trend - conditional on splitBy */}
+            {/* Last Year Dry Trend - conditional on splitBy */}
             {(splitBy === 'all' || splitBy === 'dry') && (
               <Line
                 type="monotone"
-                dataKey="PrevDry"
-                name="Secagens (Mês Anterior)"
+                dataKey="LastYearDry"
+                name={`Secagens (${periodInfo?.comparisonYear || 'Ano Anterior'})`}
                 stroke={colors.warning}
                 strokeWidth={2}
                 strokeDasharray="4 4"
@@ -607,50 +624,68 @@ const OperatingCyclesChart = ({
         </ResponsiveContainer>
       </div>
 
-      {/* Mobile indicator for partial data - compact */}
-      {isMobile && (
+      {/* Mobile indicator for partial data - hidden in compact mode */}
+      {!compact && isMobile && (
         <div className="text-xs text-slate-500 dark:text-slate-400 text-center mt-2 py-1">
           Últimos 7 dias • Totais do mês completo
         </div>
       )}
 
-      {/* Stats Footer - Compact on mobile */}
-      <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-700">
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className={`text-center transition-opacity duration-200 ${splitBy !== 'all' ? 'opacity-50' : ''}`}>
-            <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-              {periodInfo.totalCycles}
-            </div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
-              <span className="hidden sm:inline">Total</span> Ciclos
-              {periodInfo.totalCycles > periodInfo.totalPrevious ? (
-                <TrendingUp className="w-3 h-3 text-emerald-500" />
-              ) : (
-                <TrendingUp className="w-3 h-3 text-red-500 rotate-180" />
-              )}
-            </div>
-          </div>
-          <div className={`text-center transition-all duration-200 ${splitBy === 'wash' ? 'sm:scale-110' : splitBy === 'dry' ? 'opacity-50' : ''}`}>
-            <div className="text-xl sm:text-2xl font-bold" style={{ color: colors.primary }}>
-              {periodInfo.totalWash}
-            </div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
+      {/* Stats Footer - Inline row in compact mode */}
+      <div className={compact ? 'mt-2 pt-2 border-t border-slate-200 dark:border-slate-700' : 'mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-700'}>
+        {compact ? (
+          /* Compact: Inline stats row */
+          <div className="flex items-center justify-center gap-4 text-xs">
+            <span className="font-bold text-slate-900 dark:text-white">
+              {periodInfo.totalCycles} total
+            </span>
+            <span className="flex items-center gap-1">
               <Droplet className="w-3 h-3" style={{ color: colors.primary }} />
-              <span className="hidden sm:inline">Lavagens</span>
-              <span className="sm:hidden">Lav</span>
-            </div>
-          </div>
-          <div className={`text-center transition-all duration-200 ${splitBy === 'dry' ? 'sm:scale-110' : splitBy === 'wash' ? 'opacity-50' : ''}`}>
-            <div className="text-xl sm:text-2xl font-bold" style={{ color: colors.secondary }}>
-              {periodInfo.totalDry}
-            </div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
+              <span style={{ color: colors.primary }}>{periodInfo.totalWash}</span>
+            </span>
+            <span className="flex items-center gap-1">
               <Flame className="w-3 h-3" style={{ color: colors.secondary }} />
-              <span className="hidden sm:inline">Secagens</span>
-              <span className="sm:hidden">Sec</span>
+              <span style={{ color: colors.secondary }}>{periodInfo.totalDry}</span>
+            </span>
+          </div>
+        ) : (
+          /* Expanded: Grid layout */
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <div className={`text-center transition-opacity duration-200 ${splitBy !== 'all' ? 'opacity-50' : ''}`}>
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                {periodInfo.totalCycles}
+              </div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
+                <span className="hidden sm:inline">Total</span> Ciclos
+                {periodInfo.totalCycles > periodInfo.totalLastYear ? (
+                  <TrendingUp className="w-3 h-3 text-emerald-500" />
+                ) : periodInfo.totalLastYear > 0 ? (
+                  <TrendingUp className="w-3 h-3 text-red-500 rotate-180" />
+                ) : null}
+              </div>
+            </div>
+            <div className={`text-center transition-all duration-200 ${splitBy === 'wash' ? 'sm:scale-110' : splitBy === 'dry' ? 'opacity-50' : ''}`}>
+              <div className="text-xl sm:text-2xl font-bold" style={{ color: colors.primary }}>
+                {periodInfo.totalWash}
+              </div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
+                <Droplet className="w-3 h-3" style={{ color: colors.primary }} />
+                <span className="hidden sm:inline">Lavagens</span>
+                <span className="sm:hidden">Lav</span>
+              </div>
+            </div>
+            <div className={`text-center transition-all duration-200 ${splitBy === 'dry' ? 'sm:scale-110' : splitBy === 'wash' ? 'opacity-50' : ''}`}>
+              <div className="text-xl sm:text-2xl font-bold" style={{ color: colors.secondary }}>
+                {periodInfo.totalDry}
+              </div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
+                <Flame className="w-3 h-3" style={{ color: colors.secondary }} />
+                <span className="hidden sm:inline">Secagens</span>
+                <span className="sm:hidden">Sec</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
