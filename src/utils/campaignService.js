@@ -234,7 +234,7 @@ export async function sendBulkWhatsApp(recipients, message, options = {}) {
       };
     }
 
-    console.log(`📱 Sending to ${valid.length} valid recipients (${invalid.length} invalid filtered)`);
+    // Bulk send initiated
 
     // Build request payload
     const payload = {
@@ -790,7 +790,7 @@ export async function recordCampaignContact(campaignId, contactData) {
       expires_at: expiresAt
     });
 
-    console.log(`[CampaignService] Recorded contact for campaign ${campaignId}: ${customerId}`);
+    // Contact recorded successfully (customerId omitted for privacy)
     return { tracking: result, contact: result };
   } catch (error) {
     console.error('[CampaignService] Failed to record campaign contact:', error.message);
@@ -809,11 +809,11 @@ export async function getCampaignPerformance(campaignId = null) {
     const data = await api.get('campaign_performance', campaignId ? { id: campaignId } : {});
 
     if (campaignId && data.length > 0) {
-      console.log(`[CampaignService] Loaded performance for campaign ${campaignId}`);
+      // Campaign performance loaded
       return data[0];
     }
 
-    console.log(`[CampaignService] Loaded performance for ${data.length} campaigns`);
+    // Campaign performance loaded
     return data;
   } catch (error) {
     console.error('[CampaignService] Could not load campaign performance:', error.message);
@@ -921,8 +921,6 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
 
   if (!skipEligibilityCheck && !dryRun && recipients.length > 0) {
     try {
-      console.log(`[CampaignService] Checking eligibility for ${recipients.length} recipients...`);
-
       const eligibilityResult = await api.eligibility.filterRecipients(recipients, {
         campaignType: campaignType
       });
@@ -935,15 +933,7 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
         phone: r.phone,
         reason: r.eligibilityInfo?.reason || 'Inelegível para contato'
       }));
-
-      console.log(`[CampaignService] Eligibility check: ${eligibleRecipients.length} eligible, ${result.ineligibleCount} ineligible`);
-
-      if (result.ineligibleCount > 0) {
-        console.log('[CampaignService] Ineligible recipients:', result.ineligibleContacts.slice(0, 5).map(c => ({
-          customerId: c.customerId,
-          reason: c.reason
-        })));
-      }
+      // Eligibility check complete (customer details omitted for privacy)
     } catch (eligibilityError) {
       // On error, log warning but proceed with all recipients
       // Better to send than to block due to eligibility check failure
@@ -1062,12 +1052,7 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
 
       result.errors.push(errorInfo);
 
-      // Log specific error type for debugging
-      console.warn(`[CampaignService] Send failed for ${phone}:`, {
-        type: errorInfo.type,
-        message: errorInfo.error,
-        retryable: errorInfo.retryable
-      });
+      // Error tracked in result.errors (phone omitted for privacy)
     }
   }
 
@@ -1083,13 +1068,7 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
   // Generate result summary for UI display
   result.summary = createResultSummary(result);
 
-  console.log(`[CampaignService] Campaign ${campaignId} completed:`, {
-    success: result.successCount,
-    tracked: result.trackedContacts,
-    failed: result.failedCount,
-    ineligible: result.ineligibleCount,
-    status: result.summary.status
-  });
+  // Campaign execution completed
 
   return result;
 }
@@ -1333,12 +1312,7 @@ export async function getDashboardMetrics(options = {}) {
         }));
       }
 
-    console.log(`[CampaignService] Dashboard metrics loaded:`, {
-      contacts: metrics.summary.totalContacts,
-      returned: metrics.summary.totalReturned,
-      campaigns: metrics.recentCampaigns.length,
-      discountLevels: metrics.discountComparison.length
-    });
+    // Dashboard metrics loaded successfully
   } catch (error) {
     console.warn('[CampaignService] Failed to load dashboard metrics:', error.message);
   }

@@ -1,8 +1,11 @@
-// Intelligence.jsx v3.12.0 - REMOVED SECTION NAVIGATION
+// Intelligence.jsx v3.12.1 - FIX EMPTY RENDER
 // Refactored with unified components and Health Score
 // Design System v3.2 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.12.1 (2025-12-23): Fix empty render on navigation
+//   - Added check for derived calculations (profitability, growthTrends, currentMonth)
+//   - Shows skeleton until ALL required data and calculations are ready
 // v3.12.0 (2025-12-23): Removed SectionNavigation
 //   - REMOVED: SectionNavigation component (sticky nav bar)
 //   - Cleaner layout without redundant navigation
@@ -200,6 +203,12 @@ const Intelligence = ({ data }) => {
 
   // Loading state with skeleton
   if (!data || !data.sales) {
+    return <IntelligenceLoadingSkeleton />;
+  }
+
+  // Additional check: ensure core calculations succeeded
+  // This prevents empty render when settings or derived metrics are unavailable
+  if (!profitability || !growthTrends || !currentMonth) {
     return <IntelligenceLoadingSkeleton />;
   }
 

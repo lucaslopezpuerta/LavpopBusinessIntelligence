@@ -53,20 +53,17 @@ export function useDataFreshness({
 
     // Prevent duplicate refreshes
     if (refreshingRef.current) {
-      console.log('[DataFreshness] Refresh already in progress, skipping');
       return false;
     }
 
     // Prevent too-frequent refreshes (unless forced)
     const timeSinceLastAttempt = Date.now() - lastRefreshAttemptRef.current;
     if (!force && timeSinceLastAttempt < MIN_REFRESH_GAP) {
-      console.log('[DataFreshness] Too soon since last refresh, skipping');
       return false;
     }
 
     // Skip if data is fresh (unless forced)
     if (!force && !isStale()) {
-      console.log('[DataFreshness] Data is fresh, skipping refresh');
       return false;
     }
 
@@ -78,11 +75,8 @@ export function useDataFreshness({
         setRefreshing(true);
       }
 
-      console.log('[DataFreshness] Starting refresh...');
       await onRefresh();
-
       setLastRefreshed(Date.now());
-      console.log('[DataFreshness] Refresh completed');
       return true;
 
     } catch (error) {
@@ -101,15 +95,9 @@ export function useDataFreshness({
     if (!enabled || !enableVisibilityRefresh) return;
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[DataFreshness] Tab became visible, checking staleness...');
-        // Only refresh if stale when returning to tab
-        if (isStale()) {
-          console.log('[DataFreshness] Data is stale, triggering refresh');
-          refresh({ silent: true }).catch(() => {});
-        } else {
-          console.log('[DataFreshness] Data is still fresh');
-        }
+      // Only refresh if stale when returning to tab
+      if (document.visibilityState === 'visible' && isStale()) {
+        refresh({ silent: true }).catch(() => {});
       }
     };
 
@@ -121,15 +109,10 @@ export function useDataFreshness({
   useEffect(() => {
     if (!enabled || !enableAutoRefresh || !refreshInterval) return;
 
-    console.log(`[DataFreshness] Setting up auto-refresh every ${refreshInterval / 1000}s`);
-
     const intervalId = setInterval(() => {
       // Only auto-refresh if tab is visible
       if (document.visibilityState === 'visible') {
-        console.log('[DataFreshness] Auto-refresh triggered');
         refresh({ silent: true }).catch(() => {});
-      } else {
-        console.log('[DataFreshness] Skipping auto-refresh (tab hidden)');
       }
     }, refreshInterval);
 

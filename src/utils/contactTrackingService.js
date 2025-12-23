@@ -181,7 +181,6 @@ export function cleanupLocalStorage() {
   keysToRemove.forEach(key => {
     try {
       localStorage.removeItem(key);
-      console.log(`Cleaned up localStorage key: ${key}`);
     } catch (e) {
       // Ignore errors
     }
@@ -195,7 +194,6 @@ if (typeof window !== 'undefined') {
     if (!localStorage.getItem(migrationKey)) {
       cleanupLocalStorage();
       localStorage.setItem(migrationKey, 'true');
-      console.log('Contact tracking localStorage migration complete');
     }
   } catch (e) {
     // Ignore errors

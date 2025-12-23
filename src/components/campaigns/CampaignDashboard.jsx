@@ -1,8 +1,11 @@
-// CampaignDashboard.jsx v2.3
+// CampaignDashboard.jsx v2.3.1
 // Unified Campaign Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.3.1 (2025-12-23): Fix empty render when fetch fails
+//   - Changed loading guard from (isLoading && !metrics) to (isLoading || !metrics)
+//   - Prevents empty content when Supabase query fails silently
 // v2.3 (2025-12-14): Mobile-responsive table, UX improvements
 //   - Removed min-w-[900px] - table now responsive without horizontal scroll
 //   - Columns hidden progressively: Mobile (4) → Tablet (6) → Desktop (8)
@@ -363,8 +366,9 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
   // Summary metrics for KPIs
   const summary = metrics?.summary || {};
 
-  // Loading state
-  if (isLoading && !metrics) {
+  // Loading state - show skeleton if loading OR if metrics failed to load
+  // Using || ensures we don't render empty content when fetch fails silently
+  if (isLoading || !metrics) {
     return (
       <div className={`space-y-6 ${className}`}>
         <div className="animate-pulse">

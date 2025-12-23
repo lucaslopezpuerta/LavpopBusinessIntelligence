@@ -1,8 +1,11 @@
-// Campaigns.jsx v2.5.0 - Blacklist moved to Social Media
+// Campaigns.jsx v2.5.1 - FIX EMPTY RENDER
 // Customer Messaging & Campaign Management Tab
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.5.1 (2025-12-23): Fix empty render on navigation
+//   - Added comprehensive data readiness check (sales + rfm + customer)
+//   - Prevents empty tab when derived calculations return null
 // v2.5.0 (2025-12-19): Moved Blacklist to Social Media view
 //   - Removed BlacklistManager (now in SocialMedia.jsx)
 //   - Blacklist logically belongs with WhatsApp messaging
@@ -164,8 +167,12 @@ const Campaigns = ({ data }) => {
     }, 300);
   };
 
-  // Loading state
-  if (!data || !data.sales) {
+  // Check if all required data is loaded (not just sales)
+  // This prevents empty renders when derived calculations return null
+  const isDataReady = data?.sales && data?.rfm && data?.customer;
+
+  // Loading state - show skeleton until ALL required data is available
+  if (!isDataReady) {
     return (
       <div className="p-6 max-w-[1600px] mx-auto">
         <div className="animate-pulse space-y-6">

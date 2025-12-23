@@ -1,4 +1,8 @@
-// Operations Metrics Calculator v3.7
+// Operations Metrics Calculator v3.8 - PRODUCTION LOGGING
+// v3.8 (2025-12-23): Production logging cleanup
+//   - Converted verbose console.log to logger.debug (dev-only)
+//   - Cleaner console output in production
+// v3.7
 // ✅ Uses shared transactionParser for consistent cashback handling
 // ✅ Uses centralized dateWindows.js for date calculations
 // ✅ Includes Recarga in total revenue (Day of Week, Hourly)
@@ -24,6 +28,7 @@
 
 import { parseSalesRecords, filterWithServices, parseBrNumber } from './transactionParser';
 import { getDateWindows } from './dateWindows';
+import { logger } from './logger';
 
 // UNIFIED BUSINESS PARAMS - Single source of truth
 // Export for use in other modules (OperationsKPICards, businessMetrics)
@@ -153,7 +158,7 @@ export function calculateOverallUtilization(salesData, dateFilter = 'currentWeek
   const peakTotalUtil = (peakWashUtil * washWeight) + (peakDryUtil * dryWeight);
   const offPeakTotalUtil = (offPeakWashUtil * washWeight) + (offPeakDryUtil * dryWeight);
   
-  console.log('✅ Overall Utilization (v3.6):', {
+  logger.debug('Operations', 'Overall Utilization', {
     dateFilter,
     dateRange: window.dateRange,
     activeDays,
@@ -499,7 +504,7 @@ export function calculateMachinePerformance(salesData, dateFilter = 'currentWeek
     });
   });
   
-  console.log('✅ Machine Performance (v3.6 FIXED):', {
+  logger.debug('Operations', 'Machine Performance', {
     dateFilter,
     totalMachines: Object.keys(machines).length,
     windowRecords: windowRecords.length

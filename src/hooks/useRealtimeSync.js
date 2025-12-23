@@ -1,5 +1,6 @@
 /**
  * useRealtimeSync - Supabase Realtime subscription for live updates
+ * v1.2 - STABLE CONNECTION DETECTION
  *
  * OPTIMIZED FOR FREE TIER: Only subscribes to contact_tracking table
  * (the most critical for Customers/Campaigns mobile UX)
@@ -10,6 +11,21 @@
  * - No rate limits (single persistent connection)
  * - Works great on mobile (low battery/data usage)
  * - Free tier compatible (uses ~1 connection)
+ * - Auto-reconnects on disconnect with exponential backoff
+ * - Graceful degradation when realtime unavailable
+ *
+ * CHANGELOG:
+ * v1.2 (2025-12-23): Stable connection detection
+ *   - Only resets retry counter after 5s of stable connection
+ *   - Prevents infinite reconnection loops from flapping connections
+ *   - Adds "gave up" flag to stop console spam after max attempts
+ *   - App continues working with cached data when realtime unavailable
+ * v1.1 (2025-12-23): Reconnection logic
+ *   - Added exponential backoff for reconnection attempts
+ *   - Handles CHANNEL_ERROR and CLOSED status
+ *   - Max 5 retry attempts before giving up
+ *   - Logs connection status changes for debugging
+ * v1.0: Initial implementation
  *
  * Usage:
  *   const { lastUpdate, isConnected } = useRealtimeSync({
@@ -28,6 +44,12 @@ import { getSupabaseClient } from '../utils/supabaseClient';
 // Use shared Supabase client to avoid multiple GoTrueClient instances
 const getSupabase = getSupabaseClient;
 
+// Reconnection configuration
+const MAX_RETRY_ATTEMPTS = 5;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+const MAX_RETRY_DELAY = 30000; // 30 seconds
+const STABLE_CONNECTION_THRESHOLD = 5000; // 5 seconds before considering connection stable
+
 export function useRealtimeSync({
   onContactChange,
   enabled = true
@@ -35,6 +57,12 @@ export function useRealtimeSync({
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const channelRef = useRef(null);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef(null);
+  const mountedRef = useRef(true);
+  const connectedAtRef = useRef(null); // Track when connection was established
+  const stableTimeoutRef = useRef(null); // Timer for stable connection check
+  const gaveUpRef = useRef(false); // Flag to stop logging after max attempts
 
   // Debounce rapid updates to prevent UI thrashing
   const pendingUpdates = useRef([]);
@@ -62,47 +90,122 @@ export function useRealtimeSync({
     flushTimeoutRef.current = setTimeout(flushUpdates, 300);
   }, [flushUpdates]);
 
+  // Cleanup existing channel before reconnecting
+  const cleanupChannel = useCallback(async () => {
+    if (channelRef.current) {
+      try {
+        await channelRef.current.unsubscribe();
+      } catch {
+        // Ignore unsubscribe errors
+      }
+      channelRef.current = null;
+    }
+  }, []);
+
+  // Setup realtime subscription
+  const setupRealtime = useCallback(async () => {
+    if (!mountedRef.current) return;
+
+    const supabase = await getSupabase();
+    if (!supabase || !mountedRef.current) return;
+
+    // Clean up any existing channel first
+    await cleanupChannel();
+
+    // Subscribe ONLY to contact_tracking (optimized for free tier)
+    // This is the critical table for Customers/Campaigns real-time UX
+    const channel = supabase
+      .channel('contact-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contact_tracking' },
+        (payload) => {
+          queueUpdate(payload);
+        }
+      )
+      .subscribe((status) => {
+        if (!mountedRef.current) return;
+
+        console.debug(`[useRealtimeSync] Status: ${status}`);
+
+        if (status === 'SUBSCRIBED') {
+          setIsConnected(true);
+          connectedAtRef.current = Date.now();
+
+          // Only reset retry count after connection is stable for STABLE_CONNECTION_THRESHOLD
+          if (stableTimeoutRef.current) {
+            clearTimeout(stableTimeoutRef.current);
+          }
+          stableTimeoutRef.current = setTimeout(() => {
+            // Check connectedAtRef instead of isConnected state to avoid stale closure
+            if (mountedRef.current && connectedAtRef.current) {
+              retryCountRef.current = 0;
+              gaveUpRef.current = false;
+              console.debug('[useRealtimeSync] Connection stable, retry counter reset');
+            }
+          }, STABLE_CONNECTION_THRESHOLD);
+        } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+          setIsConnected(false);
+          connectedAtRef.current = null;
+
+          // Clear stable connection timer
+          if (stableTimeoutRef.current) {
+            clearTimeout(stableTimeoutRef.current);
+            stableTimeoutRef.current = null;
+          }
+
+          // Skip if already gave up
+          if (gaveUpRef.current) return;
+
+          // Attempt reconnection with exponential backoff
+          if (retryCountRef.current < MAX_RETRY_ATTEMPTS && mountedRef.current) {
+            const delay = Math.min(
+              INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current),
+              MAX_RETRY_DELAY
+            );
+            retryCountRef.current++;
+
+            console.warn(
+              `[useRealtimeSync] Connection lost. Reconnecting in ${delay / 1000}s (attempt ${retryCountRef.current}/${MAX_RETRY_ATTEMPTS})`
+            );
+
+            retryTimeoutRef.current = setTimeout(() => {
+              if (mountedRef.current) {
+                setupRealtime();
+              }
+            }, delay);
+          } else if (retryCountRef.current >= MAX_RETRY_ATTEMPTS && !gaveUpRef.current) {
+            gaveUpRef.current = true;
+            console.warn(
+              `[useRealtimeSync] Max reconnection attempts (${MAX_RETRY_ATTEMPTS}) reached. Realtime sync disabled - app will continue working with cached data.`
+            );
+          }
+        }
+      });
+
+    channelRef.current = channel;
+  }, [queueUpdate, cleanupChannel]);
+
   useEffect(() => {
     if (!enabled) return;
 
-    let mounted = true;
-
-    async function setupRealtime() {
-      const supabase = await getSupabase();
-      if (!supabase || !mounted) return;
-
-      // Subscribe ONLY to contact_tracking (optimized for free tier)
-      // This is the critical table for Customers/Campaigns real-time UX
-      const channel = supabase
-        .channel('contact-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'contact_tracking' },
-          (payload) => {
-            console.log('[Realtime] Contact change:', payload.eventType, payload.new?.status || '');
-            queueUpdate(payload);
-          }
-        )
-        .subscribe((status) => {
-          console.log('[Realtime] Connection status:', status);
-          setIsConnected(status === 'SUBSCRIBED');
-        });
-
-      channelRef.current = channel;
-    }
-
+    mountedRef.current = true;
     setupRealtime();
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       if (flushTimeoutRef.current) {
         clearTimeout(flushTimeoutRef.current);
       }
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
       }
+      if (stableTimeoutRef.current) {
+        clearTimeout(stableTimeoutRef.current);
+      }
+      cleanupChannel();
     };
-  }, [enabled, queueUpdate]);
+  }, [enabled, setupRealtime, cleanupChannel]);
 
   return { isConnected, lastUpdate };
 }

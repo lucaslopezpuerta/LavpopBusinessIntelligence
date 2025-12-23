@@ -63,8 +63,6 @@ export const ThemeProvider = ({ children }) => {
     
     // Save to localStorage
     localStorage.setItem('lavpop-theme', theme);
-    
-    console.log('🎨 Theme changed to:', theme);
   }, [theme]);
 
   // Listen for system theme changes

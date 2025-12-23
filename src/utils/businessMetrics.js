@@ -1,4 +1,7 @@
-// Business Metrics Calculator v2.9 - MONTH-TO-DATE + YOY COMPARISON
+// Business Metrics Calculator v2.10 - PRODUCTION LOGGING
+// v2.10 (2025-12-23): Production logging cleanup
+//   - Converted verbose console.log to logger.debug (dev-only)
+//   - Cleaner console output in production
 // ✅ NEW: Month-to-date gross revenue calculation
 // ✅ NEW: Year-over-year comparison for MTD
 // ✅ Current partial week calculations (Sunday → Today)
@@ -30,6 +33,7 @@
 import { parseSalesRecords, filterByType, filterWithServices } from './transactionParser';
 import { BUSINESS_PARAMS } from './operationsMetrics';
 import { getBrazilDateParts } from './dateUtils';
+import { logger } from './logger';
 
 // Derived constant for convenience
 const OPERATING_HOURS_PER_DAY = BUSINESS_PARAMS.OPERATING_HOURS.end - BUSINESS_PARAMS.OPERATING_HOURS.start;
@@ -402,18 +406,16 @@ export function calculateBusinessMetrics(salesData) {
     return null;
   }
   
-  console.log('\n=== BUSINESS METRICS v2.7 - HYBRID VIEW ===');
-  console.log('Total sales records:', salesData.length);
-  
+  logger.debug('BusinessMetrics', 'Calculating metrics', { totalRecords: salesData.length });
+
   const records = parseSalesRecords(salesData);
-  console.log('Parsed records:', records.length);
   
   // Get windows
   const windows = getDateWindows();
   const currentPartialWeek = getCurrentPartialWeek();
   const mtdWindow = getMonthToDateWindow();
 
-  console.log('Date windows:', {
+  logger.debug('BusinessMetrics', 'Date windows', {
     lastCompleteWeek: `${windows.weekly.startDate} - ${windows.weekly.endDate}`,
     currentPartialWeek: `${currentPartialWeek.startDate} - ${currentPartialWeek.endDate} (${currentPartialWeek.daysElapsed} dias)`,
     mtd: `${mtdWindow.current.startDate} - ${mtdWindow.current.endDate} (${mtdWindow.daysElapsed} dias)`,
@@ -429,7 +431,7 @@ export function calculateBusinessMetrics(salesData) {
   const mtdRecords = filterByWindow(records, mtdWindow.current);
   const mtdLastYearRecords = filterByWindow(records, mtdWindow.lastYear);
 
-  console.log('Records per window:', {
+  logger.debug('BusinessMetrics', 'Records per window', {
     lastCompleteWeek: weekRecords.length,
     previousWeek: prevWeekRecords.length,
     twoWeeksAgo: twoWeeksAgoRecords.length,
@@ -466,21 +468,21 @@ export function calculateBusinessMetrics(salesData) {
     { ...weeklyTotals, ...weeklyUtil }
   );
   
-  console.log('Last Complete Week:', {
+  logger.debug('BusinessMetrics', 'Last Complete Week', {
     revenue: `R$ ${weeklyTotals.netRevenue.toFixed(2)}`,
     services: weeklyTotals.totalServices,
     utilization: `${weeklyUtil.totalUtilization.toFixed(1)}%`
   });
-  
-  console.log('Current Partial Week:', {
+
+  logger.debug('BusinessMetrics', 'Current Partial Week', {
     revenue: `R$ ${currentWeekTotals.netRevenue.toFixed(2)}`,
     services: currentWeekTotals.totalServices,
     utilization: `${currentWeekUtil.totalUtilization.toFixed(1)}%`,
     daysElapsed: currentPartialWeek.daysElapsed
   });
-  
+
   if (projection.canProject) {
-    console.log('Projection:', {
+    logger.debug('BusinessMetrics', 'Projection', {
       projectedRevenue: `R$ ${projection.projectedRevenue.toFixed(2)}`,
       projectedServices: projection.projectedServices,
       vsLastWeek: `${projection.revenueVsLast > 0 ? '+' : ''}${projection.revenueVsLast.toFixed(1)}%`,
@@ -494,15 +496,13 @@ export function calculateBusinessMetrics(salesData) {
     ? ((mtdTotals.grossRevenue - mtdLastYearTotals.grossRevenue) / mtdLastYearTotals.grossRevenue) * 100
     : (mtdTotals.grossRevenue > 0 ? 100 : 0);
 
-  console.log('Month-to-Date:', {
+  logger.debug('BusinessMetrics', 'Month-to-Date', {
     grossRevenue: `R$ ${mtdTotals.grossRevenue.toFixed(2)}`,
     netRevenue: `R$ ${mtdTotals.netRevenue.toFixed(2)}`,
     daysElapsed: mtdWindow.daysElapsed,
     lastYearGross: `R$ ${mtdLastYearTotals.grossRevenue.toFixed(2)}`,
     yoyChange: `${mtdYoYChange > 0 ? '+' : ''}${mtdYoYChange.toFixed(1)}%`
   });
-
-  console.log('=== END BUSINESS METRICS ===\n');
   
   return {
     // Last complete week (for stable comparisons)

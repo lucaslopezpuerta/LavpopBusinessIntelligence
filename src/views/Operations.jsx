@@ -1,4 +1,4 @@
-// OPERATIONS TAB V5.6.0 - FULL WIDTH LAYOUT
+// OPERATIONS TAB V5.7.0 - LOADING SKELETON
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
@@ -12,8 +12,12 @@
 // ✅ Section headers with icons (Design System v3.1)
 // ✅ Category-level naming for future expansion
 // ✅ Full-width layout consistent with other views
+// ✅ Loading skeleton fallback for data readiness
 //
 // CHANGELOG:
+// v5.7.0 (2025-12-23): Loading skeleton
+//   - Replaced hardcoded "Loading..." message with OperationsLoadingSkeleton
+//   - Prevents empty renders after idle periods
 // v5.6.0 (2025-12-16): Full-width layout
 //   - REMOVED: max-w-[100rem] constraint for full-width
 //   - REMOVED: Redundant padding (now uses App.jsx padding)
@@ -77,6 +81,7 @@ import { LazyDayOfWeekChart, ChartLoadingFallback } from '../utils/lazyCharts';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { getDateWindows } from '../utils/dateWindows';
+import { OperationsLoadingSkeleton } from '../components/ui/Skeleton';
 
 const Operations = ({ data }) => {
   // Centralized date filter - single source of truth
@@ -127,14 +132,9 @@ const Operations = ({ data }) => {
     }
   }, [data?.sales, dateFilter]);
 
+  // Data readiness check - show skeleton if data not ready
   if (!businessMetrics || !operationsMetrics) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-base text-slate-600 dark:text-slate-400">
-          Loading operations metrics...
-        </div>
-      </div>
-    );
+    return <OperationsLoadingSkeleton />;
   }
 
   return (

@@ -279,7 +279,7 @@ export async function syncWithTwilio(options = {}) {
     results.totalInBlacklist = existingPhones.size;
     results.newEntries = results.newOptOuts + results.newUndelivered;
 
-    console.log(`Blacklist sync complete: ${results.newOptOuts} opt-outs, ${results.newUndelivered} undelivered (saved to backend)`);
+    // Blacklist sync complete
 
   } catch (error) {
     console.error('Blacklist sync error:', error);

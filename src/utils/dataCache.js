@@ -1,15 +1,21 @@
-// dataCache.js v2.0 - INDEXED DB CACHING
+// dataCache.js v2.2 - ERROR EVENT DISPATCH
 // ✅ Cache CSV data with timestamp
 // ✅ Configurable cache duration
 // ✅ Cache invalidation support
 // ✅ Fallback to fetch if cache is stale
 // ✅ Uses IndexedDB to avoid QuotaExceededError
+// ✅ Dispatches cacheError events for monitoring/recovery
 //
 // CHANGELOG:
+// v2.2 (2025-12-23): Error event dispatch
+//   - Dispatches 'cacheError' custom event on cache read/write failures
+//   - Enables App.jsx to listen and trigger recovery
+// v2.1 (2025-12-23): Converted debug logs to logger utility
 // v2.0 (2025-11-23): Migrated to IndexedDB
 // v1.0 (2025-11-23): Initial implementation (localStorage)
 
 import idb from './idbStorage';
+import { logger } from './logger';
 
 const CACHE_PREFIX = 'lavpop_data_';
 const DEFAULT_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours (data updates daily)
@@ -34,16 +40,22 @@ export const getCachedData = async (key, maxAge = DEFAULT_CACHE_DURATION) => {
 
         // Check if cache is still valid
         if (age < maxAge) {
-            console.log(`✅ Cache HIT for ${key} (age: ${Math.round(age / 1000)}s)`);
+            logger.debug('Cache', 'HIT', { key, ageSeconds: Math.round(age / 1000) });
             return data;
         }
 
         // Cache is stale, remove it
-        console.log(`⏰ Cache EXPIRED for ${key} (age: ${Math.round(age / 1000)}s)`);
+        logger.debug('Cache', 'EXPIRED', { key, ageSeconds: Math.round(age / 1000) });
         await idb.del(cacheKey);
         return null;
     } catch (error) {
         console.error('Error reading from cache:', error);
+        // Dispatch error event for monitoring/recovery
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cacheError', {
+                detail: { operation: 'read', key, error: error.message || String(error) }
+            }));
+        }
         return null;
     }
 };
@@ -63,9 +75,15 @@ export const setCachedData = async (key, data) => {
         };
 
         await idb.set(cacheKey, cacheData);
-        console.log(`💾 Cached data for ${key}`);
+        logger.debug('Cache', 'SET', { key });
     } catch (error) {
         console.error('Error writing to cache:', error);
+        // Dispatch error event for monitoring/recovery
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cacheError', {
+                detail: { operation: 'write', key, error: error.message || String(error) }
+            }));
+        }
     }
 };
 
@@ -78,7 +96,7 @@ export const invalidateCache = async (key) => {
     try {
         const cacheKey = `${CACHE_PREFIX}${key}`;
         await idb.del(cacheKey);
-        console.log(`🗑️ Invalidated cache for ${key}`);
+        logger.debug('Cache', 'INVALIDATE', { key });
     } catch (error) {
         console.error('Error invalidating cache:', error);
     }
@@ -95,7 +113,7 @@ export const clearAllCache = async () => {
 
         // Remove them
         await Promise.all(keysToRemove.map(key => idb.del(key)));
-        console.log(`🧹 Cleared ${keysToRemove.length} cache entries`);
+        logger.debug('Cache', 'CLEAR', { entriesCleared: keysToRemove.length });
     } catch (error) {
         console.error('Error clearing cache:', error);
     }

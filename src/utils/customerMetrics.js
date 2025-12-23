@@ -1,4 +1,5 @@
-// Customer Metrics Calculator v3.6.0 - DISTINCT PORTUGUESE RFM SEGMENTS
+// Customer Metrics Calculator v3.7.0 - DISTINCT PORTUGUESE RFM SEGMENTS
+// ✅ v3.7.0 (2025-12-23): Converted debug logs to logger utility
 // ✅ Brazilian number parsing added (handles comma decimals)
 // ✅ Cashback rate corrected (7.5%)
 // ✅ Cashback start date corrected (June 1, 2024)
@@ -36,6 +37,7 @@
 import { parseBrDate, formatDate } from './dateUtils';
 import { normalizePhone, isValidBrazilianMobile } from './phoneUtils';
 import { normalizeCpf, extractCpf, isValidCpf } from './cpfUtils';
+import { logger } from './logger';
 
 /**
  * Parse Brazilian number format (handles comma as decimal separator)
@@ -257,10 +259,10 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
     });
   }
 
-  console.log('RFM map built with', Object.keys(rfmMap).length, 'entries');
-  console.log('Customer CSV map built with', Object.keys(customerCSVMap).length, 'entries');
-  console.log('Sample RFM entry:', Object.values(rfmMap)[0]);
-  console.log('Sample CSV entry:', Object.values(customerCSVMap)[0]);
+  logger.debug('CustomerMetrics', 'Data maps built', {
+    rfmEntries: Object.keys(rfmMap).length,
+    csvEntries: Object.keys(customerCSVMap).length
+  });
 
   // Process sales data
   let skippedInvalidCpf = 0;
@@ -329,10 +331,10 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
     }
   });
 
-  console.log(`Processed ${Object.keys(customers).length} unique customers from sales`);
-  if (skippedInvalidCpf > 0) {
-    console.log(`⚠️ Skipped ${skippedInvalidCpf} sales with invalid CPF patterns`);
-  }
+  logger.debug('CustomerMetrics', 'Processed customers', {
+    uniqueCustomers: Object.keys(customers).length,
+    skippedInvalidCpf
+  });
 
   // Calculate risk levels (V2.1 algorithm)
   Object.values(customers).forEach(customer => {

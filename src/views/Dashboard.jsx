@@ -1,4 +1,4 @@
-// Dashboard.jsx v10.1 - DUAL LAYOUT SUPPORT
+// Dashboard.jsx v10.2 - DATA READINESS CHECK
 // ✅ Compact (stacked rows) and Expanded (vertical) layouts
 // ✅ DateControl integrated in header for both layouts
 // ✅ Layout preference from ThemeContext (localStorage)
@@ -6,8 +6,12 @@
 // ✅ Secondary cards in compact grid
 // ✅ Optimized layout spacing
 // ✅ Consistent header matching all views
+// ✅ Data readiness check with skeleton fallback
 //
 // CHANGELOG:
+// v10.2 (2025-12-23): Data readiness check
+//   - Added DashboardLoadingSkeleton fallback when data not ready
+//   - Prevents empty renders after idle periods
 // v10.1 (2025-12-23): Compact layout revision
 //   - Changed compact from 2-column to stacked rows
 //   - Row 1: KPIs full width, Row 2: Chart full width
@@ -54,6 +58,7 @@ import { LazyOperatingCyclesChart, ChartLoadingFallback } from '../utils/lazyCha
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
+import { DashboardLoadingSkeleton } from '../components/ui/Skeleton';
 
 const Dashboard = ({ data, viewMode, setViewMode }) => {
   // Get layout preference from ThemeContext
@@ -131,6 +136,12 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
   const businessMetrics = metrics?.business;
   const customerMetrics = metrics?.customers;
   const operationsMetrics = metrics?.operations;
+
+  // Data readiness check - show skeleton if data not ready
+  const isDataReady = data?.sales?.length > 0;
+  if (!isDataReady || !metrics?.business) {
+    return <DashboardLoadingSkeleton />;
+  }
 
   return (
     <div className={isCompact ? 'space-y-4' : 'space-y-6 sm:space-y-8'}>

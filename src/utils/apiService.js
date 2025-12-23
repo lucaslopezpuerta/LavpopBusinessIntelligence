@@ -1422,8 +1422,6 @@ export function collectLocalStorageData() {
  * Migrate all localStorage data to Supabase
  */
 export async function migrateToSupabase() {
-  console.log('Starting migration to Supabase...');
-
   const data = collectLocalStorageData();
 
   // Check what we have
@@ -1436,21 +1434,12 @@ export async function migrateToSupabase() {
     automationRules: data.automationRules?.length || 0
   };
 
-  console.log('Data to migrate:', summary);
-
   if (Object.values(summary).every(v => v === 0)) {
-    console.log('No data to migrate');
     return { success: true, message: 'No data to migrate' };
   }
 
   try {
     const result = await api.migrate.importFromLocalStorage(data);
-    console.log('Migration complete:', result);
-
-    // Clear localStorage after successful migration (optional)
-    // Uncomment if you want to clear after migration
-    // clearMigratedLocalStorage();
-
     return result;
   } catch (error) {
     console.error('Migration failed:', error);
@@ -1474,7 +1463,6 @@ export function clearMigratedLocalStorage() {
 
   keysToRemove.forEach(key => {
     localStorage.removeItem(key);
-    console.log(`Cleared: ${key}`);
   });
 }
 

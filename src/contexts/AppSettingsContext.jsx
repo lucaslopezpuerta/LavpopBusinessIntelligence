@@ -120,7 +120,6 @@ export const AppSettingsProvider = ({ children }) => {
       if (data) {
         const loadedSettings = toCamelCase(data);
         setSettings(loadedSettings);
-        console.log('[AppSettings] Loaded from Supabase');
 
         // One-time migration from localStorage (if not already done)
         if (!hasMigrated.current) {
@@ -156,8 +155,6 @@ export const AppSettingsProvider = ({ children }) => {
         currentSupabaseSettings.rentCost === DEFAULT_SETTINGS.rentCost;
 
       if (isDefault && localSettings) {
-        console.log('[AppSettings] Migrating from localStorage to Supabase...');
-
         // Merge localStorage values into Supabase
         const merged = { ...DEFAULT_SETTINGS, ...localSettings };
         await saveToSupabase(client, merged);
@@ -165,7 +162,6 @@ export const AppSettingsProvider = ({ children }) => {
 
         // Clear localStorage after successful migration
         localStorage.removeItem(OLD_STORAGE_KEY);
-        console.log('[AppSettings] Migration complete, localStorage cleared');
       }
     } catch (err) {
       console.warn('[AppSettings] Migration failed:', err);
@@ -183,7 +179,6 @@ export const AppSettingsProvider = ({ children }) => {
       if (insertError && insertError.code !== '23505') { // Ignore duplicate key
         throw insertError;
       }
-      console.log('[AppSettings] Created default row');
     } catch (err) {
       console.warn('[AppSettings] Failed to create defaults:', err);
     }
@@ -219,7 +214,6 @@ export const AppSettingsProvider = ({ children }) => {
       }
 
       await saveToSupabase(client, merged);
-      console.log('[AppSettings] Saved to Supabase');
     } catch (err) {
       console.error('[AppSettings] Failed to save:', err);
       setError(err.message);
@@ -240,7 +234,6 @@ export const AppSettingsProvider = ({ children }) => {
       const client = await getSupabaseClient();
       if (client) {
         await saveToSupabase(client, DEFAULT_SETTINGS);
-        console.log('[AppSettings] Reset to defaults');
       }
     } catch (err) {
       console.error('[AppSettings] Failed to reset:', err);

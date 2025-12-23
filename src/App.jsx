@@ -1,4 +1,4 @@
-// App.jsx v8.9 - STABLE TAB NAVIGATION
+// App.jsx v8.10.0 - CACHE ERROR RECOVERY
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -18,8 +18,17 @@
 // ✅ Real CSV/PDF export per view
 // ✅ SWR caching: instant load from IndexedDB, silent cache refresh
 // ✅ Swipe navigation between main tabs on mobile
+// ✅ Data completeness validation with console warnings
+// ✅ Cache error recovery with auto-refresh
 //
 // CHANGELOG:
+// v8.10.0 (2025-12-23): Cache error recovery
+//   - Added listener for cacheError events from dataCache.js
+//   - Auto-triggers recovery refresh when IndexedDB cache fails
+//   - Debounced 2s delay to prevent multiple simultaneous refreshes
+// v8.9.1 (2025-12-23): Data completeness validation
+//   - Added warning log when required data tables are missing
+//   - Helps debug empty render issues caused by incomplete data
 // v8.9 (2025-12-22): Stable tab navigation
 //   - FIXED: Removed lastRefreshed from motion.div key
 //   - Prevents unnecessary remounts on data refresh
@@ -241,7 +250,6 @@ function AppContent() {
 
     // Prevent duplicate refreshes (unless initial load)
     if (!isInitial && refreshingRef.current) {
-      console.log('[App] Refresh already in progress, skipping');
       return;
     }
 
@@ -249,7 +257,6 @@ function AppContent() {
     if (!isInitial && !skipCache) {
       const timeSinceLastAttempt = Date.now() - lastRefreshAttemptRef.current;
       if (timeSinceLastAttempt < MIN_REFRESH_GAP) {
-        console.log('[App] Too soon since last refresh, skipping');
         return;
       }
     }
@@ -266,7 +273,6 @@ function AppContent() {
       }
       setError(null);
 
-      console.log(`[App] Loading data (skipCache: ${skipCache}, silent: ${silent})...`);
       // SWR: No background state update - cache updates silently, next load gets fresh data
       // Background setState was causing browser crashes during navigation
       const loadedData = await loadAllData(
@@ -279,9 +285,16 @@ function AppContent() {
         null // No background callback - cache updates silently
       );
 
+      // Validate that all required data tables are present
+      // Views depend on: sales, rfm, customer, campaigns, weather
+      const requiredTables = ['sales', 'rfm', 'customer'];
+      const missingTables = requiredTables.filter(table => !loadedData?.[table]?.length && !loadedData?.[table]);
+      if (missingTables.length > 0) {
+        console.warn(`[App] Data loaded but missing tables: ${missingTables.join(', ')}`);
+      }
+
       setData(loadedData);
       setLastRefreshed(Date.now());
-      console.log(`[App] Data loaded successfully (fromCache: ${loadedData.fromCache || false})`);
 
       // Brief pause at 100% so user sees completed state before transition
       if (isInitial) {
@@ -313,14 +326,8 @@ function AppContent() {
   // Visibility-based refresh: refresh when tab becomes visible (if stale)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !loading) {
-        console.log('[App] Tab became visible, checking data freshness...');
-        if (isStale()) {
-          console.log('[App] Data is stale, triggering background refresh');
-          loadData({ skipCache: true, silent: true });
-        } else {
-          console.log('[App] Data is still fresh');
-        }
+      if (document.visibilityState === 'visible' && !loading && isStale()) {
+        loadData({ skipCache: true, silent: true });
       }
     };
 
@@ -328,19 +335,35 @@ function AppContent() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [loading, isStale, loadData]);
 
+  // Cache error recovery: refetch data when IndexedDB cache fails
+  useEffect(() => {
+    const handleCacheError = (event) => {
+      const { operation, key, error } = event.detail || {};
+      console.warn(`[App] Cache ${operation} error for ${key}: ${error}`);
+
+      // Trigger recovery refresh after a short delay (debounce multiple errors)
+      if (!loading && !refreshingRef.current) {
+        setTimeout(() => {
+          if (!refreshingRef.current) {
+            console.info('[App] Triggering recovery refresh due to cache error');
+            loadData({ skipCache: true, silent: true });
+          }
+        }, 2000);
+      }
+    };
+
+    window.addEventListener('cacheError', handleCacheError);
+    return () => window.removeEventListener('cacheError', handleCacheError);
+  }, [loading, loadData]);
+
   // Auto-refresh interval: refresh every 30 minutes while tab is active (fallback only)
   useEffect(() => {
     if (loading) return;
 
-    console.log(`[App] Setting up auto-refresh every ${REFRESH_INTERVAL / 1000}s (fallback for realtime)`);
-
     const intervalId = setInterval(() => {
       // Only auto-refresh if tab is visible
       if (document.visibilityState === 'visible') {
-        console.log('[App] Auto-refresh triggered (fallback)');
         loadData({ skipCache: true, silent: true });
-      } else {
-        console.log('[App] Skipping auto-refresh (tab hidden)');
       }
     }, REFRESH_INTERVAL);
 
@@ -415,13 +438,11 @@ function AppContent() {
 
   // Manual refresh handler (button click)
   const handleRefresh = useCallback(() => {
-    console.log('[App] Manual refresh triggered');
     loadData({ skipCache: true, silent: false });
   }, [loadData]);
 
   // Refresh after user action (e.g., campaign sent)
-  const refreshAfterAction = useCallback(async (actionName = 'action') => {
-    console.log(`[App] Refreshing after ${actionName}...`);
+  const refreshAfterAction = useCallback(async () => {
     // Small delay to let backend process
     await new Promise(resolve => setTimeout(resolve, 1000));
     return loadData({ skipCache: true, silent: true });
