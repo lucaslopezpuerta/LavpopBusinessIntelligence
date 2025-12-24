@@ -1,21 +1,29 @@
 """
-Bilavnova POS Automation v3.7
+Bilavnova POS Automation v3.8
 - CapSolver reCAPTCHA v2 solving (with residential proxy support)
 - Cookie persistence for session reuse
 - Automatic CSV export (sales + customers)
 - Supabase upload with computed fields
 - Traffic optimization (block images, CSS, fonts when using proxy)
+- selenium-wire for headless proxy auth (GitHub Actions compatible)
 - CLI: --headed, --headless, --sales-only, --customers-only, --upload-only
 """
 
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 import requests
-import time, os, logging, glob, re, random, pickle, zipfile, tempfile
+import time, os, logging, glob, re, random, pickle
 from urllib.parse import urlparse
+
+# Try selenium-wire first (better proxy support), fall back to regular selenium
+try:
+    from seleniumwire import webdriver
+    SELENIUM_WIRE = True
+except ImportError:
+    from selenium import webdriver
+    SELENIUM_WIRE = False
 
 try:
     from dotenv import load_dotenv
@@ -23,45 +31,8 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.7"
+VERSION = "3.8"
 COOKIE_FILE = "pos_session_cookies.pkl"
-
-
-def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass):
-    """Create Chrome extension for authenticated proxy (Chrome doesn't support user:pass in --proxy-server)"""
-    manifest = '''{
-        "version": "1.0.0",
-        "manifest_version": 2,
-        "name": "Proxy Auth",
-        "permissions": ["proxy", "tabs", "unlimitedStorage", "storage", "<all_urls>", "webRequest", "webRequestBlocking"],
-        "background": {"scripts": ["background.js"]},
-        "minimum_chrome_version": "22.0.0"
-    }'''
-
-    background = f'''var config = {{
-        mode: "fixed_servers",
-        rules: {{
-            singleProxy: {{host: "{proxy_host}", port: parseInt({proxy_port})}},
-            bypassList: ["localhost"]
-        }}
-    }};
-    chrome.proxy.settings.set({{value: config, scope: "regular"}}, function() {{}});
-    chrome.webRequest.onAuthRequired.addListener(
-        function(details) {{
-            return {{authCredentials: {{username: "{proxy_user}", password: "{proxy_pass}"}}}};
-        }},
-        {{urls: ["<all_urls>"]}},
-        ['blocking']
-    );'''
-
-    ext_dir = tempfile.mkdtemp()
-    ext_path = os.path.join(ext_dir, 'proxy_auth.zip')
-
-    with zipfile.ZipFile(ext_path, 'w') as zp:
-        zp.writestr("manifest.json", manifest)
-        zp.writestr("background.js", background)
-
-    return ext_path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -198,7 +169,7 @@ class BilavnovaAutomation:
         self.supabase = SupabaseUploader()
         self.driver = None
 
-        proxy_status = 'Proxy: On' if self.proxy_host else 'Proxy: Off'
+        proxy_status = f'Proxy: {"On (selenium-wire)" if SELENIUM_WIRE else "On (extension)"}' if self.proxy_host else 'Proxy: Off'
         logging.info(f"Bilavnova POS Automation v{VERSION} | {'Headless' if headless else 'Headed'} | {proxy_status} | Supabase: {'On' if self.supabase.is_available() else 'Off'}")
 
     def setup_driver(self):
@@ -232,15 +203,18 @@ class BilavnovaAutomation:
 
         opts.add_experimental_option("prefs", prefs)
 
-        # PROXY: Add extension for authenticated proxy
-        if self.proxy_host:
-            ext_path = create_proxy_auth_extension(
-                self.proxy_host, self.proxy_port,
-                self.proxy_user, self.proxy_pass
-            )
-            opts.add_extension(ext_path)
-
-        driver = webdriver.Chrome(options=opts)
+        # PROXY: Use selenium-wire for authenticated proxy (works in headless)
+        if self.proxy_host and SELENIUM_WIRE:
+            seleniumwire_options = {
+                'proxy': {
+                    'http': f'http://{self.proxy_user}:{self.proxy_pass}@{self.proxy_host}:{self.proxy_port}',
+                    'https': f'http://{self.proxy_user}:{self.proxy_pass}@{self.proxy_host}:{self.proxy_port}',
+                    'no_proxy': 'localhost,127.0.0.1'
+                }
+            }
+            driver = webdriver.Chrome(options=opts, seleniumwire_options=seleniumwire_options)
+        else:
+            driver = webdriver.Chrome(options=opts)
 
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': '''

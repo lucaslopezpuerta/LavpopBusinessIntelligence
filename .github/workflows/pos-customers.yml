@@ -28,7 +28,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install selenium requests supabase python-dotenv webdriver-manager
+          pip install selenium-wire requests supabase python-dotenv webdriver-manager
 
       - name: Run POS automation (customers only)
         env:
