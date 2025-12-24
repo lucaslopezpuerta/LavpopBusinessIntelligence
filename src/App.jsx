@@ -1,4 +1,4 @@
-// App.jsx v8.10.0 - CACHE ERROR RECOVERY
+// App.jsx v8.11.0 - DEFENSIVE DATA RENDERING
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -20,8 +20,14 @@
 // ✅ Swipe navigation between main tabs on mobile
 // ✅ Data completeness validation with console warnings
 // ✅ Cache error recovery with auto-refresh
+// ✅ Defensive data rendering - prevents empty white tabs after idle
 //
 // CHANGELOG:
+// v8.11.0 (2025-12-23): Defensive data rendering
+//   - FIXED: Empty white tabs after idle/navigation
+//   - Preserves existing valid data when silent refresh fails
+//   - Shows skeleton fallback when data is invalid instead of white screen
+//   - Double-check data validity before rendering views
 // v8.10.0 (2025-12-23): Cache error recovery
 //   - Added listener for cacheError events from dataCache.js
 //   - Auto-triggers recovery refresh when IndexedDB cache fails
@@ -288,9 +294,19 @@ function AppContent() {
       // Validate that all required data tables are present
       // Views depend on: sales, rfm, customer, campaigns, weather
       const requiredTables = ['sales', 'rfm', 'customer'];
-      const missingTables = requiredTables.filter(table => !loadedData?.[table]?.length && !loadedData?.[table]);
+      const missingTables = requiredTables.filter(table => !loadedData?.[table]?.length);
+
+      // CRITICAL: Only update data if we have valid data
+      // Prevents overwriting good cached data with empty/failed refresh data
       if (missingTables.length > 0) {
         console.warn(`[App] Data loaded but missing tables: ${missingTables.join(', ')}`);
+
+        // If this is a silent refresh (not initial load) and we have existing valid data,
+        // keep the existing data instead of overwriting with incomplete data
+        if (!isInitial && data?.sales?.length > 0) {
+          console.info('[App] Keeping existing data - refresh returned incomplete data');
+          return; // Don't update state with bad data
+        }
       }
 
       setData(loadedData);
@@ -500,13 +516,18 @@ function AppContent() {
                 style={isSwipeable ? { touchAction: 'pan-y' } : undefined}
               >
                 <Suspense fallback={getLoadingFallback(activeTab)}>
-                  <ActiveComponent
-                    data={data}
-                    onNavigate={handleTabChange}
-                    viewMode={viewMode}
-                    setViewMode={setViewMode}
-                    onDataChange={refreshAfterAction}
-                  />
+                  {/* Defensive check: show skeleton if data is missing/invalid */}
+                  {(!data || !data.sales || data.sales.length === 0) ? (
+                    getLoadingFallback(activeTab)
+                  ) : (
+                    <ActiveComponent
+                      data={data}
+                      onNavigate={handleTabChange}
+                      viewMode={viewMode}
+                      setViewMode={setViewMode}
+                      onDataChange={refreshAfterAction}
+                    />
+                  )}
                 </Suspense>
               </motion.div>
             </AnimatePresence>

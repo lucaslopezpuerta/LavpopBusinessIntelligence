@@ -1,0 +1,51 @@
+name: POS Customer Sync
+
+# Sync customer data daily before business hours
+# Runs at 06:00 BRT = 09:00 UTC
+
+on:
+  schedule:
+    - cron: '0 9 * * *'  # 09:00 UTC = 06:00 BRT
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  sync-customers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@latest
+
+      - name: Install Python dependencies
+        run: |
+          pip install selenium requests supabase python-dotenv webdriver-manager
+
+      - name: Run POS automation (customers only)
+        env:
+          CAPSOLVER_API_KEY: ${{ secrets.CAPSOLVER_API_KEY }}
+          POS_URL: ${{ secrets.POS_URL }}
+          POS_USERNAME: ${{ secrets.POS_USERNAME }}
+          POS_PASSWORD: ${{ secrets.POS_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python POS_automation.py --customers-only --headless
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-sync-logs-${{ github.run_id }}
+          path: |
+            pos_automation.log
+            error*.png
+          retention-days: 7

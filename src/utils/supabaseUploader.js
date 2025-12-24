@@ -1,4 +1,4 @@
-// supabaseUploader.js v1.1
+// supabaseUploader.js v1.2
 // Client-side CSV parser and Supabase uploader for manual data imports
 //
 // Usage:
@@ -8,13 +8,18 @@
 // Features:
 //   - Auto-detects file type (sales vs customer) based on headers
 //   - Brazilian format handling (dates DD/MM/YYYY, numbers with comma)
-//   - Deduplication via MD5 hash
+//   - Deduplication via SHA-256 hash
 //   - Batch upsert to Supabase (100 records per batch)
 //   - Progress callback for UI feedback
-//   - Smart customer upsert (v1.1): Handles full customer list uploads
+//   - Smart customer upsert: Handles full customer list uploads
 //     without regressing computed metrics from transaction triggers
+//   - Upload history logging for transparency (v1.2)
 //
 // CHANGELOG:
+// v1.2 (2025-12-24): Upload history logging
+//   - Logs all uploads to upload_history table
+//   - Tracks: file_type, records_total/inserted/updated, errors, duration
+//   - Matches Python supabase_uploader.py behavior
 // v1.1 (2025-12-13): Smart customer upsert
 //   - Uses upsert_customer_profiles_batch() RPC for intelligent merge
 //   - Profile fields always update (nome, telefone, email, saldo_carteira)
@@ -225,6 +230,7 @@ export function detectFileType(csvText) {
  * @returns {Promise<{success: boolean, inserted: number, skipped: number, errors: string[]}>}
  */
 export async function uploadSalesCSV(csvText, onProgress = () => {}) {
+  const startTime = Date.now();
   const client = await getSupabase();
   if (!client) {
     return { success: false, inserted: 0, skipped: 0, errors: ['Supabase not configured'] };
@@ -353,7 +359,7 @@ export async function uploadSalesCSV(csvText, onProgress = () => {}) {
     onProgress(i + batch.length, transactions.length, 'uploading');
   }
 
-  return {
+  const result = {
     success: errors.length === 0,
     inserted,
     skipped,
@@ -361,6 +367,12 @@ export async function uploadSalesCSV(csvText, onProgress = () => {}) {
     duplicates: duplicateHashes.size - transactions.length,
     errors
   };
+
+  // Log to upload history
+  const durationMs = Date.now() - startTime;
+  await logUploadHistory('sales', 'manual_upload', result, durationMs, 'manual');
+
+  return result;
 }
 
 // ============== CUSTOMER UPLOAD ==============
@@ -374,6 +386,7 @@ export async function uploadSalesCSV(csvText, onProgress = () => {}) {
  * @returns {Promise<{success: boolean, inserted: number, updated: number, skipped: number, errors: string[]}>}
  */
 export async function uploadCustomerCSV(csvText, onProgress = () => {}) {
+  const startTime = Date.now();
   const client = await getSupabase();
   if (!client) {
     return { success: false, inserted: 0, updated: 0, skipped: 0, errors: ['Supabase not configured'] };
@@ -497,7 +510,7 @@ export async function uploadCustomerCSV(csvText, onProgress = () => {}) {
     onProgress(i + batch.length, customers.length, 'uploading');
   }
 
-  return {
+  const result = {
     success: errors.length === 0,
     inserted,
     updated,
@@ -507,6 +520,12 @@ export async function uploadCustomerCSV(csvText, onProgress = () => {}) {
     errors,
     smartUpsert: useSmartUpsert // Indicates if smart upsert was used
   };
+
+  // Log to upload history
+  const durationMs = Date.now() - startTime;
+  await logUploadHistory('customers', 'manual_upload', result, durationMs, 'manual');
+
+  return result;
 }
 
 // ============== REFRESH METRICS ==============
@@ -532,5 +551,40 @@ export async function refreshCustomerMetrics() {
     return { success: true, updated: data || 0, error: null };
   } catch (err) {
     return { success: false, updated: 0, error: err.message };
+  }
+}
+
+// ============== UPLOAD HISTORY LOGGING ==============
+
+/**
+ * Log upload to upload_history table for transparency
+ * @param {string} fileType - 'sales' or 'customers'
+ * @param {string} fileName - Original filename
+ * @param {object} result - Upload result object
+ * @param {number} durationMs - Upload duration in milliseconds
+ * @param {string} source - 'manual' or 'automated'
+ */
+async function logUploadHistory(fileType, fileName, result, durationMs, source = 'manual') {
+  try {
+    const client = await getSupabase();
+    if (!client) return;
+
+    await client.from('upload_history').insert({
+      file_type: fileType,
+      file_name: fileName,
+      records_total: result.total || 0,
+      records_inserted: result.inserted || 0,
+      records_updated: result.updated || 0,
+      records_skipped: result.skipped || 0,
+      errors: (result.errors || []).slice(0, 10), // Limit to 10 errors
+      source,
+      duration_ms: durationMs,
+      status: result.errors?.length > 0 ? 'partial' : 'success'
+    });
+
+    console.log(`[UploadHistory] Logged ${fileType} upload: ${result.inserted || 0} inserted`);
+  } catch (err) {
+    // Don't fail upload if history logging fails
+    console.warn('[UploadHistory] Failed to log:', err.message);
   }
 }

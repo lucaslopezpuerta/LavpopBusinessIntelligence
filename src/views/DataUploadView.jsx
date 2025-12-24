@@ -1,24 +1,80 @@
-// DataUploadView.jsx v1.1
-// View wrapper for the data upload functionality
+// DataUploadView.jsx v1.2
+// View wrapper for the data upload functionality with history tab
 //
 // This view allows manual CSV uploads to Supabase:
 //   - sales.csv: Transaction data
 //   - customer.csv: Customer data
 //
-// Auto-detects file type and handles batch uploads with progress feedback.
+// Tabs:
+//   - Upload: Drag & drop CSV import
+//   - Historico: View past uploads from upload_history table
 //
 // CHANGELOG:
+// v1.2 (2025-12-24): Added upload history tab
+//   - Tab navigation between Upload and Historico
+//   - UploadHistoryTab component for viewing past uploads
+//   - Auto-refresh history after successful upload
 // v1.1 (2025-12-13): Pass onDataChange for auto-refresh after upload
 //   - Triggers app-wide data refresh after successful upload
 //   - Keeps dashboards in sync with newly uploaded data
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Upload, Clock } from 'lucide-react';
 import DataUpload from '../components/DataUpload';
+import UploadHistoryTab from '../components/UploadHistoryTab';
 
 const DataUploadView = ({ onDataChange }) => {
+  const [activeTab, setActiveTab] = useState('upload');
+  const [historyRefresh, setHistoryRefresh] = useState(0);
+
+  // Wrapper for onDataChange that also triggers history refresh
+  const handleDataChange = (source) => {
+    // Trigger history refresh
+    setHistoryRefresh(prev => prev + 1);
+    // Call original handler
+    if (onDataChange) {
+      onDataChange(source);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <DataUpload onDataChange={onDataChange} />
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab('upload')}
+          className={`
+            flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+            ${activeTab === 'upload'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }
+          `}
+        >
+          <Upload className="w-4 h-4" />
+          Upload
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`
+            flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+            ${activeTab === 'history'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }
+          `}
+        >
+          <Clock className="w-4 h-4" />
+          Historico
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'upload' ? (
+        <DataUpload onDataChange={handleDataChange} />
+      ) : (
+        <UploadHistoryTab refreshTrigger={historyRefresh} />
+      )}
     </div>
   );
 };

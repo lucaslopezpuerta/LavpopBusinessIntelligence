@@ -1,6 +1,6 @@
 /**
  * useRealtimeSync - Supabase Realtime subscription for live updates
- * v1.2 - STABLE CONNECTION DETECTION
+ * v1.3 - FIXED INFINITE RECONNECTION LOOP
  *
  * OPTIMIZED FOR FREE TIER: Only subscribes to contact_tracking table
  * (the most critical for Customers/Campaigns mobile UX)
@@ -15,6 +15,12 @@
  * - Graceful degradation when realtime unavailable
  *
  * CHANGELOG:
+ * v1.3 (2025-12-23): Fixed infinite reconnection loop
+ *   - ROOT CAUSE: useEffect dependency array included unstable callbacks
+ *   - FIX: Use ref pattern to break the dependency cycle
+ *   - Main effect now only depends on `enabled` (stable)
+ *   - setupRealtimeRef holds latest function without triggering re-runs
+ *   - Cleanup no longer triggers CLOSED status unnecessarily
  * v1.2 (2025-12-23): Stable connection detection
  *   - Only resets retry counter after 5s of stable connection
  *   - Prevents infinite reconnection loops from flapping connections
@@ -63,6 +69,7 @@ export function useRealtimeSync({
   const connectedAtRef = useRef(null); // Track when connection was established
   const stableTimeoutRef = useRef(null); // Timer for stable connection check
   const gaveUpRef = useRef(false); // Flag to stop logging after max attempts
+  const setupRealtimeRef = useRef(null); // Ref to hold latest setupRealtime function
 
   // Debounce rapid updates to prevent UI thrashing
   const pendingUpdates = useRef([]);
@@ -170,8 +177,8 @@ export function useRealtimeSync({
             );
 
             retryTimeoutRef.current = setTimeout(() => {
-              if (mountedRef.current) {
-                setupRealtime();
+              if (mountedRef.current && setupRealtimeRef.current) {
+                setupRealtimeRef.current();
               }
             }, delay);
           } else if (retryCountRef.current >= MAX_RETRY_ATTEMPTS && !gaveUpRef.current) {
@@ -186,14 +193,28 @@ export function useRealtimeSync({
     channelRef.current = channel;
   }, [queueUpdate, cleanupChannel]);
 
+  // Keep setupRealtimeRef in sync with the latest setupRealtime function
+  // This allows the retry logic to call the latest version without dependency issues
+  useEffect(() => {
+    setupRealtimeRef.current = setupRealtime;
+  }, [setupRealtime]);
+
+  // Main effect: only runs when `enabled` changes (typically once on mount)
+  // Using ref for setupRealtime prevents the infinite re-subscription loop
   useEffect(() => {
     if (!enabled) return;
 
     mountedRef.current = true;
-    setupRealtime();
+
+    // Call setupRealtime via ref to avoid dependency issues
+    if (setupRealtimeRef.current) {
+      setupRealtimeRef.current();
+    }
 
     return () => {
       mountedRef.current = false;
+
+      // Clear all timeouts
       if (flushTimeoutRef.current) {
         clearTimeout(flushTimeoutRef.current);
       }
@@ -203,9 +224,15 @@ export function useRealtimeSync({
       if (stableTimeoutRef.current) {
         clearTimeout(stableTimeoutRef.current);
       }
-      cleanupChannel();
+
+      // Cleanup channel directly without calling cleanupChannel()
+      // This avoids triggering CLOSED status which would increment retry counter
+      if (channelRef.current) {
+        channelRef.current.unsubscribe().catch(() => {});
+        channelRef.current = null;
+      }
     };
-  }, [enabled, setupRealtime, cleanupChannel]);
+  }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { isConnected, lastUpdate };
 }

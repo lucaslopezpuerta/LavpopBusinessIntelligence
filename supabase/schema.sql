@@ -1,6 +1,13 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.26 (2025-12-21)
+-- Version: 3.27 (2025-12-24)
+--
+-- v3.27: Upload History Tracking
+--   - Added upload_history table for transparency (manual + automated uploads)
+--   - Tracks: file_type, records inserted/updated/skipped, errors, duration
+--   - Used by both Python (POS_automation.py) and JS (supabaseUploader.js)
+--   - UI: UploadHistoryTab in DataUploadView
+--   - See migrations/028_upload_history.sql
 --
 -- v3.26: Revenue Prediction Model Persistence
 --   - Added model_coefficients table for storing OLS regression coefficients
@@ -828,6 +835,31 @@ CREATE TRIGGER app_settings_updated_at
   EXECUTE FUNCTION update_app_settings_timestamp();
 
 COMMENT ON TABLE app_settings IS 'App-wide settings including business parameters, costs, and maintenance configuration. Single-row table (id=default).';
+
+-- ==================== UPLOAD HISTORY TABLE (v3.27) ====================
+-- Tracks all data imports (manual and automated) for transparency
+-- Used by both Python (POS_automation.py) and JS (supabaseUploader.js)
+
+CREATE TABLE IF NOT EXISTS upload_history (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  uploaded_at TIMESTAMPTZ DEFAULT now(),
+  file_type TEXT NOT NULL,           -- 'sales' or 'customers'
+  file_name TEXT,                     -- Original filename
+  records_total INT DEFAULT 0,
+  records_inserted INT DEFAULT 0,
+  records_updated INT DEFAULT 0,
+  records_skipped INT DEFAULT 0,
+  errors TEXT[],                      -- Array of error messages
+  source TEXT DEFAULT 'manual',       -- 'manual' or 'automated'
+  duration_ms INT,                    -- Upload duration in milliseconds
+  status TEXT DEFAULT 'success'       -- 'success', 'partial', 'failed'
+);
+
+-- Index for faster queries
+CREATE INDEX IF NOT EXISTS idx_upload_history_uploaded_at
+ON upload_history(uploaded_at DESC);
+
+COMMENT ON TABLE upload_history IS 'Tracks all data imports (manual and automated) for transparency and debugging';
 
 -- ==================== WABA MESSAGE ANALYTICS TABLE (v3.21) ====================
 -- WhatsApp Business message delivery analytics from Meta Graph API

@@ -1,0 +1,54 @@
+name: POS Sales Sync
+
+# Sync sales data hourly during business hours
+# Brazil timezone (BRT = UTC-3)
+# Business hours: 08:00-23:00 BRT = 11:00-02:00 UTC
+
+on:
+  schedule:
+    # Run at minute 0 of hours 11-23 and 0-2 UTC (8am-11pm BRT)
+    - cron: '0 11-23 * * *'  # 11:00-23:00 UTC (8am-8pm BRT)
+    - cron: '0 0-2 * * *'    # 00:00-02:00 UTC (9pm-11pm BRT)
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  sync-sales:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@latest
+
+      - name: Install Python dependencies
+        run: |
+          pip install selenium requests supabase python-dotenv webdriver-manager
+
+      - name: Run POS automation (sales only)
+        env:
+          CAPSOLVER_API_KEY: ${{ secrets.CAPSOLVER_API_KEY }}
+          POS_URL: ${{ secrets.POS_URL }}
+          POS_USERNAME: ${{ secrets.POS_USERNAME }}
+          POS_PASSWORD: ${{ secrets.POS_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python POS_automation.py --sales-only --headless
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-logs-${{ github.run_id }}
+          path: |
+            pos_automation.log
+            error*.png
+          retention-days: 7
