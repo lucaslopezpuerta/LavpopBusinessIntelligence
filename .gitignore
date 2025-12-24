@@ -54,4 +54,16 @@ lerna-debug.log*
 .netlify
 
 # CSV files
-*.csv   
+*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# POS Automation
+downloads/
+pos_session_cookies.pkl
+error*.png
+pos_automation.log

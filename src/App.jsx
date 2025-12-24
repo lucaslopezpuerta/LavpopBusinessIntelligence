@@ -517,7 +517,8 @@ function AppContent() {
               >
                 <Suspense fallback={getLoadingFallback(activeTab)}>
                   {/* Defensive check: show skeleton if data is missing/invalid */}
-                  {(!data || !data.sales || data.sales.length === 0) ? (
+                  {/* Exception: 'upload' view doesn't need data - it's a standalone form */}
+                  {(activeTab !== 'upload' && (!data || !data.sales || data.sales.length === 0)) ? (
                     getLoadingFallback(activeTab)
                   ) : (
                     <ActiveComponent

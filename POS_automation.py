@@ -1,9 +1,10 @@
 """
-Bilavnova POS Automation v3.6
-- CapSolver reCAPTCHA v2 solving
+Bilavnova POS Automation v3.7
+- CapSolver reCAPTCHA v2 solving (with residential proxy support)
 - Cookie persistence for session reuse
 - Automatic CSV export (sales + customers)
 - Supabase upload with computed fields
+- Traffic optimization (block images, CSS, fonts when using proxy)
 - CLI: --headed, --headless, --sales-only, --customers-only, --upload-only
 """
 
@@ -13,7 +14,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 import requests
-import time, os, logging, glob, re, random, pickle
+import time, os, logging, glob, re, random, pickle, zipfile, tempfile
+from urllib.parse import urlparse
 
 try:
     from dotenv import load_dotenv
@@ -21,8 +23,45 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.6"
+VERSION = "3.7"
 COOKIE_FILE = "pos_session_cookies.pkl"
+
+
+def create_proxy_auth_extension(proxy_host, proxy_port, proxy_user, proxy_pass):
+    """Create Chrome extension for authenticated proxy (Chrome doesn't support user:pass in --proxy-server)"""
+    manifest = '''{
+        "version": "1.0.0",
+        "manifest_version": 2,
+        "name": "Proxy Auth",
+        "permissions": ["proxy", "tabs", "unlimitedStorage", "storage", "<all_urls>", "webRequest", "webRequestBlocking"],
+        "background": {"scripts": ["background.js"]},
+        "minimum_chrome_version": "22.0.0"
+    }'''
+
+    background = f'''var config = {{
+        mode: "fixed_servers",
+        rules: {{
+            singleProxy: {{host: "{proxy_host}", port: parseInt({proxy_port})}},
+            bypassList: ["localhost"]
+        }}
+    }};
+    chrome.proxy.settings.set({{value: config, scope: "regular"}}, function() {{}});
+    chrome.webRequest.onAuthRequired.addListener(
+        function(details) {{
+            return {{authCredentials: {{username: "{proxy_user}", password: "{proxy_pass}"}}}};
+        }},
+        {{urls: ["<all_urls>"]}},
+        ['blocking']
+    );'''
+
+    ext_dir = tempfile.mkdtemp()
+    ext_path = os.path.join(ext_dir, 'proxy_auth.zip')
+
+    with zipfile.ZipFile(ext_path, 'w') as zp:
+        zp.writestr("manifest.json", manifest)
+        zp.writestr("background.js", background)
+
+    return ext_path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -134,7 +173,19 @@ class BilavnovaAutomation:
             raise Exception("CAPSOLVER_API_KEY not set")
         self.capsolver = CapSolverAPI(capsolver_key)
 
-        self.proxy = os.getenv('PROXY_STRING')
+        # Parse proxy: http://user:pass@host:port
+        proxy_str = os.getenv('PROXY_STRING')
+        if proxy_str:
+            p = urlparse(proxy_str)
+            self.proxy_host = p.hostname
+            self.proxy_port = p.port
+            self.proxy_user = p.username
+            self.proxy_pass = p.password
+            self.proxy_capsolver = proxy_str  # Full string for CapSolver
+        else:
+            self.proxy_host = None
+            self.proxy_capsolver = None
+
         self.pos_url = os.getenv('POS_URL')
         self.username = os.getenv('POS_USERNAME')
         self.password = os.getenv('POS_PASSWORD')
@@ -147,7 +198,8 @@ class BilavnovaAutomation:
         self.supabase = SupabaseUploader()
         self.driver = None
 
-        logging.info(f"Bilavnova POS Automation v{VERSION} | {'Headless' if headless else 'Headed'} | Supabase: {'On' if self.supabase.is_available() else 'Off'}")
+        proxy_status = 'Proxy: On' if self.proxy_host else 'Proxy: Off'
+        logging.info(f"Bilavnova POS Automation v{VERSION} | {'Headless' if headless else 'Headed'} | {proxy_status} | Supabase: {'On' if self.supabase.is_available() else 'Off'}")
 
     def setup_driver(self):
         opts = Options()
@@ -166,14 +218,27 @@ class BilavnovaAutomation:
         abs_download_dir = os.path.abspath(self.download_dir)
         os.makedirs(abs_download_dir, exist_ok=True)
 
-        opts.add_experimental_option("prefs", {
+        # TRAFFIC OPTIMIZATION: Block images when using proxy
+        prefs = {
             "download.default_directory": abs_download_dir,
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
             "safebrowsing.enabled": True,
             "profile.default_content_settings.popups": 0,
             "profile.default_content_setting_values.automatic_downloads": 1
-        })
+        }
+        if self.proxy_host:
+            prefs["profile.managed_default_content_settings.images"] = 2  # Block images
+
+        opts.add_experimental_option("prefs", prefs)
+
+        # PROXY: Add extension for authenticated proxy
+        if self.proxy_host:
+            ext_path = create_proxy_auth_extension(
+                self.proxy_host, self.proxy_port,
+                self.proxy_user, self.proxy_pass
+            )
+            opts.add_extension(ext_path)
 
         driver = webdriver.Chrome(options=opts)
 
@@ -184,6 +249,21 @@ class BilavnovaAutomation:
                 Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
             '''
         })
+
+        # TRAFFIC OPTIMIZATION: Block fonts, CSS, media, tracking via CDP
+        if self.proxy_host:
+            try:
+                driver.execute_cdp_cmd('Network.enable', {})
+                driver.execute_cdp_cmd('Network.setBlockedURLs', {
+                    'urls': [
+                        '*.woff', '*.woff2', '*.ttf', '*.eot',  # fonts
+                        '*.css',  # CSS
+                        '*.mp4', '*.webm', '*.mp3',  # media
+                        '*google-analytics*', '*gtag*', '*facebook*', '*hotjar*'  # tracking
+                    ]
+                })
+            except Exception as e:
+                logging.debug(f"CDP Network blocking not available: {e}")
 
         try:
             driver.execute_cdp_cmd('Browser.setDownloadBehavior', {
@@ -274,7 +354,7 @@ class BilavnovaAutomation:
         if not sitekey:
             raise Exception("Could not extract sitekey")
 
-        solution = self.capsolver.solve_recaptcha_v2(sitekey, self.driver.current_url, self.proxy)
+        solution = self.capsolver.solve_recaptcha_v2(sitekey, self.driver.current_url, self.proxy_capsolver)
         token = solution.get("gRecaptchaResponse")
         if not token:
             raise Exception("No token in solution")
@@ -478,6 +558,7 @@ class BilavnovaAutomation:
             if result == 'clicked':
                 return self.wait_for_download()
             elif result == 'disabled':
+                logging.info("No sales data to export (button disabled)")
                 return None
             time.sleep(1)
 
@@ -505,6 +586,7 @@ class BilavnovaAutomation:
             if result == 'clicked':
                 return self.wait_for_download()
             elif result == 'disabled':
+                logging.info("No customer data to export (button disabled)")
                 return None
             time.sleep(1)
 

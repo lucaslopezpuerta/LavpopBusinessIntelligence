@@ -38,6 +38,7 @@ jobs:
           POS_PASSWORD: ${{ secrets.POS_PASSWORD }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          PROXY_STRING: ${{ secrets.PROXY_STRING }}
         run: python POS_automation.py --customers-only --headless
 
       - name: Upload logs on failure

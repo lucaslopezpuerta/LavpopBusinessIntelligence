@@ -23,7 +23,7 @@ def get_supabase_client():
         return _supabase_client
 
     url = os.getenv('SUPABASE_URL')
-    key = os.getenv('SUPABASE_KEY') or os.getenv('SUPABASE_ANON_KEY')
+    key = os.getenv('SUPABASE_KEY') or os.getenv('SUPABASE_SERVICE_KEY') or os.getenv('SUPABASE_ANON_KEY')
 
     if not url or not key:
         return None
