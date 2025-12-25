@@ -212,16 +212,25 @@ class BilavnovaAutomation:
 
         # PROXY: Use selenium-wire for authenticated proxy (works in headless)
         if self.proxy_host and SELENIUM_WIRE:
+            proxy_url = f'http://{self.proxy_user}:{self.proxy_pass}@{self.proxy_host}:{self.proxy_port}'
             seleniumwire_options = {
                 'proxy': {
-                    'http': f'http://{self.proxy_user}:{self.proxy_pass}@{self.proxy_host}:{self.proxy_port}',
-                    'https': f'http://{self.proxy_user}:{self.proxy_pass}@{self.proxy_host}:{self.proxy_port}',
+                    'http': proxy_url,
+                    'https': proxy_url,
                     'no_proxy': 'localhost,127.0.0.1'
-                }
+                },
+                'connection_timeout': 30,
+                'request_timeout': 60,
+                'verify_ssl': False
             }
             driver = webdriver.Chrome(options=opts, seleniumwire_options=seleniumwire_options)
+            logging.info(f"Proxy configured: {self.proxy_host}:{self.proxy_port}")
         else:
             driver = webdriver.Chrome(options=opts)
+
+        # Set timeouts for slow proxy connections
+        driver.set_page_load_timeout(120)
+        driver.implicitly_wait(10)
 
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': '''
