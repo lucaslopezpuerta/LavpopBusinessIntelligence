@@ -1,6 +1,14 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.27 (2025-12-24)
+-- Version: 3.28 (2025-12-25)
+--
+-- v3.28: POS Automation Proxy Setting
+--   - Added pos_use_proxy column to app_settings table
+--   - Controls whether POS automation uses residential proxy for CAPTCHA solving
+--   - true = use proxy (DataImpulse, more reliable)
+--   - false = proxyless (direct connection, faster but may be blocked)
+--   - Configurable via AppSettingsModal "Automação" tab
+--   - See migrations/029_pos_use_proxy.sql
 --
 -- v3.27: Upload History Tracking
 --   - Added upload_history table for transparency (manual + automated uploads)

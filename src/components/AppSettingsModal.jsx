@@ -1,18 +1,23 @@
 /**
  * AppSettingsModal - App-wide settings modal
  *
- * VERSION: 1.4
+ * VERSION: 1.5
  *
  * Replaces BusinessSettingsModal with improved UX:
  * - Dark mode support
- * - Tabbed navigation (Negócio, Aparência)
+ * - Tabbed navigation (Negócio, Automação, Aparência)
  * - Dashboard layout toggle (Compact/Expanded)
+ * - POS automation proxy toggle
  * - Escape key to close
  * - Input validation (min/max)
  * - Live total calculation
  * - Styled confirmation dialogs
  *
  * CHANGELOG:
+ * v1.5 (2025-12-25): Added Automação tab
+ *   - New "Automação" tab for POS sync settings
+ *   - Proxy toggle for CAPTCHA solving (Com Proxy / Sem Proxy)
+ *   - Setting persisted to Supabase app_settings.pos_use_proxy
  * v1.4 (2025-12-23): Added Dashboard Layout toggle
  *   - New "Layout do Dashboard" section in Appearance tab
  *   - Compact (single-glance) and Expanded (vertical) options
@@ -43,7 +48,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Save, DollarSign, Wrench, Settings, Palette, Sun, Moon, Monitor, AlertCircle, LayoutGrid, Rows3 } from 'lucide-react';
+import { X, Save, DollarSign, Wrench, Settings, Palette, Sun, Moon, Monitor, AlertCircle, LayoutGrid, Rows3, Bot, Globe, Zap } from 'lucide-react';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
@@ -51,6 +56,7 @@ import { useIsMobile } from '../hooks/useMediaQuery';
 // Tab configuration
 const TABS = [
   { id: 'business', label: 'Negócio', icon: DollarSign },
+  { id: 'automation', label: 'Automação', icon: Bot },
   { id: 'appearance', label: 'Aparência', icon: Palette },
 ];
 
@@ -213,6 +219,12 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
                 totalFixedCosts={totalFixedCosts}
               />
             )}
+            {activeTab === 'automation' && (
+              <AutomationTab
+                settings={localSettings}
+                onChange={handleChange}
+              />
+            )}
             {activeTab === 'appearance' && (
               <AppearanceTab theme={theme} setTheme={setTheme} />
             )}
@@ -372,6 +384,89 @@ const BusinessTab = ({ settings, onChange, onNumberChange, totalFixedCosts }) =>
               prefix="R$"
             />
           </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const AutomationTab = ({ settings, onChange }) => {
+  const proxyOptions = [
+    {
+      value: true,
+      label: 'Com Proxy',
+      icon: Globe,
+      desc: 'Usa proxy residencial brasileiro',
+      detail: 'Mais confiável, evita bloqueios geográficos'
+    },
+    {
+      value: false,
+      label: 'Sem Proxy',
+      icon: Zap,
+      desc: 'Conexão direta (ProxyLess)',
+      detail: 'Mais rápido, pode falhar se IP for bloqueado'
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* CAPTCHA Solver Section */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-lavpop-blue">
+          <Bot className="w-4 h-4" />
+          <h3 className="text-sm font-semibold">Sincronização POS</h3>
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Configurações para a automação de sincronização de dados do POS (vendas e clientes).
+        </p>
+
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+            Modo de Resolução CAPTCHA
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {proxyOptions.map((option) => {
+              const Icon = option.icon;
+              const isActive = settings.posUseProxy === option.value;
+              return (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  onClick={() => onChange('posUseProxy', option.value)}
+                  className={`
+                    flex flex-col items-start gap-1 p-3 rounded-xl border-2 transition-all text-left
+                    ${isActive
+                      ? 'border-lavpop-blue bg-lavpop-blue/5 dark:bg-lavpop-blue/10'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }
+                  `}
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-lavpop-blue' : 'text-slate-500 dark:text-slate-400'}`} />
+                    <span className={`text-sm font-medium ${isActive ? 'text-lavpop-blue' : 'text-slate-700 dark:text-slate-300'}`}>
+                      {option.label}
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {option.desc}
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 italic">
+                    {option.detail}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            <strong>Nota:</strong> O modo com proxy usa um IP residencial brasileiro para resolver o CAPTCHA,
+            evitando rejeições por geolocalização. O modo sem proxy é mais rápido mas pode falhar se
+            o sistema detectar que o IP não é do Brasil.
+          </p>
         </div>
       </section>
     </div>

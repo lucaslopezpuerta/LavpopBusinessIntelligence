@@ -1,6 +1,18 @@
 """
-Bilavnova POS Automation v3.8
-- CapSolver reCAPTCHA v2 solving (with residential proxy support)
+Bilavnova POS Automation v3.12
+
+CAPTCHA Solving Modes:
+- PROXY MODE: Uses residential proxy (DataImpulse) for both CapSolver and Selenium
+  - CapSolver task type: ReCaptchaV2Task (with proxy parameter)
+  - More reliable, avoids geo-blocking
+  - Requires PROXY_STRING env var and pos_use_proxy=true in Supabase
+
+- PROXYLESS MODE: Direct connection without proxy
+  - CapSolver task type: ReCaptchaV2TaskProxyLess
+  - Faster, but may fail if IP is blocked or non-Brazilian
+  - Used when PROXY_STRING not set OR pos_use_proxy=false in Supabase
+
+Features:
 - Cookie persistence for session reuse
 - Automatic CSV export (sales + customers)
 - Supabase upload with computed fields
@@ -36,7 +48,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.10"
+VERSION = "3.12"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -149,18 +161,35 @@ class BilavnovaAutomation:
             raise Exception("CAPSOLVER_API_KEY not set")
         self.capsolver = CapSolverAPI(capsolver_key)
 
-        # Parse proxy: http://user:pass@host:port
-        proxy_str = os.getenv('PROXY_STRING')
-        if proxy_str:
+        # =====================================================================
+        # MODE SELECTION: Proxy vs ProxyLess
+        # =====================================================================
+        # 1. Check Supabase setting (pos_use_proxy in app_settings table)
+        # 2. Check if PROXY_STRING environment variable is set
+        # 3. If both conditions met → PROXY MODE, otherwise → PROXYLESS MODE
+        # =====================================================================
+
+        proxy_setting = self._get_proxy_setting()  # From Supabase (default: True)
+        proxy_str = os.getenv('PROXY_STRING')      # From environment
+
+        # Determine mode based on both conditions
+        if proxy_str and proxy_setting:
+            # PROXY MODE: Both PROXY_STRING set AND pos_use_proxy=true
             p = urlparse(proxy_str)
             self.proxy_host = p.hostname
             self.proxy_port = p.port
             self.proxy_user = p.username
             self.proxy_pass = p.password
-            self.proxy_capsolver = proxy_str  # Full string for CapSolver
+            self.proxy_capsolver = proxy_str
+            self.mode = "PROXY"
         else:
+            # PROXYLESS MODE: Either PROXY_STRING not set OR pos_use_proxy=false
             self.proxy_host = None
+            self.proxy_port = None
+            self.proxy_user = None
+            self.proxy_pass = None
             self.proxy_capsolver = None
+            self.mode = "PROXYLESS"
 
         self.pos_url = os.getenv('POS_URL')
         self.username = os.getenv('POS_USERNAME')
@@ -174,23 +203,61 @@ class BilavnovaAutomation:
         self.supabase = SupabaseUploader()
         self.driver = None
 
-        proxy_status = f'Proxy: {"On (selenium-wire)" if SELENIUM_WIRE else "On (extension)"}' if self.proxy_host else 'Proxy: Off'
-        logging.info(f"Bilavnova POS Automation v{VERSION} | {'Headless' if headless else 'Headed'} | {proxy_status} | Supabase: {'On' if self.supabase.is_available() else 'Off'}")
+        # =====================================================================
+        # STARTUP LOG: Explicit mode announcement
+        # =====================================================================
+        logging.info("=" * 60)
+        logging.info(f"Bilavnova POS Automation v{VERSION}")
+        logging.info("=" * 60)
+        logging.info(f"Browser: {'Headless' if headless else 'Headed'}")
+        logging.info(f"Supabase: {'Connected' if self.supabase.is_available() else 'Not available'}")
+
+        if self.mode == "PROXY":
+            logging.info(f"Mode: PROXY (ReCaptchaV2Task)")
+            logging.info(f"  - Proxy: {self.proxy_host}:{self.proxy_port}")
+            logging.info(f"  - selenium-wire: {'Available' if SELENIUM_WIRE else 'Not available (fallback to extension)'}")
+            logging.info(f"  - Traffic optimization: Enabled (blocking images, CSS, fonts)")
+        else:
+            logging.info(f"Mode: PROXYLESS (ReCaptchaV2TaskProxyLess)")
+            if proxy_str and not proxy_setting:
+                logging.info(f"  - Reason: pos_use_proxy=false in Supabase")
+            elif not proxy_str:
+                logging.info(f"  - Reason: PROXY_STRING not set")
+        logging.info("=" * 60)
+
+    def _get_proxy_setting(self):
+        """
+        Fetch pos_use_proxy setting from Supabase app_settings table.
+        Returns True (use proxy) or False (proxyless).
+        Defaults to True if Supabase unavailable or setting not found.
+        """
+        try:
+            from supabase_client import get_supabase_client
+            client = get_supabase_client()
+            if not client:
+                return True  # Default: use proxy
+
+            result = client.table('app_settings').select('pos_use_proxy').eq('id', 'default').single().execute()
+            if result.data and 'pos_use_proxy' in result.data:
+                return result.data['pos_use_proxy']
+
+            return True  # Default: use proxy
+        except Exception:
+            return True  # Default: use proxy on error
 
     def verify_proxy_ip(self):
-        """Verify IP through Selenium (uses proxy if configured)"""
+        """Verify browser IP address (should show proxy IP in PROXY mode)"""
         try:
             self.driver.get('https://api.ipify.org?format=json')
             time.sleep(2)
             body = self.driver.find_element(By.TAG_NAME, 'body').text
             import json
-            data = json.loads(body)
-            ip = data.get('ip', 'Unknown')
-            logging.info(f"Browser IP (through proxy): {ip}")
+            ip = json.loads(body).get('ip', 'Unknown')
+            logging.info(f"Browser IP: {ip}")
             return ip
         except Exception as e:
-            logging.warning(f"Browser IP verification failed: {e}")
-        return None
+            logging.warning(f"IP verification failed: {e}")
+            return None
 
     def setup_driver(self):
         opts = Options()
@@ -209,7 +276,6 @@ class BilavnovaAutomation:
         abs_download_dir = os.path.abspath(self.download_dir)
         os.makedirs(abs_download_dir, exist_ok=True)
 
-        # TRAFFIC OPTIMIZATION: Block images when using proxy
         prefs = {
             "download.default_directory": abs_download_dir,
             "download.prompt_for_download": False,
@@ -218,13 +284,16 @@ class BilavnovaAutomation:
             "profile.default_content_settings.popups": 0,
             "profile.default_content_setting_values.automatic_downloads": 1
         }
-        if self.proxy_host:
-            prefs["profile.managed_default_content_settings.images"] = 2  # Block images
+
+        # PROXY MODE: Block images to save bandwidth
+        if self.mode == "PROXY":
+            prefs["profile.managed_default_content_settings.images"] = 2
 
         opts.add_experimental_option("prefs", prefs)
 
-        # PROXY: Use selenium-wire for authenticated proxy (works in headless)
-        if self.proxy_host and SELENIUM_WIRE:
+        # DRIVER CREATION: Different setup for PROXY vs PROXYLESS
+        if self.mode == "PROXY" and SELENIUM_WIRE:
+            # PROXY MODE with selenium-wire (supports authenticated proxies in headless)
             proxy_url = f'http://{self.proxy_user}:{self.proxy_pass}@{self.proxy_host}:{self.proxy_port}'
             seleniumwire_options = {
                 'proxy': {
@@ -237,14 +306,14 @@ class BilavnovaAutomation:
                 'verify_ssl': False
             }
             driver = webdriver.Chrome(options=opts, seleniumwire_options=seleniumwire_options)
-            logging.info(f"Proxy configured: {self.proxy_host}:{self.proxy_port}")
         else:
+            # PROXYLESS MODE (or PROXY without selenium-wire)
             driver = webdriver.Chrome(options=opts)
 
-        # Set timeouts for slow proxy connections
         driver.set_page_load_timeout(120)
         driver.implicitly_wait(10)
 
+        # Anti-detection measures
         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
             'source': '''
                 Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
@@ -253,8 +322,8 @@ class BilavnovaAutomation:
             '''
         })
 
-        # TRAFFIC OPTIMIZATION: Block fonts, CSS, media, tracking via CDP
-        if self.proxy_host:
+        # PROXY MODE: Block fonts, CSS, media to save bandwidth
+        if self.mode == "PROXY":
             try:
                 driver.execute_cdp_cmd('Network.enable', {})
                 driver.execute_cdp_cmd('Network.setBlockedURLs', {
@@ -265,8 +334,8 @@ class BilavnovaAutomation:
                         '*google-analytics*', '*gtag*', '*facebook*', '*hotjar*'  # tracking
                     ]
                 })
-            except Exception as e:
-                logging.debug(f"CDP Network blocking not available: {e}")
+            except Exception:
+                pass  # CDP blocking not critical
 
         try:
             driver.execute_cdp_cmd('Browser.setDownloadBehavior', {
@@ -397,8 +466,8 @@ class BilavnovaAutomation:
     def login(self):
         logging.info("Logging in...")
 
-        # Verify proxy IP before login attempt
-        if self.proxy_host:
+        # PROXY MODE: Verify we're using the proxy IP
+        if self.mode == "PROXY":
             self.verify_proxy_ip()
 
         if self.load_cookies() and self.is_session_valid():

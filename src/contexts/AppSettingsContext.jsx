@@ -39,6 +39,9 @@ const DEFAULT_SETTINGS = {
   maintenanceIntervalDays: 45,
   maintenanceDowntimeHours: 6,
   maintenanceCostPerSession: 300,
+
+  // POS Automation
+  posUseProxy: true, // Use residential proxy for CAPTCHA solving
 };
 
 // Map camelCase (JS) to snake_case (DB)
@@ -54,6 +57,7 @@ const toSnakeCase = (settings) => ({
   maintenance_interval_days: settings.maintenanceIntervalDays,
   maintenance_downtime_hours: settings.maintenanceDowntimeHours,
   maintenance_cost_per_session: settings.maintenanceCostPerSession,
+  pos_use_proxy: settings.posUseProxy,
 });
 
 // Map snake_case (DB) to camelCase (JS)
@@ -69,6 +73,7 @@ const toCamelCase = (row) => ({
   maintenanceIntervalDays: parseInt(row.maintenance_interval_days) || DEFAULT_SETTINGS.maintenanceIntervalDays,
   maintenanceDowntimeHours: parseInt(row.maintenance_downtime_hours) || DEFAULT_SETTINGS.maintenanceDowntimeHours,
   maintenanceCostPerSession: parseFloat(row.maintenance_cost_per_session) || DEFAULT_SETTINGS.maintenanceCostPerSession,
+  posUseProxy: row.pos_use_proxy !== undefined ? row.pos_use_proxy : DEFAULT_SETTINGS.posUseProxy,
 });
 
 // Old localStorage key for migration
