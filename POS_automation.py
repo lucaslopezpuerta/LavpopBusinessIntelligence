@@ -1,5 +1,5 @@
 """
-Bilavnova POS Automation v3.12
+Bilavnova POS Automation v3.13
 
 CAPTCHA Solving Modes:
 - PROXY MODE: Uses residential proxy (DataImpulse) for both CapSolver and Selenium
@@ -48,7 +48,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.12"
+VERSION = "3.13"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -644,13 +644,27 @@ class BilavnovaAutomation:
     def export_customers(self):
         logging.info("Exporting customers...")
         self.driver.get(self.customer_url)
-        time.sleep(4)
+        time.sleep(6)  # Match sales page load time
 
-        for _ in range(10):
+        if "system" not in self.driver.current_url:
+            raise Exception("Session expired")
+
+        # Wait for page to be fully loaded (look for table or customer list)
+        try:
+            WebDriverWait(self.driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Exportar')] | //table | //*[contains(@class, 'customer')]"))
+            )
+        except:
+            logging.warning("Could not find expected elements, proceeding anyway...")
+
+        time.sleep(2)  # Additional wait for React to render
+
+        for _ in range(15):  # Increased from 10 to 15 attempts
             result = self.driver.execute_script('''
                 for (var el of document.querySelectorAll('button, a, div')) {
                     if (el.textContent.includes('Exportar') && el.offsetParent !== null) {
                         if (el.disabled) return 'disabled';
+                        el.scrollIntoView({block: 'center'});
                         ['mousedown', 'mouseup', 'click'].forEach(function(e) {
                             el.dispatchEvent(new MouseEvent(e, {view: window, bubbles: true, cancelable: true, buttons: 1}));
                         });
@@ -661,7 +675,8 @@ class BilavnovaAutomation:
             ''')
 
             if result == 'clicked':
-                return self.wait_for_download()
+                logging.info("Export button clicked, waiting for download...")
+                return self.wait_for_download(timeout=120)  # Increased timeout for larger customer export
             elif result == 'disabled':
                 logging.info("No customer data to export (button disabled)")
                 return None
