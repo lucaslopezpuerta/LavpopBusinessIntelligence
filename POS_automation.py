@@ -36,7 +36,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.8"
+VERSION = "3.9"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -176,8 +176,36 @@ class BilavnovaAutomation:
 
         proxy_status = f'Proxy: {"On (selenium-wire)" if SELENIUM_WIRE else "On (extension)"}' if self.proxy_host else 'Proxy: Off'
         logging.info(f"Bilavnova POS Automation v{VERSION} | {'Headless' if headless else 'Headed'} | {proxy_status} | Supabase: {'On' if self.supabase.is_available() else 'Off'}")
-        if self.proxy_host and not SELENIUM_WIRE and SELENIUM_WIRE_ERROR:
-            logging.warning(f"selenium-wire not available: {SELENIUM_WIRE_ERROR}")
+
+    def verify_ip(self):
+        """Verify current IP and geolocation via API"""
+        try:
+            response = requests.get('https://ipapi.co/json/', timeout=10)
+            if response.ok:
+                data = response.json()
+                ip = data.get('ip', 'Unknown')
+                country = data.get('country_name', 'Unknown')
+                city = data.get('city', 'Unknown')
+                logging.info(f"Current IP: {ip} ({city}, {country})")
+                return data
+        except Exception as e:
+            logging.warning(f"IP verification failed: {e}")
+        return None
+
+    def verify_ip_through_browser(self):
+        """Verify IP through Selenium (uses proxy if configured)"""
+        try:
+            self.driver.get('https://api.ipify.org?format=json')
+            time.sleep(2)
+            body = self.driver.find_element(By.TAG_NAME, 'body').text
+            import json
+            data = json.loads(body)
+            ip = data.get('ip', 'Unknown')
+            logging.info(f"Browser IP (through proxy): {ip}")
+            return ip
+        except Exception as e:
+            logging.warning(f"Browser IP verification failed: {e}")
+        return None
 
     def setup_driver(self):
         opts = Options()
@@ -379,10 +407,29 @@ class BilavnovaAutomation:
             time.sleep(1)
             if "system" in self.driver.current_url:
                 return True
+
+        # Debug: Log login API requests if using selenium-wire
+        if SELENIUM_WIRE and hasattr(self.driver, 'requests'):
+            for req in self.driver.requests:
+                if 'auth' in req.url or 'login' in req.url:
+                    logging.info(f"Login request: {req.method} {req.url}")
+                    logging.info(f"  Status: {req.response.status_code if req.response else 'No response'}")
+                    if req.response and req.response.status_code != 200:
+                        try:
+                            body = req.response.body.decode('utf-8')[:500]
+                            logging.info(f"  Response body: {body}")
+                        except:
+                            pass
+
         return False
 
     def login(self):
         logging.info("Logging in...")
+
+        # Verify proxy IP before login attempt
+        if self.proxy_host:
+            self.verify_ip_through_browser()
+
         if self.load_cookies() and self.is_session_valid():
             logging.info("Session restored from cookies")
             return True
