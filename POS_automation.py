@@ -1,5 +1,5 @@
 """
-Bilavnova POS Automation v3.13
+Bilavnova POS Automation v3.14
 
 CAPTCHA Solving Modes:
 - PROXY MODE: Uses residential proxy (DataImpulse) for both CapSolver and Selenium
@@ -48,7 +48,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.13"
+VERSION = "3.14"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -649,24 +649,25 @@ class BilavnovaAutomation:
         if "system" not in self.driver.current_url:
             raise Exception("Session expired")
 
-        # Wait for page to be fully loaded (look for table or customer list)
+        # Wait for page to be fully loaded (same pattern as sales)
         try:
             WebDriverWait(self.driver, 15).until(
-                EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Exportar')] | //table | //*[contains(@class, 'customer')]"))
+                EC.presence_of_element_located((By.TAG_NAME, "table"))
             )
         except:
-            logging.warning("Could not find expected elements, proceeding anyway...")
+            logging.warning("Could not find table, proceeding anyway...")
 
         time.sleep(2)  # Additional wait for React to render
 
-        for _ in range(15):  # Increased from 10 to 15 attempts
+        # Click Exportar - SAME PATTERN AS SALES (button only, case-insensitive)
+        for _ in range(15):
             result = self.driver.execute_script('''
-                for (var el of document.querySelectorAll('button, a, div')) {
-                    if (el.textContent.includes('Exportar') && el.offsetParent !== null) {
-                        if (el.disabled) return 'disabled';
-                        el.scrollIntoView({block: 'center'});
+                for (var btn of document.querySelectorAll('button')) {
+                    if (btn.textContent.toLowerCase().includes('exportar') && btn.offsetParent !== null) {
+                        if (btn.disabled) return 'disabled';
+                        btn.scrollIntoView({block: 'center'});
                         ['mousedown', 'mouseup', 'click'].forEach(function(e) {
-                            el.dispatchEvent(new MouseEvent(e, {view: window, bubbles: true, cancelable: true, buttons: 1}));
+                            btn.dispatchEvent(new MouseEvent(e, {view: window, bubbles: true, cancelable: true, buttons: 1}));
                         });
                         return 'clicked';
                     }
