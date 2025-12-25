@@ -32,7 +32,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          pip install selenium-wire blinker requests supabase python-dotenv webdriver-manager
+          pip install "blinker<1.8" selenium-wire requests supabase python-dotenv webdriver-manager
           python -c "from seleniumwire import webdriver; print('selenium-wire OK')"
 
       - name: Run POS automation (sales only)
