@@ -18,12 +18,17 @@ import time, os, logging, glob, re, random, pickle
 from urllib.parse import urlparse
 
 # Try selenium-wire first (better proxy support), fall back to regular selenium
+SELENIUM_WIRE = False
+SELENIUM_WIRE_ERROR = None
 try:
     from seleniumwire import webdriver
     SELENIUM_WIRE = True
-except ImportError:
+except ImportError as e:
+    SELENIUM_WIRE_ERROR = str(e)
     from selenium import webdriver
-    SELENIUM_WIRE = False
+except Exception as e:
+    SELENIUM_WIRE_ERROR = str(e)
+    from selenium import webdriver
 
 try:
     from dotenv import load_dotenv
@@ -171,6 +176,8 @@ class BilavnovaAutomation:
 
         proxy_status = f'Proxy: {"On (selenium-wire)" if SELENIUM_WIRE else "On (extension)"}' if self.proxy_host else 'Proxy: Off'
         logging.info(f"Bilavnova POS Automation v{VERSION} | {'Headless' if headless else 'Headed'} | {proxy_status} | Supabase: {'On' if self.supabase.is_available() else 'Off'}")
+        if self.proxy_host and not SELENIUM_WIRE and SELENIUM_WIRE_ERROR:
+            logging.warning(f"selenium-wire not available: {SELENIUM_WIRE_ERROR}")
 
     def setup_driver(self):
         opts = Options()
