@@ -1,7 +1,11 @@
-// netlify/functions/twilio-whatsapp.js v1.9
+// netlify/functions/twilio-whatsapp.js v2.0
 // Twilio WhatsApp Business API integration for campaign messaging
 //
 // CHANGELOG:
+// v2.0 (2025-12-26): Added rate limiting
+//   - Strict rate limit: 20 requests/minute per IP
+//   - Uses Supabase rate_limits table for state
+//   - Includes X-RateLimit-* headers in responses
 // v1.9 (2025-12-19): Separate inbound messages from contact_tracking
 //   - NEW: All inbound messages stored in twilio_inbound_messages table
 //   - storeEngagement only UPDATES contact_tracking (no INSERT)
@@ -53,6 +57,18 @@
 // - SUPABASE_SERVICE_KEY: Supabase service role key
 
 const { createClient } = require('@supabase/supabase-js');
+const { checkRateLimit, getRateLimitHeaders, rateLimitResponse } = require('./utils/rateLimit');
+
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://bilavnova.com',
+  'https://www.bilavnova.com'
+];
+
+function getCorsOrigin(event) {
+  const origin = event.headers.origin || event.headers.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://bilavnova.com';
+}
 
 // Initialize Supabase client
 function getSupabaseClient() {
@@ -65,9 +81,10 @@ function getSupabaseClient() {
 }
 
 exports.handler = async (event, context) => {
+  const corsOrigin = getCorsOrigin(event);
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': corsOrigin,
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
@@ -76,6 +93,13 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
+
+  // Rate limit check (strict: 20 requests/minute for message sending)
+  const rateLimit = await checkRateLimit(event, 'twilio-whatsapp', 'strict');
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(headers, rateLimit);
+  }
+  Object.assign(headers, getRateLimitHeaders(rateLimit, 'strict'));
 
   // Only allow POST
   if (event.httpMethod !== 'POST') {

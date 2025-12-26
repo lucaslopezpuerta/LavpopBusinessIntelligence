@@ -17,6 +17,25 @@
   to = "/index.html"
   status = 200
 
+# Security Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Prevent clickjacking attacks
+    X-Frame-Options = "DENY"
+    # Prevent MIME type sniffing
+    X-Content-Type-Options = "nosniff"
+    # Enable HTTPS-only connections (1 year)
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # Control referrer information
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Disable unnecessary browser features
+    Permissions-Policy = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+    # XSS Protection (legacy but still useful for older browsers)
+    X-XSS-Protection = "1; mode=block"
+    # Content Security Policy
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.openweathermap.org https://*.twilio.com wss://*.supabase.co https://*.sentry.io; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+
 # Environment variable hints (set these in Netlify dashboard)
 # TWILIO_ACCOUNT_SID - Your Twilio Account SID
 # TWILIO_AUTH_TOKEN - Your Twilio Auth Token
@@ -24,3 +43,4 @@
 # SUPABASE_URL - Your Supabase project URL
 # SUPABASE_SERVICE_KEY - Your Supabase service role key
 # GOOGLE_API_KEY - Google Places API key
+# VITE_SENTRY_DSN - Sentry DSN for error tracking (frontend)

@@ -1,4 +1,4 @@
-// DataUpload.jsx v1.3 - HAPTIC FEEDBACK
+// DataUpload.jsx v1.4 - MOBILE-FRIENDLY
 // Upload component for manual CSV data imports
 //
 // Features:
@@ -9,9 +9,13 @@
 //   - Refresh computed metrics button (for both file types)
 //   - Auto-triggers app data refresh after successful upload
 //   - Upload order guidance
-//   - Haptic feedback on success/error (v1.3)
+//   - Haptic feedback on success/error
 //
 // CHANGELOG:
+// v1.4 (2025-12-26): Mobile-friendly layout
+//   - Upload order section stacks vertically on mobile
+//   - Help cards stack properly on small screens
+//   - Improved touch targets and spacing
 // v1.3 (2025-12-22): Haptic feedback on upload results
 //   - haptics.success() on successful upload
 //   - haptics.error() on validation/upload errors
@@ -496,10 +500,10 @@ const DataUpload = ({ onDataChange }) => {
 
                 {/* Actions after success */}
                 {result.success && (
-                  <div className="mt-4 flex flex-wrap gap-3">
+                  <div className="mt-4 flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={handleReset}
-                      className="px-4 py-2 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700 rounded-lg text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+                      className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700 rounded-lg text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
                     >
                       Importar outro arquivo
                     </button>
@@ -507,14 +511,14 @@ const DataUpload = ({ onDataChange }) => {
                     <button
                       onClick={handleRefreshMetrics}
                       disabled={refreshing}
-                      className="px-4 py-2 bg-gradient-to-r from-lavpop-blue to-blue-600 rounded-lg text-sm font-medium text-white hover:shadow-lg hover:shadow-lavpop-blue/25 transition-all flex items-center gap-2 disabled:opacity-50"
+                      className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-gradient-to-r from-lavpop-blue to-blue-600 rounded-lg text-sm font-medium text-white hover:shadow-lg hover:shadow-lavpop-blue/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {refreshing ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
                       ) : (
                         <RefreshCw className="w-4 h-4" />
                       )}
-                      Sincronizar Metricas
+                      Sincronizar Métricas
                     </button>
                   </div>
                 )}
@@ -567,27 +571,28 @@ const DataUpload = ({ onDataChange }) => {
           <h3 className="font-semibold text-slate-900 dark:text-white mb-3">
             Ordem de Upload Recomendada
           </h3>
-          <div className="flex items-center gap-2 text-sm">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center">1</span>
-              <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          {/* Vertical stack on mobile, horizontal on sm+ */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 px-3 py-2 sm:py-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+              <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
               <span className="font-medium text-emerald-700 dark:text-emerald-300">customer.csv</span>
             </div>
-            <span className="text-slate-400">→</span>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center">2</span>
-              <ShoppingCart className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-slate-400 hidden sm:inline">→</span>
+            <div className="flex items-center gap-2 px-3 py-2 sm:py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+              <ShoppingCart className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
               <span className="font-medium text-blue-700 dark:text-blue-300">sales.csv</span>
             </div>
-            <span className="text-slate-400">→</span>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <span className="w-5 h-5 rounded-full bg-purple-500 text-white text-xs font-bold flex items-center justify-center">3</span>
-              <RefreshCw className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <span className="text-slate-400 hidden sm:inline">→</span>
+            <div className="flex items-center gap-2 px-3 py-2 sm:py-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <span className="w-5 h-5 rounded-full bg-purple-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+              <RefreshCw className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
               <span className="font-medium text-purple-700 dark:text-purple-300">Sincronizar</span>
             </div>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-            Clientes primeiro, depois vendas. Clique em "Sincronizar Metricas" apos o ultimo upload para atualizar colunas computadas (risk_level, rfm_segment, etc).
+            Clientes primeiro, depois vendas. Clique em "Sincronizar Métricas" após o último upload para atualizar colunas computadas (risk_level, rfm_segment, etc).
           </p>
         </div>
 

@@ -13,7 +13,7 @@ import {
   getPhoneValidationError,
   filterValidPhones,
   getCampaignRecipients
-} from './phoneUtils';
+} from '../utils/phoneUtils';
 
 describe('cleanPhone', () => {
   it('should remove all non-digit characters', () => {

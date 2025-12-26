@@ -50,12 +50,70 @@
 // - SUPABASE_SERVICE_KEY: For database writes
 
 const { createClient } = require('@supabase/supabase-js');
-// Note: crypto was imported for future webhook signature validation but not yet implemented
+const crypto = require('crypto');
+
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://bilavnova.com',
+  'https://www.bilavnova.com'
+];
+
+function getCorsOrigin(event) {
+  const origin = event.headers.origin || event.headers.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://bilavnova.com';
+}
+
+// Validate Twilio webhook signature
+function validateTwilioSignature(event) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!authToken) {
+    console.error('❌ SECURITY: TWILIO_AUTH_TOKEN not configured');
+    return false;
+  }
+
+  const signature = event.headers['x-twilio-signature'] || event.headers['X-Twilio-Signature'];
+  if (!signature) {
+    console.warn('⚠️ No Twilio signature in request');
+    return false;
+  }
+
+  // Build the full URL that Twilio signed
+  const protocol = event.headers['x-forwarded-proto'] || 'https';
+  const host = event.headers.host;
+  const path = event.path || event.rawPath || '/.netlify/functions/twilio-webhook';
+  const url = `${protocol}://${host}${path}`;
+
+  // Parse and sort POST parameters
+  const params = new URLSearchParams(event.body || '');
+  const sortedParams = Array.from(params.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}${v}`)
+    .join('');
+
+  // Calculate expected signature
+  const data = url + sortedParams;
+  const expectedSignature = crypto
+    .createHmac('sha1', authToken)
+    .update(Buffer.from(data, 'utf-8'))
+    .digest('base64');
+
+  const isValid = crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+
+  if (!isValid) {
+    console.warn('⚠️ Invalid Twilio signature');
+  }
+
+  return isValid;
+}
 
 exports.handler = async (event, context) => {
+  const corsOrigin = getCorsOrigin(event);
   const headers = {
     'Content-Type': 'application/xml',
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': corsOrigin
   };
 
   // Handle GET requests (Twilio verification)
@@ -71,6 +129,16 @@ exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
+      body: '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
+    };
+  }
+
+  // Validate Twilio signature to prevent forged webhooks
+  if (!validateTwilioSignature(event)) {
+    console.error('[TwilioWebhook] Signature validation failed - rejecting request');
+    return {
+      statusCode: 403,
       headers,
       body: '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
     };

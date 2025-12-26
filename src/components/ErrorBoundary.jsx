@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { captureError, addBreadcrumb } from '../utils/errorTracking';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -25,8 +26,22 @@ class ErrorBoundary extends React.Component {
             errorInfo,
         });
 
-        // You can also log to an error reporting service here
-        // Example: logErrorToService(error, errorInfo);
+        // Send to Sentry error tracking
+        captureError(error, {
+            component: 'ErrorBoundary',
+            action: 'componentDidCatch',
+            componentStack: errorInfo?.componentStack,
+        });
+
+        // Add breadcrumb for context
+        addBreadcrumb({
+            category: 'error',
+            message: 'React error boundary triggered',
+            level: 'error',
+            data: {
+                errorMessage: error?.message,
+            },
+        });
     }
 
     handleReset = () => {

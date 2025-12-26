@@ -173,6 +173,10 @@ export const api = {
 
     async getStats() {
       return await apiRequest('blacklist.stats');
+    },
+
+    async clear() {
+      return await apiRequest('blacklist.clear');
     }
   },
 

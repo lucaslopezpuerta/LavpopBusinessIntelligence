@@ -1,4 +1,4 @@
-// UploadHistoryTab.jsx v1.0
+// UploadHistoryTab.jsx v1.1 - MOBILE-FRIENDLY
 // Display upload history from Supabase upload_history table
 //
 // Features:
@@ -6,6 +6,13 @@
 //   - Columns: Date, Type, Records, Status, Duration
 //   - Clear history button
 //   - Auto-refresh after parent upload
+//
+// CHANGELOG:
+// v1.1 (2025-12-26): Mobile-friendly layout
+//   - History cards show full stats on mobile (no hidden columns)
+//   - Compact stat grid that adapts to screen size
+//   - Improved touch targets for buttons
+// v1.0: Initial implementation
 //
 // Requires: upload_history table in Supabase (see docs/upload_history.sql)
 
@@ -174,17 +181,17 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-slate-400" />
+          <Clock className="w-5 h-5 text-slate-400 flex-shrink-0" />
           <span className="text-sm text-slate-500 dark:text-slate-400">
-            {history.length} registro{history.length !== 1 ? 's' : ''} no historico
+            {history.length} registro{history.length !== 1 ? 's' : ''} no histórico
           </span>
         </div>
         <div className="flex gap-2">
           <button
             onClick={fetchHistory}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-2.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             title="Atualizar"
           >
             <RefreshCw className="w-4 h-4 text-slate-400" />
@@ -193,7 +200,7 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
             <button
               onClick={handleClearHistory}
               disabled={clearing}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2.5 sm:py-1.5 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
             >
               {clearing ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -232,15 +239,16 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
               transition={{ delay: index * 0.05 }}
               className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4"
             >
-              <div className="flex items-center gap-4">
+              {/* Header row - type, status, date */}
+              <div className="flex items-start gap-3">
                 {/* Type icon */}
-                <div className={`w-10 h-10 rounded-lg ${statusInfo.bg} flex items-center justify-center`}>
+                <div className={`w-10 h-10 rounded-lg ${statusInfo.bg} flex items-center justify-center flex-shrink-0`}>
                   <TypeIcon className={`w-5 h-5 ${typeInfo.color}`} />
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-slate-900 dark:text-white capitalize">
                       {record.file_type === 'sales' ? 'Vendas' : 'Clientes'}
                     </span>
@@ -254,40 +262,43 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-500 dark:text-slate-400">
                     <span>{formatDate(record.uploaded_at)}</span>
-                    <span className="hidden sm:inline">{record.file_name || '-'}</span>
+                    {record.file_name && (
+                      <span className="truncate max-w-[150px]">{record.file_name}</span>
+                    )}
                   </div>
                 </div>
 
-                {/* Stats */}
-                <div className="hidden sm:flex items-center gap-4 text-sm">
-                  <div className="text-center">
+                {/* Duration - always visible */}
+                <div className="text-right flex-shrink-0">
+                  <p className="font-semibold text-slate-500 text-sm">{formatDuration(record.duration_ms)}</p>
+                  <p className="text-xs text-slate-400">tempo</p>
+                </div>
+              </div>
+
+              {/* Stats row - always visible on all screens */}
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
                     <p className="font-semibold text-emerald-600 dark:text-emerald-400">{record.records_inserted || 0}</p>
-                    <p className="text-xs text-slate-400">inseridos</p>
+                    <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">inseridos</p>
                   </div>
-                  {record.records_updated > 0 && (
-                    <div className="text-center">
+                  {record.records_updated > 0 ? (
+                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                       <p className="font-semibold text-blue-600 dark:text-blue-400">{record.records_updated}</p>
-                      <p className="text-xs text-slate-400">atualizados</p>
+                      <p className="text-xs text-blue-600/70 dark:text-blue-400/70">atualizados</p>
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                      <p className="font-semibold text-amber-600 dark:text-amber-400">{record.records_skipped || 0}</p>
+                      <p className="text-xs text-amber-600/70 dark:text-amber-400/70">ignorados</p>
                     </div>
                   )}
-                  <div className="text-center">
+                  <div className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                     <p className="font-semibold text-slate-600 dark:text-slate-400">{record.records_total || 0}</p>
-                    <p className="text-xs text-slate-400">total</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">total</p>
                   </div>
-                  <div className="text-center min-w-[50px]">
-                    <p className="font-semibold text-slate-500">{formatDuration(record.duration_ms)}</p>
-                    <p className="text-xs text-slate-400">tempo</p>
-                  </div>
-                </div>
-
-                {/* Mobile stats */}
-                <div className="sm:hidden text-right">
-                  <p className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {record.records_inserted || 0}
-                    <span className="text-xs text-slate-400 ml-1">/ {record.records_total || 0}</span>
-                  </p>
                 </div>
               </div>
 

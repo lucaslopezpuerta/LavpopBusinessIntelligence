@@ -106,9 +106,12 @@ export default defineConfig({
       output: {
         // Ensure consistent chunk naming
         manualChunks: {
-          vendor: ['react', 'react-dom'],
+          vendor: ['react', 'react-dom', 'react-router-dom'],
           charts: ['recharts'],
           icons: ['lucide-react'],
+          motion: ['framer-motion'],
+          pdf: ['jspdf', 'jspdf-autotable'],
+          supabase: ['@supabase/supabase-js'],
         },
       },
     },

@@ -992,15 +992,28 @@ async function generatePredictions(supabase) {
   };
 }
 
+// ============== CORS CONFIGURATION ==============
+
+const ALLOWED_ORIGINS = [
+  'https://bilavnova.com',
+  'https://www.bilavnova.com'
+];
+
+function getCorsOrigin(event) {
+  const origin = event.headers.origin || event.headers.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://bilavnova.com';
+}
+
 // ============== NETLIFY HANDLER ==============
 
 exports.handler = async (event, context) => {
   console.log('Revenue prediction triggered');
 
   // Base CORS headers
+  const corsOrigin = getCorsOrigin(event);
   const corsHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': corsOrigin,
     'Access-Control-Allow-Headers': 'Content-Type'
   };
 

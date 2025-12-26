@@ -1,5 +1,5 @@
 """
-Bilavnova POS Automation v3.14
+Bilavnova POS Automation v3.15
 
 CAPTCHA Solving Modes:
 - PROXY MODE: Uses residential proxy (DataImpulse) for both CapSolver and Selenium
@@ -19,6 +19,7 @@ Features:
 - Traffic optimization (block images, CSS, fonts when using proxy)
 - selenium-wire for headless proxy auth (GitHub Actions compatible)
 - CLI: --headed, --headless, --sales-only, --customers-only, --upload-only
+- Chrome background processes disabled to prevent login interference
 """
 
 from selenium.webdriver.common.by import By
@@ -48,7 +49,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.14"
+VERSION = "3.15"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -268,6 +269,15 @@ class BilavnovaAutomation:
         opts.add_argument('--disable-dev-shm-usage')
         opts.add_argument('--window-size=1920,1080')
         opts.add_argument('--disable-gpu')
+        # Disable background processes that can interfere with automation
+        opts.add_argument('--disable-component-update')
+        opts.add_argument('--disable-background-networking')
+        opts.add_argument('--disable-sync')
+        opts.add_argument('--disable-default-apps')
+        opts.add_argument('--disable-extensions')
+        opts.add_argument('--disable-background-timer-throttling')
+        opts.add_argument('--disable-backgrounding-occluded-windows')
+        opts.add_argument('--disable-renderer-backgrounding')
         opts.add_experimental_option("excludeSwitches", ["enable-automation"])
         opts.add_experimental_option("useAutomationExtension", False)
         opts.add_argument('--disable-blink-features=AutomationControlled')

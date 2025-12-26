@@ -1,4 +1,4 @@
-// DataUploadView.jsx v1.2
+// DataUploadView.jsx v1.3 - MOBILE-FRIENDLY
 // View wrapper for the data upload functionality with history tab
 //
 // This view allows manual CSV uploads to Supabase:
@@ -10,6 +10,9 @@
 //   - Historico: View past uploads from upload_history table
 //
 // CHANGELOG:
+// v1.3 (2025-12-26): Mobile-friendly tab navigation
+//   - Full-width tabs on mobile (< sm breakpoint)
+//   - Flexible tab container that adapts to screen size
 // v1.2 (2025-12-24): Added upload history tab
 //   - Tab navigation between Upload and Historico
 //   - UploadHistoryTab component for viewing past uploads
@@ -39,12 +42,12 @@ const DataUploadView = ({ onDataChange }) => {
 
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
-      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
+      {/* Tab Navigation - full width on mobile */}
+      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full sm:w-fit">
         <button
           onClick={() => setActiveTab('upload')}
           className={`
-            flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+            flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium transition-all
             ${activeTab === 'upload'
               ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
@@ -57,7 +60,7 @@ const DataUploadView = ({ onDataChange }) => {
         <button
           onClick={() => setActiveTab('history')}
           className={`
-            flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+            flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium transition-all
             ${activeTab === 'history'
               ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
@@ -65,7 +68,7 @@ const DataUploadView = ({ onDataChange }) => {
           `}
         >
           <Clock className="w-4 h-4" />
-          Historico
+          Histórico
         </button>
       </div>
 

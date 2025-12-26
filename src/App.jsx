@@ -1,4 +1,4 @@
-// App.jsx v8.11.0 - DEFENSIVE DATA RENDERING
+// App.jsx v8.11.1 - FIXED BOTTOM NAV POSITIONING
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -23,6 +23,10 @@
 // ✅ Defensive data rendering - prevents empty white tabs after idle
 //
 // CHANGELOG:
+// v8.11.1 (2025-12-26): Fixed bottom nav positioning
+//   - Moved BottomNavBar outside content wrapper div
+//   - Ensures fixed positioning works relative to viewport
+//   - Prevents nav bar from scrolling with content
 // v8.11.0 (2025-12-23): Defensive data rendering
 //   - FIXED: Empty white tabs after idle/navigation
 //   - Preserves existing valid data when silent refresh fails
@@ -570,10 +574,10 @@ function AppContent() {
             </div>
           </div>
         </footer>
-
-        {/* Bottom Navigation Bar (mobile only) */}
-        <BottomNavBar />
       </div>
+
+        {/* Bottom Navigation Bar (mobile only) - MUST be outside content wrapper for proper fixed positioning */}
+        <BottomNavBar />
 
         {/* Settings Modal */}
         <AppSettingsModal

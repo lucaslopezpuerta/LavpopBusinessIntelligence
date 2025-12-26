@@ -2,6 +2,15 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, scheduled campaigns, and WABA analytics
 //
+// Version: 3.8 (2025-12-26) - Rate limiting
+//   - Added rate limiting (100 requests/minute per IP)
+//   - Uses Supabase rate_limits table for state
+//   - Includes X-RateLimit-* headers in responses
+//
+// Version: 3.7 (2025-12-26) - Mandatory API authentication
+//   - API_SECRET_KEY is now REQUIRED - no fallback to unprotected mode
+//   - Requests are denied if API_SECRET_KEY env var is not configured
+//
 // Version: 3.6 (2025-12-20) - Removed localStorage migration
 //   - Removed migrateFromLocalStorage function (no longer needed)
 //   - All data now exclusively from Supabase
@@ -87,20 +96,19 @@
 // - API_SECRET_KEY: Secret key for API authentication
 //
 // SECURITY FEATURES:
-// - API key authentication required for all requests
-// - CORS restricted to production domain + localhost dev
+// - API key authentication required for all requests (mandatory)
+// - CORS restricted to production domains only
 // - Sanitized error messages (no internal details exposed)
 
 const { createClient } = require('@supabase/supabase-js');
+const { checkRateLimit, getRateLimitHeaders, rateLimitResponse } = require('./utils/rateLimit');
 
 // ==================== SECURITY CONFIGURATION ====================
 
-// Allowed origins for CORS
+// Allowed origins for CORS (production only)
 const ALLOWED_ORIGINS = [
   'https://bilavnova.com',
-  'https://www.bilavnova.com',
-  'http://localhost:5173',  // Vite dev server
-  'http://localhost:3000'   // Alt dev server
+  'https://www.bilavnova.com'
 ];
 
 // Get CORS origin (only allow whitelisted domains)
@@ -118,10 +126,10 @@ function validateApiKey(event) {
   const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
   const API_SECRET = process.env.API_SECRET_KEY;
 
-  // If no secret configured server-side, warn but allow (for initial setup only)
+  // API_SECRET_KEY must be configured - no fallback to unprotected mode
   if (!API_SECRET) {
-    console.warn('⚠️ WARNING: API_SECRET_KEY not configured. API is unprotected!');
-    return true;
+    console.error('❌ SECURITY: API_SECRET_KEY not configured. All requests denied.');
+    return false;
   }
 
   return apiKey === API_SECRET;
@@ -187,6 +195,14 @@ exports.handler = async (event, context) => {
     };
   }
 
+  // ==================== RATE LIMIT CHECK ====================
+  const rateLimit = await checkRateLimit(event, 'supabase-api', 'default');
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(headers, rateLimit);
+  }
+  // Add rate limit headers to all responses
+  Object.assign(headers, getRateLimitHeaders(rateLimit, 'default'));
+
   try {
     const supabase = getSupabase();
     const body = event.httpMethod !== 'GET' ? JSON.parse(event.body || '{}') : {};
@@ -216,6 +232,9 @@ exports.handler = async (event, context) => {
 
       case 'blacklist.stats':
         return await getBlacklistStats(supabase, headers);
+
+      case 'blacklist.clear':
+        return await clearBlacklist(supabase, headers);
 
       // ==================== CAMPAIGN OPERATIONS ====================
       case 'campaigns.getAll':
@@ -539,6 +558,22 @@ async function getBlacklistStats(supabase, headers) {
     statusCode: 200,
     headers,
     body: JSON.stringify(stats)
+  };
+}
+
+async function clearBlacklist(supabase, headers) {
+  // Delete all entries from blacklist
+  const { error } = await supabase
+    .from('blacklist')
+    .delete()
+    .neq('phone', ''); // This ensures we delete all rows
+
+  if (error) throw error;
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ success: true })
   };
 }
 

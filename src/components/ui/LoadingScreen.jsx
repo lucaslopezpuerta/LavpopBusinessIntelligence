@@ -19,9 +19,9 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // Progress steps configuration (ordered by typical load time, smallest first)
 const STEPS = [
-  { key: 'rfm', label: 'Segmentacao', number: 1 },
+  { key: 'rfm', label: 'Segmentação', number: 1 },
   { key: 'customers', label: 'Clientes', number: 2 },
-  { key: 'transactions', label: 'Transacoes', number: 3 },
+  { key: 'transactions', label: 'Transações', number: 3 },
 ];
 
 const LoadingScreen = ({ progress = { loaded: 0, total: 3, percent: 0, tableStates: {} } }) => {

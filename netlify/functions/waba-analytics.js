@@ -488,13 +488,25 @@ async function syncTemplateAnalytics(startEpoch, endEpoch) {
   return results;
 }
 
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://bilavnova.com',
+  'https://www.bilavnova.com'
+];
+
+function getCorsOrigin(event) {
+  const origin = event.headers.origin || event.headers.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://bilavnova.com';
+}
+
 /**
  * Main handler
  */
 exports.handler = async (event, context) => {
+  const corsOrigin = getCorsOrigin(event);
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': corsOrigin,
     'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };

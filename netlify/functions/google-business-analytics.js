@@ -44,13 +44,25 @@ const CONFIG = {
   CACHE_METRICS: 14400,     // 4 hours
 };
 
-// ==================== CORS HEADERS ====================
+// ==================== CORS CONFIGURATION ====================
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
+const ALLOWED_ORIGINS = [
+  'https://bilavnova.com',
+  'https://www.bilavnova.com'
+];
+
+function getCorsOrigin(event) {
+  const origin = event.headers.origin || event.headers.Origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://bilavnova.com';
+}
+
+function getCorsHeaders(event) {
+  return {
+    'Access-Control-Allow-Origin': getCorsOrigin(event),
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  };
+}
 
 // ==================== SUPABASE CLIENT ====================
 
@@ -495,6 +507,9 @@ async function syncReviewsToDatabase(accessToken, locationName, locationId) {
 // ==================== MAIN HANDLER ====================
 
 exports.handler = async (event, context) => {
+  // Get dynamic CORS headers based on request origin
+  const corsHeaders = getCorsHeaders(event);
+
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' };
