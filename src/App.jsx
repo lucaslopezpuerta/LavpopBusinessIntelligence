@@ -1,4 +1,4 @@
-// App.jsx v8.11.1 - FIXED BOTTOM NAV POSITIONING
+// App.jsx v8.11.2 - FIXED FOOTER VISIBILITY WITH BOTTOM NAV
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -23,6 +23,10 @@
 // ✅ Defensive data rendering - prevents empty white tabs after idle
 //
 // CHANGELOG:
+// v8.11.2 (2025-12-26): Fixed footer visibility with bottom nav
+//   - Added pb-20 to content wrapper for bottom nav clearance
+//   - Footer now fully visible when scrolling to bottom
+//   - Removed redundant mb-16 from footer
 // v8.11.1 (2025-12-26): Fixed bottom nav positioning
 //   - Moved BottomNavBar outside content wrapper div
 //   - Ensures fixed positioning works relative to viewport
@@ -496,7 +500,7 @@ function AppContent() {
         <OfflineIndicator lastSyncTime={lastRefreshed} />
 
         {/* Main Content Area - with sidebar offset (dynamic when pinned) */}
-        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-16'}`}>
+        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 pb-20 lg:pb-0 ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-16'}`}>
           {/* Top Bar */}
           <MinimalTopBar
             refreshing={refreshing}
@@ -538,8 +542,8 @@ function AppContent() {
             </AnimatePresence>
           </main>
 
-        {/* Footer - extra padding on mobile for bottom nav */}
-        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto mb-16 lg:mb-0">
+        {/* Footer */}
+        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto">
           <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3">
             {/* Mobile: Compact with labels */}
             <div className="flex sm:hidden items-center justify-center gap-4 text-[10px] text-slate-400 dark:text-slate-500">

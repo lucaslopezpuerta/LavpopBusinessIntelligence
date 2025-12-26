@@ -1,6 +1,6 @@
 /**
  * useRealtimeSync - Supabase Realtime subscription for live updates
- * v1.3 - FIXED INFINITE RECONNECTION LOOP
+ * v1.4 - VISIBILITY-BASED RECONNECTION
  *
  * OPTIMIZED FOR FREE TIER: Only subscribes to contact_tracking table
  * (the most critical for Customers/Campaigns mobile UX)
@@ -13,8 +13,14 @@
  * - Free tier compatible (uses ~1 connection)
  * - Auto-reconnects on disconnect with exponential backoff
  * - Graceful degradation when realtime unavailable
+ * - Auto-reconnects when returning to tab after idle
  *
  * CHANGELOG:
+ * v1.4 (2025-12-26): Visibility-based reconnection
+ *   - Added visibility change listener to reconnect when tab becomes visible
+ *   - Resets retry counter and "gave up" flag when returning to app
+ *   - Fixes connection loss after long idle periods in background tabs
+ *   - Browsers throttle background tabs, breaking WebSocket heartbeats
  * v1.3 (2025-12-23): Fixed infinite reconnection loop
  *   - ROOT CAUSE: useEffect dependency array included unstable callbacks
  *   - FIX: Use ref pattern to break the dependency cycle
@@ -211,8 +217,36 @@ export function useRealtimeSync({
       setupRealtimeRef.current();
     }
 
+    // Visibility change handler: reconnect when returning to app after idle
+    // Browsers throttle background tabs, which breaks WebSocket heartbeats
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && mountedRef.current) {
+        // Reset retry state when user returns to app - fresh start
+        retryCountRef.current = 0;
+        gaveUpRef.current = false;
+
+        // Check if connection is still alive
+        if (!connectedAtRef.current) {
+          console.info('[useRealtimeSync] Tab visible, reconnecting...');
+          // Clear any pending retry timeout
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+            retryTimeoutRef.current = null;
+          }
+          // Reconnect immediately
+          if (setupRealtimeRef.current) {
+            setupRealtimeRef.current();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       mountedRef.current = false;
+
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
 
       // Clear all timeouts
       if (flushTimeoutRef.current) {
