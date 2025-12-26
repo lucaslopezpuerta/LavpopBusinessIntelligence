@@ -1,7 +1,18 @@
 """
-Bilavnova POS Automation v3.16
+Bilavnova POS Automation v3.18
 
 CHANGELOG:
+v3.18 (2025-12-26): Fix form submission causing GET redirect
+  - REMOVED form.submit() which was causing GET redirect with credentials in URL
+  - Use requestSubmit() instead which respects React onSubmit handlers
+  - Only use fallback form submission if button click failed
+
+v3.17 (2025-12-26): Enhanced button detection
+  - Add logging for all available buttons on login page
+  - Try multiple button text patterns (Entrar, Login, Acessar)
+  - Fallback to type="submit" buttons
+  - Better logging to diagnose login failures
+
 v3.16 (2025-12-26): Slow CAPTCHA handling
   - Detect when CAPTCHA solve takes >20s (token may be stale)
   - Verify page state before injecting token
@@ -61,7 +72,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.16"
+VERSION = "3.18"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -516,50 +527,153 @@ class BilavnovaAutomation:
             return callbackTriggered;
         ''')
 
-        if not callback_triggered:
+        if callback_triggered:
+            logging.info("CAPTCHA callback triggered successfully")
+        else:
             logging.warning("CAPTCHA callback not found - attempting button click fallback")
 
         time.sleep(0.5)
 
-        # v3.16: Use more robust button click with MouseEvent dispatch
+        # v3.17: Enhanced button detection with logging
+        button_info = self.driver.execute_script('''
+            var buttons = document.querySelectorAll('button');
+            var buttonTexts = [];
+            for (var btn of buttons) {
+                buttonTexts.push({
+                    text: btn.textContent.trim().substring(0, 50),
+                    visible: btn.offsetParent !== null,
+                    disabled: btn.disabled,
+                    type: btn.type
+                });
+            }
+            return JSON.stringify(buttonTexts);
+        ''')
+        logging.info(f"Available buttons: {button_info}")
+
+        # v3.17: Try multiple button selectors
         button_clicked = self.driver.execute_script('''
             var buttons = document.querySelectorAll('button');
             for (var btn of buttons) {
-                if (btn.textContent.includes('Entrar') && btn.offsetParent !== null) {
+                var text = btn.textContent.toLowerCase();
+                // Match various login button texts (Portuguese)
+                if ((text.includes('entrar') || text.includes('login') || text.includes('acessar'))
+                    && btn.offsetParent !== null && !btn.disabled) {
+                    console.log('Clicking button:', btn.textContent);
                     ['mousedown', 'mouseup', 'click'].forEach(function(eventType) {
                         btn.dispatchEvent(new MouseEvent(eventType, {
                             view: window, bubbles: true, cancelable: true, buttons: 1
                         }));
                     });
-                    return true;
+                    return {clicked: true, text: btn.textContent.trim()};
                 }
             }
-            return false;
+            // Fallback: try submit buttons
+            var submitBtns = document.querySelectorAll('button[type="submit"], input[type="submit"]');
+            for (var btn of submitBtns) {
+                if (btn.offsetParent !== null && !btn.disabled) {
+                    console.log('Clicking submit button:', btn.textContent || btn.value);
+                    ['mousedown', 'mouseup', 'click'].forEach(function(eventType) {
+                        btn.dispatchEvent(new MouseEvent(eventType, {
+                            view: window, bubbles: true, cancelable: true, buttons: 1
+                        }));
+                    });
+                    return {clicked: true, text: btn.textContent || btn.value || 'submit'};
+                }
+            }
+            return {clicked: false, text: null};
         ''')
 
-        if not button_clicked:
-            # Fallback to direct click
+        if button_clicked and button_clicked.get('clicked'):
+            logging.info(f"Clicked button: '{button_clicked.get('text')}'")
+        else:
+            logging.warning("No suitable button found via JS")
+
+        if not button_clicked or not button_clicked.get('clicked'):
+            # Fallback to direct Selenium click
+            logging.info("Trying direct Selenium click fallback...")
             try:
-                self.driver.find_element(By.XPATH, "//button[contains(text(), 'Entrar')]").click()
+                # Try multiple XPath patterns
+                for xpath in [
+                    "//button[contains(text(), 'Entrar')]",
+                    "//button[contains(text(), 'entrar')]",
+                    "//button[contains(text(), 'Login')]",
+                    "//button[@type='submit']",
+                    "//input[@type='submit']"
+                ]:
+                    try:
+                        btn = self.driver.find_element(By.XPATH, xpath)
+                        btn.click()
+                        logging.info(f"Clicked via XPath: {xpath}")
+                        break
+                    except:
+                        continue
+                else:
+                    logging.warning("No button found via any XPath")
             except Exception as e:
-                logging.warning(f"Button click failed: {e}")
-                raise Exception("Could not click login button")
+                logging.warning(f"All button click methods failed: {e}")
+
+        # v3.18: DO NOT call form.submit() - it causes GET redirect instead of POST
+        # The button click above should trigger React's onSubmit handler
+        # If button click didn't work, try requestSubmit() which respects form validation
+        if not button_clicked or not button_clicked.get('clicked'):
+            submit_result = self.driver.execute_script('''
+                var forms = document.querySelectorAll('form');
+                for (var form of forms) {
+                    if (form.querySelector('input[name="email"]')) {
+                        // Try requestSubmit (respects onSubmit handlers)
+                        if (typeof form.requestSubmit === 'function') {
+                            try {
+                                form.requestSubmit();
+                                return 'requestSubmit';
+                            } catch(e) {}
+                        }
+                        // Fallback: find and click submit button
+                        var submitBtn = form.querySelector('button[type="submit"]');
+                        if (submitBtn) {
+                            submitBtn.click();
+                            return 'submitBtnClick';
+                        }
+                    }
+                }
+                return null;
+            ''')
+            if submit_result:
+                logging.info(f"Form submission via: {submit_result}")
 
         # Wait for redirect with longer timeout for slow connections
-        for _ in range(12):  # Increased from 8 to 12 (12 seconds)
+        logging.info("Waiting for login redirect...")
+        for i in range(12):  # 12 seconds
             time.sleep(1)
-            if "system" in self.driver.current_url:
+            current_url = self.driver.current_url
+            if "system" in current_url and ("/system/sale" in current_url or "/system/customer" in current_url or current_url.endswith("/system")):
+                logging.info(f"Login redirect detected: {current_url}")
                 return True
 
             # Check if still on login page (page may have reloaded)
             if self.driver.find_elements(By.CSS_SELECTOR, 'input[name="email"]'):
-                logging.debug("Still on login page, waiting...")
+                if i == 5:  # Log once at halfway point
+                    logging.info(f"Still on login page after {i}s: {current_url}")
+
+        # v3.17: Log final state for debugging
+        logging.warning(f"Login timeout - final URL: {self.driver.current_url}")
 
         # v3.16: Check if we got an error message
-        error_elements = self.driver.find_elements(By.CSS_SELECTOR, '.error, .alert-danger, [class*="error"]')
+        error_elements = self.driver.find_elements(By.CSS_SELECTOR, '.error, .alert-danger, [class*="error"], .toast, .notification')
         for el in error_elements:
             if el.text.strip():
                 logging.warning(f"Login error detected: {el.text.strip()}")
+
+        # v3.17: Check if there's any toast/snackbar message
+        toast_text = self.driver.execute_script('''
+            var toasts = document.querySelectorAll('.Toastify, .toast, .snackbar, [class*="toast"], [class*="notification"]');
+            var texts = [];
+            for (var t of toasts) {
+                if (t.textContent.trim()) texts.push(t.textContent.trim());
+            }
+            return texts.join(' | ');
+        ''')
+        if toast_text:
+            logging.warning(f"Toast/notification: {toast_text}")
 
         return False
 
