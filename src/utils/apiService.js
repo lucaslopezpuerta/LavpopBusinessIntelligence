@@ -1,6 +1,19 @@
-// apiService.js v2.7
+// apiService.js v2.10
 // Unified API service for Supabase backend communication
 // Provides fallback to localStorage when backend is unavailable
+//
+// Version: 2.10 (2025-12-26) - Added debug logging for native app troubleshooting
+//   - Logs platform detection and API URL selection
+//   - Helps diagnose connectivity issues in native apps
+//
+// Version: 2.9 (2025-12-26) - Fixed native app URL detection timing
+//   - API URL now evaluated at request time, not module load time
+//   - Ensures Capacitor is fully available before detecting platform
+//
+// Version: 2.8 (2025-12-26) - Native app support
+//   - API calls now use production URL when running on native devices
+//   - Uses platform detection to determine if native (Capacitor)
+//   - Falls back to relative URLs for web deployment
 //
 // Version: 2.7 (2025-12-19) - Google Business Profile analytics
 //   - Added api.googleBusiness.* namespace for GBP API integration
@@ -50,7 +63,60 @@
 //   import { api, isBackendAvailable } from './apiService';
 //   const blacklist = await api.blacklist.getAll();
 
-const API_URL = '/.netlify/functions/supabase-api';
+import { isNative, isCapacitorAvailable, getPlatform } from './platform';
+
+// Production URL for native apps (they can't use relative paths)
+const PRODUCTION_BASE = 'https://www.bilavnova.com';
+
+// Debug flag - set to true to see API URL resolution in console
+const DEBUG_API = true;
+
+// Dynamically determine API base URL
+// Native apps need full URL, web can use relative paths
+function getApiBaseUrl() {
+  const capacitorAvailable = isCapacitorAvailable();
+  const native = isNative();
+  const platform = getPlatform();
+
+  if (DEBUG_API) {
+    console.log('[API] Platform detection:', {
+      capacitorAvailable,
+      isNative: native,
+      platform,
+      windowCapacitor: typeof window !== 'undefined' ? !!window.Capacitor : 'N/A'
+    });
+  }
+
+  if (native) {
+    const url = `${PRODUCTION_BASE}/.netlify/functions/supabase-api`;
+    if (DEBUG_API) console.log('[API] Using production URL:', url);
+    return url;
+  }
+
+  if (DEBUG_API) console.log('[API] Using relative URL: /.netlify/functions/supabase-api');
+  return '/.netlify/functions/supabase-api';
+}
+
+// Get base URL for other Netlify functions
+export function getNetlifyFunctionUrl(functionName) {
+  const native = isNative();
+  let url;
+
+  if (native) {
+    url = `${PRODUCTION_BASE}/.netlify/functions/${functionName}`;
+  } else {
+    url = `/.netlify/functions/${functionName}`;
+  }
+
+  if (DEBUG_API) {
+    console.log(`[API] getNetlifyFunctionUrl(${functionName}):`, { native, url });
+  }
+
+  return url;
+}
+
+// NOTE: Don't cache API_URL as a constant - Capacitor might not be available at module load time
+// Call getApiBaseUrl() at request time instead
 
 // API key for authentication (set in Netlify environment variables)
 const API_KEY = import.meta.env.VITE_API_KEY || '';
@@ -81,7 +147,7 @@ export async function isBackendAvailable(forceCheck = false) {
   }
 
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(getApiBaseUrl(), {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ action: 'blacklist.stats' })
@@ -107,6 +173,15 @@ export async function isBackendAvailable(forceCheck = false) {
  * Make API request with error handling and authentication
  */
 async function apiRequest(action, data = {}, method = 'POST') {
+  const apiUrl = getApiBaseUrl();
+  const url = method === 'GET' && Object.keys(data).length > 0
+    ? `${apiUrl}?action=${action}&${new URLSearchParams(data)}`
+    : apiUrl;
+
+  if (DEBUG_API) {
+    console.log(`[API] Request: ${action}`, { method, url });
+  }
+
   try {
     const options = {
       method,
@@ -117,11 +192,16 @@ async function apiRequest(action, data = {}, method = 'POST') {
       options.body = JSON.stringify({ action, ...data });
     }
 
-    const url = method === 'GET' && Object.keys(data).length > 0
-      ? `${API_URL}?action=${action}&${new URLSearchParams(data)}`
-      : API_URL;
-
     const response = await fetch(url, options);
+
+    if (DEBUG_API) {
+      console.log(`[API] Response: ${action}`, {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
+      });
+    }
+
     const result = await response.json();
 
     if (!response.ok) {
@@ -130,7 +210,7 @@ async function apiRequest(action, data = {}, method = 'POST') {
 
     return result;
   } catch (error) {
-    console.error(`API error [${action}]:`, error);
+    console.error(`[API] Error [${action}]:`, error.message, { url });
     throw error;
   }
 }
@@ -626,7 +706,7 @@ export const api = {
      */
     async triggerSync() {
       try {
-        const response = await fetch('/.netlify/functions/waba-analytics?action=sync', {
+        const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=sync`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -643,7 +723,7 @@ export const api = {
      */
     async triggerBackfill(from = '2025-12-09') {
       try {
-        const response = await fetch(`/.netlify/functions/waba-analytics?action=backfill&from=${from}`, {
+        const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=backfill&from=${from}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -715,7 +795,7 @@ export const api = {
      */
     async triggerTemplateSync() {
       try {
-        const response = await fetch('/.netlify/functions/waba-analytics?action=sync-templates', {
+        const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=sync-templates`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -732,7 +812,7 @@ export const api = {
      */
     async getProfile() {
       try {
-        const response = await fetch('/.netlify/functions/waba-analytics?action=profile', {
+        const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=profile`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -763,7 +843,7 @@ export const api = {
         if (options.dateSentBefore) body.dateSentBefore = options.dateSentBefore;
         if (options.pageToken) body.pageToken = options.pageToken;
 
-        const response = await fetch('/.netlify/functions/twilio-whatsapp', {
+        const response = await fetch(getNetlifyFunctionUrl('twilio-whatsapp'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -863,7 +943,7 @@ export const api = {
      */
     async getStoredEngagementAndCosts(dateFrom = null, dateTo = null) {
       try {
-        const response = await fetch('/.netlify/functions/twilio-whatsapp', {
+        const response = await fetch(getNetlifyFunctionUrl('twilio-whatsapp'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -942,7 +1022,7 @@ export const api = {
      */
     async getDashboard() {
       try {
-        const response = await fetch('/.netlify/functions/instagram-analytics?action=dashboard', {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=dashboard`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -958,7 +1038,7 @@ export const api = {
      */
     async getProfile() {
       try {
-        const response = await fetch('/.netlify/functions/instagram-analytics?action=profile', {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=profile`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -974,7 +1054,7 @@ export const api = {
      */
     async getInsights() {
       try {
-        const response = await fetch('/.netlify/functions/instagram-analytics?action=insights', {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=insights`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -991,7 +1071,7 @@ export const api = {
      */
     async getMedia(limit = 25) {
       try {
-        const response = await fetch(`/.netlify/functions/instagram-analytics?action=media&limit=${limit}`, {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=media&limit=${limit}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1008,7 +1088,7 @@ export const api = {
      */
     async getMediaInsights(mediaId) {
       try {
-        const response = await fetch(`/.netlify/functions/instagram-analytics?action=media-insights&mediaId=${mediaId}`, {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=media-insights&mediaId=${mediaId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1025,7 +1105,7 @@ export const api = {
      */
     async getComments(limit = 50) {
       try {
-        const response = await fetch(`/.netlify/functions/instagram-analytics?action=comments&limit=${limit}`, {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=comments&limit=${limit}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1041,7 +1121,7 @@ export const api = {
      */
     async getMessagesCount() {
       try {
-        const response = await fetch('/.netlify/functions/instagram-analytics?action=messages-count', {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=messages-count`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1065,7 +1145,7 @@ export const api = {
         const cacheBuster = Date.now();
         // Use 'all' for null to fetch all available history
         const daysParam = days === null ? 'all' : days;
-        const response = await fetch(`/.netlify/functions/instagram-analytics?action=history&days=${daysParam}&_t=${cacheBuster}`, {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=history&days=${daysParam}&_t=${cacheBuster}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1083,7 +1163,7 @@ export const api = {
      */
     async triggerSync() {
       try {
-        const response = await fetch('/.netlify/functions/instagram-analytics?action=sync', {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=sync`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1099,7 +1179,7 @@ export const api = {
      */
     async getStatus() {
       try {
-        const response = await fetch('/.netlify/functions/instagram-analytics?action=status', {
+        const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=status`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1120,7 +1200,7 @@ export const api = {
      */
     async getDashboard() {
       try {
-        const response = await fetch('/.netlify/functions/google-business-analytics?action=dashboard', {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=dashboard`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1136,7 +1216,7 @@ export const api = {
      */
     async getProfile() {
       try {
-        const response = await fetch('/.netlify/functions/google-business-analytics?action=profile', {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=profile`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1154,7 +1234,7 @@ export const api = {
      */
     async getReviews(pageSize = 10, pageToken = null) {
       try {
-        let url = `/.netlify/functions/google-business-analytics?action=reviews&pageSize=${pageSize}`;
+        let url = `${getNetlifyFunctionUrl('google-business-analytics')}?action=reviews&pageSize=${pageSize}`;
         if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
         const response = await fetch(url, {
           method: 'GET',
@@ -1174,7 +1254,7 @@ export const api = {
      */
     async replyToReview(reviewId, comment) {
       try {
-        const response = await fetch('/.netlify/functions/google-business-analytics', {
+        const response = await fetch(getNetlifyFunctionUrl('google-business-analytics'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1198,7 +1278,7 @@ export const api = {
       try {
         const daysParam = days === null ? 'all' : days;
         const cacheBuster = Date.now();
-        const response = await fetch(`/.netlify/functions/google-business-analytics?action=history&days=${daysParam}&_t=${cacheBuster}`, {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=history&days=${daysParam}&_t=${cacheBuster}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1215,7 +1295,7 @@ export const api = {
      */
     async triggerSync() {
       try {
-        const response = await fetch('/.netlify/functions/google-business-analytics?action=sync', {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=sync`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1231,7 +1311,7 @@ export const api = {
      */
     async getStatus() {
       try {
-        const response = await fetch('/.netlify/functions/google-business-analytics?action=status', {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=status`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1250,7 +1330,7 @@ export const api = {
      */
     async getOAuthUrl() {
       try {
-        const response = await fetch('/.netlify/functions/google-business-analytics?action=oauth-init', {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=oauth-init`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1267,7 +1347,7 @@ export const api = {
      */
     async getOAuthStatus() {
       try {
-        const response = await fetch('/.netlify/functions/google-business-analytics?action=oauth-status', {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=oauth-status`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1283,7 +1363,7 @@ export const api = {
      */
     async getAccounts() {
       try {
-        const response = await fetch('/.netlify/functions/google-business-analytics?action=accounts', {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=accounts`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -1300,7 +1380,7 @@ export const api = {
      */
     async getLocations(accountId) {
       try {
-        const response = await fetch(`/.netlify/functions/google-business-analytics?action=locations&accountId=${accountId}`, {
+        const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=locations&accountId=${accountId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });

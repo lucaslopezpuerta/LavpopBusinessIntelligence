@@ -245,6 +245,25 @@ async function syncWeatherData() {
 
 // ============== NETLIFY HANDLER ==============
 
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://bilavnova.com',
+  'https://www.bilavnova.com',
+  'https://localhost',           // Capacitor Android
+  'capacitor://localhost',       // Capacitor iOS
+  'http://localhost:5173',       // Local dev (Vite)
+  'http://localhost:5174',       // Local dev alt port
+  'http://localhost:8888'        // Netlify dev
+];
+
+function getCorsOrigin(event) {
+  const origin = event.headers?.origin || event.headers?.Origin || '';
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    return origin;
+  }
+  return 'https://www.bilavnova.com';
+}
+
 /**
  * Netlify function handler
  * Supports both scheduled execution and manual HTTP trigger
@@ -254,6 +273,18 @@ exports.handler = async (event, context) => {
   const isScheduled = event.httpMethod === undefined;
   console.log(`Weather sync triggered (${isScheduled ? 'scheduled' : 'manual'})`);
 
+  // CORS headers for manual HTTP triggers
+  const corsHeaders = isScheduled ? {} : {
+    'Access-Control-Allow-Origin': getCorsOrigin(event),
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+  };
+
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: corsHeaders, body: '' };
+  }
+
   try {
     const result = await syncWeatherData();
 
@@ -261,7 +292,8 @@ exports.handler = async (event, context) => {
       statusCode: result.success ? 200 : 500,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache'
+        'Cache-Control': 'no-cache',
+        ...corsHeaders
       },
       body: JSON.stringify({
         ...result,
@@ -274,7 +306,7 @@ exports.handler = async (event, context) => {
 
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
       body: JSON.stringify({
         success: false,
         message: error.message,

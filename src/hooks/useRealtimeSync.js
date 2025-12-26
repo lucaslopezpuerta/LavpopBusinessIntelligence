@@ -1,6 +1,6 @@
 /**
  * useRealtimeSync - Supabase Realtime subscription for live updates
- * v1.4 - VISIBILITY-BASED RECONNECTION
+ * v1.5 - FIX RECONNECTION LOOP
  *
  * OPTIMIZED FOR FREE TIER: Only subscribes to contact_tracking table
  * (the most critical for Customers/Campaigns mobile UX)
@@ -16,6 +16,10 @@
  * - Auto-reconnects when returning to tab after idle
  *
  * CHANGELOG:
+ * v1.5 (2025-12-26): Fix reconnection loop
+ *   - ROOT CAUSE: cleanupChannel() triggers CLOSED status, which schedules retry
+ *   - FIX: Add intentionalDisconnectRef flag to skip CLOSED handler during cleanup
+ *   - Prevents infinite loop: setupRealtime -> cleanupChannel -> CLOSED -> retry -> setupRealtime
  * v1.4 (2025-12-26): Visibility-based reconnection
  *   - Added visibility change listener to reconnect when tab becomes visible
  *   - Resets retry counter and "gave up" flag when returning to app
@@ -76,6 +80,7 @@ export function useRealtimeSync({
   const stableTimeoutRef = useRef(null); // Timer for stable connection check
   const gaveUpRef = useRef(false); // Flag to stop logging after max attempts
   const setupRealtimeRef = useRef(null); // Ref to hold latest setupRealtime function
+  const intentionalDisconnectRef = useRef(false); // Flag to skip CLOSED handler during intentional cleanup
 
   // Debounce rapid updates to prevent UI thrashing
   const pendingUpdates = useRef([]);
@@ -106,12 +111,16 @@ export function useRealtimeSync({
   // Cleanup existing channel before reconnecting
   const cleanupChannel = useCallback(async () => {
     if (channelRef.current) {
+      // Set flag to prevent CLOSED handler from triggering reconnection
+      intentionalDisconnectRef.current = true;
       try {
         await channelRef.current.unsubscribe();
       } catch {
         // Ignore unsubscribe errors
       }
       channelRef.current = null;
+      // Reset flag after cleanup
+      intentionalDisconnectRef.current = false;
     }
   }, []);
 
@@ -166,6 +175,9 @@ export function useRealtimeSync({
             clearTimeout(stableTimeoutRef.current);
             stableTimeoutRef.current = null;
           }
+
+          // Skip reconnection if this was an intentional disconnect (during cleanup before reconnect)
+          if (intentionalDisconnectRef.current) return;
 
           // Skip if already gave up
           if (gaveUpRef.current) return;

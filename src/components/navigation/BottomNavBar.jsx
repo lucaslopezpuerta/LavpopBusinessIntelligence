@@ -1,4 +1,4 @@
-// BottomNavBar.jsx v1.2 - NAV ORDER CONSISTENCY
+// BottomNavBar.jsx v1.3 - RELIABLE SAFE AREA HANDLING
 // Mobile bottom navigation bar with 5 tabs
 //
 // FEATURES:
@@ -18,6 +18,11 @@
 // 5. Mais (opens drawer)
 //
 // CHANGELOG:
+// v1.3 (2025-12-26): Reliable safe area handling
+//   - Added explicit height calc for nav container
+//   - Background extends to screen edge (covers home indicator area)
+//   - Nav content positioned above safe area
+//   - Prevents content appearing below nav bar
 // v1.2 (2025-12-22): Reordered tabs to match desktop sidebar (Clientes before Diretório)
 // v1.1 (2025-12-18): Added haptic feedback on tab tap
 // v1.0 (2025-12-18): Initial implementation
@@ -56,18 +61,28 @@ const BottomNavBar = () => {
 
   return (
     <nav
-      className="
-        lg:hidden fixed bottom-0 inset-x-0 z-40
-        bg-white/95 dark:bg-slate-900/95
-        backdrop-blur-lg
-        border-t border-slate-200/80 dark:border-slate-800/80
-        shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]
-        dark:shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.3)]
-        bottom-nav-safe
-      "
+      className="lg:hidden fixed bottom-0 inset-x-0 z-40"
       aria-label="Navegação principal"
+      style={{
+        // Height = nav content (64px) + safe area inset
+        // This ensures the nav covers the entire bottom area
+        height: 'calc(64px + env(safe-area-inset-bottom, 0px))',
+      }}
     >
-      <div className="flex items-center justify-around h-16 px-1">
+      {/* Background layer - extends to screen edge */}
+      <div
+        className="
+          absolute inset-0
+          bg-white/95 dark:bg-slate-900/95
+          backdrop-blur-lg
+          border-t border-slate-200/80 dark:border-slate-800/80
+          shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]
+          dark:shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.3)]
+        "
+      />
+
+      {/* Nav content - positioned at top, above safe area */}
+      <div className="relative flex items-center justify-around h-16 px-1">
         {/* Main navigation items */}
         {BOTTOM_NAV_ITEMS.map((item) => (
           <BottomNavItem

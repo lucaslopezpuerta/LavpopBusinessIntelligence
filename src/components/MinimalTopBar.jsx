@@ -1,7 +1,10 @@
-// MinimalTopBar.jsx v3.5 - THEME TOGGLE DESKTOP ONLY
+// MinimalTopBar.jsx v3.6 - LOGOUT BUTTON
 // Modern top bar with discreet hover-expandable actions
 //
 // CHANGELOG:
+// v3.6 (2025-12-26): Logout button
+//   - Added LogOut button to QuickActionsDropdown
+//   - Uses useAuth hook for signOut
 // v3.5 (2025-12-22): Theme toggle hidden on mobile
 //   - ThemeToggle now desktop-only (lg+)
 //   - Mobile uses ThemeToggle in IconSidebar drawer footer
@@ -22,12 +25,13 @@
 // v2.x: Previous implementations
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, Settings, FileDown, RefreshCw, Bell, MoreHorizontal } from 'lucide-react';
+import { MapPin, Settings, FileDown, RefreshCw, Bell, MoreHorizontal, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WeatherWidget from './WeatherWidget_API';
 import ThemeToggle from './ThemeToggle';
 import IconButton from './ui/IconButton';
 import { haptics } from '../utils/haptics';
+import { useAuth } from '../contexts/AuthContext';
 
 // Hook to detect touch/mobile device
 const useIsTouchDevice = () => {
@@ -69,6 +73,7 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
   const containerRef = useRef(null);
   const closeTimeoutRef = useRef(null);
   const isTouch = useIsTouchDevice();
+  const { signOut, user } = useAuth();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -177,6 +182,12 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
               icon={Bell}
               label="Alertas"
               onClick={() => setIsOpen(false)}
+            />
+            <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+            <ActionItem
+              icon={LogOut}
+              label="Sair"
+              onClick={() => { signOut(); setIsOpen(false); }}
             />
           </motion.div>
         )}

@@ -279,9 +279,16 @@ a:focus-visible {
    SAFE AREA INSETS (Notched Devices)
    ============================================ */
 
+/* Native safe area variables (set by JS for Android) */
+:root {
+  --native-safe-area-top: 0px;
+  --android-status-bar-height: 0px;
+}
+
 /* Safe area padding utilities for iPhone X+, Android notches */
+/* Uses env() for iOS, falls back to --native-safe-area-top for Android */
 .safe-area-top {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: max(env(safe-area-inset-top, 0px), var(--native-safe-area-top, 0px));
 }
 
 .safe-area-bottom {
@@ -306,6 +313,19 @@ a:focus-visible {
 /* Bottom nav specific - adds safe area to padding */
 .bottom-nav-safe {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Content wrapper - clearance for bottom nav on mobile */
+/* 80px = 64px nav + 16px breathing room, plus safe area */
+.pb-bottom-nav {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1024px) {
+  /* lg breakpoint - no bottom nav on desktop */
+  .pb-bottom-nav {
+    padding-bottom: 0;
+  }
 }
 
 /* Margin variants */

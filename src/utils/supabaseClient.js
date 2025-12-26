@@ -7,7 +7,15 @@
  * Used by:
  * - supabaseLoader.js (data fetching)
  * - useRealtimeSync.js (realtime subscriptions)
+ * - AuthContext.jsx (authentication)
  * - Any future modules needing Supabase access
+ *
+ * CHANGELOG:
+ * v1.1 (2025-12-26): Added auth configuration
+ *   - persistSession: true (remembers login across sessions)
+ *   - autoRefreshToken: true (auto-refreshes JWT tokens)
+ *   - detectSessionInUrl: true (handles OAuth redirects)
+ * v1.0: Initial implementation
  */
 
 let supabaseClient = null;
@@ -40,9 +48,15 @@ export async function getSupabaseClient() {
     }
 
     const { createClient } = await import('@supabase/supabase-js');
-    supabaseClient = createClient(supabaseUrl, supabaseKey);
+    supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: true,       // Remember login across browser sessions
+        autoRefreshToken: true,     // Auto-refresh JWT tokens before expiry
+        detectSessionInUrl: true,   // Handle OAuth redirect URLs
+      }
+    });
 
-    console.log('[SupabaseClient] Initialized');
+    console.log('[SupabaseClient] Initialized with auth config');
     return supabaseClient;
   })();
 

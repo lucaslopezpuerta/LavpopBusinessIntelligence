@@ -14,8 +14,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
-import LogoNoBackground from '../../assets/LogoNoBackground.svg';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+
+// PNG logo from public folder (matches index.html for seamless transition)
+const BilavnovaLogo = '/Bilavnova-Logo-Dark-Bg.png';
 
 // Progress steps configuration (ordered by typical load time, smallest first)
 const STEPS = [
@@ -39,8 +41,8 @@ const LoadingScreen = ({ progress = { loaded: 0, total: 3, percent: 0, tableStat
       >
         <div className="w-20 h-20 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center p-4">
           <img
-            src={LogoNoBackground}
-            alt="Lavpop"
+            src={BilavnovaLogo}
+            alt="Bilavnova"
             className="w-full h-full object-contain"
           />
         </div>

@@ -687,12 +687,22 @@ async function getHistoricalMetrics(days = 30) {
 
 const ALLOWED_ORIGINS = [
   'https://bilavnova.com',
-  'https://www.bilavnova.com'
+  'https://www.bilavnova.com',
+  'https://localhost',           // Capacitor Android
+  'capacitor://localhost',       // Capacitor iOS
+  'http://localhost:5173',       // Local dev (Vite)
+  'http://localhost:5174',       // Local dev alt port
+  'http://localhost:8888'        // Netlify dev
 ];
 
 function getCorsOrigin(event) {
   const origin = event.headers.origin || event.headers.Origin || '';
-  return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://bilavnova.com';
+  // Allow all Capacitor and localhost origins
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    return origin;
+  }
+  // Default to production for non-matching origins
+  return 'https://www.bilavnova.com';
 }
 
 // ==================== MAIN HANDLER ====================

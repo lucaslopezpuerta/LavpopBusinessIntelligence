@@ -186,8 +186,40 @@ function getSupabase() {
   return createClient(url, key);
 }
 
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://bilavnova.com',
+  'https://www.bilavnova.com',
+  'https://localhost',           // Capacitor Android
+  'capacitor://localhost',       // Capacitor iOS
+  'http://localhost:5173',       // Local dev (Vite)
+  'http://localhost:5174',       // Local dev alt port
+  'http://localhost:8888'        // Netlify dev
+];
+
+function getCorsOrigin(event) {
+  const origin = event.headers?.origin || event.headers?.Origin || '';
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    return origin;
+  }
+  return 'https://www.bilavnova.com';
+}
+
 exports.handler = async (event, context) => {
   console.log('Campaign scheduler running at:', new Date().toISOString());
+
+  // CORS headers for manual HTTP triggers (scheduled invocations don't have httpMethod)
+  const isScheduled = event.httpMethod === undefined;
+  const corsHeaders = isScheduled ? {} : {
+    'Access-Control-Allow-Origin': getCorsOrigin(event),
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+  };
+
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: corsHeaders, body: '' };
+  }
 
   const supabase = getSupabase();
 
@@ -207,6 +239,7 @@ exports.handler = async (event, context) => {
       console.error('Error fetching scheduled campaigns:', fetchError);
       return {
         statusCode: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
         body: JSON.stringify({ error: 'Failed to fetch campaigns' })
       };
     }
@@ -352,6 +385,7 @@ exports.handler = async (event, context) => {
 
     return {
       statusCode: 200,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
       body: JSON.stringify({
         message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}${wabaResults.skipped ? '' : ', WABA synced'}${wabaTemplateResults.skipped ? '' : ', templates synced'}${instagramResults.skipped ? '' : ', Instagram synced'}${twilioResults.skipped ? '' : ', Twilio synced'}${blacklistResults.skipped ? '' : ', blacklist synced'}${modelTrainingResults.skipped ? '' : ', model trained'}`,
         campaigns: results,
@@ -371,6 +405,7 @@ exports.handler = async (event, context) => {
     console.error('Campaign scheduler error:', error);
     return {
       statusCode: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
       body: JSON.stringify({ error: error.message })
     };
   }

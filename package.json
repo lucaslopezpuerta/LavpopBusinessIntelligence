@@ -12,9 +12,17 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "generate-icons": "node scripts/generate-pwa-icons.js"
+    "generate-icons": "node scripts/generate-pwa-icons.js",
+    "build:native": "npm run build && npx cap sync",
+    "cap:android": "npx cap open android",
+    "cap:sync": "npx cap sync",
+    "cap:copy": "npx cap copy"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
     "@sentry/react": "^10.32.1",
     "@supabase/supabase-js": "^2.38.0",
     "embla-carousel-react": "^8.3.0",

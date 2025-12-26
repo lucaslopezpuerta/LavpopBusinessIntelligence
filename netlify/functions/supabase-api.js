@@ -105,10 +105,15 @@ const { checkRateLimit, getRateLimitHeaders, rateLimitResponse } = require('./ut
 
 // ==================== SECURITY CONFIGURATION ====================
 
-// Allowed origins for CORS (production only)
+// Allowed origins for CORS
 const ALLOWED_ORIGINS = [
   'https://bilavnova.com',
-  'https://www.bilavnova.com'
+  'https://www.bilavnova.com',
+  'https://localhost',           // Capacitor Android
+  'capacitor://localhost',       // Capacitor iOS
+  'http://localhost:5173',       // Local dev (Vite)
+  'http://localhost:5174',       // Local dev alt port
+  'http://localhost:8888'        // Netlify dev
 ];
 
 // Get CORS origin (only allow whitelisted domains)
@@ -118,7 +123,7 @@ function getCorsOrigin(event) {
     return origin;
   }
   // Default to production domain for security
-  return 'https://bilavnova.com';
+  return 'https://www.bilavnova.com';
 }
 
 // Validate API key from request header

@@ -1,5 +1,17 @@
 """
-Bilavnova POS Automation v3.15
+Bilavnova POS Automation v3.16
+
+CHANGELOG:
+v3.16 (2025-12-26): Slow CAPTCHA handling
+  - Detect when CAPTCHA solve takes >20s (token may be stale)
+  - Verify page state before injecting token
+  - Re-check sitekey to detect CAPTCHA iframe refresh
+  - Use MouseEvent dispatch for more reliable button clicks
+  - Track callback triggering success
+  - Increased login wait timeout from 8s to 12s
+  - Better error detection and logging
+
+v3.15: Previous stable version
 
 CAPTCHA Solving Modes:
 - PROXY MODE: Uses residential proxy (DataImpulse) for both CapSolver and Selenium
@@ -49,7 +61,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.15"
+VERSION = "3.16"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -95,8 +107,11 @@ class CapSolverAPI:
             }).json()
 
             if poll.get("status") == "ready":
-                logging.info(f"CAPTCHA solved in {(attempt + 1) * 3}s")
-                return poll.get("solution", {})
+                solve_time = (attempt + 1) * 3
+                logging.info(f"CAPTCHA solved in {solve_time}s")
+                solution = poll.get("solution", {})
+                solution["_solve_time"] = solve_time  # Include solve time in response
+                return solution
             elif poll.get("status") == "failed" or poll.get("errorId", 0) != 0:
                 raise Exception(f"Task failed: {poll.get('errorDescription')}")
 
@@ -420,6 +435,10 @@ class BilavnovaAutomation:
         return None
 
     def login_with_captcha(self):
+        """
+        Login with CAPTCHA solving.
+        v3.16: Added slow CAPTCHA detection and page state verification.
+        """
         self.driver.get(self.pos_url)
         WebDriverWait(self.driver, 15).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="email"]'))
@@ -436,18 +455,44 @@ class BilavnovaAutomation:
         if not sitekey:
             raise Exception("Could not extract sitekey")
 
+        # Solve CAPTCHA and track time
         solution = self.capsolver.solve_recaptcha_v2(sitekey, self.driver.current_url, self.proxy_capsolver)
         token = solution.get("gRecaptchaResponse")
+        solve_time = solution.get("_solve_time", 0)
+
         if not token:
             raise Exception("No token in solution")
 
-        self.driver.execute_script(f'''
+        # v3.16: Warn if CAPTCHA took too long (token may be stale)
+        if solve_time > 20:
+            logging.warning(f"CAPTCHA solve took {solve_time}s - token may be stale, verifying page state...")
+
+            # Check if page is still on login form
+            if not self.driver.find_elements(By.CSS_SELECTOR, 'input[name="email"]'):
+                logging.warning("Page changed during CAPTCHA solve, reloading...")
+                raise Exception("Page state changed during slow CAPTCHA solve")
+
+            # Re-extract sitekey to verify CAPTCHA iframe is still valid
+            new_sitekey = self.extract_sitekey()
+            if new_sitekey != sitekey:
+                logging.warning(f"Sitekey changed ({sitekey} → {new_sitekey}), CAPTCHA may have refreshed")
+                raise Exception("CAPTCHA refreshed during slow solve")
+
+        # Inject token with enhanced callback triggering
+        callback_triggered = self.driver.execute_script(f'''
             var token = "{token}";
+            var callbackTriggered = false;
+
+            // Set response textarea
             var ta = document.getElementById("g-recaptcha-response");
             if (ta) {{ ta.value = token; ta.innerHTML = token; }}
+
+            // Override getResponse
             if (typeof grecaptcha !== 'undefined') {{
                 grecaptcha.getResponse = function() {{ return token; }};
             }}
+
+            // Find and trigger callback
             if (typeof ___grecaptcha_cfg !== 'undefined') {{
                 var clients = ___grecaptcha_cfg.clients;
                 var visited = new WeakSet();
@@ -456,21 +501,66 @@ class BilavnovaAutomation:
                         if (!obj || typeof obj !== 'object' || depth > 5 || visited.has(obj)) return;
                         visited.add(obj);
                         for (var k in obj) {{
-                            if (k === 'callback' && typeof obj[k] === 'function') obj[k](token);
+                            if (k === 'callback' && typeof obj[k] === 'function') {{
+                                try {{
+                                    obj[k](token);
+                                    callbackTriggered = true;
+                                }} catch(e) {{}}
+                            }}
                             else if (typeof obj[k] === 'object') find(obj[k], depth + 1);
                         }}
                     }})(clients[cid], 0);
                 }}
             }}
+
+            return callbackTriggered;
         ''')
 
-        time.sleep(0.5)
-        self.driver.find_element(By.XPATH, "//button[contains(text(), 'Entrar')]").click()
+        if not callback_triggered:
+            logging.warning("CAPTCHA callback not found - attempting button click fallback")
 
-        for _ in range(8):
+        time.sleep(0.5)
+
+        # v3.16: Use more robust button click with MouseEvent dispatch
+        button_clicked = self.driver.execute_script('''
+            var buttons = document.querySelectorAll('button');
+            for (var btn of buttons) {
+                if (btn.textContent.includes('Entrar') && btn.offsetParent !== null) {
+                    ['mousedown', 'mouseup', 'click'].forEach(function(eventType) {
+                        btn.dispatchEvent(new MouseEvent(eventType, {
+                            view: window, bubbles: true, cancelable: true, buttons: 1
+                        }));
+                    });
+                    return true;
+                }
+            }
+            return false;
+        ''')
+
+        if not button_clicked:
+            # Fallback to direct click
+            try:
+                self.driver.find_element(By.XPATH, "//button[contains(text(), 'Entrar')]").click()
+            except Exception as e:
+                logging.warning(f"Button click failed: {e}")
+                raise Exception("Could not click login button")
+
+        # Wait for redirect with longer timeout for slow connections
+        for _ in range(12):  # Increased from 8 to 12 (12 seconds)
             time.sleep(1)
             if "system" in self.driver.current_url:
                 return True
+
+            # Check if still on login page (page may have reloaded)
+            if self.driver.find_elements(By.CSS_SELECTOR, 'input[name="email"]'):
+                logging.debug("Still on login page, waiting...")
+
+        # v3.16: Check if we got an error message
+        error_elements = self.driver.find_elements(By.CSS_SELECTOR, '.error, .alert-danger, [class*="error"]')
+        for el in error_elements:
+            if el.text.strip():
+                logging.warning(f"Login error detected: {el.text.strip()}")
+
         return False
 
     def login(self):

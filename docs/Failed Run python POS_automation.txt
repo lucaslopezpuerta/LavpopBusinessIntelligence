@@ -1,0 +1,155 @@
+2025-12-26 18:28:08,277 - INFO - HTTP Request: GET https://kudxbgrietiseyrmnllx.supabase.co/rest/v1/app_settings?select=pos_use_proxy&id=eq.default "HTTP/2 200 OK"
+2025-12-26 18:28:08,278 - INFO - ============================================================
+2025-12-26 18:28:08,278 - INFO - Bilavnova POS Automation v3.15
+2025-12-26 18:28:08,278 - INFO - ============================================================
+2025-12-26 18:28:08,278 - INFO - Browser: Headless
+2025-12-26 18:28:08,278 - INFO - Supabase: Connected
+2025-12-26 18:28:08,278 - INFO - Mode: PROXYLESS (ReCaptchaV2TaskProxyLess)
+2025-12-26 18:28:08,278 - INFO -   - Reason: pos_use_proxy=false in Supabase
+2025-12-26 18:28:08,278 - INFO - ============================================================
+2025-12-26 18:28:08,278 - INFO - Using default request storage
+2025-12-26 18:28:08,283 - INFO - Created proxy listening on 127.0.0.1:34621
+2025-12-26 18:28:13,300 - INFO - Capturing request: http://clients2.google.com/time/1/current?cup2key=9:BWHsgva14YRRq12IKbckzKWrslCqtQqRt6DyEvl836c&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2025-12-26 18:28:13,370 - INFO - Capturing response: http://clients2.google.com/time/1/current?cup2key=9:BWHsgva14YRRq12IKbckzKWrslCqtQqRt6DyEvl836c&cup2hreq=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 200 OK
+2025-12-26 18:28:13,616 - INFO - Capturing request: https://accounts.google.com/ListAccounts?gpsia=1&source=ChromiumBrowser&json=standard&laf=b64bin
+2025-12-26 18:28:13,690 - INFO - Capturing response: https://accounts.google.com/ListAccounts?gpsia=1&source=ChromiumBrowser&json=standard&laf=b64bin 200 
+2025-12-26 18:28:13,713 - INFO - Capturing request: https://www.google.com/async/folae?async=_fmt:pb
+2025-12-26 18:28:13,715 - INFO - Capturing request: https://safebrowsingohttpgateway.googleapis.com/v1/ohttp/hpkekeyconfig?key=AIzaSyBqJZh-7pA44blAaAkH6490hUFOwX0KCYM
+2025-12-26 18:28:13,741 - INFO - Capturing response: https://safebrowsingohttpgateway.googleapis.com/v1/ohttp/hpkekeyconfig?key=AIzaSyBqJZh-7pA44blAaAkH6490hUFOwX0KCYM 200 
+2025-12-26 18:28:13,744 - INFO - Capturing response: https://www.google.com/async/folae?async=_fmt:pb 200 
+2025-12-26 18:28:13,863 - INFO - Logging in...
+2025-12-26 18:28:14,392 - INFO - Capturing request: https://lavpop.maxpan.com.br/
+2025-12-26 18:28:14,459 - INFO - Capturing response: https://lavpop.maxpan.com.br/ 200 
+2025-12-26 18:28:14,626 - INFO - Capturing request: https://lavpop.maxpan.com.br/static/css/main.0c5f6489.css
+2025-12-26 18:28:14,627 - INFO - Capturing request: https://lavpop.maxpan.com.br/static/js/main.bb78475c.js
+2025-12-26 18:28:14,729 - INFO - Capturing request: https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800&display=swap
+2025-12-26 18:28:14,773 - INFO - Capturing response: https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800&display=swap 200 
+2025-12-26 18:28:14,859 - INFO - Capturing response: https://lavpop.maxpan.com.br/static/css/main.0c5f6489.css 200 
+2025-12-26 18:28:21,304 - INFO - Capturing response: https://lavpop.maxpan.com.br/static/js/main.bb78475c.js 200 
+2025-12-26 18:28:22,244 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/v1:GetModels?key=AIzaSyBqJZh-7pA44blAaAkH6490hUFOwX0KCYM
+2025-12-26 18:28:22,289 - INFO - Capturing request: https://www.google.com/recaptcha/api.js?onload=onloadcallback&render=explicit
+2025-12-26 18:28:22,300 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/v1:GetModels?key=AIzaSyBqJZh-7pA44blAaAkH6490hUFOwX0KCYM 200 
+2025-12-26 18:28:22,301 - INFO - Capturing request: https://fonts.gstatic.com/s/poppins/v24/pxiByp8kv8JHgFVrLGT9Z1xlFQ.woff2
+2025-12-26 18:28:22,303 - INFO - Capturing request: https://fonts.gstatic.com/s/poppins/v24/pxiByp8kv8JHgFVrLEj6Z1xlFQ.woff2
+2025-12-26 18:28:22,304 - INFO - Capturing request: https://fonts.gstatic.com/s/poppins/v24/pxiEyp8kv8JHgFVrJJfecg.woff2
+2025-12-26 18:28:22,315 - INFO - Capturing response: https://fonts.gstatic.com/s/poppins/v24/pxiByp8kv8JHgFVrLGT9Z1xlFQ.woff2 200 
+2025-12-26 18:28:22,326 - INFO - Capturing response: https://fonts.gstatic.com/s/poppins/v24/pxiByp8kv8JHgFVrLEj6Z1xlFQ.woff2 200 
+2025-12-26 18:28:22,330 - INFO - Capturing response: https://fonts.gstatic.com/s/poppins/v24/pxiEyp8kv8JHgFVrJJfecg.woff2 200 
+2025-12-26 18:28:22,332 - INFO - Capturing response: https://www.google.com/recaptcha/api.js?onload=onloadcallback&render=explicit 200 
+2025-12-26 18:28:22,396 - INFO - Capturing request: https://content-autofill.googleapis.com/v1/pages/ChVDaHJvbWUvMTQzLjAuNzQ5OS4xMDkSIAni22VPOL6fPhIFDXhvEhkSBQ3OQUx6IWavf3rolAneGLepygE=?alt=proto
+2025-12-26 18:28:22,459 - INFO - Capturing response: https://content-autofill.googleapis.com/v1/pages/ChVDaHJvbWUvMTQzLjAuNzQ5OS4xMDkSIAni22VPOL6fPhIFDXhvEhkSBQ3OQUx6IWavf3rolAneGLepygE=?alt=proto 200 
+2025-12-26 18:28:22,577 - INFO - Capturing request: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js
+2025-12-26 18:28:22,702 - INFO - Capturing response: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js 200 
+2025-12-26 18:28:23,044 - INFO - Capturing request: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=v4626t8j7x1s
+2025-12-26 18:28:23,058 - INFO - Capturing request: https://content-autofill.googleapis.com/v1/pages/ChVDaHJvbWUvMTQzLjAuNzQ5OS4xMDkSJwmAb0uCndUd4xIFDXhvEhkSBQ3OQUx6EgUNU1pHxSFkc176q2gqRRi3qcoB?alt=proto
+2025-12-26 18:28:23,121 - INFO - Capturing response: https://content-autofill.googleapis.com/v1/pages/ChVDaHJvbWUvMTQzLjAuNzQ5OS4xMDkSJwmAb0uCndUd4xIFDXhvEhkSBQ3OQUx6EgUNU1pHxSFkc176q2gqRRi3qcoB?alt=proto 200 
+2025-12-26 18:28:23,123 - INFO - Capturing response: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=v4626t8j7x1s 200 
+2025-12-26 18:28:23,359 - INFO - Capturing request: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/styles__ltr.css
+2025-12-26 18:28:23,362 - INFO - Capturing request: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js
+2025-12-26 18:28:23,385 - INFO - Capturing response: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/styles__ltr.css 200 
+2025-12-26 18:28:23,489 - INFO - Capturing response: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js 200 
+2025-12-26 18:28:23,718 - INFO - Capturing request: https://www.gstatic.com/recaptcha/api2/logo_48.png
+2025-12-26 18:28:23,731 - INFO - Capturing response: https://www.gstatic.com/recaptcha/api2/logo_48.png 200 
+2025-12-26 18:28:23,746 - INFO - Capturing request: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho
+2025-12-26 18:28:23,789 - INFO - Capturing response: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho 200 
+2025-12-26 18:28:23,846 - INFO - Capturing request: https://fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2
+2025-12-26 18:28:23,873 - INFO - Capturing response: https://fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2 200 
+2025-12-26 18:28:23,901 - INFO - Capturing request: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js
+2025-12-26 18:28:23,998 - INFO - Capturing response: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js 200 
+2025-12-26 18:28:24,249 - INFO - Capturing request: https://lavpop.maxpan.com.br/static/media/faviconLavpop.39d77a616456e4d60cd4.ico
+2025-12-26 18:28:24,310 - INFO - Capturing response: https://lavpop.maxpan.com.br/static/media/faviconLavpop.39d77a616456e4d60cd4.ico 200 
+2025-12-26 18:28:24,523 - INFO - Capturing request: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA6xfL74AKR4K7Y3Vg2hCW5OdJkDKcFA8d_dpsjWGL2Vd7gCb69hkGgfpfOt2yL9ULenRJDqsJddZtIiNRrBhgJFyRShkg
+2025-12-26 18:28:24,566 - INFO - Capturing response: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA6xfL74AKR4K7Y3Vg2hCW5OdJkDKcFA8d_dpsjWGL2Vd7gCb69hkGgfpfOt2yL9ULenRJDqsJddZtIiNRrBhgJFyRShkg 200 
+2025-12-26 18:28:25,256 - INFO - Capturing request: https://lavpop.maxpan.com.br/system/sale
+2025-12-26 18:28:25,316 - INFO - Capturing response: https://lavpop.maxpan.com.br/system/sale 200 
+2025-12-26 18:28:25,550 - INFO - Capturing request: https://android.clients.google.com/checkin
+2025-12-26 18:28:25,589 - INFO - Capturing request: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=cdc88fpr6n2
+2025-12-26 18:28:25,656 - INFO - Capturing response: https://android.clients.google.com/checkin 200 
+2025-12-26 18:28:25,661 - INFO - Capturing response: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=cdc88fpr6n2 200 
+2025-12-26 18:28:25,721 - INFO - Capturing request: https://android.clients.google.com/c2dm/register3
+2025-12-26 18:28:25,725 - INFO - Capturing request: https://android.clients.google.com/c2dm/register3
+2025-12-26 18:28:25,733 - INFO - Capturing request: https://android.clients.google.com/c2dm/register3
+2025-12-26 18:28:25,787 - INFO - Capturing response: https://android.clients.google.com/c2dm/register3 301 
+2025-12-26 18:28:25,814 - INFO - Capturing request: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho
+2025-12-26 18:28:25,856 - INFO - Capturing response: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho 200 
+2025-12-26 18:28:25,964 - INFO - Capturing request: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js
+2025-12-26 18:28:26,059 - INFO - Capturing response: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js 200 
+2025-12-26 18:28:26,448 - INFO - Capturing request: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA7oprAbCL8MWlj2yMOSfFLBm7mDfEJsuLiTLWK1DG7Rt6oDv-oGEWQnSA4wVdyGUcwuIzhC5xXnTRrlBFri6fhHc3mF7Q
+2025-12-26 18:28:26,493 - INFO - Capturing response: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA7oprAbCL8MWlj2yMOSfFLBm7mDfEJsuLiTLWK1DG7Rt6oDv-oGEWQnSA4wVdyGUcwuIzhC5xXnTRrlBFri6fhHc3mF7Q 200 
+2025-12-26 18:28:26,736 - INFO - Capturing response: https://android.clients.google.com/c2dm/register3 200 
+2025-12-26 18:28:26,741 - INFO - Capturing response: https://android.clients.google.com/c2dm/register3 200 
+2025-12-26 18:28:27,556 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1679317318&target=OPTIMIZATION_TARGET_LANGUAGE_DETECTION
+2025-12-26 18:28:27,558 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1745312779&target=OPTIMIZATION_TARGET_NOTIFICATION_PERMISSION_PREDICTIONS
+2025-12-26 18:28:27,626 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1745312779&target=OPTIMIZATION_TARGET_NOTIFICATION_PERMISSION_PREDICTIONS 200 
+2025-12-26 18:28:27,705 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1679317318&target=OPTIMIZATION_TARGET_LANGUAGE_DETECTION 200 
+2025-12-26 18:28:27,771 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1673999601&target=OPTIMIZATION_TARGET_PAGE_VISIBILITY
+2025-12-26 18:28:27,856 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=5&target=OPTIMIZATION_TARGET_PAGE_TOPICS_V2
+2025-12-26 18:28:28,180 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1673999601&target=OPTIMIZATION_TARGET_PAGE_VISIBILITY 200 
+2025-12-26 18:28:28,346 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1745311339&target=OPTIMIZATION_TARGET_GEOLOCATION_PERMISSION_PREDICTIONS
+2025-12-26 18:28:28,454 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1745311339&target=OPTIMIZATION_TARGET_GEOLOCATION_PERMISSION_PREDICTIONS 200 
+2025-12-26 18:28:28,599 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1728324084&target=OPTIMIZATION_TARGET_OMNIBOX_ON_DEVICE_TAIL_SUGGEST
+2025-12-26 18:28:28,680 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=5&target=OPTIMIZATION_TARGET_PAGE_TOPICS_V2 200 
+2025-12-26 18:28:28,872 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1728324084&target=OPTIMIZATION_TARGET_OMNIBOX_ON_DEVICE_TAIL_SUGGEST
+2025-12-26 18:28:28,874 - INFO - Capturing request: https://lavpop.maxpan.com.br/
+2025-12-26 18:28:28,876 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1761663972&target=OPTIMIZATION_TARGET_CLIENT_SIDE_PHISHING
+2025-12-26 18:28:28,934 - INFO - Capturing response: https://lavpop.maxpan.com.br/ 200 
+2025-12-26 18:28:29,139 - INFO - Capturing request: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=7uvcb66by3cy
+2025-12-26 18:28:29,234 - INFO - Capturing response: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=7uvcb66by3cy 200 
+2025-12-26 18:28:29,400 - INFO - Capturing request: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho
+2025-12-26 18:28:29,442 - INFO - Capturing response: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho 200 
+2025-12-26 18:28:29,589 - INFO - Capturing request: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js
+2025-12-26 18:28:29,685 - INFO - Capturing response: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js 200 
+2025-12-26 18:28:30,111 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1728324084&target=OPTIMIZATION_TARGET_OMNIBOX_ON_DEVICE_TAIL_SUGGEST
+2025-12-26 18:28:30,114 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1761663972&target=OPTIMIZATION_TARGET_CLIENT_SIDE_PHISHING
+2025-12-26 18:28:30,126 - INFO - Capturing request: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA7tD3xV7QsvkhEm6XgvZj3wNnQ1SrtPx03QPOr8-9XqzClldrO5MuYr45xjY-RcWPSHCgwi1_mh5CyTkXFN9r1QHnOzQQ
+2025-12-26 18:28:30,129 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1728324084&target=OPTIMIZATION_TARGET_OMNIBOX_ON_DEVICE_TAIL_SUGGEST
+2025-12-26 18:28:30,131 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1761663972&target=OPTIMIZATION_TARGET_CLIENT_SIDE_PHISHING
+2025-12-26 18:28:30,172 - INFO - Capturing response: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA7tD3xV7QsvkhEm6XgvZj3wNnQ1SrtPx03QPOr8-9XqzClldrO5MuYr45xjY-RcWPSHCgwi1_mh5CyTkXFN9r1QHnOzQQ 200 
+2025-12-26 18:28:31,408 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1728324084&target=OPTIMIZATION_TARGET_OMNIBOX_ON_DEVICE_TAIL_SUGGEST 200 
+2025-12-26 18:28:31,637 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=1696268326&target=OPTIMIZATION_TARGET_OMNIBOX_URL_SCORING
+2025-12-26 18:28:31,808 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1696268326&target=OPTIMIZATION_TARGET_OMNIBOX_URL_SCORING 200 
+2025-12-26 18:28:31,954 - INFO - Capturing request: https://optimizationguide-pa.googleapis.com/downloads?name=240731042075&target=OPTIMIZATION_TARGET_SEGMENTATION_COMPOSE_PROMOTION
+2025-12-26 18:28:32,323 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=240731042075&target=OPTIMIZATION_TARGET_SEGMENTATION_COMPOSE_PROMOTION 200 
+2025-12-26 18:28:32,598 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1761663972&target=OPTIMIZATION_TARGET_CLIENT_SIDE_PHISHING 200 
+2025-12-26 18:28:32,908 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1728324084&target=OPTIMIZATION_TARGET_OMNIBOX_ON_DEVICE_TAIL_SUGGEST 200 
+2025-12-26 18:28:34,355 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1761663972&target=OPTIMIZATION_TARGET_CLIENT_SIDE_PHISHING 200 
+2025-12-26 18:28:34,450 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1761663972&target=OPTIMIZATION_TARGET_CLIENT_SIDE_PHISHING 200 
+2025-12-26 18:28:34,599 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1728324084&target=OPTIMIZATION_TARGET_OMNIBOX_ON_DEVICE_TAIL_SUGGEST 200 
+2025-12-26 18:28:34,638 - INFO - 127.0.0.1:40372: ProtocolException("Error in HTTP connection: Http2ZombieException('Connection or stream already dead: 1766773714.6374664, False')")
+2025-12-26 18:28:34,641 - INFO - Capturing response: https://optimizationguide-pa.googleapis.com/downloads?name=1728324084&target=OPTIMIZATION_TARGET_OMNIBOX_ON_DEVICE_TAIL_SUGGEST 200 
+2025-12-26 18:28:34,682 - INFO - 127.0.0.1:40372: ProtocolException("Error in HTTP connection: Http2ZombieException('Connection or stream already dead: 1766773714.6815138, False')")
+2025-12-26 18:28:34,822 - INFO - Solving CAPTCHA (ReCaptchaV2TaskProxyLess)...
+2025-12-26 18:28:46,414 - INFO - Capturing request: https://android.clients.google.com/c2dm/register3
+2025-12-26 18:28:46,478 - INFO - Capturing response: https://android.clients.google.com/c2dm/register3 301 
+2025-12-26 18:29:28,935 - INFO - 127.0.0.1:54318: HTTP/2 connection terminated by server: error code: 0, last stream id: 11, additional data: None
+2025-12-26 18:29:29,156 - INFO - 127.0.0.1:40268: HTTP/2 connection terminated by server: error code: 0, last stream id: 5, additional data: None
+2025-12-26 18:29:31,513 - INFO - Capturing request: https://android.clients.google.com/c2dm/register3
+2025-12-26 18:29:31,589 - INFO - Capturing response: https://android.clients.google.com/c2dm/register3 301 
+2025-12-26 18:29:49,949 - INFO - CAPTCHA solved in 27s
+2025-12-26 18:30:04,195 - INFO - Capturing request: https://lavpop.maxpan.com.br/
+2025-12-26 18:30:04,402 - INFO - Capturing response: https://lavpop.maxpan.com.br/ 200 
+2025-12-26 18:30:04,660 - INFO - Capturing request: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=nh7z47utusk6
+2025-12-26 18:30:04,757 - INFO - Capturing response: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=nh7z47utusk6 200 
+2025-12-26 18:30:04,905 - INFO - Capturing request: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho
+2025-12-26 18:30:04,947 - INFO - Capturing response: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho 200 
+2025-12-26 18:30:05,055 - INFO - Capturing request: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js
+2025-12-26 18:30:05,151 - INFO - Capturing response: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js 200 
+2025-12-26 18:30:05,590 - INFO - Capturing request: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA7uary79XgZ5cjah299uqLBN4Aq5Rc3jSdPkJ71rDEpXEYDOKQDNHsVEd7cb3rPOhSbjVMRUJwubmoRpVW9eoTRLTz8qg
+2025-12-26 18:30:05,636 - INFO - Capturing response: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA7uary79XgZ5cjah299uqLBN4Aq5Rc3jSdPkJ71rDEpXEYDOKQDNHsVEd7cb3rPOhSbjVMRUJwubmoRpVW9eoTRLTz8qg 200 
+2025-12-26 18:30:10,258 - INFO - Solving CAPTCHA (ReCaptchaV2TaskProxyLess)...
+2025-12-26 18:30:27,642 - INFO - CAPTCHA solved in 6s
+2025-12-26 18:30:41,367 - INFO - Capturing request: https://lavpop.maxpan.com.br/
+2025-12-26 18:30:41,427 - INFO - Capturing response: https://lavpop.maxpan.com.br/ 200 
+2025-12-26 18:30:41,656 - INFO - Capturing request: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=ibanf1iaivvp
+2025-12-26 18:30:41,726 - INFO - Capturing response: https://www.google.com/recaptcha/api2/anchor?ar=1&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&co=aHR0cHM6Ly9sYXZwb3AubWF4cGFuLmNvbS5icjo0NDM.&hl=en&type=image&v=7gg7H51Q-naNfhmCP3_R47ho&theme=light&size=normal&badge=bottomright&anchor-ms=20000&execute-ms=30000&cb=ibanf1iaivvp 200 
+2025-12-26 18:30:41,873 - INFO - Capturing request: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho
+2025-12-26 18:30:41,917 - INFO - Capturing response: https://www.google.com/recaptcha/api2/webworker.js?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho 200 
+2025-12-26 18:30:42,062 - INFO - Capturing request: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js
+2025-12-26 18:30:42,158 - INFO - Capturing response: https://www.gstatic.com/recaptcha/releases/7gg7H51Q-naNfhmCP3_R47ho/recaptcha__en.js 200 
+2025-12-26 18:30:42,596 - INFO - Capturing request: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA6iCZgJ7du8sD63yPicTNy_6JgsMJv2MX_AZq36qrss6fTRTFJtOjMYQ3dSlhA88lFxHNKKyanOhopSEcmqzkLzyfBhwA
+2025-12-26 18:30:42,640 - INFO - Capturing response: https://www.google.com/recaptcha/api2/bframe?hl=en&v=7gg7H51Q-naNfhmCP3_R47ho&k=6Lc9WeIqAAAAAGcpsITQmzlZriiugFsBFZ0NYdq-&bft=0dAFcWeA6iCZgJ7du8sD63yPicTNy_6JgsMJv2MX_AZq36qrss6fTRTFJtOjMYQ3dSlhA88lFxHNKKyanOhopSEcmqzkLzyfBhwA 200 
+2025-12-26 18:30:46,784 - INFO - Solving CAPTCHA (ReCaptchaV2TaskProxyLess)...
+2025-12-26 18:30:55,072 - INFO - Capturing request: https://android.clients.google.com/c2dm/register3
+2025-12-26 18:30:55,132 - INFO - Capturing response: https://android.clients.google.com/c2dm/register3 301 
+2025-12-26 18:31:07,165 - INFO - CAPTCHA solved in 9s
+2025-12-26 18:31:15,790 - ERROR - Sales sync failed: Login failed

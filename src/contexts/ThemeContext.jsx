@@ -1,4 +1,4 @@
-// ThemeContext.jsx v1.1
+// ThemeContext.jsx v1.2
 // Manages dark/light theme and UI preferences with persistence
 //
 // FEATURES:
@@ -7,12 +7,16 @@
 // - LocalStorage persistence
 // - System preference detection
 // - Context provider for global access
+// - Native status bar style sync
 //
 // CHANGELOG:
+// v1.2 (2025-12-26): Native status bar sync
+//   - Updates status bar style when theme changes (light icons for dark, dark icons for light)
 // v1.1 (2025-12-23): Added dashboardLayout preference for compact/expanded views
 // v1.0 (2025-11-20): Initial theme context implementation
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { updateStatusBarForTheme } from '../utils/nativeStatusBar';
 
 const ThemeContext = createContext();
 
@@ -51,18 +55,22 @@ export const ThemeProvider = ({ children }) => {
     localStorage.setItem('lavpop-dashboard-layout', dashboardLayout);
   }, [dashboardLayout]);
 
-  // Apply theme to document root
+  // Apply theme to document root and native status bar
   useEffect(() => {
     const root = document.documentElement;
-    
+
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-    
+
     // Save to localStorage
     localStorage.setItem('lavpop-theme', theme);
+
+    // Update native status bar style (no-op on web)
+    // Light theme = dark status bar icons, Dark theme = light status bar icons
+    updateStatusBarForTheme(theme);
   }, [theme]);
 
   // Listen for system theme changes

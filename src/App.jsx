@@ -1,4 +1,4 @@
-// App.jsx v8.11.2 - FIXED FOOTER VISIBILITY WITH BOTTOM NAV
+// App.jsx v8.12.0 - ADMIN AUTHENTICATION
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -23,6 +23,14 @@
 // ✅ Defensive data rendering - prevents empty white tabs after idle
 //
 // CHANGELOG:
+// v8.12.0 (2025-12-26): Admin authentication
+//   - Added AuthProvider for Supabase authentication
+//   - Added /login route with LoginPage component
+//   - Protected all routes with ProtectedRoute wrapper
+//   - Redirects to login if not authenticated
+// v8.11.3 (2025-12-26): Dynamic bottom nav clearance
+//   - Content wrapper padding now uses CSS calc to match nav height + safe area
+//   - Ensures proper clearance on all devices including notched phones
 // v8.11.2 (2025-12-26): Fixed footer visibility with bottom nav
 //   - Added pb-20 to content wrapper for bottom nav clearance
 //   - Footer now fully visible when scrolling to bottom
@@ -116,7 +124,7 @@
 // v4.2 (2025-11-21): Reload button added
 
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Upload, Clock, Code } from 'lucide-react';
 
 // Build timestamp injected by Vite at build time
@@ -134,6 +142,9 @@ import { NavigationProvider, useNavigation } from './contexts/NavigationContext'
 import { DataFreshnessProvider } from './contexts/DataFreshnessContext';
 import { RealtimeSyncProvider } from './contexts/RealtimeSyncContext';
 import { AppSettingsProvider } from './contexts/AppSettingsContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginPage from './components/auth/LoginPage';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import { loadAllData } from './utils/supabaseLoader';
 import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
@@ -500,7 +511,8 @@ function AppContent() {
         <OfflineIndicator lastSyncTime={lastRefreshed} />
 
         {/* Main Content Area - with sidebar offset (dynamic when pinned) */}
-        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 pb-20 lg:pb-0 ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-16'}`}>
+        {/* pb-bottom-nav: 80px + safe-area-inset on mobile, 0 on desktop (lg+) */}
+        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 pb-bottom-nav ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-16'}`}>
           {/* Top Bar */}
           <MinimalTopBar
             refreshing={refreshing}
@@ -606,17 +618,32 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <ThemeProvider>
-          <SidebarProvider>
-            <NavigationProvider>
-              <DataFreshnessProvider>
-                <RealtimeSyncProvider>
-                  <AppSettingsProvider>
-                    <AppContent />
-                  </AppSettingsProvider>
-                </RealtimeSyncProvider>
-              </DataFreshnessProvider>
-            </NavigationProvider>
-          </SidebarProvider>
+          <AuthProvider>
+            <Routes>
+              {/* Public route: Login */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* Protected routes: Everything else */}
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <SidebarProvider>
+                      <NavigationProvider>
+                        <DataFreshnessProvider>
+                          <RealtimeSyncProvider>
+                            <AppSettingsProvider>
+                              <AppContent />
+                            </AppSettingsProvider>
+                          </RealtimeSyncProvider>
+                        </DataFreshnessProvider>
+                      </NavigationProvider>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </AuthProvider>
         </ThemeProvider>
       </BrowserRouter>
     </ErrorBoundary>

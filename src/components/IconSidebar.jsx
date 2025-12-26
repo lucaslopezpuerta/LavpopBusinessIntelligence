@@ -1,7 +1,9 @@
-// IconSidebar.jsx v3.1 - THEME TOGGLE IN MOBILE FOOTER
+// IconSidebar.jsx v3.2 - PNG LOGO UPDATE
 // Modern sidebar with navigation groups, hero branding, and polished mobile drawer
 //
 // CHANGELOG:
+// v3.2 (2025-12-26): PNG logo update
+//   - Changed from SVG to PNG logo for consistency with LoadingScreen/LoginPage
 // v3.1 (2025-12-22): Theme toggle in mobile drawer footer
 //   - Added ThemeToggle to mobile drawer footer (right of Importar)
 //   - Moved from MinimalTopBar for better mobile UX
@@ -20,10 +22,12 @@ import { useRef, useEffect } from 'react';
 import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2, CloudSun, X, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import FocusTrap from 'focus-trap-react';
-import LogoNoBackground from '../assets/LogoNoBackground.svg';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
 import ThemeToggle from './ThemeToggle';
+
+// PNG logo from public folder (matches LoadingScreen/LoginPage for consistency)
+const BilavnovaLogo = '/Bilavnova-Logo-Dark-Bg.png';
 
 // Navigation grouped by section
 const navigationGroups = [
@@ -128,7 +132,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
     );
   };
 
-  // Desktop Sidebar
+  // Desktop Sidebar (no safe-area needed - desktop browsers don't have status bar insets)
   const DesktopSidebar = () => (
     <motion.aside
       className="hidden lg:flex fixed left-0 top-0 h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex-col"
@@ -145,7 +149,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
           <div className="relative flex-shrink-0">
             <div className="absolute inset-0 bg-lavpop-blue/20 blur-xl rounded-full scale-150" />
             <img
-              src={LogoNoBackground}
+              src={BilavnovaLogo}
               alt="Bilavnova"
               className="relative w-10 h-10 object-contain"
             />
@@ -267,7 +271,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
             }}
           >
             <motion.aside
-              className="lg:hidden fixed left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-left"
+              className="lg:hidden fixed left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-top safe-area-left"
               initial={{ x: -300 }}
               animate={{ x: 0 }}
               exit={{ x: -300 }}
@@ -282,7 +286,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                   <div className="relative">
                     <div className="absolute inset-0 bg-lavpop-blue/20 blur-lg rounded-full scale-150" />
                     <img
-                      src={LogoNoBackground}
+                      src={BilavnovaLogo}
                       alt="Bilavnova"
                       className="relative w-9 h-9 object-contain"
                     />

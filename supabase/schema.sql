@@ -1,6 +1,14 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.28 (2025-12-25)
+-- Version: 3.29 (2025-12-26)
+--
+-- v3.29: Fix created_at → imported_at bug
+--   - Fixed update_customer_after_transaction() trigger function
+--   - Fixed upsert_customer_profile() function
+--   - Both functions referenced 'created_at' column that doesn't exist
+--   - Customers table uses 'imported_at' column instead
+--   - This was causing "column created_at does not exist" errors during sales uploads
+--   - See migrations/031_fix_created_at_to_imported_at.sql
 --
 -- v3.28: POS Automation Proxy Setting
 --   - Added pos_use_proxy column to app_settings table
@@ -2564,7 +2572,7 @@ BEGIN
     INSERT INTO customers (
       doc, nome, telefone, first_visit, last_visit,
       transaction_count, total_spent, avg_days_between,
-      days_since_last_visit, risk_level, source, created_at, updated_at
+      days_since_last_visit, risk_level, source, imported_at, updated_at
     ) VALUES (
       v_customer_id, NEW.nome_cliente, NEW.telefone, v_tx_date, v_tx_date,
       1, CASE WHEN NEW.transaction_type IN ('TYPE_1', 'TYPE_3') THEN v_tx_value ELSE 0 END,
@@ -2656,7 +2664,7 @@ BEGIN
     INSERT INTO customers (
       doc, nome, telefone, email, data_cadastro, saldo_carteira,
       first_visit, last_visit, transaction_count, total_spent,
-      source, created_at, updated_at
+      source, imported_at, updated_at
     ) VALUES (
       p_doc, p_nome, p_telefone, p_email, p_data_cadastro,
       COALESCE(p_saldo_carteira, 0), p_first_visit, p_last_visit,
