@@ -1,7 +1,13 @@
 """
-Bilavnova POS Automation v3.18
+Bilavnova POS Automation v3.19
 
 CHANGELOG:
+v3.19 (2025-12-27): Fix PROXYLESS mode reliability
+  - CRITICAL: Only use selenium-wire in PROXY mode (removes local proxy overhead)
+  - Dispatch input/change events after token injection for React state updates
+  - Wait longer (1s) after CAPTCHA callback for React to process
+  - Standard selenium in PROXYLESS = faster, more reliable, no request interception
+
 v3.18 (2025-12-26): Fix form submission causing GET redirect
   - REMOVED form.submit() which was causing GET redirect with credentials in URL
   - Use requestSubmit() instead which respects React onSubmit handlers
@@ -53,18 +59,38 @@ import requests
 import time, os, logging, glob, re, random, pickle
 from urllib.parse import urlparse
 
-# Try selenium-wire first (better proxy support), fall back to regular selenium
+# Import selenium - only use selenium-wire when PROXY mode is needed
+# selenium-wire adds overhead even in PROXYLESS mode (creates local proxy)
 SELENIUM_WIRE = False
 SELENIUM_WIRE_ERROR = None
-try:
-    from seleniumwire import webdriver
-    SELENIUM_WIRE = True
-except ImportError as e:
-    SELENIUM_WIRE_ERROR = str(e)
-    from selenium import webdriver
-except Exception as e:
-    SELENIUM_WIRE_ERROR = str(e)
-    from selenium import webdriver
+_webdriver_module = None
+
+def _get_webdriver(use_wire=False):
+    """Get appropriate webdriver module based on mode."""
+    global SELENIUM_WIRE, SELENIUM_WIRE_ERROR, _webdriver_module
+
+    if use_wire and _webdriver_module is None:
+        try:
+            from seleniumwire import webdriver as wire_webdriver
+            _webdriver_module = wire_webdriver
+            SELENIUM_WIRE = True
+        except ImportError as e:
+            SELENIUM_WIRE_ERROR = str(e)
+            from selenium import webdriver as std_webdriver
+            _webdriver_module = std_webdriver
+        except Exception as e:
+            SELENIUM_WIRE_ERROR = str(e)
+            from selenium import webdriver as std_webdriver
+            _webdriver_module = std_webdriver
+    elif not use_wire:
+        from selenium import webdriver as std_webdriver
+        _webdriver_module = std_webdriver
+        SELENIUM_WIRE = False
+
+    return _webdriver_module
+
+# Default import for non-proxy mode
+from selenium import webdriver
 
 try:
     from dotenv import load_dotenv
@@ -72,7 +98,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.18"
+VERSION = "3.19"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -242,10 +268,11 @@ class BilavnovaAutomation:
         if self.mode == "PROXY":
             logging.info(f"Mode: PROXY (ReCaptchaV2Task)")
             logging.info(f"  - Proxy: {self.proxy_host}:{self.proxy_port}")
-            logging.info(f"  - selenium-wire: {'Available' if SELENIUM_WIRE else 'Not available (fallback to extension)'}")
+            logging.info(f"  - selenium-wire: Will be loaded on driver setup")
             logging.info(f"  - Traffic optimization: Enabled (blocking images, CSS, fonts)")
         else:
             logging.info(f"Mode: PROXYLESS (ReCaptchaV2TaskProxyLess)")
+            logging.info(f"  - Driver: Standard selenium (no request interception)")
             if proxy_str and not proxy_setting:
                 logging.info(f"  - Reason: pos_use_proxy=false in Supabase")
             elif not proxy_str:
@@ -328,23 +355,29 @@ class BilavnovaAutomation:
         opts.add_experimental_option("prefs", prefs)
 
         # DRIVER CREATION: Different setup for PROXY vs PROXYLESS
-        if self.mode == "PROXY" and SELENIUM_WIRE:
-            # PROXY MODE with selenium-wire (supports authenticated proxies in headless)
-            proxy_url = f'http://{self.proxy_user}:{self.proxy_pass}@{self.proxy_host}:{self.proxy_port}'
-            seleniumwire_options = {
-                'proxy': {
-                    'http': proxy_url,
-                    'https': proxy_url,
-                    'no_proxy': 'localhost,127.0.0.1'
-                },
-                'connection_timeout': 30,
-                'request_timeout': 60,
-                'verify_ssl': False
-            }
-            driver = webdriver.Chrome(options=opts, seleniumwire_options=seleniumwire_options)
+        if self.mode == "PROXY":
+            # PROXY MODE: Use selenium-wire for authenticated proxy support
+            wd = _get_webdriver(use_wire=True)
+            if SELENIUM_WIRE:
+                proxy_url = f'http://{self.proxy_user}:{self.proxy_pass}@{self.proxy_host}:{self.proxy_port}'
+                seleniumwire_options = {
+                    'proxy': {
+                        'http': proxy_url,
+                        'https': proxy_url,
+                        'no_proxy': 'localhost,127.0.0.1'
+                    },
+                    'connection_timeout': 30,
+                    'request_timeout': 60,
+                    'verify_ssl': False
+                }
+                driver = wd.Chrome(options=opts, seleniumwire_options=seleniumwire_options)
+            else:
+                # Fallback if selenium-wire unavailable
+                driver = wd.Chrome(options=opts)
         else:
-            # PROXYLESS MODE (or PROXY without selenium-wire)
-            driver = webdriver.Chrome(options=opts)
+            # PROXYLESS MODE: Use standard selenium (no overhead from selenium-wire proxy)
+            wd = _get_webdriver(use_wire=False)
+            driver = wd.Chrome(options=opts)
 
         driver.set_page_load_timeout(120)
         driver.implicitly_wait(10)
@@ -490,20 +523,39 @@ class BilavnovaAutomation:
                 raise Exception("CAPTCHA refreshed during slow solve")
 
         # Inject token with enhanced callback triggering
+        # v3.19: Also dispatch input event to trigger React's onChange handlers
         callback_triggered = self.driver.execute_script(f'''
             var token = "{token}";
             var callbackTriggered = false;
 
-            // Set response textarea
+            // Set response textarea and dispatch events for React
             var ta = document.getElementById("g-recaptcha-response");
-            if (ta) {{ ta.value = token; ta.innerHTML = token; }}
+            if (ta) {{
+                // Set value
+                ta.value = token;
+                ta.innerHTML = token;
+
+                // Dispatch events that React listens to
+                var inputEvent = new Event('input', {{ bubbles: true }});
+                var changeEvent = new Event('change', {{ bubbles: true }});
+                ta.dispatchEvent(inputEvent);
+                ta.dispatchEvent(changeEvent);
+            }}
+
+            // Also set any hidden inputs with recaptcha in the name
+            var hiddenInputs = document.querySelectorAll('input[name*="recaptcha"], input[name*="captcha"]');
+            for (var input of hiddenInputs) {{
+                input.value = token;
+                input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                input.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            }}
 
             // Override getResponse
             if (typeof grecaptcha !== 'undefined') {{
                 grecaptcha.getResponse = function() {{ return token; }};
             }}
 
-            // Find and trigger callback
+            // Find and trigger callback - this tells React that CAPTCHA is complete
             if (typeof ___grecaptcha_cfg !== 'undefined') {{
                 var clients = ___grecaptcha_cfg.clients;
                 var visited = new WeakSet();
@@ -532,7 +584,8 @@ class BilavnovaAutomation:
         else:
             logging.warning("CAPTCHA callback not found - attempting button click fallback")
 
-        time.sleep(0.5)
+        # v3.19: Wait longer for React to process the callback and update state
+        time.sleep(1.0)
 
         # v3.17: Enhanced button detection with logging
         button_info = self.driver.execute_script('''
