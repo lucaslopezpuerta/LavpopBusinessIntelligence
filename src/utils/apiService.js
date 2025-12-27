@@ -66,7 +66,8 @@
 import { isNative, isCapacitorAvailable, getPlatform } from './platform';
 
 // Production URL for native apps (they can't use relative paths)
-const PRODUCTION_BASE = 'https://www.bilavnova.com';
+// Note: Using non-www to avoid redirect issues with CORS preflight
+const PRODUCTION_BASE = 'https://bilavnova.com';
 
 // Debug flag - set to true to see API URL resolution in console
 const DEBUG_API = true;

@@ -1,7 +1,12 @@
 """
-Bilavnova POS Automation v3.19
+Bilavnova POS Automation v3.20
 
 CHANGELOG:
+v3.20 (2025-12-27): Enhanced diagnostics for login failures
+  - Add detailed form state logging at 5s mark (captcha token, errors, form validity)
+  - Helps diagnose why login succeeds sometimes and fails other times
+  - Logs whether email/password are still filled after button click
+
 v3.19 (2025-12-27): Fix PROXYLESS mode reliability
   - CRITICAL: Only use selenium-wire in PROXY mode (removes local proxy overhead)
   - Dispatch input/change events after token injection for React state updates
@@ -98,7 +103,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.19"
+VERSION = "3.20"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(
@@ -706,6 +711,38 @@ class BilavnovaAutomation:
             if self.driver.find_elements(By.CSS_SELECTOR, 'input[name="email"]'):
                 if i == 5:  # Log once at halfway point
                     logging.info(f"Still on login page after {i}s: {current_url}")
+                    # v3.20: Enhanced diagnostics - check form state
+                    diag = self.driver.execute_script('''
+                        var result = {};
+                        // Check CAPTCHA token
+                        var ta = document.getElementById("g-recaptcha-response");
+                        result.captchaToken = ta ? (ta.value ? ta.value.substring(0,20) + '...' : 'EMPTY') : 'NOT_FOUND';
+                        // Check for visible errors
+                        var errors = document.querySelectorAll('.error, .alert, [class*="error"], [class*="invalid"]');
+                        result.errors = [];
+                        for (var e of errors) {
+                            if (e.offsetParent && e.textContent.trim()) {
+                                result.errors.push(e.textContent.trim().substring(0, 100));
+                            }
+                        }
+                        // Check form validation state
+                        var form = document.querySelector('form');
+                        if (form) {
+                            result.formValid = form.checkValidity();
+                            var invalidInputs = form.querySelectorAll(':invalid');
+                            result.invalidFields = [];
+                            for (var inp of invalidInputs) {
+                                result.invalidFields.push(inp.name || inp.id || inp.type);
+                            }
+                        }
+                        // Check if email/password are filled
+                        var emailInput = document.querySelector('input[name="email"]');
+                        var passInput = document.querySelector('input[type="password"]');
+                        result.emailFilled = emailInput ? (emailInput.value.length > 0) : false;
+                        result.passFilled = passInput ? (passInput.value.length > 0) : false;
+                        return result;
+                    ''')
+                    logging.info(f"Form diagnostics: {diag}")
 
         # v3.17: Log final state for debugging
         logging.warning(f"Login timeout - final URL: {self.driver.current_url}")
