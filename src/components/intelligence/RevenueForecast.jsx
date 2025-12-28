@@ -1,8 +1,12 @@
-// RevenueForecast.jsx v2.3
+// RevenueForecast.jsx v2.4
 // Revenue projection card for Intelligence tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v2.4 (2025-12-28): Contingency guidance
+//   - Added forecastContingency prop for year-over-year comparison
+//   - Shows gap vs same month last year with recovery options
+//   - Success message when ahead of target
 // v2.3 (2025-12-20): Brazil timezone support
 //   - Uses getBrazilDateParts() for current month/year
 //   - Ensures consistent month display regardless of browser timezone
@@ -33,12 +37,43 @@
 //   - Mobile responsive
 
 import React from 'react';
-import { Target, AlertCircle, Info, Thermometer } from 'lucide-react';
+import { Target, AlertCircle, Info, Thermometer, TrendingUp, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { getBrazilDateParts } from '../../utils/dateUtils';
+
+// Contingency option card
+const ContingencyOption = ({ label, estimate, effort, description, formatCurrency }) => {
+  const effortColors = {
+    low: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    high: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+  };
+  const effortLabels = { low: 'Fácil', medium: 'Moderado', high: 'Complexo' };
+
+  return (
+    <div className="flex items-center gap-3 p-2.5 bg-white/60 dark:bg-slate-800/50 rounded-lg">
+      <ArrowRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{label}</p>
+        {description && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+          +{formatCurrency(estimate)}
+        </span>
+        <span className={`text-xs px-1.5 py-0.5 rounded ${effortColors[effort]}`}>
+          {effortLabels[effort]}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const RevenueForecast = ({
   currentMonth,
-  weightedProjection, // New: calculated by parent using calculateWeightedProjection
+  weightedProjection, // Calculated by parent using calculateWeightedProjection
+  forecastContingency, // NEW: year-over-year comparison from calculateForecastContingency
   formatCurrency,
   className = ''
 }) => {
@@ -229,6 +264,66 @@ const RevenueForecast = ({
           </div>
         )}
       </div>
+
+      {/* Contingency Section - Year-over-year comparison */}
+      {forecastContingency && forecastContingency.lastYearRevenue > 0 && (
+        <div className="mb-4">
+          {/* Behind last year - show gap and recovery options */}
+          {forecastContingency.gap > 0 && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-2 mb-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    Gap vs {forecastContingency.lastYearMonthName}: {formatCurrency(forecastContingency.gap)}
+                  </h4>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                    Para igualar o mesmo período do ano passado ({formatCurrency(forecastContingency.lastYearRevenue)}),
+                    você precisa de mais {formatCurrency(forecastContingency.gap)}.
+                  </p>
+                </div>
+              </div>
+
+              {/* Recovery Options */}
+              {forecastContingency.options && forecastContingency.options.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-2">
+                    Opções de recuperação:
+                  </p>
+                  {forecastContingency.options.slice(0, 3).map((option, idx) => (
+                    <ContingencyOption
+                      key={idx}
+                      label={option.label}
+                      estimate={option.estimate}
+                      effort={option.effort}
+                      description={option.description}
+                      formatCurrency={formatCurrency}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Ahead of last year - success message */}
+          {forecastContingency.gap <= 0 && forecastContingency.surplusPercent > 5 && (
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                <div>
+                  <h4 className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                    Acima da meta em {forecastContingency.surplusPercent.toFixed(0)}%
+                  </h4>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
+                    Projeção de {formatCurrency(projectedRevenue)} vs {formatCurrency(forecastContingency.lastYearRevenue)} no ano passado.
+                    Considere pausar campanhas de desconto ou reservar excedente para meses mais fracos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Methodology Footer */}
       <div className="flex items-center gap-1.5 pt-3 border-t border-indigo-200/50 dark:border-indigo-700/50">

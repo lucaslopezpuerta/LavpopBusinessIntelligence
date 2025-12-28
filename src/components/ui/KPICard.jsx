@@ -1,8 +1,11 @@
-// KPICard.jsx v1.4
+// KPICard.jsx v1.5
 // Unified KPI card component for Intelligence dashboard
 // Design System v4.0 compliant - Replaces duplicated patterns
 //
 // CHANGELOG:
+// v1.5 (2025-12-28): KPIGrid 6-column option
+//   - Added columns={6} option: 2 cols mobile, 3 cols desktop
+//   - Ideal for 6-card layouts (e.g., ProfitabilitySection)
 // v1.4 (2025-12-11): Vibrant gradient variant (Design System v4.0)
 //   - Gradient variant now uses solidGradient (vibrant colors) with white text
 //   - Added shadow-lg to gradient cards for depth
@@ -260,6 +263,7 @@ export const KPIGrid = ({
     3: 'grid-cols-1 sm:grid-cols-3',
     4: 'grid-cols-2 md:grid-cols-4',
     5: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
+    6: 'grid-cols-2 sm:grid-cols-3', // 6 cards: 2 cols mobile, 3 cols desktop
   };
 
   return (

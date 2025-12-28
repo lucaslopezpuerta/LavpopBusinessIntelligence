@@ -234,7 +234,7 @@ const Operations = ({ data }) => {
         <div className="grid grid-cols-12 gap-4 sm:gap-6">
           <div className="col-span-12 lg:col-span-6">
             <PeakHoursSummary
-              peakHours={operationsMetrics.peakHours}
+              peakHours={operationsMetrics.peakHoursGrid}
               dateWindow={dateWindow}
             />
           </div>

@@ -1,4 +1,4 @@
-// intelligenceCalculations.js v3.7 - TIMEZONE-INDEPENDENT CALCULATIONS
+// intelligenceCalculations.js v3.9 - PRIORITY MATRIX & SERVICE BREAKDOWN
 // ✅ Uses existing transactionParser.js for consistent data handling
 // ✅ Uses existing businessMetrics.js patterns
 // ✅ Reuses proven math instead of reinventing
@@ -8,6 +8,17 @@
 // Profitability, Weather Impact, Campaign ROI, Growth Analysis
 //
 // CHANGELOG:
+// v3.9 (2025-12-28): Enhanced context and explanations
+//   - Added dimension explanations with interpretation guidance
+//   - Added data range context (dataRange) to priority matrix
+//   - Added comparison context to actions ("vs mês anterior", etc.)
+//   - Each dimension includes: explanation, howToRead, dataRange
+// v3.8 (2025-12-28): Priority Matrix & Service Breakdown
+//   - Added calculateServiceBreakdown() for wash/dry/recarga analysis
+//   - Added calculatePriorityMatrix() to replace Health Score with actionable insights
+//   - Added calculateForecastContingency() for year-over-year comparison
+//   - Added calculateOptimizationLevers() for profitability improvement guidance
+//   - Service breakdown uses Supabase daily_revenue view for efficiency
 // v3.7 (2025-12-20): Brazil timezone support for "now" calculations
 //   - All "now" calculations use getBrazilDateParts()
 //   - Ensures consistent date boundaries regardless of viewer's browser timezone
@@ -689,7 +700,7 @@ export function getPreviousMonthMetrics(salesData) {
   const services = sum(serviceRecords, r => r.totalServices);
   
   return {
-    month: `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`,
+    month: `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}`,
     revenue,
     services
   };
@@ -913,6 +924,566 @@ export function calculateRevenueForecast(currentMonth) {
 // - calculateComfortWeatherImpact
 // - parseWeatherData
 // Import from './weatherUtils' if needed
+
+// ============== PRIORITY MATRIX & SERVICE BREAKDOWN (v3.8) ==============
+
+/**
+ * Calculate service breakdown from daily_revenue view data
+ * Uses pre-aggregated Supabase view for efficiency
+ *
+ * @param {Array} dailyRevenueData - Array of daily_revenue records from Supabase
+ * @param {string} currentMonthKey - Current month as 'YYYY-MM'
+ * @param {string} previousMonthKey - Previous month as 'YYYY-MM'
+ * @returns {object} Service breakdown with growth rates
+ */
+export function calculateServiceBreakdown(dailyRevenueData, currentMonthKey, previousMonthKey) {
+  if (!dailyRevenueData || dailyRevenueData.length === 0) {
+    return null;
+  }
+
+  // Filter data by month
+  const current = dailyRevenueData.filter(d => d.date && d.date.startsWith(currentMonthKey));
+  const previous = dailyRevenueData.filter(d => d.date && d.date.startsWith(previousMonthKey));
+
+  const sumField = (arr, field) => arr.reduce((sum, d) => sum + Number(d[field] || 0), 0);
+
+  // Current period totals
+  const currentWash = sumField(current, 'washes');
+  const currentDry = sumField(current, 'drys');
+  const currentRecarga = sumField(current, 'recargas');
+  const currentServiceRev = sumField(current, 'service_revenue');
+  const currentRecargaRev = sumField(current, 'recarga_revenue');
+  const currentTotalRev = sumField(current, 'total_revenue');
+
+  // Previous period totals
+  const prevWash = sumField(previous, 'washes');
+  const prevDry = sumField(previous, 'drys');
+  const prevRecarga = sumField(previous, 'recargas');
+  const prevServiceRev = sumField(previous, 'service_revenue');
+  const prevRecargaRev = sumField(previous, 'recarga_revenue');
+
+  // Estimate revenue split by service ratio
+  const totalServices = currentWash + currentDry;
+  const washRatio = totalServices > 0 ? currentWash / totalServices : 0.5;
+  const dryRatio = 1 - washRatio;
+
+  // Calculate growth rates
+  const calcGrowth = (current, previous) =>
+    previous > 0 ? ((current - previous) / previous) * 100 : null;
+
+  const breakdown = {
+    wash: {
+      services: currentWash,
+      revenue: currentServiceRev * washRatio,
+      growth: calcGrowth(currentWash, prevWash),
+      prevServices: prevWash
+    },
+    dry: {
+      services: currentDry,
+      revenue: currentServiceRev * dryRatio,
+      growth: calcGrowth(currentDry, prevDry),
+      prevServices: prevDry
+    },
+    recarga: {
+      count: currentRecarga,
+      revenue: currentRecargaRev,
+      growth: calcGrowth(currentRecarga, prevRecarga),
+      prevCount: prevRecarga
+    },
+    totalRevenue: currentTotalRev,
+    totalServices: totalServices,
+    serviceRevenue: currentServiceRev,
+    recargaRevenue: currentRecargaRev,
+    daysWithData: current.length,
+    mainDeclineDriver: null
+  };
+
+  // Identify main decline driver (segment with biggest negative growth)
+  const declines = [
+    { type: 'wash', growth: breakdown.wash.growth, label: 'Lavagem' },
+    { type: 'dry', growth: breakdown.dry.growth, label: 'Secagem' },
+    { type: 'recarga', growth: breakdown.recarga.growth, label: 'Recarga' }
+  ].filter(d => d.growth !== null && d.growth < -5);
+
+  if (declines.length > 0) {
+    const worst = declines.sort((a, b) => a.growth - b.growth)[0];
+    breakdown.mainDeclineDriver = worst.type;
+    breakdown.mainDeclineLabel = worst.label;
+    breakdown.mainDeclineGrowth = worst.growth;
+  }
+
+  return breakdown;
+}
+
+/**
+ * Score a dimension (0-10) with status text
+ */
+function scoreDimension(value, thresholds, labels) {
+  const { bad, neutral, good } = thresholds;
+  let score, status, color;
+
+  if (value <= bad) {
+    score = Math.max(0, 2 + (value / Math.abs(bad)) * 2);
+    status = labels.bad;
+    color = 'negative';
+  } else if (value < neutral) {
+    score = 4 + ((value - bad) / (neutral - bad)) * 2;
+    status = labels.neutral;
+    color = 'warning';
+  } else if (value < good) {
+    score = 6 + ((value - neutral) / (good - neutral)) * 2;
+    status = labels.good;
+    color = 'neutral';
+  } else {
+    score = Math.min(10, 8 + ((value - good) / good) * 2);
+    status = labels.excellent;
+    color = 'positive';
+  }
+
+  return { score: Math.round(score * 10) / 10, status, color, value };
+}
+
+/**
+ * Calculate Priority Matrix - Replaces Health Score with actionable insights
+ *
+ * @param {object} profitability - Profitability calculation results
+ * @param {object} growthTrends - Growth trends calculation results
+ * @param {object} currentMonth - Current month metrics
+ * @param {object} previousMonth - Previous month metrics
+ * @param {object} serviceBreakdown - Service breakdown (wash/dry/recarga)
+ * @returns {object} Priority matrix with dimensions, priority, and actions
+ */
+export function calculatePriorityMatrix(profitability, growthTrends, currentMonth, previousMonth, serviceBreakdown) {
+  // Get current month name for context
+  const brazilParts = getBrazilDateParts();
+  const MONTH_NAMES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  const currentMonthName = MONTH_NAMES[brazilParts.month - 1];
+  const previousMonthIdx = brazilParts.month === 1 ? 11 : brazilParts.month - 2;
+  const previousMonthName = MONTH_NAMES[previousMonthIdx];
+
+  // Dimension explanations for user comprehension
+  const dimensionMeta = {
+    profitability: {
+      explanation: 'Quanto do faturamento vira lucro após pagar todos os custos.',
+      howToRead: '0-4: Margem negativa ou muito baixa. 5-7: Margem aceitável. 8-10: Margem excelente.',
+      dataRange: `Mês atual (${currentMonthName})`,
+      rawValue: profitability?.profitMargin || 0,
+      rawLabel: 'Margem',
+      rawUnit: '%'
+    },
+    growth: {
+      explanation: 'Tendência de receita ao longo dos últimos meses. Mostra se o negócio está crescendo ou encolhendo.',
+      howToRead: '0-4: Queda significativa. 5-6: Estável. 7-10: Crescimento saudável.',
+      dataRange: 'Últimos 6 meses (média mensal)',
+      rawValue: growthTrends?.avgGrowth || 0,
+      rawLabel: 'Variação média',
+      rawUnit: '%'
+    },
+    breakEven: {
+      explanation: 'Quanto acima (ou abaixo) do ponto de equilíbrio o negócio opera. Acima = segurança, abaixo = prejuízo.',
+      howToRead: '0-4: Abaixo ou no limite do break-even. 5-7: Margem pequena. 8-10: Folga confortável.',
+      dataRange: `Mês atual (${currentMonthName})`,
+      rawValue: profitability?.breakEvenBuffer || 0,
+      rawLabel: 'Buffer',
+      rawUnit: '%'
+    },
+    momentum: {
+      explanation: 'Compara a receita do mês atual com o mês anterior. Indica a direção recente do negócio.',
+      howToRead: '0-4: Queda forte recente. 5-6: Estável. 7-10: Aceleração positiva.',
+      dataRange: `${currentMonthName} vs ${previousMonthName}`,
+      rawValue: currentMonth && previousMonth && previousMonth.revenue > 0
+        ? ((currentMonth.revenue - previousMonth.revenue) / previousMonth.revenue) * 100
+        : 0,
+      rawLabel: 'Variação',
+      rawUnit: '%'
+    }
+  };
+
+  // Score each dimension and merge with metadata
+  const dimensions = {
+    profitability: {
+      ...scoreDimension(
+        profitability?.profitMargin || 0,
+        { bad: 0, neutral: 5, good: 15 },
+        { bad: 'Negativa', neutral: 'Baixa', good: 'Saudável', excellent: 'Excelente' }
+      ),
+      ...dimensionMeta.profitability
+    },
+    growth: {
+      ...scoreDimension(
+        growthTrends?.avgGrowth || 0,
+        { bad: -10, neutral: 0, good: 5 },
+        { bad: 'Em queda', neutral: 'Estagnado', good: 'Crescendo', excellent: 'Forte crescimento' }
+      ),
+      ...dimensionMeta.growth
+    },
+    breakEven: {
+      ...scoreDimension(
+        profitability?.breakEvenBuffer || 0,
+        { bad: -20, neutral: 0, good: 20 },
+        { bad: 'Abaixo', neutral: 'No limite', good: 'Acima', excellent: 'Confortável' }
+      ),
+      ...dimensionMeta.breakEven
+    },
+    momentum: {
+      ...scoreDimension(
+        dimensionMeta.momentum.rawValue,
+        { bad: -15, neutral: 0, good: 10 },
+        { bad: 'Queda forte', neutral: 'Estável', good: 'Positivo', excellent: 'Acelerando' }
+      ),
+      ...dimensionMeta.momentum
+    }
+  };
+
+  // Find weakest dimension (priority)
+  const dimensionEntries = Object.entries(dimensions);
+  const sorted = dimensionEntries.sort((a, b) => a[1].score - b[1].score);
+  const [priorityKey, priorityData] = sorted[0];
+
+  // Generate specific actions based on priority and data
+  const actions = generatePriorityActions(
+    priorityKey,
+    dimensions,
+    profitability,
+    growthTrends,
+    serviceBreakdown,
+    { currentMonthName, previousMonthName }
+  );
+
+  // Dimension labels in Portuguese
+  const dimensionLabels = {
+    profitability: 'Lucratividade',
+    growth: 'Crescimento',
+    breakEven: 'Break-even',
+    momentum: 'Momentum'
+  };
+
+  return {
+    dimensions,
+    priority: {
+      key: priorityKey,
+      label: dimensionLabels[priorityKey],
+      ...priorityData
+    },
+    actions,
+    overallScore: Math.round(
+      (dimensions.profitability.score * 0.35 +
+        dimensions.growth.score * 0.25 +
+        dimensions.breakEven.score * 0.25 +
+        dimensions.momentum.score * 0.15) * 10
+    ) / 10,
+    // Metadata for display
+    dataContext: {
+      currentMonth: currentMonthName,
+      previousMonth: previousMonthName,
+      year: brazilParts.year,
+      growthWindow: 'Últimos 6 meses'
+    }
+  };
+}
+
+/**
+ * Generate specific priority actions based on weakest dimension
+ * @param {object} monthContext - { currentMonthName, previousMonthName } for comparison context
+ */
+function generatePriorityActions(priorityKey, dimensions, profitability, growthTrends, serviceBreakdown, monthContext = {}) {
+  const actions = [];
+  const { currentMonthName = 'mês atual', previousMonthName = 'mês anterior' } = monthContext;
+
+  switch (priorityKey) {
+    case 'profitability':
+      // Low profitability - suggest cost reduction or price increase
+      if (profitability) {
+        const targetMargin = 15;
+        const currentMargin = profitability.profitMargin;
+        const gap = targetMargin - currentMargin;
+
+        if (gap > 0) {
+          const revenueNeeded = (profitability.totalCosts * targetMargin / 100) / (1 - targetMargin / 100) - profitability.totalRevenue;
+          actions.push({
+            type: 'revenue',
+            title: 'Aumentar receita',
+            description: `Precisa de +R$${Math.abs(revenueNeeded).toFixed(0)}/mês para atingir margem saudável de ${targetMargin}%. Baseado nos custos de ${currentMonthName}.`,
+            impact: 'high',
+            effort: 'medium',
+            context: `Margem atual: ${currentMargin.toFixed(1)}% em ${currentMonthName}`
+          });
+
+          const costReduction = profitability.totalCosts * (gap / (100 - currentMargin));
+          actions.push({
+            type: 'cost',
+            title: 'Reduzir custos fixos',
+            description: `Corte de R$${costReduction.toFixed(0)}/mês atinge margem de ${targetMargin}%. Analise os maiores gastos do mês.`,
+            impact: 'high',
+            effort: 'low',
+            context: `Custos totais em ${currentMonthName}: R$${profitability.totalCosts.toFixed(0)}`
+          });
+        }
+      }
+      break;
+
+    case 'growth':
+      // Declining growth - identify cause from service breakdown
+      if (serviceBreakdown?.mainDeclineDriver) {
+        const driver = serviceBreakdown.mainDeclineDriver;
+        const driverLabel = serviceBreakdown.mainDeclineLabel;
+        const driverGrowth = serviceBreakdown.mainDeclineGrowth;
+
+        actions.push({
+          type: 'diagnosis',
+          title: `${driverLabel} em queda`,
+          description: `Serviços de ${driverLabel.toLowerCase()} caíram ${Math.abs(driverGrowth).toFixed(0)}% vs ${previousMonthName}. ${
+            driver === 'dry' ? 'Verifique disponibilidade e qualidade das secadoras.' : driver === 'wash' ? 'Verifique disponibilidade e qualidade das lavadoras.' : 'Considere promover recargas com bônus.'
+          }`,
+          impact: 'high',
+          effort: 'low',
+          context: `Comparação: ${currentMonthName} vs ${previousMonthName}`
+        });
+      }
+
+      actions.push({
+        type: 'marketing',
+        title: 'Campanha de reativação',
+        description: `Lance campanha WhatsApp para clientes inativos há 30+ dias. Potencial de recuperar 10-15% dos inativos.`,
+        impact: 'medium',
+        effort: 'low',
+        context: 'Baseado na média de reativação do setor'
+      });
+      break;
+
+    case 'breakEven':
+      // Below break-even - need more volume
+      if (profitability) {
+        const servicesNeeded = profitability.breakEvenServices - profitability.actualServices;
+        if (servicesNeeded > 0) {
+          actions.push({
+            type: 'volume',
+            title: 'Aumentar volume',
+            description: `Precisa de +${servicesNeeded} serviços em ${currentMonthName} para atingir break-even. Equivale a ~${Math.ceil(servicesNeeded / 4)} serviços extras por semana.`,
+            impact: 'high',
+            effort: 'medium',
+            context: `Break-even: ${profitability.breakEvenServices} serviços. Atual: ${profitability.actualServices}.`
+          });
+
+          actions.push({
+            type: 'promotion',
+            title: 'Promoção de horário vale',
+            description: 'Ofereça 10-15% de desconto em horários de baixa demanda (terça e quarta). Aumenta volume sem canibalizar picos.',
+            impact: 'medium',
+            effort: 'low',
+            context: 'Horários vale tipicamente têm 40% menos movimento'
+          });
+        }
+      }
+      break;
+
+    case 'momentum':
+      // Negative momentum - recent decline
+      actions.push({
+        type: 'retention',
+        title: 'Fidelização de clientes',
+        description: `A receita caiu de ${previousMonthName} para ${currentMonthName}. Implemente cashback progressivo (ex: 5% acumulado) para incentivar retorno.`,
+        impact: 'medium',
+        effort: 'medium',
+        context: `Comparação: ${currentMonthName} vs ${previousMonthName}`
+      });
+
+      actions.push({
+        type: 'review',
+        title: 'Revisar qualidade',
+        description: 'Verifique condição dos equipamentos e pergunte aos clientes sobre satisfação. Problemas de qualidade causam queda rápida de movimento.',
+        impact: 'high',
+        effort: 'low',
+        context: 'Ação preventiva para identificar causas da queda'
+      });
+      break;
+  }
+
+  // Add a general action if we have few specific ones
+  if (actions.length < 2) {
+    actions.push({
+      type: 'general',
+      title: 'Monitorar métricas',
+      description: `Continue acompanhando indicadores semanalmente para identificar tendências.`,
+      impact: 'low',
+      effort: 'low',
+      context: 'Acompanhamento contínuo'
+    });
+  }
+
+  return actions.slice(0, 3); // Max 3 actions
+}
+
+/**
+ * Calculate forecast contingency - Compare to same month last year
+ *
+ * @param {object} currentMonth - Current month metrics
+ * @param {Array} salesData - All sales data for year-over-year comparison
+ * @returns {object} Contingency data with gap and options
+ */
+export function calculateForecastContingency(currentMonth, salesData) {
+  if (!currentMonth || !salesData) return null;
+
+  const records = parseSalesRecords(salesData);
+  const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
+
+  // Get same month last year
+  const brazilNow = getBrazilDateParts();
+  const lastYearMonth = brazilNow.month;
+  const lastYear = brazilNow.year - 1;
+
+  const lastYearStart = new Date(lastYear, lastYearMonth - 1, 1);
+  const lastYearEnd = new Date(lastYear, lastYearMonth, 0, 23, 59, 59);
+
+  const lastYearRecords = records.filter(r =>
+    r.date >= lastYearStart && r.date <= lastYearEnd
+  );
+
+  const lastYearRevenue = Math.round(sum(lastYearRecords, r => r.netValue) * 100) / 100;
+
+  // Calculate projected revenue for current month
+  const daysInMonth = new Date(brazilNow.year, brazilNow.month, 0).getDate();
+  const dailyAvg = currentMonth.revenue / currentMonth.daysElapsed;
+  const projectedRevenue = currentMonth.revenue + (dailyAvg * (daysInMonth - currentMonth.daysElapsed));
+
+  // Calculate gap
+  const gap = lastYearRevenue - projectedRevenue;
+  const gapPercent = lastYearRevenue > 0 ? (gap / lastYearRevenue) * 100 : 0;
+
+  // Generate contingency options if behind
+  const options = [];
+  if (gap > 0) {
+    // Scaled options based on gap size
+    options.push({
+      label: 'Promoção de fim de semana',
+      estimate: Math.min(gap * 0.4, 2000),
+      effort: 'medium',
+      description: 'Desconto de 10% sábado e domingo'
+    });
+
+    options.push({
+      label: 'Campanha WhatsApp para inativos',
+      estimate: Math.min(gap * 0.3, 1500),
+      effort: 'low',
+      description: 'Mensagem para clientes sem visita há 30 dias'
+    });
+
+    options.push({
+      label: 'Horário estendido',
+      estimate: Math.min(gap * 0.2, 1000),
+      effort: 'high',
+      description: 'Abrir 2h mais cedo ou fechar 2h mais tarde'
+    });
+  }
+
+  // Month name for display
+  const MONTH_NAMES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  return {
+    lastYearRevenue,
+    lastYearMonthName: `${MONTH_NAMES[lastYearMonth - 1]} ${lastYear}`,
+    projectedRevenue: Math.round(projectedRevenue),
+    gap: Math.round(gap),
+    gapPercent: Math.round(gapPercent * 10) / 10,
+    isAhead: gap <= 0,
+    surplus: gap < 0 ? Math.abs(gap) : 0,
+    options,
+    hasLastYearData: lastYearRecords.length > 0
+  };
+}
+
+/**
+ * Calculate optimization levers for profitability improvement
+ *
+ * @param {object} profitability - Profitability calculation results
+ * @param {number} targetMargin - Target profit margin (default 15%)
+ * @returns {object} Optimization options with numbers
+ */
+export function calculateOptimizationLevers(profitability, targetMargin = 15) {
+  if (!profitability) return null;
+
+  const currentMargin = profitability.profitMargin;
+  if (currentMargin >= targetMargin) {
+    return { alreadyAtTarget: true, currentMargin, targetMargin };
+  }
+
+  const currentRevenue = profitability.totalRevenue;
+  const currentCosts = profitability.totalCosts;
+  const currentProfit = profitability.netProfit;
+
+  // Calculate gap to target
+  // Target profit = targetMargin * revenue
+  // But if we increase revenue, profit changes too
+  // Solve: targetMargin = (newRevenue - currentCosts) / newRevenue
+  // newRevenue = currentCosts / (1 - targetMargin/100)
+  const targetRevenue = currentCosts / (1 - targetMargin / 100);
+  const revenueNeeded = targetRevenue - currentRevenue;
+
+  // Calculate services needed (using actual average price)
+  const avgServicePrice = profitability.actualAvgPricePerService || 15;
+  const servicesNeeded = Math.ceil(revenueNeeded / avgServicePrice);
+  const weeklyServicesNeeded = Math.ceil(servicesNeeded / 4);
+
+  // Cost reduction option
+  // Solve: targetMargin = (currentRevenue - newCosts) / currentRevenue
+  // newCosts = currentRevenue * (1 - targetMargin/100)
+  const targetCosts = currentRevenue * (1 - targetMargin / 100);
+  const costReduction = currentCosts - targetCosts;
+
+  // Identify largest cost category
+  const costBreakdown = [
+    { label: 'Aluguel', value: profitability.fixedCosts * 0.5 }, // Estimate
+    { label: 'Energia', value: profitability.fixedCosts * 0.25 },
+    { label: 'Manutenção', value: profitability.maintenanceCosts },
+    { label: 'Outros', value: profitability.fixedCosts * 0.25 }
+  ].sort((a, b) => b.value - a.value);
+
+  const largestCost = costBreakdown[0];
+  const largestCostPercent = Math.round((largestCost.value / currentCosts) * 100);
+
+  // Price increase option
+  // If we increase price by X%, revenue increases but volume might drop
+  const priceIncreasePercent = Math.round((targetRevenue / currentRevenue - 1) * 100 * 10) / 10;
+  // Assume 10% price elasticity (10% price increase = 10% volume drop)
+  const volumeDropTolerance = Math.round(priceIncreasePercent * 0.8);
+
+  return {
+    alreadyAtTarget: false,
+    currentMargin: Math.round(currentMargin * 10) / 10,
+    targetMargin,
+    marginGap: Math.round((targetMargin - currentMargin) * 10) / 10,
+
+    // Option A: Revenue increase
+    revenue: {
+      needed: Math.round(revenueNeeded),
+      servicesNeeded,
+      weeklyServicesNeeded,
+      percentIncrease: Math.round((revenueNeeded / currentRevenue) * 100)
+    },
+
+    // Option B: Cost reduction
+    cost: {
+      reduction: Math.round(costReduction),
+      percentReduction: Math.round((costReduction / currentCosts) * 100),
+      largestCost: largestCost.label,
+      largestCostValue: Math.round(largestCost.value),
+      largestCostPercent
+    },
+
+    // Option C: Price increase
+    price: {
+      increasePercent: priceIncreasePercent,
+      volumeDropTolerance,
+      newAvgPrice: Math.round(avgServicePrice * (1 + priceIncreasePercent / 100) * 100) / 100
+    }
+  };
+}
 
 /**
  * Calculate weighted revenue projection combining:

@@ -1,9 +1,16 @@
 /**
  * Supabase Loader - Loads all data from Supabase
  *
- * VERSION: 3.1
+ * VERSION: 3.3
  *
  * CHANGELOG:
+ * v3.3 (2025-12-28): Preload dailyRevenue during app initialization
+ *   - dailyRevenue now included in loadAllData output
+ *   - Eliminates separate fetch on Intelligence tab navigation
+ *   - Last 60 days of daily_revenue preloaded for service breakdown
+ * v3.2 (2025-12-28): Added fetchDailyRevenue for service breakdown
+ *   - New export: fetchDailyRevenue(startDate, endDate)
+ *   - Uses daily_revenue Supabase view (pre-aggregated wash/dry/recarga)
  * v3.1 (2025-12-21): Stale-While-Revalidate caching
  *   - Return cached data immediately if available (instant render)
  *   - Background fetch updates cache silently
@@ -49,6 +56,7 @@ const getSupabase = getSupabaseClient;
 const CACHE_KEY_SALES = 'supabase_transactions';
 const CACHE_KEY_CUSTOMERS = 'supabase_customers';
 const CACHE_KEY_RFM = 'supabase_rfm';
+const CACHE_KEY_DAILY_REVENUE = 'supabase_daily_revenue';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 // ============== SUPABASE LOADERS ==============
@@ -294,6 +302,55 @@ async function loadRFMFromSupabase() {
   return rfm;
 }
 
+/**
+ * Fetch daily revenue data for service breakdown analysis
+ * Uses the daily_revenue Supabase view which pre-aggregates:
+ * - washes, drys, recargas counts
+ * - service_revenue, recarga_revenue, total_revenue
+ * - cashback_given, coupon_uses
+ *
+ * @param {Date} startDate - Start of date range
+ * @param {Date} endDate - End of date range
+ * @returns {Promise<Array>} Daily revenue records
+ */
+export async function fetchDailyRevenue(startDate, endDate) {
+  const client = await getSupabase();
+  if (!client) {
+    throw new Error('Supabase not configured');
+  }
+
+  const startStr = startDate.toISOString().split('T')[0];
+  const endStr = endDate.toISOString().split('T')[0];
+
+  console.log(`[fetchDailyRevenue] Fetching ${startStr} to ${endStr}...`);
+
+  const { data, error } = await client
+    .from('daily_revenue')
+    .select('*')
+    .gte('date', startStr)
+    .lte('date', endStr)
+    .order('date', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to fetch daily_revenue: ${error.message}`);
+  }
+
+  console.log(`✓ Loaded daily_revenue: ${data?.length || 0} days`);
+  return data || [];
+}
+
+/**
+ * Fetch last 60 days of daily revenue for app initialization
+ * Used to preload data for Intelligence tab service breakdown
+ * @returns {Promise<Array>} Daily revenue records
+ */
+async function loadDailyRevenueForInit() {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 60);
+  return fetchDailyRevenue(startDate, endDate);
+}
+
 // ============== FORMAT HELPERS ==============
 
 /**
@@ -427,22 +484,23 @@ async function getLastImportDate() {
  * @param {function} onProgress - Progress callback
  * @param {boolean} skipCache - Skip cache and force fresh fetch
  * @param {function} onBackgroundUpdate - Called when background fetch completes (SWR pattern)
- * @returns {Object} { sales, rfm, customer, lastImportedAt, fromCache }
+ * @returns {Object} { sales, rfm, customer, dailyRevenue, lastImportedAt, fromCache }
  */
 export const loadAllData = async (onProgress, skipCache = false, onBackgroundUpdate = null) => {
-  const totalSteps = 3; // transactions, customers, rfm
+  const totalSteps = 4; // transactions, customers, rfm, daily_revenue
 
   // ============== SWR: Check cache first ==============
   if (!skipCache) {
     try {
-      const [cachedSales, cachedCustomers, cachedRfm] = await Promise.all([
+      const [cachedSales, cachedCustomers, cachedRfm, cachedDailyRevenue] = await Promise.all([
         getCachedData(CACHE_KEY_SALES, CACHE_TTL),
         getCachedData(CACHE_KEY_CUSTOMERS, CACHE_TTL),
-        getCachedData(CACHE_KEY_RFM, CACHE_TTL)
+        getCachedData(CACHE_KEY_RFM, CACHE_TTL),
+        getCachedData(CACHE_KEY_DAILY_REVENUE, CACHE_TTL)
       ]);
 
       // If ALL cached data exists, return immediately and revalidate in background
-      if (cachedSales && cachedCustomers && cachedRfm) {
+      if (cachedSales && cachedCustomers && cachedRfm && cachedDailyRevenue) {
         console.log('[supabaseLoader] Cache HIT - returning cached data, fetching in background');
 
         // Signal progress as complete (from cache)
@@ -455,7 +513,8 @@ export const loadAllData = async (onProgress, skipCache = false, onBackgroundUpd
             tableStates: {
               transactions: { status: 'complete', rowCount: cachedSales.length },
               customers: { status: 'complete', rowCount: cachedCustomers.length },
-              rfm: { status: 'complete', rowCount: cachedRfm.length }
+              rfm: { status: 'complete', rowCount: cachedRfm.length },
+              daily_revenue: { status: 'complete', rowCount: cachedDailyRevenue.length }
             }
           });
         }
@@ -469,6 +528,7 @@ export const loadAllData = async (onProgress, skipCache = false, onBackgroundUpd
           sales: cachedSales,
           customer: cachedCustomers,
           rfm: cachedRfm,
+          dailyRevenue: cachedDailyRevenue,
           lastImportedAt: null, // Will be updated on background fetch
           fromCache: true
         };
@@ -490,18 +550,19 @@ export const loadAllData = async (onProgress, skipCache = false, onBackgroundUpd
  * Fetch all data from Supabase and update cache
  * @param {function} onProgress - Progress callback (null for background fetch)
  * @param {function} onComplete - Called when fetch completes (for SWR background update)
- * @returns {Object} { sales, rfm, customer, lastImportedAt, fromCache: false }
+ * @returns {Object} { sales, rfm, customer, dailyRevenue, lastImportedAt, fromCache: false }
  */
 async function fetchAndCacheAll(onProgress, onComplete) {
   const data = {};
   let loaded = 0;
-  const totalSteps = 3;
+  const totalSteps = 4;
 
   // Track loading state for each table
   const tableStates = {
     transactions: { status: 'pending', rowCount: null },
     customers: { status: 'pending', rowCount: null },
-    rfm: { status: 'pending', rowCount: null }
+    rfm: { status: 'pending', rowCount: null },
+    daily_revenue: { status: 'pending', rowCount: null }
   };
 
   const updateProgress = (tableName, status, rowCount = null) => {
@@ -535,9 +596,10 @@ async function fetchAndCacheAll(onProgress, onComplete) {
       updateProgress('transactions', 'loading');
       updateProgress('customers', 'loading');
       updateProgress('rfm', 'loading');
+      updateProgress('daily_revenue', 'loading');
     }
 
-    const [salesResult, rfmResult, customerResult, lastImportedAt] = await Promise.all([
+    const [salesResult, rfmResult, customerResult, dailyRevenueResult, lastImportedAt] = await Promise.all([
       // 1. Load sales from Supabase (transactions table)
       loadSalesFromSupabase().then(result => {
         updateProgress('transactions', 'complete', result.length);
@@ -556,13 +618,20 @@ async function fetchAndCacheAll(onProgress, onComplete) {
         return result;
       }),
 
-      // 4. Get last CSV import date (metadata, no progress update)
+      // 4. Load daily revenue for Intelligence tab (last 60 days)
+      loadDailyRevenueForInit().then(result => {
+        updateProgress('daily_revenue', 'complete', result.length);
+        return result;
+      }),
+
+      // 5. Get last CSV import date (metadata, no progress update)
       getLastImportDate()
     ]);
 
     data.sales = salesResult;
     data.rfm = rfmResult;
     data.customer = customerResult;
+    data.dailyRevenue = dailyRevenueResult;
     data.lastImportedAt = lastImportedAt;
     data.fromCache = false;
 
@@ -574,7 +643,8 @@ async function fetchAndCacheAll(onProgress, onComplete) {
       await Promise.all([
         setCachedData(CACHE_KEY_SALES, salesResult),
         setCachedData(CACHE_KEY_CUSTOMERS, customerResult),
-        setCachedData(CACHE_KEY_RFM, rfmResult)
+        setCachedData(CACHE_KEY_RFM, rfmResult),
+        setCachedData(CACHE_KEY_DAILY_REVENUE, dailyRevenueResult)
       ]);
       console.log('[supabaseLoader] Cache updated');
     } catch (cacheError) {

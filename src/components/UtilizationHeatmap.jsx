@@ -1,7 +1,11 @@
-// UtilizationHeatmap Component v4.4.0
+// UtilizationHeatmap Component v4.5.0
 // Hour x Day heatmap showing average service utilization patterns
 //
 // CHANGELOG:
+// v4.5.0 (2025-12-28): Unified utilization calculation with operationsMetrics.js
+//   - Track wash and dry services separately per cell
+//   - Use weighted utilization formula (37.5% wash, 62.5% dry by machine count)
+//   - Fixes ~3% discrepancy between heatmap and PeakHoursSummary values
 // v4.4.0 (2025-12-10): Timezone-independent hour/day extraction
 //   - Uses date.brazil components instead of getHours()/getDay()
 //   - Ensures correct heatmap regardless of viewer's browser timezone
@@ -94,14 +98,21 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
     }
 
     const { start: HOUR_START, end: HOUR_END } = BUSINESS_PARAMS.OPERATING_HOURS;
-    const TOTAL_MACHINES = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
-    const AVG_CYCLE_MINUTES = (BUSINESS_PARAMS.WASHER_CYCLE_MINUTES + BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) / 2;
-    const MAX_SERVICES_PER_HOUR = (TOTAL_MACHINES * 60) / AVG_CYCLE_MINUTES * BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+
+    // Use same capacity calculation as operationsMetrics.js for consistency
+    const efficiencyFactor = BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+    const washCapacityPerHour = BUSINESS_PARAMS.TOTAL_WASHERS * (60 / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * efficiencyFactor;
+    const dryCapacityPerHour = BUSINESS_PARAMS.TOTAL_DRYERS * (60 / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * efficiencyFactor;
+
+    // Weights based on machine count (same as operationsMetrics.js)
+    const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+    const washWeight = BUSINESS_PARAMS.TOTAL_WASHERS / totalMachines;
+    const dryWeight = BUSINESS_PARAMS.TOTAL_DRYERS / totalMachines;
 
     const startDate = dateWindow.start;
     const endDate = dateWindow.end;
 
-    // Initialize grid: [hour][day]
+    // Initialize grid: [hour][day] - track wash and dry separately
     const grid = {};
     const daysSeen = {};
 
@@ -109,7 +120,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
       grid[hour] = {};
       daysSeen[hour] = {};
       for (let day = 0; day < 7; day++) {
-        grid[hour][day] = { services: 0 };
+        grid[hour][day] = { wash: 0, dry: 0, total: 0 };
         daysSeen[hour][day] = new Set();
       }
     }
@@ -128,7 +139,9 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
 
       if (hour >= HOUR_START && hour < HOUR_END) {
         const machineInfo = countMachines(row.Maquinas || row.machine || '');
-        grid[hour][dayOfWeek].services += machineInfo.total;
+        grid[hour][dayOfWeek].wash += machineInfo.wash;
+        grid[hour][dayOfWeek].dry += machineInfo.dry;
+        grid[hour][dayOfWeek].total += machineInfo.total;
 
         // Use Brazil date components for consistent date key
         const dateStr = date.brazil
@@ -138,7 +151,7 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
       }
     });
 
-    // Calculate averages and utilization
+    // Calculate averages and utilization (using weighted formula from operationsMetrics.js)
     const processedGrid = [];
     let maxValue = 0;
 
@@ -150,9 +163,15 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
 
       for (let day = 0; day < 7; day++) {
         const uniqueDays = daysSeen[hour][day].size;
-        const avgServices = uniqueDays > 0 ? grid[hour][day].services / uniqueDays : 0;
+        const avgWash = uniqueDays > 0 ? grid[hour][day].wash / uniqueDays : 0;
+        const avgDry = uniqueDays > 0 ? grid[hour][day].dry / uniqueDays : 0;
+        const avgServices = uniqueDays > 0 ? grid[hour][day].total / uniqueDays : 0;
         const roundedAvg = Math.round(avgServices * 10) / 10;
-        const utilization = (roundedAvg / MAX_SERVICES_PER_HOUR) * 100;
+
+        // Weighted utilization calculation (same as operationsMetrics.js)
+        const washUtil = (avgWash / washCapacityPerHour) * 100;
+        const dryUtil = (avgDry / dryCapacityPerHour) * 100;
+        const utilization = (washUtil * washWeight) + (dryUtil * dryWeight);
 
         maxValue = Math.max(maxValue, roundedAvg);
 
@@ -161,9 +180,9 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
           dayName: DAYS[day],
           dayNameFull: DAYS_FULL[day],
           avgServices: roundedAvg,
-          utilization: Math.min(utilization, 100), // Cap at 100%
+          utilization: Math.min(Math.round(utilization * 10) / 10, 100), // Cap at 100%
           uniqueDays,
-          totalServices: grid[hour][day].services
+          totalServices: grid[hour][day].total
         });
       }
 

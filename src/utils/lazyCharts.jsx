@@ -31,27 +31,59 @@ export const ChartLoadingFallback = ({ height = 'h-64', className = '' }) => (
   </div>
 );
 
+// KPI card skeleton for grid layouts
+const KPICardSkeleton = () => (
+  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 sm:p-4 border border-slate-200 dark:border-slate-700">
+    <div className="flex items-start justify-between gap-2 mb-2">
+      <div className="w-16 h-3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+      <div className="w-6 h-6 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+    </div>
+    <div className="w-20 h-6 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mb-1" />
+    <div className="w-12 h-3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+  </div>
+);
+
 // Section loading fallback (for full section components like ProfitabilitySection)
-export const SectionLoadingFallback = ({ className = '' }) => (
+export const SectionLoadingFallback = ({ className = '', variant = 'default' }) => (
   <div
     className={`
       bg-white dark:bg-slate-800
-      rounded-2xl shadow-sm
-      border border-gray-100 dark:border-slate-700
-      p-6
+      rounded-2xl shadow-soft
+      border border-slate-200 dark:border-slate-700
+      p-4 sm:p-6 lg:p-8
       ${className}
     `}
   >
-    {/* Header skeleton */}
-    <div className="flex items-center gap-3 mb-6">
-      <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-700 animate-pulse" />
-      <div className="space-y-2">
+    {/* Header skeleton - matches SectionCard header */}
+    <div className="flex items-center gap-2 mb-4 sm:mb-6">
+      <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700 animate-pulse border-l-4 border-slate-300 dark:border-slate-600" />
+      <div className="space-y-1.5">
         <div className="w-32 h-5 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
         <div className="w-48 h-3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
       </div>
     </div>
-    {/* Chart skeleton */}
-    <ChartLoadingFallback height="h-48" />
+
+    {/* InsightBox skeleton */}
+    <div className="rounded-xl p-4 bg-slate-100 dark:bg-slate-700/50 mb-5 sm:mb-6">
+      <div className="flex items-start gap-3">
+        <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-600 animate-pulse flex-shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="w-24 h-4 rounded bg-slate-200 dark:bg-slate-600 animate-pulse" />
+          <div className="w-full h-3 rounded bg-slate-200 dark:bg-slate-600 animate-pulse" />
+          <div className="w-3/4 h-3 rounded bg-slate-200 dark:bg-slate-600 animate-pulse" />
+        </div>
+      </div>
+    </div>
+
+    {/* KPI Grid skeleton - 6 cards like ProfitabilitySection */}
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-5 sm:mb-6">
+      {[...Array(6)].map((_, i) => (
+        <KPICardSkeleton key={i} />
+      ))}
+    </div>
+
+    {/* Chart skeleton with proper height */}
+    <ChartLoadingFallback height="h-64 sm:h-80" />
   </div>
 );
 
@@ -99,10 +131,6 @@ export const LazyProfitabilitySection = lazy(() =>
 
 export const LazyGrowthTrendsSection = lazy(() =>
   import('../components/intelligence/GrowthTrendsSection')
-);
-
-export const LazyCampaignROISection = lazy(() =>
-  import('../components/intelligence/CampaignROISection')
 );
 
 // Drilldown charts

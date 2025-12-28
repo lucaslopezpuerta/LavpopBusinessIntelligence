@@ -370,13 +370,15 @@ const OperationsKPICards = ({
               aria-valuemax={PROGRESS_BAR_SCALE}
             />
           </div>
-          {/* Threshold legend - minimum 12px font */}
-          <div className="flex justify-between mt-1 text-xs text-slate-500 dark:text-slate-500">
-            <span>0%</span>
-            <span className="text-amber-600 dark:text-amber-400">10%</span>
-            <span className="text-teal-600 dark:text-teal-400">15%</span>
-            <span className="text-emerald-600 dark:text-emerald-400">25%+</span>
-            <span>50%</span>
+          {/* Threshold legend - positioned proportionally to 0-50% scale */}
+          <div className="relative w-full h-4 mt-1 text-xs text-slate-500 dark:text-slate-500">
+            <span className="absolute left-0">0%</span>
+            <span className="absolute left-[10%] -translate-x-1/2">5%</span>
+            <span className="absolute left-[20%] -translate-x-1/2 text-amber-600 dark:text-amber-400">10%</span>
+            <span className="absolute left-[30%] -translate-x-1/2 text-teal-600 dark:text-teal-400">15%</span>
+            <span className="absolute left-[40%] -translate-x-1/2 text-emerald-600 dark:text-emerald-400">20%</span>
+            <span className="absolute left-[50%] -translate-x-1/2 text-emerald-600 dark:text-emerald-400">25%+</span>
+            <span className="absolute right-0">50%</span>
           </div>
         </div>
 

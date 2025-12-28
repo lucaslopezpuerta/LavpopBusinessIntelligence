@@ -1,7 +1,10 @@
-// DateRangeSelector Component v3.1.0 - HAPTIC FEEDBACK
+// DateRangeSelector Component v3.2.0 - RESPONSIVE FONT SIZE
 // Unified date filter - consistent with DashboardDateControl
 //
 // CHANGELOG:
+// v3.2.0 (2025-12-28): Improved desktop font size
+//   - Date display: text-xs → text-xs sm:text-sm
+//   - Dropdown: text-xs → text-xs sm:text-sm
 // v3.1.0 (2025-12-22): Added haptic feedback on date change
 // v3.0.0 (2025-12-02): Unified design with DashboardDateControl
 //   - Compact inline layout matching Dashboard style
@@ -34,7 +37,7 @@ const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false
   const content = (
     <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-sm">
       {/* Left: Date range display */}
-      <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+      <div className="flex items-center gap-2 text-xs sm:text-base text-slate-600 dark:text-slate-400">
         <Calendar className="w-4 h-4 text-amber-500 dark:text-amber-400" />
         <span className="font-medium">
           {dateWindow.dateRange}
@@ -49,7 +52,7 @@ const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false
       <select
         value={value}
         onChange={handleChange}
-        className="h-9 px-3 bg-slate-100 dark:bg-slate-700/50 border-0 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 transition-all"
+        className="h-9 px-3 bg-slate-100 dark:bg-slate-700/50 border-0 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 transition-all"
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>

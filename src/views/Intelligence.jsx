@@ -1,8 +1,29 @@
-// Intelligence.jsx v3.12.1 - FIX EMPTY RENDER
-// Refactored with unified components and Health Score
+// Intelligence.jsx v3.15.0 - PRELOADED DATA
+// Refactored with Priority Matrix, auto-refresh, collapsible sections
 // Design System v3.2 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.15.0 (2025-12-28): Preloaded dailyRevenue data
+//   - CHANGED: Uses preloaded dailyRevenue from app initialization
+//   - REMOVED: Separate fetch on mount (now uses data.dailyRevenue)
+//   - KEPT: Refresh mechanisms for stale data handling
+// v3.14.0 (2025-12-28): Major UX enhancements
+//   - REMOVED: Campaign ROI section (deprecated, file deleted)
+//   - ADDED: Auto-refresh every 5 minutes + tab visibility refresh
+//   - ADDED: Stale data indicator with last updated timestamp
+//   - ADDED: Pull-to-refresh for mobile devices
+//   - ADDED: Collapsible sections for better navigation
+//   - CHANGED: Manutenção KPI → Custo por Ciclo
+//   - CHANGED: Best/Worst Month → YoY Growth comparison
+// v3.13.1 (2025-12-28): Enhanced context and explanations
+//   - ADDED: dataContext prop to PriorityMatrix for date range display
+//   - Priority Matrix now shows which month data is based on
+// v3.13.0 (2025-12-28): Priority Matrix implementation
+//   - REPLACED: Health Score with Priority Matrix (4 dimensions + actions)
+//   - ADDED: Service breakdown from daily_revenue Supabase view
+//   - ADDED: fetchDailyRevenue async loading with useEffect
+//   - ADDED: calculatePriorityMatrix and calculateServiceBreakdown
+//   - More actionable insights with specific recommendations
 // v3.12.1 (2025-12-23): Fix empty render on navigation
 //   - Added check for derived calculations (profitability, growthTrends, currentMonth)
 //   - Shows skeleton until ALL required data and calculations are ready
@@ -76,41 +97,215 @@
 // v1.2.0 (2025-11-29): Design System v3.0 - Dark mode & Nivo theme
 // v1.0.0 (2025-11-18): Complete redesign with Tailwind + Nivo
 
-import React, { useMemo, Suspense } from 'react';
-import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb } from 'lucide-react';
+import React, { useMemo, useState, useEffect, Suspense, useCallback, useRef } from 'react';
+import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb, RefreshCw, Clock } from 'lucide-react';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 // Business logic
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import {
   calculateProfitability,
   calculateGrowthTrends,
-  calculateCampaignROI,
-  calculateHealthScore,
   getCurrentMonthMetrics,
   getPreviousMonthMetrics,
-  calculateWeightedProjection
+  calculateWeightedProjection,
+  calculateServiceBreakdown,
+  calculatePriorityMatrix,
+  calculateForecastContingency,
+  calculateOptimizationLevers
 } from '../utils/intelligenceCalculations';
+import { fetchDailyRevenue } from '../utils/supabaseLoader';
+import { getBrazilDateParts } from '../utils/dateUtils';
 
 // UI components
 import KPICard, { KPIGrid } from '../components/ui/KPICard';
 import { IntelligenceLoadingSkeleton } from '../components/ui/Skeleton';
 
 // Lazy-loaded section components (contain charts)
-// Note: WeatherImpactSection moved to Weather tab
 import {
   LazyProfitabilitySection,
   LazyGrowthTrendsSection,
-  LazyCampaignROISection,
   SectionLoadingFallback
 } from '../utils/lazyCharts';
 
 // UX Enhancement components
 import RevenueForecast from '../components/intelligence/RevenueForecast';
+import PriorityMatrix from '../components/intelligence/PriorityMatrix';
+
+// ==================== STALE DATA INDICATOR ====================
+
+const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+const StaleDataIndicator = ({ lastUpdated, isRefreshing, onRefresh, isMobile }) => {
+  const [, forceUpdate] = useState(0);
+
+  // Update the "time ago" display every minute
+  useEffect(() => {
+    const interval = setInterval(() => forceUpdate(n => n + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!lastUpdated) return null;
+
+  const now = Date.now();
+  const elapsed = now - lastUpdated;
+  const isStale = elapsed > STALE_THRESHOLD_MS;
+
+  // Format time ago
+  const minutes = Math.floor(elapsed / 60000);
+  const timeAgo = minutes < 1 ? 'agora' : minutes < 60 ? `${minutes}min` : `${Math.floor(minutes / 60)}h`;
+
+  return (
+    <button
+      onClick={onRefresh}
+      disabled={isRefreshing}
+      className={`
+        flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
+        transition-all duration-200
+        ${isStale
+          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+        }
+        hover:bg-slate-200 dark:hover:bg-slate-700
+        disabled:opacity-50 disabled:cursor-not-allowed
+      `}
+      title={isRefreshing ? 'Atualizando...' : 'Clique para atualizar'}
+    >
+      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+      {!isMobile && <Clock className="w-3 h-3" />}
+      <span>{isRefreshing ? 'Atualizando...' : timeAgo}</span>
+    </button>
+  );
+};
 
 // ==================== MAIN COMPONENT ====================
 
-const Intelligence = ({ data }) => {
+const Intelligence = ({ data, onDataChange }) => {
   const { settings } = useAppSettings();
+  const isMobile = useIsMobile();
+
+  // State for daily revenue data (preloaded from app init, or fetched on demand)
+  const [dailyRevenueData, setDailyRevenueData] = useState(data?.dailyRevenue || null);
+  const [lastUpdated, setLastUpdated] = useState(data?.dailyRevenue ? Date.now() : null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Collapsible sections state (persists which sections are collapsed)
+  const [collapsedSections, setCollapsedSections] = useState({});
+
+  // Toggle handler for collapsible sections
+  const handleToggleSection = useCallback((sectionId) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  }, []);
+
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const touchStartY = useRef(0);
+  const containerRef = useRef(null);
+
+  // Fetch daily revenue data
+  const loadDailyRevenue = useCallback(async () => {
+    try {
+      // Get last 60 days to cover current + previous month
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 60);
+
+      const revenueData = await fetchDailyRevenue(startDate, endDate);
+      setDailyRevenueData(revenueData);
+      setLastUpdated(Date.now());
+    } catch (error) {
+      console.error('Failed to load daily revenue:', error);
+    }
+  }, []);
+
+  // Manual refresh handler
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      // Refresh parent data
+      if (onDataChange) {
+        await onDataChange();
+      }
+      // Refresh local daily revenue data
+      await loadDailyRevenue();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, onDataChange, loadDailyRevenue]);
+
+  // Pull-to-refresh handlers (mobile only)
+  const handleTouchStart = useCallback((e) => {
+    if (!isMobile || window.scrollY > 0) return;
+    touchStartY.current = e.touches[0].clientY;
+    setIsPulling(true);
+  }, [isMobile]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!isPulling || !isMobile) return;
+    const currentY = e.touches[0].clientY;
+    const distance = Math.max(0, Math.min(100, currentY - touchStartY.current));
+    setPullDistance(distance);
+  }, [isPulling, isMobile]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isPulling) return;
+    setIsPulling(false);
+    if (pullDistance > 60) {
+      handleRefresh();
+    }
+    setPullDistance(0);
+  }, [isPulling, pullDistance, handleRefresh]);
+
+  // Fallback fetch on mount - only if not preloaded
+  // (preloaded data is set in state initialization above)
+  useEffect(() => {
+    if (!data?.dailyRevenue && !dailyRevenueData) {
+      loadDailyRevenue();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // Sync with parent data when it refreshes
+  useEffect(() => {
+    if (data?.dailyRevenue) {
+      setDailyRevenueData(data.dailyRevenue);
+      setLastUpdated(Date.now());
+    }
+  }, [data?.dailyRevenue]);
+
+  // Auto-refresh on tab visibility change (when data is stale)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && lastUpdated) {
+        const elapsed = Date.now() - lastUpdated;
+        if (elapsed > STALE_THRESHOLD_MS) {
+          loadDailyRevenue();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [lastUpdated, loadDailyRevenue]);
+
+  // Auto-refresh every 5 minutes (for monitoring use case)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (lastUpdated) {
+        const elapsed = Date.now() - lastUpdated;
+        if (elapsed > STALE_THRESHOLD_MS) {
+          loadDailyRevenue();
+        }
+      }
+    }, STALE_THRESHOLD_MS);
+
+    return () => clearInterval(interval);
+  }, [lastUpdated, loadDailyRevenue]);
 
   // Calculate all metrics
   const profitability = useMemo(() => {
@@ -135,16 +330,6 @@ const Intelligence = ({ data }) => {
     }
   }, [data?.sales]);
 
-  const campaignROI = useMemo(() => {
-    if (!data?.sales || !data?.campaigns) return null;
-    try {
-      return calculateCampaignROI(data.sales, data.campaigns);
-    } catch (error) {
-      console.error('Campaign ROI calculation error:', error);
-      return null;
-    }
-  }, [data?.sales, data?.campaigns]);
-
   const currentMonth = useMemo(() => {
     if (!data?.sales) return null;
     try {
@@ -165,16 +350,39 @@ const Intelligence = ({ data }) => {
     }
   }, [data?.sales]);
 
-  // Health Score - Composite business health metric
-  const healthScore = useMemo(() => {
-    if (!profitability || !growthTrends || !currentMonth || !previousMonth) return null;
+  // Service Breakdown - Wash/Dry/Recarga analysis from daily_revenue view
+  const serviceBreakdown = useMemo(() => {
+    if (!dailyRevenueData || dailyRevenueData.length === 0) return null;
     try {
-      return calculateHealthScore(profitability, growthTrends, currentMonth, previousMonth);
+      const brazilNow = getBrazilDateParts();
+      const currentMonthKey = `${brazilNow.year}-${String(brazilNow.month).padStart(2, '0')}`;
+      const prevMonth = brazilNow.month === 1 ? 12 : brazilNow.month - 1;
+      const prevYear = brazilNow.month === 1 ? brazilNow.year - 1 : brazilNow.year;
+      const previousMonthKey = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+
+      return calculateServiceBreakdown(dailyRevenueData, currentMonthKey, previousMonthKey);
     } catch (error) {
-      console.error('Health score calculation error:', error);
+      console.error('Service breakdown calculation error:', error);
       return null;
     }
-  }, [profitability, growthTrends, currentMonth, previousMonth]);
+  }, [dailyRevenueData]);
+
+  // Priority Matrix - Replaces Health Score with actionable 4-dimension analysis
+  const priorityMatrix = useMemo(() => {
+    if (!profitability || !growthTrends || !currentMonth) return null;
+    try {
+      return calculatePriorityMatrix(
+        profitability,
+        growthTrends,
+        currentMonth,
+        previousMonth,
+        serviceBreakdown
+      );
+    } catch (error) {
+      console.error('Priority matrix calculation error:', error);
+      return null;
+    }
+  }, [profitability, growthTrends, currentMonth, previousMonth, serviceBreakdown]);
 
   // Weighted Projection - Combines day-of-week patterns + temperature correlation
   const weightedProjection = useMemo(() => {
@@ -186,6 +394,28 @@ const Intelligence = ({ data }) => {
       return null;
     }
   }, [data?.sales, data?.weather, currentMonth]);
+
+  // Forecast Contingency - Year-over-year comparison for recovery planning
+  const forecastContingency = useMemo(() => {
+    if (!currentMonth || !data?.sales) return null;
+    try {
+      return calculateForecastContingency(currentMonth, data.sales);
+    } catch (error) {
+      console.error('Forecast contingency calculation error:', error);
+      return null;
+    }
+  }, [currentMonth, data?.sales]);
+
+  // Optimization Levers - Three ways to improve profitability
+  const optimizationLevers = useMemo(() => {
+    if (!profitability) return null;
+    try {
+      return calculateOptimizationLevers(profitability);
+    } catch (error) {
+      console.error('Optimization levers calculation error:', error);
+      return null;
+    }
+  }, [profitability]);
 
   // Format helpers
   const formatCurrency = (value) => {
@@ -251,7 +481,27 @@ const Intelligence = ({ data }) => {
 
   return (
     <>
-      <div className="space-y-6 sm:space-y-8 animate-fade-in">
+      {/* Pull-to-refresh indicator (mobile only) */}
+      {isMobile && pullDistance > 0 && (
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center bg-emerald-500 dark:bg-emerald-600 text-white transition-all duration-200"
+          style={{ height: Math.min(pullDistance, 60), opacity: pullDistance / 60 }}
+        >
+          <RefreshCw className={`w-5 h-5 ${pullDistance > 60 ? 'animate-spin' : ''}`} />
+          <span className="ml-2 text-sm font-medium">
+            {pullDistance > 60 ? 'Solte para atualizar' : 'Puxe para atualizar'}
+          </span>
+        </div>
+      )}
+
+      <div
+        ref={containerRef}
+        className="space-y-6 sm:space-y-8 animate-fade-in"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={isMobile && pullDistance > 0 ? { transform: `translateY(${Math.min(pullDistance, 60)}px)` } : undefined}
+      >
 
           {/* Header */}
           <header className="flex items-center justify-between gap-4">
@@ -269,86 +519,16 @@ const Intelligence = ({ data }) => {
               </div>
             </div>
 
+            {/* Stale Data Indicator */}
+            <StaleDataIndicator
+              lastUpdated={lastUpdated}
+              isRefreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              isMobile={isMobile}
+            />
           </header>
 
-          {/* Health Score Hero Card */}
-          {healthScore && (
-            <section aria-labelledby="health-score-heading">
-              <h2 id="health-score-heading" className="sr-only">Saúde do Negócio</h2>
-              <div className={`
-                p-5 sm:p-6 rounded-2xl border shadow-soft
-                ${healthScore.color === 'positive'
-                  ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/30 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800'
-                  : healthScore.color === 'warning'
-                    ? 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/30 dark:to-amber-800/20 border-amber-200 dark:border-amber-800'
-                    : 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/30 dark:to-red-800/20 border-red-200 dark:border-red-800'
-                }
-              `}>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-                  {/* Score Display */}
-                  <div className="flex items-center gap-4">
-                    <div className={`
-                      w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center
-                      ${healthScore.color === 'positive'
-                        ? 'bg-emerald-500'
-                        : healthScore.color === 'warning'
-                          ? 'bg-amber-500'
-                          : 'bg-red-500'
-                      }
-                    `}>
-                      <span className="text-2xl sm:text-3xl font-bold text-white">
-                        {healthScore.score.toFixed(1)}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">
-                        Health Score
-                      </p>
-                      <p className={`text-xl sm:text-2xl font-bold ${
-                        healthScore.color === 'positive'
-                          ? 'text-emerald-700 dark:text-emerald-300'
-                          : healthScore.color === 'warning'
-                            ? 'text-amber-700 dark:text-amber-300'
-                            : 'text-red-700 dark:text-red-300'
-                      }`}>
-                        {healthScore.status}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Description & Suggestion */}
-                  <div className="flex-1 sm:border-l sm:border-gray-200 dark:sm:border-slate-600 sm:pl-6">
-                    <p className="text-sm text-gray-700 dark:text-slate-300 mb-2">
-                      {healthScore.description}
-                    </p>
-                    {healthScore.suggestions && healthScore.suggestions.length > 0 && (
-                      <p className="text-xs text-gray-600 dark:text-slate-400">
-                        <span className="font-semibold">Sugestão:</span> {healthScore.suggestions[0].message || healthScore.suggestions[0]}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Score Breakdown (Desktop) */}
-                  <div className="hidden lg:flex gap-3">
-                    {healthScore.breakdown && Object.entries(healthScore.breakdown).map(([key, score]) => (
-                      <div key={key} className="text-center px-3">
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
-                          {score.toFixed(1)}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 capitalize">
-                          {key === 'profitability' ? 'Lucro' :
-                           key === 'growth' ? 'Crescimento' :
-                           key === 'breakEven' ? 'Break-even' : 'Momentum'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Quick Stats Overview - Contextual metrics (Health Score handles derived insights) */}
+          {/* Quick Stats Overview - Moved to top for immediate visibility */}
           <section aria-labelledby="quick-stats-heading">
             <h2 id="quick-stats-heading" className="sr-only">Resumo rápido de métricas</h2>
             <KPIGrid columns={4}>
@@ -385,10 +565,22 @@ const Intelligence = ({ data }) => {
             </KPIGrid>
           </section>
 
+          {/* Priority Matrix - Replaces Health Score with actionable 4-dimension analysis */}
+          {priorityMatrix && (
+            <PriorityMatrix
+              dimensions={priorityMatrix.dimensions}
+              priority={priorityMatrix.priority}
+              actions={priorityMatrix.actions}
+              overallScore={priorityMatrix.overallScore}
+              dataContext={priorityMatrix.dataContext}
+            />
+          )}
+
           {/* Revenue Forecast */}
           <RevenueForecast
             currentMonth={currentMonth}
             weightedProjection={weightedProjection}
+            forecastContingency={forecastContingency}
             formatCurrency={formatCurrency}
           />
 
@@ -396,28 +588,25 @@ const Intelligence = ({ data }) => {
           <Suspense fallback={<SectionLoadingFallback />}>
             <LazyProfitabilitySection
               profitability={profitability}
+              optimizationLevers={optimizationLevers}
               formatCurrency={formatCurrency}
               formatPercent={formatPercent}
+              collapsible
+              isCollapsed={collapsedSections['profitability']}
+              onToggle={() => handleToggleSection('profitability')}
             />
           </Suspense>
-
-          {/* Note: Weather Impact section moved to Weather tab */}
 
           {/* Section 2: Growth & Trends */}
           <Suspense fallback={<SectionLoadingFallback />}>
             <LazyGrowthTrendsSection
               growthTrends={growthTrends}
+              serviceBreakdown={serviceBreakdown}
               formatCurrency={formatCurrency}
               formatPercent={formatPercent}
-            />
-          </Suspense>
-
-          {/* Section 3: Campaign Effectiveness */}
-          <Suspense fallback={<SectionLoadingFallback />}>
-            <LazyCampaignROISection
-              campaignROI={campaignROI}
-              formatCurrency={formatCurrency}
-              formatPercent={formatPercent}
+              collapsible
+              isCollapsed={collapsedSections['growth']}
+              onToggle={() => handleToggleSection('growth')}
             />
           </Suspense>
 

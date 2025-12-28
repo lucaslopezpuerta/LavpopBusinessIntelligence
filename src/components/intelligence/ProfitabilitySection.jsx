@@ -1,8 +1,33 @@
-// ProfitabilitySection.jsx v3.0
+// ProfitabilitySection.jsx v3.6
 // Profitability analysis section for Intelligence tab
 // Design System v3.1 compliant - Refactored with unified components
 //
 // CHANGELOG:
+// v3.6 (2025-12-28): Replaced Manutenção with Custo por Ciclo
+//   - Manutenção was redundant (included in Custos Totais)
+//   - Custo por Ciclo provides better operational insight
+//   - Shows total costs divided by number of services
+// v3.5 (2025-12-28): Mobile 2-column card layout
+//   - KPIGrid columns={6} for 2 cols mobile, 3 cols desktop
+//   - Better mobile card distribution for 6 cards
+// v3.4 (2025-12-28): Card design unified with KPICard component
+//   - Uses unified KPICard component with variant="gradient" for consistency
+//   - KPIGrid columns={3} for 3-col layout (matches GrowthTrendsSection)
+//   - OptimizationLever uses matching gradient backgrounds
+//   - Consistent design across Intelligence tab sections
+// v3.3 (2025-12-28): Removed redundant elements, improved context
+//   - REMOVED: Bar chart (redundant with KPI cards showing same data)
+//   - REMOVED: Bottom success InsightBox (redundant with top insight)
+//   - IMPROVED: InsightBox now shows specific margin context
+//   - IMPROVED: Break-even section has clearer progress context
+// v3.2 (2025-12-28): Mobile compatibility improvements
+//   - OptimizationLever: horizontal layout on mobile, stacked grid
+//   - Responsive grid: 1 col mobile, 3 cols desktop for levers
+//   - Improved spacing and touch targets on small screens
+// v3.1 (2025-12-28): Optimization levers
+//   - Added optimizationLevers prop for margin improvement guidance
+//   - Shows 3 options: revenue increase, cost reduction, price increase
+//   - Only shows when margin is below target (15%)
 // v3.0 (2025-12-14): Migrated from Nivo to Recharts
 //   - Replaced ResponsiveBar (Nivo) with BarChart (Recharts)
 //   - Custom tooltip matching project patterns
@@ -22,89 +47,72 @@
 //   - Reduced code from 308 to ~200 lines
 // v1.0 (2025-11-30): Initial extraction from Intelligence.jsx
 
-import React, { useMemo, useCallback } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { DollarSign, CheckCircle, AlertTriangle } from 'lucide-react';
+import React from 'react';
+import { DollarSign, CheckCircle, AlertTriangle, TrendingUp, Scissors, Tag, Lightbulb, Calendar, Gauge } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import KPICard, { KPIGrid } from '../ui/KPICard';
 import InsightBox from '../ui/InsightBox';
 import ProgressBar from '../ui/ProgressBar';
-import { ChartLegend } from '../ui/ChartSection';
 import { useIsMobile } from '../../hooks/useMediaQuery';
-import { useTheme } from '../../contexts/ThemeContext';
 
-// Chart colors
-const CHART_COLORS = {
-  receita: '#10b981',
-  custos: '#ef4444',
-  lucro: '#8b5cf6'
+// Optimization lever card - matches ServiceSegmentCard style from GrowthTrendsSection
+const OptimizationLever = ({ title, target, detail, icon: Icon, color }) => {
+  const isMobile = useIsMobile();
+
+  // Color variants for icon accent
+  const iconColors = {
+    emerald: 'text-emerald-500 dark:text-emerald-400',
+    amber: 'text-amber-500 dark:text-amber-400',
+    blue: 'text-blue-500 dark:text-blue-400',
+  };
+
+  const iconClass = iconColors[color] || iconColors.emerald;
+
+  // Mobile: horizontal layout (same as ServiceSegmentCard mobile)
+  if (isMobile) {
+    return (
+      <div className="p-3 rounded-xl border transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-200 dark:bg-slate-700">
+          <Icon className={`w-5 h-5 ${iconClass}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{title}</span>
+          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{detail}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-base font-bold text-slate-900 dark:text-white">{target}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: vertical layout (same as ServiceSegmentCard desktop)
+  return (
+    <div className="p-3 rounded-xl border transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={`w-4 h-4 ${iconClass}`} />
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{title}</span>
+      </div>
+      <p className="text-sm font-bold text-slate-900 dark:text-white mb-0.5">
+        {target}
+      </p>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+        {detail}
+      </p>
+    </div>
+  );
 };
 
 const ProfitabilitySection = ({
   profitability,
+  optimizationLevers,
   formatCurrency,
-  formatPercent
+  formatPercent,
+  // Collapsible props
+  collapsible = false,
+  isCollapsed = false,
+  onToggle
 }) => {
-  const isMobile = useIsMobile();
-  const { isDark } = useTheme();
-
-  // Memoize chart data for Recharts format (array of objects per bar)
-  const chartData = useMemo(() => {
-    if (!profitability) return null;
-    // Check if we have valid data (not all zeros/NaN)
-    const hasValidData = (profitability.totalRevenue || 0) > 0 ||
-                         (profitability.totalCosts || 0) > 0;
-    if (!hasValidData) return null;
-
-    // Format data for grouped bar chart
-    return [
-      { name: 'Receita', value: profitability.totalRevenue || 0, fill: CHART_COLORS.receita },
-      { name: 'Custos', value: profitability.totalCosts || 0, fill: CHART_COLORS.custos },
-      { name: 'Lucro', value: Math.max(0, profitability.netProfit || 0), fill: CHART_COLORS.lucro }
-    ];
-  }, [profitability?.totalRevenue, profitability?.totalCosts, profitability?.netProfit]);
-
-  // Chart legend items
-  const legendItems = useMemo(() => [
-    { color: CHART_COLORS.receita, label: 'Receita' },
-    { color: CHART_COLORS.custos, label: 'Custos' },
-    { color: CHART_COLORS.lucro, label: 'Lucro' }
-  ], []);
-
-  // Custom tooltip for Recharts
-  const CustomTooltip = useCallback(({ active, payload }) => {
-    if (!active || !payload?.length) return null;
-    const data = payload[0];
-
-    return (
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg">
-        <div className="flex items-center gap-2 mb-1">
-          <div
-            className="w-3 h-3 rounded-sm"
-            style={{ backgroundColor: data.payload.fill }}
-          />
-          <span className="font-semibold text-slate-900 dark:text-white text-sm">
-            {data.payload.name}
-          </span>
-        </div>
-        <p className="text-slate-600 dark:text-slate-300 font-bold">
-          {formatCurrency(data.value)}
-        </p>
-      </div>
-    );
-  }, [formatCurrency]);
-
-  // Format Y axis values
-  const formatYAxis = useCallback((value) => {
-    if (isMobile) {
-      if (value >= 1000) {
-        return `${Math.round(value / 1000)}k`;
-      }
-      return `R$ ${value}`;
-    }
-    return formatCurrency(value);
-  }, [isMobile, formatCurrency]);
-
   if (!profitability) return null;
 
   const {
@@ -123,6 +131,9 @@ const ProfitabilitySection = ({
       icon={DollarSign}
       id="profitability-section"
       color="emerald"
+      collapsible={collapsible}
+      isCollapsed={isCollapsed}
+      onToggle={onToggle}
     >
       <div className="space-y-5 sm:space-y-6">
         {/* Critical Insight First - Most important info at top */}
@@ -131,15 +142,16 @@ const ProfitabilitySection = ({
           title={isAboveBreakEven ? 'Negocio Lucrativo' : 'Atencao: Abaixo do Break-Even'}
           message={
             isAboveBreakEven
-              ? `Voce esta ${formatPercent(Math.abs(breakEvenBuffer))} acima do ponto de equilibrio. Margem de lucro de ${formatPercent(profitMargin)}. Continue mantendo a eficiencia operacional!`
-              : `Voce precisa de mais ${breakEvenServices - actualServices} servicos para atingir o ponto de equilibrio. Considere lancar promocoes ou revisar custos fixos.`
+              ? `Lucro de ${formatCurrency(netProfit)} com margem de ${formatPercent(profitMargin)}. Voce tem ${actualServices - breakEvenServices} servicos de folga alem do break-even - isso significa que pode absorver quedas de ate ${formatPercent(Math.abs(breakEvenBuffer))} na receita antes de ter prejuizo.`
+              : `Faltam ${breakEvenServices - actualServices} servicos (~${formatCurrency((breakEvenServices - actualServices) * (profitability.avgServiceValue || 0))}) para cobrir os custos. Acao imediata: foque em aumentar agendamentos ou reduza custos fixos nao essenciais.`
           }
         />
 
-        {/* KPI Grid - Uses unified component */}
-        <KPIGrid columns={4}>
+        {/* KPI Grid - 6 cards: 2 cols mobile, 3 cols desktop */}
+        <KPIGrid columns={6}>
           <KPICard
             label="Receita Bruta"
+            mobileLabel="Receita"
             value={formatCurrency(profitability.grossRevenue)}
             subtitle="+ Cashback aplicado"
             color="revenue"
@@ -147,25 +159,49 @@ const ProfitabilitySection = ({
             icon={DollarSign}
           />
           <KPICard
-            label="Custos Totais"
-            value={formatCurrency(profitability.totalCosts)}
-            subtitle="Fixos + Manutencao"
+            label="Custos Fixos"
+            mobileLabel="C. Fixos"
+            value={formatCurrency(profitability.fixedCosts)}
+            subtitle={`${profitability.daysInPeriod} dias`}
             color="neutral"
             variant="gradient"
+            icon={Calendar}
           />
           <KPICard
-            label="Lucro Liquido"
+            label="Custo por Ciclo"
+            mobileLabel="$/Ciclo"
+            value={formatCurrency(actualServices > 0 ? profitability.totalCosts / actualServices : 0)}
+            subtitle={`${actualServices} ciclos no mês`}
+            color="purple"
+            variant="gradient"
+            icon={Gauge}
+          />
+          <KPICard
+            label="Custos Totais"
+            mobileLabel="Total"
+            value={formatCurrency(profitability.totalCosts)}
+            subtitle={`${profitability.daysInPeriod} dias`}
+            color="cost"
+            variant="gradient"
+            icon={AlertTriangle}
+          />
+          <KPICard
+            label="Lucro Líquido"
+            mobileLabel="Lucro"
             value={formatCurrency(netProfit)}
+            subtitle={netProfit > 0 ? 'Positivo' : 'Negativo'}
             color={netProfit > 0 ? 'positive' : 'negative'}
             variant="gradient"
-            trend={{ label: netProfit > 0 ? 'Positivo' : 'Negativo' }}
+            icon={netProfit > 0 ? TrendingUp : AlertTriangle}
           />
           <KPICard
             label="Margem"
+            mobileLabel="Margem"
             value={formatPercent(profitMargin)}
             subtitle={`${profitability.daysInPeriod} dias`}
-            color="profit"
+            color="blue"
             variant="gradient"
+            icon={CheckCircle}
           />
         </KPIGrid>
 
@@ -209,133 +245,48 @@ const ProfitabilitySection = ({
           />
         </div>
 
-        {/* Cost Breakdown Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-              Custos Fixos
+        {/* Optimization Levers - How to improve margin */}
+        {optimizationLevers && !optimizationLevers.alreadyAtTarget && (
+          <div className="mt-6 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
+            <h4 className="text-sm font-semibold text-indigo-900 dark:text-indigo-100 mb-4 flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-indigo-500" />
+              Como Melhorar a Margem (meta: {optimizationLevers.targetMargin}%)
             </h4>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Periodo:</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {profitability.daysInPeriod} dias
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Total:</span>
-                <span className="font-bold text-slate-900 dark:text-white">
-                  {formatCurrency(profitability.fixedCosts)}
-                </span>
-              </div>
-            </div>
-          </div>
 
-          <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-              Manutencao
-            </h4>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Custo:</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {formatCurrency(profitability.maintenanceCosts)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">% do Total:</span>
-                <span className="font-bold text-slate-900 dark:text-white">
-                  {formatPercent(profitability.totalCosts > 0
-                    ? (profitability.maintenanceCosts / profitability.totalCosts) * 100
-                    : 0)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+            {/* Responsive grid: stacked on mobile, 3 cols on desktop */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+              {/* Option A: Increase Revenue */}
+              <OptimizationLever
+                title="Aumentar Receita"
+                target={`+${formatCurrency(optimizationLevers.revenue.needed)}/mês`}
+                detail={`+${optimizationLevers.revenue.weeklyServicesNeeded} serviços/semana`}
+                icon={TrendingUp}
+                color="emerald"
+              />
 
-        {/* Chart - only render if we have valid data */}
-        {chartData && (
-        <div>
-          <p id="profitability-chart-desc" className="sr-only">
-            Grafico de barras mostrando receita de {formatCurrency(profitability.totalRevenue)},
-            custos de {formatCurrency(profitability.totalCosts)}, e lucro de{' '}
-            {formatCurrency(Math.max(0, profitability.netProfit))}.
-          </p>
-          <div
-            className="h-48 sm:h-56 lg:h-64"
-            aria-describedby="profitability-chart-desc"
-            role="img"
-            aria-label="Grafico de Rentabilidade"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={isMobile
-                  ? { top: 10, right: 10, bottom: 20, left: 50 }
-                  : { top: 20, right: 30, bottom: 20, left: 60 }
-                }
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={isDark ? '#334155' : '#e2e8f0'}
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="name"
-                  tick={{
-                    fontSize: 12,
-                    fill: isDark ? '#94a3b8' : '#64748b'
-                  }}
-                  axisLine={{ stroke: isDark ? '#475569' : '#cbd5e1' }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={formatYAxis}
-                  tick={{
-                    fontSize: 12,
-                    fill: isDark ? '#94a3b8' : '#64748b'
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={isMobile ? 45 : 70}
-                />
-                <Tooltip
-                  content={<CustomTooltip />}
-                  cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
-                />
-                <Bar
-                  dataKey="value"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={80}
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+              {/* Option B: Reduce Costs */}
+              <OptimizationLever
+                title="Reduzir Custos"
+                target={`-${formatCurrency(optimizationLevers.cost.reduction)}/mês`}
+                detail={`${optimizationLevers.cost.largestCost} é ${optimizationLevers.cost.largestCostPercent}% dos custos`}
+                icon={Scissors}
+                color="amber"
+              />
 
-          {/* Legend - Desktop shows inline, mobile uses unified component */}
-          {!isMobile ? (
-            <div className="flex justify-center gap-6 mt-4">
-              {legendItems.map((item) => (
-                <div key={item.label} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-sm"
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    {item.label}
-                  </span>
-                </div>
-              ))}
+              {/* Option C: Price Adjustment */}
+              <OptimizationLever
+                title="Ajustar Preços"
+                target={`+${optimizationLevers.price.increasePercent}%`}
+                detail={`Tolerância: -${optimizationLevers.price.volumeDropTolerance}% volume`}
+                icon={Tag}
+                color="blue"
+              />
             </div>
-          ) : (
-            <ChartLegend items={legendItems} />
-          )}
-        </div>
+
+            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-3">
+              Gap atual: {formatPercent(optimizationLevers.marginGap)} abaixo da meta de {optimizationLevers.targetMargin}%
+            </p>
+          </div>
         )}
       </div>
     </SectionCard>

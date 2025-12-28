@@ -294,9 +294,9 @@ export function identifyPeakHours(hourlyPatterns) {
   if (!hourlyPatterns || hourlyPatterns.length === 0) {
     return { peak: [], offPeak: [] };
   }
-  
+
   const sorted = [...hourlyPatterns].sort((a, b) => b.totalUtilization - a.totalUtilization);
-  
+
   const peak = sorted.slice(0, 5).map(h => ({
     hour: h.hour,
     hourLabel: h.hourLabel,
@@ -304,7 +304,7 @@ export function identifyPeakHours(hourlyPatterns) {
     avgServices: h.avgTotal,
     revenue: h.avgRevenue
   }));
-  
+
   const offPeak = sorted.slice(-5).reverse().map(h => ({
     hour: h.hour,
     hourLabel: h.hourLabel,
@@ -312,7 +312,161 @@ export function identifyPeakHours(hourlyPatterns) {
     avgServices: h.avgTotal,
     revenue: h.avgRevenue
   }));
-  
+
+  return { peak, offPeak };
+}
+
+/**
+ * Calculate hourly patterns from day-of-week grid (matches UtilizationHeatmap calculation)
+ * This aggregates by (hour, day-of-week) first, then averages across day-of-week cells.
+ * Better reflects business patterns as it preserves day-of-week variations.
+ * ✅ Used by PeakHoursSummary for consistency with heatmap
+ * @param {Array} salesData - Sales data array
+ * @param {string} dateFilter - Date filter option
+ */
+export function calculateHourlyPatternsFromGrid(salesData, dateFilter = 'currentWeek') {
+  const records = parseSalesRecords(salesData);
+  const window = getDateWindows(dateFilter);
+  const windowRecords = records.filter(r =>
+    r.date >= window.start &&
+    r.date <= window.end &&
+    !r.isRecarga
+  );
+
+  const { start: HOUR_START, end: HOUR_END } = BUSINESS_PARAMS.OPERATING_HOURS;
+
+  // Capacity calculation (same as heatmap)
+  const efficiencyFactor = BUSINESS_PARAMS.EFFICIENCY_FACTOR;
+  const washCapacityPerHour = BUSINESS_PARAMS.TOTAL_WASHERS * (60 / BUSINESS_PARAMS.WASHER_CYCLE_MINUTES) * efficiencyFactor;
+  const dryCapacityPerHour = BUSINESS_PARAMS.TOTAL_DRYERS * (60 / BUSINESS_PARAMS.DRYER_CYCLE_MINUTES) * efficiencyFactor;
+
+  // Weights based on machine count
+  const totalMachines = BUSINESS_PARAMS.TOTAL_WASHERS + BUSINESS_PARAMS.TOTAL_DRYERS;
+  const washWeight = BUSINESS_PARAMS.TOTAL_WASHERS / totalMachines;
+  const dryWeight = BUSINESS_PARAMS.TOTAL_DRYERS / totalMachines;
+
+  // Initialize grid: [hour][day] - track wash and dry separately
+  const grid = {};
+  const daysSeen = {};
+  const revenueGrid = {};
+
+  for (let hour = HOUR_START; hour < HOUR_END; hour++) {
+    grid[hour] = {};
+    daysSeen[hour] = {};
+    revenueGrid[hour] = {};
+    for (let day = 0; day < 7; day++) {
+      grid[hour][day] = { wash: 0, dry: 0, total: 0 };
+      daysSeen[hour][day] = new Set();
+      revenueGrid[hour][day] = 0;
+    }
+  }
+
+  // Also track revenue (including Recarga) separately
+  const allWindowRecords = records.filter(r => r.date >= window.start && r.date <= window.end);
+
+  // Process services (exclude Recarga)
+  windowRecords.forEach(r => {
+    const hour = r.hour;
+    if (hour < HOUR_START || hour >= HOUR_END) return;
+
+    const dayOfWeek = r.date.brazil
+      ? new Date(r.date.brazil.year, r.date.brazil.month - 1, r.date.brazil.day).getDay()
+      : r.date.getDay();
+
+    grid[hour][dayOfWeek].wash += r.washCount;
+    grid[hour][dayOfWeek].dry += r.dryCount;
+    grid[hour][dayOfWeek].total += r.totalServices;
+    daysSeen[hour][dayOfWeek].add(r.dateStr);
+  });
+
+  // Process revenue (include ALL including Recarga)
+  allWindowRecords.forEach(r => {
+    const hour = r.hour;
+    if (hour < HOUR_START || hour >= HOUR_END) return;
+
+    const dayOfWeek = r.date.brazil
+      ? new Date(r.date.brazil.year, r.date.brazil.month - 1, r.date.brazil.day).getDay()
+      : r.date.getDay();
+
+    revenueGrid[hour][dayOfWeek] += r.netValue;
+  });
+
+  // Calculate hourly averages from day-of-week cells
+  const hoursArray = [];
+
+  for (let hour = HOUR_START; hour < HOUR_END; hour++) {
+    let totalUtilization = 0;
+    let totalServices = 0;
+    let totalRevenue = 0;
+    let cellsWithData = 0;
+
+    for (let day = 0; day < 7; day++) {
+      const uniqueDays = daysSeen[hour][day].size;
+      if (uniqueDays === 0) continue;
+
+      const avgWash = grid[hour][day].wash / uniqueDays;
+      const avgDry = grid[hour][day].dry / uniqueDays;
+      const avgServices = grid[hour][day].total / uniqueDays;
+      const avgRevenue = revenueGrid[hour][day] / uniqueDays;
+
+      // Weighted utilization (same as heatmap)
+      const washUtil = (avgWash / washCapacityPerHour) * 100;
+      const dryUtil = (avgDry / dryCapacityPerHour) * 100;
+      const cellUtilization = (washUtil * washWeight) + (dryUtil * dryWeight);
+
+      totalUtilization += cellUtilization;
+      totalServices += avgServices;
+      totalRevenue += avgRevenue;
+      cellsWithData++;
+    }
+
+    // Average across day-of-week cells that have data
+    const avgUtilization = cellsWithData > 0 ? totalUtilization / cellsWithData : 0;
+    const avgServices = cellsWithData > 0 ? totalServices / cellsWithData : 0;
+    const avgRevenue = cellsWithData > 0 ? totalRevenue / cellsWithData : 0;
+
+    hoursArray.push({
+      hour,
+      hourLabel: `${hour}:00`,
+      totalUtilization: Math.round(avgUtilization * 10) / 10,
+      avgTotal: Math.round(avgServices * 10) / 10,
+      avgRevenue: Math.round(avgRevenue * 100) / 100,
+      daysWithData: cellsWithData
+    });
+  }
+
+  return hoursArray;
+}
+
+/**
+ * Find peak and off-peak hours from grid-based calculation
+ * Uses calculateHourlyPatternsFromGrid for consistency with heatmap
+ */
+export function identifyPeakHoursFromGrid(salesData, dateFilter = 'currentWeek') {
+  const hourlyPatterns = calculateHourlyPatternsFromGrid(salesData, dateFilter);
+
+  if (!hourlyPatterns || hourlyPatterns.length === 0) {
+    return { peak: [], offPeak: [] };
+  }
+
+  const sorted = [...hourlyPatterns].sort((a, b) => b.totalUtilization - a.totalUtilization);
+
+  const peak = sorted.slice(0, 5).map(h => ({
+    hour: h.hour,
+    hourLabel: h.hourLabel,
+    utilization: h.totalUtilization,
+    avgServices: h.avgTotal,
+    revenue: h.avgRevenue
+  }));
+
+  const offPeak = sorted.slice(-5).reverse().map(h => ({
+    hour: h.hour,
+    hourLabel: h.hourLabel,
+    utilization: h.totalUtilization,
+    avgServices: h.avgTotal,
+    revenue: h.avgRevenue
+  }));
+
   return { peak, offPeak };
 }
 
@@ -526,24 +680,28 @@ export function calculateOperationsMetrics(salesData, dateFilter = 'currentWeek'
   const overallUtilization = calculateOverallUtilization(salesData, dateFilter);
   const hourlyPatterns = calculateHourlyPatterns(salesData, dateFilter);
   const peakHours = identifyPeakHours(hourlyPatterns);
+  // NEW v3.8: Grid-based peak hours (matches heatmap calculation, used by PeakHoursSummary)
+  const peakHoursGrid = identifyPeakHoursFromGrid(salesData, dateFilter);
   const dayPatterns = calculateDayOfWeekPatterns(salesData, dateFilter);
   const washVsDry = calculateWashVsDry(salesData, dateFilter);
   const machinePerformance = calculateMachinePerformance(salesData, dateFilter);
-  
+
   // Calculate revenue breakdown
   const records = parseSalesRecords(salesData);
   const windowRecords = records.filter(r => r.date >= window.start && r.date <= window.end);
-  
+
   const machineRevenue = windowRecords.filter(r => !r.isRecarga).reduce((sum, r) => sum + r.netValue, 0);
   const recargaRevenue = windowRecords.filter(r => r.isRecarga).reduce((sum, r) => sum + r.netValue, 0);
   const totalRevenue = machineRevenue + recargaRevenue;
-  
+
   return {
     // NEW v3.5: Overall utilization for the filtered period
     utilization: overallUtilization,
-    
+
     hourlyPatterns,
     peakHours,
+    // NEW v3.8: Grid-based peak hours for PeakHoursSummary (matches heatmap)
+    peakHoursGrid,
     dayPatterns,
     washVsDry,
     machinePerformance,

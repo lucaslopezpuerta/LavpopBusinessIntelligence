@@ -1,8 +1,28 @@
-// SectionCard.jsx v2.0
+// SectionCard.jsx v2.5
 // Wrapper component for Intelligence sections
 // Design System v3.1 compliant - Unified header pattern
 //
 // CHANGELOG:
+// v2.5 (2025-12-28): Expanded header layout matches non-collapsible
+//   - Expanded header uses same flex-col/sm:flex-row layout as non-collapsible
+//   - Chevron positioned at bottom-right on mobile, center-right on desktop
+//   - Added text-left for proper button text alignment
+// v2.4 (2025-12-28): Compact collapsed state redesign
+//   - Separate compact header when collapsed: smaller icon (28px), no subtitle
+//   - Smaller title font when collapsed (text-sm vs text-base/lg)
+//   - Reduced section padding when collapsed (px-3 py-2)
+//   - Overall collapsed height ~40px vs ~60px before
+// v2.3 (2025-12-28): Further collapsed state refinements
+//   - Reduced vertical padding when collapsed (py-2.5 for tighter title spacing)
+// v2.2 (2025-12-28): Collapsed state styling improvements
+//   - Reduced padding when collapsed (p-4 only)
+//   - Header margin removed when collapsed for compact look
+//   - Smooth transition on padding change
+// v2.1 (2025-12-28): Collapsible sections support
+//   - Added collapsible prop to enable section collapse
+//   - isCollapsed and onToggle props for controlled collapse state
+//   - Smooth animation for collapse/expand transition
+//   - ChevronDown icon rotates based on state
 // v2.0 (2025-12-02): Unified header design
 //   - Updated icon box to match app-wide pattern (border-l-4 accent)
 //   - Consistent with Customers.jsx section headers
@@ -15,6 +35,7 @@
 //   - Responsive padding
 
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 
 // Color mappings for section accents
 const SECTION_COLORS = {
@@ -61,32 +82,89 @@ const SectionHeader = ({
   icon: Icon,
   action,
   id,
-  color = 'emerald'
+  color = 'emerald',
+  collapsible = false,
+  isCollapsed = false,
+  onToggle
 }) => {
   const colors = SECTION_COLORS[color] || SECTION_COLORS.emerald;
 
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-      <div className="flex items-center gap-2">
-        {Icon && (
-          <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center border-l-4 ${colors.border} flex-shrink-0`}>
-            <Icon className={`w-5 h-5 ${colors.icon}`} aria-hidden="true" />
-          </div>
-        )}
-        <div>
+  // Compact header for collapsed state - smaller icon, no subtitle
+  if (collapsible && onToggle && isCollapsed) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
+        aria-expanded={false}
+        aria-controls={`${id}-content`}
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {Icon && (
+            <div className={`w-7 h-7 rounded-lg ${colors.bg} flex items-center justify-center border-l-2 ${colors.border} flex-shrink-0`}>
+              <Icon className={`w-3.5 h-3.5 ${colors.icon}`} aria-hidden="true" />
+            </div>
+          )}
           <h2
             id={id}
-            className="text-base sm:text-lg font-bold text-slate-900 dark:text-white"
+            className="text-sm font-semibold text-slate-900 dark:text-white truncate"
           >
             {title}
           </h2>
-          {subtitle && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {subtitle}
-            </p>
-          )}
         </div>
+        <ChevronDown
+          className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0"
+        />
+      </button>
+    );
+  }
+
+  const headerContent = (
+    <div className="flex items-center gap-2 flex-1 min-w-0">
+      {Icon && (
+        <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center border-l-4 ${colors.border} flex-shrink-0`}>
+          <Icon className={`w-5 h-5 ${colors.icon}`} aria-hidden="true" />
+        </div>
+      )}
+      <div className="min-w-0">
+        <h2
+          id={id}
+          className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate"
+        >
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            {subtitle}
+          </p>
+        )}
       </div>
+    </div>
+  );
+
+  if (collapsible && onToggle) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6 hover:opacity-80 transition-opacity text-left"
+        aria-expanded={true}
+        aria-controls={`${id}-content`}
+      >
+        {headerContent}
+        <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
+          {action && action}
+          <ChevronDown
+            className="w-5 h-5 text-slate-400 dark:text-slate-500 transition-transform duration-200 rotate-180"
+          />
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+      {headerContent}
       {action && action}
     </div>
   );
@@ -100,7 +178,11 @@ const SectionCard = ({
   children,
   id,
   color = 'emerald',
-  className = ''
+  className = '',
+  // Collapsible props
+  collapsible = false,
+  isCollapsed = false,
+  onToggle
 }) => {
   const headingId = id || `section-${title?.toLowerCase().replace(/\s+/g, '-')}`;
 
@@ -110,8 +192,9 @@ const SectionCard = ({
       className={`
         bg-white dark:bg-slate-800
         rounded-2xl shadow-soft border border-slate-200 dark:border-slate-700
-        p-4 sm:p-6 lg:p-8
+        ${collapsible && isCollapsed ? 'px-3 py-2' : 'p-4 sm:p-6 lg:p-8'}
         animate-slide-up
+        transition-all duration-200
         ${className}
       `}
     >
@@ -123,9 +206,24 @@ const SectionCard = ({
           action={action}
           id={headingId}
           color={color}
+          collapsible={collapsible}
+          isCollapsed={isCollapsed}
+          onToggle={onToggle}
         />
       )}
-      {children}
+      {collapsible ? (
+        <div
+          id={`${headingId}-content`}
+          className={`
+            overflow-hidden transition-all duration-300 ease-in-out
+            ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}
+          `}
+        >
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </section>
   );
 };

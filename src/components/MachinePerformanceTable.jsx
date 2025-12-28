@@ -112,8 +112,8 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
 
     return (
       <tr className={`border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${rowBgClass}`}>
-        <td className="p-2 sm:p-3">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <td className="p-2 sm:p-3 text-center">
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2">
             {machine.type === 'wash' ? (
               <Droplet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             ) : (
@@ -142,10 +142,10 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
             )}
           </div>
         </td>
-        <td className="p-2 sm:p-3 text-right text-xs sm:text-sm font-medium text-slate-900 dark:text-white">
+        <td className="p-2 sm:p-3 text-center text-xs sm:text-sm font-medium text-slate-900 dark:text-white">
           {formatCurrency(machine.revenue)}
         </td>
-        <td className="hidden sm:table-cell p-3 text-right text-sm text-slate-600 dark:text-slate-400">
+        <td className="hidden sm:table-cell p-3 text-center text-sm text-slate-600 dark:text-slate-400">
           {formatCurrency(machine.avgRevenuePerUse)}
         </td>
         <td className="hidden sm:table-cell p-3 text-center">
