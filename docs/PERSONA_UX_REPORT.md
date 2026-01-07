@@ -509,6 +509,215 @@ Track these post-redesign:
 
 ---
 
+## UX/UI Design System Analysis
+
+### Design System Overview
+
+The application implements a comprehensive design system (v4.0) built on Tailwind CSS with custom extensions.
+
+### Color System
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| **Lavpop Blue** | `#1a5a8e` | Primary brand, CTAs, active states |
+| **Lavpop Green** | `#55b03b` | Success, positive trends, accent |
+| **Risk Churning** | `#dc2626` | Critical alerts, negative trends |
+| **Risk At-Risk** | `#f59e0b` | Warnings, attention needed |
+| **Risk New** | `#9333ea` | New customer indicators |
+
+**Strengths:**
+- Full color scales (50-900) for each brand color
+- Semantic color tokens for risk levels
+- Consistent dark mode variants via CSS variables
+- Brand-colored glow effects for emphasis
+
+**Weaknesses:**
+- Too many color variations may cause inconsistency
+- Risk colors could benefit from more accessible alternatives
+
+### Typography
+
+| Element | Font | Weight | Size |
+|---------|------|--------|------|
+| **Headings** | Inter | 600-800 | 18-36px |
+| **Body** | Inter | 400-500 | 14-16px |
+| **Labels** | Inter | 500-600 | 12-14px |
+| **Code/Data** | JetBrains Mono | 400-600 | 12-14px |
+
+**Strengths:**
+- Google Fonts (Inter) provides excellent readability
+- Responsive font sizes (mobile vs desktop)
+- Proper line-height ratios for accessibility
+
+**Weaknesses:**
+- Some labels use 12px which may be too small for Roberto's age group
+- Currency values could use tabular figures for better alignment
+
+### Spacing & Layout
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| **card-sm** | 16px | Mobile card padding |
+| **card-md** | 24px | Tablet card padding |
+| **card-lg** | 32px | Desktop card padding |
+| **Gap default** | 12-16px | Grid gaps |
+| **Section gap** | 24-32px | Between major sections |
+
+**Strengths:**
+- Responsive spacing tokens
+- Consistent grid gaps across views
+- Mobile-first approach with larger desktop spacing
+
+### Component Library Assessment
+
+| Component | Quality | Notes |
+|-----------|---------|-------|
+| **KPICard** | ⭐⭐⭐⭐⭐ | 4 variants, responsive, accessible |
+| **Skeleton loaders** | ⭐⭐⭐⭐⭐ | View-specific, reduces perceived load time |
+| **ErrorScreen** | ⭐⭐⭐⭐⭐ | Smart categorization, actionable recovery |
+| **BottomNavBar** | ⭐⭐⭐⭐ | Safe area support, haptics |
+| **Charts (Recharts)** | ⭐⭐⭐ | Functional but could use better tooltips |
+| **Tables** | ⭐⭐⭐ | Need better mobile responsiveness |
+
+### Navigation Patterns
+
+**Desktop:**
+- Icon sidebar with hover expansion
+- Pinnable for always-visible labels
+- Keyboard shortcuts (1-7 for views)
+- Clean 60px top bar with widgets
+
+**Mobile:**
+- Fixed bottom nav with 5 primary tabs
+- "More" drawer for secondary routes
+- Swipe navigation between main tabs
+- Haptic feedback on interactions
+- Safe area support for notched devices
+
+**Strengths:**
+- Consistent navigation paradigm
+- Proper mobile-first approach
+- Haptic feedback adds polish
+
+**Weaknesses:**
+- "More" drawer hides important features (Weather, Intelligence)
+- No breadcrumb trail on mobile deep navigation
+
+### Accessibility Audit
+
+| Criteria | Status | Notes |
+|----------|--------|-------|
+| **Focus visible** | ✅ | Blue outline with 2px offset |
+| **Touch targets** | ✅ | 44px minimum (Apple HIG) |
+| **Reduced motion** | ✅ | Respects prefers-reduced-motion |
+| **Screen reader** | ⚠️ | ARIA labels present but incomplete |
+| **Color contrast** | ⚠️ | Some light text on gradients |
+| **iOS zoom prevention** | ✅ | 16px minimum input font |
+
+**Recommendations:**
+1. Add aria-live regions for dynamic content updates
+2. Improve color contrast on gradient KPICards
+3. Add skip-to-content link for keyboard users
+4. Test with VoiceOver/TalkBack for mobile a11y
+
+### Animation & Transitions
+
+| Animation | Duration | Easing |
+|-----------|----------|--------|
+| **Page transitions** | 300ms | ease-out |
+| **Card hover** | 200ms | ease |
+| **Modal open** | 200ms | cubic-bezier |
+| **Loading shimmer** | 2s | infinite linear |
+| **Weather icons** | 3-6s | ease-in-out infinite |
+
+**Strengths:**
+- Framer Motion provides smooth animations
+- Weather animations add delight
+- Reduced motion fully supported
+
+**Weaknesses:**
+- Some animations may feel slow for power users
+- Count-up animations on KPIs can delay data visibility
+
+### Responsive Design
+
+| Breakpoint | Width | Layout Changes |
+|------------|-------|----------------|
+| **xs** | 475px | Compact cards |
+| **sm** | 640px | 2-column grids |
+| **md** | 768px | Tablet layout |
+| **lg** | 1024px | Desktop sidebar, hide bottom nav |
+| **xl** | 1280px | Expanded data tables |
+| **2xl** | 1536px | Maximum content width |
+
+**Strengths:**
+- Mobile-first approach
+- View-specific responsive layouts
+- Charts adapt to container width
+
+**Weaknesses:**
+- Some tables require horizontal scroll on mobile
+- RFM scatter plot too small on mobile
+- Directory cards could be denser on desktop
+
+### Dark Mode Implementation
+
+**Strengths:**
+- Full dark mode support via Tailwind `dark:` classes
+- CSS variables for theme switching
+- Recharts theme overrides
+- 300ms smooth transition
+
+**Weaknesses:**
+- Some charts have inconsistent dark mode colors
+- Gradient cards may have contrast issues in dark mode
+
+### Loading States
+
+| State | Implementation | UX Impact |
+|-------|----------------|-----------|
+| **Initial load** | Premium LoadingScreen with data indicators | ⭐⭐⭐⭐⭐ |
+| **View switch** | View-specific skeleton loaders | ⭐⭐⭐⭐⭐ |
+| **Data refresh** | Silent background refresh (no spinner) | ⭐⭐⭐⭐ |
+| **Button loading** | Spinner + disabled state | ⭐⭐⭐⭐ |
+| **Infinite scroll** | Not implemented | - |
+
+### Error Handling
+
+**Strengths:**
+- Smart error categorization (network, database, timeout, auth, server)
+- User-friendly Portuguese messages
+- Actionable recovery suggestions
+- Expandable technical details
+- Retry functionality with loading state
+
+**Weaknesses:**
+- No offline indicator in header
+- No partial error states (all-or-nothing)
+- Cache errors could show more context
+
+### Design System Recommendations
+
+#### High Priority
+1. **Increase minimum font size** to 14px for Roberto's demographic
+2. **Add offline indicator** in top bar when connection is lost
+3. **Improve table mobile UX** with card-based layout on small screens
+4. **Add aria-live regions** for screen reader users
+
+#### Medium Priority
+1. **Create component Storybook** for design consistency
+2. **Add empty states** for all data-dependent views
+3. **Standardize loading skeleton patterns** across all components
+4. **Add error boundaries** per section (not just app-level)
+
+#### Low Priority
+1. **Add micro-interactions** to buttons and toggles
+2. **Consider reduced animation mode** for low-end devices
+3. **Add print styles** for reports
+4. **Create design tokens documentation**
+
+---
+
 ## Appendix: Roberto's Final Quote
 
 > "Eu quero abrir o sistema e em 30 segundos saber: (1) Estou ganhando dinheiro? (2) Tem algum problema urgente? (3) O que devo fazer hoje? O sistema tem MUITA informação boa, mas precisa ser mais direto. Eu não sou analista de dados - sou dono de lavanderia tentando pagar as contas e crescer o negócio. Me dê os números importantes com contexto claro e me diga exatamente o que fazer. A tela de Operações é perfeita nesse sentido - o resto deveria ser assim também."
