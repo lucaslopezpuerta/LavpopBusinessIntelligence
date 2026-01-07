@@ -1,6 +1,6 @@
 # LAVPOP-BI Persona UX Report
 **Generated:** January 2026
-**Methodology:** Persona-based cognitive walkthrough of 5 core user flows
+**Methodology:** Persona-based cognitive walkthrough of 8 core user flows
 
 ---
 
@@ -41,8 +41,21 @@
 | Campaigns (Campanhas) | 4/5 | 4/5 | 5/5 | **4.3** |
 | Intelligence (Inteligência) | 3/5 | 3/5 | 4/5 | **3.3** |
 | Operations (Operações) | 5/5 | 5/5 | 5/5 | **5.0** |
+| Directory (Diretório) | 4/5 | 4/5 | 2/5 | **3.3** |
+| Social Media (Redes Sociais) | 2/5 | 2/5 | 2/5 | **2.0** |
+| Weather (Clima) | 4/5 | 4/5 | 5/5 | **4.3** |
 
-**Overall UX Score: 6.5/10**
+**Overall UX Score: 6.0/10**
+
+### Flow Rankings (Best to Worst)
+1. **Operations** (5.0) - Best screen, clear and actionable
+2. **Weather** (4.3) - Connects data → impact → action perfectly
+3. **Campaigns** (4.3) - Clear insights and CTAs
+4. **Directory** (3.3) - Good search, lacks action guidance
+5. **Intelligence** (3.3) - Valuable but complex
+6. **Dashboard** (3.0) - Quick overview, no action guidance
+7. **Customers** (3.0) - Technical, but at-risk table is gold
+8. **Social Media** (2.0) - Overwhelming, no benchmarks
 
 ---
 
@@ -161,9 +174,107 @@
 
 ---
 
-## Top 5 Redesign Priorities
+### Flow 6: Directory (Diretório)
 
-### Priority 1: Add Goal Tracking Everywhere
+**Roberto's Verdict:** "Ótimo para ENCONTRAR clientes, mas depois que acho os 23 em risco... e daí? Cadê o botão de ação?"
+
+**Key Pain Points:**
+- No bulk action button after filtering (e.g., "Send campaign to filtered")
+- 17+ filter combinations (6 segments × 6 risks × 5 sorts) causes paralysis
+- Difference vs Clientes tab unclear - why two customer views?
+- Advanced filters collapsed by default - discovery problem
+- "Contactados" toggle (Incluir/Excluir) confusing wording
+
+**Delights:**
+- Large, prominent search bar works perfectly
+- Stats pills with pulse animation for "Em Risco" draws attention
+- Customer cards with segment/risk badges are scannable
+- Export to CSV useful for external analysis
+- Pagination works well on mobile (5/10/25 options)
+
+**Critical Missing:**
+- "Enviar Campanha para Filtrados" bulk action button
+- Smart filter presets ("VIPs Inativos", "Em Risco Não Contactados")
+- Segment tooltips explaining what each means
+- Link between finding customers → taking action
+
+---
+
+### Flow 7: Social Media (Redes Sociais)
+
+**Roberto's Verdict:** "Muitos números bonitos, mas não faço ideia se são bons ou ruins. Quanto isso está me custando vs gerando?"
+
+**Key Pain Points:**
+- NO BENCHMARKS - Is 3.8% engagement good? Is R$ 0.04/message expensive?
+- 5 platform tabs overwhelming - no unified overview
+- "Lista Negra" sounds harsh and scary
+- WhatsApp failures unexplained (why did 27 messages fail?)
+- Instagram metrics don't connect to revenue (so what if I have 2000 followers?)
+- R² coefficient in WhatsApp tab is gibberish to Roberto
+
+**Delights:**
+- Google Business shows actionable data (reviews to respond to)
+- Platform icons are recognizable
+- WhatsApp delivery tracking (sent → delivered → read) is clear
+- Facebook "Coming Soon" sets expectations
+
+**Critical Missing:**
+- Overview tab with ROI summary across all platforms
+- Benchmarks for EVERY metric ("Você: 3.8% | Setor: 2.5% ✓")
+- WhatsApp failure breakdown ("15 números inválidos, 12 bloquearam")
+- Revenue attribution ("Instagram gerou 43 visitas = R$ 2.100")
+- Cost vs benefit clarity ("R$ 45 gastos → R$ 890 retorno")
+
+---
+
+### Flow 8: Weather (Clima)
+
+**Roberto's Verdict:** "ISSO SIM É INTELIGÊNCIA DE NEGÓCIO! Me diz o que vai acontecer, quanto vou perder, e o que fazer. Perfeito."
+
+**Key Pain Points:**
+- R² = 0.73 confidence indicator is jargon - what does that mean?
+- No historical accuracy proof ("We predicted X, you made Y")
+- Baseline missing ("Esta semana: R$ 5.200 vs sua média: R$ 5.400")
+- Action button missing - "Considere campanha" but no link to create one
+- Metrics grid (UV, pressure, dew point) mostly irrelevant for business
+
+**Delights:**
+- Daily revenue prediction for each day - EXACTLY what Roberto needs!
+- Impact badges ("Chuvoso -15%", "Frio -8%", "Normal +0%") are instantly clear
+- Weekly summary provides planning visibility
+- Animated weather icons are pleasant
+- Hourly forecast horizontal scroll intuitive
+- Connects EXTERNAL data → BUSINESS impact → SUGGESTED action
+
+**Critical Missing:**
+- "Criar Campanha de Desconto" button alongside rainy day insight
+- Historical accuracy chart (predicted vs actual last 4 weeks)
+- Plain language confidence ("Acurácia: Alta - acertamos 8/10 previsões")
+- Baseline comparison in weekly summary
+
+---
+
+## Top 8 Redesign Priorities
+
+### Priority 1: Add Action Buttons Throughout (NEW)
+**Impact:** HIGH (Action)
+**Effort:** Low-Medium
+
+**Problem:** Directory finds 23 at-risk customers, Weather suggests discount campaign, but there's no button to ACT.
+
+**Solution:**
+- Directory: Floating "Enviar Campanha para [23] clientes" button when filters applied
+- Weather: "Criar Campanha de Desconto" button next to rainy day insight
+- Social Media: "Responder Review" quick action on Google reviews
+
+**Implementation:**
+1. Add `BulkActionButton` component to Directory
+2. Add action button to WeatherBusinessImpact insights
+3. Link buttons directly to Campaigns with pre-filled data
+
+---
+
+### Priority 2: Add Goal Tracking Everywhere
 **Impact:** HIGH (Trust & Action)
 **Effort:** Medium
 
@@ -181,11 +292,11 @@
 
 ---
 
-### Priority 2: Simplify Technical Language
+### Priority 3: Simplify Technical Language
 **Impact:** HIGH (Clarity)
 **Effort:** Low
 
-**Problem:** "RFM", "MTD", "Break-even" alienate non-analyst users.
+**Problem:** "RFM", "MTD", "Break-even", "R²" alienate non-analyst users.
 
 **Solution:**
 | Current | Proposed |
@@ -195,6 +306,8 @@
 | Break-even | Ponto de Equilíbrio (dias para cobrir custos) |
 | Retention Pulse | Índice de Fidelização |
 | Churn Histogram | Clientes em Risco de Sair |
+| R² = 0.73 | Acurácia: Alta (acertamos 8/10 previsões) |
+| Engagement Rate | De cada 100 seguidores, X curtem seus posts |
 
 **Implementation:**
 1. Update all label strings in components
@@ -203,7 +316,7 @@
 
 ---
 
-### Priority 3: Make Actions More Specific
+### Priority 4: Make Actions More Specific
 **Impact:** HIGH (Action)
 **Effort:** Medium
 
@@ -222,25 +335,68 @@
 
 ---
 
-### Priority 4: Add Context to All Metrics
-**Impact:** MEDIUM (Trust & Clarity)
-**Effort:** Low
+### Priority 5: Add Context/Benchmarks to All Metrics
+**Impact:** MEDIUM-HIGH (Trust & Clarity)
+**Effort:** Low-Medium
 
-**Problem:** "Utilização 68%" means nothing without baseline.
+**Problem:** "Utilização 68%", "Engagement 3.8%", "R$ 0.04/msg" mean nothing without baseline.
 
 **Solution:**
 - Add ranges: "68% (Ideal: 70-85%)"
 - Add comparisons: "vs 65% semana passada"
+- Add benchmarks: "Você: 3.8% | Setor: 2.5% ✓ Acima da média"
 - Color-code: green/yellow/red based on thresholds
 
 **Implementation:**
 1. Define thresholds in `src/constants/metricThresholds.js`
-2. Update KPICard to accept `range` and `status` props
-3. Apply status coloring consistently
+2. Update KPICard to accept `range`, `benchmark`, and `status` props
+3. Apply status coloring consistently across all views
 
 ---
 
-### Priority 5: Dashboard "Status Board" Section
+### Priority 6: Social Media Overview Tab (NEW)
+**Impact:** MEDIUM (Clarity & Action)
+**Effort:** Medium
+
+**Problem:** 5 platform tabs with dozens of metrics is overwhelming.
+
+**Solution:**
+Create new "Visão Geral" default tab showing:
+- Priority alerts: "Google Reviews: 2 precisam resposta"
+- ROI summary: "Este mês: R$ 145 gastos → R$ 2.890 receita"
+- Platform health indicators (green/yellow/red)
+- Quick action buttons for urgent items
+
+**Implementation:**
+1. Create `SocialMediaOverview` component
+2. Aggregate key metrics from each platform
+3. Add ROI calculation linking costs to revenue
+
+---
+
+### Priority 7: Directory Smart Filter Presets (NEW)
+**Impact:** MEDIUM (Clarity & Action)
+**Effort:** Low
+
+**Problem:** 17+ filter combinations cause analysis paralysis.
+
+**Solution:**
+Replace complex filters with preset buttons:
+- "Clientes em Risco Não Contactados"
+- "VIPs Inativos (30+ dias)"
+- "Novos Clientes (< 90 dias)"
+- "Gastaram > R$ 500 mas não voltaram"
+
+Hide advanced filters in expandable accordion.
+
+**Implementation:**
+1. Add preset buttons above filter panel
+2. Each preset sets multiple filters at once
+3. Keep "Filtros Avançados" for power users
+
+---
+
+### Priority 8: Dashboard "Status Board" Section
 **Impact:** MEDIUM (Action & Trust)
 **Effort:** Medium
 
@@ -265,6 +421,7 @@ Hoje: Receita no ritmo, máquinas funcionando bem.
 
 ## Quick Wins (< 1 week each)
 
+### Original 5 Flows
 | Fix | Effort | Impact |
 |-----|--------|--------|
 | Add "?" tooltip icons to all metrics | 1 day | High |
@@ -273,6 +430,29 @@ Hoje: Receita no ritmo, máquinas funcionando bem.
 | Pre-fill campaign wizard with best defaults | 1 day | High |
 | Show R$/Uso on mobile (collapsible) | 3 hours | Medium |
 | Rename "Inteligência" to "Planejamento" | 5 min | Low |
+
+### Directory Quick Wins
+| Fix | Effort | Impact |
+|-----|--------|--------|
+| Add bulk action button when filters applied | 2 hours | High |
+| Add 3-4 smart filter presets as buttons | 4 hours | High |
+| Add segment tooltips on hover | 1 hour | Medium |
+
+### Social Media Quick Wins
+| Fix | Effort | Impact |
+|-----|--------|--------|
+| Add benchmark indicators to all metrics | 3 hours | High |
+| Rename "Lista Negra" to "Não Contactáveis" | 15 min | Low |
+| Add WhatsApp failure reason breakdown | 2 hours | Medium |
+| Create Overview tab with priorities | 6 hours | High |
+
+### Weather Quick Wins
+| Fix | Effort | Impact |
+|-----|--------|--------|
+| Replace R² with plain language accuracy | 30 min | Medium |
+| Add "Criar Campanha" button to insights | 3 hours | High |
+| Show historical accuracy (predicted vs actual) | 4 hours | High |
+| Add baseline to weekly forecast | 1 hour | Medium |
 
 ---
 
@@ -335,4 +515,24 @@ Track these post-redesign:
 
 ---
 
-*Report generated through persona-based cognitive walkthrough methodology. Roberto & Carla Silva represent the primary user archetype for LAVPOP-BI.*
+## Appendix: Flow-Specific Insights
+
+### Best Flows (Role Models)
+1. **Operations** - Clear machine data, actionable insights, immediate understanding
+2. **Weather** - Perfect pattern: External data → Business impact → Suggested action
+
+### Worst Flows (Need Most Work)
+1. **Social Media** - Overwhelming, no benchmarks, no ROI clarity
+2. **Dashboard** - Shows data but no goal context or action guidance
+
+### The "Data → Insight → Action" Pattern
+Weather flow demonstrates the ideal pattern:
+1. **Data:** "Thursday will be rainy"
+2. **Insight:** "Expect -15% revenue (R$ 120 less)"
+3. **Action:** "Send discount campaign" [CREATE CAMPAIGN →]
+
+Apply this pattern to ALL flows for transformative UX improvement.
+
+---
+
+*Report generated through persona-based cognitive walkthrough methodology. Roberto & Carla Silva represent the primary user archetype for LAVPOP-BI. Evaluation covers 8 core user flows: Dashboard, Customers, Campaigns, Intelligence, Operations, Directory, Social Media, and Weather.*
