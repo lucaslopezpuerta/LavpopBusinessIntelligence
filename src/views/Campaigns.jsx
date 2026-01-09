@@ -223,12 +223,10 @@ const Campaigns = ({ data }) => {
         onSectionChange={setActiveSection}
       />
 
-      {/* Campaign Analytics Dashboard - Main overview section */}
-      {activeSection === 'overview' && (
-        <CampaignDashboard
-          audienceSegments={audienceSegments}
-        />
-      )}
+      {/* Campaign Analytics Dashboard - Always visible at top */}
+      <CampaignDashboard
+        audienceSegments={audienceSegments}
+      />
 
       {/* Automation Rules Section */}
       {activeSection === 'automations' && (

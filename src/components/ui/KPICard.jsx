@@ -1,8 +1,23 @@
-// KPICard.jsx v1.5
+// KPICard.jsx v1.9 - STATUS COLOR BADGES
 // Unified KPI card component for Intelligence dashboard
 // Design System v4.0 compliant - Replaces duplicated patterns
 //
 // CHANGELOG:
+// v1.9 (2026-01-07): Status color badges (Plan Item 1.3)
+//   - NEW: status prop for colored left border ('success'|'warning'|'danger'|'neutral')
+//   - Green border for good metrics, yellow for warning, red for critical
+//   - Use with getMetricStatus from constants/metricThresholds.js
+// v1.8 (2026-01-07): Staggered entrance animations (Figma-quality enhancement)
+//   - KPIGrid now animates children with staggered entrance
+//   - Each card fades in and rises 15px with spring physics
+//   - Optional animate prop to disable (default: true)
+// v1.7 (2026-01-07): Premium hover elevation (Figma-quality enhancement)
+//   - Added Framer Motion spring animations for hover lift effect
+//   - Cards lift 2px with enhanced shadow on hover
+//   - Uses spring physics for natural, premium feel
+// v1.6 (2026-01-07): Tooltip help icons (Plan Item 1.2)
+//   - NEW: tooltip prop for ContextHelp icon next to label
+//   - Adapts styling for gradient vs default variants
 // v1.5 (2025-12-28): KPIGrid 6-column option
 //   - Added columns={6} option: 2 cols mobile, 3 cols desktop
 //   - Ideal for 6-card layouts (e.g., ProfitabilitySection)
@@ -31,8 +46,18 @@
 //   - Optional click handler with proper a11y
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { getSemanticColor } from '../../utils/colorMapping';
+import ContextHelp from '../ContextHelp';
+
+// Smooth tween animation config for hover (avoids spring oscillation/trembling)
+const hoverAnimation = {
+  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
+  hover: { y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }
+};
+
+const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
 /**
  * Unified KPI Card Component
@@ -49,6 +74,8 @@ import { getSemanticColor } from '../../utils/colorMapping';
  * @param {string} variant - Card variant: 'default' | 'hero' | 'compact' | 'gradient'
  * @param {function} onClick - Optional click handler
  * @param {string} className - Additional CSS classes
+ * @param {string} tooltip - Optional plain language description for ContextHelp icon
+ * @param {string} status - Optional status for colored left border: 'success' | 'warning' | 'danger' | 'neutral'
  */
 const KPICard = ({
   label,
@@ -63,6 +90,8 @@ const KPICard = ({
   variant = 'default',
   onClick,
   className = '',
+  tooltip,
+  status,
 }) => {
   const colors = getSemanticColor(color);
 
@@ -97,6 +126,14 @@ const KPICard = ({
 
   const v = variants[variant] || variants.default;
   const isGradient = variant === 'gradient';
+
+  // Status border classes for metric health indication
+  const statusBorders = {
+    success: 'border-l-4 border-l-emerald-500',
+    warning: 'border-l-4 border-l-amber-500',
+    danger: 'border-l-4 border-l-red-500',
+    neutral: ''
+  };
 
   // Render trend indicator
   const renderTrend = () => {
@@ -141,30 +178,34 @@ const KPICard = ({
     ${v.container}
     rounded-xl
     border border-slate-100 dark:border-slate-700
-    shadow-soft
-    transition-all duration-200
-    ${onClick ? 'cursor-pointer hover:shadow-soft-lg hover:border-slate-200 dark:hover:border-slate-600 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2 dark:focus:ring-offset-slate-800' : ''}
+    ${statusBorders[status] || ''}
+    ${onClick ? 'cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2 dark:focus:ring-offset-slate-800' : ''}
     ${className}
   `.trim();
 
-  const CardElement = onClick ? 'button' : 'div';
+  // Use motion.button or motion.div based on clickability
+  const MotionCard = onClick ? motion.button : motion.div;
 
   const showInlineTrend = trend && trendPosition === 'inline';
   const showBottomRightTrend = trend && trendPosition === 'bottom-right';
 
   return (
-    <CardElement
+    <MotionCard
       className={cardClasses}
       onClick={onClick}
       type={onClick ? 'button' : undefined}
       aria-label={onClick ? `${label}: ${value}` : undefined}
+      initial="rest"
+      whileHover="hover"
+      variants={hoverAnimation}
+      transition={hoverTransition}
     >
       <div className="flex items-start justify-between gap-2 sm:gap-3">
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Responsive label: show mobileLabel on small screens, full label on larger */}
             <p className={`
-              ${v.label} font-medium uppercase tracking-wide mb-0.5 sm:mb-1 leading-tight
+              ${v.label} font-medium uppercase tracking-wide mb-0.5 sm:mb-1 leading-tight flex items-center gap-1
               ${isGradient ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}
             `}>
               {mobileLabel ? (
@@ -173,6 +214,13 @@ const KPICard = ({
                   <span className="hidden sm:inline">{label}</span>
                 </>
               ) : label}
+              {/* Tooltip help icon */}
+              {tooltip && (
+                <ContextHelp
+                  description={tooltip}
+                  className={isGradient ? 'text-white/60 hover:text-white/90' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'}
+                />
+              )}
             </p>
             <p className={`
               ${v.value} font-bold mb-0.5 leading-tight break-words
@@ -246,17 +294,41 @@ const KPICard = ({
           </div>
         )}
       </div>
-    </CardElement>
+    </MotionCard>
   );
 };
 
+// Staggered animation variants for grid items
+const gridContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const gridItemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 300, damping: 24 }
+  }
+};
+
 /**
- * KPI Grid wrapper for consistent spacing
+ * KPI Grid wrapper with staggered entrance animations
+ *
+ * @param {boolean} animate - Enable staggered entrance animation (default: true)
  */
 export const KPIGrid = ({
   children,
   columns = 4,
-  className = ''
+  className = '',
+  animate = true
 }) => {
   const gridClasses = {
     2: 'grid-cols-2',
@@ -266,10 +338,30 @@ export const KPIGrid = ({
     6: 'grid-cols-2 sm:grid-cols-3', // 6 cards: 2 cols mobile, 3 cols desktop
   };
 
+  if (!animate) {
+    return (
+      <div className={`grid ${gridClasses[columns] || gridClasses[4]} gap-3 sm:gap-4 ${className}`}>
+        {children}
+      </div>
+    );
+  }
+
+  // Wrap children with motion.div for stagger effect
+  const animatedChildren = React.Children.map(children, (child, index) => (
+    <motion.div key={index} variants={gridItemVariants}>
+      {child}
+    </motion.div>
+  ));
+
   return (
-    <div className={`grid ${gridClasses[columns] || gridClasses[4]} gap-3 sm:gap-4 ${className}`}>
-      {children}
-    </div>
+    <motion.div
+      className={`grid ${gridClasses[columns] || gridClasses[4]} gap-3 sm:gap-4 ${className}`}
+      variants={gridContainerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {animatedChildren}
+    </motion.div>
   );
 };
 

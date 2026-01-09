@@ -1,7 +1,10 @@
-// RFMScatterPlot.jsx v3.3.0 - UX/DESIGN REFACTOR
+// RFMScatterPlot.jsx v3.4.0 - CLEANER TOOLTIP
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v3.4.0 (2026-01-07): Cleaner tooltip UX
+//   - REMOVED: "Toque novamente" mobile hint (unnecessary, users discover naturally)
+//   - REMOVED: Pointer icon and animation from tooltip
 // v3.3.0 (2025-12-22): UX/Design Refactor
 //   - CHANGED: "Champions" → "VIP" terminology
 //   - FIXED: Tooltip visibility after modal close (resetTooltipVisibility)
@@ -78,7 +81,7 @@
 
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, ReferenceArea, Label } from 'recharts';
-import { AlertTriangle, CheckCircle, ChevronRight, Pointer } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
 import { getChartColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
@@ -122,7 +125,7 @@ const RFMScatterPlot = ({
     // Use shared touch tooltip hook for mobile-friendly interactions
     // Desktop: single click opens profile immediately
     // Mobile: tap-to-preview, tap-again-to-action
-    const { handleTouch, isActive: isActiveTouch, tooltipHidden, resetTooltipVisibility } = useTouchTooltip({
+    const { handleTouch, tooltipHidden, resetTooltipVisibility } = useTouchTooltip({
         onAction: (entry) => {
             if (entry?.id && onOpenCustomerProfile) {
                 onOpenCustomerProfile(entry.id);
@@ -181,11 +184,10 @@ const RFMScatterPlot = ({
         setModalOpen(true);
     }, [highValueAtRiskCustomers]);
 
-    // Custom Tooltip - with mobile hint support
+    // Custom Tooltip
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
-            const isActiveTouchItem = isActiveTouch(d.id);
 
             // Translate risk status to Portuguese
             const getRiskLabel = (status) => {
@@ -242,16 +244,6 @@ const RFMScatterPlot = ({
                         <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                             <p className="text-amber-600 dark:text-amber-400 text-xs font-medium">
                                 ⚡ Cliente de alto valor sem contato recente
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Mobile hint - shows when item is active from first tap */}
-                    {isActiveTouchItem && onOpenCustomerProfile && (
-                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                            <p className="text-blue-600 dark:text-blue-400 text-xs font-medium text-center flex items-center justify-center gap-1.5">
-                                <Pointer className="w-3.5 h-3.5 animate-bounce" style={{ animationDuration: '1.5s' }} />
-                                <span>Toque novamente para ver perfil</span>
                             </p>
                         </div>
                     )}

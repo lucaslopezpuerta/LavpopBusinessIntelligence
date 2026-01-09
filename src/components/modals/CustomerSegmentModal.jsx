@@ -1,8 +1,12 @@
-// CustomerSegmentModal.jsx v1.7 - SWIPE-TO-CLOSE
+// CustomerSegmentModal.jsx v1.8 - FOCUS RING STANDARDIZATION
 // Clean modal for displaying filtered customer lists with campaign integration
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.8 (2026-01-07): Focus ring standardization and glass morphism
+//   - Added focus-visible rings to close button and navigation buttons
+//   - Changed checkboxes from focus: to focus-visible: for better keyboard UX
+//   - Added glass morphism to modal container (bg-white/95 backdrop-blur-xl)
 // v1.7 (2025-12-18): Added swipe-to-close gesture for mobile
 //   - NEW: Swipe down to close modal on mobile
 //   - Uses useSwipeToClose hook for gesture handling
@@ -344,7 +348,7 @@ const CustomerSegmentModal = ({
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
                 onClick={(e) => e.stopPropagation()}
-                className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[85vh] my-4"
+                className="relative w-full max-w-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-slate-700/50 flex flex-col max-h-[85vh] my-4"
                 style={swipeStyle}
                 {...swipeHandlers}
               >
@@ -374,7 +378,7 @@ const CustomerSegmentModal = ({
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                  className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -430,7 +434,7 @@ const CustomerSegmentModal = ({
                     <select
                       value={selectedManualCampaign}
                       onChange={(e) => setSelectedManualCampaign(e.target.value)}
-                      className="flex-1 text-sm bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-700 dark:text-slate-200"
+                      className="flex-1 text-sm bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                     >
                       <option value="">Selecionar Campanha...</option>
                       {manual.map(campaign => (
@@ -442,7 +446,7 @@ const CustomerSegmentModal = ({
                     <button
                       onClick={handleAddToManualCampaign}
                       disabled={selectedIds.size === 0 || !selectedManualCampaign}
-                      className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                     >
                       Adicionar
                     </button>
@@ -450,7 +454,7 @@ const CustomerSegmentModal = ({
                       <button
                         onClick={handleCreateNewCampaign}
                         disabled={selectedIds.size === 0}
-                        className="px-3 py-2 text-sm font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        className="px-3 py-2 text-sm font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                       >
                         <Plus className="w-4 h-4" />
                         Nova
@@ -468,7 +472,7 @@ const CustomerSegmentModal = ({
                     type="checkbox"
                     checked={selectedIds.size === filteredCustomers.length && filteredCustomers.length > 0}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                   />
                   <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                     Todos ({selectedIds.size}/{filteredCustomers.length})
@@ -483,7 +487,7 @@ const CustomerSegmentModal = ({
                     type="checkbox"
                     checked={hideContacted}
                     onChange={(e) => setHideContacted(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                   />
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     Ocultar Contactados{stats.contacted > 0 && ` (${stats.contacted})`}
@@ -496,7 +500,7 @@ const CustomerSegmentModal = ({
                     type="checkbox"
                     checked={hideBlacklisted}
                     onChange={(e) => setHideBlacklisted(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                   />
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     Ocultar Bloqueados{stats.blacklisted > 0 && ` (${stats.blacklisted})`}
@@ -538,7 +542,7 @@ const CustomerSegmentModal = ({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelect(customerId)}
-                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 flex-shrink-0"
                           />
 
                           {/* Avatar */}
@@ -598,7 +602,7 @@ const CustomerSegmentModal = ({
                   <div className="mt-4 text-center">
                     <button
                       onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
                     >
                       <ChevronRight className="w-4 h-4 rotate-90" />
                       Mostrar Mais ({remaining})

@@ -1,10 +1,23 @@
-# LavpopBI Design System v3.3
+# LavpopBI Design System v3.4
 
-> **Last Updated:** December 18, 2025
+> **Last Updated:** January 7, 2026
 > **Status:** Active - All components aligned with this system
-> **Audit Completed:** UX/UI, Navigation & Mobile Compatibility Audit (Mobile App Readiness)
+> **Audit Completed:** Design System Reconciliation Audit (Documentation vs Implementation)
 
 ## 📋 Changelog
+
+### v3.4 (January 7, 2026) - Design System Reconciliation
+- **FIXED:** Brand green color corrected to `#55b03b` (was incorrectly documented as emerald `#10b981`)
+- **CLARIFIED:** Dual green usage - `#55b03b` for brand, emerald for semantic success states
+- **FIXED:** Primary font corrected to Inter (was documented as System UI Stack)
+- **ADDED:** `xs: 475px` breakpoint to documentation
+- **ADDED:** Soft shadow utilities (`shadow-soft`, `shadow-soft-lg`, `shadow-soft-xl`)
+- **ADDED:** Glow effects (`glow-blue`, `glow-green`, `glow-amber`)
+- **ADDED:** colorMapping.js utility reference section
+- **ADDED:** Tailwind z-index utilities documentation (1000-1070 scale)
+- **ADDED:** KPI Card selection decision tree
+- **ADDED:** SectionHeader component for consistent view headers
+- **UPDATED:** Touch target implementation patterns
 
 ### v3.3 (December 18, 2025) - Mobile App Transformation
 - **NEW:** Bottom Navigation Bar - 5-tab mobile navigation (`BottomNavBar.jsx`)
@@ -51,26 +64,38 @@
 }
 
 'lavpop-green': {
-  DEFAULT: '#10b981',  // Accent green
-  50: '#ecfdf5',
-  100: '#d1fae5',
-  200: '#a7f3d0',
-  300: '#6ee7b7',
-  400: '#34d399',
-  500: '#10b981',      // Base
-  600: '#059669',
-  700: '#047857',
-  800: '#065f46',
-  900: '#064e3b'
+  DEFAULT: '#55b03b',  // Brand green (custom Lavpop green)
+  50: '#f0f9ed',
+  100: '#e1f3db',
+  200: '#c3e7b7',
+  300: '#a5db93',
+  400: '#87cf6f',
+  500: '#55b03b',      // Base
+  600: '#448d2f',
+  700: '#336a23',
+  800: '#224618',
+  900: '#11230c'
 }
 ```
 
+> **Green Color Usage Guide:**
+> - **`#55b03b` (lavpop-green):** Use for brand elements, logos, primary accent colors
+> - **`#10b981` (emerald-500):** Use for semantic success states, positive trends, health indicators
+>
+> The emerald color palette is available via Tailwind's built-in `emerald-*` classes.
+
 ### Typography
 
-**Primary Font:** System UI Stack
+**Primary Font:** Inter (with System UI fallback)
 ```css
-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 
-             "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+font-family: 'Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"',
+             'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif';
+```
+
+**Monospace Font:** JetBrains Mono (for code/data)
+```css
+font-family: '"JetBrains Mono"', '"Fira Code"', 'Consolas', 'Monaco',
+             '"Courier New"', 'monospace';
 ```
 
 **Font Sizes:**
@@ -89,6 +114,7 @@ font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
 ### Responsive Breakpoints
 
 ```javascript
+xs: '475px'   // Large phones (custom breakpoint)
 sm: '640px'   // Mobile landscape, small tablets
 md: '768px'   // Tablets
 lg: '1024px'  // Desktop
@@ -146,7 +172,47 @@ export const Z_INDEX = {
 | Alert | 70 | `z-[70]` | Confirmation dialogs |
 | Toast | 80 | `z-[80]` | Toast notifications |
 
-> ⚠️ **IMPORTANT:** Never use arbitrary z-index values like `z-[1050]`. Always use the semantic constants.
+> ⚠️ **IMPORTANT:** For component z-index, use the semantic constants above. Arbitrary values like `z-[1050]` should be avoided.
+
+### Tailwind Z-Index Utilities
+
+The `tailwind.config.js` also defines extended z-index utilities for compatibility:
+
+```javascript
+// Extended z-index in tailwind.config.js
+zIndex: {
+  'dropdown': '1000',
+  'sticky': '1020',
+  'modal-backdrop': '1040',
+  'modal': '1050',
+  'tooltip': '1060',
+  'notification': '1070',
+}
+```
+
+> **Note:** Prefer semantic constants from `src/constants/zIndex.js` for new components. The Tailwind utilities exist for legacy compatibility.
+
+### Box Shadows
+
+**Soft Shadows (Cards & Surfaces):**
+```css
+shadow-soft      /* 0 2px 8px -2px rgba(0,0,0,0.08), 0 4px 12px -4px rgba(0,0,0,0.04) */
+shadow-soft-lg   /* 0 4px 16px -4px rgba(0,0,0,0.1), 0 8px 24px -8px rgba(0,0,0,0.06) */
+shadow-soft-xl   /* 0 8px 24px -6px rgba(0,0,0,0.12), 0 12px 32px -8px rgba(0,0,0,0.08) */
+```
+
+**Brand Shadows:**
+```css
+shadow-lavpop    /* 0 4px 14px 0 rgba(26,90,142,0.15) */
+shadow-lavpop-lg /* 0 10px 40px -10px rgba(26,90,142,0.25) */
+```
+
+**Glow Effects (Emphasis):**
+```css
+shadow-glow-blue  /* 0 0 20px rgba(26,90,142,0.15) */
+shadow-glow-green /* 0 0 20px rgba(85,176,59,0.15) */
+shadow-glow-amber /* 0 0 20px rgba(245,158,11,0.15) */
+```
 
 ---
 
@@ -325,6 +391,48 @@ text-white
 rounded-xl
 shadow-lg
 p-6
+```
+
+### Section Headers
+
+Use the `SectionHeader` component for consistent section headers within views:
+
+```jsx
+import SectionHeader from '../components/ui/SectionHeader';
+import { Gauge } from 'lucide-react';
+
+<SectionHeader
+  title="Equipamentos"
+  subtitle="Análise de máquinas e equipamentos"
+  icon={Gauge}
+  color="amber"
+  id="equipment-heading"
+/>
+```
+
+**Available Colors:** `amber`, `emerald`, `blue`, `lavpop`, `purple`, `red`, `slate`, `teal`, `cyan`, `indigo`
+
+**Props:**
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | string | Section title (required) |
+| `subtitle` | string | Optional description text |
+| `icon` | LucideIcon | Lucide icon component (required) |
+| `color` | string | Color theme key (default: amber) |
+| `id` | string | ID for h2 element (for aria-labelledby) |
+
+**Usage Pattern:**
+```jsx
+<section id="section-id" aria-labelledby="section-heading">
+  <SectionHeader
+    title="Section Title"
+    subtitle="Description"
+    icon={IconComponent}
+    color="amber"
+    id="section-heading"
+  />
+  {/* Section content */}
+</section>
 ```
 
 ### Buttons
@@ -580,6 +688,48 @@ const { isDark } = useTheme();
 const colors = useMemo(() => getChartColors(isDark), [isDark]);
 ```
 
+### Semantic Color Mapping (colorMapping.js)
+
+For programmatic color access with built-in dark mode support, use the centralized color mapping utility:
+
+```javascript
+import { getSemanticColor, getValueColor, semanticColors } from '../utils/colorMapping';
+
+// Get color object by semantic type
+const colors = getSemanticColor('revenue');
+// Returns: { bg, bgGradient, border, text, textMuted, textSubtle, icon, iconBg, gradient, ring, solidGradient }
+
+// Get color based on value (positive/negative)
+const trendColor = getValueColor(percentChange);
+// Returns positive (emerald) or negative (red) colors
+
+// Get confidence level colors
+import { getConfidenceColor } from '../utils/colorMapping';
+const confidenceColors = getConfidenceColor(85); // Returns high/medium/low colors
+```
+
+**Available Color Categories:**
+
+| Category | Keys | Usage |
+|----------|------|-------|
+| Business | `revenue`, `cost`, `profit` | Financial metrics |
+| Trends | `positive`, `negative`, `neutral`, `warning` | Trend indicators |
+| Weather | `sunny`, `cloudy`, `rainy`, `muggy`, `hot`, `cold`, `mild`, `humid` | Weather conditions |
+| Comfort | `abafado`, `quente`, `ameno`, `frio`, `umido`, `chuvoso` | Thermal comfort (PT) |
+| Confidence | `high`, `medium`, `low` | Certainty levels |
+| Campaign | `excellent`, `good`, `fair`, `poor` | Performance status |
+| Brand | `blue`, `lavpop`, `indigo`, `purple`, `whatsapp`, `whatsappTeal` | Brand colors |
+
+**Usage in Components:**
+```jsx
+const colors = getSemanticColor('revenue');
+
+<div className={`${colors.bg} ${colors.border} border rounded-xl p-4`}>
+  <span className={colors.icon}><TrendingUp /></span>
+  <p className={colors.text}>Revenue increased</p>
+</div>
+```
+
 ---
 
 ## 🎨 Card Color Palette
@@ -647,6 +797,33 @@ Both Hero and Secondary KPI cards use consistent prop naming:
 | `color` | string | Color key from palette |
 | `onClick` | function | Click handler |
 | `className` | string | Additional classes |
+
+### KPI Card Selection Guide
+
+Use this decision tree to choose the right card component:
+
+```
+Which KPI card should I use?
+│
+├─ Need sparkline mini-chart?
+│   ├─ Yes, primary metric → HeroKPICard
+│   └─ Yes, secondary metric → SecondaryKPICard
+│
+├─ Need vibrant gradient background with white text?
+│   └─ Yes → KPICard variant="gradient"
+│
+├─ Compact dashboard view?
+│   ├─ Primary metrics → HeroKPICard compact={true}
+│   └─ Secondary metrics → SecondaryKPICard compact={true}
+│
+└─ Basic metric display?
+    └─ KPICard (default variant)
+```
+
+**Component Files:**
+- `src/components/ui/KPICard.jsx` - Unified card (default, hero, compact, gradient variants)
+- `src/components/ui/HeroKPICard.jsx` - Premium gradient with sparklines
+- `src/components/ui/SecondaryKPICard.jsx` - Compact gradient with sparklines
 
 ### Secondary KPI Card Color Mapping
 
@@ -1904,6 +2081,12 @@ When creating new components, ensure:
 - **Retention Pulse:** `src/components/RetentionPulse.jsx`
 - **Secondary KPI Card:** `src/components/ui/SecondaryKPICard.jsx`
 - **Hero KPI Card:** `src/components/ui/HeroKPICard.jsx`
+- **Section Header:** `src/components/ui/SectionHeader.jsx` *(NEW v3.4)*
+- **Context Help:** `src/components/ContextHelp.jsx`
+
+### Utilities
+- **Color Mapping:** `src/utils/colorMapping.js`
+- **Metric Tooltips:** `src/constants/metricTooltips.js`
 
 ### Documentation
 - **Mobile App Audit:** `docs/mobile-app-audit.md` *(NEW v3.3)*

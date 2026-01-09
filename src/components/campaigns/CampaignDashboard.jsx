@@ -1,8 +1,52 @@
-// CampaignDashboard.jsx v2.3.1
+// CampaignDashboard.jsx v3.2
 // Unified Campaign Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.2 (2026-01-08): UI/UX refinements based on visual review
+//   - Widened CAMPANHA column on XL screens (max-w-[320px])
+//   - Added alternating row backgrounds for easier scanning
+//   - Improved metadata contrast (text-slate-500 instead of text-slate-400)
+//   - Tighter spacing in ENTREGA cell
+//   - Removed redundant "ent / lid" label on desktop (tooltip instead)
+//   - Better visual hierarchy in RESULTADO column
+//   - Center-aligned RESULTADO header and cell for consistency
+// v3.1 (2026-01-08): UI polish and tracking health indicator
+//   - Added tracking health warning indicator (⚠️) in CAMPANHA cell
+//   - Improved font sizes: text-sm → text-base for key metrics
+//   - Better column width distribution for desktop (35%/10%/12%/13%/15%/15%)
+//   - Increased icon sizes in type indicator (w-6 h-6)
+//   - Wider campaign name truncation on desktop (max-w-[240px])
+//   - Improved spacing and padding throughout
+//   - Better mobile responsiveness with scaled font sizes
+// v3.0 (2026-01-08): Phase 10 - Funnel-based table redesign
+//   - Reduced table from 13 columns to 6 consolidated columns
+//   - Follows marketing funnel: SEND → DELIVER → ENGAGE → CONVERT → REVENUE
+//   - CAMPANHA: Name + Type icon + Status badge inline + audience + date
+//   - OFERTA: Discount + coupon code (lg+ only)
+//   - ENVIO: Sends count + failed warning badge
+//   - ENTREGA: Delivered/Read compact format (sm+)
+//   - CONVERSÃO: Returned count + Rate badge with color (key metric)
+//   - RESULTADO: Revenue + avg days + date (sm+)
+//   - Responsive: Mobile (3) → Tablet (5) → Desktop (6)
+//   - Removed redundant columns: Status (merged), Rastreados (internal),
+//     Retornados (merged), Lidas (merged), Falhou (merged), Retorno (merged),
+//     Período (merged), Tempo (merged)
+// v2.6 (2026-01-08): Phase 6 dashboard enhancements
+//   - Added Status column showing campaign status badge (active/completed/draft/scheduled)
+//   - Added Retornados column showing absolute returned count (not just percentage)
+//   - Added Período column showing campaign tracking window (created → validity days)
+//   - Added Tempo column showing avg_days_to_return with color coding
+//   - Responsive column visibility: Mobile (4) → Tablet (7) → Desktop (10) → XL (13)
+// v2.5 (2026-01-08): Added dedicated Rastreados column & UX improvements
+//   - Added "Rastreados" column showing contacts_tracked with status indicator
+//   - Visual health badges: ✓ green (working), ⚠️ amber (issue), ⏳ gray (pending)
+//   - Improved column layout and responsive visibility
+//   - Removed inline warning icon from campaign name (now in dedicated column)
+// v2.4 (2026-01-08): Campaign type differentiation & tracking health
+//   - Added campaign type indicator (Auto vs Manual) to recent campaigns table
+//   - Added tracking status column showing health indicators
+//   - Visual differentiation helps identify manual vs automated campaigns
 // v2.3.1 (2025-12-23): Fix empty render when fetch fails
 //   - Changed loading guard from (isLoading && !metrics) to (isLoading || !metrics)
 //   - Prevents empty content when Supabase query fails silently
@@ -37,22 +81,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp,
-  Users,
   DollarSign,
   Percent,
   Target,
   AlertTriangle,
   AlertCircle,
   RefreshCw,
-  ArrowRight,
-  Sparkles,
-  BarChart3,
-  CheckCircle2,
-  Clock,
-  MessageCircle,
-  Send,
   Lightbulb,
-  Calendar
+  Calendar,
+  Bot,
+  User,
+  CheckCircle2
 } from 'lucide-react';
 
 // UI Components
@@ -80,6 +119,22 @@ const formatCurrency = (value) => {
 
 const formatPercent = (value) => {
   return `${(value || 0).toFixed(1)}%`;
+};
+
+// v2.6: Status badge helpers
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'active': return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
+    case 'completed': return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
+    case 'draft': return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
+    case 'scheduled': return 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
+    default: return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
+  }
+};
+
+const getStatusLabel = (status) => {
+  const labels = { active: 'Ativa', completed: 'Concluída', draft: 'Rascunho', scheduled: 'Agendada' };
+  return labels[status] || status || '-';
 };
 
 // ==================== RECENT CAMPAIGNS TABLE ====================
@@ -117,42 +172,46 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
     return (campaign.delivered || 0) + (campaign.read || 0);
   };
 
+  // v2.4: Helper to detect automated campaigns
+  const isAutomated = (campaign) => {
+    const name = campaign.name || '';
+    return name.startsWith('Auto:') || name.toLowerCase().includes('automação');
+  };
+
+  // v3.0: Tracking issue detection (shows as subtle warning in CAMPANHA cell)
+  const hasTrackingIssue = (campaign) => {
+    return (campaign.sends || 0) > 0 && (campaign.contacts_tracked || 0) === 0;
+  };
+
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0">
-      <table className="w-full text-sm">
+      <table className="w-full">
+        {/* v3.0: Funnel-based 6-column layout with improved sizing */}
         <thead className="bg-slate-50 dark:bg-slate-800/50">
           <tr className="border-b border-slate-200 dark:border-slate-700">
-            {/* Always visible */}
-            <th className="text-left py-3 px-3 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            {/* CAMPANHA: Name + Type + Status - Always visible, wider on desktop */}
+            <th className="text-left py-3 px-3 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[40%] lg:w-[35%]">
               Campanha
             </th>
-            {/* Desktop only: Oferta (merged Desconto + Cupom) */}
-            <th className="hidden lg:table-cell text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
+            {/* OFERTA: Discount + Coupon - Desktop only (lg+) */}
+            <th className="hidden lg:table-cell text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[10%]">
               Oferta
             </th>
-            {/* Always visible */}
-            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Enviadas
+            {/* ENVIO: Sends + Failed warning - Always visible */}
+            <th className="text-center py-3 px-2 sm:px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[12%]">
+              Envio
             </th>
-            {/* Tablet+ */}
-            <th className="hidden sm:table-cell text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Entregues
+            {/* ENTREGA: Delivered/Read - Tablet+ (sm+) */}
+            <th className="hidden sm:table-cell text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[13%]">
+              Entrega
             </th>
-            {/* Always visible */}
-            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Lidas
+            {/* CONVERSÃO: Returned + Rate % - Always visible (KEY METRIC) */}
+            <th className="text-center py-3 px-2 sm:px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[15%]">
+              Conversão
             </th>
-            {/* Desktop only: Falhou */}
-            <th className="hidden lg:table-cell text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Falhou
-            </th>
-            {/* Always visible */}
-            <th className="text-center py-3 px-2 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Retorno
-            </th>
-            {/* Tablet+ */}
-            <th className="hidden sm:table-cell text-right py-3 px-3 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider">
-              Receita
+            {/* RESULTADO: Revenue + metadata - Tablet+ (sm+) */}
+            <th className="hidden sm:table-cell text-center py-3 px-3 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[15%]">
+              Resultado
             </th>
           </tr>
         </thead>
@@ -160,107 +219,171 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
           {campaigns.map((campaign, idx) => {
             const totalDelivered = getTotalDelivered(campaign);
             const hasFailed = (campaign.failed || 0) > 0;
+            const sends = campaign.sends || 0;
+            const returned = campaign.contacts_returned || 0;
+            const returnRate = campaign.return_rate || 0;
+            const trackingIssue = hasTrackingIssue(campaign);
 
             return (
               <tr
                 key={campaign.id || idx}
-                className="border-b border-slate-200 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                className="border-b border-slate-200 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 even:bg-slate-50/50 dark:even:bg-slate-800/30 transition-colors"
               >
-                {/* Campanha - Always visible */}
+                {/* ========== CAMPANHA: Name + Type + Status + metadata ========== */}
                 <td className="py-3 px-3 sm:px-4">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      campaign.status === 'active' ? 'bg-green-500' :
-                      campaign.status === 'completed' ? 'bg-blue-500' : 'bg-slate-400'
-                    }`} />
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[180px]">
-                        {campaign.name}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  <div className="flex items-start gap-2.5">
+                    {/* Campaign type indicator */}
+                    <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${
+                      isAutomated(campaign)
+                        ? 'bg-purple-100 dark:bg-purple-900/40'
+                        : 'bg-blue-100 dark:bg-blue-900/40'
+                    }`} title={isAutomated(campaign) ? 'Automação' : 'Manual'}>
+                      {isAutomated(campaign)
+                        ? <Bot className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                        : <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      }
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {/* Name + inline status badge */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[180px] lg:max-w-[240px] xl:max-w-[320px]">
+                          {campaign.name}
+                        </p>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(campaign.status)}`}>
+                          {getStatusLabel(campaign.status)}
+                        </span>
+                        {/* Tracking issue warning indicator */}
+                        {trackingIssue && (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400"
+                            title="Rastreamento incompleto - mensagens enviadas mas não rastreadas"
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                      </div>
+                      {/* Audience + date subtext */}
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
                         {campaign.audience}
+                        {campaign.created_at && (
+                          <span className="ml-1.5 text-slate-400 dark:text-slate-500">
+                            • {new Date(campaign.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
                 </td>
 
-                {/* Oferta (Desconto + Cupom) - Desktop only */}
-                <td className="hidden lg:table-cell py-3 px-2 text-center">
+                {/* ========== OFERTA: Discount + Coupon - Desktop only (lg+) ========== */}
+                <td className="hidden lg:table-cell py-3 px-3 text-center">
                   {campaign.discount_percent ? (
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
                         {campaign.discount_percent}%
                       </span>
                       {campaign.coupon_code && (
-                        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        <span className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase">
                           {campaign.coupon_code}
                         </span>
                       )}
                     </div>
                   ) : (
-                    <span className="text-slate-400">-</span>
+                    <span className="text-slate-400 text-sm">-</span>
                   )}
                 </td>
 
-                {/* Enviadas - Always visible */}
-                <td className="py-3 px-2 text-center text-slate-700 dark:text-slate-300">
-                  {campaign.sends || 0}
-                </td>
-
-                {/* Entregues (Total = delivered + read) - Tablet+ */}
-                <td className="hidden sm:table-cell py-3 px-2 text-center">
-                  {totalDelivered !== null ? (
-                    <span className="text-green-600 dark:text-green-400 font-medium">
-                      {totalDelivered}
+                {/* ========== ENVIO: Sends + Failed warning - Always visible ========== */}
+                <td className="py-3 px-2 sm:px-3 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                      {sends}
                     </span>
-                  ) : (
-                    <span className="text-slate-400" title="Aguardando webhook">-</span>
-                  )}
-                </td>
-
-                {/* Lidas - Always visible */}
-                <td className="py-3 px-2 text-center">
-                  {campaign.has_delivery_data ? (
-                    <span className="text-blue-600 dark:text-blue-400 font-medium">
-                      {campaign.read || 0}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400" title="Aguardando webhook">-</span>
-                  )}
-                </td>
-
-                {/* Falhou - Desktop only */}
-                <td className="hidden lg:table-cell py-3 px-2 text-center">
-                  {campaign.has_delivery_data ? (
-                    hasFailed ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                    {hasFailed && (
+                      <span
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                        title={`${campaign.failed} mensagens falharam`}
+                      >
                         <AlertCircle className="w-3 h-3" />
                         {campaign.failed}
                       </span>
-                    ) : (
-                      <span className="text-slate-400">0</span>
-                    )
+                    )}
+                  </div>
+                </td>
+
+                {/* ========== ENTREGA: Delivered/Read - Tablet+ (sm+) ========== */}
+                <td className="hidden sm:table-cell py-3 px-2 text-center">
+                  {campaign.has_delivery_data && totalDelivered !== null ? (
+                    <div className="flex flex-col items-center" title="Entregues / Lidas">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                          {totalDelivered}
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-600 text-xs">/</span>
+                        <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                          {campaign.read || 0}
+                        </span>
+                      </div>
+                      {/* Show label only on tablet, hide on desktop for cleaner look */}
+                      <span className="text-[10px] text-slate-400 sm:block lg:hidden">
+                        ent / lid
+                      </span>
+                    </div>
                   ) : (
-                    <span className="text-slate-400">-</span>
+                    <span className="text-slate-400 text-sm" title="Aguardando webhook">-</span>
                   )}
                 </td>
 
-                {/* Retorno - Always visible */}
-                <td className="py-3 px-2 text-center">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    (campaign.return_rate || 0) >= 25
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                      : (campaign.return_rate || 0) >= 15
-                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
-                  }`}>
-                    {formatPercent(campaign.return_rate || 0)}
-                  </span>
+                {/* ========== CONVERSÃO: Returned + Rate % - Always visible (KEY) ========== */}
+                <td className="py-3 px-2 sm:px-3 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    {/* Returned count prominent */}
+                    <span className={`text-sm sm:text-base font-bold ${
+                      returned > 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-slate-400'
+                    }`}>
+                      {returned}
+                    </span>
+                    {/* Return rate badge */}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                      returnRate >= 25
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                        : returnRate >= 15
+                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                          : returnRate > 0
+                            ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-400'
+                    }`}>
+                      {formatPercent(returnRate)}
+                    </span>
+                  </div>
                 </td>
 
-                {/* Receita - Tablet+ */}
-                <td className="hidden sm:table-cell py-3 px-3 sm:px-4 text-right font-medium text-slate-900 dark:text-white">
-                  {formatCurrency(campaign.total_revenue_recovered || 0)}
+                {/* ========== RESULTADO: Revenue + Days + Date - Tablet+ (sm+) ========== */}
+                <td className="hidden sm:table-cell py-3 px-3 sm:px-4 text-center">
+                  <div className="flex flex-col items-center">
+                    {/* Revenue prominent */}
+                    <span className={`text-sm sm:text-base font-bold ${
+                      (campaign.total_revenue_recovered || 0) > 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}>
+                      {formatCurrency(campaign.total_revenue_recovered || 0)}
+                    </span>
+                    {/* Metadata: avg days to return */}
+                    {campaign.avg_days_to_return && (
+                      <span className={`text-xs mt-0.5 ${
+                        campaign.avg_days_to_return <= 3
+                          ? 'text-emerald-500 dark:text-emerald-400'
+                          : campaign.avg_days_to_return <= 7
+                            ? 'text-blue-500 dark:text-blue-400'
+                            : 'text-slate-400 dark:text-slate-500'
+                      }`} title="Média de dias até retorno">
+                        {campaign.avg_days_to_return.toFixed(0)}d retorno
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -414,14 +537,15 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
           {[
             { value: 7, label: '7d', fullLabel: '7 dias' },
             { value: 30, label: '30d', fullLabel: '30 dias' },
-            { value: 90, label: '90d', fullLabel: '90 dias' }
+            { value: 90, label: '90d', fullLabel: '90 dias' },
+            { value: null, label: '∞', fullLabel: 'Todos' }
           ].map(({ value, label, fullLabel }) => (
             <button
-              key={value}
+              key={label}
               onClick={() => setTimeRange(value)}
               className={`
                 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
-                ${timeRange === value
+                ${(timeRange === value || (timeRange === null && value === null))
                   ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }
@@ -509,24 +633,7 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
         </div>
       )}
 
-      {/* A/B Testing Section */}
-      <DiscountComparisonCard
-        discountData={metrics?.discountComparison || []}
-        serviceData={metrics?.serviceComparison || []}
-        bestDiscount={metrics?.bestDiscount}
-        bestService={metrics?.bestService}
-        isLoading={isLoading}
-      />
-
-      {/* Campaign Funnel */}
-      <CampaignFunnel
-        funnel={metrics?.funnel || {}}
-        avgDaysToReturn={summary.avgDaysToReturn}
-        avgRevenuePerReturn={summary.totalReturned > 0 ? (summary.totalRevenue / summary.totalReturned) : 0}
-        isLoading={isLoading}
-      />
-
-      {/* Recent Campaigns Table */}
+      {/* Recent Campaigns Table - Positioned between KPIs and Funnel */}
       <SectionCard
         title="Campanhas Recentes"
         subtitle={`${metrics?.recentCampaigns?.length || 0} campanhas nos ultimos ${timeRange} dias`}
@@ -538,6 +645,23 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
           isLoading={isLoading}
         />
       </SectionCard>
+
+      {/* Campaign Funnel */}
+      <CampaignFunnel
+        funnel={metrics?.funnel || {}}
+        avgDaysToReturn={summary.avgDaysToReturn}
+        avgRevenuePerReturn={summary.totalReturned > 0 ? (summary.totalRevenue / summary.totalReturned) : 0}
+        isLoading={isLoading}
+      />
+
+      {/* A/B Testing Section */}
+      <DiscountComparisonCard
+        discountData={metrics?.discountComparison || []}
+        serviceData={metrics?.serviceComparison || []}
+        bestDiscount={metrics?.bestDiscount}
+        bestService={metrics?.bestService}
+        isLoading={isLoading}
+      />
     </div>
   );
 };

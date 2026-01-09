@@ -284,7 +284,7 @@ const DAY_LABELS = [
 
 // Tooltip component for help icons - mobile friendly with tap support
 const Tooltip = ({ text }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="relative inline-flex items-center ml-1">

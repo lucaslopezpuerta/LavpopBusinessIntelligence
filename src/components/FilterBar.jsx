@@ -1,7 +1,11 @@
-// FilterBar.jsx v2.4 - EXCLUDE CONTACTED FILTER
+// FilterBar.jsx v2.5 - FOCUS RING STANDARDIZATION
 // Modern filter interface matching Design System
 //
 // CHANGELOG:
+// v2.5 (2026-01-07): Standardized focus rings for accessibility
+//   - Changed all focus: to focus-visible: for better keyboard UX
+//   - Increased focus ring visibility (was 20%, now proper ring)
+//   - Added focus rings to all buttons (clear, toggle, export)
 // v2.4 (2025-12-13): Exclude contacted toggle
 //   - NEW: "Excluir Contactados" toggle pill to hide already-contacted customers
 //   - Integrates with contact tracking system
@@ -66,7 +70,7 @@ const FilterBar = ({
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             aria-label="Buscar cliente por nome, telefone ou CPF"
-                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/50 focus:border-lavpop-blue transition-all shadow-sm"
+                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 transition-all shadow-sm"
                         />
                     </div>
 
@@ -93,7 +97,7 @@ const FilterBar = ({
                             value={selectedSegment}
                             onChange={(e) => setSelectedSegment(e.target.value)}
                             aria-label="Filtrar por segmento de cliente"
-                            className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/20 cursor-pointer transition-all shadow-sm"
+                            className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 cursor-pointer transition-all shadow-sm"
                         >
                             <option value="all">Todos Segmentos</option>
                             {segments.filter(s => s !== 'all').map(seg => (
@@ -109,7 +113,7 @@ const FilterBar = ({
                             value={selectedRisk}
                             onChange={(e) => setSelectedRisk(e.target.value)}
                             aria-label="Filtrar por nível de risco"
-                            className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/20 cursor-pointer transition-all shadow-sm"
+                            className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 cursor-pointer transition-all shadow-sm"
                         >
                             <option value="all">Todos Riscos</option>
                             <option value="Healthy">Saudável</option>
@@ -129,7 +133,7 @@ const FilterBar = ({
                             aria-label={excludeContacted ? "Mostrar todos os clientes" : "Excluir clientes já contactados"}
                             aria-pressed={excludeContacted}
                             className={`
-                                flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm
+                                flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900
                                 ${excludeContacted
                                     ? 'bg-blue-600 text-white border border-blue-600 hover:bg-blue-700'
                                     : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
@@ -155,7 +159,7 @@ const FilterBar = ({
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
                             aria-label="Ordenar resultados por"
-                            className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-lavpop-blue/20 cursor-pointer transition-all shadow-sm"
+                            className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:border-lavpop-blue dark:hover:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 cursor-pointer transition-all shadow-sm"
                         >
                             <option value="spending">Maior Gasto</option>
                             <option value="visits">Mais Visitas</option>
@@ -169,7 +173,7 @@ const FilterBar = ({
                     {hasActiveFilters && (
                         <button
                             onClick={handleClearFilters}
-                            className="flex items-center justify-center p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                            className="flex items-center justify-center p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-red-500 dark:hover:text-red-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                             title="Limpar Filtros"
                         >
                             <X className="w-5 h-5" />
@@ -179,7 +183,7 @@ const FilterBar = ({
                     {/* Export Button */}
                     <button
                         onClick={onExport}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-lavpop-green hover:bg-green-600 text-white rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md active:scale-95 ml-auto sm:ml-0"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-lavpop-green hover:bg-green-600 text-white rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md active:scale-95 ml-auto sm:ml-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                     >
                         <Download className="w-4 h-4" />
                         <span className="hidden sm:inline">Exportar</span>

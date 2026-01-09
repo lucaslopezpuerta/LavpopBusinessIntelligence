@@ -1,8 +1,12 @@
-// GrowthTrendsSection.jsx v5.12
+// GrowthTrendsSection.jsx v5.13
 // Growth & trends analysis section for Intelligence tab
 // Design System v3.1 compliant - Migrated to Recharts
 //
 // CHANGELOG:
+// v5.13 (2026-01-07): Use shared ContextHelp component
+//   - REMOVED: Local InfoTooltip component (had positioning bugs)
+//   - CHANGED: Service analysis tooltip now uses shared ContextHelp
+//   - Benefits from Tooltip.jsx viewport boundary detection fixes
 // v5.12 (2025-12-28): Tooltip contained within chart bounds
 //   - Changed: allowEscapeViewBox=false to keep tooltip inside chart
 //   - Recharts auto-flips tooltip at left/right edges
@@ -79,88 +83,15 @@
 // v2.0 (2025-11-30): Major refactor with unified components
 // v1.0 (2025-11-30): Initial extraction from Intelligence.jsx
 
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, Minus, Clock, Droplet, Wind, CreditCard, Info, HelpCircle, X, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Clock, Droplet, Wind, CreditCard, Info, Calendar } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import KPICard, { KPIGrid } from '../ui/KPICard';
+import ContextHelp from '../ContextHelp';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useTheme } from '../../contexts/ThemeContext';
 import { formatMonthKey, getBrazilDateParts } from '../../utils/dateUtils';
-
-// Mobile-friendly tooltip component with tap-to-toggle and backdrop
-const InfoTooltip = ({ content }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const isMobile = useIsMobile();
-
-  // Close on escape key
-  useEffect(() => {
-    if (!isVisible) return;
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') setIsVisible(false);
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isVisible]);
-
-  const closeTooltip = useCallback(() => setIsVisible(false), []);
-
-  return (
-    <>
-      {/* Backdrop overlay for mobile */}
-      {isVisible && isMobile && (
-        <div
-          className="fixed inset-0 z-40 bg-black/20"
-          onClick={closeTooltip}
-          aria-hidden="true"
-        />
-      )}
-
-      <div className="relative inline-block">
-        <button
-          type="button"
-          className="p-2 -m-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-          onMouseEnter={!isMobile ? () => setIsVisible(true) : undefined}
-          onMouseLeave={!isMobile ? () => setIsVisible(false) : undefined}
-          onClick={() => setIsVisible(!isVisible)}
-          aria-label="Mais informações"
-          aria-expanded={isVisible}
-        >
-          <HelpCircle className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-slate-400 hover:text-indigo-500 transition-colors" />
-        </button>
-
-        {/* Mobile: Fixed modal in center of screen */}
-        {isVisible && isMobile && (
-          <div className="fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 text-left">
-            <button
-              type="button"
-              onClick={closeTooltip}
-              className="absolute top-3 right-3 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
-              aria-label="Fechar"
-            >
-              <X className="w-4 h-4 text-slate-400" />
-            </button>
-
-            <p className="text-base text-slate-600 dark:text-slate-300 pr-8">
-              {content}
-            </p>
-          </div>
-        )}
-
-        {/* Desktop: Popover tooltip */}
-        {isVisible && !isMobile && (
-          <div className="absolute z-50 w-56 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 text-left bottom-full left-1/2 -translate-x-1/2 mb-2">
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent border-t-white dark:border-t-slate-800" />
-
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              {content}
-            </p>
-          </div>
-        )}
-      </div>
-    </>
-  );
-};
 
 // Service segment card component - mobile-optimized with horizontal layout on small screens
 const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, formatCurrency, comparisonContext }) => {
@@ -426,7 +357,7 @@ const GrowthTrendsSection = ({
               <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                 <TrendingDown className="w-4 h-4 text-amber-500 flex-shrink-0" />
                 <span>Análise por Serviço</span>
-                <InfoTooltip content="Comparação do volume de cada tipo de serviço entre o mês atual e o mês anterior. Identifica qual serviço está puxando a queda." />
+                <ContextHelp description="Comparação do volume de cada tipo de serviço entre o mês atual e o mês anterior. Identifica qual serviço está puxando a queda." />
               </h4>
               <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 ml-6 sm:ml-0">
                 <Info className="w-3 h-3 flex-shrink-0" />
@@ -604,10 +535,15 @@ const GrowthTrendsSection = ({
                   <Tooltip
                     content={<CustomTooltip />}
                     cursor={{ stroke: isDark ? '#475569' : '#cbd5e1', strokeDasharray: '3 3' }}
-                    // Contain within chart, let Recharts auto-flip at edges
-                    allowEscapeViewBox={{ x: false, y: false }}
-                    offset={isMobile ? 8 : 15}
-                    wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }}
+                    // Mobile: allow escape to prevent clipping in small chart area
+                    // Desktop: contain within chart for cleaner appearance
+                    allowEscapeViewBox={{ x: isMobile, y: isMobile }}
+                    offset={15}
+                    wrapperStyle={{
+                      zIndex: 100,
+                      pointerEvents: 'none',
+                      maxWidth: isMobile ? 'calc(100vw - 32px)' : 'auto'
+                    }}
                     isAnimationActive={false}
                   />
                   <Area

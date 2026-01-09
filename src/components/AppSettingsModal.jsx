@@ -1,7 +1,7 @@
 /**
  * AppSettingsModal - App-wide settings modal
  *
- * VERSION: 1.5
+ * VERSION: 1.6
  *
  * Replaces BusinessSettingsModal with improved UX:
  * - Dark mode support
@@ -14,6 +14,10 @@
  * - Styled confirmation dialogs
  *
  * CHANGELOG:
+ * v1.6 (2026-01-07): Glass morphism enhancement
+ *   - Added backdrop-blur and semi-transparent background to modal
+ *   - Glass effect on footer for premium floating feel
+ *   - Focus ring standardization on buttons
  * v1.5 (2025-12-25): Added Automação tab
  *   - New "Automação" tab for POS sync settings
  *   - Proxy toggle for CAPTCHA solving (Com Proxy / Sem Proxy)
@@ -155,7 +159,7 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-2 sm:p-4">
         <div
-          className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl animate-scale-in max-h-[95vh] sm:max-h-[90vh] flex flex-col"
+          className="relative w-full max-w-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl animate-scale-in max-h-[95vh] sm:max-h-[90vh] flex flex-col border border-white/20 dark:border-slate-700/50"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header - Compact */}
@@ -170,7 +174,7 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
             </div>
             <button
               onClick={handleClose}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
               aria-label="Fechar"
             >
               <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
@@ -230,18 +234,18 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          {/* Footer - Compact */}
-          <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl flex-shrink-0">
+          {/* Footer - Compact with glass morphism */}
+          <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/30 backdrop-blur-sm rounded-b-2xl flex-shrink-0">
             <button
               onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               Cancelar
             </button>
             <button
               onClick={handleSave}
               disabled={!hasChanges || isSaving}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-lavpop-blue rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-lavpop-blue rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               <Save className="w-4 h-4" />
               {isSaving ? 'Salvando...' : 'Salvar'}
@@ -300,7 +304,7 @@ const BusinessTab = ({ settings, onChange, onNumberChange, totalFixedCosts }) =>
               type="date"
               value={settings.cashbackStartDate}
               onChange={(e) => onChange('cashbackStartDate', e.target.value)}
-              className="w-full px-2 sm:px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-lavpop-blue focus:border-transparent text-slate-900 dark:text-white"
+              className="w-full px-2 sm:px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 text-slate-900 dark:text-white"
             />
           </div>
         </div>
@@ -594,7 +598,7 @@ const NumberInput = ({ label, value, onChange, prefix, suffix, step = 1, min = 0
           onChange={(e) => onChange(e.target.value)}
           className={`
             w-full py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg
-            focus:ring-2 focus:ring-lavpop-blue focus:border-transparent
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900
             text-slate-900 dark:text-white
             ${prefix ? 'pl-7 sm:pl-9 pr-2 sm:pr-3' : suffix ? 'pl-2 sm:pl-3 pr-10 sm:pr-12' : 'px-2 sm:px-3'}
           `}
@@ -612,7 +616,7 @@ const NumberInput = ({ label, value, onChange, prefix, suffix, step = 1, min = 0
 const ConfirmDialog = ({ title, message, confirmLabel, confirmVariant = 'primary', onConfirm, onCancel }) => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={onCancel} />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-5 animate-scale-in">
         <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
           {title}

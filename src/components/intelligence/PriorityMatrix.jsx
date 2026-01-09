@@ -1,9 +1,13 @@
-// PriorityMatrix.jsx v1.3
+// PriorityMatrix.jsx v1.4
 // Priority Matrix component - Replaces Health Score with actionable insights
 // Shows 4 business dimensions scored 0-10 with focus on weakest area
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.4 (2026-01-07): Fixed tooltip positioning
+//   - FIXED: Desktop tooltip now uses fixed positioning via portal
+//   - FIXED: Added scroll listener to hide tooltip on scroll
+//   - Tooltip no longer clipped by parent overflow
 // v1.3 (2025-12-28): Mobile compatibility improvements
 //   - Tooltip: tap-to-toggle with backdrop overlay and close button on mobile
 //   - Touch targets: minimum 44px for interactive elements
@@ -26,14 +30,19 @@
 //   - Priority focus section highlighting weakest dimension
 //   - Up to 3 actionable recommendations with impact/effort tags
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { Target, TrendingUp, TrendingDown, CheckCircle, AlertTriangle, ArrowRight, Gauge, BarChart3, Zap, Activity, Info, HelpCircle, X } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 // Mobile-friendly Tooltip component with tap-to-toggle and backdrop
+// Uses fixed positioning with viewport-relative coords for proper display
+
 const Tooltip = ({ children, content, howToRead, dataRange }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const buttonRef = useRef(null);
   const isMobile = useIsMobile();
 
   // Close on escape key
@@ -46,8 +55,68 @@ const Tooltip = ({ children, content, howToRead, dataRange }) => {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isVisible]);
 
+  // Hide on scroll (desktop)
+  useEffect(() => {
+    if (!isVisible || isMobile) return;
+    const handleScroll = () => setIsVisible(false);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isVisible, isMobile]);
+
   // Close tooltip
   const closeTooltip = useCallback(() => setIsVisible(false), []);
+
+  // Update coordinates when showing tooltip
+  const showTooltip = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setCoords({ top: rect.top, left: rect.left, width: rect.width });
+    }
+    setIsVisible(true);
+  }, []);
+
+  // Desktop tooltip content - rendered via portal with fixed positioning
+  const desktopTooltipContent = isVisible && !isMobile && ReactDOM.createPortal(
+    <div
+      className="fixed z-[9999] w-64 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 text-left pointer-events-none"
+      style={{
+        top: coords.top - 8,
+        left: coords.left + coords.width / 2,
+        transform: 'translate(-50%, -100%)'
+      }}
+    >
+      {/* Arrow */}
+      <div
+        className="absolute w-2 h-2 bg-white dark:bg-slate-800 transform rotate-45 border-slate-200 dark:border-slate-700 border-r border-b"
+        style={{ bottom: '-4px', left: '50%', marginLeft: '-4px' }}
+      />
+
+      <p className="text-sm text-slate-700 dark:text-slate-200 mb-2">
+        {content}
+      </p>
+
+      {howToRead && (
+        <div className="mb-2">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
+            Como interpretar:
+          </p>
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            {howToRead}
+          </p>
+        </div>
+      )}
+
+      {dataRange && (
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+            <Activity className="w-3 h-3" />
+            Dados: {dataRange}
+          </p>
+        </div>
+      )}
+    </div>,
+    document.body
+  );
 
   return (
     <>
@@ -62,11 +131,12 @@ const Tooltip = ({ children, content, howToRead, dataRange }) => {
 
       <div className="relative inline-block">
         <button
+          ref={buttonRef}
           type="button"
           className="p-2 -m-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-          onMouseEnter={!isMobile ? () => setIsVisible(true) : undefined}
-          onMouseLeave={!isMobile ? () => setIsVisible(false) : undefined}
-          onClick={() => setIsVisible(!isVisible)}
+          onMouseEnter={!isMobile ? showTooltip : undefined}
+          onMouseLeave={!isMobile ? closeTooltip : undefined}
+          onClick={() => isMobile ? setIsVisible(!isVisible) : showTooltip()}
           aria-label="Mais informações"
           aria-expanded={isVisible}
         >
@@ -111,36 +181,8 @@ const Tooltip = ({ children, content, howToRead, dataRange }) => {
           </div>
         )}
 
-        {/* Desktop: Popover tooltip */}
-        {isVisible && !isMobile && (
-          <div className="absolute z-50 w-64 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 text-left bottom-full left-1/2 -translate-x-1/2 mb-2">
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-white dark:border-t-slate-800" />
-
-            <p className="text-sm text-slate-700 dark:text-slate-200 mb-2">
-              {content}
-            </p>
-
-            {howToRead && (
-              <div className="mb-2">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-0.5">
-                  Como interpretar:
-                </p>
-                <p className="text-xs text-slate-600 dark:text-slate-300">
-                  {howToRead}
-                </p>
-              </div>
-            )}
-
-            {dataRange && (
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
-                <p className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                  <Activity className="w-3 h-3" />
-                  Dados: {dataRange}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Desktop tooltip rendered via portal */}
+        {desktopTooltipContent}
       </div>
     </>
   );

@@ -21,7 +21,7 @@ const SHORTCUTS = [
   { key: '4', label: 'Campanhas' },
   { key: '5', label: 'Redes Sociais' },
   { key: '6', label: 'Clima' },
-  { key: '7', label: 'Inteligência' },
+  { key: '7', label: 'Planejamento' },
   { key: '8', label: 'Operações' },
   { key: '9', label: 'Importar' },
   { key: ',', label: 'Configurações' },

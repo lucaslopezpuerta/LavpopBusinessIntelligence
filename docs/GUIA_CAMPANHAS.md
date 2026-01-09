@@ -42,6 +42,10 @@ O botão roxo no canto superior direito abre o assistente de criação.
 
 #### 2. Escolha a Audiência
 
+Você tem duas opções para selecionar a audiência:
+
+**Opção A - Segmentos Predefinidos:**
+
 Selecione quem vai receber a mensagem:
 
 | Audiência | Quem são | Melhor uso |
@@ -52,6 +56,22 @@ Selecione quem vai receber a mensagem:
 | **VIP** | Melhores clientes | Ofertas exclusivas |
 | **Com Saldo** | Têm crédito na carteira | Lembrete de saldo |
 | **Todos** | Toda a base | Comunicados gerais |
+
+**Opção B - Filtro Avançado (Novo!):**
+
+Use filtros personalizados para criar sua própria audiência:
+
+1. Clique na aba **"Filtro Avançado"** no topo
+2. Configure os filtros desejados:
+   - **Última visita:** Clientes que visitaram nos últimos X dias, ou inativos há mais de X dias
+   - **Gasto:** Filtrar por valor mínimo/máximo gasto
+   - **Saldo:** Filtrar por saldo mínimo/máximo na carteira
+   - **Visitas:** Número mínimo/máximo de visitas
+   - **Segmento RFM:** VIP, Frequente, Promissor, Esfriando, Inativo
+   - **Nível de risco:** Saudável, Monitorar, Em Risco, Crítico
+
+3. Veja a contagem de clientes em tempo real
+4. Os clientes sem WhatsApp válido são automaticamente excluídos
 
 > **Dica:** O número mostrado é apenas de clientes com celular válido para WhatsApp.
 
@@ -421,4 +441,4 @@ Problemas ou dúvidas? Entre em contato com o suporte técnico.
 
 ---
 
-*Última atualização: 12 de Dezembro de 2025 (v3.0)*
+*Última atualização: 08 de Janeiro de 2026 (v3.1)*

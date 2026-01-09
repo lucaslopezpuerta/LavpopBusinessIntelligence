@@ -1,8 +1,12 @@
-// KPICardsGrid.jsx v3.7 - 4-COLUMN LAYOUT
+// KPICardsGrid.jsx v3.8 - TOOLTIP HELP ICONS
 // Restructured KPI display with visual hierarchy and trend sparklines
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v3.8 (2026-01-07): Tooltip help icons (Plan Item 1.2)
+//   - Added METRIC_TOOLTIPS import from constants
+//   - All hero and secondary KPIs now have tooltip prop
+//   - Pass tooltip prop to all card component renders
 // v3.7 (2025-12-23): 4-column layout for both compact and expanded
 //   - Hero cards: 4-column row in both layouts
 //   - Secondary cards: 4-column row in both layouts
@@ -58,6 +62,8 @@ import { formatCurrency, formatNumber, formatPercent, getTrendData } from '../ut
 import { formatDate } from '../utils/dateUtils';
 import { parseSalesRecords } from '../utils/transactionParser';
 import { BUSINESS_PARAMS } from '../utils/operationsMetrics';
+import { METRIC_TOOLTIPS } from '../constants/metricTooltips';
+import { getMetricStatus } from '../constants/metricThresholds';
 import HeroKPICard from './ui/HeroKPICard';
 import SecondaryKPICard from './ui/SecondaryKPICard';
 import KPIDetailModal from './modals/KPIDetailModal';
@@ -267,6 +273,7 @@ const KPICardsGrid = ({
       drilldownType: 'financial',
       metricType: 'revenue',
       sparklineData: sparklineData.revenue,
+      tooltip: METRIC_TOOLTIPS.revenue,
     },
     {
       id: 'services',
@@ -281,6 +288,7 @@ const KPICardsGrid = ({
       drilldownType: 'financial',
       metricType: 'cycles',
       sparklineData: sparklineData.cycles,
+      tooltip: METRIC_TOOLTIPS.cycles,
     },
     {
       id: 'utilization',
@@ -295,6 +303,9 @@ const KPICardsGrid = ({
       drilldownType: 'financial',
       metricType: 'utilization',
       sparklineData: sparklineData.utilization,
+      tooltip: METRIC_TOOLTIPS.utilization,
+      // Status based on utilization thresholds (70-85% is good)
+      status: getMetricStatus('utilizacao', operationsMetrics?.utilization?.totalUtilization || 0),
     },
     {
       id: 'mtd-revenue',
@@ -310,6 +321,7 @@ const KPICardsGrid = ({
       drilldownType: 'financial',
       metricType: 'mtd',
       sparklineData: sparklineData.mtdDaily,
+      tooltip: METRIC_TOOLTIPS.mtdRevenue,
     }
   ];
 
@@ -326,6 +338,7 @@ const KPICardsGrid = ({
       drilldownType: 'financial',
       metricType: 'wash',
       sparklineData: sparklineData.wash,
+      tooltip: METRIC_TOOLTIPS.washPercent,
     },
     {
       id: 'dry',
@@ -338,6 +351,7 @@ const KPICardsGrid = ({
       drilldownType: 'financial',
       metricType: 'dry',
       sparklineData: sparklineData.dry,
+      tooltip: METRIC_TOOLTIPS.dryPercent,
     },
     {
       id: 'atrisk',
@@ -348,6 +362,9 @@ const KPICardsGrid = ({
       color: 'red',
       drilldownType: 'customer',
       customerType: 'atrisk',
+      tooltip: METRIC_TOOLTIPS.atRisk,
+      // Status based on at-risk % thresholds (0-10% is good)
+      status: getMetricStatus('atRiskPercent', atRiskPercent),
       // No sparkline for customer count (not time-series)
     },
     {
@@ -359,6 +376,7 @@ const KPICardsGrid = ({
       color: 'green',
       drilldownType: 'explainer',
       metricType: 'health',
+      tooltip: METRIC_TOOLTIPS.healthRate,
       // No sparkline for health rate (not time-series)
     }
   ];
@@ -382,6 +400,8 @@ const KPICardsGrid = ({
                 icon={kpi.icon}
                 color={kpi.color}
                 sparklineData={kpi.sparklineData}
+                tooltip={kpi.tooltip}
+                status={kpi.status}
                 compact={true}
                 onClick={() => handleCardClick(kpi)}
               />
@@ -399,6 +419,8 @@ const KPICardsGrid = ({
                 icon={kpi.icon}
                 color={kpi.color}
                 sparklineData={kpi.sparklineData}
+                tooltip={kpi.tooltip}
+                status={kpi.status}
                 compact={true}
                 onClick={() => handleCardClick(kpi)}
               />
@@ -424,6 +446,8 @@ const KPICardsGrid = ({
                   icon={kpi.icon}
                   color={kpi.color}
                   sparklineData={kpi.sparklineData}
+                  tooltip={kpi.tooltip}
+                  status={kpi.status}
                   onClick={() => handleCardClick(kpi)}
                 />
               ))}
@@ -440,6 +464,8 @@ const KPICardsGrid = ({
                   icon={kpi.icon}
                   color={kpi.color}
                   sparklineData={kpi.sparklineData}
+                  tooltip={kpi.tooltip}
+                  status={kpi.status}
                   onClick={() => handleCardClick(kpi)}
                 />
               ))}
@@ -462,6 +488,8 @@ const KPICardsGrid = ({
                     icon={kpi.icon}
                     color={kpi.color}
                     sparklineData={kpi.sparklineData}
+                    tooltip={kpi.tooltip}
+                    status={kpi.status}
                     onClick={() => handleCardClick(kpi)}
                   />
                 </div>
@@ -479,6 +507,8 @@ const KPICardsGrid = ({
                     icon={kpi.icon}
                     color={kpi.color}
                     sparklineData={kpi.sparklineData}
+                    tooltip={kpi.tooltip}
+                    status={kpi.status}
                     onClick={() => handleCardClick(kpi)}
                   />
                 </div>

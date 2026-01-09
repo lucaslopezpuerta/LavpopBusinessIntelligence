@@ -1,8 +1,11 @@
-// Intelligence.jsx v3.15.0 - PRELOADED DATA
+// Intelligence.jsx v3.16.0 - TOOLTIP HELP ICONS
 // Refactored with Priority Matrix, auto-refresh, collapsible sections
 // Design System v3.2 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.16.0 (2026-01-07): Tooltip help icons (Plan Item 1.2)
+//   - Added METRIC_TOOLTIPS import from constants
+//   - All 4 Quick Stats KPICards now have tooltip prop
 // v3.15.0 (2025-12-28): Preloaded dailyRevenue data
 //   - CHANGED: Uses preloaded dailyRevenue from app initialization
 //   - REMOVED: Separate fetch on mount (now uses data.dailyRevenue)
@@ -119,6 +122,7 @@ import { getBrazilDateParts } from '../utils/dateUtils';
 
 // UI components
 import KPICard, { KPIGrid } from '../components/ui/KPICard';
+import { METRIC_TOOLTIPS } from '../constants/metricTooltips';
 import { IntelligenceLoadingSkeleton } from '../components/ui/Skeleton';
 
 // Lazy-loaded section components (contain charts)
@@ -511,7 +515,7 @@ const Intelligence = ({ data, onDataChange }) => {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                  Inteligência
+                  Planejamento
                 </h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Análise estratégica de negócio
@@ -540,6 +544,7 @@ const Intelligence = ({ data, onDataChange }) => {
                 trendPosition="bottom-right"
                 icon={Calendar}
                 color="blue"
+                tooltip={METRIC_TOOLTIPS.monthRevenue}
               />
               <KPICard
                 label="Mês Anterior"
@@ -547,6 +552,7 @@ const Intelligence = ({ data, onDataChange }) => {
                 subtitle={previousMonthName}
                 icon={TrendingUp}
                 color="neutral"
+                tooltip={METRIC_TOOLTIPS.prevMonthRevenue}
               />
               <KPICard
                 label="Ticket Médio"
@@ -554,6 +560,7 @@ const Intelligence = ({ data, onDataChange }) => {
                 subtitle={prevAvgTicket > 0 ? `vs ${formatCurrency(prevAvgTicket)} anterior` : `${currentMonth?.services || 0} ciclos`}
                 icon={DollarSign}
                 color="revenue"
+                tooltip={METRIC_TOOLTIPS.avgTicket}
               />
               <KPICard
                 label="Ciclos/Dia"
@@ -561,6 +568,7 @@ const Intelligence = ({ data, onDataChange }) => {
                 subtitle={`${currentMonth?.services || 0} ciclos total`}
                 icon={Zap}
                 color="profit"
+                tooltip={METRIC_TOOLTIPS.cyclesPerDay}
               />
             </KPIGrid>
           </section>

@@ -358,19 +358,25 @@ export const COUPON_MATRIX = {
  * Used to determine which coupons are available for each template
  */
 export const TEMPLATE_CAMPAIGN_TYPE_MAP = {
+  // Win-back templates
   'winback_discount': CAMPAIGN_TYPES.WINBACK,
   'winback_wash_only': CAMPAIGN_TYPES.WINBACK,
   'winback_dry_only': CAMPAIGN_TYPES.WINBACK,
+  'winback_critical': CAMPAIGN_TYPES.WINBACK, // v3.1: Added missing 45+ day urgent template
   'winback_gentle': CAMPAIGN_TYPES.WINBACK,
   'winback_urgency': CAMPAIGN_TYPES.WINBACK,
+  'reactivation_long_absence': CAMPAIGN_TYPES.WINBACK,
+  // Welcome templates
   'welcome_new': CAMPAIGN_TYPES.WELCOME,
   'welcome_first_visit': CAMPAIGN_TYPES.WELCOME,
+  // Promo templates
   'promo_general': CAMPAIGN_TYPES.PROMO,
   'promo_secagem': CAMPAIGN_TYPES.PROMO,
   'promo_seasonal': CAMPAIGN_TYPES.PROMO,
+  // Upsell templates
   'upsell_secagem': CAMPAIGN_TYPES.UPSELL,
-  'upsell_dryer': CAMPAIGN_TYPES.UPSELL,
-  'reactivation_long_absence': CAMPAIGN_TYPES.WINBACK
+  'upsell_dryer': CAMPAIGN_TYPES.UPSELL
+  // Note: wallet_reminder and post_visit_thanks have campaignType: null (no coupon)
 };
 
 /**

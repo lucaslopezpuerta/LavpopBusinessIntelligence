@@ -1,8 +1,11 @@
-// messageTemplates.js v2.2
+// messageTemplates.js v2.3
 // Centralized WhatsApp message templates configuration
 // Meta Business API compliant with {{1}}, {{2}} placeholder format
 //
 // CHANGELOG:
+// v2.3 (2026-01-08): Added customFiltered and custom audience handling
+//   - getTemplatesByAudience now shows all templates for custom audiences
+//   - Supports AudienceFilterBuilder integration
 // v2.2 (2025-12-13): Added couponValidityDays to all templates
 //   - discountDefaults now includes couponValidityDays for return attribution
 //   - Most templates: 7 days validity
@@ -766,9 +769,13 @@ export function getTemplateNameBySid(contentSid) {
 
 /**
  * Get templates by audience
+ * v2.3: Added 'customFiltered' and 'custom' audience handling - show all templates
  */
 export function getTemplatesByAudience(audience) {
-  if (audience === 'all') return MESSAGE_TEMPLATES;
+  // Show all templates for custom audiences (filter builder or pre-selected)
+  if (!audience || audience === 'all' || audience === 'customFiltered' || audience === 'custom') {
+    return MESSAGE_TEMPLATES;
+  }
   return MESSAGE_TEMPLATES.filter(t => t.audience === audience || t.audience === 'all');
 }
 

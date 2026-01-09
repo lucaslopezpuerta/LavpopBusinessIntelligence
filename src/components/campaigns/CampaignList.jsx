@@ -1,8 +1,14 @@
-// CampaignList.jsx v3.2 - HAPTIC FEEDBACK
+// CampaignList.jsx v3.3 - CAMPAIGN TYPE DIFFERENTIATION
 // Campaign list and history display - Backend only
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.3 (2026-01-08): Campaign type differentiation & tracking health
+//   - Added campaign type badge (Automated vs Manual)
+//   - Added tracking health indicator (warning when sends > 0 but tracked = 0)
+//   - Added campaign type filter (All, Manual, Automated)
+//   - Visual differentiation: left border purple for auto, blue for manual
+//   - Automated detection based on name starting with "Auto:"
 // v3.2 (2025-12-22): Haptic feedback on refresh
 //   - haptics.success() after successful campaign fetch
 // v3.1 (2025-12-15): UX enhancements from audit
@@ -20,7 +26,7 @@
 // v2.0 (2025-12-08): Backend integration + effectiveness metrics
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, Calendar, Users, Search, MessageSquare, TrendingUp, RefreshCw, Eye, CheckCircle2, BookOpen, AlertCircle, ArrowRight, Send } from 'lucide-react';
+import { Target, Calendar, Users, Search, MessageSquare, TrendingUp, RefreshCw, Eye, CheckCircle2, BookOpen, AlertCircle, ArrowRight, Send, Bot, User, AlertTriangle } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import ProgressBar from '../ui/ProgressBar';
 import { getCampaignPerformance } from '../../utils/campaignService';
@@ -51,6 +57,7 @@ const getRelativeTime = (date) => {
 const CampaignList = ({ formatCurrency, formatPercent }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all'); // v3.3: Campaign type filter
   const [campaigns, setCampaigns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
@@ -65,30 +72,43 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
     try {
       const data = await getCampaignPerformance();
       // Transform backend data to display format
-      const transformed = (data || []).map(c => ({
-        id: c.id,
-        code: c.name || c.id,
-        name: c.name,
-        audience: c.audience,
-        status: c.status || 'active',
-        isActive: c.status === 'active',
-        contactMethod: c.contact_method || 'whatsapp',
-        sends: c.sends || 0,
-        // Delivery metrics
-        delivered: c.delivered || 0,
-        read: c.read || 0,
-        failed: c.failed || 0,
-        hasDeliveryData: c.has_delivery_data || false,
-        deliveryRate: c.delivery_rate || 0,
-        // Return metrics
-        contactsTracked: c.contacts_tracked || 0,
-        contactsReturned: c.contacts_returned || 0,
-        returnRate: c.return_rate || 0,
-        revenueRecovered: c.total_revenue_recovered || 0,
-        avgDaysToReturn: c.avg_days_to_return || null,
-        createdAt: c.created_at ? new Date(c.created_at) : null,
-        lastSentAt: c.last_sent_at ? new Date(c.last_sent_at) : null
-      }));
+      const transformed = (data || []).map(c => {
+        const name = c.name || c.id || '';
+        // v3.3: Detect if campaign is automated based on name prefix
+        const isAutomated = name.startsWith('Auto:') || name.toLowerCase().includes('automação');
+        const sends = c.sends || 0;
+        const contactsTracked = c.contacts_tracked || 0;
+        // v3.3: Detect tracking issues (sends > 0 but no tracking)
+        const hasTrackingIssue = sends > 0 && contactsTracked === 0;
+
+        return {
+          id: c.id,
+          code: name,
+          name: name,
+          audience: c.audience,
+          status: c.status || 'active',
+          isActive: c.status === 'active',
+          contactMethod: c.contact_method || 'whatsapp',
+          sends,
+          // Delivery metrics
+          delivered: c.delivered || 0,
+          read: c.read || 0,
+          failed: c.failed || 0,
+          hasDeliveryData: c.has_delivery_data || false,
+          deliveryRate: c.delivery_rate || 0,
+          // Return metrics
+          contactsTracked,
+          contactsReturned: c.contacts_returned || 0,
+          returnRate: c.return_rate || 0,
+          revenueRecovered: c.total_revenue_recovered || 0,
+          avgDaysToReturn: c.avg_days_to_return || null,
+          createdAt: c.created_at ? new Date(c.created_at) : null,
+          lastSentAt: c.last_sent_at ? new Date(c.last_sent_at) : null,
+          // v3.3: Campaign type differentiation
+          isAutomated,
+          hasTrackingIssue
+        };
+      });
       setCampaigns(transformed);
       haptics.success();
     } catch (error) {
@@ -115,7 +135,11 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
       (filterStatus === 'active' && campaign.isActive) ||
       (filterStatus === 'completed' && campaign.status === 'completed') ||
       (filterStatus === 'draft' && campaign.status === 'draft');
-    return matchesSearch && matchesStatus;
+    // v3.3: Filter by campaign type
+    const matchesType = filterType === 'all' ||
+      (filterType === 'automated' && campaign.isAutomated) ||
+      (filterType === 'manual' && !campaign.isAutomated);
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   const getStatusColor = (status) => {
@@ -190,7 +214,7 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
             />
           </div>
 
-          {/* Filter */}
+          {/* Status Filter */}
           <div className="flex gap-2 flex-wrap">
             {[
               { key: 'all', label: 'Todas' },
@@ -211,6 +235,32 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* v3.3: Campaign Type Filter */}
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { key: 'all', label: 'Todos os Tipos', icon: null },
+            { key: 'manual', label: 'Manual', icon: User },
+            { key: 'automated', label: 'Automação', icon: Bot }
+          ].map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setFilterType(key)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                filterType === key
+                  ? key === 'automated'
+                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                    : key === 'manual'
+                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                      : 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {Icon && <Icon className="w-3.5 h-3.5" />}
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Quick Stats Summary */}
@@ -250,15 +300,28 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
             {filteredCampaigns.map((campaign) => (
               <div
                 key={campaign.id}
-                className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md transition-shadow"
+                className={`p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md transition-shadow ${
+                  campaign.isAutomated
+                    ? 'border-l-4 border-l-purple-500'
+                    : 'border-l-4 border-l-blue-500'
+                }`}
               >
                 {/* Header */}
                 <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="text-base font-bold text-slate-900 dark:text-white">
                         {campaign.name || campaign.code}
                       </h3>
+                      {/* v3.3: Campaign Type Badge */}
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        campaign.isAutomated
+                          ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                          : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                      }`}>
+                        {campaign.isAutomated ? <Bot className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                        {campaign.isAutomated ? 'Auto' : 'Manual'}
+                      </span>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(campaign.status)}`}>
                         {getStatusLabel(campaign.status)}
                       </span>
@@ -318,6 +381,19 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
                         </span>
                       </>
                     )}
+                  </div>
+                )}
+
+                {/* v3.3: Tracking Health Indicator */}
+                {campaign.hasTrackingIssue && (
+                  <div
+                    className="flex items-center gap-2 mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-xs text-amber-700 dark:text-amber-300"
+                    title="Mensagens foram enviadas mas o rastreamento de retorno falhou. Isso pode afetar as métricas da campanha."
+                  >
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>
+                      <strong>Rastreamento incompleto:</strong> {campaign.sends} enviado{campaign.sends > 1 ? 's' : ''}, 0 rastreados
+                    </span>
                   </div>
                 )}
 

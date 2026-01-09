@@ -263,8 +263,8 @@ export const api = {
 
   // ==================== CAMPAIGNS ====================
   campaigns: {
-    async getAll() {
-      const result = await apiRequest('campaigns.getAll');
+    async getAll(filters = {}) {
+      const result = await apiRequest('campaigns.getAll', filters);
       return result.campaigns || [];
     },
 
@@ -496,10 +496,13 @@ export const api = {
     /**
      * Get engagement statistics (button clicks, opt-outs, auto-replies)
      * Used for the campaign funnel "Engaged" stage
+     * @param {number|null} days - Number of days to look back (ignored if fromDate provided)
+     * @param {string|null} fromDate - ISO date string for consistent filtering with funnel metrics
      */
-    async getEngagementStats(days = 30) {
+    async getEngagementStats(days = 30, fromDate = null) {
       try {
-        const result = await apiRequest('webhook_events.getEngagementStats', { days }, 'GET');
+        const params = fromDate ? { from_date: fromDate } : { days };
+        const result = await apiRequest('webhook_events.getEngagementStats', params, 'GET');
         return result;
       } catch (error) {
         console.error('Failed to fetch engagement stats:', error);

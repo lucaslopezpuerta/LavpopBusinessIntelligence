@@ -1,9 +1,48 @@
-// campaignService.js v4.9
+// campaignService.js v5.6
 // Campaign management and WhatsApp messaging service
 // Integrates with Netlify function for Twilio WhatsApp API
 // Backend-only storage (Supabase) - no localStorage for data
 //
 // CHANGELOG:
+// v5.6 (2026-01-08): Added "all time" (lifetime) filter support
+//   - getDashboardMetrics now accepts days=null or days=0 for all time
+//   - Uses epoch start date (1970) to include all records
+//   - Enables "Todos" button in CampaignDashboard time range selector
+// v5.5 (2026-01-08): Fixed per-campaign delivered to use periodDeliveredTotal
+//   - delivered field was showing raw 'delivered' count instead of total reached device
+//   - Now uses periodDeliveredTotal (delivered + read statuses) for consistency with funnel
+//   - Table "Entregues" column now matches funnel "Entregues" step
+// v5.4 (2026-01-08): Fixed ALL metrics to be period-specific (not lifetime)
+//   - campaign_performance view has LIFETIME metrics for sends, delivered, read, etc.
+//   - Funnel now calculates from contactData (filtered by contacted_at >= cutoffISO)
+//   - 7-day funnel now shows: sent=24, delivered=22, read=12 (not lifetime 394/295/176)
+//   - Per-campaign metrics (sends, delivered, read, failed) are all period-specific
+//   - Lifetime metrics preserved as lifetime_sends, lifetime_delivered, etc.
+//   - This fixes funnel showing 394 sent instead of 24 for 7-day filter
+// v5.3 (2026-01-08): Fixed period-specific return filtering in campaign table
+//   - campaign_performance.contacts_returned shows LIFETIME returns
+//   - contactData is already filtered by from_date (cutoffISO)
+//   - Now grouping contactData by campaign_id to get period-specific returns
+//   - recentCampaigns now shows returns/revenue/tracked for selected period only
+//   - Lifetime metrics preserved as lifetime_contacts_returned, lifetime_return_rate, etc.
+//   - This fixes campaign table showing 66 returned while funnel shows 4
+// v5.2 (2026-01-08): Fixed funnel monotonicity (delivered must include read)
+//   - Twilio changes delivery_status FROM 'delivered' TO 'read' when message is opened
+//   - campaign_performance view counts these as mutually exclusive
+//   - For valid funnel (sent ≥ delivered ≥ read), delivered must = delivered + read
+//   - This fixes "Lidas > Entregues" impossible state in funnel visualization
+// v5.1 (2026-01-08): Fixed funnel metrics inconsistency
+//   - Funnel metrics (sent, delivered, read) now all come from campaign_performance view
+//   - Removed separate api.delivery.getStats() call that used different date boundary
+//   - This fixes the "362 sent → 18 delivered (5%)" bug - rates now realistic
+//   - Also removed redundant campaign_performance query (reused data from funnel)
+//   - Engagement stats now accept from_date parameter for consistent filtering
+// v5.0 (2026-01-08): Unified date filtering for dashboard metrics
+//   - ALL metrics now filter by the same date range (days parameter)
+//   - contact_tracking filtered by contacted_at >= cutoffDate
+//   - campaigns filtered by created_at >= cutoffDate
+//   - campaign_performance filtered by created_at >= cutoffDate
+//   - This ensures funnel metrics are consistent and percentages are valid
 // v4.9 (2025-12-14): Simplified delivery metrics - now from campaign_performance view
 //   - getDashboardMetrics no longer needs separate api.delivery.getCampaignMetrics() call
 //   - Delivery columns (delivered, read, has_delivery_data) now in campaign_performance view
@@ -1080,12 +1119,31 @@ export async function sendCampaignWithTracking(campaignId, recipients, options =
  * Get comprehensive dashboard metrics for campaign analytics
  * Fetches data from Supabase views and aggregates for visualization
  *
+ * v5.0 (2026-01-08): Unified date filtering
+ *   - ALL metrics now filter by the same date range (days parameter)
+ *   - contact_tracking filtered by contacted_at >= cutoffDate
+ *   - campaigns filtered by created_at >= cutoffDate
+ *   - campaign_performance filtered by created_at >= cutoffDate
+ *   - This ensures funnel metrics are consistent and percentages are valid
+ *
  * @param {object} options - Query options
  * @param {number} options.days - Time range in days (default: 30)
  * @returns {Promise<object>} Dashboard metrics
  */
 export async function getDashboardMetrics(options = {}) {
   const { days = 30 } = options;
+
+  // Calculate cutoff date for consistent filtering across ALL metrics
+  // If days is null/0, use "all time" (no date filter - use very old date)
+  let cutoffISO;
+  if (days === null || days === 0) {
+    // All time: use epoch start so all records are included
+    cutoffISO = new Date(0).toISOString();
+  } else {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    cutoffISO = cutoffDate.toISOString();
+  }
 
   const metrics = {
     summary: {
@@ -1107,11 +1165,13 @@ export async function getDashboardMetrics(options = {}) {
       engaged: 0,     // Positive button clicks (Quero usar!, etc.)
       returned: 0     // Customers who returned after campaign
     },
-    recentCampaigns: []
+    recentCampaigns: [],
+    dateRange: { days, cutoffDate: cutoffISO } // Include date range in response for transparency
   };
 
   try {
     // Fetch campaign effectiveness data (aggregated by campaign)
+    // Note: This view doesn't have date filtering built-in, filter client-side
     let effectivenessData = [];
       try {
         effectivenessData = await api.get('campaign_effectiveness', {});
@@ -1189,9 +1249,10 @@ export async function getDashboardMetrics(options = {}) {
       }
 
       // Fetch contact tracking summary for overall metrics
+      // v5.0: Filter by contacted_at >= cutoffISO for consistent date range
       let contactData = [];
       try {
-        contactData = await api.get('contact_tracking', {});
+        contactData = await api.get('contact_tracking', { from_date: cutoffISO });
       } catch (e) {
         console.warn('[CampaignService] Could not fetch contact tracking:', e.message);
       }
@@ -1219,47 +1280,66 @@ export async function getDashboardMetrics(options = {}) {
         metrics.funnel.returned = returned.length;
       }
 
-      // Fetch all campaigns to get total sends (includes automations)
-      // The campaigns.sends column is updated by both manual sends AND record_automation_contact()
-      let campaignsForFunnel = [];
-      try {
-        campaignsForFunnel = await api.campaigns.getAll();
-      } catch (e) {
-        console.warn('[CampaignService] Could not fetch campaigns for funnel:', e.message);
-      }
+      // v5.4: Calculate PERIOD-SPECIFIC funnel metrics from contactData
+      // campaign_performance view has LIFETIME metrics, but we need PERIOD-SPECIFIC
+      // contactData is already filtered by contacted_at >= cutoffISO
+      if (contactData && contactData.length > 0) {
+        // Count delivery statuses from period-filtered contactData
+        const deliveredCount = contactData.filter(c =>
+          c.delivery_status === 'delivered' || c.delivery_status === 'read'
+        ).length;
+        const readCount = contactData.filter(c => c.delivery_status === 'read').length;
+        const failedCount = contactData.filter(c =>
+          c.delivery_status === 'failed' || c.delivery_status === 'undelivered'
+        ).length;
 
-      if (campaignsForFunnel && campaignsForFunnel.length > 0) {
-        // Sum up all sends from campaigns (this includes automation sends)
-        metrics.funnel.sent = campaignsForFunnel.reduce((sum, c) => sum + (c.sends || 0), 0);
-      }
+        // Set period-specific funnel metrics
+        metrics.funnel.sent = contactData.length;
+        metrics.funnel.delivered = deliveredCount;
+        metrics.funnel.read = readCount;
+        metrics.funnel.failed = failedCount;
 
-      // Fetch real delivery stats from Twilio webhook events
-      try {
-        const deliveryStats = await api.delivery.getStats(days);
-        if (deliveryStats.hasRealData) {
-          // Use real delivery data from webhook events
-          metrics.funnel.delivered = deliveryStats.totalDelivered;
-          metrics.funnel.read = deliveryStats.stats.read; // "read" status (message opened)
-          metrics.deliveryRate = deliveryStats.deliveryRate;
-          metrics.readRate = deliveryStats.readRate;
+        // Check if we have real delivery data (any non-pending status)
+        const hasRealData = contactData.some(c =>
+          c.delivery_status && c.delivery_status !== 'pending' && c.delivery_status !== 'sent'
+        );
+
+        if (hasRealData && metrics.funnel.sent > 0) {
+          // Calculate rates from period-specific data
+          metrics.deliveryRate = Math.round((metrics.funnel.delivered / metrics.funnel.sent) * 1000) / 10;
+          metrics.readRate = metrics.funnel.delivered > 0
+            ? Math.round((metrics.funnel.read / metrics.funnel.delivered) * 1000) / 10
+            : 0;
           metrics.hasRealDeliveryData = true;
         } else {
-          // Fallback to estimates if no real data yet
+          // Fallback to estimates if no webhook data yet
           metrics.funnel.delivered = Math.round(metrics.funnel.sent * 0.97);
           metrics.funnel.read = Math.round(metrics.funnel.delivered * 0.6);
+          metrics.deliveryRate = 97;
+          metrics.readRate = 60;
           metrics.hasRealDeliveryData = false;
         }
-      } catch (e) {
-        console.warn('[CampaignService] Could not fetch delivery stats:', e.message);
-        // Fallback to estimates
-        metrics.funnel.delivered = Math.round(metrics.funnel.sent * 0.97);
-        metrics.funnel.read = Math.round(metrics.funnel.delivered * 0.6);
+      } else {
+        // No contacts in period - set to zero
+        metrics.funnel.sent = 0;
+        metrics.funnel.delivered = 0;
+        metrics.funnel.read = 0;
         metrics.hasRealDeliveryData = false;
       }
 
-      // Fetch real engagement stats (button clicks) from webhook events
+      // v5.4: Fetch campaign_performance for campaign metadata (name, status, audience, etc.)
+      // We'll override the LIFETIME metrics with PERIOD-SPECIFIC ones calculated above
+      let campaignPerformanceForFunnel = [];
       try {
-        const engagementStats = await api.delivery.getEngagementStats(days);
+        campaignPerformanceForFunnel = await api.get('campaign_performance', { from_date: cutoffISO });
+      } catch (e) {
+        console.warn('[CampaignService] Could not fetch campaign performance for funnel:', e.message);
+      }
+
+      // Fetch real engagement stats (button clicks) from webhook events
+      // v5.1: Use cutoffISO for consistent date filtering with funnel metrics
+      try {
+        const engagementStats = await api.delivery.getEngagementStats(null, cutoffISO);
         if (engagementStats.hasRealData) {
           // Real engagement = positive button clicks (Quero usar!, Vou aproveitar!, etc.)
           metrics.funnel.engaged = engagementStats.totalPositiveEngagement;
@@ -1282,34 +1362,94 @@ export async function getDashboardMetrics(options = {}) {
         metrics.hasRealEngagementData = false;
       }
 
-      // Fetch recent campaigns with performance data from campaign_performance view
-      // v4.9: This view now includes delivery metrics directly (delivered, read, has_delivery_data)
-      // No separate api.delivery.getCampaignMetrics() call needed anymore
-      let campaignPerformanceData = [];
-      try {
-        campaignPerformanceData = await api.get('campaign_performance', {});
-      } catch (e) {
-        console.warn('[CampaignService] Could not fetch campaign performance:', e.message);
+      // v5.4: Calculate ALL period-specific metrics per campaign from filtered contactData
+      // campaign_performance has LIFETIME metrics, but we need PERIOD-SPECIFIC for:
+      // - sends (contacts tracked), delivered, read, failed
+      // - returns, revenue
+      // contactData is already filtered by contacted_at >= cutoffISO
+      const periodMetricsByCampaign = new Map();
+
+      if (contactData && contactData.length > 0) {
+        contactData.forEach(contact => {
+          const cid = contact.campaign_id;
+          if (!cid) return;
+
+          // Initialize campaign metrics if not exists
+          if (!periodMetricsByCampaign.has(cid)) {
+            periodMetricsByCampaign.set(cid, {
+              sends: 0,
+              delivered: 0,
+              read: 0,
+              failed: 0,
+              returned: 0,
+              revenue: 0
+            });
+          }
+
+          const m = periodMetricsByCampaign.get(cid);
+          m.sends++;
+
+          // Count delivery status
+          if (contact.delivery_status === 'delivered') {
+            m.delivered++;
+          } else if (contact.delivery_status === 'read') {
+            m.read++;
+          } else if (contact.delivery_status === 'failed' || contact.delivery_status === 'undelivered') {
+            m.failed++;
+          }
+
+          // Count returns and revenue
+          if (contact.status === 'returned') {
+            m.returned++;
+            m.revenue += contact.return_revenue || 0;
+          }
+        });
       }
 
-      if (campaignPerformanceData && campaignPerformanceData.length > 0) {
-        // v4.9: Use campaign_performance view data directly - now includes ALL metrics
-        // Return metrics: return_rate, total_revenue_recovered, contacts_tracked
-        // Delivery metrics: delivered, read, failed, delivery_rate, read_rate, has_delivery_data
-        metrics.recentCampaigns = campaignPerformanceData.slice(0, 10).map(c => ({
-          ...c,
-          // Performance metrics (aliased for compatibility)
-          return_rate: c.return_rate || 0,
-          total_revenue: c.total_revenue_recovered || 0,
-          contacts_count: c.contacts_tracked || 0,
-          // Delivery metrics (now from campaign_performance view directly)
-          delivered: c.delivered || 0,
-          read: c.read || 0,
-          failed: c.failed || 0,
-          delivery_rate: c.delivery_rate || null,
-          read_rate: c.read_rate || null,
-          has_delivery_data: c.has_delivery_data || false
-        }));
+      // v5.4: Build recentCampaigns with ALL period-specific metrics
+      // Use campaign_performance for metadata (name, status, audience, coupon, etc.)
+      // Override ALL numeric metrics with period-specific values
+      if (campaignPerformanceForFunnel && campaignPerformanceForFunnel.length > 0) {
+        metrics.recentCampaigns = campaignPerformanceForFunnel.slice(0, 10).map(c => {
+          // Get period-specific metrics (or defaults if campaign has no contacts in period)
+          const pm = periodMetricsByCampaign.get(c.id) || {
+            sends: 0, delivered: 0, read: 0, failed: 0, returned: 0, revenue: 0
+          };
+
+          // Calculate period-specific rates
+          const periodReturnRate = pm.sends > 0 ? (pm.returned / pm.sends) * 100 : 0;
+          const periodDeliveredTotal = pm.delivered + pm.read; // delivered = reached device
+          const periodDeliveryRate = pm.sends > 0 ? (periodDeliveredTotal / pm.sends) * 100 : null;
+          const periodReadRate = periodDeliveredTotal > 0 ? (pm.read / periodDeliveredTotal) * 100 : null;
+          const hasDeliveryData = pm.delivered > 0 || pm.read > 0 || pm.failed > 0;
+
+          return {
+            ...c,
+            // ALL metrics are now PERIOD-SPECIFIC
+            sends: pm.sends,
+            contacts_tracked: pm.sends,
+            contacts_count: pm.sends,
+            // delivered = messages that reached device (delivered OR read status)
+            // This matches funnel logic where 'read' replaces 'delivered' in Twilio lifecycle
+            delivered: periodDeliveredTotal,
+            read: pm.read,
+            failed: pm.failed,
+            contacts_returned: pm.returned,
+            return_rate: Math.round(periodReturnRate * 10) / 10,
+            total_revenue: pm.revenue,
+            total_revenue_recovered: pm.revenue,
+            delivery_rate: periodDeliveryRate !== null ? Math.round(periodDeliveryRate * 10) / 10 : null,
+            read_rate: periodReadRate !== null ? Math.round(periodReadRate * 10) / 10 : null,
+            has_delivery_data: hasDeliveryData,
+            // Keep lifetime metrics available for comparison
+            lifetime_sends: c.sends || 0,
+            lifetime_delivered: c.delivered || 0,
+            lifetime_read: c.read || 0,
+            lifetime_contacts_returned: c.contacts_returned || 0,
+            lifetime_return_rate: c.return_rate || 0,
+            lifetime_revenue: c.total_revenue_recovered || 0
+          };
+        });
       }
 
     // Dashboard metrics loaded successfully

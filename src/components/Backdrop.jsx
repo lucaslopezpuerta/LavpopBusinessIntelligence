@@ -1,7 +1,10 @@
-// Backdrop.jsx v1.0
+// Backdrop.jsx v1.1 - GLASS MORPHISM
 // Semi-transparent overlay for mobile sidebar drawer
 //
 // CHANGELOG:
+// v1.1 (2026-01-07): Glass morphism enhancement
+//   - Added backdrop-blur-sm for premium frosted glass effect
+//   - Improved visual depth and polish
 // v1.0 (2025-11-27): Initial implementation
 //   - Overlay backdrop for mobile drawer
 //   - Dismisses drawer on click
@@ -18,7 +21,7 @@ const Backdrop = () => {
 
   return (
     <div
-      className="fixed inset-0 z-40 bg-gray-900/50 lg:hidden"
+      className="fixed inset-0 z-40 bg-gray-900/50 backdrop-blur-sm lg:hidden"
       onClick={toggleMobileSidebar}
     />
   );

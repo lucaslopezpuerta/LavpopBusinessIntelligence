@@ -1,8 +1,17 @@
-// NewCampaignModal.jsx v4.9 - HAPTIC FEEDBACK
+// NewCampaignModal.jsx v5.1 - AUDIENCE FILTER BUILDER INTEGRATION
 // Campaign creation wizard modal
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v5.1 (2026-01-08): AudienceFilterBuilder integration (Phase 8)
+//   - Added audienceMode toggle (preset/filter) in Step 1
+//   - Integrated AudienceFilterBuilder for custom filtering
+//   - Added customFilteredCustomers state
+//   - Updated audienceCustomers to handle 'customFiltered' audience
+// v5.0 (2026-01-07): Focus ring standardization and glass morphism
+//   - Added focus-visible rings to close button and navigation buttons
+//   - Added glass morphism to modal container (bg-white/95 backdrop-blur-xl)
+//   - Improves keyboard navigation and accessibility
 // v4.9 (2025-12-22): Haptic feedback for campaign actions
 //   - haptics.heavy() when send button is pressed
 //   - haptics.success() on successful send/schedule
@@ -95,8 +104,10 @@ import {
   Snowflake,
   Moon,
   UserMinus,
-  UserCheck
+  UserCheck,
+  Filter
 } from 'lucide-react';
+import AudienceFilterBuilder from './AudienceFilterBuilder';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import {
   createBrazilDateTime,
@@ -257,6 +268,10 @@ const NewCampaignModal = ({
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
 
+  // v5.1: Audience filter mode state
+  const [audienceMode, setAudienceMode] = useState('preset'); // 'preset' | 'filter'
+  const [customFilteredCustomers, setCustomFilteredCustomers] = useState([]);
+
   // Build audiences list - includes custom audience when pre-selected customers exist
   const availableAudiences = useMemo(() => {
     const hasCustom = audienceSegments?.custom?.length > 0;
@@ -301,10 +316,18 @@ const NewCampaignModal = ({
   }, [isOpen, initialTemplate, initialAudience]);
 
   // Get audience customers with valid phones
+  // v5.1: Added support for 'customFiltered' from AudienceFilterBuilder
   const audienceCustomers = useMemo(() => {
     if (!audienceSegments || !selectedAudience) return [];
 
     let customers = [];
+
+    // v5.1: Handle custom filtered customers from AudienceFilterBuilder
+    if (selectedAudience === 'customFiltered') {
+      // customFilteredCustomers already filtered by AudienceFilterBuilder
+      return customFilteredCustomers;
+    }
+
     if (selectedAudience === 'all') {
       customers = audienceSegments.withPhone || [];
     } else {
@@ -312,7 +335,7 @@ const NewCampaignModal = ({
     }
 
     return customers.filter(c => isValidBrazilianMobile(c.phone));
-  }, [audienceSegments, selectedAudience]);
+  }, [audienceSegments, selectedAudience, customFilteredCustomers]);
 
   // Validate audience for campaign (async - loads from backend)
   const [validationStats, setValidationStats] = useState(null);
@@ -673,6 +696,9 @@ const NewCampaignModal = ({
     setSendMode('now');
     setScheduledDate('');
     setScheduledTime('');
+    // v5.1: Reset filter builder state
+    setAudienceMode('preset');
+    setCustomFilteredCustomers([]);
     onClose();
   };
 
@@ -680,7 +706,7 @@ const NewCampaignModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fade-in">
+      <div className="w-full max-w-2xl max-h-[90vh] bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-slate-700/50 overflow-hidden animate-fade-in">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -688,7 +714,7 @@ const NewCampaignModal = ({
           </h2>
           <button
             onClick={handleClose}
-            className="p-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            className="p-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
           >
             <X className="w-5 h-5" />
           </button>
@@ -734,11 +760,61 @@ const NewCampaignModal = ({
           {/* Step 1: Audience Selection */}
           {currentStep === 0 && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                Selecione o público-alvo para sua campanha:
-              </p>
+              {/* v5.1: Mode Selector (Preset vs Filter) */}
+              <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                <button
+                  onClick={() => {
+                    setAudienceMode('preset');
+                    // Clear custom filtered when switching to preset
+                    if (selectedAudience === 'customFiltered') {
+                      setSelectedAudience(null);
+                    }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    audienceMode === 'preset'
+                      ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  Segmentos
+                </button>
+                <button
+                  onClick={() => setAudienceMode('filter')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    audienceMode === 'filter'
+                      ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <Filter className="w-4 h-4" />
+                  Filtro Avançado
+                </button>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* v5.1: Advanced Filter Builder */}
+              {audienceMode === 'filter' && (
+                <AudienceFilterBuilder
+                  allCustomers={audienceSegments?.withPhone || []}
+                  onFilteredCustomers={(customers) => {
+                    setCustomFilteredCustomers(customers);
+                    if (customers.length > 0) {
+                      setSelectedAudience('customFiltered');
+                    } else {
+                      setSelectedAudience(null);
+                    }
+                  }}
+                />
+              )}
+
+              {/* Preset Audiences (existing) */}
+              {audienceMode === 'preset' && (
+                <>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Selecione o público-alvo para sua campanha:
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {availableAudiences.map((audience) => {
                   const Icon = audience.icon;
                   const count = getAudienceCount(audience.id);
@@ -803,7 +879,9 @@ const NewCampaignModal = ({
                     </button>
                   );
                 })}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -1326,7 +1404,7 @@ const NewCampaignModal = ({
                                 value={scheduledDate}
                                 onChange={(e) => setScheduledDate(e.target.value)}
                                 min={getBrazilNow().date}
-                                className="w-full h-12 pl-10 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full h-12 pl-10 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                               />
                             </div>
                           </div>
@@ -1340,7 +1418,7 @@ const NewCampaignModal = ({
                                 type="time"
                                 value={scheduledTime}
                                 onChange={(e) => setScheduledTime(e.target.value)}
-                                className="w-full h-12 pl-10 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full h-12 pl-10 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                               />
                             </div>
                           </div>
@@ -1397,7 +1475,7 @@ const NewCampaignModal = ({
           <button
             onClick={currentStep === 0 ? handleClose : handleBack}
             disabled={isSending}
-            className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
           >
             <ChevronLeft className="w-4 h-4" />
             {currentStep === 0 ? 'Cancelar' : 'Voltar'}
@@ -1407,7 +1485,7 @@ const NewCampaignModal = ({
             <button
               onClick={handleNext}
               disabled={!canProceed()}
-              className="flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               Próximo
               <ChevronRight className="w-4 h-4" />
@@ -1415,7 +1493,7 @@ const NewCampaignModal = ({
           ) : sendResult?.success ? (
             <button
               onClick={handleClose}
-              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               <CheckCircle2 className="w-4 h-4" />
               Concluir

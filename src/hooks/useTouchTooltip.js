@@ -1,7 +1,11 @@
-// useTouchTooltip.js v1.4 - ROBUST TOOLTIP DISMISS
+// useTouchTooltip.js v1.5 - IMPROVED DEVICE DETECTION
 // Shared hook for mobile-friendly tooltip interactions on charts
 //
 // CHANGELOG:
+// v1.5 (2026-01-07): Mobile compatibility improvements
+//   - FIXED: Touch detection now uses matchMedia for hybrid device support
+//   - FIXED: Added passive flag to touch listeners (scroll performance)
+//   - NEW: modalAnimationDelay option for configurable timing (default: 300ms)
 // v1.4 (2025-12-18): Robust tooltip dismiss when modal opens
 //   - FIXED: Tooltip now properly hides before modal opens (using rAF delay)
 //   - FIXED: Hover tooltips work again after modal closes (mousemove listener)
@@ -25,6 +29,19 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 /**
+ * Detect if the current device is primarily touch-based using CSS media queries.
+ * More reliable than runtime detection for hybrid devices (Surface, iPad with keyboard, etc.)
+ */
+const getIsTouchDevice = () => {
+  // Check if matchMedia is available (SSR safety)
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+
+  // Primary input is touch (not hover-capable)
+  // This correctly identifies touch-primary devices even if they have mouse attached
+  return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+};
+
+/**
  * Hook for mobile-friendly tooltip interactions
  *
  * Pattern:
@@ -36,24 +53,18 @@ import { useState, useCallback, useEffect, useRef } from 'react';
  * @param {Object} options
  * @param {Function} options.onAction - Callback when user double-taps (opens modal)
  * @param {number} options.dismissTimeout - Auto-dismiss timeout in ms (default: 5000)
+ * @param {number} options.modalAnimationDelay - Time to wait for modal animations (default: 300)
  * @returns {Object} { activeTooltip, handleTouch, clearTooltip, tooltipHidden, resetTooltipVisibility, isTouchDevice }
  */
-export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
+export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimationDelay = 300 } = {}) {
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [tooltipHidden, setTooltipHidden] = useState(false);
   const timeoutRef = useRef(null);
   const actionPendingRef = useRef(false);
-  const isTouchDevice = useRef(false);
 
-  // Detect touch device on first touch
-  useEffect(() => {
-    const handleTouchStart = () => {
-      isTouchDevice.current = true;
-    };
-
-    window.addEventListener('touchstart', handleTouchStart, { once: true });
-    return () => window.removeEventListener('touchstart', handleTouchStart);
-  }, []);
+  // Use matchMedia for reliable touch detection (handles hybrid devices)
+  // Re-check on each call as device mode can change (e.g., tablet mode toggle)
+  const checkIsTouchDevice = useCallback(() => getIsTouchDevice(), []);
 
   // Auto-dismiss timeout
   useEffect(() => {
@@ -83,7 +94,7 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
     // Small delay to prevent immediate dismissal
     const timeoutId = setTimeout(() => {
       document.addEventListener('click', handleOutsideClick);
-      document.addEventListener('touchstart', handleOutsideClick);
+      document.addEventListener('touchstart', handleOutsideClick, { passive: true });
     }, 100);
 
     return () => {
@@ -114,15 +125,16 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
     };
 
     // Add listener after a delay (wait for modal to fully open)
+    // Use modalAnimationDelay + buffer to ensure modal animation completes
     const setupTimeout = setTimeout(() => {
       document.addEventListener('mousemove', handleMouseMove, { passive: true });
-    }, 500);
+    }, modalAnimationDelay + 200);
 
     return () => {
       clearTimeout(setupTimeout);
       document.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [tooltipHidden]);
+  }, [tooltipHidden, modalAnimationDelay]);
 
   /**
    * Reset tooltip visibility manually (call from modal onClose)
@@ -148,7 +160,8 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
    */
   const handleTouch = useCallback((data, id) => {
     // On desktop (non-touch), always trigger action immediately
-    if (!isTouchDevice.current) {
+    // Use matchMedia check for reliable hybrid device detection
+    if (!checkIsTouchDevice()) {
       // Hide tooltip first
       hideTooltip();
 
@@ -156,10 +169,11 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
       if (onAction) {
         requestAnimationFrame(() => {
           onAction(data);
-          // Clear action pending after a short delay (modal animation time)
+          // Clear action pending after modal animation (configurable)
+          // Note: resetTooltipVisibility() is preferred - this is a fallback
           setTimeout(() => {
             actionPendingRef.current = false;
-          }, 300);
+          }, modalAnimationDelay);
         });
       }
       return true; // Action was triggered
@@ -173,9 +187,10 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
       if (onAction) {
         requestAnimationFrame(() => {
           onAction(data);
+          // Clear action pending after modal animation (configurable)
           setTimeout(() => {
             actionPendingRef.current = false;
-          }, 300);
+          }, modalAnimationDelay);
         });
       }
       return true; // Action was triggered
@@ -188,7 +203,7 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
     actionPendingRef.current = false;
     setActiveTooltip({ id, data });
     return false; // Just showing tooltip
-  }, [activeTooltip, onAction, hideTooltip, tooltipHidden]);
+  }, [activeTooltip, onAction, hideTooltip, tooltipHidden, checkIsTouchDevice, modalAnimationDelay]);
 
   /**
    * Clear the active tooltip
@@ -209,7 +224,7 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000 } = {}) {
     handleTouch,
     clearTooltip,
     isActive,
-    isTouchDevice: isTouchDevice.current,
+    isTouchDevice: checkIsTouchDevice(), // Now uses matchMedia for reliability
     tooltipHidden, // Use to control Recharts Tooltip visibility
     resetTooltipVisibility, // Optional: call from modal onClose
   };

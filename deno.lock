@@ -11,19 +11,26 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@capacitor/android@8",
+        "npm:@capacitor/cli@8",
+        "npm:@capacitor/core@8",
+        "npm:@capacitor/status-bar@8",
         "npm:@eslint/js@^9.36.0",
+        "npm:@sentry/react@^10.32.1",
         "npm:@supabase/supabase-js@^2.38.0",
         "npm:@testing-library/jest-dom@^6.4.8",
         "npm:@testing-library/react@16",
         "npm:@types/react-dom@^18.3.1",
         "npm:@types/react@^18.3.12",
-        "npm:@vitejs/plugin-react@^4.3.3",
+        "npm:@vitejs/plugin-react@^5.1.2",
+        "npm:@vitest/coverage-v8@^4.0.16",
         "npm:autoprefixer@^10.4.20",
         "npm:dotenv@^17.2.3",
         "npm:embla-carousel-react@^8.3.0",
         "npm:eslint-plugin-react-hooks@5",
         "npm:eslint-plugin-react-refresh@~0.4.14",
         "npm:eslint@^9.36.0",
+        "npm:focus-trap-react@^11.0.4",
         "npm:framer-motion@^11.11.17",
         "npm:globals@^15.12.0",
         "npm:jsdom@^24.1.0",
@@ -40,8 +47,8 @@
         "npm:sharp@~0.34.5",
         "npm:tailwindcss@^3.4.17",
         "npm:vite-plugin-pwa@^1.2.0",
-        "npm:vite@^5.4.11",
-        "npm:vitest@^2.0.5"
+        "npm:vite@^7.3.0",
+        "npm:vitest@^4.0.16"
       ]
     }
   }

@@ -1,8 +1,14 @@
-// Directory.jsx v2.3 - MODERN UX REDESIGN
+// Directory.jsx v2.4 - SMART PRESETS & CAMPAIGN FAB
 // Dedicated view for browsing and searching customers
 // Design System v4.0 compliant - coherent with Dashboard, SocialMedia, etc.
 //
 // CHANGELOG:
+// v2.4 (2026-01-07): Smart filter presets & bulk campaign FAB
+//   - NEW: 4 smart filter preset buttons (Em Risco, VIPs Inativos, Novos, Críticos)
+//   - NEW: Floating action button for bulk campaign to filtered customers
+//   - Preset toggle on/off with visual feedback
+//   - FAB appears when filters active AND results > 0
+//   - Navigates to /campaigns with prefilledCustomers state
 // v2.3 (2025-12-23): Better filter distribution
 //   - 4-column grid layout on desktop (Segmento, Risco, Ordenar, Contactados)
 //   - 2-column grid on mobile for compact display
@@ -36,6 +42,7 @@
 //   - CustomerProfileModal integration
 
 import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -48,7 +55,11 @@ import {
   UserX,
   Activity,
   AlertTriangle,
-  Filter
+  Filter,
+  Send,
+  Crown,
+  UserPlus,
+  TrendingDown
 } from 'lucide-react';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import CustomerCard from '../components/CustomerCard';
@@ -144,7 +155,46 @@ const StatsPill = ({ icon: Icon, value, label, color = 'slate', pulse = false })
   );
 };
 
+// Smart Filter Presets - Quick access to common customer segments
+const FILTER_PRESETS = [
+  {
+    id: 'at-risk-not-contacted',
+    label: 'Em Risco',
+    mobileLabel: 'Risco',
+    icon: AlertTriangle,
+    color: 'red',
+    filters: { selectedRisk: 'At Risk', excludeContacted: true }
+  },
+  {
+    id: 'vip-inactive',
+    label: 'VIPs Inativos',
+    mobileLabel: 'VIPs',
+    icon: Crown,
+    color: 'amber',
+    filters: { selectedSegment: 'VIP', sortBy: 'lastVisit', sortDirection: 'asc' }
+  },
+  {
+    id: 'new-customers',
+    label: 'Novos',
+    mobileLabel: 'Novos',
+    icon: UserPlus,
+    color: 'emerald',
+    filters: { selectedRisk: 'New Customer' }
+  },
+  {
+    id: 'churning',
+    label: 'Críticos',
+    mobileLabel: 'Crítico',
+    icon: TrendingDown,
+    color: 'rose',
+    filters: { selectedRisk: 'Churning', excludeContacted: true }
+  }
+];
+
 const Directory = ({ data }) => {
+  // Navigation for FAB
+  const navigate = useNavigate();
+
   // Detect mobile screen
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
 
@@ -163,6 +213,7 @@ const Directory = ({ data }) => {
   const [excludeContacted, setExcludeContacted] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activePreset, setActivePreset] = useState(null);
   const [itemsPerPage, setItemsPerPage] = useState(() => window.innerWidth < 640 ? 5 : 25);
 
   // Adjust itemsPerPage when switching between mobile/desktop
@@ -293,6 +344,32 @@ const Directory = ({ data }) => {
     setSelectedSegment('all');
     setSelectedRisk('all');
     setExcludeContacted(false);
+    setActivePreset(null);
+  };
+
+  // Apply a filter preset
+  const applyPreset = (preset) => {
+    if (activePreset === preset.id) {
+      // Toggle off - reset filters
+      handleClearFilters();
+    } else {
+      // Reset filters first
+      setSearchTerm('');
+      setSelectedSegment('all');
+      setSelectedRisk('all');
+      setExcludeContacted(false);
+      setSortBy('spending');
+      setSortDirection('desc');
+
+      // Apply preset filters
+      const { filters } = preset;
+      if (filters.selectedSegment) setSelectedSegment(filters.selectedSegment);
+      if (filters.selectedRisk) setSelectedRisk(filters.selectedRisk);
+      if (filters.excludeContacted !== undefined) setExcludeContacted(filters.excludeContacted);
+      if (filters.sortBy) setSortBy(filters.sortBy);
+      if (filters.sortDirection) setSortDirection(filters.sortDirection);
+      setActivePreset(preset.id);
+    }
   };
 
   // Pagination
@@ -470,6 +547,44 @@ const Directory = ({ data }) => {
               <Download className="w-4 h-4" />
               <span>Exportar</span>
             </button>
+          </div>
+
+          {/* Smart Filter Presets */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            {FILTER_PRESETS.map((preset) => {
+              const Icon = preset.icon;
+              const isActive = activePreset === preset.id;
+              const colorClasses = {
+                red: isActive
+                  ? 'bg-red-500 text-white shadow-md'
+                  : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-red-300 dark:hover:border-red-500 hover:text-red-600 dark:hover:text-red-400',
+                amber: isActive
+                  ? 'bg-amber-500 text-white shadow-md'
+                  : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-amber-300 dark:hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400',
+                emerald: isActive
+                  ? 'bg-emerald-500 text-white shadow-md'
+                  : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400',
+                rose: isActive
+                  ? 'bg-rose-500 text-white shadow-md'
+                  : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-rose-300 dark:hover:border-rose-500 hover:text-rose-600 dark:hover:text-rose-400',
+              };
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => applyPreset(preset)}
+                  className={`
+                    flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold
+                    transition-all active:scale-95
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2
+                    ${colorClasses[preset.color]}
+                  `}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{preset.label}</span>
+                  <span className="sm:hidden">{preset.mobileLabel}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -820,6 +935,36 @@ const Directory = ({ data }) => {
           />
         </Suspense>
       )}
+
+      {/* Floating Action Button - Campaign for filtered customers */}
+      <AnimatePresence>
+        {hasActiveFilters && filteredCustomers.length > 0 && (
+          <motion.button
+            initial={{ y: 100, opacity: 0, scale: 0.8 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 100, opacity: 0, scale: 0.8 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            onClick={() => navigate('/campaigns', {
+              state: { prefilledCustomers: filteredCustomers.map(c => c.doc) }
+            })}
+            className="
+              fixed bottom-6 right-6 z-40
+              bg-gradient-to-r from-lavpop-blue to-lavpop-green
+              text-white px-6 py-3 rounded-full shadow-lg
+              flex items-center gap-2 font-semibold
+              hover:shadow-xl active:scale-95 transition-all
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-lavpop-blue
+            "
+            aria-label={`Enviar campanha para ${filteredCustomers.length} clientes`}
+          >
+            <Send className="w-5 h-5" />
+            <span className="hidden sm:inline">Enviar Campanha</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">
+              {filteredCustomers.length}
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -1,8 +1,23 @@
-// SecondaryKPICard.jsx v2.4 - COMPACT MODE
+// SecondaryKPICard.jsx v2.8 - STATUS COLOR BADGES
 // Compact KPI card for secondary metrics
 // Design System v3.3 compliant
 //
 // CHANGELOG:
+// v2.8 (2026-01-07): Status color badges (Plan Item 1.3)
+//   - NEW: status prop for colored left border ('success'|'warning'|'danger'|'neutral')
+//   - Left border accent visible through gradient background
+//   - Use with getMetricStatus from constants/metricThresholds.js
+// v2.7 (2026-01-07): Focus ring color now matches card gradient
+//   - FIXED: Hardcoded blue-600 ring offset replaced with dynamic color
+//   - Each color variant now has matching focus ring offset
+//   - Improves accessibility and visual consistency
+// v2.6 (2026-01-07): Premium hover elevation (Figma-quality enhancement)
+//   - Added Framer Motion spring animations for hover lift effect
+//   - Cards lift 2px with enhanced shadow on hover
+//   - Replaces CSS hover:scale with spring physics for natural feel
+// v2.5 (2026-01-07): Tooltip help icons (Plan Item 1.2)
+//   - NEW: tooltip prop for ContextHelp icon next to title
+//   - Styled for gradient backgrounds (white/60 hover:white/90)
 // v2.4 (2025-12-23): Compact mode for single-glance dashboard
 //   - Added compact prop for tighter layout
 //   - Compact: smaller padding, smaller text, no sparklines
@@ -55,8 +70,18 @@
 //   - Dark mode support
 
 import React, { useMemo, useId, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import TrendBadge from './TrendBadge';
+import ContextHelp from '../ContextHelp';
 import { haptics } from '../../utils/haptics';
+
+// Smooth tween animation config for hover (avoids spring oscillation/trembling)
+const hoverAnimation = {
+  rest: { y: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
+  hover: { y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.15)' }
+};
+
+const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
 // Mini sparkline component
 const Sparkline = ({ data, width = 80, height = 32, className = '', id }) => {
@@ -131,6 +156,8 @@ const SecondaryKPICard = ({
   pill, // { text: string, variant: 'warning' | 'success' | 'info' | 'error' }
   sparklineData, // Array of numbers for trend visualization
   compact = false, // Compact mode for single-glance dashboard
+  tooltip, // Plain language description for ContextHelp icon
+  status, // 'success' | 'warning' | 'danger' | 'neutral' - for colored left border
 }) => {
   // Generate unique ID for SVG gradient to avoid collisions
   const uniqueId = useId();
@@ -150,6 +177,7 @@ const SecondaryKPICard = ({
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
+      focusRingOffset: 'focus-visible:ring-offset-cyan-600',
     },
     orange: {
       gradient: 'bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 dark:from-amber-500 dark:via-orange-600 dark:to-rose-600',
@@ -157,6 +185,7 @@ const SecondaryKPICard = ({
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
+      focusRingOffset: 'focus-visible:ring-offset-orange-600',
     },
     purple: {
       gradient: 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 dark:from-violet-600 dark:via-purple-600 dark:to-fuchsia-700',
@@ -164,6 +193,7 @@ const SecondaryKPICard = ({
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
+      focusRingOffset: 'focus-visible:ring-offset-purple-600',
     },
     blue: {
       gradient: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 dark:from-blue-600 dark:via-indigo-600 dark:to-violet-700',
@@ -171,6 +201,7 @@ const SecondaryKPICard = ({
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
+      focusRingOffset: 'focus-visible:ring-offset-blue-600',
     },
     amber: {
       gradient: 'bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 dark:from-amber-600 dark:via-orange-600 dark:to-rose-600',
@@ -178,6 +209,7 @@ const SecondaryKPICard = ({
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
+      focusRingOffset: 'focus-visible:ring-offset-amber-600',
     },
     red: {
       gradient: 'bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 dark:from-rose-600 dark:via-red-600 dark:to-pink-700',
@@ -185,6 +217,7 @@ const SecondaryKPICard = ({
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
+      focusRingOffset: 'focus-visible:ring-offset-rose-600',
     },
     green: {
       gradient: 'bg-gradient-to-br from-lime-400 via-emerald-500 to-teal-500 dark:from-lime-500 dark:via-emerald-600 dark:to-teal-600',
@@ -192,6 +225,7 @@ const SecondaryKPICard = ({
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
+      focusRingOffset: 'focus-visible:ring-offset-emerald-600',
     },
     slate: {
       gradient: 'bg-gradient-to-br from-slate-500 via-gray-500 to-zinc-600 dark:from-slate-600 dark:via-gray-600 dark:to-zinc-700',
@@ -199,11 +233,20 @@ const SecondaryKPICard = ({
       title: 'text-white/80',
       value: 'text-white',
       subtitle: 'text-white/70',
+      focusRingOffset: 'focus-visible:ring-offset-slate-600',
     },
   };
 
   const colors = colorMap[color] || colorMap.slate;
   const isClickable = !!onClick;
+
+  // Status border classes for metric health indication (visible through gradient)
+  const statusBorders = {
+    success: 'border-l-4 border-l-emerald-300',
+    warning: 'border-l-4 border-l-amber-300',
+    danger: 'border-l-4 border-l-red-300',
+    neutral: ''
+  };
 
   // Handle click with haptic feedback
   const handleClick = useCallback(() => {
@@ -222,19 +265,23 @@ const SecondaryKPICard = ({
   }, [isClickable, onClick]);
 
   return (
-    <div
+    <motion.div
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={isClickable ? 0 : undefined}
       role={isClickable ? 'button' : undefined}
+      initial="rest"
+      whileHover="hover"
+      whileTap={isClickable ? { scale: 0.98 } : undefined}
+      variants={hoverAnimation}
+      transition={hoverTransition}
       className={`
         ${colors.gradient}
         rounded-xl
         ${compact ? 'px-4 py-4' : 'px-3 py-3 sm:px-4'}
-        shadow-sm
-        transition-all duration-200
         relative overflow-hidden
-        ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-600' : ''}
+        ${statusBorders[status] || ''}
+        ${isClickable ? `cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 ${colors.focusRingOffset}` : ''}
         ${className}
       `}
     >
@@ -251,8 +298,15 @@ const SecondaryKPICard = ({
               <Icon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
             </div>
           )}
-          <div className={`text-sm font-semibold ${colors.title} uppercase tracking-wider leading-tight`}>
+          <div className={`text-sm font-semibold ${colors.title} uppercase tracking-wider leading-tight flex items-center gap-1`}>
             {title}
+            {/* Tooltip help icon - visible on gradient backgrounds */}
+            {tooltip && (
+              <ContextHelp
+                description={tooltip}
+                className="text-white/60 hover:text-white/90"
+              />
+            )}
           </div>
           {/* Trend Badge - header position (always in compact, desktop-only otherwise) */}
           {trend?.show && (
@@ -289,7 +343,7 @@ const SecondaryKPICard = ({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

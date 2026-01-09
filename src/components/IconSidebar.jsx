@@ -53,7 +53,7 @@ const navigationGroups = [
     label: 'Analise',
     items: [
       { id: 'weather', label: 'Clima', icon: CloudSun, path: '/weather' },
-      { id: 'intelligence', label: 'Inteligencia', icon: TrendingUp, path: '/intelligence' },
+      { id: 'intelligence', label: 'Planejamento', icon: TrendingUp, path: '/intelligence' },
       { id: 'operations', label: 'Operacoes', icon: Settings, path: '/operations' },
     ]
   }

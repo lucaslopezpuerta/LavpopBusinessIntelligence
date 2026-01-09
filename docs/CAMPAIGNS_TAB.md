@@ -1,10 +1,28 @@
 # Campaigns Tab - Technical Documentation
 
-**Version:** 3.5.0
-**Last Updated:** 2025-12-15
+**Version:** 3.6.0
+**Last Updated:** 2026-01-08
 **File:** `src/views/Campaigns.jsx`
 
 ## Changelog
+
+**v3.6.0 (2026-01-08):**
+- **Phase 6 - Dashboard Enhancements:**
+  - CampaignDashboard v2.6: Added 4 new columns to Recent Campaigns table
+  - Status column: Shows campaign status badge (Ativa/Concluída/Rascunho/Agendada)
+  - Retornados column: Absolute count of returned customers (not just percentage)
+  - Período column: Tracking window showing created date → validity days
+  - Tempo column: Average days to return with color coding (green ≤3d, blue ≤7d)
+  - Responsive breakpoints: Mobile (4) → Tablet (7) → Desktop (10) → XL (13)
+- **Phase 8 - AudienceFilterBuilder:**
+  - New component for custom audience filtering in campaign creation
+  - Mode toggle in wizard Step 1: "Segmentos" vs "Filtro Avançado"
+  - Time-based filters: last visit range (7/14/30/60/90 days, or inactive >30/60/90 days)
+  - Financial filters: min/max total spend, wallet balance range
+  - Behavior filters: RFM segment multiselect, risk level multiselect, visit count
+  - Live preview of filtered customer count with WhatsApp validation
+  - Replaces preset audiences when using custom filters
+  - messageTemplates.js v2.3: getTemplatesByAudience handles 'customFiltered' audience
 
 **v3.5.0 (2025-12-15):**
 - **Manual Inclusion Priority Queue (Schema v3.18):**
@@ -260,6 +278,8 @@ audienceSegments (filtered by risk/RFM)
 
 **Purpose:** Complete campaign creation with all features
 
+**File:** `src/components/campaigns/NewCampaignModal.jsx` (v5.1)
+
 **Props:**
 ```javascript
 {
@@ -272,10 +292,61 @@ audienceSegments (filtered by risk/RFM)
 ```
 
 **Steps:**
-1. **Audience** - Select target segment
+1. **Audience** - Select target segment (v5.1: now with mode toggle)
 2. **Template** - Choose message + configure A/B testing
 3. **Preview** - Review personalized message
 4. **Send** - Execute or schedule campaign
+
+### AudienceFilterBuilder (v1.0)
+
+**Purpose:** Custom audience filtering for campaign creation (Phase 8)
+
+**File:** `src/components/campaigns/AudienceFilterBuilder.jsx`
+
+**Features:**
+- Time-based filters (last visit range)
+- Financial filters (spend, wallet balance)
+- Behavior filters (visit count, RFM segments, risk levels)
+- Live preview of filtered customer count
+- Collapsible filter sections
+
+**Integration Points:**
+- Works alongside predefined segments (tabbed interface in Step 1)
+- Filtered customers passed to `sendCampaignWithTracking()`
+- Template filtering shows all templates for custom audiences (`customFiltered`)
+- No conflict with AudienceSelector (browse-only) or Directory FAB
+
+**Props:**
+```javascript
+{
+  allCustomers: array,           // Full customer list (typically audienceSegments.withPhone)
+  onFilteredCustomers: function, // Callback with filtered results
+  initialFilters: object,        // Optional pre-set filters
+  className: string              // Optional CSS classes
+}
+```
+
+**Filter Categories:**
+
+| Category | Filters | Description |
+|----------|---------|-------------|
+| **Time** | lastVisitRange | Recent (7/14/30/60/90 days) or Inactive (>30/60/90 days) |
+| **Financial** | minSpend, maxSpend | Total spend range |
+| **Financial** | minWalletBalance, maxWalletBalance | Wallet balance range |
+| **Behavior** | minVisits, maxVisits | Visit count range |
+| **Behavior** | rfmSegments | Multiselect: VIP, Frequente, Promissor, Esfriando, Inativo |
+| **Behavior** | riskLevels | Multiselect: Saudavel, Monitorar, Em Risco, Critico, Novo, Perdido |
+
+**Data Flow:**
+```
+AudienceFilterBuilder
+  → Build filter criteria
+  → Filter allCustomers locally (useMemo)
+  → Filter to valid WhatsApp phones
+  → Call onFilteredCustomers(validPhoneCustomers)
+  → Parent sets selectedAudience='customFiltered'
+  → Templates: getTemplatesByAudience('customFiltered') returns all
+```
 
 ### BlacklistManager (`blacklist` tab)
 
@@ -929,7 +1000,10 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 | `src/views/Campaigns.jsx` | Main view component |
 | `src/components/campaigns/*.jsx` | All campaign components |
 | `src/components/campaigns/AutomationRules.jsx` | Automation configuration UI |
-| `src/config/messageTemplates.js` | Template definitions |
+| `src/components/campaigns/AudienceFilterBuilder.jsx` | Custom audience filtering (v1.0) |
+| `src/components/campaigns/NewCampaignModal.jsx` | Campaign creation wizard (v5.1) |
+| `src/components/campaigns/CampaignDashboard.jsx` | Analytics dashboard (v2.6) |
+| `src/config/messageTemplates.js` | Template definitions (v2.3) |
 | `src/config/couponConfig.js` | Coupon/discount configuration |
 | `src/utils/campaignService.js` | Backend service layer (v3.4) |
 | `src/utils/apiService.js` | API client with delivery methods |
@@ -956,6 +1030,7 @@ className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v3.6.0 | 2026-01-08 | **Phase 6 + Phase 8**: Dashboard enhancements (Status, Retornados, Período, Tempo columns), AudienceFilterBuilder for custom audience filtering, mode toggle in campaign wizard Step 1 |
 | v3.5.0 | 2025-12-15 | **Manual Inclusion Priority Queue**: Users can add customers to automation queues via "Incluir em Automação" button, scheduler processes queued entries, eligibility cooldowns enforced, duplicate prevention |
 | v3.4.0 | 2025-12-13 | **Auto-refresh Triggers + Smart Upsert**: Customer metrics auto-update on transaction insert, smart customer upsert prevents data regression, App.jsx v7.0 visibility-based refresh |
 | v3.3.0 | 2025-12-13 | **Unified Manual Campaign Flow**: Manual campaigns now use same flow as automations (send first, then record), twilio_sid stored in campaign_contacts, delivery metrics work for manual campaigns |

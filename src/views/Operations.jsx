@@ -1,20 +1,24 @@
-// OPERATIONS TAB V5.7.0 - LOADING SKELETON
+// OPERATIONS TAB V5.8.0 - SECTIONHEADER REFACTOR
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
-// ✅ Tailwind CSS styling (Design System v3.0)
+// ✅ Tailwind CSS styling (Design System v3.4)
 // ✅ Dark mode support
 // ✅ Responsive grid layout
 // ✅ Actionability-first component order
 // ✅ Operations-optimized date options (no allTime)
 // ✅ Consistent header matching all views
 // ✅ Sticky date control matching Dashboard
-// ✅ Section headers with icons (Design System v3.1)
+// ✅ Reusable SectionHeader component (Design System v3.4)
 // ✅ Category-level naming for future expansion
 // ✅ Full-width layout consistent with other views
 // ✅ Loading skeleton fallback for data readiness
 //
 // CHANGELOG:
+// v5.8.0 (2026-01-07): SectionHeader refactor
+//   - Replaced inline section headers with SectionHeader component
+//   - Reduces code duplication, improves consistency
+//   - Design System v3.4 compliant
 // v5.7.0 (2025-12-23): Loading skeleton
 //   - Replaced hardcoded "Loading..." message with OperationsLoadingSkeleton
 //   - Prevents empty renders after idle periods
@@ -77,6 +81,7 @@ import UtilizationHeatmap from '../components/UtilizationHeatmap';
 import PeakHoursSummary from '../components/PeakHoursSummary';
 import MachinePerformanceTable from '../components/MachinePerformanceTable';
 import DateRangeSelector from '../components/DateRangeSelector';
+import SectionHeader from '../components/ui/SectionHeader';
 import { LazyDayOfWeekChart, ChartLoadingFallback } from '../utils/lazyCharts';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
@@ -173,19 +178,13 @@ const Operations = ({ data }) => {
 
       {/* Section 1: Machine Performance (Most Actionable) */}
       <section id="maquinas-section" aria-labelledby="maquinas-heading" className="mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
-            <Gauge className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div>
-            <h2 id="maquinas-heading" className="text-base font-bold text-slate-900 dark:text-white">
-              Equipamentos
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Análise de máquinas e equipamentos
-            </p>
-          </div>
-        </div>
+        <SectionHeader
+          title="Equipamentos"
+          subtitle="Análise de máquinas e equipamentos"
+          icon={Gauge}
+          color="amber"
+          id="maquinas-heading"
+        />
         <MachinePerformanceTable
           machinePerformance={operationsMetrics.machinePerformance}
           dateFilter={dateFilter}
@@ -196,19 +195,13 @@ const Operations = ({ data }) => {
 
       {/* Section 2: Utilization Heatmap */}
       <section id="heatmap-section" aria-labelledby="heatmap-heading" className="mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
-            <Grid3X3 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div>
-            <h2 id="heatmap-heading" className="text-base font-bold text-slate-900 dark:text-white">
-              Utilização
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Ocupação e eficiência operacional
-            </p>
-          </div>
-        </div>
+        <SectionHeader
+          title="Utilização"
+          subtitle="Ocupação e eficiência operacional"
+          icon={Grid3X3}
+          color="amber"
+          id="heatmap-heading"
+        />
         <UtilizationHeatmap
           salesData={data.sales}
           dateFilter={dateFilter}
@@ -218,19 +211,13 @@ const Operations = ({ data }) => {
 
       {/* Section 3: Time Patterns */}
       <section id="padroes-section" aria-labelledby="padroes-heading">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
-            <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div>
-            <h2 id="padroes-heading" className="text-base font-bold text-slate-900 dark:text-white">
-              Padrões Temporais
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Horários de pico e distribuição semanal
-            </p>
-          </div>
-        </div>
+        <SectionHeader
+          title="Padrões Temporais"
+          subtitle="Horários de pico e distribuição semanal"
+          icon={Clock}
+          color="amber"
+          id="padroes-heading"
+        />
         <div className="grid grid-cols-12 gap-4 sm:gap-6">
           <div className="col-span-12 lg:col-span-6">
             <PeakHoursSummary

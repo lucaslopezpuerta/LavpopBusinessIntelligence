@@ -2,6 +2,35 @@
 // Unified API for Supabase database operations
 // Handles campaigns, blacklist, communication logs, scheduled campaigns, and WABA analytics
 //
+// Version: 4.2 (2026-01-08) - Fix NULL last_sent_at exclusion bug
+//   - Fixed: Manual campaigns were excluded when filtering by date
+//   - Root cause: PostgreSQL .gte() excludes NULL values
+//   - Solution: Use OR condition to include campaigns with NULL last_sent_at but created_at in range
+//   - Added from_date support to getEngagementStats for consistent date filtering
+//
+// Version: 4.1 (2026-01-08) - Fix campaign_performance filter to use last_sent_at
+//   - Changed getAllCampaignPerformance filter from created_at to last_sent_at
+//   - Automation campaigns created months ago but active today now appear correctly
+//   - Shows campaigns that were ACTIVE in the period, not just CREATED
+//   - contact_tracking: filters by contacted_at (when message sent)
+//   - campaign_performance: filters by last_sent_at (when campaign was last active)
+//   - This ensures KPIs and campaign table show data from the same period
+//
+// Version: 4.0 (2026-01-08) - Unified date filtering for dashboard metrics
+//   - Added from_date filter to getContactTracking (contacted_at >= from_date)
+//   - Added from_date filter to getAllCampaignPerformance (created_at >= from_date)
+//   - Added from_date filter to getCampaigns (created_at >= from_date)
+//   - Enables consistent date range filtering across all dashboard metrics
+//   - Ensures funnel percentages are calculated from same time period
+//
+// Version: 3.9 (2026-01-08) - Robust fallback chain for manual campaigns
+//   - Added 3-level fallback chain for contact_tracking insert failures
+//   - Fallback 1: Retry with minimal data if full insert fails
+//   - Fallback 2: Log to tracking_failures table for manual recovery
+//   - Ensures campaign status is always set to 'active' after tracking
+//   - Added detailed error logging with campaign_id, customer_id, twilio_sid context
+//   - Matches automation's robust fallback mechanism for reliability
+//
 // Version: 3.8 (2025-12-26) - Rate limiting
 //   - Added rate limiting (100 requests/minute per IP)
 //   - Uses Supabase rate_limits table for state
@@ -243,7 +272,7 @@ exports.handler = async (event, context) => {
 
       // ==================== CAMPAIGN OPERATIONS ====================
       case 'campaigns.getAll':
-        return await getCampaigns(supabase, headers);
+        return await getCampaigns(supabase, body, headers);
 
       case 'campaigns.get':
         return await getCampaign(supabase, id || params.id, headers);
@@ -584,11 +613,25 @@ async function clearBlacklist(supabase, headers) {
 
 // ==================== CAMPAIGN FUNCTIONS ====================
 
-async function getCampaigns(supabase, headers) {
-  const { data, error } = await supabase
+async function getCampaigns(supabase, filters = {}, headers) {
+  let query = supabase
     .from('campaigns')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('*');
+
+  // v4.2: Date range filter uses last_sent_at (when campaign was ACTIVE)
+  // FIX: Also include campaigns with NULL last_sent_at (created but not yet sent)
+  // PostgreSQL .gte() excludes NULL values, so we use OR condition
+  if (filters?.from_date) {
+    // Include campaigns that were:
+    // 1. Sent in period (last_sent_at >= from_date), OR
+    // 2. Created in period but not yet sent (last_sent_at IS NULL AND created_at >= from_date)
+    query = query.or(`last_sent_at.gte.${filters.from_date},and(last_sent_at.is.null,created_at.gte.${filters.from_date})`);
+  }
+
+  // Order by last activity (most recently active first), campaigns with no sends at end
+  query = query.order('last_sent_at', { ascending: false, nullsFirst: false });
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
@@ -1202,8 +1245,18 @@ async function getAllCampaignPerformance(supabase, filters = {}, headers) {
     query = query.eq('audience', filters.audience);
   }
 
-  // Order by creation date
-  query = query.order('created_at', { ascending: false });
+  // v4.2: Date range filter uses last_sent_at (when campaign was ACTIVE)
+  // FIX: Also include campaigns with NULL last_sent_at (created but not yet sent)
+  // PostgreSQL .gte() excludes NULL values, so we use OR condition
+  if (filters?.from_date) {
+    // Include campaigns that were:
+    // 1. Sent in period (last_sent_at >= from_date), OR
+    // 2. Created in period but not yet sent (last_sent_at IS NULL AND created_at >= from_date)
+    query = query.or(`last_sent_at.gte.${filters.from_date},and(last_sent_at.is.null,created_at.gte.${filters.from_date})`);
+  }
+
+  // Order by last activity (most recently active first), campaigns with no sends at end
+  query = query.order('last_sent_at', { ascending: false, nullsFirst: false });
 
   const { data, error } = await query;
 
@@ -1269,9 +1322,16 @@ async function getCampaignPerformance(supabase, campaignId, headers) {
 
 /**
  * Record a campaign contact with full tracking (mirrors record_automation_contact SQL function)
+ * v3.9: Robust fallback chain - matches automation's reliability
  * v3.1: Now populates delivery fields (phone, twilio_sid, delivery_status) directly in contact_tracking
  * Creates entries in: contact_tracking (unified!), campaign_contacts (deprecated, for backward compat)
  * Updates campaign sends count
+ *
+ * FALLBACK CHAIN (v3.9):
+ * 1. Try full insert with all fields
+ * 2. If fails, retry with minimal required fields
+ * 3. If still fails, log to tracking_failures for manual recovery
+ * 4. Always update campaign status to 'active' (even if tracking fails)
  *
  * This is the unified flow for manual campaigns - send first, then record with message_sid
  */
@@ -1294,6 +1354,20 @@ async function recordCampaignContactWithTracking(supabase, data, headers) {
       body: JSON.stringify({ error: 'campaignId and customerId required' })
     };
   }
+
+  // v3.9: Context for error logging
+  const logContext = {
+    campaignId,
+    customerId,
+    customerName: customerName?.substring(0, 20),
+    phone: phone ? `***${phone.slice(-4)}` : null,
+    twilioSid,
+    timestamp: new Date().toISOString()
+  };
+
+  let tracking = null;
+  let contactRecord = null;
+  let trackingSuccess = false;
 
   try {
     // 1. Get campaign info for the contact_tracking record
@@ -1337,106 +1411,201 @@ async function recordCampaignContactWithTracking(supabase, data, headers) {
     }
 
     // 2. Create contact_tracking record WITH delivery fields (unified!)
-    // v3.1: Now includes phone, twilio_sid, delivery_status directly
-    // v2.8: expires_at uses couponValidityDays + 3 day buffer (matches SQL record_automation_contact)
+    // v3.9: FALLBACK CHAIN for contact_tracking insert
     const RETURN_ATTRIBUTION_BUFFER = 3;  // Extra days to catch late returns
     const expiryDays = couponValidityDays + RETURN_ATTRIBUTION_BUFFER;
+    const contactedAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: tracking, error: trackingError } = await supabase
+    // LEVEL 1: Try full insert with all fields
+    const fullTrackingData = {
+      customer_id: customerId,
+      customer_name: customerName,
+      contact_method: contactMethod,
+      campaign_id: campaignId,
+      campaign_name: campaignName,
+      campaign_type: inferredType,
+      status: 'pending',
+      contacted_at: contactedAt,
+      expires_at: expiresAt,
+      phone: phone || null,
+      twilio_sid: twilioSid || null,
+      delivery_status: twilioSid ? 'sent' : 'pending',
+      risk_level: riskLevel
+    };
+
+    let trackingResult = await supabase
       .from('contact_tracking')
-      .insert({
-        customer_id: customerId,
-        customer_name: customerName,
-        contact_method: contactMethod,
-        campaign_id: campaignId,
-        campaign_name: campaignName,
-        campaign_type: inferredType,  // Include campaign_type for cooldowns
-        status: 'pending',
-        contacted_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString(),
-        // v3.1: Delivery fields now in contact_tracking (unified!)
-        phone: phone || null,
-        twilio_sid: twilioSid || null,
-        delivery_status: twilioSid ? 'sent' : 'pending',
-        // v3.2: Risk level snapshot at time of contact
-        risk_level: riskLevel
-      })
+      .insert(fullTrackingData)
       .select()
       .single();
 
-    if (trackingError) {
-      console.error('[API] Error creating contact_tracking:', trackingError);
-      throw trackingError;
+    if (trackingResult.error) {
+      console.error('[API] LEVEL 1 FAILED - Full contact_tracking insert:', trackingResult.error.message, logContext);
+
+      // LEVEL 2: Retry with minimal required fields only
+      const minimalTrackingData = {
+        customer_id: customerId,
+        customer_name: customerName || 'Unknown',
+        contact_method: contactMethod,
+        campaign_id: campaignId,
+        status: 'pending',
+        contacted_at: contactedAt,
+        expires_at: expiresAt,
+        twilio_sid: twilioSid || null
+      };
+
+      trackingResult = await supabase
+        .from('contact_tracking')
+        .insert(minimalTrackingData)
+        .select()
+        .single();
+
+      if (trackingResult.error) {
+        console.error('[API] LEVEL 2 FAILED - Minimal contact_tracking insert:', trackingResult.error.message, logContext);
+
+        // LEVEL 3: Log to tracking_failures for manual recovery
+        try {
+          await supabase.from('tracking_failures').insert({
+            campaign_id: campaignId,
+            customer_id: customerId,
+            customer_name: customerName,
+            phone: phone,
+            twilio_sid: twilioSid,
+            error_message: trackingResult.error.message,
+            error_code: trackingResult.error.code,
+            full_context: JSON.stringify(logContext),
+            created_at: new Date().toISOString()
+          });
+          console.log('[API] LEVEL 3 - Logged to tracking_failures for manual recovery:', logContext);
+        } catch (logErr) {
+          // Even this failed - log to console as last resort
+          console.error('[API] CRITICAL - Could not log to tracking_failures:', logErr.message, logContext);
+        }
+      } else {
+        tracking = trackingResult.data;
+        trackingSuccess = true;
+        console.log('[API] LEVEL 2 SUCCESS - Minimal insert worked:', tracking.id);
+      }
+    } else {
+      tracking = trackingResult.data;
+      trackingSuccess = true;
     }
 
     // 3. DEPRECATED: Create campaign_contacts bridge record for backward compatibility
-    // This will be removed in a future migration after all queries use contact_tracking directly
-    const { data: contactRecord, error: contactError } = await supabase
-      .from('campaign_contacts')
-      .insert({
-        campaign_id: campaignId,
-        contact_tracking_id: tracking.id,
-        customer_id: customerId,
-        customer_name: customerName,
-        phone: phone,
-        delivery_status: 'sent',
-        twilio_sid: twilioSid || null,
-        sent_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (contactError) {
-      console.error('[API] Error creating campaign_contacts (deprecated):', contactError);
-      // Don't throw - tracking record was created successfully
-    }
-
-    // 4. Update campaign sends count
-    const { error: updateError } = await supabase
-      .from('campaigns')
-      .update({
-        sends: supabase.rpc ? undefined : 1, // Will use increment below
-        last_sent_at: new Date().toISOString(),
-        status: 'active'
-      })
-      .eq('id', campaignId);
-
-    // Increment sends count using RPC or manual update
-    await supabase.rpc('increment_campaign_sends', {
-      p_campaign_id: campaignId,
-      p_send_count: 1
-    }).catch(async (rpcErr) => {
-      // Fallback: read-then-write if RPC fails
-      const { data: currentCampaign } = await supabase
-        .from('campaigns')
-        .select('sends')
-        .eq('id', campaignId)
+    // Only attempt if tracking succeeded
+    if (tracking) {
+      const { data: contactResult, error: contactError } = await supabase
+        .from('campaign_contacts')
+        .insert({
+          campaign_id: campaignId,
+          contact_tracking_id: tracking.id,
+          customer_id: customerId,
+          customer_name: customerName,
+          phone: phone,
+          delivery_status: 'sent',
+          twilio_sid: twilioSid || null,
+          sent_at: new Date().toISOString()
+        })
+        .select()
         .single();
 
+      if (contactError) {
+        console.error('[API] campaign_contacts bridge insert failed (deprecated, non-blocking):', contactError.message);
+        // Don't throw - this is deprecated and non-critical
+      } else {
+        contactRecord = contactResult;
+      }
+    }
+
+    // 4. v3.9: ALWAYS update campaign status to 'active' and increment sends
+    // This happens even if tracking failed - the message was already sent!
+    try {
+      // First, explicitly set status to 'active' and update last_sent_at
+      const { error: statusError } = await supabase
+        .from('campaigns')
+        .update({
+          status: 'active',
+          last_sent_at: new Date().toISOString()
+        })
+        .eq('id', campaignId);
+
+      if (statusError) {
+        console.error('[API] Campaign status update failed:', statusError.message, { campaignId });
+      }
+
+      // Then increment sends count using RPC
+      const { error: rpcError } = await supabase.rpc('increment_campaign_sends', {
+        p_campaign_id: campaignId,
+        p_send_count: 1
+      });
+
+      if (rpcError) {
+        console.warn('[API] RPC increment_campaign_sends failed, using fallback:', rpcError.message);
+        // Fallback: read-then-write if RPC fails
+        const { data: currentCampaign } = await supabase
+          .from('campaigns')
+          .select('sends')
+          .eq('id', campaignId)
+          .single();
+
+        await supabase
+          .from('campaigns')
+          .update({ sends: (currentCampaign?.sends || 0) + 1 })
+          .eq('id', campaignId);
+      }
+    } catch (updateErr) {
+      console.error('[API] Campaign update failed entirely:', updateErr.message, { campaignId });
+      // Don't throw - we still want to return success if tracking worked
+    }
+
+    // Log success with full context
+    console.log(`[API] Recorded campaign contact: campaign=${campaignId}, customer=${customerId}, risk_level=${riskLevel || 'unknown'}, twilio_sid=${twilioSid || 'none'}, tracking_success=${trackingSuccess}`);
+
+    // Return success if tracking worked, partial success otherwise
+    if (trackingSuccess) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          tracking,
+          contact: contactRecord,
+          campaignId
+        })
+      };
+    } else {
+      // Message was sent but tracking failed - return partial success
+      return {
+        statusCode: 207, // Multi-Status: partial success
+        headers,
+        body: JSON.stringify({
+          success: false,
+          partialSuccess: true,
+          message: 'Message sent but tracking failed - logged for manual recovery',
+          campaignId,
+          twilioSid,
+          trackingLogged: true
+        })
+      };
+    }
+  } catch (error) {
+    console.error('[API] recordCampaignContactWithTracking failed:', error.message, logContext);
+
+    // Even on error, try to update campaign status to 'active' (message was already sent!)
+    try {
       await supabase
         .from('campaigns')
-        .update({ sends: (currentCampaign?.sends || 0) + 1 })
+        .update({ status: 'active', last_sent_at: new Date().toISOString() })
         .eq('id', campaignId);
-    });
+    } catch (statusErr) {
+      console.error('[API] Final campaign status update also failed:', statusErr.message);
+    }
 
-    console.log(`[API] Recorded campaign contact: campaign=${campaignId}, customer=${customerId}, risk_level=${riskLevel || 'unknown'}, twilio_sid=${twilioSid || 'none'}`);
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        success: true,
-        tracking,
-        contact: contactRecord,
-        campaignId
-      })
-    };
-  } catch (error) {
-    console.error('[API] recordCampaignContactWithTracking failed:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({ error: error.message, context: logContext })
     };
   }
 }
@@ -1562,6 +1731,10 @@ async function getContactTracking(supabase, params, headers) {
   }
   if (params.campaign_id) {
     query = query.eq('campaign_id', params.campaign_id);
+  }
+  // v4.0: Date range filter for dashboard metrics consistency
+  if (params.from_date) {
+    query = query.gte('contacted_at', params.from_date);
   }
   if (params.limit) {
     query = query.limit(parseInt(params.limit));
@@ -1981,11 +2154,20 @@ async function getCampaignDeliveryMetrics(supabase, headers) {
  * Get engagement statistics from webhook_events
  * Counts button clicks (positive engagement) vs opt-outs vs auto-replies
  * Used for the campaign funnel "Engaged" stage
+ * v4.2: Added from_date parameter for consistent date filtering with funnel metrics
  */
 async function getEngagementStats(supabase, params, headers) {
   const days = parseInt(params.days) || 30;
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+  const fromDate = params.from_date;
+
+  // v4.2: Use from_date if provided, otherwise calculate from days
+  let startDate;
+  if (fromDate) {
+    startDate = new Date(fromDate);
+  } else {
+    startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+  }
 
   try {
     // Get all engagement-related events in the time range
