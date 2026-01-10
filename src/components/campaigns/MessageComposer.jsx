@@ -1,6 +1,6 @@
-// MessageComposer.jsx v5.0
+// MessageComposer.jsx v5.3
 // WhatsApp message template browser and preview
-// Design System v4.0 compliant - Enhanced UX
+// Design System v4.0 compliant - Hybrid Card Design
 //
 // Meta WhatsApp Business API Template Rules:
 // - Templates must be pre-approved by Meta
@@ -10,6 +10,18 @@
 // - Buttons: quick reply or CTA (max 3)
 //
 // CHANGELOG:
+// v5.3 (2026-01-09): Light background KPI cards (Hybrid Card Design)
+//   - Migrated stats cards to Design System KPICard with variant="default"
+//   - Card bodies now use light backgrounds (bg-white dark:bg-slate-800)
+//   - Icon containers retain gradient colors for visual accent
+// v5.2 (2026-01-09): Hybrid card design implementation
+//   - Added Framer Motion hover animation (y: -2 lift effect)
+//   - Updated stats cards to 3-stop gradients
+//   - Added haptic feedback on template selection
+//   - Premium shadow-lift on card hover
+// v5.1 (2026-01-09): Typography & contrast fixes
+//   - Fixed text-[10px]/text-[11px] → text-xs (12px minimum)
+//   - Fixed dark mode contrast (slate-400 → slate-300)
 // v5.0 (2025-12-11): Complete UX redesign
 //   - Stats dashboard header with gradient backgrounds
 //   - Gradient icons matching AutomationRules design
@@ -37,6 +49,7 @@
 //   - Filters invalid phone numbers with detailed breakdown
 
 import { useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
   MessageSquare,
   Smartphone,
@@ -57,7 +70,9 @@ import {
   FileText
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
+import KPICard from '../ui/KPICard';
 import { MESSAGE_TEMPLATES, getTemplatesByAudience } from '../../config/messageTemplates';
+import { haptics } from '../../utils/haptics';
 
 // Icon mapping for templates
 const ICON_MAP = {
@@ -215,33 +230,31 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
       id="message-composer"
     >
       <div className="space-y-5">
-        {/* Stats Dashboard Header */}
+        {/* Stats Dashboard Header - Light background cards with gradient icons */}
         <div className="grid grid-cols-2 gap-3">
           {/* Templates Disponíveis */}
-          <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="w-4 h-4 opacity-80" />
-              <span className="text-xs font-medium opacity-90">Templates</span>
-            </div>
-            <p className="text-xl sm:text-2xl font-bold">{stats.filtered}</p>
-            <p className="text-[10px] sm:text-xs opacity-75">
-              {selectedAudience ? 'compatíveis' : 'disponíveis'}
-            </p>
-          </div>
+          <KPICard
+            label="Templates"
+            value={stats.filtered}
+            subtitle={selectedAudience ? 'compatíveis' : 'disponíveis'}
+            icon={FileText}
+            color="purple"
+            variant="compact"
+          />
 
           {/* Destinatários */}
-          <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <Users className="w-4 h-4 opacity-80" />
-              <span className="text-xs font-medium opacity-90">Audiência</span>
-            </div>
-            <p className="text-xl sm:text-2xl font-bold">{stats.audience.toLocaleString()}</p>
-            <p className="text-[10px] sm:text-xs opacity-75">destinatários</p>
-          </div>
+          <KPICard
+            label="Audiência"
+            value={stats.audience.toLocaleString()}
+            subtitle="destinatários"
+            icon={Users}
+            color="whatsappTeal"
+            variant="compact"
+          />
         </div>
 
         {/* Discrete Meta Compliance Hint */}
-        <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+        <p className="text-xs text-slate-500 dark:text-slate-300 flex items-center gap-1.5">
           <AlertCircle className="w-3 h-3" />
           Templates pré-aprovados pela Meta para WhatsApp Business
         </p>
@@ -272,7 +285,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
           </div>
         )}
 
-        {/* Template Cards */}
+        {/* Template Cards - Selection Cards with Light Background + Ring */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredTemplates.map((template) => {
             const Icon = ICON_MAP[template.icon] || Gift;
@@ -281,16 +294,22 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
             const categoryStyle = CATEGORY_STYLES[template.category] || CATEGORY_STYLES.MARKETING;
 
             return (
-              <div
+              <motion.div
                 key={template.id}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'tween', duration: 0.2 }}
                 className={`
-                  relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group
+                  relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group shadow-sm
                   ${isSelected
-                    ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 shadow-lg ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-slate-900'
+                    ? 'bg-white dark:bg-slate-800 border-transparent shadow-md ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-slate-900'
                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md'
                   }
                 `}
-                onClick={() => setSelectedTemplate(template)}
+                onClick={() => {
+                  haptics.light();
+                  setSelectedTemplate(template);
+                }}
               >
                 {/* Selected Indicator */}
                 {isSelected && (
@@ -311,7 +330,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
                       {template.name}
                     </h3>
                     <span className={`
-                      inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full
+                      inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full
                       ${categoryStyle.bg} ${categoryStyle.text}
                     `}>
                       {template.category}
@@ -329,7 +348,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
                   <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     {headerText}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
                     {template.body.substring(0, 150)}...
                   </p>
                 </div>
@@ -340,14 +359,14 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
                     {template.buttons.map((btn, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
+                        className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-medium text-emerald-700 dark:text-emerald-300"
                       >
                         {btn.text}
                       </span>
                     ))}
                   </div>
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -462,7 +481,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
                         <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
                           {formatPreview(selectedTemplate)}
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-2">
+                        <p className="text-xs text-slate-400 mt-2">
                           {selectedTemplate.footer}
                         </p>
 
@@ -481,7 +500,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
                         )}
 
                         {/* Timestamp */}
-                        <p className="text-[10px] text-slate-400 text-right mt-2">
+                        <p className="text-xs text-slate-400 text-right mt-2">
                           {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>

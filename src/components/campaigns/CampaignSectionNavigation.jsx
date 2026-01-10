@@ -1,8 +1,20 @@
-// CampaignSectionNavigation.jsx v2.3
+// CampaignSectionNavigation.jsx v2.7
 // Tab navigation for Campaigns view
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.7 (2026-01-09): Active state enhancement
+//   - Added scale-[1.02] transform on active tab for premium feel
+//   - Enhanced visual feedback with scale + shadow combination
+// v2.6 (2026-01-09): Robust click handler
+//   - Added preventDefault and stopPropagation to click handler
+//   - Guard check for onSectionChange callback existence
+//   - Ensures click events are not captured by parent elements
+// v2.5 (2026-01-09): Fix button click handling
+//   - Added relative z-20 to scrollable container (above fade indicators z-10)
+//   - Added explicit type="button" to prevent form submission behavior
+//   - Removed sticky positioning to fix z-index conflicts
+//   - Navigation now scrolls with content
 // v2.3 (2025-12-19): Moved Blacklist to Social Media view
 //   - Removed 'blacklist' tab (now in SocialMediaNavigation)
 //   - Blacklist logically belongs with WhatsApp messaging
@@ -71,7 +83,7 @@ const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
 
   return (
     <nav
-      className="sticky top-14 lg:top-[60px] z-40 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 sm:py-3 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800"
+      className="-mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 sm:py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800"
       aria-label="Navegação de seções de campanhas"
     >
       <div className="relative">
@@ -85,26 +97,35 @@ const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
           className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-50 dark:from-slate-900 to-transparent z-10 pointer-events-none transition-opacity duration-200 ${showRightFade ? 'opacity-100' : 'opacity-0'}`}
         />
 
-        {/* Scrollable container */}
+        {/* Scrollable container - z-20 ensures buttons are above fade indicators */}
         <div
           ref={scrollRef}
-          className="flex gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
+          className="relative z-20 flex gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
         >
           {sections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.id;
 
+            const handleClick = (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (onSectionChange) {
+                onSectionChange(section.id);
+              }
+            };
+
             return (
               <button
+                type="button"
                 key={section.id}
-                onClick={() => onSectionChange(section.id)}
+                onClick={handleClick}
                 className={`
                   flex items-center justify-center gap-1.5 sm:gap-2
                   min-w-[44px] sm:min-w-0 px-3 sm:px-4 py-2.5 sm:py-2
                   rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap
                   transition-all duration-200
                   ${isActive
-                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/25'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/25 scale-[1.02]'
                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:text-purple-600 dark:hover:text-purple-400'
                   }
                 `}

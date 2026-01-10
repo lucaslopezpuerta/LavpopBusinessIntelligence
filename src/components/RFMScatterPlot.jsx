@@ -1,7 +1,40 @@
-// RFMScatterPlot.jsx v3.4.0 - CLEANER TOOLTIP
+// RFMScatterPlot.jsx v4.2.2 - MOBILE TOUCH UX IMPROVEMENTS
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v4.2.2 (2026-01-09): Fix MobileTooltipSheet "Ver Perfil" button not opening modal
+//   - FIXED: onViewProfile callback now wrapped in useCallback for stable reference
+//   - Root cause: inline JSX callback was recreated on every render, losing reference during close
+// v4.2.1 (2026-01-09): Bug fix for Recharts data extraction
+//   - FIXED: handleBubbleClick now extracts data from entry.payload (Recharts wraps actual data)
+//   - FIXED: MobileTooltipSheet now receives correct customer data (name, value, days, visits)
+// v4.2.0 (2026-01-09): Mobile touch UX improvements (Phase 5)
+//   - NEW: Active bubble visual feedback - white 4px ring + full opacity (SVG doesn't support CSS transforms)
+//   - NEW: Uses isActive from useTouchTooltip to track selected bubble
+//   - NEW: Long-press (500ms) alternative to double-tap when tooltip is showing
+//   - NEW: MobileTooltipSheet bottom sheet replaces floating tooltip on touch devices
+//   - NEW: Haptic feedback on tap (light) and action (success)
+//   - IMPROVED: Clear visual indicator of which bubble is currently selected on mobile
+// v4.1.3 (2026-01-09): List view UX improvements
+//   - CHANGED: List view now sorted by days since last visit (ascending - recent first)
+//   - NEW: Danger zone visual separator in list view when crossing >30 days threshold
+//   - NEW: Red background tint for rows in danger zone
+// v4.1.2 (2026-01-09): Zoom implementation fix
+//   - CHANGED: Zoom now filters data instead of using allowDataOverflow (caused clipping)
+//   - REMOVED: allowDataOverflow, key prop, CSS overflow hacks
+//   - NEW: zoomedData memo filters points by max days based on zoom level
+// v4.1.0 (2026-01-09): UX Fixes
+//   - FIXED: Zoom/view controls moved to dedicated toolbar row (was inside legend)
+//   - FIXED: Zoom now adjusts chart domain instead of CSS transform (no overflow)
+//   - FIXED: Monitor status now has proper blue styling in list view
+//   - FIXED: All status badges (Healthy, Monitor, At Risk, Churning) have distinct colors
+// v4.0.0 (2026-01-09): WCAG Accessibility + Enhanced UX
+//   - NEW: Icons alongside colors in legend for colorblind accessibility
+//   - NEW: StatusIcon component for consistent icon rendering
+//   - NEW: Tooltip now shows icon + text for risk status
+//   - NEW: Zoom controls (1x, 1.5x, 2x) for dense data exploration
+//   - NEW: List view toggle for alternative data representation
+//   - IMPROVED: Uses RISK_LABELS from customerMetrics.js for consistency
 // v3.4.0 (2026-01-07): Cleaner tooltip UX
 //   - REMOVED: "Toque novamente" mobile hint (unnecessary, users discover naturally)
 //   - REMOVED: Pointer icon and animation from tooltip
@@ -81,11 +114,13 @@
 
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, ReferenceArea, Label } from 'recharts';
-import { AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronRight, XCircle, Eye, Sparkles, MinusCircle, ZoomIn, ZoomOut, List, Grid2X2 } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
+import { RISK_LABELS } from '../utils/customerMetrics';
 import { getChartColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
+import MobileTooltipSheet from './ui/MobileTooltipSheet';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { useBlacklist } from '../hooks/useBlacklist';
 import { haptics } from '../utils/haptics';
@@ -122,16 +157,43 @@ const RFMScatterPlot = ({
     const [modalOpen, setModalOpen] = useState(false);
     const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'atRisk', color: 'amber' });
 
+    // Zoom and view mode state (Phase 1.2 - UX Enhancement)
+    const [zoomLevel, setZoomLevel] = useState(1);
+    const [isListView, setIsListView] = useState(false);
+
+    // Zoom handlers
+    const handleZoomIn = useCallback(() => {
+        setZoomLevel(prev => Math.min(prev + 0.5, 2));
+    }, []);
+
+    const handleZoomOut = useCallback(() => {
+        setZoomLevel(prev => Math.max(prev - 0.5, 1));
+    }, []);
+
+    const toggleView = useCallback(() => {
+        setIsListView(prev => !prev);
+    }, []);
+
     // Use shared touch tooltip hook for mobile-friendly interactions
     // Desktop: single click opens profile immediately
-    // Mobile: tap-to-preview, tap-again-to-action
-    const { handleTouch, tooltipHidden, resetTooltipVisibility } = useTouchTooltip({
+    // Mobile: tap-to-preview with bottom sheet, tap-again-to-action, or long-press for direct action
+    const {
+        handleTouch,
+        tooltipHidden,
+        resetTooltipVisibility,
+        isActive,
+        chartContainerHandlers,
+        activeTooltip,
+        clearTooltip,
+        isTouchDevice
+    } = useTouchTooltip({
         onAction: (entry) => {
             if (entry?.id && onOpenCustomerProfile) {
                 onOpenCustomerProfile(entry.id);
             }
         },
-        dismissTimeout: 5000
+        dismissTimeout: 5000,
+        longPressDuration: 500
     });
 
     if (!data || data.length === 0) return null;
@@ -145,6 +207,12 @@ const RFMScatterPlot = ({
             isBlacklisted: isBlacklisted(d.phone)
         }));
     }, [data, contactedIds, pendingContacts, isBlacklisted]);
+
+    // Filter data based on zoom level (zoom works by filtering, not clipping)
+    const zoomedData = useMemo(() => {
+        const maxDays = zoomLevel === 1 ? 60 : zoomLevel === 1.5 ? 40 : 30;
+        return enrichedData.filter(d => d.x <= maxDays);
+    }, [enrichedData, zoomLevel]);
 
     // Calculate segment stats
     const highValueAtRiskCustomers = useMemo(() =>
@@ -163,9 +231,12 @@ const RFMScatterPlot = ({
 
     // Click handler for bubble - uses shared touch hook
     // Desktop: immediate action, Mobile: tap-to-preview, tap-again-to-action
+    // Note: Recharts passes computed coordinates at root level, actual data is in payload
     const handleBubbleClick = useCallback((entry) => {
-        if (!entry?.id) return;
-        handleTouch(entry, entry.id);
+        // Extract actual data from payload (Recharts wraps it)
+        const data = entry?.payload || entry;
+        if (!data?.id) return;
+        handleTouch(data, data.id);
     }, [handleTouch]);
 
     // Click handler for high-value at-risk insight - passes ALL high-value at-risk customers
@@ -184,22 +255,36 @@ const RFMScatterPlot = ({
         setModalOpen(true);
     }, [highValueAtRiskCustomers]);
 
+    // Stable callback for mobile sheet "Ver Perfil" action
+    // Uses useCallback to prevent callback reference loss during re-renders
+    const handleMobileViewProfile = useCallback((id) => {
+        if (id && onOpenCustomerProfile) {
+            onOpenCustomerProfile(id);
+        }
+    }, [onOpenCustomerProfile]);
+
+    // Icon mapping for status badges (WCAG accessibility)
+    const StatusIcon = ({ status }) => {
+        const iconMap = {
+            'Healthy': CheckCircle,
+            'Monitor': Eye,
+            'At Risk': AlertTriangle,
+            'Churning': XCircle,
+            'New Customer': Sparkles,
+            'Lost': MinusCircle
+        };
+        const Icon = iconMap[status] || MinusCircle;
+        return <Icon className="w-3 h-3" aria-hidden="true" />;
+    };
+
     // Custom Tooltip
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
 
-            // Translate risk status to Portuguese
+            // Translate risk status to Portuguese using RISK_LABELS
             const getRiskLabel = (status) => {
-                const labels = {
-                    'Healthy': 'Saudável',
-                    'Monitor': 'Monitorar',
-                    'At Risk': 'Em Risco',
-                    'Churning': 'Crítico',
-                    'New Customer': 'Novo',
-                    'Lost': 'Perdido'
-                };
-                return labels[status] || status;
+                return RISK_LABELS[status]?.pt || status;
             };
 
             // Format contact date
@@ -216,12 +301,17 @@ const RFMScatterPlot = ({
                     <p className="text-slate-600 dark:text-slate-300">Última visita: <span className="font-semibold text-red-500 dark:text-red-400">{d.x} dias atrás</span></p>
                     <p className="text-slate-600 dark:text-slate-300">Frequência: <span className="font-semibold text-lavpop-green dark:text-emerald-400">{d.r} visitas</span></p>
 
-                    {/* Risk Status Badge - Fixed: text-xs instead of text-[10px] */}
-                    <div className={`mt-2 text-xs font-bold uppercase px-2 py-0.5 rounded-full w-fit ${d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                    {/* Risk Status Badge - WCAG Accessible with icon + text + color */}
+                    <div className={`mt-2 text-xs font-bold uppercase px-2 py-0.5 rounded-full w-fit flex items-center gap-1 ${
+                        d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                        d.status === 'Monitor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
                         d.status === 'At Risk' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
-                            d.status === 'Churning' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                                'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                        }`}>
+                        d.status === 'Churning' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                        d.status === 'New Customer' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
+                        d.status === 'Lost' ? 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300' :
+                        'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                    }`}>
+                        <StatusIcon status={d.status} />
                         {getRiskLabel(d.status)}
                     </div>
 
@@ -294,19 +384,22 @@ const RFMScatterPlot = ({
                     ) : null}
                 </div>
 
-                {/* Legend for contact status - Design System compliant (min text-xs) */}
+                {/* Legend for contact status - WCAG Accessible (icons + colors for colorblind support) */}
                 <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-emerald-500/60"></div>
+                    <div className="flex items-center gap-1" title="Clientes saudáveis - visitam regularmente">
+                        <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60"></div>
                         <span className="text-slate-600 dark:text-slate-400 hidden sm:inline">Saudável</span>
                         <span className="text-slate-600 dark:text-slate-400 sm:hidden">OK</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-amber-500/60"></div>
+                    <div className="flex items-center gap-1" title="Clientes em risco - precisam de atenção">
+                        <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60"></div>
                         <span className="text-slate-600 dark:text-slate-400">Em Risco</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-red-500/60"></div>
+                    <div className="flex items-center gap-1" title="Clientes críticos - alta probabilidade de perda">
+                        <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" aria-hidden="true" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/60"></div>
                         <span className="text-slate-600 dark:text-slate-400">Crítico</span>
                     </div>
                     {/* VIP count - moved from header pill */}
@@ -333,22 +426,143 @@ const RFMScatterPlot = ({
                         </div>
                     )}
                 </div>
+
+                {/* Toolbar - View Toggle and Zoom Controls (separate from legend) */}
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    {/* View Toggle */}
+                    <button
+                        onClick={toggleView}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-xs font-medium text-slate-700 dark:text-slate-300"
+                        aria-label={isListView ? 'Alternar para visualização de gráfico' : 'Alternar para visualização de lista'}
+                    >
+                        {isListView ? (
+                            <>
+                                <Grid2X2 className="w-3.5 h-3.5" />
+                                <span>Gráfico</span>
+                            </>
+                        ) : (
+                            <>
+                                <List className="w-3.5 h-3.5" />
+                                <span>Lista</span>
+                            </>
+                        )}
+                    </button>
+
+                    {/* Zoom Controls - only show in chart view */}
+                    {!isListView && (
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={handleZoomOut}
+                                disabled={zoomLevel <= 1}
+                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                aria-label="Diminuir zoom"
+                            >
+                                <ZoomOut className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                            </button>
+                            <span className="text-xs font-medium text-slate-600 dark:text-slate-400 w-10 text-center">
+                                {zoomLevel}x
+                            </span>
+                            <button
+                                onClick={handleZoomIn}
+                                disabled={zoomLevel >= 2}
+                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                aria-label="Aumentar zoom"
+                            >
+                                <ZoomIn className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div
-                className="h-[280px] sm:h-[350px] lg:h-[420px]"
-                role="img"
-                aria-label="Gráfico de dispersão RFM mostrando valor do cliente versus dias desde última visita"
-            >
-                <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+            {/* List View - Alternative data representation */}
+            {isListView ? (
+                <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
+                            <tr className="border-b border-slate-200 dark:border-slate-700">
+                                <th className="text-left py-2 px-3 font-semibold text-slate-700 dark:text-slate-300">Cliente</th>
+                                <th className="text-left py-2 px-3 font-semibold text-slate-700 dark:text-slate-300">Status</th>
+                                <th className="text-right py-2 px-3 font-semibold text-slate-700 dark:text-slate-300">Dias</th>
+                                <th className="text-right py-2 px-3 font-semibold text-slate-700 dark:text-slate-300">Valor</th>
+                                <th className="text-right py-2 px-3 font-semibold text-slate-700 dark:text-slate-300 hidden sm:table-cell">Visitas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {enrichedData
+                                .sort((a, b) => a.x - b.x) // Sort by days ascending (recent first)
+                                .map((d, i, arr) => {
+                                    // Check if this is the first row in danger zone (>30 days)
+                                    const isFirstInDangerZone = d.x > 30 && (i === 0 || arr[i - 1].x <= 30);
+                                    const isInDangerZone = d.x > 30;
+
+                                    return (
+                                    <React.Fragment key={d.id || `row-${i}`}>
+                                        {/* Danger Zone separator line */}
+                                        {isFirstInDangerZone && (
+                                            <tr className="bg-red-50 dark:bg-red-900/20">
+                                                <td colSpan={5} className="py-1.5 px-3 text-xs font-semibold text-red-600 dark:text-red-400 border-t-2 border-red-300 dark:border-red-700">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                                        Zona de Perigo (&gt;30 dias)
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        <tr
+                                            onClick={() => onOpenCustomerProfile?.(d.id)}
+                                            className={`border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors ${isInDangerZone ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
+                                        >
+                                        <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200 truncate max-w-[120px]">
+                                            {d.name}
+                                        </td>
+                                        <td className="py-2 px-3">
+                                            <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                                                d.status === 'Monitor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                                                d.status === 'At Risk' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
+                                                d.status === 'Churning' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                                                d.status === 'New Customer' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
+                                                d.status === 'Lost' ? 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300' :
+                                                'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                            }`}>
+                                                <StatusIcon status={d.status} />
+                                                {RISK_LABELS[d.status]?.pt || d.status}
+                                            </div>
+                                        </td>
+                                        <td className="py-2 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
+                                            {d.x}d
+                                        </td>
+                                        <td className="py-2 px-3 text-right font-semibold text-lavpop-blue dark:text-blue-400">
+                                            {formatCurrency(d.y)}
+                                        </td>
+                                        <td className="py-2 px-3 text-right text-slate-600 dark:text-slate-400 hidden sm:table-cell">
+                                            {d.r}
+                                        </td>
+                                    </tr>
+                                    </React.Fragment>
+                                );
+                                })}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                /* Chart View - zoom filters data to show subset */
+                <div
+                    className="h-[280px] sm:h-[350px] lg:h-[420px]"
+                    role="img"
+                    aria-label="Gráfico de dispersão RFM mostrando valor do cliente versus dias desde última visita"
+                    {...chartContainerHandlers}
+                >
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                         <XAxis
                             type="number"
                             dataKey="x"
                             name="Recência"
                             unit=" dias"
-                            domain={[0, 60]}
+                            domain={[0, zoomLevel === 1 ? 60 : zoomLevel === 1.5 ? 40 : 30]}
                             stroke={chartColors.axis}
                             fontSize={labelFontSize}
                             tick={{ fill: chartColors.tickText }}
@@ -370,12 +584,17 @@ const RFMScatterPlot = ({
                             range={isDesktop ? [80, 600] : [40, 400]}
                             name="Frequência"
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} wrapperStyle={{ visibility: tooltipHidden ? 'hidden' : 'visible' }} />
+                        {/* Hide floating tooltip on touch devices (use MobileTooltipSheet instead) */}
+                        <Tooltip
+                            content={<CustomTooltip />}
+                            cursor={{ strokeDasharray: '3 3' }}
+                            wrapperStyle={{ visibility: (tooltipHidden || isTouchDevice) ? 'hidden' : 'visible' }}
+                        />
 
-                        {/* Danger Zone - shaded area for visual emphasis */}
+                        {/* Danger Zone - shaded area for visual emphasis (adjusts with zoom) */}
                         <ReferenceArea
                             x1={30}
-                            x2={60}
+                            x2={zoomLevel === 1 ? 60 : zoomLevel === 1.5 ? 40 : 30}
                             fill={isDark ? '#ef444420' : '#ef444410'}
                             fillOpacity={1}
                         />
@@ -398,24 +617,32 @@ const RFMScatterPlot = ({
 
                         <Scatter
                             name="Clientes"
-                            data={enrichedData}
+                            data={zoomedData}
                             fill="#8884d8"
                             onClick={(data) => handleBubbleClick(data)}
                             cursor={onOpenCustomerProfile ? 'pointer' : 'default'}
                         >
-                            {enrichedData.map((entry, index) => {
+                            {zoomedData.map((entry, index) => {
                                 // Determine base fill color
                                 const baseColor = entry.status === 'Healthy' ? '#10b981' :
                                     entry.status === 'At Risk' ? '#f59e0b' :
                                     entry.status === 'Churning' ? '#ef4444' : '#94a3b8';
 
-                                // Determine stroke style: blacklisted (black dotted) > contacted (blue dashed) > none
+                                // Check if this bubble is the active/selected one
+                                const bubbleIsActive = isActive(entry.id);
+
+                                // Determine stroke style: active > blacklisted > contacted > none
                                 let strokeColor = 'transparent';
                                 let strokeWidth = 0;
                                 let strokeDash = undefined;
                                 let fillOpacity = 0.8;
 
-                                if (entry.isBlacklisted) {
+                                if (bubbleIsActive) {
+                                    // Active bubble: white ring with glow effect
+                                    strokeColor = '#ffffff';
+                                    strokeWidth = 4;
+                                    strokeDash = undefined;
+                                } else if (entry.isBlacklisted) {
                                     strokeColor = isDark ? '#f1f5f9' : '#0f172a';
                                     strokeWidth = 3;
                                     strokeDash = '3 3';
@@ -430,7 +657,7 @@ const RFMScatterPlot = ({
                                     <Cell
                                         key={`cell-${index}`}
                                         fill={baseColor}
-                                        fillOpacity={fillOpacity}
+                                        fillOpacity={bubbleIsActive ? 1 : fillOpacity}
                                         stroke={strokeColor}
                                         strokeWidth={strokeWidth}
                                         strokeDasharray={strokeDash}
@@ -440,7 +667,8 @@ const RFMScatterPlot = ({
                         </Scatter>
                     </ScatterChart>
                 </ResponsiveContainer>
-            </div>
+                </div>
+            )}
 
             {/* Customer Segment Modal */}
             <CustomerSegmentModal
@@ -461,6 +689,16 @@ const RFMScatterPlot = ({
                 onMarkContacted={onMarkContacted}
                 onCreateCampaign={onCreateCampaign}
             />
+
+            {/* Mobile Bottom Sheet Tooltip - replaces floating tooltip on touch devices */}
+            {isTouchDevice && (
+                <MobileTooltipSheet
+                    isOpen={!!activeTooltip?.data}
+                    onClose={clearTooltip}
+                    data={activeTooltip?.data}
+                    onViewProfile={handleMobileViewProfile}
+                />
+            )}
         </div>
     );
 };

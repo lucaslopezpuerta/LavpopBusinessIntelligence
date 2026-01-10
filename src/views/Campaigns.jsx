@@ -1,8 +1,12 @@
-// Campaigns.jsx v2.5.1 - FIX EMPTY RENDER
+// Campaigns.jsx v2.6.0 - FIX TAB NAVIGATION
 // Customer Messaging & Campaign Management Tab
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.6.0 (2026-01-09): Fix tab navigation - show correct content per tab
+//   - CampaignDashboard now only shows on 'overview' tab (was always visible)
+//   - Each tab now properly shows its respective content exclusively
+//   - Fixes confusion where dashboard was always visible with other sections
 // v2.5.1 (2025-12-23): Fix empty render on navigation
 //   - Added comprehensive data readiness check (sales + rfm + customer)
 //   - Prevents empty tab when derived calculations return null
@@ -223,10 +227,12 @@ const Campaigns = ({ data }) => {
         onSectionChange={setActiveSection}
       />
 
-      {/* Campaign Analytics Dashboard - Always visible at top */}
-      <CampaignDashboard
-        audienceSegments={audienceSegments}
-      />
+      {/* Campaign Analytics Dashboard - Only visible on Overview tab */}
+      {activeSection === 'overview' && (
+        <CampaignDashboard
+          audienceSegments={audienceSegments}
+        />
+      )}
 
       {/* Automation Rules Section */}
       {activeSection === 'automations' && (

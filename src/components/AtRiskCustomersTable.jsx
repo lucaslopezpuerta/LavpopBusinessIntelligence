@@ -635,11 +635,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
           )}
         </div>
 
-        {/* Desktop Table View */}
-        <div className="hidden lg:block overflow-hidden" ref={tableRef} onKeyDown={handleKeyDown}>
+        {/* Desktop Table View - with sticky headers */}
+        <div className="hidden lg:block overflow-x-auto max-h-[500px] overflow-y-auto" ref={tableRef} onKeyDown={handleKeyDown}>
           <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-200 dark:border-slate-700">
+            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
+              <tr className="border-b-2 border-slate-200 dark:border-slate-700">
                 <th scope="col" className="px-4 py-3 text-left w-10">
                   <input
                     type="checkbox"

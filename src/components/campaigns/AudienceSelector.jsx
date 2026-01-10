@@ -1,8 +1,20 @@
-// AudienceSelector.jsx v3.0
+// AudienceSelector.jsx v3.3
 // Audience targeting component for campaign creation
-// Design System v4.0 compliant - Enhanced UX
+// Design System v4.0 compliant - Hybrid Card Design
 //
 // CHANGELOG:
+// v3.3 (2026-01-09): Light background KPI cards (Hybrid Card Design)
+//   - Migrated stats cards to Design System KPICard with variant="default"
+//   - Card bodies now use light backgrounds (bg-white dark:bg-slate-800)
+//   - Icon containers retain gradient colors for visual accent
+// v3.2 (2026-01-09): Hybrid card design implementation
+//   - Added Framer Motion hover animation (y: -2 lift effect)
+//   - Updated stats cards to 3-stop gradients
+//   - Added haptic feedback on card selection
+//   - Premium shadow-lift on card hover
+// v3.1 (2026-01-09): Typography & contrast fixes
+//   - Fixed text-[10px] → text-xs (12px minimum)
+//   - Fixed dark mode contrast (slate-400 → slate-300)
 // v3.0 (2025-12-11): Complete UX redesign
 //   - Stats dashboard header with gradient backgrounds
 //   - Gradient icons matching AutomationRules design
@@ -18,6 +30,7 @@
 //   - Filters audiences by valid WhatsApp-capable phones only
 
 import React, { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   Users,
   AlertTriangle,
@@ -35,7 +48,9 @@ import {
   Filter
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
+import KPICard from '../ui/KPICard';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
+import { haptics } from '../../utils/haptics';
 
 const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience }) => {
   // Category filter: 'all', 'retention', 'marketing'
@@ -299,31 +314,32 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       id="audience-selector"
     >
       <div className="space-y-5">
-        {/* Stats Dashboard Header */}
+        {/* Stats Dashboard Header - Light background cards with gradient icons */}
         <div className="grid grid-cols-2 gap-3">
           {/* Total Disponível */}
-          <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <Phone className="w-4 h-4 opacity-80" />
-              <span className="text-xs font-medium opacity-90">WhatsApp</span>
-            </div>
-            <p className="text-xl sm:text-2xl font-bold">{stats.total.toLocaleString()}</p>
-            <p className="text-[10px] sm:text-xs opacity-75">clientes disponíveis</p>
-          </div>
+          <KPICard
+            label="WhatsApp"
+            value={stats.total.toLocaleString()}
+            subtitle="clientes disponíveis"
+            icon={Phone}
+            color="purple"
+            variant="compact"
+          />
 
           {/* Precisam Atenção */}
-          <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="w-4 h-4 opacity-80" />
-              <span className="text-xs font-medium opacity-90">Atenção</span>
-            </div>
-            <p className="text-xl sm:text-2xl font-bold">{stats.needAttention.toLocaleString()}</p>
-            <p className="text-[10px] sm:text-xs opacity-75">precisam ação</p>
-          </div>
+          <KPICard
+            label="Atenção"
+            value={stats.needAttention.toLocaleString()}
+            subtitle="precisam ação"
+            icon={AlertTriangle}
+            color="warning"
+            variant="compact"
+            status="warning"
+          />
         </div>
 
         {/* Discrete Info Hint */}
-        <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+        <p className="text-xs text-slate-500 dark:text-slate-300 flex items-center gap-1.5">
           <Phone className="w-3 h-3" />
           Apenas celulares brasileiros válidos
           {audienceSegments?.withPhone?.length > totalValidCount && (
@@ -359,7 +375,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
             >
               <Icon className="w-3.5 h-3.5" />
               {label}
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
                 categoryFilter === id
                   ? 'bg-white/20'
                   : 'bg-slate-100 dark:bg-slate-700'
@@ -370,7 +386,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
           ))}
         </div>
 
-        {/* Audience Cards Grid */}
+        {/* Audience Cards Grid - Selection Cards with Light Background + Ring */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {audiences.map((audience) => {
             const Icon = audience.icon;
@@ -378,14 +394,22 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
             const hasCustomers = audience.count > 0;
 
             return (
-              <button
+              <motion.button
                 key={audience.id}
-                onClick={() => hasCustomers && onSelectAudience(audience.id)}
+                whileHover={hasCustomers ? { y: -2 } : undefined}
+                whileTap={hasCustomers ? { scale: 0.98 } : undefined}
+                transition={{ type: 'tween', duration: 0.2 }}
+                onClick={() => {
+                  if (hasCustomers) {
+                    haptics.light();
+                    onSelectAudience(audience.id);
+                  }
+                }}
                 disabled={!hasCustomers}
                 className={`
-                  relative p-4 rounded-xl border-2 text-left transition-all duration-200 group
+                  relative p-4 rounded-xl border-2 text-left transition-all duration-200 group shadow-sm
                   ${isSelected
-                    ? `${audience.bgLight} ${audience.bgDark} ${audience.borderColor} shadow-lg ring-2 ${audience.ringColor} ring-offset-2 dark:ring-offset-slate-900`
+                    ? `bg-white dark:bg-slate-800 border-transparent shadow-md ring-2 ${audience.ringColor} ring-offset-2 dark:ring-offset-slate-900`
                     : hasCustomers
                       ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md'
                       : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
@@ -404,7 +428,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
                 {/* Priority Badge */}
                 {audience.priority && !isSelected && (
                   <span className={`
-                    absolute top-3 right-3 px-2 py-0.5 text-[10px] font-bold rounded-full shadow-sm
+                    absolute top-3 right-3 px-2 py-0.5 text-xs font-bold rounded-full shadow-sm
                     ${getPriorityColor(audience.priority)}
                   `}>
                     {audience.priority}
@@ -434,12 +458,12 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
                   </span>
                   {/* Hover hint - inline to avoid overlap */}
                   {hasCustomers && !isSelected && (
-                    <span className="ml-auto text-[10px] text-purple-600 dark:text-purple-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="ml-auto text-xs text-purple-600 dark:text-purple-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                       Selecionar →
                     </span>
                   )}
                 </div>
-              </button>
+              </motion.button>
             );
           })}
         </div>

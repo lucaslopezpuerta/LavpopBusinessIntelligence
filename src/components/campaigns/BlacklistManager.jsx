@@ -1,8 +1,14 @@
-// BlacklistManager.jsx v3.8 - HAPTIC FEEDBACK
+// BlacklistManager.jsx v4.0 - Light Background KPI Cards
 // WhatsApp blacklist management UI component
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v4.0 (2026-01-09): Light background KPI cards (Hybrid Card Design)
+//   - Migrated stats cards to Design System KPICard with variant="default"
+//   - Card bodies now use light backgrounds (bg-white dark:bg-slate-800)
+//   - Icon containers retain gradient colors for visual accent
+// v3.9 (2026-01-09): Typography fixes for Design System v4.0
+//   - Fixed text-[10px]/text-[11px] → text-xs (12px minimum)
 // v3.8 (2025-12-22): Added haptic feedback on interactive elements
 // v3.7 (2025-12-19): Mobile layout reorganization
 //   - Filter: moved under search bar on mobile
@@ -23,7 +29,7 @@
 //   - Badges: consistent text-xs size (Design System min 12px)
 //   - Delete button: rounded-lg with hover background
 //   - Empty cells: em-dash (—) instead of hyphen
-//   - Mobile text: text-xs (was text-[11px])
+//   - Mobile text: text-xs (was text-xs)
 // v3.4 (2025-12-19): Pagination branding consistency
 //   - Page number active state: red-600 (matches blacklist red theme)
 //   - Select focus ring: red-500 (matches blacklist red theme)
@@ -102,6 +108,7 @@ import {
 } from 'recharts';
 import SectionCard from '../ui/SectionCard';
 import InsightBox from '../ui/InsightBox';
+import KPICard from '../ui/KPICard';
 import {
   getBlacklistArray,
   getBlacklistStats,
@@ -144,7 +151,7 @@ const ReasonFilter = ({ value, onChange }) => {
         <button
           key={option.id}
           onClick={() => handleChange(option.id)}
-          className={`px-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all text-center ${
+          className={`px-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-center ${
             value === option.id
               ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -583,31 +590,29 @@ const BlacklistManager = ({ customerData }) => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Stats Cards - 2 columns on mobile, first column on desktop */}
               <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 sm:col-span-1">
-                {/* Total Bloqueados */}
-                <div
-                  className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg"
-                  title="Total de números que não receberão mensagens de campanhas"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <ShieldOff className="w-4 h-4 opacity-80" />
-                    <span className="text-xs font-medium opacity-90">Bloqueados</span>
-                  </div>
-                  <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
-                  <p className="text-[10px] sm:text-xs opacity-75">na blacklist</p>
-                </div>
+                {/* Total Bloqueados - Light background with gradient icon */}
+                <KPICard
+                  label="Bloqueados"
+                  value={stats.total}
+                  subtitle="na blacklist"
+                  icon={ShieldOff}
+                  color="cost"
+                  variant="compact"
+                  tooltip="Total de números que não receberão mensagens de campanhas"
+                  status="danger"
+                />
 
-                {/* Opt-outs */}
-                <div
-                  className="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg"
-                  title="Clientes que pediram para não receber mais mensagens"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <MessageSquareOff className="w-4 h-4 opacity-80" />
-                    <span className="text-xs font-medium opacity-90">Opt-outs</span>
-                  </div>
-                  <p className="text-xl sm:text-2xl font-bold">{stats.byReason?.optOut || 0}</p>
-                  <p className="text-[10px] sm:text-xs opacity-75">pediram para parar</p>
-                </div>
+                {/* Opt-outs - Light background with gradient icon */}
+                <KPICard
+                  label="Opt-outs"
+                  value={stats.byReason?.optOut || 0}
+                  subtitle="pediram para parar"
+                  icon={MessageSquareOff}
+                  color="warning"
+                  variant="compact"
+                  tooltip="Clientes que pediram para não receber mais mensagens"
+                  status="warning"
+                />
               </div>
 
               {/* Distribution Chart - full width on mobile, 2 columns on desktop */}
@@ -616,7 +621,7 @@ const BlacklistManager = ({ customerData }) => {
                   <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                     Distribuição por Motivo
                   </h4>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-xs text-slate-400">
                     {stats.total} total
                   </span>
                 </div>
@@ -682,7 +687,7 @@ const BlacklistManager = ({ customerData }) => {
 
             <div className="flex items-center gap-2">
               {lastSync && (
-                <span className="text-slate-400 text-[10px]">Sync: {formatTimeAgo(lastSync)}</span>
+                <span className="text-slate-400 text-xs">Sync: {formatTimeAgo(lastSync)}</span>
               )}
               <button
                 onClick={() => { haptics.light(); handleSync(); }}

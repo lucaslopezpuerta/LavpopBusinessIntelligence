@@ -12,10 +12,29 @@
 [functions."weather-sync"]
   schedule = "0 9 * * *"
 
+# SPA fallback for client-side routing
+# Note: Static files in /assets are served directly by Netlify before this rule applies
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Cache headers for hashed assets (immutable)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Prevent caching of HTML (always get fresh index.html)
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
 
 # Security Headers
 [[headers]]

@@ -134,14 +134,15 @@ const DAY_THRESHOLDS = {
 
 // Unified Risk Labels (English keys, Portuguese values)
 // Use this constant across ALL components for consistency
-// Design System v3.0: Added borderColor hex values, removed emoji icons
+// Design System v4.0: Added icon property for WCAG accessibility (colorblind support)
+// Icons provide alternative visual cue beyond color alone
 export const RISK_LABELS = {
-  'Healthy': { pt: 'Saudável', color: 'green', borderColor: '#10b981', bgClass: 'bg-green-100', textClass: 'text-green-700' },
-  'Monitor': { pt: 'Monitorar', color: 'blue', borderColor: '#3b82f6', bgClass: 'bg-blue-100', textClass: 'text-blue-700' },
-  'At Risk': { pt: 'Em Risco', color: 'amber', borderColor: '#f59e0b', bgClass: 'bg-amber-100', textClass: 'text-amber-700' },
-  'Churning': { pt: 'Crítico', color: 'red', borderColor: '#ef4444', bgClass: 'bg-red-100', textClass: 'text-red-700' },
-  'New Customer': { pt: 'Novo', color: 'purple', borderColor: '#a855f7', bgClass: 'bg-purple-100', textClass: 'text-purple-700' },
-  'Lost': { pt: 'Perdido', color: 'slate', borderColor: '#64748b', bgClass: 'bg-slate-100', textClass: 'text-slate-700' }
+  'Healthy': { pt: 'Saudável', color: 'green', borderColor: '#10b981', bgClass: 'bg-green-100', textClass: 'text-green-700', icon: 'CheckCircle' },
+  'Monitor': { pt: 'Monitorar', color: 'blue', borderColor: '#3b82f6', bgClass: 'bg-blue-100', textClass: 'text-blue-700', icon: 'Eye' },
+  'At Risk': { pt: 'Em Risco', color: 'amber', borderColor: '#f59e0b', bgClass: 'bg-amber-100', textClass: 'text-amber-700', icon: 'AlertTriangle' },
+  'Churning': { pt: 'Crítico', color: 'red', borderColor: '#ef4444', bgClass: 'bg-red-100', textClass: 'text-red-700', icon: 'XCircle' },
+  'New Customer': { pt: 'Novo', color: 'purple', borderColor: '#a855f7', bgClass: 'bg-purple-100', textClass: 'text-purple-700', icon: 'Sparkles' },
+  'Lost': { pt: 'Perdido', color: 'slate', borderColor: '#64748b', bgClass: 'bg-slate-100', textClass: 'text-slate-700', icon: 'MinusCircle' }
 };
 
 // RFM segment bonus multipliers for return likelihood
@@ -580,7 +581,7 @@ export function getTopAtRiskCustomers(customerMetrics, limit = 10) {
  */
 export function getRFMCoordinates(customers) {
   return customers.map(c => ({
-    id: c.doc,
+    id: c.doc || c.id,       // Use doc (CPF) with id as fallback for consistency
     name: c.name,
     x: c.daysSinceLastVisit, // Recency (Days ago)
     y: c.netTotal,           // Monetary (Total Spend)

@@ -1,8 +1,13 @@
-// AutomationRules.jsx v6.0
+// AutomationRules.jsx v6.1
 // Automation rules configuration for campaigns
-// Design System v3.1 compliant - Mobile-first redesign
+// Design System v4.0 compliant - Mobile-first redesign
 //
 // CHANGELOG:
+// v6.1 (2026-01-09): Typography & UX enhancements
+//   - Fixed text-[10px] → text-xs (StatusPill badges)
+//   - Fixed text-[11px] → text-xs (Quick stats row)
+//   - Changed day-of-week picker from flex-wrap to grid layout
+//   - Improved touch targets on day buttons (44px min)
 // v6.0 (2025-12-12): Enhanced automation controls
 //   - Send time window (send_window_start, send_window_end) - Brazil timezone
 //   - Day of week restrictions (send_days: checkboxes for each day)
@@ -60,6 +65,7 @@ import { getBrazilNow } from '../../utils/dateUtils';
 import SectionCard from '../ui/SectionCard';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import { getAutomationRules, saveAutomationRules, getCampaignPerformance } from '../../utils/campaignService';
+import { haptics } from '../../utils/haptics';
 
 // Available coupon codes (must match POS system)
 const COUPON_OPTIONS = [
@@ -315,7 +321,7 @@ const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {
 
   if (isExpired) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
         Encerrada
       </span>
     );
@@ -323,7 +329,7 @@ const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {
 
   if (isAtLimit) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
         Limite atingido
       </span>
     );
@@ -331,7 +337,7 @@ const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {
 
   if (enabled) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
         Ativa
       </span>
@@ -339,7 +345,7 @@ const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {
   }
 
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
       Inativa
     </span>
   );
@@ -366,6 +372,7 @@ const AutomationRules = ({ audienceSegments }) => {
   const [hasChanges, setHasChanges] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [campaignMetrics, setCampaignMetrics] = useState({});
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'warning' }
 
   // Load rules and campaign metrics on mount
   useEffect(() => {
@@ -448,9 +455,27 @@ const AutomationRules = ({ audienceSegments }) => {
   }, []);
 
   const toggleRule = useCallback((ruleId) => {
-    setRules(prev => prev.map(rule =>
-      rule.id === ruleId ? { ...rule, enabled: !rule.enabled } : rule
-    ));
+    setRules(prev => {
+      const rule = prev.find(r => r.id === ruleId);
+      const newEnabled = !rule?.enabled;
+
+      // Show toast feedback
+      const ruleName = rule?.name || 'Automação';
+      setToast({
+        message: newEnabled ? `${ruleName} ativada` : `${ruleName} desativada`,
+        type: newEnabled ? 'success' : 'warning'
+      });
+
+      // Haptic feedback
+      haptics.success();
+
+      // Auto-dismiss toast after 3 seconds
+      setTimeout(() => setToast(null), 3000);
+
+      return prev.map(r =>
+        r.id === ruleId ? { ...r, enabled: !r.enabled } : r
+      );
+    });
     setHasChanges(true);
     setSaveSuccess(false);
   }, []);
@@ -604,6 +629,33 @@ const AutomationRules = ({ audienceSegments }) => {
       color="purple"
       id="automation-rules"
     >
+      {/* Toast notification for toggle feedback */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+            toast.type === 'success'
+              ? 'bg-emerald-500 text-white'
+              : 'bg-amber-500 text-white'
+          }`}
+          role="alert"
+          aria-live="polite"
+        >
+          {toast.type === 'success' ? (
+            <Check className="w-4 h-4" />
+          ) : (
+            <Pause className="w-4 h-4" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-2 p-0.5 hover:bg-white/20 rounded transition-colors"
+            aria-label="Fechar"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       <div className="space-y-6">
         {/* Stats Header */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -748,7 +800,7 @@ const AutomationRules = ({ audienceSegments }) => {
                       </p>
 
                       {/* Quick Stats */}
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] sm:text-xs">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs">
                         <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
                           <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           {rule.trigger.label}
@@ -925,7 +977,7 @@ const AutomationRules = ({ audienceSegments }) => {
                             tooltip="Selecione os dias em que a automação pode enviar mensagens"
                             className="mb-4"
                           >
-                            <div className="flex flex-wrap gap-2 mt-1.5">
+                            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 mt-1.5">
                               {DAY_LABELS.map(({ day, label, fullLabel }) => {
                                 const isSelected = (rule.send_days || []).includes(day);
                                 return (
@@ -935,7 +987,7 @@ const AutomationRules = ({ audienceSegments }) => {
                                     onClick={() => toggleSendDay(rule.id, day)}
                                     title={fullLabel}
                                     className={`
-                                      px-3 py-2 text-xs font-medium rounded-lg transition-all
+                                      min-h-[44px] min-w-[44px] px-2 py-2 text-xs font-medium rounded-lg transition-all
                                       ${isSelected
                                         ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
                                         : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'

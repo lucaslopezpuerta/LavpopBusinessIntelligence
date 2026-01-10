@@ -1,8 +1,15 @@
-// GrowthTrendsSection.jsx v5.13
+// GrowthTrendsSection.jsx v5.15
 // Growth & trends analysis section for Intelligence tab
-// Design System v3.1 compliant - Migrated to Recharts
+// Design System v4.0 compliant - Migrated to Recharts
 //
 // CHANGELOG:
+// v5.15 (2026-01-09): Light background KPI cards (Hybrid Card Design)
+//   - Changed KPICard variant from "gradient" to "default"
+//   - Cards now use light backgrounds (bg-white dark:bg-slate-800)
+//   - Icon containers retain gradient colors for visual accent
+// v5.14 (2026-01-09): Design System v4.0 typography compliance
+//   - Fixed 8 typography violations (text-[10px] → text-xs)
+//   - All text now meets 12px minimum requirement
 // v5.13 (2026-01-07): Use shared ContextHelp component
 //   - REMOVED: Local InfoTooltip component (had positioning bugs)
 //   - CHANGED: Service analysis tooltip now uses shared ContextHelp
@@ -123,13 +130,13 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</span>
             {isMainDriver && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full">
+              <span className="text-xs px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full">
                 Foco
               </span>
             )}
           </div>
           {growth !== null && comparisonContext && (
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">vs mês anterior</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">vs mês anterior</span>
           )}
         </div>
 
@@ -159,7 +166,7 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
         <Icon className={`w-4 h-4 ${isMainDriver ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`} />
         <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</span>
         {isMainDriver && (
-          <span className="text-[10px] px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full">
+          <span className="text-xs px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full">
             Foco
           </span>
         )}
@@ -172,7 +179,7 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
           {growth === null ? '—' : `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`}
         </p>
         {growth !== null && comparisonContext && (
-          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+          <span className="text-xs text-slate-400 dark:text-slate-500">
             vs ant.
           </span>
         )}
@@ -407,7 +414,7 @@ const GrowthTrendsSection = ({
             subtitle="Últimos 6 meses"
             mobileSubtitle="6 meses"
             color={growthTrends.avgGrowth > 0 ? 'positive' : growthTrends.avgGrowth < 0 ? 'negative' : 'neutral'}
-            variant="gradient"
+            variant="default"
             icon={TrendingUp}
           />
           <KPICard
@@ -416,7 +423,7 @@ const GrowthTrendsSection = ({
             value={yoyData?.hasLastYearData ? formatPercent(yoyData.yoyGrowth || 0, 1) : 'N/A'}
             subtitle={yoyData?.hasLastYearData ? `vs ${yoyData.lastYearLabel}` : 'Sem dados do ano anterior'}
             color={!yoyData?.hasLastYearData ? 'neutral' : (yoyData.yoyGrowth || 0) > 0 ? 'positive' : (yoyData.yoyGrowth || 0) < 0 ? 'negative' : 'neutral'}
-            variant="gradient"
+            variant="default"
             icon={Calendar}
           />
           <KPICard
@@ -425,7 +432,7 @@ const GrowthTrendsSection = ({
             value={yoyData?.hasLastYearData ? formatCurrency(yoyData.lastYearRevenue) : 'N/A'}
             subtitle={yoyData?.lastYearLabel || '-'}
             color="blue"
-            variant="gradient"
+            variant="default"
             icon={Clock}
           />
           <KPICard
@@ -435,7 +442,7 @@ const GrowthTrendsSection = ({
             subtitle={growthTrends.trend !== 'stable' ? 'Últimos 3 meses' : 'Sem mudança clara'}
             mobileSubtitle={growthTrends.trend !== 'stable' ? '3 meses' : 'Estável'}
             color={trendDisplay.color}
-            variant="gradient"
+            variant="default"
             icon={trendDisplay.icon}
           />
         </KPIGrid>
@@ -609,7 +616,7 @@ const GrowthTrendsSection = ({
                         {formatMonthKey(month.month, 'long')}
                       </span>
                       {month.isPartial && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded flex-shrink-0">
+                        <span className="flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded flex-shrink-0">
                           <Clock className="w-2.5 h-2.5" />
                           Parcial
                         </span>
@@ -640,13 +647,13 @@ const GrowthTrendsSection = ({
                   {/* Metrics row: Revenue and Cycles side by side */}
                   <div className="flex items-baseline justify-between gap-4">
                     <div className="flex-1">
-                      <span className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Receita</span>
+                      <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Receita</span>
                       <p className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
                         {formatCurrency(month.revenue)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Ciclos</span>
+                      <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Ciclos</span>
                       <p className="text-lg font-semibold text-slate-700 dark:text-slate-300 leading-tight">
                         {month.services.toLocaleString('pt-BR')}
                       </p>
@@ -704,7 +711,7 @@ const GrowthTrendsSection = ({
                       <div className="flex items-center justify-center gap-2">
                         {formatMonthKey(month.month, 'long')}
                         {month.isPartial && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
+                          <span className="flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded">
                             <Clock className="w-2.5 h-2.5" />
                             Parcial ({month.daysElapsed}/{month.daysInMonth} dias)
                           </span>

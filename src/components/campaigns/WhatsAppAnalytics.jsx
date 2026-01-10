@@ -1,8 +1,15 @@
-// WhatsAppAnalytics.jsx v3.3 - HAPTIC FEEDBACK
+// WhatsAppAnalytics.jsx v3.5 - Light Background KPI Cards
 // WhatsApp Business API Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.5 (2026-01-09): Light background KPI cards (Hybrid Card Design)
+//   - Changed KPICard variant from "gradient" to "default"
+//   - Cards now use light backgrounds (bg-white dark:bg-slate-800)
+//   - Icon containers retain gradient colors for visual accent
+// v3.4 (2026-01-09): Design System v4.0 compliance
+//   - Fixed text-[10px]/text-[11px] → text-xs (12px minimum)
+//   - Fixed touch targets: mobile refresh button now min 44px
 // v3.3 (2025-12-22): Added haptic feedback on interactive elements
 // v3.2 (2025-12-19): Mobile sort asc/desc support
 //   - Mobile sort: Split into field selector + direction toggle button
@@ -30,7 +37,7 @@
 //   - Replaced double ChevronLeft/Right with ChevronsLeft/ChevronsRight icons
 //   - Consistent p-1.5 padding on all pagination buttons
 // v2.7 (2025-12-19): Mobile layout refinement for Received Answers table
-//   - Fixed text-[10px] → text-xs (Design System compliance: min 12px)
+//   - Fixed text-xs → text-xs (Design System compliance: min 12px)
 //   - Restructured card layout: Name/Phone + Badge on top row
 //   - Phone + Date on second row (only phone shown if name exists)
 //   - Better spacing and visual hierarchy for narrow screens
@@ -255,7 +262,7 @@ const QualityBadge = ({ rating }) => {
   const { bg, text, label } = config[rating] || config.GREEN;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${bg} ${text}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${bg} ${text}`}>
       <Shield className="w-3 h-3" />
       {label}
     </span>
@@ -275,7 +282,7 @@ const TierBadge = ({ tier }) => {
   const label = tierMap[tier] || tier || 'N/A';
 
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
       <Zap className="w-3 h-3" />
       {label}
     </span>
@@ -322,7 +329,7 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
               <span>{profile?.displayPhoneNumber || 'N/A'}</span>
             </div>
           </div>
-          <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="w-9 h-9 flex items-center justify-center bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 disabled:opacity-50 text-white rounded-full shadow-md flex-shrink-0">
+          <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 disabled:opacity-50 text-white rounded-full shadow-md flex-shrink-0">
             <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -331,7 +338,7 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
         {/* Row 3: Date filter + Sync time (like Instagram) */}
         <div className="flex items-center justify-between mt-3 gap-2">
           <DateFilter value={dateFilter} onChange={onDateFilterChange} />
-          <span className="text-slate-400 text-[10px] flex-shrink-0">{lastSync ? formatTimeAgo(lastSync) : ''}</span>
+          <span className="text-slate-400 text-xs flex-shrink-0">{lastSync ? formatTimeAgo(lastSync) : ''}</span>
         </div>
       </div>
 
@@ -394,13 +401,13 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
             </div>
           ) : summary ? (
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 font-medium text-[11px] sm:text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 font-medium text-xs sm:text-xs">
                 Enviadas: {formatNumber(summary.totalSent || 0)}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium text-[11px] sm:text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium text-xs sm:text-xs">
                 Entregues: {formatNumber(summary.totalDelivered || 0)}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 font-medium text-[11px] sm:text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 font-medium text-xs sm:text-xs">
                 Lidas: {formatNumber(summary.totalRead || 0)}
               </span>
             </div>
@@ -410,9 +417,9 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
           {/* Desktop: Sync button and last sync time */}
           <div className="hidden sm:flex items-center gap-2 ml-auto">
             {lastSync && (
-              <span className="text-slate-400 text-[10px]">Sync: {formatTimeAgo(lastSync)}</span>
+              <span className="text-slate-400 text-xs">Sync: {formatTimeAgo(lastSync)}</span>
             )}
-            <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all">
+            <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 text-white text-xs font-semibold rounded-full shadow-sm transition-all">
               <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Atualizando...' : 'Atualizar'}
             </button>
@@ -672,7 +679,7 @@ const TemplateAnalyticsTable = ({ templates, isLoading }) => {
                   <span className="font-medium text-slate-900 dark:text-white truncate text-sm" title={template.templateName}>
                     {formatTemplateName(template.templateName)}
                   </span>
-                  <span className="self-start flex-shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400 uppercase">
+                  <span className="self-start flex-shrink-0 px-1.5 py-0.5 text-xs font-semibold rounded bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400 uppercase">
                     {template.category === 'MARKETING' ? 'MKT' : template.category === 'UTILITY' ? 'UTIL' : template.category || 'N/A'}
                   </span>
                 </div>
@@ -1018,7 +1025,7 @@ const WhatsAppAnalytics = () => {
             label="Mensagens Enviadas"
             value={formatNumber(kpis.totalSent)}
             icon={Send}
-            variant="gradient"
+            variant="default"
             color="whatsapp"
             isLoading={isLoading}
             subtitle="Total no período"
@@ -1027,7 +1034,7 @@ const WhatsAppAnalytics = () => {
             label="Mensagens Entregues"
             value={formatNumber(kpis.totalDelivered)}
             icon={CheckCircle2}
-            variant="gradient"
+            variant="default"
             color="whatsappTeal"
             isLoading={isLoading}
             subtitle="Chegaram ao destinatário"
@@ -1036,7 +1043,7 @@ const WhatsAppAnalytics = () => {
             label="Taxa de Entrega"
             value={formatPercent(kpis.deliveryRate)}
             icon={TrendingUp}
-            variant="gradient"
+            variant="default"
             color="whatsappDark"
             isLoading={isLoading}
             subtitle="Entregues / Enviadas"
@@ -1045,7 +1052,7 @@ const WhatsAppAnalytics = () => {
             label="Taxa de Leitura"
             value={formatPercent(kpis.readRate)}
             icon={Eye}
-            variant="gradient"
+            variant="default"
             color="whatsappRead"
             isLoading={isLoading}
             subtitle="Lidas / Entregues"
@@ -1104,7 +1111,7 @@ const WhatsAppAnalytics = () => {
                 label="Engajamentos Positivos"
                 value={engagementKpis.positiveCount}
                 icon={ThumbsUp}
-                variant="gradient"
+                variant="default"
                 color="success"
                 isLoading={engagementLoading}
                 subtitle={`${formatPercent(engagementKpis.engagementRate)} das enviadas`}
@@ -1113,7 +1120,7 @@ const WhatsAppAnalytics = () => {
                 label="Opt-outs"
                 value={engagementKpis.optOutCount}
                 icon={ThumbsDown}
-                variant="gradient"
+                variant="default"
                 color="warning"
                 isLoading={engagementLoading}
                 subtitle={`${formatPercent(engagementKpis.optOutRate)} das enviadas`}
@@ -1122,7 +1129,7 @@ const WhatsAppAnalytics = () => {
                 label="Taxa de Resposta"
                 value={formatPercent(engagementKpis.responseRate)}
                 icon={Users}
-                variant="gradient"
+                variant="default"
                 color="purple"
                 isLoading={engagementLoading}
                 subtitle={`${engagementKpis.totalResponses} respostas`}
@@ -1131,7 +1138,7 @@ const WhatsAppAnalytics = () => {
                 label="Custo Total"
                 value={`$${engagementKpis.totalCost.toFixed(2)}`}
                 icon={DollarSign}
-                variant="gradient"
+                variant="default"
                 color="blue"
                 isLoading={engagementLoading}
                 subtitle={`$${engagementKpis.costPerMessage.toFixed(4)}/msg`}

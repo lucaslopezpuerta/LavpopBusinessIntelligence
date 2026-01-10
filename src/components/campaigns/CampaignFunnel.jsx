@@ -1,9 +1,18 @@
-// CampaignFunnel.jsx v3.2
+// CampaignFunnel.jsx v3.4
 // Campaign Delivery Funnel + Outcomes Panel
 // Design System v4.0 compliant
 // ANALYTICAL INTEGRITY ENFORCED
 //
 // CHANGELOG:
+// v3.4 (2026-01-09): Typography compliance (12px minimum)
+//   - Fixed text-[10px] → text-xs throughout component
+//   - All text now meets minimum 12px requirement
+// v3.3 (2026-01-09): Improved mobile readability
+//   - Increased mobile font sizes: values text-sm→text-base, labels text-[8px]→text-[10px]
+//   - Larger conversion rates on mobile: text-[9px]→text-xs
+//   - Larger drop-off counts: text-[8px]→text-[10px]
+//   - Wider compact cards: min-w-[60px]→min-w-[70px], p-2→p-2.5
+//   - Larger arrow icons on mobile: w-3→w-4
 // v3.2 (2026-01-08): Removed redundant percentages, show drop-offs on mobile
 //   - REMOVED: percentOfTotal from cards (redundant with step-to-step conversion)
 //   - Cards now show only: value (count) + label
@@ -111,7 +120,7 @@ const FunnelStage = ({
       <div className={`
         relative flex flex-col items-center justify-center rounded-xl
         ${colors.bg} ring-1 ${colors.ring}
-        ${isCompact ? 'p-2 min-w-[60px]' : 'p-3 sm:p-4 min-w-[90px] sm:min-w-[110px]'}
+        ${isCompact ? 'p-2.5 min-w-[70px]' : 'p-3 sm:p-4 min-w-[90px] sm:min-w-[110px]'}
         ${isBiggestLoss ? 'ring-2 ring-amber-500' : ''}
       `}>
         {/* Icon - hidden on compact mobile */}
@@ -120,10 +129,10 @@ const FunnelStage = ({
             <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${colors.icon}`} />
           </div>
         )}
-        <p className={`font-bold text-slate-900 dark:text-white ${isCompact ? 'text-sm' : 'text-lg sm:text-xl'}`}>
+        <p className={`font-bold text-slate-900 dark:text-white ${isCompact ? 'text-base' : 'text-lg sm:text-xl'}`}>
           {value.toLocaleString('pt-BR')}
         </p>
-        <p className={`text-slate-600 dark:text-slate-400 text-center font-medium ${isCompact ? 'text-[8px]' : 'text-[10px] sm:text-xs'}`}>
+        <p className={`text-slate-600 dark:text-slate-400 text-center font-medium ${isCompact ? 'text-xs' : 'text-xs'}`}>
           {label}
         </p>
       </div>
@@ -131,9 +140,9 @@ const FunnelStage = ({
       {/* Arrow with conversion rate and drop-off - visible on all sizes */}
       {!isLast && (
         <div className="flex flex-col items-center gap-0.5 px-0.5 sm:px-2">
-          <ArrowRight className={`text-slate-300 dark:text-slate-600 ${isCompact ? 'w-3 h-3' : 'w-5 h-5'}`} />
+          <ArrowRight className={`text-slate-300 dark:text-slate-600 ${isCompact ? 'w-4 h-4' : 'w-5 h-5'}`} />
           {conversionRate !== undefined && (
-            <span className={`font-bold ${isCompact ? 'text-[9px]' : 'text-xs sm:text-sm'} ${
+            <span className={`font-bold ${isCompact ? 'text-xs' : 'text-xs sm:text-sm'} ${
               conversionRate >= 90 ? 'text-emerald-600 dark:text-emerald-400' :
               conversionRate >= 70 ? 'text-blue-600 dark:text-blue-400' :
               conversionRate >= 50 ? 'text-amber-600 dark:text-amber-400' :
@@ -143,7 +152,7 @@ const FunnelStage = ({
             </span>
           )}
           {dropOff > 0 && (
-            <span className={`${isCompact ? 'text-[8px]' : 'text-[11px] sm:text-xs'} ${
+            <span className={`text-xs ${
               isBiggestLoss ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-slate-400'
             }`}>
               -{dropOff.toLocaleString('pt-BR')}
@@ -197,12 +206,12 @@ const OutcomeCard = ({
         {typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
       </p>
       {rate !== undefined && rate !== null && denominator > 0 && (
-        <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-center">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-center">
           <span className="font-semibold">{rate.toFixed(1)}%</span> de {denominator.toLocaleString('pt-BR')} {denominatorLabel}
         </p>
       )}
       {subtitle && (
-        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{subtitle}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{subtitle}</p>
       )}
     </div>
   );
@@ -247,7 +256,7 @@ const FunnelInsight = ({ insight }) => {
             {insight.title}
           </p>
           {insight.action && (
-            <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
               {insight.action}
             </p>
           )}
@@ -502,7 +511,7 @@ const CampaignFunnel = ({
                 <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
                   Dados inconsistentes detectados
                 </p>
-                <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                   Os valores não seguem a sequência esperada (enviadas ≥ entregues ≥ lidas).
                   Isso pode indicar dados parciais ou erro de sincronização.
                 </p>
@@ -579,7 +588,7 @@ const CampaignFunnel = ({
 
         {/* SECONDARY: Outcomes Panel */}
         <div>
-          <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mb-3 flex items-center justify-center gap-1">
+          <p className="text-center text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center justify-center gap-1">
             <Info className="w-3 h-3" />
             Métricas de engajamento e conversão (base: mensagens lidas)
           </p>

@@ -1,8 +1,12 @@
-// NewCampaignModal.jsx v5.1 - AUDIENCE FILTER BUILDER INTEGRATION
+// NewCampaignModal.jsx v5.2 - DESIGN SYSTEM COMPLIANCE
 // Campaign creation wizard modal
-// Design System v3.1 compliant
+// Design System v4.0 compliant
 //
 // CHANGELOG:
+// v5.2 (2026-01-09): Typography & mobile footer fixes
+//   - Fixed text-[10px] → text-xs (template category badge)
+//   - Improved footer buttons: full-width on mobile, inline on desktop
+//   - Better touch targets on navigation buttons
 // v5.1 (2026-01-08): AudienceFilterBuilder integration (Phase 8)
 //   - Added audienceMode toggle (preset/filter) in Step 1
 //   - Integrated AudienceFilterBuilder for custom filtering
@@ -944,7 +948,7 @@ const NewCampaignModal = ({
                               {template.name}
                             </h3>
                             <span className={`
-                              px-2 py-0.5 text-[10px] font-medium rounded
+                              px-2 py-0.5 text-xs font-medium rounded
                               ${template.category === 'MARKETING'
                                 ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
                                 : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
@@ -1471,11 +1475,11 @@ const NewCampaignModal = ({
         </div>
 
         {/* Footer Navigation */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button
             onClick={currentStep === 0 ? handleClose : handleBack}
             disabled={isSending}
-            className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+            className="order-2 sm:order-1 w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-700 sm:border-0 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
           >
             <ChevronLeft className="w-4 h-4" />
             {currentStep === 0 ? 'Cancelar' : 'Voltar'}
@@ -1485,7 +1489,7 @@ const NewCampaignModal = ({
             <button
               onClick={handleNext}
               disabled={!canProceed()}
-              className="flex items-center gap-2 px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              className="order-1 sm:order-2 w-full sm:w-auto sm:ml-auto min-h-[44px] flex items-center justify-center gap-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white font-semibold rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               Próximo
               <ChevronRight className="w-4 h-4" />
@@ -1493,7 +1497,7 @@ const NewCampaignModal = ({
           ) : sendResult?.success ? (
             <button
               onClick={handleClose}
-              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              className="order-1 sm:order-2 w-full sm:w-auto sm:ml-auto min-h-[44px] flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
             >
               <CheckCircle2 className="w-4 h-4" />
               Concluir

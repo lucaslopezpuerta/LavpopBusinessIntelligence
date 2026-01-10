@@ -1,9 +1,12 @@
-// CampaignDetailsModal.jsx v1.9 - HAPTIC FEEDBACK
+// CampaignDetailsModal.jsx v2.0 - DESIGN SYSTEM v4.0
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
-// Design System v3.1 compliant
+// Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.0 (2026-01-09): Design System v4.0 compliance
+//   - Fixed 15 instances of text-[10px] → text-xs (12px minimum)
+//   - Fixed touch targets: pagination buttons now min 44px
 // v1.9 (2025-12-22): Added haptic feedback on filters, sort, pagination
 // v1.8 (2025-12-15): UX enhancements from audit
 //   - Added contact search field (filter by name or phone)
@@ -318,7 +321,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
               <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                 {campaignData.name || campaign.id}
               </h2>
-              <div className="flex items-center gap-2 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 text-xs sm:text-xs text-slate-500 dark:text-slate-400">
                 {campaignData.created_at && (
                   <span className="flex items-center gap-0.5">
                     <Calendar className="w-3 h-3" />
@@ -363,18 +366,18 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {/* Enviados + Entregues */}
             <div className="text-center" title="Mensagens enviadas via WhatsApp">
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Enviados</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Enviados</p>
               <p className="text-lg font-bold text-slate-900 dark:text-white">{campaignData.sends || 0}</p>
             </div>
             <div className="text-center" title="Mensagens entregues no dispositivo">
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Entregues</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Entregues</p>
               <p className="text-lg font-bold text-green-600 dark:text-green-400">
                 {campaignData.has_delivery_data ? (campaignData.delivered || 0) + (campaignData.read || 0) : '-'}
               </p>
             </div>
             {/* Lidas + Falhou */}
             <div className="text-center" title="Mensagens abertas/lidas">
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Lidas</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Lidas</p>
               <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
                 {campaignData.has_delivery_data ? (campaignData.read || 0) : '-'}
                 {campaignData.has_delivery_data && (campaignData.failed || 0) > 0 && (
@@ -386,18 +389,18 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
             </div>
             {/* Rastreados + Retornaram */}
             <div className="text-center" title="Contatos sendo monitorados">
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Rastreados</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Rastreados</p>
               <p className="text-lg font-bold text-slate-900 dark:text-white">{campaignData.contacts_tracked || contacts.length}</p>
             </div>
             <div className="text-center" title="Clientes que retornaram à loja">
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Retornaram</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Retornaram</p>
               <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                 {campaignData.contacts_returned || statusCounts.returned || 0}
               </p>
             </div>
             {/* Taxa + Receita (combined on mobile) */}
             <div className="text-center" title="Taxa de retorno e receita recuperada">
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Taxa / Receita</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Taxa / Receita</p>
               <p className="text-lg font-bold">
                 <span className={`${(campaignData.return_rate || 0) > 15 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
                   {formatPercent(campaignData.return_rate || 0)}
@@ -422,7 +425,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
               <SlidersHorizontal className="w-4 h-4" />
               <span>Filtros</span>
               {activeFilterCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                   {activeFilterCount}
                 </span>
               )}
@@ -442,7 +445,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
             <div className="px-3 pb-3 space-y-2">
               {/* Return Status */}
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-medium text-slate-400 uppercase w-14">Retorno</span>
+                <span className="text-xs font-medium text-slate-400 uppercase w-14">Retorno</span>
                 <FilterPill active={filterStatus === 'all'} onClick={() => setFilterStatus('all')}>
                   Todos ({contacts.length})
                 </FilterPill>
@@ -462,7 +465,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
 
               {/* Delivery Status */}
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-medium text-slate-400 uppercase w-14">Entrega</span>
+                <span className="text-xs font-medium text-slate-400 uppercase w-14">Entrega</span>
                 <FilterPill active={filterDelivery === 'all'} onClick={() => setFilterDelivery('all')}>
                   Todas
                 </FilterPill>
@@ -550,7 +553,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                         <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                           {contact.customer_name || 'Cliente'}
                         </p>
-                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-1.5 text-xs sm:text-xs text-slate-500 dark:text-slate-400">
                           {contact.phone && (
                             <span className="flex items-center gap-0.5">
                               <Phone className="w-2.5 h-2.5" />
@@ -565,7 +568,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                       <div className="flex items-center gap-1.5 shrink-0">
                         {/* Delivery Status */}
                         <span
-                          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-700"
+                          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700"
                           title={getDeliveryLabel(deliveryStatus)}
                         >
                           {getDeliveryIcon(deliveryStatus)}
@@ -575,7 +578,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                         </span>
 
                         {/* Return Status Badge */}
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(status)}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getStatusColor(status)}`}>
                           {getStatusLabel(status)}
                         </span>
 
@@ -589,7 +592,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
 
                         {/* Date - Compact on mobile, full on desktop */}
                         {contact.contacted_at && (
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500" title={new Date(contact.contacted_at).toLocaleDateString('pt-BR')}>
+                          <span className="text-xs text-slate-400 dark:text-slate-500" title={new Date(contact.contacted_at).toLocaleDateString('pt-BR')}>
                             <span className="sm:hidden">
                               {new Date(contact.contacted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                             </span>
@@ -621,14 +624,14 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-3 py-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shrink-0">
-            <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">
               {totalFiltered} contatos • Pág {currentPage}/{totalPages}
             </span>
             <div className="flex items-center gap-0.5">
               <button
                 onClick={() => { haptics.tick(); setCurrentPage(p => Math.max(1, p - 1)); }}
                 disabled={currentPage === 1}
-                className="p-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -649,7 +652,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                   <button
                     key={pageNum}
                     onClick={() => { haptics.tick(); setCurrentPage(pageNum); }}
-                    className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
+                    className={`min-w-[44px] min-h-[44px] rounded text-xs font-medium transition-colors flex items-center justify-center ${
                       currentPage === pageNum
                         ? 'bg-purple-600 text-white'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -663,7 +666,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
               <button
                 onClick={() => { haptics.tick(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
                 disabled={currentPage === totalPages}
-                className="p-1.5 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

@@ -1,8 +1,14 @@
-// ProfitabilitySection.jsx v3.6
+// ProfitabilitySection.jsx v3.8
 // Profitability analysis section for Intelligence tab
-// Design System v3.1 compliant - Refactored with unified components
+// Design System v4.0 compliant - Refactored with unified components
 //
 // CHANGELOG:
+// v3.8 (2026-01-09): Light background KPI cards (Hybrid Card Design)
+//   - Changed KPICard variant from "gradient" to "default"
+//   - Cards now use light backgrounds (bg-white dark:bg-slate-800)
+//   - Icon containers retain gradient colors for visual accent
+// v3.7 (2026-01-09): Design System v4.0 typography compliance
+//   - Fixed OptimizationLever detail text (text-[10px] → text-xs)
 // v3.6 (2025-12-28): Replaced Manutenção with Custo por Ciclo
 //   - Manutenção was redundant (included in Custos Totais)
 //   - Custo por Ciclo provides better operational insight
@@ -11,7 +17,7 @@
 //   - KPIGrid columns={6} for 2 cols mobile, 3 cols desktop
 //   - Better mobile card distribution for 6 cards
 // v3.4 (2025-12-28): Card design unified with KPICard component
-//   - Uses unified KPICard component with variant="gradient" for consistency
+//   - Uses unified KPICard component with variant="default" for consistency
 //   - KPIGrid columns={3} for 3-col layout (matches GrowthTrendsSection)
 //   - OptimizationLever uses matching gradient backgrounds
 //   - Consistent design across Intelligence tab sections
@@ -96,7 +102,7 @@ const OptimizationLever = ({ title, target, detail, icon: Icon, color }) => {
       <p className="text-sm font-bold text-slate-900 dark:text-white mb-0.5">
         {target}
       </p>
-      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         {detail}
       </p>
     </div>
@@ -155,7 +161,7 @@ const ProfitabilitySection = ({
             value={formatCurrency(profitability.grossRevenue)}
             subtitle="+ Cashback aplicado"
             color="revenue"
-            variant="gradient"
+            variant="default"
             icon={DollarSign}
           />
           <KPICard
@@ -164,7 +170,7 @@ const ProfitabilitySection = ({
             value={formatCurrency(profitability.fixedCosts)}
             subtitle={`${profitability.daysInPeriod} dias`}
             color="neutral"
-            variant="gradient"
+            variant="default"
             icon={Calendar}
           />
           <KPICard
@@ -173,7 +179,7 @@ const ProfitabilitySection = ({
             value={formatCurrency(actualServices > 0 ? profitability.totalCosts / actualServices : 0)}
             subtitle={`${actualServices} ciclos no mês`}
             color="purple"
-            variant="gradient"
+            variant="default"
             icon={Gauge}
           />
           <KPICard
@@ -182,7 +188,7 @@ const ProfitabilitySection = ({
             value={formatCurrency(profitability.totalCosts)}
             subtitle={`${profitability.daysInPeriod} dias`}
             color="cost"
-            variant="gradient"
+            variant="default"
             icon={AlertTriangle}
           />
           <KPICard
@@ -191,7 +197,7 @@ const ProfitabilitySection = ({
             value={formatCurrency(netProfit)}
             subtitle={netProfit > 0 ? 'Positivo' : 'Negativo'}
             color={netProfit > 0 ? 'positive' : 'negative'}
-            variant="gradient"
+            variant="default"
             icon={netProfit > 0 ? TrendingUp : AlertTriangle}
           />
           <KPICard
@@ -200,7 +206,7 @@ const ProfitabilitySection = ({
             value={formatPercent(profitMargin)}
             subtitle={`${profitability.daysInPeriod} dias`}
             color="blue"
-            variant="gradient"
+            variant="default"
             icon={CheckCircle}
           />
         </KPIGrid>

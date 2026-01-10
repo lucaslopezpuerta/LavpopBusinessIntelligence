@@ -1,8 +1,33 @@
-// CampaignList.jsx v3.3 - CAMPAIGN TYPE DIFFERENTIATION
+// CampaignList.jsx v3.7 - HYBRID CARD DESIGN
 // Campaign list and history display - Backend only
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.7 (2026-01-09): Hybrid card design implementation
+//   - Added Framer Motion hover animation (y: -2 lift effect)
+//   - Changed status border from type-based to return-rate-based:
+//     - border-l-emerald-500 (>15% return rate)
+//     - border-l-amber-500 (5-15% return rate)
+//     - border-l-rose-500 (<5% return rate)
+//   - Added haptic feedback on card tap
+//   - Premium shadow-lift on hover
+// v3.6 (2026-01-09): Mobile layout redesign for cleaner UX
+//   - Reordered: Search → Status Filter → Type Toggle → Stats
+//   - Status filter buttons now flex-1 on mobile (equal width)
+//   - Type toggle on separate row for visual clarity
+//   - Quick stats: 2x2 grid on mobile (no horizontal scroll)
+//   - Hidden stat labels on mobile for compact display
+//   - Consistent with WhatsApp/Instagram patterns
+// v3.5 (2026-01-09): Added sync time label + improved refresh button
+//   - Added lastSync state to track when data was last fetched
+//   - Added formatTimeAgo helper (Xd, Xh, Xmin, agora)
+//   - Sync time displayed below refresh button
+//   - Type filter toggle (removed redundant "Todos")
+// v3.4 (2026-01-09): Improved filter buttons layout
+//   - Consolidated status + type filters into segmented button groups
+//   - Added touch targets (36px min-height) for better mobile tapping
+//   - Filters wrap naturally on mobile, single row on desktop
+//   - Better visual grouping with pill-style backgrounds
 // v3.3 (2026-01-08): Campaign type differentiation & tracking health
 //   - Added campaign type badge (Automated vs Manual)
 //   - Added tracking health indicator (warning when sends > 0 but tracked = 0)
@@ -26,6 +51,7 @@
 // v2.0 (2025-12-08): Backend integration + effectiveness metrics
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Target, Calendar, Users, Search, MessageSquare, TrendingUp, RefreshCw, Eye, CheckCircle2, BookOpen, AlertCircle, ArrowRight, Send, Bot, User, AlertTriangle } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
 import ProgressBar from '../ui/ProgressBar';
@@ -33,7 +59,7 @@ import { getCampaignPerformance } from '../../utils/campaignService';
 import CampaignDetailsModal from './CampaignDetailsModal';
 import { haptics } from '../../utils/haptics';
 
-// Helper: Relative time in Portuguese
+// Helper: Relative time in Portuguese (for campaign dates)
 const getRelativeTime = (date) => {
   if (!date) return null;
   const now = new Date();
@@ -54,6 +80,19 @@ const getRelativeTime = (date) => {
   return date.toLocaleDateString('pt-BR');
 };
 
+// Helper: Format timestamp as relative time for sync label (Xd, Xh, Xmin, agora)
+const formatTimeAgo = (timestamp) => {
+  if (!timestamp) return '';
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d`;
+  if (hours > 0) return `${hours}h`;
+  if (minutes > 0) return `${minutes}min`;
+  return 'agora';
+};
+
 const CampaignList = ({ formatCurrency, formatPercent }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -61,6 +100,7 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
   const [campaigns, setCampaigns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [lastSync, setLastSync] = useState(null); // v3.5: Track last sync time
 
   // Fetch campaigns from backend on mount
   useEffect(() => {
@@ -110,6 +150,7 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
         };
       });
       setCampaigns(transformed);
+      setLastSync(new Date()); // v3.5: Track sync time
       haptics.success();
     } catch (error) {
       console.error('Failed to fetch campaigns:', error);
@@ -152,6 +193,13 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
     }
   };
 
+  // v3.7: Status border based on return rate (not campaign type)
+  const getReturnRateBorder = (returnRate) => {
+    if (returnRate >= 15) return 'border-l-emerald-500';
+    if (returnRate >= 5) return 'border-l-amber-500';
+    return 'border-l-rose-500';
+  };
+
   const getStatusLabel = (status) => {
     switch (status) {
       case 'active': return 'Ativa';
@@ -189,102 +237,111 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
       color="purple"
       id="campaign-history"
       action={
-        <button
-          onClick={fetchCampaigns}
-          disabled={isLoading}
-          className="p-2 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-          title="Atualizar campanhas"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Sync time - visible on all sizes */}
+          {lastSync && (
+            <span className="text-slate-400 text-xs">{formatTimeAgo(lastSync)}</span>
+          )}
+          {/* Refresh button - circular on mobile, pill with text on desktop */}
+          <button
+            onClick={fetchCampaigns}
+            disabled={isLoading}
+            className="w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all"
+            title="Atualizar campanhas"
+          >
+            <RefreshCw className={`w-4 h-4 sm:w-3 sm:h-3 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isLoading ? 'Atualizando...' : 'Atualizar'}</span>
+          </button>
+        </div>
       }
     >
       <div className="space-y-4">
-        {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search */}
-          <div className="relative flex-1">
+        {/* Search and Filters - v3.6: Mobile-optimized layout */}
+        <div className="flex flex-col gap-3">
+          {/* 1. Search Input - FIRST (most important action) */}
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="search"
               placeholder="Buscar campanha..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full h-11 pl-10 pr-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
-          {/* Status Filter */}
-          <div className="flex gap-2 flex-wrap">
+          {/* 2. Status Filter - Full width on mobile */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
             {[
               { key: 'all', label: 'Todas' },
               { key: 'active', label: 'Ativas' },
-              { key: 'completed', label: 'Concluidas' },
+              { key: 'completed', label: 'Concluídas' },
               { key: 'draft', label: 'Rascunhos' }
             ].map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setFilterStatus(key)}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex-1 sm:flex-none min-h-[36px] px-2 sm:px-3 rounded-lg text-xs font-medium transition-all ${
                   filterStatus === key
-                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 {label}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* v3.3: Campaign Type Filter */}
-        <div className="flex gap-2 flex-wrap">
-          {[
-            { key: 'all', label: 'Todos os Tipos', icon: null },
-            { key: 'manual', label: 'Manual', icon: User },
-            { key: 'automated', label: 'Automação', icon: Bot }
-          ].map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setFilterType(key)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                filterType === key
-                  ? key === 'automated'
-                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                    : key === 'manual'
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                      : 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {Icon && <Icon className="w-3.5 h-3.5" />}
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Quick Stats Summary */}
-        {!isLoading && campaigns.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
-            <span className="flex items-center gap-1">
-              <Target className="w-3.5 h-3.5 text-purple-500" />
-              <strong className="text-slate-900 dark:text-white">{quickStats.totalCampaigns}</strong> campanhas
-            </span>
-            <span className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-blue-500" />
-              <strong className="text-slate-900 dark:text-white">{quickStats.totalContacts}</strong> contatos
-            </span>
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              <strong className="text-slate-900 dark:text-white">{quickStats.totalReturned}</strong> retornaram
-              <span className="text-slate-400">({formatPercent(quickStats.avgReturnRate)})</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-              <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(quickStats.totalRevenue)}</strong> recuperado
-            </span>
+          {/* 3. Type Filter Toggle - Separate row */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+              {[
+                { key: 'manual', label: 'Manual', icon: User },
+                { key: 'automated', label: 'Auto', icon: Bot }
+              ].map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setFilterType(filterType === key ? 'all' : key)}
+                  className={`flex items-center gap-1 min-h-[36px] px-2.5 sm:px-3 rounded-lg text-xs font-medium transition-all ${
+                    filterType === key
+                      ? key === 'automated'
+                        ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                        : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+
+          {/* 4. Quick Stats - 2x2 grid on mobile, row on desktop */}
+          {!isLoading && campaigns.length > 0 && (
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-x-4 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+              <span className="flex items-center gap-1">
+                <Target className="w-3.5 h-3.5 text-purple-500" />
+                <strong className="text-slate-900 dark:text-white">{quickStats.totalCampaigns}</strong>
+                <span className="hidden sm:inline">campanhas</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="w-3.5 h-3.5 text-blue-500" />
+                <strong className="text-slate-900 dark:text-white">{quickStats.totalContacts}</strong>
+                <span className="hidden sm:inline">contatos</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <strong className="text-slate-900 dark:text-white">{quickStats.totalReturned}</strong>
+                <span className="text-slate-400">({formatPercent(quickStats.avgReturnRate)})</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(quickStats.totalRevenue)}</strong>
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Loading State */}
         {isLoading && (
@@ -298,13 +355,12 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
         {!isLoading && filteredCampaigns.length > 0 ? (
           <div className="space-y-3">
             {filteredCampaigns.map((campaign) => (
-              <div
+              <motion.div
                 key={campaign.id}
-                className={`p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:shadow-md transition-shadow ${
-                  campaign.isAutomated
-                    ? 'border-l-4 border-l-purple-500'
-                    : 'border-l-4 border-l-blue-500'
-                }`}
+                whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}
+                transition={{ type: 'tween', duration: 0.2 }}
+                onClick={() => { haptics.light(); setSelectedCampaign(campaign); }}
+                className={`p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm cursor-pointer border-l-4 ${getReturnRateBorder(campaign.returnRate)}`}
               >
                 {/* Header */}
                 <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
@@ -454,13 +510,13 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
 
                 {/* View Details Button - Compact */}
                 <button
-                  onClick={() => setSelectedCampaign(campaign)}
+                  onClick={(e) => { e.stopPropagation(); setSelectedCampaign(campaign); }}
                   className="mt-3 flex items-center gap-1.5 py-1.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-600 dark:text-slate-400 hover:text-purple-700 dark:hover:text-purple-300 rounded-lg text-xs font-medium transition-colors"
                 >
                   <Eye className="w-3.5 h-3.5" />
                   Ver Contatos
                 </button>
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : !isLoading && (

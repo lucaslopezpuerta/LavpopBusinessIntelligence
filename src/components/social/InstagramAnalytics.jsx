@@ -1,7 +1,16 @@
-// InstagramAnalytics.jsx v3.4 - HAPTIC FEEDBACK
+// InstagramAnalytics.jsx v3.6 - Light Background KPI Cards
 // Instagram Business Analytics Dashboard
-// Design System v3.3 compliant - Instagram-coherent design
 //
+// CHANGELOG:
+// v3.6 (2026-01-09): Light background KPI cards (Hybrid Card Design)
+//   - Migrated to Design System KPICard with variant="default"
+//   - Card bodies now use light backgrounds (bg-white dark:bg-slate-800)
+//   - Icon containers retain gradient colors for visual accent
+//   - Removed local KPICard component in favor of Design System
+// v3.5 (2026-01-09): Design System v4.0 compliance
+//   - Fixed 15 typography violations (text-[10px]/text-[11px] → text-xs)
+//   - Added Framer Motion hover to KPICard component
+//   - Dark mode contrast fixes
 // v3.4 (2025-12-22): Added haptic feedback on interactive elements
 // v3.3 (2025-12-19): Date filter consistency
 //   - Changed options to 7/30/Tudo (matching WhatsApp)
@@ -24,6 +33,7 @@
 // v1.6 (2025-12-18): Design System compliance
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { haptics } from '../../utils/haptics';
 import {
   Instagram,
@@ -67,6 +77,7 @@ import {
 } from 'recharts';
 
 import { api } from '../../utils/apiService';
+import KPICard, { KPIGrid as DesignSystemKPIGrid } from '../ui/KPICard';
 
 // ==================== UTILITIES ====================
 
@@ -165,7 +176,7 @@ const TrendBadge = ({ value, compact = false }) => {
   if (isZero) return null;
 
   return (
-    <span className={`inline-flex items-center gap-0.5 ${compact ? 'text-[10px]' : 'text-xs'} font-semibold ${
+    <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
       isPositive ? 'text-emerald-400' : 'text-rose-400'
     }`}>
       {isPositive ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
@@ -214,7 +225,7 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
       {/* Row 3: Date filter */}
       <div className="flex items-center justify-between mt-3">
         <DateFilter value={historyDays} onChange={onDaysChange} />
-        {lastSync && <span className="text-slate-400 text-[10px]">{formatTimeAgo(lastSync)}</span>}
+        {lastSync && <span className="text-slate-400 text-xs">{formatTimeAgo(lastSync)}</span>}
       </div>
     </div>
 
@@ -287,13 +298,13 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
           </div>
         ) : summary ? (
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium text-[11px] sm:text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium text-xs">
               Alcance: {formatNumber(summary.totalReach)}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium text-[11px] sm:text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium text-xs">
               Views: {formatNumber(summary.totalViews)}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 font-medium text-[11px] sm:text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 font-medium text-xs">
               Interações: {formatNumber(summary.totalInteractions)}
             </span>
           </div>
@@ -303,9 +314,9 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
         {/* Desktop: Sync button and last sync time */}
         <div className="hidden sm:flex items-center gap-2 ml-auto">
           {lastSync && (
-            <span className="text-slate-400 text-[10px]">Sync: {formatTimeAgo(lastSync)}</span>
+            <span className="text-slate-400 text-xs">Sync: {formatTimeAgo(lastSync)}</span>
           )}
-          <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 hover:from-pink-600 hover:via-rose-600 hover:to-orange-500 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all">
+          <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="px-3 py-1.5 flex items-center gap-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-400 hover:from-pink-600 hover:via-rose-600 hover:to-orange-500 disabled:opacity-50 text-white text-xs font-semibold rounded-full shadow-sm transition-all">
             <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Atualizando...' : 'Atualizar'}
           </button>
@@ -316,37 +327,10 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
 );
 
 // ==================== COMPACT KPI CARDS ====================
+// Uses Design System KPICard with variant="default" (light background)
+// Icon containers retain gradient colors for visual accent
 
-const KPICard = ({ label, value, trend, icon: Icon, gradient, iconBg }) => (
-  <div className={`rounded-xl p-3 ${
-    gradient
-      ? `bg-gradient-to-br ${gradient}`
-      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
-  }`}>
-    <div className="flex items-start justify-between mb-1">
-      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-        gradient ? 'bg-white/20' : iconBg || 'bg-slate-100 dark:bg-slate-700'
-      }`}>
-        <Icon className={`w-3.5 h-3.5 ${gradient ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-      </div>
-      {trend !== undefined && trend !== 0 && (
-        <TrendBadge value={trend} compact />
-      )}
-    </div>
-    <p className={`text-[10px] font-medium uppercase tracking-wide mb-0.5 ${
-      gradient ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'
-    }`}>
-      {label}
-    </p>
-    <p className={`text-lg font-bold leading-none ${
-      gradient ? 'text-white' : 'text-slate-900 dark:text-white'
-    }`}>
-      {value}
-    </p>
-  </div>
-);
-
-const KPIGrid = ({ insights, latestHistory, isLoading }) => {
+const InstagramKPIGrid = ({ insights, latestHistory, isLoading }) => {
   if (isLoading) {
     return (
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -357,54 +341,60 @@ const KPIGrid = ({ insights, latestHistory, isLoading }) => {
     );
   }
 
-  const kpis = [
-    {
-      label: 'Alcance',
-      value: formatNumber(insights?.reach || 0),
-      trend: latestHistory?.reach_change,
-      icon: Eye,
-      gradient: 'from-purple-500 to-violet-600'
-    },
-    {
-      label: 'Views',
-      value: formatNumber(insights?.views || 0),
-      trend: latestHistory?.views_change,
-      icon: Play,
-      gradient: 'from-blue-500 to-indigo-600'
-    },
-    {
-      label: 'Vis. Perfil',
-      value: formatNumber(insights?.profileViews || 0),
-      icon: Users,
-      gradient: 'from-cyan-500 to-teal-600'
-    },
-    {
-      label: 'Engajamento',
-      value: `${(insights?.engagementRate || 0).toFixed(1)}%`,
-      icon: TrendingUp,
-      gradient: 'from-pink-500 to-rose-600'
-    },
-    {
-      label: 'Interações',
-      value: formatNumber(insights?.totalInteractions || 0),
-      trend: latestHistory?.interactions_change,
-      icon: Activity,
-      gradient: 'from-orange-500 to-amber-600'
-    },
-    {
-      label: 'Cliques',
-      value: formatNumber(insights?.websiteClicks || 0),
-      icon: MousePointer,
-      gradient: 'from-slate-500 to-slate-600'
-    },
-  ];
+  // Map trend value to KPICard trend format
+  const formatTrend = (value) => {
+    if (value === undefined || value === null || value === 0) return null;
+    return { value };
+  };
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-      {kpis.map((kpi, i) => (
-        <KPICard key={i} {...kpi} />
-      ))}
-    </div>
+    <DesignSystemKPIGrid columns={6} className="grid-cols-3 sm:grid-cols-6 gap-2" animate={false}>
+      <KPICard
+        label="Alcance"
+        value={formatNumber(insights?.reach || 0)}
+        trend={formatTrend(latestHistory?.reach_change)}
+        icon={Eye}
+        color="purple"
+        variant="compact"
+      />
+      <KPICard
+        label="Views"
+        value={formatNumber(insights?.views || 0)}
+        trend={formatTrend(latestHistory?.views_change)}
+        icon={Play}
+        color="blue"
+        variant="compact"
+      />
+      <KPICard
+        label="Vis. Perfil"
+        value={formatNumber(insights?.profileViews || 0)}
+        icon={Users}
+        color="whatsappTeal"
+        variant="compact"
+      />
+      <KPICard
+        label="Engajamento"
+        value={`${(insights?.engagementRate || 0).toFixed(1)}%`}
+        icon={TrendingUp}
+        color="cost"
+        variant="compact"
+      />
+      <KPICard
+        label="Interações"
+        value={formatNumber(insights?.totalInteractions || 0)}
+        trend={formatTrend(latestHistory?.interactions_change)}
+        icon={Activity}
+        color="warning"
+        variant="compact"
+      />
+      <KPICard
+        label="Cliques"
+        value={formatNumber(insights?.websiteClicks || 0)}
+        icon={MousePointer}
+        color="neutral"
+        variant="compact"
+      />
+    </DesignSystemKPIGrid>
   );
 };
 
@@ -420,7 +410,7 @@ const ChartCard = ({ title, subtitle, icon: Icon, iconColor = 'text-slate-400', 
       )}
       <div>
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
-        {subtitle && <p className="text-[10px] text-slate-400">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
       </div>
     </div>
     <div className="p-3">
@@ -455,7 +445,7 @@ const MainChart = ({ data, isLoading }) => {
       <div className="h-52 flex flex-col items-center justify-center text-slate-400">
         <Database className="w-8 h-8 mb-2 opacity-50" />
         <p className="text-sm">Sem dados históricos</p>
-        <p className="text-[10px] mt-1">Clique em Atualizar para sincronizar</p>
+        <p className="text-xs mt-1">Clique em Atualizar para sincronizar</p>
       </div>
     );
   }
@@ -509,7 +499,7 @@ const FollowerChart = ({ data, isLoading }) => {
 
   return (
     <div>
-      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold mb-2 ${
+      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold mb-2 ${
         growth >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
       }`}>
         {growth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -572,7 +562,7 @@ const EngagementChart = ({ data, isLoading }) => {
   if (!hasBreakdown) {
     return (
       <div>
-        <p className="text-[10px] text-slate-400 mb-2">Total de interações</p>
+        <p className="text-xs text-slate-400 mb-2">Total de interações</p>
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
@@ -593,7 +583,7 @@ const EngagementChart = ({ data, isLoading }) => {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 text-[10px] mb-2">
+      <div className="flex flex-wrap gap-2 text-xs mb-2">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-500" /> Curtidas</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Coment.</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500" /> Compart.</span>
@@ -659,7 +649,7 @@ const PostsSection = ({ media, isLoading }) => (
       </div>
       <div>
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Postagens Recentes</h3>
-        <p className="text-[10px] text-slate-400">{media.length} posts</p>
+        <p className="text-xs text-slate-400">{media.length} posts</p>
       </div>
     </div>
     <div className="p-3 flex-1">
@@ -701,7 +691,7 @@ const CommentsSection = ({ comments, isLoading }) => {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Comentários</h3>
-            <p className="text-[10px] text-slate-400">{comments.length} recentes</p>
+            <p className="text-xs text-slate-400">{comments.length} recentes</p>
           </div>
         </div>
         {totalPages > 1 && (
@@ -754,7 +744,7 @@ const CommentsSection = ({ comments, isLoading }) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <span className="font-semibold text-xs text-slate-900 dark:text-white truncate">@{comment.username}</span>
-                    <span className="text-[10px] text-slate-400 flex-shrink-0">{formatTimeAgo(comment.timestamp)}</span>
+                    <span className="text-xs text-slate-400 flex-shrink-0">{formatTimeAgo(comment.timestamp)}</span>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">{comment.text}</p>
                 </div>
@@ -889,8 +879,8 @@ const InstagramAnalytics = () => {
         lastSync={lastSync}
       />
 
-      {/* KPI Grid - Compact */}
-      <KPIGrid insights={insights} latestHistory={latestHistory} isLoading={isLoading} />
+      {/* KPI Grid - Light background cards with gradient icons */}
+      <InstagramKPIGrid insights={insights} latestHistory={latestHistory} isLoading={isLoading} />
 
       {/* Main Chart */}
       <ChartCard

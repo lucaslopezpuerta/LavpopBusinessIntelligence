@@ -212,16 +212,16 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
         )}
       </div>
 
-      {/* Washers Table */}
+      {/* Washers Table - with sticky headers */}
       {washers.length > 0 && (
         <div className="mb-8">
           <h4 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-3">
             Lavadoras
           </h4>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
             <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+              <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-700/95 backdrop-blur-sm shadow-sm">
+                <tr className="border-b-2 border-slate-200 dark:border-slate-700">
                   <th scope="col" className="p-2 sm:p-3 text-center text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Máquina
                   </th>
@@ -255,16 +255,16 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
         </div>
       )}
 
-      {/* Dryers Table */}
+      {/* Dryers Table - with sticky headers */}
       {dryers.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-3">
             Secadoras
           </h4>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
             <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+              <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-700/95 backdrop-blur-sm shadow-sm">
+                <tr className="border-b-2 border-slate-200 dark:border-slate-700">
                   <th scope="col" className="p-2 sm:p-3 text-center text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     Máquina
                   </th>

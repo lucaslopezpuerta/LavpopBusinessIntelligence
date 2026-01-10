@@ -1,8 +1,11 @@
-// RevenueForecast.jsx v2.4
+// RevenueForecast.jsx v2.5
 // Revenue projection card for Intelligence tab
-// Design System v3.1 compliant
+// Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.5 (2026-01-09): Design System v4.0 Framer Motion compliance
+//   - Added Framer Motion hover to main card container
+//   - Added Framer Motion hover to ContingencyOption cards
 // v2.4 (2025-12-28): Contingency guidance
 //   - Added forecastContingency prop for year-over-year comparison
 //   - Shows gap vs same month last year with recovery options
@@ -37,6 +40,7 @@
 //   - Mobile responsive
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Target, AlertCircle, Info, Thermometer, TrendingUp, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { getBrazilDateParts } from '../../utils/dateUtils';
 
@@ -50,7 +54,10 @@ const ContingencyOption = ({ label, estimate, effort, description, formatCurrenc
   const effortLabels = { low: 'Fácil', medium: 'Moderado', high: 'Complexo' };
 
   return (
-    <div className="flex items-center gap-3 p-2.5 bg-white/60 dark:bg-slate-800/50 rounded-lg">
+    <motion.div
+      whileHover={{ y: -1, backgroundColor: 'rgba(255,255,255,0.8)' }}
+      transition={{ type: 'tween', duration: 0.15 }}
+      className="flex items-center gap-3 p-2.5 bg-white/60 dark:bg-slate-800/50 rounded-lg">
       <ArrowRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{label}</p>
@@ -66,7 +73,7 @@ const ContingencyOption = ({ label, estimate, effort, description, formatCurrenc
           {effortLabels[effort]}
         </span>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -161,7 +168,9 @@ const RevenueForecast = ({
   };
 
   return (
-    <div
+    <motion.div
+      whileHover={{ y: -2 }}
+      transition={{ type: 'tween', duration: 0.2 }}
       className={`
         bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-50
         dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-indigo-900/20
@@ -332,7 +341,7 @@ const RevenueForecast = ({
           {methodologyText}
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

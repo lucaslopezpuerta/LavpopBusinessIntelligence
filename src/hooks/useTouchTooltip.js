@@ -1,7 +1,19 @@
-// useTouchTooltip.js v1.5 - IMPROVED DEVICE DETECTION
+// useTouchTooltip.js v1.8 - PORTAL EXCLUSION FIX
 // Shared hook for mobile-friendly tooltip interactions on charts
 //
 // CHANGELOG:
+// v1.8 (2026-01-09): Portal exclusion fix for MobileTooltipSheet
+//   - FIXED: handleOutsideClick now excludes [data-mobile-tooltip-sheet] elements
+//   - This prevents premature activeTooltip clear when touching buttons in Portal-rendered sheet
+//   - Root cause: MobileTooltipSheet is rendered via Portal outside .recharts-wrapper
+// v1.7 (2026-01-09): Long-press alternative gesture
+//   - NEW: Long-press (500ms) triggers action directly when tooltip is active
+//   - NEW: chartContainerHandlers for long-press detection on chart wrapper
+//   - Provides "tap → long-press" as alternative to "tap → tap" flow
+// v1.6 (2026-01-09): Haptic feedback for touch interactions
+//   - NEW: haptics.light() on first tap (acknowledge selection)
+//   - NEW: haptics.success() on second tap/action trigger (confirm action)
+//   - Enhances tactile feedback for mobile users
 // v1.5 (2026-01-07): Mobile compatibility improvements
 //   - FIXED: Touch detection now uses matchMedia for hybrid device support
 //   - FIXED: Added passive flag to touch listeners (scroll performance)
@@ -27,6 +39,7 @@
 //   - Works with Recharts onClick handlers
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { haptics } from '../utils/haptics';
 
 /**
  * Detect if the current device is primarily touch-based using CSS media queries.
@@ -56,11 +69,18 @@ const getIsTouchDevice = () => {
  * @param {number} options.modalAnimationDelay - Time to wait for modal animations (default: 300)
  * @returns {Object} { activeTooltip, handleTouch, clearTooltip, tooltipHidden, resetTooltipVisibility, isTouchDevice }
  */
-export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimationDelay = 300 } = {}) {
+export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimationDelay = 300, longPressDuration = 500 } = {}) {
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [tooltipHidden, setTooltipHidden] = useState(false);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const timeoutRef = useRef(null);
   const actionPendingRef = useRef(false);
+
+  // Long-press state
+  const longPressTimerRef = useRef(null);
+  const longPressStartPosRef = useRef({ x: 0, y: 0 });
+  const longPressTriggeredRef = useRef(false);
+  const LONG_PRESS_MOVE_THRESHOLD = 10; // pixels
 
   // Use matchMedia for reliable touch detection (handles hybrid devices)
   // Re-check on each call as device mode can change (e.g., tablet mode toggle)
@@ -88,6 +108,8 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
     const handleOutsideClick = (e) => {
       // Don't clear if clicking inside a Recharts component
       if (e.target.closest('.recharts-wrapper')) return;
+      // Don't clear if clicking inside the mobile tooltip sheet (Portal)
+      if (e.target.closest('[data-mobile-tooltip-sheet]')) return;
       setActiveTooltip(null);
     };
 
@@ -154,6 +176,96 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
   }, []);
 
   /**
+   * Clear long-press timer
+   */
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Trigger long-press action (when tooltip is active)
+   */
+  const triggerLongPressAction = useCallback(() => {
+    if (!activeTooltip?.data) return;
+
+    longPressTriggeredRef.current = true;
+    setIsLongPressing(true);
+
+    // Haptic feedback - medium for long-press (different from double-tap)
+    haptics.medium();
+    hideTooltip();
+
+    if (onAction) {
+      requestAnimationFrame(() => {
+        onAction(activeTooltip.data);
+        setTimeout(() => {
+          actionPendingRef.current = false;
+          setIsLongPressing(false);
+        }, modalAnimationDelay);
+      });
+    } else {
+      setTimeout(() => setIsLongPressing(false), 200);
+    }
+  }, [activeTooltip, onAction, hideTooltip, modalAnimationDelay]);
+
+  /**
+   * Long-press touch start handler
+   */
+  const handleLongPressStart = useCallback((e) => {
+    // Only enable long-press on touch devices when tooltip is active
+    if (!checkIsTouchDevice() || !activeTooltip) return;
+
+    const touch = e.touches?.[0];
+    if (!touch) return;
+
+    longPressStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    longPressTriggeredRef.current = false;
+
+    longPressTimerRef.current = setTimeout(() => {
+      triggerLongPressAction();
+    }, longPressDuration);
+  }, [checkIsTouchDevice, activeTooltip, longPressDuration, triggerLongPressAction]);
+
+  /**
+   * Long-press touch move handler - cancel if moved too much
+   */
+  const handleLongPressMove = useCallback((e) => {
+    if (!longPressTimerRef.current) return;
+
+    const touch = e.touches?.[0];
+    if (!touch) return;
+
+    const deltaX = Math.abs(touch.clientX - longPressStartPosRef.current.x);
+    const deltaY = Math.abs(touch.clientY - longPressStartPosRef.current.y);
+
+    if (deltaX > LONG_PRESS_MOVE_THRESHOLD || deltaY > LONG_PRESS_MOVE_THRESHOLD) {
+      clearLongPressTimer();
+    }
+  }, [clearLongPressTimer]);
+
+  /**
+   * Long-press touch end handler
+   */
+  const handleLongPressEnd = useCallback(() => {
+    clearLongPressTimer();
+    longPressTriggeredRef.current = false;
+  }, [clearLongPressTimer]);
+
+  /**
+   * Handlers to spread onto the chart container for long-press detection
+   * Usage: <div {...chartContainerHandlers}>...</div>
+   */
+  const chartContainerHandlers = {
+    onTouchStart: handleLongPressStart,
+    onTouchMove: handleLongPressMove,
+    onTouchEnd: handleLongPressEnd,
+    onTouchCancel: handleLongPressEnd,
+  };
+
+  /**
    * Handle touch/click on a chart data point
    * @param {Object} data - The data point object
    * @param {string|number} id - Unique identifier for this data point
@@ -182,6 +294,8 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
     // On touch devices: two-tap behavior
     // If tapping the same point that's already active, trigger action
     if (activeTooltip?.id === id) {
+      // Haptic feedback: success pattern for confirmed action
+      haptics.success();
       hideTooltip();
 
       if (onAction) {
@@ -197,6 +311,8 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
     }
 
     // First tap - show tooltip (reset hidden state if needed)
+    // Haptic feedback: light tap to acknowledge selection
+    haptics.light();
     if (tooltipHidden) {
       setTooltipHidden(false);
     }
@@ -227,6 +343,8 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
     isTouchDevice: checkIsTouchDevice(), // Now uses matchMedia for reliability
     tooltipHidden, // Use to control Recharts Tooltip visibility
     resetTooltipVisibility, // Optional: call from modal onClose
+    chartContainerHandlers, // Spread onto chart container for long-press support
+    isLongPressing, // Visual feedback during long-press
   };
 }
 

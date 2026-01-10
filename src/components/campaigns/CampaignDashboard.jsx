@@ -1,8 +1,48 @@
-// CampaignDashboard.jsx v3.2
+// CampaignDashboard.jsx v3.12
 // Unified Campaign Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.12 (2026-01-09): Light background KPI cards (Hybrid Card Design)
+//   - Changed KPICard variant from "gradient" to "default"
+//   - Cards now use light backgrounds (bg-white dark:bg-slate-800)
+//   - Icon containers retain gradient colors for visual accent
+// v3.11 (2026-01-09): Typography & Design System compliance
+//   - Fixed text-[10px] → text-xs (status badge, failed badge, sync time)
+//   - Fixed text-[11px] → text-xs (refresh button text)
+//   - All typography now meets 12px minimum
+// v3.10 (2026-01-09): Design coherence - SectionCard header with sync button
+//   - Wrapped dashboard with SectionCard (matches CampaignList pattern)
+//   - Moved sync button + time label into SectionCard action prop
+//   - Date filter pills now inside card content (cleaner separation)
+//   - Mobile: circular gradient button, desktop: pill with text
+// v3.9 (2026-01-09): Fixed Entrega column to show correct raw counts
+//   - campaign.delivered was already (delivered + read) combined
+//   - Now computes raw delivered-only count: delivered - read
+//   - Display format: "rawDelivered / read" for additive clarity
+//   - Total reached device = rawDelivered + read
+// v3.6 (2026-01-09): Improved mobile time selector layout
+//   - Mobile: date filter on left, sync button+time on right (justify-between)
+//   - Mobile: sync time displayed inline next to button (horizontal)
+//   - Desktop: sync time displayed below button (vertical column)
+//   - Slightly smaller touch targets on mobile (40px) for better fit
+//   - Larger sync time text on mobile (text-xs) for readability
+// v3.5 (2026-01-09): Improved time selector layout + table typography
+//   - Grouped refresh button with sync time label (separated from date filter)
+//   - Increased table header text: text-xs → text-xs sm:text-sm
+//   - Increased campaign name text: text-sm → text-sm sm:text-base
+// v3.4 (2026-01-09): Added sync time label
+//   - Added lastSync state to track when data was last fetched
+//   - Added formatTimeAgo helper (Xd, Xh, Xmin, agora)
+//   - Displays sync timestamp next to refresh button
+// v3.3 (2026-01-09): Mobile UX improvements
+//   - Fixed text-[10px] violations → text-xs (Design System v3.2+ compliance)
+//   - Improved touch targets on time range buttons (44px min)
+//   - Removed horizontal scrolling - table now fits mobile screens
+//   - Mobile layout: 3 columns (Campanha 60%, Envio 20%, Conv. 20%)
+//   - Compact type indicator, status badge, and failed count (smaller on mobile)
+//   - Hidden audience subtext on mobile for space
+//   - table-fixed layout for consistent column widths
 // v3.2 (2026-01-08): UI/UX refinements based on visual review
 //   - Widened CAMPANHA column on XL screens (max-w-[320px])
 //   - Added alternating row backgrounds for easier scanning
@@ -121,6 +161,19 @@ const formatPercent = (value) => {
   return `${(value || 0).toFixed(1)}%`;
 };
 
+// Format timestamp as relative time (Xd, Xh, Xmin, agora)
+const formatTimeAgo = (timestamp) => {
+  if (!timestamp) return '';
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d`;
+  if (hours > 0) return `${hours}h`;
+  if (minutes > 0) return `${minutes}min`;
+  return 'agora';
+};
+
 // v2.6: Status badge helpers
 const getStatusColor = (status) => {
   switch (status) {
@@ -166,10 +219,18 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
     );
   }
 
-  // Helper: Calculate total delivered (delivered + read)
-  const getTotalDelivered = (campaign) => {
+  // Helper: Get delivery metrics (raw delivered-only and read counts)
+  // Note: campaign.delivered from service is already (delivered + read) combined
+  // We need to extract the raw delivered-only count for proper display
+  const getDeliveryMetrics = (campaign) => {
     if (!campaign.has_delivery_data) return null;
-    return (campaign.delivered || 0) + (campaign.read || 0);
+    const totalDelivered = campaign.delivered || 0; // This is delivered + read
+    const readCount = campaign.read || 0;
+    const rawDelivered = totalDelivered - readCount; // Extract delivered-only
+    return {
+      delivered: rawDelivered,  // Messages with status 'delivered' only
+      read: readCount           // Messages with status 'read'
+    };
   };
 
   // v2.4: Helper to detect automated campaigns
@@ -184,40 +245,40 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
   };
 
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0">
-      <table className="w-full">
+    <div className="-mx-4 sm:mx-0 px-4 sm:px-0">
+      <table className="w-full table-fixed">
         {/* v3.0: Funnel-based 6-column layout with improved sizing */}
         <thead className="bg-slate-50 dark:bg-slate-800/50">
           <tr className="border-b border-slate-200 dark:border-slate-700">
-            {/* CAMPANHA: Name + Type + Status - Always visible, wider on desktop */}
-            <th className="text-left py-3 px-3 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[40%] lg:w-[35%]">
+            {/* CAMPANHA: Name + Type + Status - Always visible */}
+            <th className="text-left py-3 px-2 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs sm:text-sm uppercase tracking-wider w-[60%] sm:w-[40%] lg:w-[35%]">
               Campanha
             </th>
             {/* OFERTA: Discount + Coupon - Desktop only (lg+) */}
-            <th className="hidden lg:table-cell text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[10%]">
+            <th className="hidden lg:table-cell text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs sm:text-sm uppercase tracking-wider w-[10%]">
               Oferta
             </th>
             {/* ENVIO: Sends + Failed warning - Always visible */}
-            <th className="text-center py-3 px-2 sm:px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[12%]">
+            <th className="text-center py-3 px-1 sm:px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs sm:text-sm uppercase tracking-wider w-[20%] sm:w-[12%]">
               Envio
             </th>
             {/* ENTREGA: Delivered/Read - Tablet+ (sm+) */}
-            <th className="hidden sm:table-cell text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[13%]">
+            <th className="hidden sm:table-cell text-center py-3 px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs sm:text-sm uppercase tracking-wider w-[13%]">
               Entrega
             </th>
             {/* CONVERSÃO: Returned + Rate % - Always visible (KEY METRIC) */}
-            <th className="text-center py-3 px-2 sm:px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[15%]">
-              Conversão
+            <th className="text-center py-3 px-1 sm:px-3 font-semibold text-slate-600 dark:text-slate-400 text-xs sm:text-sm uppercase tracking-wider w-[20%] sm:w-[15%]">
+              Conv.
             </th>
             {/* RESULTADO: Revenue + metadata - Tablet+ (sm+) */}
-            <th className="hidden sm:table-cell text-center py-3 px-3 sm:px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wider w-[15%]">
+            <th className="hidden sm:table-cell text-center py-3 px-4 font-semibold text-slate-600 dark:text-slate-400 text-xs sm:text-sm uppercase tracking-wider w-[15%]">
               Resultado
             </th>
           </tr>
         </thead>
         <tbody>
           {campaigns.map((campaign, idx) => {
-            const totalDelivered = getTotalDelivered(campaign);
+            const deliveryMetrics = getDeliveryMetrics(campaign);
             const hasFailed = (campaign.failed || 0) > 0;
             const sends = campaign.sends || 0;
             const returned = campaign.contacts_returned || 0;
@@ -230,47 +291,42 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                 className="border-b border-slate-200 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 even:bg-slate-50/50 dark:even:bg-slate-800/30 transition-colors"
               >
                 {/* ========== CAMPANHA: Name + Type + Status + metadata ========== */}
-                <td className="py-3 px-3 sm:px-4">
-                  <div className="flex items-start gap-2.5">
-                    {/* Campaign type indicator */}
-                    <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${
-                      isAutomated(campaign)
-                        ? 'bg-purple-100 dark:bg-purple-900/40'
-                        : 'bg-blue-100 dark:bg-blue-900/40'
-                    }`} title={isAutomated(campaign) ? 'Automação' : 'Manual'}>
-                      {isAutomated(campaign)
-                        ? <Bot className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                        : <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      }
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      {/* Name + inline status badge */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[180px] lg:max-w-[240px] xl:max-w-[320px]">
-                          {campaign.name}
-                        </p>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(campaign.status)}`}>
-                          {getStatusLabel(campaign.status)}
-                        </span>
-                        {/* Tracking issue warning indicator */}
-                        {trackingIssue && (
-                          <span
-                            className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400"
-                            title="Rastreamento incompleto - mensagens enviadas mas não rastreadas"
-                          >
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                          </span>
-                        )}
+                <td className="py-3 px-2 sm:px-4">
+                  <div className="flex flex-col gap-1">
+                    {/* Row 1: Campaign name */}
+                    <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white truncate">
+                      {campaign.name}
+                    </p>
+                    {/* Row 2: Type indicator + Status badge + Warning */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Campaign type indicator */}
+                      <div className={`flex w-4 h-4 sm:w-5 sm:h-5 rounded-full flex-shrink-0 items-center justify-center ${
+                        isAutomated(campaign)
+                          ? 'bg-purple-100 dark:bg-purple-900/40'
+                          : 'bg-blue-100 dark:bg-blue-900/40'
+                      }`} title={isAutomated(campaign) ? 'Automação' : 'Manual'}>
+                        {isAutomated(campaign)
+                          ? <Bot className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-600 dark:text-purple-400" />
+                          : <User className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-600 dark:text-blue-400" />
+                        }
                       </div>
-                      {/* Audience + date subtext */}
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
+                      {/* Status badge */}
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getStatusColor(campaign.status)}`}>
+                        {getStatusLabel(campaign.status)}
+                      </span>
+                      {/* Tracking issue warning indicator */}
+                      {trackingIssue && (
+                        <span
+                          className="inline-flex items-center text-amber-600 dark:text-amber-400"
+                          title="Rastreamento incompleto"
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                        </span>
+                      )}
+                      {/* Audience - desktop only */}
+                      <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-500 truncate">
                         {campaign.audience}
-                        {campaign.created_at && (
-                          <span className="ml-1.5 text-slate-400 dark:text-slate-500">
-                            • {new Date(campaign.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                          </span>
-                        )}
-                      </p>
+                      </span>
                     </div>
                   </div>
                 </td>
@@ -294,17 +350,17 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                 </td>
 
                 {/* ========== ENVIO: Sends + Failed warning - Always visible ========== */}
-                <td className="py-3 px-2 sm:px-3 text-center">
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200">
+                <td className="py-3 px-1 sm:px-3 text-center">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-xs sm:text-base font-semibold text-slate-700 dark:text-slate-200">
                       {sends}
                     </span>
                     {hasFailed && (
                       <span
-                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                        title={`${campaign.failed} mensagens falharam`}
+                        className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                        title={`${campaign.failed} falharam`}
                       >
-                        <AlertCircle className="w-3 h-3" />
+                        <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         {campaign.failed}
                       </span>
                     )}
@@ -312,21 +368,15 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                 </td>
 
                 {/* ========== ENTREGA: Delivered/Read - Tablet+ (sm+) ========== */}
-                <td className="hidden sm:table-cell py-3 px-2 text-center">
-                  {campaign.has_delivery_data && totalDelivered !== null ? (
-                    <div className="flex flex-col items-center" title="Entregues / Lidas">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                          {totalDelivered}
-                        </span>
-                        <span className="text-slate-300 dark:text-slate-600 text-xs">/</span>
-                        <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                          {campaign.read || 0}
-                        </span>
-                      </div>
-                      {/* Show label only on tablet, hide on desktop for cleaner look */}
-                      <span className="text-[10px] text-slate-400 sm:block lg:hidden">
-                        ent / lid
+                <td className="hidden sm:table-cell py-3.5 px-3 text-center">
+                  {deliveryMetrics ? (
+                    <div className="flex items-center justify-center gap-1" title={`Total: ${deliveryMetrics.delivered + deliveryMetrics.read} chegaram ao dispositivo`}>
+                      <span className="text-base font-semibold text-green-600 dark:text-green-400" title="Entregues (aguardando leitura)">
+                        {deliveryMetrics.delivered}
+                      </span>
+                      <span className="text-slate-400">/</span>
+                      <span className="text-base font-semibold text-blue-600 dark:text-blue-400" title="Lidas">
+                        {deliveryMetrics.read}
                       </span>
                     </div>
                   ) : (
@@ -335,8 +385,8 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                 </td>
 
                 {/* ========== CONVERSÃO: Returned + Rate % - Always visible (KEY) ========== */}
-                <td className="py-3 px-2 sm:px-3 text-center">
-                  <div className="flex flex-col items-center gap-1">
+                <td className="py-3 px-1 sm:px-3 text-center">
+                  <div className="flex flex-col items-center gap-0.5 sm:gap-1">
                     {/* Returned count prominent */}
                     <span className={`text-sm sm:text-base font-bold ${
                       returned > 0
@@ -346,7 +396,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                       {returned}
                     </span>
                     {/* Return rate badge */}
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                    <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-xs font-semibold ${
                       returnRate >= 25
                         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                         : returnRate >= 15
@@ -361,10 +411,10 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                 </td>
 
                 {/* ========== RESULTADO: Revenue + Days + Date - Tablet+ (sm+) ========== */}
-                <td className="hidden sm:table-cell py-3 px-3 sm:px-4 text-center">
+                <td className="hidden sm:table-cell py-3.5 px-4 text-center">
                   <div className="flex flex-col items-center">
                     {/* Revenue prominent */}
-                    <span className={`text-sm sm:text-base font-bold ${
+                    <span className={`text-base sm:text-lg font-bold ${
                       (campaign.total_revenue_recovered || 0) > 0
                         ? 'text-emerald-600 dark:text-emerald-400'
                         : 'text-slate-500 dark:text-slate-400'
@@ -373,7 +423,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                     </span>
                     {/* Metadata: avg days to return */}
                     {campaign.avg_days_to_return && (
-                      <span className={`text-xs mt-0.5 ${
+                      <span className={`text-xs sm:text-sm mt-0.5 ${
                         campaign.avg_days_to_return <= 3
                           ? 'text-emerald-500 dark:text-emerald-400'
                           : campaign.avg_days_to_return <= 7
@@ -401,6 +451,7 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState(30);
+  const [lastSync, setLastSync] = useState(null);
 
   // Fetch dashboard metrics
   useEffect(() => {
@@ -410,6 +461,7 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
       try {
         const data = await getDashboardMetrics({ days: timeRange });
         setMetrics(data);
+        setLastSync(new Date());
       } catch (err) {
         console.error('Failed to fetch dashboard metrics:', err);
         setError('Nao foi possivel carregar as metricas');
@@ -526,143 +578,157 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
-      {/* Time Range Selector - Button Group Style */}
-      <div className="flex items-center justify-end gap-3">
-        <div className="flex items-center gap-1.5 text-slate-400">
-          <Calendar className="w-4 h-4" />
-          <span className="text-xs font-medium hidden sm:inline">Período:</span>
+    <SectionCard
+      title="Análise de Campanhas"
+      subtitle={metrics ? `${summary.totalCampaigns || 0} campanhas${timeRange ? ` nos últimos ${timeRange} dias` : ''}` : 'Carregando...'}
+      icon={Target}
+      color="purple"
+      id="campaign-dashboard"
+      className={className}
+      action={
+        <div className="flex items-center gap-2">
+          {/* Sync time - visible on all sizes */}
+          {lastSync && (
+            <span className="text-slate-400 text-xs">{formatTimeAgo(lastSync)}</span>
+          )}
+          {/* Refresh button - circular on mobile, pill with text on desktop */}
+          <button
+            onClick={() => setTimeRange(timeRange)}
+            disabled={isLoading}
+            className="w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 disabled:opacity-50 text-white text-xs font-semibold rounded-full shadow-sm transition-all"
+            title={lastSync ? `Última atualização: ${formatTimeAgo(lastSync)}` : 'Atualizar dados'}
+          >
+            <RefreshCw className={`w-4 h-4 sm:w-3 sm:h-3 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isLoading ? 'Atualizando...' : 'Atualizar'}</span>
+          </button>
         </div>
-        <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 gap-1">
-          {[
-            { value: 7, label: '7d', fullLabel: '7 dias' },
-            { value: 30, label: '30d', fullLabel: '30 dias' },
-            { value: 90, label: '90d', fullLabel: '90 dias' },
-            { value: null, label: '∞', fullLabel: 'Todos' }
-          ].map(({ value, label, fullLabel }) => (
-            <button
-              key={label}
-              onClick={() => setTimeRange(value)}
-              className={`
-                px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
-                ${(timeRange === value || (timeRange === null && value === null))
-                  ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                }
-              `}
-            >
-              <span className="sm:hidden">{label}</span>
-              <span className="hidden sm:inline">{fullLabel}</span>
-            </button>
-          ))}
+      }
+    >
+      <div className="space-y-6">
+        {/* Time Range Filter */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 text-slate-400">
+            <Calendar className="w-4 h-4" />
+            <span className="text-xs font-medium hidden sm:inline">Período:</span>
+          </div>
+          <div className="inline-flex rounded-xl sm:rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 sm:p-1 gap-0.5">
+            {[
+              { value: 7, label: '7d', fullLabel: '7 dias' },
+              { value: 30, label: '30d', fullLabel: '30 dias' },
+              { value: 90, label: '90d', fullLabel: '90 dias' },
+              { value: null, label: '∞', fullLabel: 'Todos' }
+            ].map(({ value, label, fullLabel }) => (
+              <button
+                key={label}
+                onClick={() => setTimeRange(value)}
+                className={`
+                  min-h-[36px] min-w-[36px] sm:min-h-[40px] px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-full text-xs sm:text-sm font-medium transition-all
+                  ${(timeRange === value || (timeRange === null && value === null))
+                    ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }
+                `}
+              >
+                <span className="sm:hidden">{label}</span>
+                <span className="hidden sm:inline">{fullLabel}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <button
-          onClick={() => setTimeRange(timeRange)}
-          className={`
-            p-2 rounded-xl transition-all duration-200
-            ${isLoading
-              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }
-          `}
-          title="Atualizar dados"
+
+        {/* Hero KPIs */}
+        <KPIGrid columns={4}>
+          <KPICard
+            label="Taxa de Retorno"
+            mobileLabel="Retorno"
+            value={formatPercent(summary.returnRate || 0)}
+            subtitle={`${summary.totalReturned || 0} de ${summary.totalContacts || 0} clientes`}
+            mobileSubtitle={`${summary.totalReturned || 0} retornaram`}
+            icon={TrendingUp}
+            color={summary.returnRate >= 20 ? 'positive' : summary.returnRate >= 10 ? 'warning' : 'neutral'}
+            variant="default"
+          />
+          <KPICard
+            label="Receita Recuperada"
+            mobileLabel="Receita"
+            value={formatCurrency(summary.totalRevenue || 0)}
+            subtitle={summary.totalReturned > 0 ? `${formatCurrency((summary.totalRevenue || 0) / summary.totalReturned)}/cliente` : 'dos retornos'}
+            mobileSubtitle="recuperada"
+            icon={DollarSign}
+            color="revenue"
+            variant="default"
+          />
+          <KPICard
+            label="Clientes em Risco"
+            mobileLabel="Em Risco"
+            value={audienceSegments?.atRisk?.length || 0}
+            subtitle="precisam de atencao"
+            mobileSubtitle="inativos 30d+"
+            icon={AlertTriangle}
+            color="warning"
+            variant="default"
+          />
+          <KPICard
+            label="Desconto Ideal"
+            mobileLabel="Melhor %"
+            value={metrics?.bestDiscount ? `${metrics.bestDiscount.discount}%` : '-'}
+            subtitle={metrics?.bestDiscount ? `${formatPercent(metrics.bestDiscount.returnRate)} retorno` : 'sem dados'}
+            mobileSubtitle={metrics?.bestDiscount ? 'mais efetivo' : 'sem dados'}
+            icon={Percent}
+            color="purple"
+            variant="default"
+          />
+        </KPIGrid>
+
+        {/* Dynamic Insights - Discrete inline hints */}
+        {insights.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {insights.slice(0, 2).map((insight, idx) => (
+              <p key={idx} className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
+                insight.type === 'warning'
+                  ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
+                  : insight.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+              }`}>
+                <Lightbulb className="w-3 h-3" />
+                {insight.title}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {/* Recent Campaigns Table - Positioned between KPIs and Funnel */}
+        <SectionCard
+          title="Campanhas Recentes"
+          subtitle={`${metrics?.recentCampaigns?.length || 0} campanhas nos ultimos ${timeRange} dias`}
+          icon={Target}
+          color="emerald"
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
+          <RecentCampaignsTable
+            campaigns={metrics?.recentCampaigns || []}
+            isLoading={isLoading}
+          />
+        </SectionCard>
 
-      {/* Hero KPIs */}
-      <KPIGrid columns={4}>
-        <KPICard
-          label="Taxa de Retorno"
-          mobileLabel="Retorno"
-          value={formatPercent(summary.returnRate || 0)}
-          subtitle={`${summary.totalReturned || 0} de ${summary.totalContacts || 0} clientes`}
-          mobileSubtitle={`${summary.totalReturned || 0} retornaram`}
-          icon={TrendingUp}
-          color={summary.returnRate >= 20 ? 'positive' : summary.returnRate >= 10 ? 'warning' : 'neutral'}
-          variant="gradient"
-        />
-        <KPICard
-          label="Receita Recuperada"
-          mobileLabel="Receita"
-          value={formatCurrency(summary.totalRevenue || 0)}
-          subtitle={summary.totalReturned > 0 ? `${formatCurrency((summary.totalRevenue || 0) / summary.totalReturned)}/cliente` : 'dos retornos'}
-          mobileSubtitle="recuperada"
-          icon={DollarSign}
-          color="revenue"
-          variant="gradient"
-        />
-        <KPICard
-          label="Clientes em Risco"
-          mobileLabel="Em Risco"
-          value={audienceSegments?.atRisk?.length || 0}
-          subtitle="precisam de atencao"
-          mobileSubtitle="inativos 30d+"
-          icon={AlertTriangle}
-          color="warning"
-          variant="gradient"
-        />
-        <KPICard
-          label="Desconto Ideal"
-          mobileLabel="Melhor %"
-          value={metrics?.bestDiscount ? `${metrics.bestDiscount.discount}%` : '-'}
-          subtitle={metrics?.bestDiscount ? `${formatPercent(metrics.bestDiscount.returnRate)} retorno` : 'sem dados'}
-          mobileSubtitle={metrics?.bestDiscount ? 'mais efetivo' : 'sem dados'}
-          icon={Percent}
-          color="purple"
-          variant="gradient"
-        />
-      </KPIGrid>
-
-      {/* Dynamic Insights - Discrete inline hints */}
-      {insights.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {insights.slice(0, 2).map((insight, idx) => (
-            <p key={idx} className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
-              insight.type === 'warning'
-                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
-                : insight.type === 'success'
-                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
-            }`}>
-              <Lightbulb className="w-3 h-3" />
-              {insight.title}
-            </p>
-          ))}
-        </div>
-      )}
-
-      {/* Recent Campaigns Table - Positioned between KPIs and Funnel */}
-      <SectionCard
-        title="Campanhas Recentes"
-        subtitle={`${metrics?.recentCampaigns?.length || 0} campanhas nos ultimos ${timeRange} dias`}
-        icon={Target}
-        color="emerald"
-      >
-        <RecentCampaignsTable
-          campaigns={metrics?.recentCampaigns || []}
+        {/* Campaign Funnel */}
+        <CampaignFunnel
+          funnel={metrics?.funnel || {}}
+          avgDaysToReturn={summary.avgDaysToReturn}
+          avgRevenuePerReturn={summary.totalReturned > 0 ? (summary.totalRevenue / summary.totalReturned) : 0}
           isLoading={isLoading}
         />
-      </SectionCard>
 
-      {/* Campaign Funnel */}
-      <CampaignFunnel
-        funnel={metrics?.funnel || {}}
-        avgDaysToReturn={summary.avgDaysToReturn}
-        avgRevenuePerReturn={summary.totalReturned > 0 ? (summary.totalRevenue / summary.totalReturned) : 0}
-        isLoading={isLoading}
-      />
-
-      {/* A/B Testing Section */}
-      <DiscountComparisonCard
-        discountData={metrics?.discountComparison || []}
-        serviceData={metrics?.serviceComparison || []}
-        bestDiscount={metrics?.bestDiscount}
-        bestService={metrics?.bestService}
-        isLoading={isLoading}
-      />
-    </div>
+        {/* A/B Testing Section */}
+        <DiscountComparisonCard
+          discountData={metrics?.discountComparison || []}
+          serviceData={metrics?.serviceComparison || []}
+          bestDiscount={metrics?.bestDiscount}
+          bestService={metrics?.bestService}
+          isLoading={isLoading}
+        />
+      </div>
+    </SectionCard>
   );
 };
 

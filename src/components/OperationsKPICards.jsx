@@ -1,4 +1,4 @@
-// OPERATIONS KPI CARDS V6.3.0 - AUDIT FIXES APPLIED
+// OPERATIONS KPI CARDS V6.4.0 - DESIGN SYSTEM V4.0 COMPLIANCE
 // ✅ Math: Absolute pp trend change (not relative %)
 // ✅ Math: Capacity adapts to date window (partial week support)
 // ✅ Math: Service diff hidden for currentWeek (partial vs full unfair)
@@ -11,6 +11,9 @@
 // ✅ Accessibility: Proper color contrast and touch targets
 //
 // CHANGELOG:
+// v6.4.0 (2026-01-09): Design System v4.0 Framer Motion compliance
+//   - Added Framer Motion hover animation to KPICard (y: -2)
+//   - Consistent with Design System v4.0 card patterns
 // v6.3.0 (2025-11-30): Fix partial week comparison display
 //   - Added showServiceDiff flag to periodConfig (false for currentWeek)
 //   - Utilization % trend still shown (normalized by activeDays = fair)
@@ -40,6 +43,7 @@
 // v5.0.0 (2025-11-26): Design System alignment
 
 import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Droplet, Flame, Gauge, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { BUSINESS_PARAMS, UTILIZATION_THRESHOLDS } from '../utils/operationsMetrics';
 
@@ -309,12 +313,16 @@ const OperationsKPICards = ({
     const scaledProgress = Math.min((utilization / PROGRESS_BAR_SCALE) * 100, 100);
 
     return (
-      <div className={`
-        bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5
-        border-2 ${status.borderClass}
-        shadow-sm hover:shadow-md
-        transition-all duration-200
-      `}>
+      <motion.div
+        whileHover={{ y: -2 }}
+        transition={{ type: 'tween', duration: 0.2 }}
+        className={`
+          bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5
+          border-2 ${status.borderClass}
+          shadow-sm hover:shadow-md
+          transition-colors duration-200
+        `}
+      >
         {/* Header */}
         <div className="flex items-center gap-3 mb-3">
           <div className={`
@@ -402,7 +410,7 @@ const OperationsKPICards = ({
             <span>{maxCapacity} ciclos</span>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   };
 

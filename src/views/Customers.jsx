@@ -1,8 +1,12 @@
-// Customers View v5.1 - PROPER LOADING SKELETON
+// Customers View v5.2 - STABLE CALLBACK FIX
 // Customer analytics and insights dashboard
 // Clean, focused design with RFM hero and integrated table
 //
 // CHANGELOG:
+// v5.2 (2026-01-09): Fix mobile sheet callback chain
+//   - FIXED: handleOpenCustomerProfile now wrapped in useCallback with [customerMap] dependency
+//   - This ensures stable callback reference for MobileTooltipSheet "Ver Perfil" button
+//   - Root cause: unstable callback caused modal not to open from mobile bottom sheet
 // v5.1 (2025-12-23): Fixed empty tab rendering
 //   - Replaced tiny spinner with CustomersLoadingSkeleton
 //   - Prevents "empty tab" appearance during data loading
@@ -111,12 +115,13 @@ const Customers = ({ data }) => {
   }, [metrics]);
 
   // Handler to open customer profile from charts
-  const handleOpenCustomerProfile = (customerId) => {
+  // Wrapped in useCallback for stable reference (required for mobile sheet callback chain)
+  const handleOpenCustomerProfile = useCallback((customerId) => {
     const customer = customerMap[customerId];
     if (customer) {
       setSelectedCustomer(customer);
     }
-  };
+  }, [customerMap]);
 
   // Handler for marking customer as contacted from charts
   const handleMarkContacted = useCallback((customerId, method) => {
