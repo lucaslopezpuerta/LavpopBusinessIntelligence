@@ -1,8 +1,15 @@
-// CustomerProfileModal.jsx v3.5 - SERVICE BREAKDOWN TEXT CONTRAST
+// CustomerProfileModal.jsx v3.7 - HEADER SAFE AREA GRADIENT FIX
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v3.7 (2026-01-12): Fix header safe area gradient in dark mode
+//   - Moved pt-safe from container to header wrapper
+//   - Header gradient now extends into safe area (no color mismatch)
+//   - Swipe handle now sits on header gradient background
+// v3.6 (2026-01-12): Full-screen safe area compliance
+//   - Added pt-safe to modal container for top notch/Dynamic Island on mobile
+//   - Full-screen mobile modals now respect both top and bottom safe areas
 // v3.5 (2026-01-11): Service breakdown & empty state text contrast
 //   - FIXED: "X serviços" text in Lavagem/Secagem cards
 //   - FIXED: Loading/empty state text in Communication History
@@ -545,17 +552,22 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                 style={swipeStyle}
                 {...swipeHandlers}
             >
-                {/* Swipe handle indicator (mobile only) */}
-                <div className="sm:hidden flex justify-center pt-2 pb-1">
-                    <div
-                        className={`w-10 h-1 rounded-full transition-colors ${
-                            isDragging ? 'bg-slate-400 dark:bg-slate-500' : 'bg-slate-300 dark:bg-slate-600'
-                        }`}
-                        aria-hidden="true"
-                    />
-                </div>
-                {/* Header - Simplified with Segment Avatar */}
-                <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 px-4 py-3 sm:px-5 border-b border-slate-200 dark:border-slate-700">
+                {/* v3.7 Header restructure: pt-safe moved here from container so the gradient
+                    extends into the safe area (notch/Dynamic Island). Previously, putting pt-safe
+                    on the container caused a white/dark gap above the header gradient. Now the
+                    gradient wrapper includes pt-safe, so the entire safe area is gradient-filled. */}
+                <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 pt-safe sm:pt-0 border-b border-slate-200 dark:border-slate-700">
+                    {/* Swipe handle indicator (mobile only) */}
+                    <div className="sm:hidden flex justify-center pt-2 pb-1">
+                        <div
+                            className={`w-10 h-1 rounded-full transition-colors ${
+                                isDragging ? 'bg-slate-400 dark:bg-slate-500' : 'bg-slate-300 dark:bg-slate-600'
+                            }`}
+                            aria-hidden="true"
+                        />
+                    </div>
+                    {/* Header content */}
+                    <div className="px-4 py-3 sm:px-5">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1">
                             {/* Segment-based Avatar */}
@@ -656,6 +668,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         >
                             <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
                         </button>
+                    </div>
                     </div>
                 </div>
 

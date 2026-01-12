@@ -1,4 +1,4 @@
-// BottomNavBar.jsx v1.3 - RELIABLE SAFE AREA HANDLING
+// BottomNavBar.jsx v1.4 - LANDSCAPE MODE OPTIMIZATION
 // Mobile bottom navigation bar with 5 tabs
 //
 // FEATURES:
@@ -9,6 +9,7 @@
 // - Backdrop blur with dark mode support
 // - Only renders on mobile (< lg breakpoint)
 // - Haptic feedback on tap (v1.1)
+// - Landscape mode: reduced height, icon-only (v1.4)
 //
 // TABS (matches desktop sidebar order):
 // 1. Dashboard (/)
@@ -18,6 +19,11 @@
 // 5. Mais (opens drawer)
 //
 // CHANGELOG:
+// v1.4 (2026-01-12): Landscape mode optimization
+//   - Detects landscape orientation on mobile (max-height: 500px)
+//   - Reduces nav height from 64px to 48px in landscape
+//   - Passes isLandscape prop to BottomNavItem children
+//   - Maximizes vertical screen space for content
 // v1.3 (2025-12-26): Reliable safe area handling
 //   - Added explicit height calc for nav container
 //   - Background extends to screen edge (covers home indicator area)
@@ -29,6 +35,7 @@
 
 import React, { useCallback } from 'react';
 import { haptics } from '../../utils/haptics';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { BarChart3, Search, Users, MessageSquare, Menu } from 'lucide-react';
 import { useNavigation } from '../../contexts/NavigationContext';
 import { useSidebar } from '../../contexts/SidebarContext';
@@ -50,6 +57,10 @@ const BottomNavBar = () => {
   const { activeTab } = useNavigation();
   const { toggleMobileSidebar } = useSidebar();
 
+  // Detect landscape orientation on mobile devices
+  // Only triggers when height is below 500px (excludes tablets in landscape)
+  const isLandscape = useMediaQuery('(orientation: landscape) and (max-height: 500px)');
+
   // Check if current tab is one of the "More" routes
   const isMoreActive = MORE_ROUTES.includes(activeTab);
 
@@ -64,9 +75,11 @@ const BottomNavBar = () => {
       className="lg:hidden fixed bottom-0 inset-x-0 z-40"
       aria-label="Navegação principal"
       style={{
-        // Height = nav content (64px) + safe area inset
-        // This ensures the nav covers the entire bottom area
-        height: 'calc(64px + env(safe-area-inset-bottom, 0px))',
+        // Height = nav content + safe area inset
+        // Landscape mode uses 48px, portrait uses 64px
+        height: isLandscape
+          ? 'calc(48px + env(safe-area-inset-bottom, 0px))'
+          : 'calc(64px + env(safe-area-inset-bottom, 0px))',
       }}
     >
       {/* Background layer - extends to screen edge */}
@@ -82,7 +95,8 @@ const BottomNavBar = () => {
       />
 
       {/* Nav content - positioned at top, above safe area */}
-      <div className="relative flex items-center justify-around h-16 px-1">
+      {/* Landscape mode uses h-12 (48px), portrait uses h-16 (64px) */}
+      <div className={`relative flex items-center justify-around ${isLandscape ? 'h-12' : 'h-16'} px-1`}>
         {/* Main navigation items */}
         {BOTTOM_NAV_ITEMS.map((item) => (
           <BottomNavItem
@@ -92,6 +106,7 @@ const BottomNavBar = () => {
             icon={item.icon}
             path={item.path}
             isActive={activeTab === item.id}
+            isLandscape={isLandscape}
           />
         ))}
 
@@ -103,6 +118,7 @@ const BottomNavBar = () => {
           isActive={isMoreActive}
           isButton={true}
           onClick={handleMoreClick}
+          isLandscape={isLandscape}
         />
       </div>
     </nav>

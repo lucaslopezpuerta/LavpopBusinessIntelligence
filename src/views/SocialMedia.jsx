@@ -1,8 +1,11 @@
-// SocialMedia.jsx v1.2
+// SocialMedia.jsx v1.3 - PULL TO REFRESH
 // Social Media Analytics Tab
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.3 (2026-01-12): Pull-to-refresh support
+//   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
+//   - Accepts onDataChange prop for refresh callback
 // v1.2 (2025-12-19): Added Google Business tab
 //   - Google Business Profile analytics with OAuth
 //   - Rating, reviews, search/views/actions metrics
@@ -25,6 +28,9 @@ const InstagramAnalytics = lazy(() => import('../components/social/InstagramAnal
 const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAnalytics'));
 const BlacklistManager = lazy(() => import('../components/campaigns/BlacklistManager'));
 const GoogleBusinessAnalytics = lazy(() => import('../components/social/GoogleBusinessAnalytics'));
+
+// Pull-to-refresh wrapper
+import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 // Loading fallback for lazy components
 const LoadingFallback = () => (
@@ -51,13 +57,14 @@ const ComingSoonPlaceholder = ({ platform }) => (
 
 // ==================== MAIN COMPONENT ====================
 
-const SocialMedia = ({ data }) => {
+const SocialMedia = ({ data, onDataChange }) => {
   const [activeSection, setActiveSection] = useState('instagram');
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-fade-in">
+    <PullToRefreshWrapper onRefresh={onDataChange}>
+      <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
-      {/* Header */}
+        {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 via-rose-500 to-orange-500 flex items-center justify-center shadow-lg shadow-pink-500/25">
@@ -113,7 +120,8 @@ const SocialMedia = ({ data }) => {
         <ComingSoonPlaceholder platform="Facebook" />
       )}
 
-    </div>
+      </div>
+    </PullToRefreshWrapper>
   );
 };
 

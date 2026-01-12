@@ -1,7 +1,9 @@
-// IconSidebar.jsx v3.2 - PNG LOGO UPDATE
+// IconSidebar.jsx v3.3 - SAFE AREA COMPLIANCE
 // Modern sidebar with navigation groups, hero branding, and polished mobile drawer
 //
 // CHANGELOG:
+// v3.3 (2026-01-12): Safe area compliance
+//   - Added safe-area-right to mobile drawer for landscape/foldable devices
 // v3.2 (2025-12-26): PNG logo update
 //   - Changed from SVG to PNG logo for consistency with LoadingScreen/LoginPage
 // v3.1 (2025-12-22): Theme toggle in mobile drawer footer
@@ -273,7 +275,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
             }}
           >
             <motion.aside
-              className="lg:hidden fixed left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-top safe-area-left"
+              className="lg:hidden fixed left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-top safe-area-left safe-area-right"
               initial={prefersReducedMotion ? false : { x: -300 }}
               animate={{ x: 0 }}
               exit={prefersReducedMotion ? undefined : { x: -300 }}

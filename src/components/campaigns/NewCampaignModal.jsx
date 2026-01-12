@@ -1,8 +1,16 @@
-// NewCampaignModal.jsx v5.2 - DESIGN SYSTEM COMPLIANCE
+// NewCampaignModal.jsx v5.5 - REFACTORED TO useScrollLock HOOK
 // Campaign creation wizard modal
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v5.5 (2026-01-12): Refactored to useScrollLock hook
+//   - Replaced inline scroll lock useEffect with shared useScrollLock hook
+//   - Reduces code duplication across modals
+// v5.4 (2026-01-12): Safe area compliance
+//   - Added pb-safe to footer navigation for iPhone home indicator
+// v5.3 (2026-01-12): iOS-compatible scroll lock
+//   - Added body scroll lock to prevent background scrolling
+//   - Preserves scroll position when modal closes
 // v5.2 (2026-01-09): Typography & mobile footer fixes
 //   - Fixed text-[10px] → text-xs (template category badge)
 //   - Improved footer buttons: full-width on mobile, inline on desktop
@@ -135,6 +143,7 @@ import {
 } from '../../config/messageTemplates';
 import { TEMPLATE_CAMPAIGN_TYPE_MAP } from '../../config/couponConfig';
 import { haptics } from '../../utils/haptics';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 // Icon mapping for templates and audiences
 const ICON_MAP = {
@@ -318,6 +327,9 @@ const NewCampaignModal = ({
       }
     }
   }, [isOpen, initialTemplate, initialAudience]);
+
+  // iOS-compatible scroll lock - prevents body scroll while modal is open
+  useScrollLock(isOpen);
 
   // Get audience customers with valid phones
   // v5.1: Added support for 'customFiltered' from AudienceFilterBuilder
@@ -1474,8 +1486,8 @@ const NewCampaignModal = ({
           )}
         </div>
 
-        {/* Footer Navigation */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-3 sm:gap-4">
+        {/* Footer Navigation - with safe area for notch devices */}
+        <div className="px-6 py-4 pb-safe border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button
             onClick={currentStep === 0 ? handleClose : handleBack}
             disabled={isSending}

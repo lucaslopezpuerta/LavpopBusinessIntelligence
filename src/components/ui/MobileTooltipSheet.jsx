@@ -1,9 +1,12 @@
-// MobileTooltipSheet.jsx v2.2 - TWO-ROW HEADER LAYOUT
+// MobileTooltipSheet.jsx v2.3 - iOS SCROLL LOCK
 // Slide-up bottom sheet for displaying customer data on mobile touch devices
 // Replaces floating tooltip for better mobile UX
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.3 (2026-01-12): iOS-compatible scroll lock
+//   - Added body scroll lock to prevent background scrolling
+//   - Preserves scroll position when sheet closes
 // v2.2 (2026-01-11): Two-row header layout
 //   - CHANGED: Name and status badge now on separate rows for better name visibility
 //   - Row 1: Full-width name + X close button
@@ -241,6 +244,32 @@ const MobileTooltipSheet = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  // iOS-compatible scroll lock - prevents body scroll while sheet is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const scrollY = window.scrollY;
+    const originalStyles = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.body.style.overflow = originalStyles.overflow;
+      document.body.style.position = originalStyles.position;
+      document.body.style.top = originalStyles.top;
+      document.body.style.width = originalStyles.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
 
   // Handle view profile click
   const handleViewProfile = useCallback(() => {

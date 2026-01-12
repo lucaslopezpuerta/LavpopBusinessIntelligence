@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v9.7 - SWIPE GESTURE CONFLICT FIX (PARENT SIGNAL)
+// AtRiskCustomersTable.jsx v9.8 - REMOVED SWIPE VIEW NAVIGATION CALLBACKS
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
@@ -9,19 +9,14 @@
 // ✅ Keyboard navigation
 // ✅ Descriptive column names
 // ✅ Hide checkbox for contacted customers
-// ✅ Swipe actions work correctly with view navigation
+// ✅ Row swipe actions (call/WhatsApp) work reliably
 //
 // CHANGELOG:
-// v9.7 (2026-01-12): Fixed swipe gesture conflict using parent signal
-//   - Accept onSwipeStart/End props from parent
-//   - Call onSwipeStart in handleTouchStart to disable Framer Motion drag
-//   - Call onSwipeEnd in handleTouchEnd/Move/Cancel to re-enable
-//   - This properly disables view navigation during row swipe
-//   - Root cause: Framer Motion uses document-level pointer listeners
-// v9.6 (2026-01-11): Tried preventDefault (still didn't work)
-//   - e.preventDefault() only blocks React events, not Framer Motion
-// v9.5 (2026-01-11): Tried data-swipe-row attribute (didn't work)
-// v9.4 (2026-01-11): Tried onPointerDownCapture stopPropagation (didn't work)
+// v9.8 (2026-01-12): Removed swipe view navigation callbacks
+//   - REMOVED: onSwipeStart/End props (no longer needed)
+//   - Swipe view navigation removed from App.jsx entirely
+//   - Row swipe gestures now work without any conflicts
+//   - Mobile navigation via bottom nav bar + side menu only
 // v9.3 (2026-01-11): UX refinements
 //   - CHANGED: Items per page reduced from 10 to 5 for better focus
 //   - CHANGED: Hide checkbox for contacted customers (mobile & desktop)
@@ -87,7 +82,7 @@ const getDaysUrgencyColor = (days) => {
   return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
 };
 
-const AtRiskCustomersTable = ({ customerMetrics, salesData, onSwipeStart, onSwipeEnd }) => {
+const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -364,15 +359,12 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, onSwipeStart, onSwip
     }
   }, [isContacted, markContacted, getCustomerContext]);
 
-  // Touch handlers for swipe (mobile)
+  // Touch handlers for swipe (mobile row actions)
   const handleTouchStart = useCallback((e, customerId) => {
-    // Signal parent to disable view navigation while row is being swiped
-    onSwipeStart?.();
-
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
     setSwipeState({ id: customerId, direction: null, offset: 0 });
-  }, [onSwipeStart]);
+  }, []);
 
   const handleTouchMove = useCallback((e, customerId) => {
     if (swipeState.id !== customerId) return;
@@ -383,7 +375,6 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, onSwipeStart, onSwip
 
     // If more vertical than horizontal, reset and allow normal scroll
     if (deltaY > Math.abs(deltaX) * 0.5) {
-      onSwipeEnd?.(); // Re-enable view navigation
       setSwipeState({ id: null, direction: null, offset: 0 });
       return;
     }
@@ -393,12 +384,9 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, onSwipeStart, onSwip
     const direction = offset > 20 ? 'right' : offset < -20 ? 'left' : null;
 
     setSwipeState({ id: customerId, direction, offset });
-  }, [swipeState.id, onSwipeEnd]);
+  }, [swipeState.id]);
 
   const handleTouchEnd = useCallback((customer, customerId) => {
-    // Signal parent to re-enable view navigation
-    onSwipeEnd?.();
-
     if (!swipeState.direction || !customer.phone) {
       setSwipeState({ id: null, direction: null, offset: 0 });
       return;
@@ -411,13 +399,12 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, onSwipeStart, onSwip
     }
 
     setSwipeState({ id: null, direction: null, offset: 0 });
-  }, [swipeState.direction, handleWhatsApp, handleCall, onSwipeEnd]);
+  }, [swipeState.direction, handleWhatsApp, handleCall]);
 
   // Handle touch cancel (e.g., if user moves finger off screen)
   const handleTouchCancel = useCallback(() => {
-    onSwipeEnd?.();
     setSwipeState({ id: null, direction: null, offset: 0 });
-  }, [onSwipeEnd]);
+  }, []);
 
   const getRiskStyles = (riskLevel) => {
     const riskConfig = RISK_LABELS[riskLevel] || RISK_LABELS['Lost'];

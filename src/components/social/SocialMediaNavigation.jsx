@@ -1,8 +1,12 @@
-// SocialMediaNavigation.jsx v1.3
+// SocialMediaNavigation.jsx v1.4 - SIDEBAR AWARENESS + NON-STICKY
 // Tab navigation for Social Media view
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.4 (2026-01-12): Sidebar awareness + non-sticky
+//   - Removed sticky positioning (nav scrolls with content)
+//   - Added sidebar awareness - hides when mobile sidebar is open
+//   - Top bar already handles safe area, no pt-safe needed here
 // v1.3 (2025-12-19): Added Google Business tab
 //   - Google Business Profile analytics integration
 //   - Google-branded blue color scheme
@@ -19,11 +23,15 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { Instagram, Facebook, MessageCircle, ShieldOff, Building2 } from 'lucide-react';
+import { useSidebar } from '../../contexts/SidebarContext';
 
 const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
   const scrollRef = useRef(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(false);
+
+  // Get sidebar state to hide nav when mobile sidebar is open
+  const { isMobileOpen } = useSidebar();
 
   const sections = [
     {
@@ -116,9 +124,14 @@ const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
     }
   }, [activeSection]);
 
+  // Hide nav when mobile sidebar is open (z-40 would overlap with sidebar z-40)
+  if (isMobileOpen) {
+    return null;
+  }
+
   return (
     <nav
-      className="sticky top-14 lg:top-[60px] z-40 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 sm:py-3 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800"
+      className="-mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 sm:py-3 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800"
       aria-label="Navegação de plataformas sociais"
     >
       <div className="relative">

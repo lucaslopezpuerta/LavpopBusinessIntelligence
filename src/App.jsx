@@ -1,4 +1,4 @@
-// App.jsx v8.12.1 - SWIPE GESTURE CONFLICT FIX
+// App.jsx v8.15.0 - NAVIGATION SCROLL FIX
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -7,7 +7,7 @@
 // ✅ Maximized horizontal space for data visualizations
 // ✅ Mobile breadcrumb shows current tab
 // ✅ Smart data refresh with visibility detection
-// ✅ Auto-refresh every 10 minutes when active
+// ✅ Auto-refresh every 30 minutes when active (fallback only)
 // ✅ Separate Directory route for customer browsing
 // ✅ Data freshness footer with CSV upload, sync time, build version
 // ✅ View-specific skeleton loading states for better perceived performance
@@ -17,17 +17,27 @@
 // ✅ Accessibility: prefers-reduced-motion support
 // ✅ Real CSV/PDF export per view
 // ✅ SWR caching: instant load from IndexedDB, silent cache refresh
-// ✅ Swipe navigation between main tabs on mobile (with child swipe conflict fix)
+// ✅ Mobile navigation via bottom nav bar + side menu
 // ✅ Data completeness validation with console warnings
 // ✅ Cache error recovery with auto-refresh
 // ✅ Defensive data rendering - prevents empty white tabs after idle
+// ✅ Realtime transaction updates - auto-refresh when new data inserted
 //
 // CHANGELOG:
-// v8.12.1 (2026-01-12): Swipe gesture conflict fix
-//   - Added isChildSwiping state to track child component swipes
-//   - Conditionally disable Framer Motion drag when child is swiping
-//   - Pass onChildSwipeStart/End callbacks to child views
-//   - Fixes: Row swipe actions no longer trigger view navigation
+// v8.15.0 (2026-01-12): Navigation scroll-to-top fix
+//   - Added scroll-to-top when navigating between views
+//   - Fixes bug where new view opened at previous scroll position
+//   - Uses useEffect on activeTab change
+// v8.14.0 (2026-01-12): Realtime transaction updates
+//   - Added transactionUpdate event listener for auto-refresh
+//   - When new transactions are inserted via Supabase realtime, triggers silent refresh
+//   - 2s delay to let DB triggers update customer metrics
+//   - Works in conjunction with useRealtimeSync hook
+// v8.13.0 (2026-01-12): Removed swipe view navigation
+//   - REMOVED: useSwipeNavigation hook integration (caused conflicts with row swipes)
+//   - REMOVED: isChildSwiping state and callback props
+//   - Mobile navigation now exclusively via bottom nav bar + side menu
+//   - Row swipe actions (call/WhatsApp) now work without conflicts
 // v8.12.0 (2025-12-26): Admin authentication
 //   - Added AuthProvider for Supabase authentication
 //   - Added /login route with LoginPage component
@@ -136,7 +146,6 @@ import { Upload, Clock, Code } from 'lucide-react';
 const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : null;
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { useReducedMotion } from './hooks/useReducedMotion';
-import { useSwipeNavigation } from './hooks/useSwipeNavigation';
 
 // Loading and Error screens
 import LoadingScreen from './components/ui/LoadingScreen';
@@ -253,7 +262,6 @@ function AppContent() {
   const { activeTab, navigateTo } = useNavigation();
   const { isPinned } = useSidebar();
   const prefersReducedMotion = useReducedMotion();
-  const { handlers: swipeHandlers, isSwipeable } = useSwipeNavigation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -262,9 +270,6 @@ function AppContent() {
   const [viewMode, setViewMode] = useState('complete');
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
-
-  // Track when child component is handling its own swipe (prevents view navigation conflict)
-  const [isChildSwiping, setIsChildSwiping] = useState(false);
 
   // Smart refresh state
   const [lastRefreshed, setLastRefreshed] = useState(null);
@@ -399,6 +404,30 @@ function AppContent() {
     return () => window.removeEventListener('cacheError', handleCacheError);
   }, [loading, loadData]);
 
+  // Real-time transaction updates: refresh data when new transactions are inserted
+  // Event dispatched by useRealtimeSync when Supabase detects INSERT on transactions table
+  useEffect(() => {
+    const handleTransactionUpdate = (event) => {
+      const { type, data: txData } = event.detail || {};
+      console.info(`[App] Transaction ${type} detected via realtime:`, txData?.id || 'batch');
+
+      // Trigger silent refresh to pick up new data
+      // Note: DB triggers auto-update customer metrics, so full refresh gets both
+      if (!loading && !refreshingRef.current) {
+        // Small delay to let DB triggers complete
+        setTimeout(() => {
+          if (!refreshingRef.current) {
+            console.info('[App] Triggering data refresh after transaction INSERT');
+            loadData({ skipCache: true, silent: true });
+          }
+        }, 2000);
+      }
+    };
+
+    window.addEventListener('transactionUpdate', handleTransactionUpdate);
+    return () => window.removeEventListener('transactionUpdate', handleTransactionUpdate);
+  }, [loading, loadData]);
+
   // Auto-refresh interval: refresh every 30 minutes while tab is active (fallback only)
   useEffect(() => {
     if (loading) return;
@@ -455,6 +484,12 @@ function AppContent() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navigateTo]);
+
+  // Scroll to top when navigating between views
+  // Fixes bug where new view opened at previous scroll position
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
 
   // Note: Realtime sync for contact_tracking is handled by useContactTracking hook
   // which listens to 'contactTrackingUpdate' events dispatched by RealtimeSyncProvider
@@ -531,7 +566,6 @@ function AppContent() {
 
           {/* Main Content - Full width with edge-to-edge support */}
           {/* pb-24 on mobile for bottom nav clearance (64px nav + 16px breathing room) */}
-          {/* Swipe navigation enabled on mobile for main tabs */}
           <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 pb-24 lg:pb-6">
             <AnimatePresence mode="wait">
               <motion.div
@@ -540,8 +574,6 @@ function AppContent() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
-                {...(isSwipeable && !isChildSwiping ? swipeHandlers : {})}
-                style={isSwipeable ? { touchAction: 'pan-y' } : undefined}
               >
                 <Suspense fallback={getLoadingFallback(activeTab)}>
                   {/* Defensive check: show skeleton if data is missing/invalid */}
@@ -555,8 +587,6 @@ function AppContent() {
                       viewMode={viewMode}
                       setViewMode={setViewMode}
                       onDataChange={refreshAfterAction}
-                      onChildSwipeStart={() => setIsChildSwiping(true)}
-                      onChildSwipeEnd={() => setIsChildSwiping(false)}
                     />
                   )}
                 </Suspense>

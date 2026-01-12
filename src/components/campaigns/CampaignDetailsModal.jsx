@@ -1,9 +1,17 @@
-// CampaignDetailsModal.jsx v2.0 - DESIGN SYSTEM v4.0
+// CampaignDetailsModal.jsx v2.3 - REFACTORED TO useScrollLock HOOK
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.3 (2026-01-12): Refactored to useScrollLock hook
+//   - Replaced inline scroll lock useEffect with shared useScrollLock hook
+//   - Reduces code duplication across modals
+// v2.2 (2026-01-12): Safe area compliance
+//   - Added pb-safe to pagination footer for iPhone home indicator
+// v2.1 (2026-01-12): iOS-compatible scroll lock
+//   - Added body scroll lock to prevent background scrolling
+//   - Preserves scroll position when modal closes
 // v2.0 (2026-01-09): Design System v4.0 compliance
 //   - Fixed 15 instances of text-[10px] → text-xs (12px minimum)
 //   - Fixed touch targets: pagination buttons now min 44px
@@ -52,6 +60,7 @@ import {
 } from 'lucide-react';
 import { getCampaignContacts, getCampaignPerformance } from '../../utils/campaignService';
 import { haptics } from '../../utils/haptics';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 // Pagination config
 const CONTACTS_PER_PAGE = 20;
@@ -76,6 +85,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpToPage, setJumpToPage] = useState('');
+
+  // iOS-compatible scroll lock - prevents body scroll while modal is open
+  useScrollLock(true);
 
   // Fetch campaign contacts on mount
   useEffect(() => {
@@ -621,9 +633,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
           </div>
         </div>
 
-        {/* Pagination */}
+        {/* Pagination - with safe area for notch devices */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-3 py-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shrink-0">
+          <div className="flex items-center justify-between px-3 py-2 pb-safe border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shrink-0">
             <span className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">
               {totalFiltered} contatos • Pág {currentPage}/{totalPages}
             </span>

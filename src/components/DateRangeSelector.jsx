@@ -1,7 +1,15 @@
-// DateRangeSelector Component v3.2.0 - RESPONSIVE FONT SIZE
+// DateRangeSelector Component v3.4.0 - SIDEBAR AWARENESS
 // Unified date filter - consistent with DashboardDateControl
 //
 // CHANGELOG:
+// v3.4.0 (2026-01-12): Sidebar awareness
+//   - Added useSidebar hook to detect mobile drawer state
+//   - Returns null when sticky AND mobile sidebar is open
+//   - Prevents z-index conflicts with sidebar drawer (z-50)
+//   - Same pattern as SocialMediaNavigation v1.4
+// v3.3.0 (2026-01-12): Safe area compliance
+//   - Sticky position now uses safe-area-inset-top in calculation
+//   - Prevents clipping behind iPhone notch when scrolling
 // v3.2.0 (2025-12-28): Improved desktop font size
 //   - Date display: text-xs → text-xs sm:text-sm
 //   - Dropdown: text-xs → text-xs sm:text-sm
@@ -24,9 +32,17 @@ import React, { useMemo, useCallback } from 'react';
 import { Calendar } from 'lucide-react';
 import { getDateOptions } from '../utils/dateWindows';
 import { haptics } from '../utils/haptics';
+import { useSidebar } from '../contexts/SidebarContext';
 
 const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false, sticky = false }) => {
+  // Get sidebar state to hide sticky nav when mobile sidebar is open
+  const { isMobileOpen } = useSidebar();
   const options = useMemo(() => getDateOptions({ excludeAllTime }), [excludeAllTime]);
+
+  // Hide sticky selector when mobile sidebar is open to prevent z-index conflicts
+  if (sticky && isMobileOpen) {
+    return null;
+  }
 
   // Handle change with haptic feedback
   const handleChange = useCallback((e) => {
@@ -65,7 +81,12 @@ const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false
 
   if (sticky) {
     return (
-      <div className="sticky top-14 lg:top-[60px] z-30 -mt-2 mb-6 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm">
+      <div
+        className="sticky z-30 -mt-2 mb-6 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm"
+        style={{
+          top: 'calc(3.5rem + env(safe-area-inset-top, 0px))'
+        }}
+      >
         {content}
       </div>
     );

@@ -1,7 +1,10 @@
-// ExportModal.jsx v1.3
+// ExportModal.jsx v1.4 - iOS SCROLL LOCK
 // Modal for exporting data to CSV or PDF with charts
 //
 // CHANGELOG:
+// v1.4 (2026-01-12): iOS-compatible scroll lock
+//   - Added body scroll lock to prevent background scrolling
+//   - Preserves scroll position when modal closes
 // v1.3 (2025-12-17): Global reports (Complete + Executive Summary)
 //   - Added "Relatório Completo" multi-page PDF
 //   - Added "Resumo Executivo" single-page PDF
@@ -14,7 +17,7 @@
 // v1.1 (2025-12-17): More export options per view
 // v1.0 (2025-12-17): Initial implementation
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileSpreadsheet, FileText, Download, Loader2, Check, AlertCircle, BookOpen, BarChart3 } from 'lucide-react';
 import { exportToCSV, exportToPDF, exportCompleteReport, exportExecutiveSummary } from '../utils/exportUtils';
@@ -200,6 +203,32 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
+
+  // iOS-compatible scroll lock - prevents body scroll while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const scrollY = window.scrollY;
+    const originalStyles = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.body.style.overflow = originalStyles.overflow;
+      document.body.style.position = originalStyles.position;
+      document.body.style.top = originalStyles.top;
+      document.body.style.width = originalStyles.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
 
   // Get data for specific export type
   const getExportData = (exportId) => {

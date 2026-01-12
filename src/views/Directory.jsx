@@ -1,8 +1,14 @@
-// Directory.jsx v2.4 - SMART PRESETS & CAMPAIGN FAB
+// Directory.jsx v2.6 - SAFE AREA COMPLIANCE
 // Dedicated view for browsing and searching customers
 // Design System v4.0 compliant - coherent with Dashboard, SocialMedia, etc.
 //
 // CHANGELOG:
+// v2.6 (2026-01-12): Safe area compliance
+//   - FAB now uses safe-area-inset for bottom/right positioning
+//   - Prevents clipping on iPhone notch and home indicator
+// v2.5 (2026-01-12): Pull-to-refresh support
+//   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
+//   - Accepts onDataChange prop for refresh callback
 // v2.4 (2026-01-07): Smart filter presets & bulk campaign FAB
 //   - NEW: 4 smart filter preset buttons (Em Risco, VIPs Inativos, Novos, Críticos)
 //   - NEW: Floating action button for bulk campaign to filtered customers
@@ -65,6 +71,7 @@ import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import CustomerCard from '../components/CustomerCard';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { DirectoryLoadingSkeleton } from '../components/ui/Skeleton';
+import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 // Lazy-load heavy modals
 const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
@@ -191,7 +198,7 @@ const FILTER_PRESETS = [
   }
 ];
 
-const Directory = ({ data }) => {
+const Directory = ({ data, onDataChange }) => {
   // Navigation for FAB
   const navigate = useNavigate();
 
@@ -415,9 +422,10 @@ const Directory = ({ data }) => {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-fade-in">
+    <PullToRefreshWrapper onRefresh={onDataChange}>
+      <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
-      {/* Enhanced Header with Stats Pills */}
+        {/* Enhanced Header with Stats Pills */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center border-l-4 border-blue-500">
@@ -948,13 +956,17 @@ const Directory = ({ data }) => {
               state: { prefilledCustomers: filteredCustomers.map(c => c.doc) }
             })}
             className="
-              fixed bottom-6 right-6 z-40
+              fixed z-40
               bg-gradient-to-r from-lavpop-blue to-lavpop-green
               text-white px-6 py-3 rounded-full shadow-lg
               flex items-center gap-2 font-semibold
               hover:shadow-xl active:scale-95 transition-all
               focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-lavpop-blue
             "
+            style={{
+              bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+              right: 'calc(1.5rem + env(safe-area-inset-right, 0px))'
+            }}
             aria-label={`Enviar campanha para ${filteredCustomers.length} clientes`}
           >
             <Send className="w-5 h-5" />
@@ -965,7 +977,8 @@ const Directory = ({ data }) => {
           </motion.button>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </PullToRefreshWrapper>
   );
 };
 

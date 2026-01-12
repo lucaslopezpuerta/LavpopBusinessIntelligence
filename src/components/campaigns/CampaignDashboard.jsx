@@ -1,8 +1,12 @@
-// CampaignDashboard.jsx v3.12
+// CampaignDashboard.jsx v3.13
 // Unified Campaign Analytics Dashboard
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.13 (2026-01-12): Removed manual sync button
+//   - Data now refreshes via realtime Supabase subscription
+//   - Kept lastSync timestamp display for user reference
+//   - Removed RefreshCw icon import (no longer needed)
 // v3.12 (2026-01-09): Light background KPI cards (Hybrid Card Design)
 //   - Changed KPICard variant from "gradient" to "default"
 //   - Cards now use light backgrounds (bg-white dark:bg-slate-800)
@@ -126,7 +130,6 @@ import {
   Target,
   AlertTriangle,
   AlertCircle,
-  RefreshCw,
   Lightbulb,
   Calendar,
   Bot,
@@ -586,22 +589,11 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
       id="campaign-dashboard"
       className={className}
       action={
-        <div className="flex items-center gap-2">
-          {/* Sync time - visible on all sizes */}
-          {lastSync && (
-            <span className="text-slate-400 text-xs">{formatTimeAgo(lastSync)}</span>
-          )}
-          {/* Refresh button - circular on mobile, pill with text on desktop */}
-          <button
-            onClick={() => setTimeRange(timeRange)}
-            disabled={isLoading}
-            className="w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 disabled:opacity-50 text-white text-xs font-semibold rounded-full shadow-sm transition-all"
-            title={lastSync ? `Última atualização: ${formatTimeAgo(lastSync)}` : 'Atualizar dados'}
-          >
-            <RefreshCw className={`w-4 h-4 sm:w-3 sm:h-3 ${isLoading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isLoading ? 'Atualizando...' : 'Atualizar'}</span>
-          </button>
-        </div>
+        lastSync && (
+          <span className="text-slate-400 text-xs" title="Última atualização">
+            {formatTimeAgo(lastSync)}
+          </span>
+        )
       }
     >
       <div className="space-y-6">

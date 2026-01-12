@@ -1,4 +1,4 @@
-// OPERATIONS TAB V5.8.0 - SECTIONHEADER REFACTOR
+// OPERATIONS TAB V5.9.0 - PULL TO REFRESH
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
@@ -15,6 +15,9 @@
 // ✅ Loading skeleton fallback for data readiness
 //
 // CHANGELOG:
+// v5.9.0 (2026-01-12): Pull-to-refresh support
+//   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
+//   - Accepts onDataChange prop for refresh callback
 // v5.8.0 (2026-01-07): SectionHeader refactor
 //   - Replaced inline section headers with SectionHeader component
 //   - Reduces code duplication, improves consistency
@@ -87,8 +90,9 @@ import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { getDateWindows } from '../utils/dateWindows';
 import { OperationsLoadingSkeleton } from '../components/ui/Skeleton';
+import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
-const Operations = ({ data }) => {
+const Operations = ({ data, onDataChange }) => {
   // Centralized date filter - single source of truth
   // Default to lastWeek for complete data (currentWeek is partial)
   const [dateFilter, setDateFilter] = useState('lastWeek');
@@ -143,8 +147,9 @@ const Operations = ({ data }) => {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Header */}
+    <PullToRefreshWrapper onRefresh={onDataChange}>
+      <div className="space-y-6 sm:space-y-8">
+        {/* Header */}
       <header className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
           <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -236,7 +241,8 @@ const Operations = ({ data }) => {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </PullToRefreshWrapper>
   );
 };
 

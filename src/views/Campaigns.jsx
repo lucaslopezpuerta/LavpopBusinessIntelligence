@@ -1,8 +1,11 @@
-// Campaigns.jsx v2.6.0 - FIX TAB NAVIGATION
+// Campaigns.jsx v2.7.0 - PULL TO REFRESH
 // Customer Messaging & Campaign Management Tab
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.7.0 (2026-01-12): Pull-to-refresh support
+//   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
+//   - Accepts onDataChange prop for refresh callback
 // v2.6.0 (2026-01-09): Fix tab navigation - show correct content per tab
 //   - CampaignDashboard now only shows on 'overview' tab (was always visible)
 //   - Each tab now properly shows its respective content exclusively
@@ -83,6 +86,7 @@ const ModalLoadingFallback = () => (
 
 // Business logic
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
+import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -101,7 +105,7 @@ const formatPercent = (value) => {
 
 // ==================== MAIN COMPONENT ====================
 
-const Campaigns = ({ data }) => {
+const Campaigns = ({ data, onDataChange }) => {
   const [activeSection, setActiveSection] = useState('overview');
   const [showNewCampaign, setShowNewCampaign] = useState(false);
   const [selectedAudience, setSelectedAudience] = useState(null);
@@ -193,9 +197,10 @@ const Campaigns = ({ data }) => {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-fade-in">
+    <PullToRefreshWrapper onRefresh={onDataChange}>
+      <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
-      {/* Header */}
+        {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center border-l-4 border-purple-500">
@@ -282,7 +287,8 @@ const Campaigns = ({ data }) => {
         </Suspense>
       )}
 
-    </div>
+      </div>
+    </PullToRefreshWrapper>
   );
 };
 

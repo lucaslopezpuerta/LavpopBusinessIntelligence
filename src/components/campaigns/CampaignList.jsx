@@ -1,8 +1,12 @@
-// CampaignList.jsx v3.7 - HYBRID CARD DESIGN
+// CampaignList.jsx v3.8 - REALTIME REFRESH
 // Campaign list and history display - Backend only
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.8 (2026-01-12): Removed manual sync button
+//   - Data now refreshes via realtime Supabase subscription
+//   - Kept lastSync timestamp display for user reference
+//   - Removed sync button from action prop (data refreshes automatically)
 // v3.7 (2026-01-09): Hybrid card design implementation
 //   - Added Framer Motion hover animation (y: -2 lift effect)
 //   - Changed status border from type-based to return-rate-based:
@@ -237,22 +241,11 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
       color="purple"
       id="campaign-history"
       action={
-        <div className="flex items-center gap-2">
-          {/* Sync time - visible on all sizes */}
-          {lastSync && (
-            <span className="text-slate-400 text-xs">{formatTimeAgo(lastSync)}</span>
-          )}
-          {/* Refresh button - circular on mobile, pill with text on desktop */}
-          <button
-            onClick={fetchCampaigns}
-            disabled={isLoading}
-            className="w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 disabled:opacity-50 text-white text-[11px] font-semibold rounded-full shadow-sm transition-all"
-            title="Atualizar campanhas"
-          >
-            <RefreshCw className={`w-4 h-4 sm:w-3 sm:h-3 ${isLoading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isLoading ? 'Atualizando...' : 'Atualizar'}</span>
-          </button>
-        </div>
+        lastSync && (
+          <span className="text-slate-400 text-xs" title="Última atualização">
+            {formatTimeAgo(lastSync)}
+          </span>
+        )
       }
     >
       <div className="space-y-4">

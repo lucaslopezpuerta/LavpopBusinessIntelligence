@@ -1,4 +1,4 @@
-// Dashboard.jsx v10.2 - DATA READINESS CHECK
+// Dashboard.jsx v10.3 - PULL TO REFRESH
 // ✅ Compact (stacked rows) and Expanded (vertical) layouts
 // ✅ DateControl integrated in header for both layouts
 // ✅ Layout preference from ThemeContext (localStorage)
@@ -9,6 +9,9 @@
 // ✅ Data readiness check with skeleton fallback
 //
 // CHANGELOG:
+// v10.3 (2026-01-12): Pull-to-refresh support
+//   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
+//   - Accepts onDataChange prop for refresh callback
 // v10.2 (2025-12-23): Data readiness check
 //   - Added DashboardLoadingSkeleton fallback when data not ready
 //   - Prevents empty renders after idle periods
@@ -59,8 +62,9 @@ import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { DashboardLoadingSkeleton } from '../components/ui/Skeleton';
+import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
-const Dashboard = ({ data, viewMode, setViewMode }) => {
+const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
   // Get layout preference from ThemeContext
   const { dashboardLayout } = useTheme();
   const isMobile = useIsMobile();
@@ -144,8 +148,9 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
   }
 
   return (
-    <div className={isCompact ? 'space-y-4' : 'space-y-6 sm:space-y-8'}>
-      {/* SHARED HEADER - DateControl integrated for both layouts */}
+    <PullToRefreshWrapper onRefresh={onDataChange}>
+      <div className={isCompact ? 'space-y-4' : 'space-y-6 sm:space-y-8'}>
+        {/* SHARED HEADER - DateControl integrated for both layouts */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className={`${isCompact ? 'w-8 h-8' : 'w-10 h-10'} rounded-xl bg-lavpop-blue/10 dark:bg-lavpop-blue/20 flex items-center justify-center border-l-4 border-lavpop-blue`}>
@@ -223,7 +228,8 @@ const Dashboard = ({ data, viewMode, setViewMode }) => {
           </section>
         </>
       )}
-    </div>
+      </div>
+    </PullToRefreshWrapper>
   );
 };
 

@@ -1,12 +1,15 @@
-// Customers View v5.3 - SWIPE GESTURE CONFLICT FIX
+// Customers View v5.5 - PULL TO REFRESH
 // Customer analytics and insights dashboard
 // Clean, focused design with RFM hero and integrated table
 //
 // CHANGELOG:
-// v5.3 (2026-01-12): Forward swipe callbacks to child components
-//   - Accept onChildSwipeStart/End props from App.jsx
-//   - Pass to AtRiskCustomersTable as onSwipeStart/End
-//   - Fixes: Row swipe no longer triggers view navigation
+// v5.5 (2026-01-12): Pull-to-refresh support
+//   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
+//   - Accepts onDataChange prop for refresh callback
+// v5.4 (2026-01-12): Removed swipe view navigation callbacks
+//   - REMOVED: onChildSwipeStart/End props (no longer needed)
+//   - Mobile navigation now exclusively via bottom nav bar + side menu
+//   - Row swipe actions (call/WhatsApp) work without conflicts
 // v5.2 (2026-01-09): Fix mobile sheet callback chain
 //   - FIXED: handleOpenCustomerProfile now wrapped in useCallback with [customerMap] dependency
 //   - This ensures stable callback reference for MobileTooltipSheet "Ver Perfil" button
@@ -45,8 +48,9 @@ const CustomerTrendDrilldown = lazy(() => import('../components/drilldowns/Custo
 import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, ChartLoadingFallback } from '../utils/lazyCharts';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
+import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
-const Customers = ({ data, onChildSwipeStart, onChildSwipeEnd }) => {
+const Customers = ({ data, onDataChange }) => {
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedKPI, setSelectedKPI] = useState(null); // For KPI drilldown modal
@@ -279,9 +283,10 @@ const Customers = ({ data, onChildSwipeStart, onChildSwipeEnd }) => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PullToRefreshWrapper onRefresh={onDataChange}>
+      <div className="space-y-6 animate-fade-in">
 
-      {/* Header with RetentionPulse + HealthPill */}
+        {/* Header with RetentionPulse + HealthPill */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center border-l-4 border-purple-500">
@@ -355,8 +360,6 @@ const Customers = ({ data, onChildSwipeStart, onChildSwipeEnd }) => {
             <AtRiskCustomersTable
               customerMetrics={metrics}
               salesData={data.sales}
-              onSwipeStart={onChildSwipeStart}
-              onSwipeEnd={onChildSwipeEnd}
             />
           </div>
         )}
@@ -437,7 +440,8 @@ const Customers = ({ data, onChildSwipeStart, onChildSwipeEnd }) => {
           />
         </Suspense>
       )}
-    </div>
+      </div>
+    </PullToRefreshWrapper>
   );
 };
 

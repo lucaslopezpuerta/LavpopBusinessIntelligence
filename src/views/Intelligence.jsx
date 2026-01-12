@@ -1,8 +1,13 @@
-// Intelligence.jsx v3.16.0 - TOOLTIP HELP ICONS
+// Intelligence.jsx v3.17.0 - PULL TO REFRESH WRAPPER
 // Refactored with Priority Matrix, auto-refresh, collapsible sections
 // Design System v3.2 compliant with dark mode support
 //
 // CHANGELOG:
+// v3.17.0 (2026-01-12): Pull-to-refresh wrapper integration
+//   - REPLACED: Custom pull-to-refresh with PullToRefreshWrapper component
+//   - REMOVED: pullDistance, isPulling, touchStartY state vars
+//   - REMOVED: handleTouchStart/Move/End handlers
+//   - Consistent pull-to-refresh UX across all views
 // v3.16.0 (2026-01-07): Tooltip help icons (Plan Item 1.2)
 //   - Added METRIC_TOOLTIPS import from constants
 //   - All 4 Quick Stats KPICards now have tooltip prop
@@ -124,6 +129,7 @@ import { getBrazilDateParts } from '../utils/dateUtils';
 import KPICard, { KPIGrid } from '../components/ui/KPICard';
 import { METRIC_TOOLTIPS } from '../constants/metricTooltips';
 import { IntelligenceLoadingSkeleton } from '../components/ui/Skeleton';
+import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 // Lazy-loaded section components (contain charts)
 import {
@@ -204,11 +210,6 @@ const Intelligence = ({ data, onDataChange }) => {
     }));
   }, []);
 
-  // Pull-to-refresh state
-  const [pullDistance, setPullDistance] = useState(0);
-  const [isPulling, setIsPulling] = useState(false);
-  const touchStartY = useRef(0);
-  const containerRef = useRef(null);
 
   // Fetch daily revenue data
   const loadDailyRevenue = useCallback(async () => {
@@ -242,28 +243,6 @@ const Intelligence = ({ data, onDataChange }) => {
     }
   }, [isRefreshing, onDataChange, loadDailyRevenue]);
 
-  // Pull-to-refresh handlers (mobile only)
-  const handleTouchStart = useCallback((e) => {
-    if (!isMobile || window.scrollY > 0) return;
-    touchStartY.current = e.touches[0].clientY;
-    setIsPulling(true);
-  }, [isMobile]);
-
-  const handleTouchMove = useCallback((e) => {
-    if (!isPulling || !isMobile) return;
-    const currentY = e.touches[0].clientY;
-    const distance = Math.max(0, Math.min(100, currentY - touchStartY.current));
-    setPullDistance(distance);
-  }, [isPulling, isMobile]);
-
-  const handleTouchEnd = useCallback(() => {
-    if (!isPulling) return;
-    setIsPulling(false);
-    if (pullDistance > 60) {
-      handleRefresh();
-    }
-    setPullDistance(0);
-  }, [isPulling, pullDistance, handleRefresh]);
 
   // Fallback fetch on mount - only if not preloaded
   // (preloaded data is set in state initialization above)
@@ -484,30 +463,10 @@ const Intelligence = ({ data, onDataChange }) => {
     : 0;
 
   return (
-    <>
-      {/* Pull-to-refresh indicator (mobile only) */}
-      {isMobile && pullDistance > 0 && (
-        <div
-          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center bg-emerald-500 dark:bg-emerald-600 text-white transition-all duration-200"
-          style={{ height: Math.min(pullDistance, 60), opacity: pullDistance / 60 }}
-        >
-          <RefreshCw className={`w-5 h-5 ${pullDistance > 60 ? 'animate-spin' : ''}`} />
-          <span className="ml-2 text-sm font-medium">
-            {pullDistance > 60 ? 'Solte para atualizar' : 'Puxe para atualizar'}
-          </span>
-        </div>
-      )}
+    <PullToRefreshWrapper onRefresh={handleRefresh}>
+      <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
-      <div
-        ref={containerRef}
-        className="space-y-6 sm:space-y-8 animate-fade-in"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={isMobile && pullDistance > 0 ? { transform: `translateY(${Math.min(pullDistance, 60)}px)` } : undefined}
-      >
-
-          {/* Header */}
+        {/* Header */}
           <header className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center border-l-4 border-emerald-500">
@@ -619,7 +578,7 @@ const Intelligence = ({ data, onDataChange }) => {
           </Suspense>
 
       </div>
-    </>
+    </PullToRefreshWrapper>
   );
 };
 

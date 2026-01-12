@@ -1,6 +1,10 @@
-// Weather.jsx v1.2
+// Weather.jsx v1.3 - PULL TO REFRESH
 // Weather Intelligence view - combines real-time forecast with business impact analytics
 //
+// CHANGELOG:
+// v1.3 (2026-01-12): Pull-to-refresh support
+//   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
+//   - Accepts onDataChange prop for refresh callback
 // v1.2 (2025-12-21): Backend OLS model integration
 //   - Removed salesData prop (backend handles revenue correlation)
 //   - WeatherBusinessImpact now uses useRevenuePrediction hook
@@ -9,6 +13,7 @@
 
 import React from 'react';
 import { WeatherSection } from '../components/weather';
+import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 /**
  * Weather View
@@ -20,13 +25,15 @@ import { WeatherSection } from '../components/weather';
  * - Detailed weather metrics (UV, wind, pressure, etc.)
  * - Business impact predictions using backend OLS regression model
  */
-const Weather = () => {
+const Weather = ({ onDataChange }) => {
   return (
-    <WeatherSection
-      showAnalytics={true}
-      showMetrics={true}
-      refreshInterval={30 * 60 * 1000} // 30 minutes
-    />
+    <PullToRefreshWrapper onRefresh={onDataChange}>
+      <WeatherSection
+        showAnalytics={true}
+        showMetrics={true}
+        refreshInterval={30 * 60 * 1000} // 30 minutes
+      />
+    </PullToRefreshWrapper>
   );
 };
 

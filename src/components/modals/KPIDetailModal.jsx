@@ -1,8 +1,16 @@
-// KPIDetailModal.jsx v2.4
+// KPIDetailModal.jsx v2.7 - REFACTORED TO useScrollLock HOOK
 // Enhanced modal with metric-aware header
-// Design System v3.1 compliant
+// Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.7 (2026-01-12): Refactored to useScrollLock hook
+//   - Replaced inline scroll lock useEffect with shared useScrollLock hook
+//   - Reduces code duplication across modals
+// v2.6 (2026-01-12): Safe area compliance
+//   - Added pb-safe to content area for iPhone home indicator
+// v2.5 (2026-01-12): iOS-compatible scroll lock
+//   - Upgraded scroll lock to fixed position method for iOS Safari
+//   - Preserves scroll position when modal closes
 // v2.4 (2025-12-16): Added subtitle prop
 //   - Subtitle displayed below title in header
 //   - Useful for context like "Últimas 8 semanas"
@@ -24,6 +32,7 @@ import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 // Color mapping for accent backgrounds
 const colorMap = {
@@ -57,15 +66,15 @@ const KPIDetailModal = ({
 
         if (isOpen) {
             document.addEventListener('keydown', handleEscape);
-            // Prevent body scroll
-            document.body.style.overflow = 'hidden';
         }
 
         return () => {
             document.removeEventListener('keydown', handleEscape);
-            document.body.style.overflow = 'unset';
         };
     }, [isOpen, onClose]);
+
+    // iOS-compatible scroll lock - prevents body scroll while modal is open
+    useScrollLock(isOpen);
 
     return (
         <AnimatePresence>
@@ -129,8 +138,8 @@ const KPIDetailModal = ({
                                 </div>
                             </div>
 
-                            {/* Content - Scrollable */}
-                            <div className="p-6 overflow-y-auto custom-scrollbar">
+                            {/* Content - Scrollable with safe area */}
+                            <div className="p-6 pb-safe overflow-y-auto custom-scrollbar">
                                 {children}
                             </div>
                         </motion.div>

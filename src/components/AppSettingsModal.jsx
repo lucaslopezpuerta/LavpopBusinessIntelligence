@@ -1,7 +1,7 @@
 /**
  * AppSettingsModal - App-wide settings modal
  *
- * VERSION: 1.6
+ * VERSION: 1.9
  *
  * Replaces BusinessSettingsModal with improved UX:
  * - Dark mode support
@@ -12,8 +12,18 @@
  * - Input validation (min/max)
  * - Live total calculation
  * - Styled confirmation dialogs
+ * - iOS-compatible scroll lock (v1.9 - refactored to useScrollLock hook)
+ * - Safe area bottom padding for notch devices (v1.8)
  *
  * CHANGELOG:
+ * v1.9 (2026-01-12): Refactored to useScrollLock hook
+ *   - Replaced inline scroll lock useEffect with shared useScrollLock hook
+ *   - Reduces code duplication across modals
+ * v1.8 (2026-01-12): Safe area compliance
+ *   - Added pb-safe to footer for iPhone home indicator
+ * v1.7 (2026-01-12): iOS-compatible scroll lock
+ *   - Upgraded scroll lock to fixed position method for iOS Safari
+ *   - Preserves scroll position when modal closes
  * v1.6 (2026-01-07): Glass morphism enhancement
  *   - Added backdrop-blur and semi-transparent background to modal
  *   - Glass effect on footer for premium floating feel
@@ -56,6 +66,7 @@ import { X, Save, DollarSign, Wrench, Settings, Palette, Sun, Moon, Monitor, Ale
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
+import { useScrollLock } from '../hooks/useScrollLock';
 
 // Tab configuration
 const TABS = [
@@ -93,17 +104,8 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, hasChanges]);
 
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  // iOS-compatible scroll lock - prevents body scroll while modal is open
+  useScrollLock(isOpen);
 
   const handleChange = useCallback((field, value) => {
     setLocalSettings(prev => ({ ...prev, [field]: value }));
@@ -234,8 +236,8 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          {/* Footer - Compact with glass morphism */}
-          <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/30 backdrop-blur-sm rounded-b-2xl flex-shrink-0">
+          {/* Footer - Compact with glass morphism + safe area */}
+          <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 pb-safe border-t border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/30 backdrop-blur-sm rounded-b-2xl flex-shrink-0">
             <button
               onClick={handleClose}
               className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"

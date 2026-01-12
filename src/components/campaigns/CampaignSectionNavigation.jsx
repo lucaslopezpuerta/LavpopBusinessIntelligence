@@ -1,8 +1,12 @@
-// CampaignSectionNavigation.jsx v2.7
+// CampaignSectionNavigation.jsx v2.8 - SIDEBAR AWARENESS
 // Tab navigation for Campaigns view
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.8 (2026-01-12): Sidebar awareness
+//   - Added useSidebar hook to detect mobile drawer state
+//   - Returns null when mobile sidebar is open to prevent z-index conflicts
+//   - Same pattern as SocialMediaNavigation v1.4
 // v2.7 (2026-01-09): Active state enhancement
 //   - Added scale-[1.02] transform on active tab for premium feel
 //   - Enhanced visual feedback with scale + shadow combination
@@ -33,8 +37,11 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { Target, Zap, Users, MessageSquare, History } from 'lucide-react';
+import { useSidebar } from '../../contexts/SidebarContext';
 
 const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
+  // Get sidebar state to hide nav when mobile sidebar is open
+  const { isMobileOpen } = useSidebar();
   const scrollRef = useRef(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
@@ -80,6 +87,11 @@ const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
       }
     }
   }, [activeSection]);
+
+  // Hide nav when mobile sidebar is open to prevent z-index conflicts
+  if (isMobileOpen) {
+    return null;
+  }
 
   return (
     <nav

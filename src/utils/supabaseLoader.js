@@ -1,9 +1,13 @@
 /**
  * Supabase Loader - Loads all data from Supabase
  *
- * VERSION: 3.3
+ * VERSION: 3.4
  *
  * CHANGELOG:
+ * v3.4 (2026-01-12): Reduced cache TTL for realtime updates
+ *   - CACHE_TTL reduced from 24h to 4h
+ *   - Works with new realtime transaction subscription
+ *   - Data stays fresher with 1-2x daily POS updates
  * v3.3 (2025-12-28): Preload dailyRevenue during app initialization
  *   - dailyRevenue now included in loadAllData output
  *   - Eliminates separate fetch on Intelligence tab navigation
@@ -57,7 +61,7 @@ const CACHE_KEY_SALES = 'supabase_transactions';
 const CACHE_KEY_CUSTOMERS = 'supabase_customers';
 const CACHE_KEY_RFM = 'supabase_rfm';
 const CACHE_KEY_DAILY_REVENUE = 'supabase_daily_revenue';
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours (data updates 1-2x daily, realtime fills gaps)
 
 // ============== SUPABASE LOADERS ==============
 

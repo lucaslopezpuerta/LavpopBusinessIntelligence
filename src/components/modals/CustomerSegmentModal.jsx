@@ -1,8 +1,17 @@
-// CustomerSegmentModal.jsx v2.5 - SEPARATED COUNT DISPLAY
+// CustomerSegmentModal.jsx v2.8 - REFACTORED TO useScrollLock HOOK
 // Clean modal for displaying filtered customer lists with campaign integration
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.8 (2026-01-12): Refactored to useScrollLock hook
+//   - Replaced inline scroll lock useEffect with shared useScrollLock hook
+//   - Reduces code duplication across modals
+// v2.7 (2026-01-12): Full-screen safe area compliance
+//   - Added pt-safe to modal container for top notch/Dynamic Island on mobile
+//   - Full-screen mobile modals now respect both top and bottom safe areas
+// v2.6 (2026-01-12): iOS-compatible scroll lock
+//   - Upgraded scroll lock to fixed position method for iOS Safari
+//   - Preserves scroll position when modal closes
 // v2.5 (2026-01-11): Separated selection count
 //   - CHANGED: Checkbox + "Selecionar todos" label separated from count
 //   - CHANGED: Count always shows number (0 / 36) even when none selected
@@ -75,6 +84,7 @@ import { useSwipeToClose } from '../../hooks/useSwipeToClose';
 import { normalizePhone } from '../../utils/phoneUtils';
 import { api } from '../../utils/apiService';
 import { haptics } from '../../utils/haptics';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 // Items per page for pagination
 const ITEMS_PER_PAGE = 10;
@@ -189,14 +199,15 @@ const CustomerSegmentModal = ({
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
+
+  // iOS-compatible scroll lock - prevents body scroll while modal is open
+  useScrollLock(isOpen);
 
   // Selection handlers with haptic feedback
   const toggleSelectAll = useCallback(() => {
@@ -382,7 +393,8 @@ const CustomerSegmentModal = ({
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full sm:max-w-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl
                            rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-white/20 dark:border-slate-700/50
-                           flex flex-col h-full sm:h-auto max-h-full sm:max-h-[85vh] sm:my-4"
+                           flex flex-col h-full sm:h-auto max-h-full sm:max-h-[85vh] sm:my-4
+                           pt-safe sm:pt-0"
                 style={swipeStyle}
                 {...swipeHandlers}
               >

@@ -1,8 +1,12 @@
-// CustomerSectionNavigation.jsx v1.1
+// CustomerSectionNavigation.jsx v1.2 - SIDEBAR AWARENESS
 // Sticky section navigation tabs for Customers tab
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.2 (2026-01-12): Sidebar awareness
+//   - Added useSidebar hook to detect mobile drawer state
+//   - Returns null when mobile sidebar is open to prevent z-index conflicts
+//   - Same pattern as SocialMediaNavigation v1.4
 // v1.1 (2025-12-16): Removed Diretório, added progress indicator
 //   - Diretório moved to separate route (/diretorio)
 //   - Added progress dots showing current section
@@ -14,6 +18,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { LayoutGrid, AlertTriangle, BarChart3 } from 'lucide-react';
+import { useSidebar } from '../../contexts/SidebarContext';
 
 const SECTIONS = [
   { id: 'resumo-section', label: 'Resumo', shortLabel: 'Resumo', icon: LayoutGrid },
@@ -24,6 +29,9 @@ const SECTIONS = [
 const CustomerSectionNavigation = ({ className = '', hasAtRisk = true }) => {
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
   const [isSticky, setIsSticky] = useState(false);
+
+  // Get sidebar state to hide nav when mobile sidebar is open
+  const { isMobileOpen } = useSidebar();
 
   // Filter sections based on whether there are at-risk customers
   const visibleSections = hasAtRisk
@@ -83,6 +91,11 @@ const CustomerSectionNavigation = ({ className = '', hasAtRisk = true }) => {
       });
     }
   }, []);
+
+  // Hide nav when mobile sidebar is open to prevent z-index conflicts
+  if (isMobileOpen) {
+    return null;
+  }
 
   return (
     <nav

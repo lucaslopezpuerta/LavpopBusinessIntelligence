@@ -1,8 +1,11 @@
-// AutomationRules.jsx v6.1
+// AutomationRules.jsx v6.2 - SAFE AREA COMPLIANCE
 // Automation rules configuration for campaigns
 // Design System v4.0 compliant - Mobile-first redesign
 //
 // CHANGELOG:
+// v6.2 (2026-01-12): Safe area compliance
+//   - Toast notification now uses safe-area-inset for top/right position
+//   - Prevents clipping on iPhone Dynamic Island
 // v6.1 (2026-01-09): Typography & UX enhancements
 //   - Fixed text-[10px] → text-xs (StatusPill badges)
 //   - Fixed text-[11px] → text-xs (Quick stats row)
@@ -629,14 +632,18 @@ const AutomationRules = ({ audienceSegments }) => {
       color="purple"
       id="automation-rules"
     >
-      {/* Toast notification for toggle feedback */}
+      {/* Toast notification for toggle feedback - with safe area */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+          className={`fixed z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
             toast.type === 'success'
               ? 'bg-emerald-500 text-white'
               : 'bg-amber-500 text-white'
           }`}
+          style={{
+            top: 'calc(1rem + env(safe-area-inset-top, 0px))',
+            right: 'calc(1rem + env(safe-area-inset-right, 0px))'
+          }}
           role="alert"
           aria-live="polite"
         >

@@ -1,21 +1,28 @@
 /**
  * useRealtimeSync - Supabase Realtime subscription for live updates
- * v1.5 - FIX RECONNECTION LOOP
+ * v1.6 - TRANSACTIONS SUBSCRIPTION
  *
- * OPTIMIZED FOR FREE TIER: Only subscribes to contact_tracking table
- * (the most critical for Customers/Campaigns mobile UX)
+ * Subscribes to:
+ * - contact_tracking: All events (critical for Customers/Campaigns mobile UX)
+ * - transactions: INSERT only (triggers cache invalidation for fresh data)
  *
  * Benefits:
  * - Near-instant contact status updates (WebSocket, not HTTP polling)
+ * - Auto-refresh when new transactions inserted (no manual sync needed)
  * - Minimal data transfer (only changed records)
- * - No rate limits (single persistent connection)
+ * - No rate limits (single persistent connection per table)
  * - Works great on mobile (low battery/data usage)
- * - Free tier compatible (uses ~1 connection)
+ * - Free tier compatible (uses ~2 connections)
  * - Auto-reconnects on disconnect with exponential backoff
  * - Graceful degradation when realtime unavailable
  * - Auto-reconnects when returning to tab after idle
  *
  * CHANGELOG:
+ * v1.6 (2026-01-12): Transactions subscription
+ *   - Added second channel for transactions table (INSERT only)
+ *   - New callback: onTransactionInsert for cache invalidation
+ *   - Dispatches 'transactionUpdate' custom event for App.jsx
+ *   - Keeps existing contact_tracking subscription unchanged
  * v1.5 (2025-12-26): Fix reconnection loop
  *   - ROOT CAUSE: cleanupChannel() triggers CLOSED status, which schedules retry
  *   - FIX: Add intentionalDisconnectRef flag to skip CLOSED handler during cleanup
@@ -45,13 +52,15 @@
  *
  * Usage:
  *   const { lastUpdate, isConnected } = useRealtimeSync({
- *     onContactChange: (payload) => { ... }
+ *     onContactChange: (payload) => { ... },
+ *     onTransactionInsert: (payload) => { ... }
  *   });
  *
  * SETUP REQUIRED:
  * 1. Go to Supabase Dashboard → Database → Replication
- * 2. Enable realtime for "contact_tracking" table only
- * 3. That's it! Free tier includes Realtime at no extra cost
+ * 2. Enable realtime for "contact_tracking" table
+ * 3. Enable realtime for "transactions" table
+ * 4. That's it! Free tier includes Realtime at no extra cost
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -68,11 +77,13 @@ const STABLE_CONNECTION_THRESHOLD = 5000; // 5 seconds before considering connec
 
 export function useRealtimeSync({
   onContactChange,
+  onTransactionInsert,
   enabled = true
 } = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const channelRef = useRef(null);
+  const transactionChannelRef = useRef(null);
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef(null);
   const mountedRef = useRef(true);
@@ -108,35 +119,127 @@ export function useRealtimeSync({
     flushTimeoutRef.current = setTimeout(flushUpdates, 300);
   }, [flushUpdates]);
 
-  // Cleanup existing channel before reconnecting
-  const cleanupChannel = useCallback(async () => {
+  // Handle transaction INSERT - dispatch custom event for App.jsx to catch
+  const handleTransactionInsert = useCallback((payload) => {
+    console.info('[useRealtimeSync] Transaction INSERT detected:', payload.new?.id || 'batch');
+
+    // Dispatch custom event for App.jsx to invalidate cache
+    window.dispatchEvent(new CustomEvent('transactionUpdate', {
+      detail: { type: 'INSERT', data: payload.new }
+    }));
+
+    // Call provided callback if any
+    onTransactionInsert?.(payload);
+
+    setLastUpdate(new Date());
+  }, [onTransactionInsert]);
+
+  // Cleanup existing channels before reconnecting
+  const cleanupChannels = useCallback(async () => {
+    // Set flag to prevent CLOSED handler from triggering reconnection
+    intentionalDisconnectRef.current = true;
+
+    // Clean up contact_tracking channel
     if (channelRef.current) {
-      // Set flag to prevent CLOSED handler from triggering reconnection
-      intentionalDisconnectRef.current = true;
       try {
         await channelRef.current.unsubscribe();
       } catch {
         // Ignore unsubscribe errors
       }
       channelRef.current = null;
-      // Reset flag after cleanup
-      intentionalDisconnectRef.current = false;
     }
+
+    // Clean up transactions channel
+    if (transactionChannelRef.current) {
+      try {
+        await transactionChannelRef.current.unsubscribe();
+      } catch {
+        // Ignore unsubscribe errors
+      }
+      transactionChannelRef.current = null;
+    }
+
+    // Reset flag after cleanup
+    intentionalDisconnectRef.current = false;
   }, []);
 
-  // Setup realtime subscription
+  // Setup realtime subscriptions
   const setupRealtime = useCallback(async () => {
     if (!mountedRef.current) return;
 
     const supabase = await getSupabase();
     if (!supabase || !mountedRef.current) return;
 
-    // Clean up any existing channel first
-    await cleanupChannel();
+    // Clean up any existing channels first
+    await cleanupChannels();
 
-    // Subscribe ONLY to contact_tracking (optimized for free tier)
-    // This is the critical table for Customers/Campaigns real-time UX
-    const channel = supabase
+    // Status handler shared between channels
+    const handleStatus = (channelName) => (status) => {
+      if (!mountedRef.current) return;
+
+      console.debug(`[useRealtimeSync] ${channelName} status: ${status}`);
+
+      if (status === 'SUBSCRIBED') {
+        setIsConnected(true);
+        connectedAtRef.current = Date.now();
+
+        // Only reset retry count after connection is stable for STABLE_CONNECTION_THRESHOLD
+        if (stableTimeoutRef.current) {
+          clearTimeout(stableTimeoutRef.current);
+        }
+        stableTimeoutRef.current = setTimeout(() => {
+          // Check connectedAtRef instead of isConnected state to avoid stale closure
+          if (mountedRef.current && connectedAtRef.current) {
+            retryCountRef.current = 0;
+            gaveUpRef.current = false;
+            console.debug('[useRealtimeSync] Connection stable, retry counter reset');
+          }
+        }, STABLE_CONNECTION_THRESHOLD);
+      } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+        setIsConnected(false);
+        connectedAtRef.current = null;
+
+        // Clear stable connection timer
+        if (stableTimeoutRef.current) {
+          clearTimeout(stableTimeoutRef.current);
+          stableTimeoutRef.current = null;
+        }
+
+        // Skip reconnection if this was an intentional disconnect (during cleanup before reconnect)
+        if (intentionalDisconnectRef.current) return;
+
+        // Skip if already gave up
+        if (gaveUpRef.current) return;
+
+        // Attempt reconnection with exponential backoff
+        if (retryCountRef.current < MAX_RETRY_ATTEMPTS && mountedRef.current) {
+          const delay = Math.min(
+            INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current),
+            MAX_RETRY_DELAY
+          );
+          retryCountRef.current++;
+
+          console.warn(
+            `[useRealtimeSync] Connection lost. Reconnecting in ${delay / 1000}s (attempt ${retryCountRef.current}/${MAX_RETRY_ATTEMPTS})`
+          );
+
+          retryTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current && setupRealtimeRef.current) {
+              setupRealtimeRef.current();
+            }
+          }, delay);
+        } else if (retryCountRef.current >= MAX_RETRY_ATTEMPTS && !gaveUpRef.current) {
+          gaveUpRef.current = true;
+          console.warn(
+            `[useRealtimeSync] Max reconnection attempts (${MAX_RETRY_ATTEMPTS}) reached. Realtime sync disabled - app will continue working with cached data.`
+          );
+        }
+      }
+    };
+
+    // Channel 1: contact_tracking (all events)
+    // Critical table for Customers/Campaigns real-time UX
+    const contactChannel = supabase
       .channel('contact-changes')
       .on(
         'postgres_changes',
@@ -145,71 +248,26 @@ export function useRealtimeSync({
           queueUpdate(payload);
         }
       )
-      .subscribe((status) => {
-        if (!mountedRef.current) return;
+      .subscribe(handleStatus('contact_tracking'));
 
-        console.debug(`[useRealtimeSync] Status: ${status}`);
+    channelRef.current = contactChannel;
 
-        if (status === 'SUBSCRIBED') {
-          setIsConnected(true);
-          connectedAtRef.current = Date.now();
-
-          // Only reset retry count after connection is stable for STABLE_CONNECTION_THRESHOLD
-          if (stableTimeoutRef.current) {
-            clearTimeout(stableTimeoutRef.current);
-          }
-          stableTimeoutRef.current = setTimeout(() => {
-            // Check connectedAtRef instead of isConnected state to avoid stale closure
-            if (mountedRef.current && connectedAtRef.current) {
-              retryCountRef.current = 0;
-              gaveUpRef.current = false;
-              console.debug('[useRealtimeSync] Connection stable, retry counter reset');
-            }
-          }, STABLE_CONNECTION_THRESHOLD);
-        } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-          setIsConnected(false);
-          connectedAtRef.current = null;
-
-          // Clear stable connection timer
-          if (stableTimeoutRef.current) {
-            clearTimeout(stableTimeoutRef.current);
-            stableTimeoutRef.current = null;
-          }
-
-          // Skip reconnection if this was an intentional disconnect (during cleanup before reconnect)
-          if (intentionalDisconnectRef.current) return;
-
-          // Skip if already gave up
-          if (gaveUpRef.current) return;
-
-          // Attempt reconnection with exponential backoff
-          if (retryCountRef.current < MAX_RETRY_ATTEMPTS && mountedRef.current) {
-            const delay = Math.min(
-              INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current),
-              MAX_RETRY_DELAY
-            );
-            retryCountRef.current++;
-
-            console.warn(
-              `[useRealtimeSync] Connection lost. Reconnecting in ${delay / 1000}s (attempt ${retryCountRef.current}/${MAX_RETRY_ATTEMPTS})`
-            );
-
-            retryTimeoutRef.current = setTimeout(() => {
-              if (mountedRef.current && setupRealtimeRef.current) {
-                setupRealtimeRef.current();
-              }
-            }, delay);
-          } else if (retryCountRef.current >= MAX_RETRY_ATTEMPTS && !gaveUpRef.current) {
-            gaveUpRef.current = true;
-            console.warn(
-              `[useRealtimeSync] Max reconnection attempts (${MAX_RETRY_ATTEMPTS}) reached. Realtime sync disabled - app will continue working with cached data.`
-            );
-          }
+    // Channel 2: transactions (INSERT only)
+    // Triggers cache invalidation when new transactions are inserted
+    // DB trigger auto-updates customer metrics, so we only need INSERT
+    const transactionChannel = supabase
+      .channel('transaction-inserts')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'transactions' },
+        (payload) => {
+          handleTransactionInsert(payload);
         }
-      });
+      )
+      .subscribe(handleStatus('transactions'));
 
-    channelRef.current = channel;
-  }, [queueUpdate, cleanupChannel]);
+    transactionChannelRef.current = transactionChannel;
+  }, [queueUpdate, handleTransactionInsert, cleanupChannels]);
 
   // Keep setupRealtimeRef in sync with the latest setupRealtime function
   // This allows the retry logic to call the latest version without dependency issues
@@ -271,11 +329,15 @@ export function useRealtimeSync({
         clearTimeout(stableTimeoutRef.current);
       }
 
-      // Cleanup channel directly without calling cleanupChannel()
+      // Cleanup channels directly without calling cleanupChannels()
       // This avoids triggering CLOSED status which would increment retry counter
       if (channelRef.current) {
         channelRef.current.unsubscribe().catch(() => {});
         channelRef.current = null;
+      }
+      if (transactionChannelRef.current) {
+        transactionChannelRef.current.unsubscribe().catch(() => {});
+        transactionChannelRef.current = null;
       }
     };
   }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
