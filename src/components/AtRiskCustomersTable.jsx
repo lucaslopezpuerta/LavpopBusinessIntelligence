@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v9.0 - UX ENHANCEMENTS
+// AtRiskCustomersTable.jsx v9.7 - SWIPE GESTURE CONFLICT FIX (PARENT SIGNAL)
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
@@ -8,8 +8,32 @@
 // ✅ Sort persistence (localStorage)
 // ✅ Keyboard navigation
 // ✅ Descriptive column names
+// ✅ Hide checkbox for contacted customers
+// ✅ Swipe actions work correctly with view navigation
 //
 // CHANGELOG:
+// v9.7 (2026-01-12): Fixed swipe gesture conflict using parent signal
+//   - Accept onSwipeStart/End props from parent
+//   - Call onSwipeStart in handleTouchStart to disable Framer Motion drag
+//   - Call onSwipeEnd in handleTouchEnd/Move/Cancel to re-enable
+//   - This properly disables view navigation during row swipe
+//   - Root cause: Framer Motion uses document-level pointer listeners
+// v9.6 (2026-01-11): Tried preventDefault (still didn't work)
+//   - e.preventDefault() only blocks React events, not Framer Motion
+// v9.5 (2026-01-11): Tried data-swipe-row attribute (didn't work)
+// v9.4 (2026-01-11): Tried onPointerDownCapture stopPropagation (didn't work)
+// v9.3 (2026-01-11): UX refinements
+//   - CHANGED: Items per page reduced from 10 to 5 for better focus
+//   - CHANGED: Hide checkbox for contacted customers (mobile & desktop)
+//   - Spacer div maintains layout alignment when checkbox is hidden
+// v9.2 (2026-01-11): Green/contacted name text dark mode fix
+//   - FIXED: Contacted/blacklisted customer names now have dark:text-slate-400 (mobile card view)
+//   - FIXED: Contacted/blacklisted customer names now have dark:text-slate-400 (desktop table view)
+// v9.1 (2026-01-11): Dark mode contrast fixes
+//   - FIXED: Added dark mode variants to icons (Search, X, ArrowUpDown, ChevronRight)
+//   - FIXED: Avatar text colors (text-red-600, text-emerald-600) now have dark variants
+//   - FIXED: Days urgency conditional red text now has dark variant
+//   - FIXED: "Bloqueado" labels now have proper dark mode contrast
 // v9.0 (2025-12-16): Major UX enhancements
 //   - NEW: Quick filter tabs (Todos/Sem contato/Contactados)
 //   - NEW: Last contact info display (date + method)
@@ -37,7 +61,7 @@ import { useBlacklist } from '../hooks/useBlacklist';
 import { addCommunicationEntry, getDefaultNotes } from '../utils/communicationLog';
 import { isValidBrazilianMobile, normalizePhone } from '../utils/phoneUtils';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 const STORAGE_KEY = 'atRiskTable_sortBy';
 
 // Sort options
@@ -63,7 +87,7 @@ const getDaysUrgencyColor = (days) => {
   return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
 };
 
-const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
+const AtRiskCustomersTable = ({ customerMetrics, salesData, onSwipeStart, onSwipeEnd }) => {
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -342,10 +366,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
 
   // Touch handlers for swipe (mobile)
   const handleTouchStart = useCallback((e, customerId) => {
+    // Signal parent to disable view navigation while row is being swiped
+    onSwipeStart?.();
+
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
     setSwipeState({ id: customerId, direction: null, offset: 0 });
-  }, []);
+  }, [onSwipeStart]);
 
   const handleTouchMove = useCallback((e, customerId) => {
     if (swipeState.id !== customerId) return;
@@ -354,16 +381,24 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     const deltaX = touch.clientX - touchStartRef.current.x;
     const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
 
-    if (deltaY > Math.abs(deltaX) * 0.5) return;
+    // If more vertical than horizontal, reset and allow normal scroll
+    if (deltaY > Math.abs(deltaX) * 0.5) {
+      onSwipeEnd?.(); // Re-enable view navigation
+      setSwipeState({ id: null, direction: null, offset: 0 });
+      return;
+    }
 
     const maxOffset = 64;
     const offset = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
     const direction = offset > 20 ? 'right' : offset < -20 ? 'left' : null;
 
     setSwipeState({ id: customerId, direction, offset });
-  }, [swipeState.id]);
+  }, [swipeState.id, onSwipeEnd]);
 
   const handleTouchEnd = useCallback((customer, customerId) => {
+    // Signal parent to re-enable view navigation
+    onSwipeEnd?.();
+
     if (!swipeState.direction || !customer.phone) {
       setSwipeState({ id: null, direction: null, offset: 0 });
       return;
@@ -376,7 +411,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     }
 
     setSwipeState({ id: null, direction: null, offset: 0 });
-  }, [swipeState.direction, handleWhatsApp, handleCall]);
+  }, [swipeState.direction, handleWhatsApp, handleCall, onSwipeEnd]);
+
+  // Handle touch cancel (e.g., if user moves finger off screen)
+  const handleTouchCancel = useCallback(() => {
+    onSwipeEnd?.();
+    setSwipeState({ id: null, direction: null, offset: 0 });
+  }, [onSwipeEnd]);
 
   const getRiskStyles = (riskLevel) => {
     const riskConfig = RISK_LABELS[riskLevel] || RISK_LABELS['Lost'];
@@ -464,7 +505,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
 
             {/* Search */}
             <div className="relative flex-1 max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 placeholder="Buscar por nome..."
@@ -477,14 +518,14 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600"
                 >
-                  <X className="w-3 h-3 text-slate-400" />
+                  <X className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                 </button>
               )}
             </div>
 
             {/* Sort + Blacklist controls */}
             <div className="flex items-center gap-2 sm:ml-auto">
-              <ArrowUpDown className="w-4 h-4 text-slate-400 hidden sm:block" />
+              <ArrowUpDown className="w-4 h-4 text-slate-400 dark:text-slate-500 hidden sm:block" />
               <select
                 value={sortBy}
                 onChange={(e) => handleSortChange(e.target.value)}
@@ -552,7 +593,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                     </>
                   )}
 
-                  {/* Card content */}
+                  {/* Card content - uses preventDefault in touch handlers to prevent view navigation conflict */}
                   <div
                     className={`
                       relative flex items-center gap-3 p-3
@@ -571,24 +612,29 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                     onTouchStart={(e) => hasPhone && !contacted && canContact && handleTouchStart(e, customerId)}
                     onTouchMove={(e) => hasPhone && !contacted && canContact && handleTouchMove(e, customerId)}
                     onTouchEnd={() => !contacted && canContact && handleTouchEnd(customer, customerId)}
+                    onTouchCancel={handleTouchCancel}
                   >
-                    {/* Checkbox */}
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={(e) => toggleSelect(customerId, e)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-lavpop-blue focus:ring-lavpop-blue flex-shrink-0"
-                    />
+                    {/* Checkbox - hidden if contacted */}
+                    {!contacted ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => toggleSelect(customerId, e)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-lavpop-blue focus:ring-lavpop-blue flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-4 h-4 flex-shrink-0" /> /* Spacer to maintain layout */
+                    )}
 
                     {/* Avatar/Initial */}
                     <div className="relative flex-shrink-0">
                       <div className={`
                         w-9 h-9 rounded-full flex items-center justify-center shadow-sm font-semibold text-xs
                         ${blacklisted
-                          ? 'bg-red-100 dark:bg-red-900/40 text-red-600'
+                          ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
                           : contacted
-                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
                             : 'bg-white dark:bg-slate-600 text-slate-600 dark:text-slate-300'
                         }
                       `}>
@@ -601,7 +647,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
 
                     {/* Customer info */}
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-semibold truncate ${blacklisted || contacted ? 'text-slate-500' : 'text-slate-900 dark:text-white'}`}>
+                      <p className={`text-sm font-semibold truncate ${blacklisted || contacted ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                         {customer.name || 'Sem nome'}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
@@ -611,7 +657,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                           </span>
                         ) : (
                           <>
-                            <span className={`font-medium ${getDaysUrgencyColor(customer.daysSinceLastVisit || 0).includes('text-white') ? 'text-red-600' : ''}`}>
+                            <span className={`font-medium ${getDaysUrgencyColor(customer.daysSinceLastVisit || 0).includes('text-white') ? 'text-red-600 dark:text-red-400' : ''}`}>
                               {customer.daysSinceLastVisit || 0}d
                             </span>
                             <span>·</span>
@@ -621,7 +667,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                       </p>
                     </div>
 
-                    <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
                   </div>
                 </div>
               );
@@ -721,24 +767,28 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                         }
                       }}
                     >
-                      {/* Checkbox */}
+                      {/* Checkbox - hidden if contacted */}
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => toggleSelect(customerId, e)}
-                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-lavpop-blue focus:ring-lavpop-blue"
-                        />
+                        {!contacted ? (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => toggleSelect(customerId, e)}
+                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-lavpop-blue focus:ring-lavpop-blue"
+                          />
+                        ) : (
+                          <div className="w-4 h-4" /> /* Spacer to maintain layout */
+                        )}
                       </td>
 
                       {/* Cliente */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${blacklisted || contacted ? 'text-slate-500' : 'text-slate-900 dark:text-white'}`}>
+                          <span className={`font-semibold ${blacklisted || contacted ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                             {customer.name || 'Sem nome'}
                           </span>
                           {blacklisted && (
-                            <span className="text-red-500 text-xs" title={blacklistInfo?.reason}>Bloqueado</span>
+                            <span className="text-red-500 dark:text-red-400 text-xs" title={blacklistInfo?.reason}>Bloqueado</span>
                           )}
                         </div>
                       </td>
@@ -782,7 +832,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
                       <td className="px-4 py-3">
                         {blacklisted ? (
                           <div className="flex items-center justify-center">
-                            <span className="text-xs text-slate-400 italic">Bloqueado</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 italic">Bloqueado</span>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-1">

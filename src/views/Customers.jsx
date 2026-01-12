@@ -1,8 +1,12 @@
-// Customers View v5.2 - STABLE CALLBACK FIX
+// Customers View v5.3 - SWIPE GESTURE CONFLICT FIX
 // Customer analytics and insights dashboard
 // Clean, focused design with RFM hero and integrated table
 //
 // CHANGELOG:
+// v5.3 (2026-01-12): Forward swipe callbacks to child components
+//   - Accept onChildSwipeStart/End props from App.jsx
+//   - Pass to AtRiskCustomersTable as onSwipeStart/End
+//   - Fixes: Row swipe no longer triggers view navigation
 // v5.2 (2026-01-09): Fix mobile sheet callback chain
 //   - FIXED: handleOpenCustomerProfile now wrapped in useCallback with [customerMap] dependency
 //   - This ensures stable callback reference for MobileTooltipSheet "Ver Perfil" button
@@ -42,7 +46,7 @@ import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, ChartLoadi
 import { useContactTracking } from '../hooks/useContactTracking';
 import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
 
-const Customers = ({ data }) => {
+const Customers = ({ data, onChildSwipeStart, onChildSwipeEnd }) => {
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedKPI, setSelectedKPI] = useState(null); // For KPI drilldown modal
@@ -351,6 +355,8 @@ const Customers = ({ data }) => {
             <AtRiskCustomersTable
               customerMetrics={metrics}
               salesData={data.sales}
+              onSwipeStart={onChildSwipeStart}
+              onSwipeEnd={onChildSwipeEnd}
             />
           </div>
         )}

@@ -23,6 +23,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // Color mapping for accent backgrounds
 const colorMap = {
@@ -46,6 +47,8 @@ const KPIDetailModal = ({
     color = 'slate',
     badge
 }) => {
+    const prefersReducedMotion = useReducedMotion();
+
     // Close on escape key
     useEffect(() => {
         const handleEscape = (e) => {
@@ -70,18 +73,19 @@ const KPIDetailModal = ({
                 <>
                     {/* Backdrop */}
                     <motion.div
-                        initial={{ opacity: 0 }}
+                        initial={prefersReducedMotion ? false : { opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        exit={prefersReducedMotion ? undefined : { opacity: 0 }}
+                        transition={prefersReducedMotion ? { duration: 0 } : undefined}
                         onClick={onClose}
                         className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
                     >
                         {/* Modal Container */}
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                            exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.95, y: 20 }}
+                            transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", duration: 0.5, bounce: 0.3 }}
                             onClick={(e) => e.stopPropagation()}
                             className={`
                 relative w-full ${maxWidth}

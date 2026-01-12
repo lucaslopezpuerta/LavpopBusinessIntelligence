@@ -1,4 +1,4 @@
-// useSwipeNavigation.js v1.1 - CORRECT TAB ORDER
+// useSwipeNavigation.js v1.3 - SIMPLIFIED (PREVENTDEFAULT HANDLES CONFLICT)
 // Hook for swipe gesture navigation between tabs
 //
 // FEATURES:
@@ -12,7 +12,19 @@
 // const { handlers, isSwipeable } = useSwipeNavigation();
 // <motion.div {...handlers}>content</motion.div>
 //
+// NOTE: Child components that have their own swipe gestures should use
+// e.preventDefault() in their touch handlers to prevent conflicts.
+// See AtRiskCustomersTable.jsx and CustomerListDrilldown.jsx for examples.
+//
 // CHANGELOG:
+// v1.3 (2026-01-11): Simplified - removed data-swipe-row detection
+//   - Child components now use preventDefault in touch handlers
+//   - Removed onDragStart and ignoreDragRef (no longer needed)
+//   - Cleaner, more reliable conflict resolution
+// v1.2 (2026-01-11): Tried data-swipe-row approach (incomplete fix)
+//   - Added onDragStart to detect drags from [data-swipe-row] elements
+//   - Used ref to track if current drag should be ignored
+//   - Didn't fully work because native touch and Framer Motion run in parallel
 // v1.1 (2025-12-22): Corrected tab order to match desktop sidebar
 //   - Order: dashboard → customers → diretorio → campaigns
 //   - Added haptic feedback on successful swipe

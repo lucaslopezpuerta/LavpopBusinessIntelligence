@@ -1,7 +1,18 @@
-// useTouchTooltip.js v1.8 - PORTAL EXCLUSION FIX
+// useTouchTooltip.js v2.0 - CONFIGURABLE TOUCH AUTO-DISMISS
 // Shared hook for mobile-friendly tooltip interactions on charts
 //
 // CHANGELOG:
+// v2.0 (2026-01-11): Configurable auto-dismiss for touch devices
+//   - NEW: skipTouchAutoDismiss option (default: false)
+//   - When true: No auto-dismiss on touch (for MobileTooltipSheet with explicit close)
+//   - When false: Keep 5s auto-dismiss on touch (for floating tooltips)
+//   - This allows floating tooltips (ChurnHistogram, NewClientsChart) to auto-dismiss
+//     while MobileTooltipSheet (RFMScatterPlot) stays open until user closes
+// v1.9 (2026-01-11): Disable auto-dismiss on touch devices
+//   - CHANGED: Auto-dismiss now only applies to desktop (floating tooltips)
+//   - Touch devices use MobileTooltipSheet which has explicit close controls:
+//     swipe-to-close, backdrop tap, and close button (X)
+//   - Removes time pressure for users reading/deciding on mobile
 // v1.8 (2026-01-09): Portal exclusion fix for MobileTooltipSheet
 //   - FIXED: handleOutsideClick now excludes [data-mobile-tooltip-sheet] elements
 //   - This prevents premature activeTooltip clear when touching buttons in Portal-rendered sheet
@@ -67,9 +78,12 @@ const getIsTouchDevice = () => {
  * @param {Function} options.onAction - Callback when user double-taps (opens modal)
  * @param {number} options.dismissTimeout - Auto-dismiss timeout in ms (default: 5000)
  * @param {number} options.modalAnimationDelay - Time to wait for modal animations (default: 300)
+ * @param {number} options.longPressDuration - Long-press duration in ms (default: 500)
+ * @param {boolean} options.skipTouchAutoDismiss - Skip auto-dismiss on touch devices (default: false)
+ *                  Set to true when using MobileTooltipSheet (has explicit close controls)
  * @returns {Object} { activeTooltip, handleTouch, clearTooltip, tooltipHidden, resetTooltipVisibility, isTouchDevice }
  */
-export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimationDelay = 300, longPressDuration = 500 } = {}) {
+export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimationDelay = 300, longPressDuration = 500, skipTouchAutoDismiss = false } = {}) {
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [tooltipHidden, setTooltipHidden] = useState(false);
   const [isLongPressing, setIsLongPressing] = useState(false);
@@ -87,7 +101,12 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
   const checkIsTouchDevice = useCallback(() => getIsTouchDevice(), []);
 
   // Auto-dismiss timeout
+  // skipTouchAutoDismiss: true = no auto-dismiss on touch (MobileTooltipSheet has explicit close)
+  // skipTouchAutoDismiss: false = keep auto-dismiss on touch (floating tooltips need it)
   useEffect(() => {
+    // Optionally skip auto-dismiss on touch devices (for MobileTooltipSheet users)
+    if (skipTouchAutoDismiss && getIsTouchDevice()) return;
+
     if (activeTooltip && dismissTimeout > 0) {
       timeoutRef.current = setTimeout(() => {
         setActiveTooltip(null);
@@ -99,7 +118,7 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
         }
       };
     }
-  }, [activeTooltip, dismissTimeout]);
+  }, [activeTooltip, dismissTimeout, skipTouchAutoDismiss]);
 
   // Clear tooltip when clicking outside (for touch devices)
   useEffect(() => {

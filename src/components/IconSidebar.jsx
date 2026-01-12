@@ -24,6 +24,7 @@ import { Link } from 'react-router-dom';
 import FocusTrap from 'focus-trap-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import ThemeToggle from './ThemeToggle';
 
 // PNG logo from public folder (matches LoadingScreen/LoginPage for consistency)
@@ -64,6 +65,7 @@ const utilityItem = { id: 'upload', label: 'Importar', icon: Upload, path: '/upl
 
 const IconSidebar = ({ activeTab, onNavigate }) => {
   const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar, isPinned, togglePinned } = useSidebar();
+  const prefersReducedMotion = useReducedMotion();
   const collapseTimeoutRef = useRef(null);
 
   // Clean up timeout on unmount
@@ -138,7 +140,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
       className="hidden lg:flex fixed left-0 top-0 h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex-col"
       initial={false}
       animate={{ width: isExpanded ? 240 : 64 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.3, ease: 'easeInOut' }}
       onMouseEnter={() => !isPinned && setIsHovered(true)}
       onMouseLeave={() => !isPinned && setIsHovered(false)}
     >
@@ -272,10 +274,10 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
           >
             <motion.aside
               className="lg:hidden fixed left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-top safe-area-left"
-              initial={{ x: -300 }}
+              initial={prefersReducedMotion ? false : { x: -300 }}
               animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              exit={prefersReducedMotion ? undefined : { x: -300 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 300 }}
               role="dialog"
               aria-modal="true"
               aria-label="Menu de navegacao"

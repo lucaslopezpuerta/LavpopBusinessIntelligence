@@ -1,4 +1,4 @@
-// App.jsx v8.12.0 - ADMIN AUTHENTICATION
+// App.jsx v8.12.1 - SWIPE GESTURE CONFLICT FIX
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -17,12 +17,17 @@
 // ✅ Accessibility: prefers-reduced-motion support
 // ✅ Real CSV/PDF export per view
 // ✅ SWR caching: instant load from IndexedDB, silent cache refresh
-// ✅ Swipe navigation between main tabs on mobile
+// ✅ Swipe navigation between main tabs on mobile (with child swipe conflict fix)
 // ✅ Data completeness validation with console warnings
 // ✅ Cache error recovery with auto-refresh
 // ✅ Defensive data rendering - prevents empty white tabs after idle
 //
 // CHANGELOG:
+// v8.12.1 (2026-01-12): Swipe gesture conflict fix
+//   - Added isChildSwiping state to track child component swipes
+//   - Conditionally disable Framer Motion drag when child is swiping
+//   - Pass onChildSwipeStart/End callbacks to child views
+//   - Fixes: Row swipe actions no longer trigger view navigation
 // v8.12.0 (2025-12-26): Admin authentication
 //   - Added AuthProvider for Supabase authentication
 //   - Added /login route with LoginPage component
@@ -257,6 +262,9 @@ function AppContent() {
   const [viewMode, setViewMode] = useState('complete');
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
+
+  // Track when child component is handling its own swipe (prevents view navigation conflict)
+  const [isChildSwiping, setIsChildSwiping] = useState(false);
 
   // Smart refresh state
   const [lastRefreshed, setLastRefreshed] = useState(null);
@@ -532,7 +540,7 @@ function AppContent() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
-                {...(isSwipeable ? swipeHandlers : {})}
+                {...(isSwipeable && !isChildSwiping ? swipeHandlers : {})}
                 style={isSwipeable ? { touchAction: 'pan-y' } : undefined}
               >
                 <Suspense fallback={getLoadingFallback(activeTab)}>
@@ -547,6 +555,8 @@ function AppContent() {
                       viewMode={viewMode}
                       setViewMode={setViewMode}
                       onDataChange={refreshAfterAction}
+                      onChildSwipeStart={() => setIsChildSwiping(true)}
+                      onChildSwipeEnd={() => setIsChildSwiping(false)}
                     />
                   )}
                 </Suspense>

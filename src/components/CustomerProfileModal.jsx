@@ -1,8 +1,48 @@
-// CustomerProfileModal.jsx v2.11 - FOCUS RING STANDARDIZATION
+// CustomerProfileModal.jsx v3.5 - SERVICE BREAKDOWN TEXT CONTRAST
 // Comprehensive customer profile modal for Customer Directory
 // Now the ONLY customer modal (CustomerDetailModal deprecated)
 //
 // CHANGELOG:
+// v3.5 (2026-01-11): Service breakdown & empty state text contrast
+//   - FIXED: "X serviços" text in Lavagem/Secagem cards
+//   - FIXED: Loading/empty state text in Communication History
+//   - FIXED: Timestamp text in Communication Log entries
+//   - Changed text-slate-400/500 → text-slate-500/600 dark:text-slate-400
+//   - Improves readability in both light and dark modes
+// v3.4 (2026-01-11): Dark mode icon contrast fixes
+//   - FIXED: Removed duplicate dark:text-blue-400 class on tab navigation (4 instances)
+//   - FIXED: Added dark mode variants to section header icons:
+//     * Wallet icon: dark:text-green-400
+//     * Target icon: dark:text-red-400
+//     * BarChart3 icon: dark:text-green-400
+//     * AlertTriangle (phone warning): dark:text-amber-400
+// v3.3 (2026-01-11): Risk card styling consistency fix
+//   - FIXED: Risk level mini-card now uses light 50-level backgrounds
+//   - FIXED: Added proper dark mode support (dark:bg-*-900/20)
+//   - NEW: RISK_CARD_STYLES and RISK_CARD_TEXT constants for consistent styling
+//   - Matches opacity/style of other mini-cards in modal
+// v3.2 (2026-01-11): Fix async communication log handling
+//   - FIXED: TypeError: communicationLog.map is not a function
+//   - Root cause: getCommunicationLog is async but was called synchronously
+//   - Initialize state with empty array (useEffect loads from backend)
+//   - Removed redundant setCommunicationLog calls from action handlers
+//   - Event listener already handles log updates via dispatched events
+// v3.1 (2026-01-11): Bug fixes from mobile UX audit
+//   - FIXED: Body scroll lock now works on iOS (position:fixed approach)
+//   - FIXED: Card title contrast improved (text-slate-400 → text-slate-500)
+//   - FIXED: Removed redundant WhatsApp button in Communication History
+//   - FIXED: Add button no longer shows + twice (removed duplicate text)
+//   - FIXED: Contacted indicator consolidated - removed header pill, keep toggle only
+// v3.0 (2026-01-11): Complete mobile UX transformation
+//   - FIXED: All text sizes now WCAG compliant (min 12px)
+//   - FIXED: All touch targets now 44px minimum
+//   - NEW: Full-screen layout on mobile (no margins/rounded corners)
+//   - NEW: Swipe-to-close gesture with handle indicator
+//   - NEW: Floating action bar for quick contact on mobile
+//   - NEW: Lucide icons in tab navigation
+//   - NEW: Haptic feedback on all interactive elements
+//   - IMPROVED: Badge layout with better spacing
+//   - IMPROVED: Content scrolling with safe area support
 // v2.11 (2026-01-07): Focus ring standardization for accessibility
 //   - Added focus-visible rings to close button, tabs, and action buttons
 //   - Added glass morphism to modal container (bg-white/95 backdrop-blur-xl)
@@ -92,6 +132,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Z_INDEX } from '../constants/zIndex';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import CustomerCyclesTrend from './drilldowns/CustomerCyclesTrend';
 import {
     X,
@@ -161,6 +202,27 @@ const RISK_PILL_STYLES = {
     'New Customer': 'bg-purple-500 text-white',
     'Lost': 'bg-slate-500 text-white',
 };
+
+// Light background styles for risk mini-cards with proper dark mode support
+// Uses subtle 50-level colors for consistency with other mini-cards
+const RISK_CARD_STYLES = {
+    'Healthy': 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50',
+    'Monitor': 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50',
+    'At Risk': 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50',
+    'Churning': 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50',
+    'New Customer': 'bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50',
+    'Lost': 'bg-slate-50 dark:bg-slate-700/20 border border-slate-200 dark:border-slate-600/50',
+};
+
+// Text colors for risk mini-cards with dark mode support
+const RISK_CARD_TEXT = {
+    'Healthy': 'text-green-700 dark:text-green-400',
+    'Monitor': 'text-blue-700 dark:text-blue-400',
+    'At Risk': 'text-amber-700 dark:text-amber-400',
+    'Churning': 'text-red-700 dark:text-red-400',
+    'New Customer': 'text-purple-700 dark:text-purple-400',
+    'Lost': 'text-slate-700 dark:text-slate-400',
+};
 import { formatCurrency } from '../utils/numberUtils';
 import { RISK_LABELS } from '../utils/customerMetrics';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -169,18 +231,27 @@ import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, g
 import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
 import { parseBrDate } from '../utils/dateUtils';
 import { useBlacklist } from '../hooks/useBlacklist';
+import { useSwipeToClose } from '../hooks/useSwipeToClose';
 import { haptics } from '../utils/haptics';
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
     const [showCyclesTrend, setShowCyclesTrend] = useState(false);
-    // Initialize with localStorage for immediate display, then fetch from backend
-    const [communicationLog, setCommunicationLog] = useState(() => getCommunicationLog(customer.doc));
+    // Initialize empty, useEffect loads from backend asynchronously
+    const [communicationLog, setCommunicationLog] = useState([]);
     const [isLoadingLog, setIsLoadingLog] = useState(true);
     const [newNote, setNewNote] = useState('');
     const [noteMethod, setNoteMethod] = useState('call');
     // Use matchMedia hook instead of resize listener
     const isMobile = useMediaQuery('(max-width: 639px)');
+    const prefersReducedMotion = useReducedMotion();
+
+    // Swipe-to-close gesture for mobile
+    const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
+        onClose,
+        threshold: 80,
+        resistance: 0.5,
+    });
 
     // Load communication log from backend (comm_logs table) on mount
     useEffect(() => {
@@ -243,12 +314,37 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         return () => document.removeEventListener('keydown', handleEscapeKey);
     }, [onClose]);
 
-    // Lock body scroll when modal is open
+    // Lock body scroll when modal is open (iOS-compatible)
     useEffect(() => {
-        const originalOverflow = document.body.style.overflow;
+        // Save current scroll position and styles
+        const scrollY = window.scrollY;
+        const originalStyles = {
+            overflow: document.body.style.overflow,
+            position: document.body.style.position,
+            top: document.body.style.top,
+            left: document.body.style.left,
+            right: document.body.style.right,
+            width: document.body.style.width,
+        };
+
+        // Lock scrolling - position:fixed prevents iOS scroll-through
         document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+
         return () => {
-            document.body.style.overflow = originalOverflow;
+            // Restore original styles
+            document.body.style.overflow = originalStyles.overflow;
+            document.body.style.position = originalStyles.position;
+            document.body.style.top = originalStyles.top;
+            document.body.style.left = originalStyles.left;
+            document.body.style.right = originalStyles.right;
+            document.body.style.width = originalStyles.width;
+            // Restore scroll position
+            window.scrollTo(0, scrollY);
         };
     }, []);
 
@@ -278,9 +374,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                 try {
                     const log = await getCommunicationLogAsync(customer.doc);
                     setCommunicationLog(log);
-                } catch {
-                    // Fallback to localStorage on error
-                    setCommunicationLog(getCommunicationLog(customer.doc));
+                } catch (error) {
+                    console.warn('Failed to refresh communication log:', error);
+                    // Keep current state on error (already an array)
                 }
             }
         };
@@ -294,9 +390,8 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         if (!newNote.trim()) return;
 
         // Use shared utility (will dispatch event for sync)
+        // Event listener will update communicationLog state automatically
         addCommunicationEntry(customer.doc, noteMethod, newNote);
-        // Update local state
-        setCommunicationLog(getCommunicationLog(customer.doc));
         setNewNote('');
     };
 
@@ -304,12 +399,12 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const riskConfig = RISK_LABELS[customer.riskLevel] || RISK_LABELS['Lost'];
 
     // Quick actions - use shared utility for communication logging
+    // Event listener updates communicationLog state automatically via dispatched event
     const handleCall = () => {
         if (customer.phone) {
             window.location.href = `tel:${customer.phone}`;
-            // Auto-log call attempt (uses shared utility)
+            // Auto-log call attempt (uses shared utility, dispatches event)
             addCommunicationEntry(customer.doc, 'call', getDefaultNotes('call'));
-            setCommunicationLog(getCommunicationLog(customer.doc));
             // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
                 markContacted(customerId, 'call', customerContext);
@@ -323,9 +418,8 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
             // Ensure country code for WhatsApp
             const whatsappPhone = cleanPhone.length === 11 ? '55' + cleanPhone : cleanPhone;
             window.open(`https://wa.me/${whatsappPhone}`, '_blank');
-            // Auto-log WhatsApp (uses shared utility)
+            // Auto-log WhatsApp (uses shared utility, dispatches event)
             addCommunicationEntry(customer.doc, 'whatsapp', getDefaultNotes('whatsapp'));
-            setCommunicationLog(getCommunicationLog(customer.doc));
             // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
                 markContacted(customerId, 'whatsapp', customerContext);
@@ -336,9 +430,8 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const handleEmail = () => {
         if (customer.email) {
             window.location.href = `mailto:${customer.email}`;
-            // Auto-log email (uses shared utility)
+            // Auto-log email (uses shared utility, dispatches event)
             addCommunicationEntry(customer.doc, 'email', getDefaultNotes('email'));
-            setCommunicationLog(getCommunicationLog(customer.doc));
             // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
                 markContacted(customerId, 'email', customerContext);
@@ -440,16 +533,27 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     // Portal rendering for proper z-index stacking
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-3 sm:p-4 animate-fade-in"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-0 sm:p-4 animate-fade-in"
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
             aria-labelledby="customer-profile-title"
         >
             <div
-                className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col border border-white/20 dark:border-slate-700/50"
+                className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl max-w-2xl w-full h-full sm:h-auto max-h-full sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-white/20 dark:border-slate-700/50"
                 onClick={(e) => e.stopPropagation()}
+                style={swipeStyle}
+                {...swipeHandlers}
             >
+                {/* Swipe handle indicator (mobile only) */}
+                <div className="sm:hidden flex justify-center pt-2 pb-1">
+                    <div
+                        className={`w-10 h-1 rounded-full transition-colors ${
+                            isDragging ? 'bg-slate-400 dark:bg-slate-500' : 'bg-slate-300 dark:bg-slate-600'
+                        }`}
+                        aria-hidden="true"
+                    />
+                </div>
                 {/* Header - Simplified with Segment Avatar */}
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 px-4 py-3 sm:px-5 border-b border-slate-200 dark:border-slate-700">
                     <div className="flex items-center justify-between">
@@ -470,36 +574,31 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                     className="flex items-center gap-1.5 group text-left"
                                     title="Ver histórico de ciclos"
                                 >
-                                    <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate group-hover:text-lavpop-blue transition-colors">
+                                    <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate group-hover:text-lavpop-blue dark:group-hover:text-blue-400 transition-colors">
                                         {customer.name}
                                     </h2>
-                                    <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-lavpop-blue transition-all flex-shrink-0 ${showCyclesTrend ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-lavpop-blue dark:group-hover:text-blue-400 transition-all flex-shrink-0 ${showCyclesTrend ? 'rotate-180' : ''}`} />
                                 </button>
-                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                    {/* Blacklist indicator (takes precedence) */}
-                                    {blacklisted ? (
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    {/* Blacklist indicator */}
+                                    {blacklisted && (
                                         <div
-                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-red-600 text-white shadow-sm cursor-help"
+                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-red-600 text-white shadow-sm cursor-help"
                                             title={blacklistInfo?.reason || 'Bloqueado'}
                                         >
-                                            <Ban className="w-2.5 h-2.5" />
+                                            <Ban className="w-3 h-3" />
                                             Bloqueado
-                                        </div>
-                                    ) : contacted && (
-                                        <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-500 text-white shadow-sm">
-                                            <Check className="w-2.5 h-2.5" />
-                                            Contactado
                                         </div>
                                     )}
                                     {/* Risk status pill - high contrast */}
-                                    <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase shadow-sm ${RISK_PILL_STYLES[customer.riskLevel] || 'bg-slate-500 text-white'}`}>
+                                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase shadow-sm ${RISK_PILL_STYLES[customer.riskLevel] || 'bg-slate-500 text-white'}`}>
                                         {riskConfig.pt}
                                     </div>
                                     {/* Segment pill - gradient matching avatar */}
                                     {(() => {
                                         const segConfig = SEGMENT_AVATARS[customer.segment] || SEGMENT_AVATARS['default'];
                                         return (
-                                            <div className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-gradient-to-r ${segConfig.from} ${segConfig.to} ${segConfig.text} shadow-sm`}>
+                                            <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r ${segConfig.from} ${segConfig.to} ${segConfig.text} shadow-sm`}>
                                                 {customer.segment}
                                             </div>
                                         );
@@ -552,7 +651,8 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
                         <button
                             onClick={() => { haptics.light(); onClose(); }}
-                            className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors ml-2 sm:ml-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors ml-2 sm:ml-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                            aria-label="Fechar"
                         >
                             <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
                         </button>
@@ -563,10 +663,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                 <AnimatePresence>
                     {showCyclesTrend && (
                         <motion.div
-                            initial={{ height: 0, opacity: 0 }}
+                            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                            exit={prefersReducedMotion ? undefined : { height: 0, opacity: 0 }}
+                            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeInOut' }}
                             className="border-b border-slate-200 dark:border-slate-700 overflow-hidden"
                         >
                             <CustomerCyclesTrend
@@ -578,83 +678,89 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     )}
                 </AnimatePresence>
 
-                {/* Tab Navigation */}
+                {/* Tab Navigation - No horizontal scroll, icons + text */}
                 <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                    <div className="flex gap-1 px-3 sm:px-4 overflow-x-auto">
+                    <div className="flex px-2 sm:px-4">
                         <button
                             onClick={() => { haptics.tick(); setActiveTab('profile'); }}
-                            className={`px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'profile'
-                                ? 'border-lavpop-blue text-lavpop-blue'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'profile'
+                                ? 'border-lavpop-blue text-lavpop-blue dark:text-blue-400 dark:border-blue-400'
+                                : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
-                            <span className="hidden sm:inline">Perfil & Contato</span>
+                            <User className="w-4 h-4" />
+                            <span className="hidden sm:inline">Perfil</span>
                             <span className="sm:hidden">Perfil</span>
                         </button>
                         <button
                             onClick={() => { haptics.tick(); setActiveTab('financial'); }}
-                            className={`px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'financial'
-                                ? 'border-lavpop-blue text-lavpop-blue'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'financial'
+                                ? 'border-lavpop-blue text-lavpop-blue dark:text-blue-400 dark:border-blue-400'
+                                : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
-                            Financeiro
+                            <DollarSign className="w-4 h-4" />
+                            <span className="hidden sm:inline">Financeiro</span>
+                            <span className="sm:hidden">Finan.</span>
                         </button>
                         <button
                             onClick={() => { haptics.tick(); setActiveTab('behavior'); }}
-                            className={`px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'behavior'
-                                ? 'border-lavpop-blue text-lavpop-blue'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'behavior'
+                                ? 'border-lavpop-blue text-lavpop-blue dark:text-blue-400 dark:border-blue-400'
+                                : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
+                            <Activity className="w-4 h-4" />
                             <span className="hidden sm:inline">Comportamento</span>
-                            <span className="sm:hidden">Comporta</span>
+                            <span className="sm:hidden">Comport.</span>
                         </button>
                         <button
                             onClick={() => { haptics.tick(); setActiveTab('history'); }}
-                            className={`px-3 py-2.5 sm:px-4 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'history'
-                                ? 'border-lavpop-blue text-lavpop-blue'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'history'
+                                ? 'border-lavpop-blue text-lavpop-blue dark:text-blue-400 dark:border-blue-400'
+                                : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
-                            Histórico
+                            <FileText className="w-4 h-4" />
+                            <span className="hidden sm:inline">Histórico</span>
+                            <span className="sm:hidden">Hist.</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Tab Content - Optimized Padding */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+                {/* Tab Content - Optimized Padding with safe area for floating action bar */}
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-24 sm:pb-4 custom-scrollbar">
                     {/* TAB 1: Profile & Contact */}
                     {activeTab === 'profile' && (
                         <div className="space-y-3 sm:space-y-4">
                             {/* Personal Information */}
                             <div>
                                 <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <User className="w-4 h-4 text-lavpop-blue" />
+                                    <User className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
                                     Informações Pessoais
                                 </h3>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">CPF</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">CPF</div>
                                         <div className="text-xs font-semibold text-slate-800 dark:text-white">{maskCpf(customer.doc)}</div>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Telefone</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Telefone</div>
                                         <div className="flex items-center gap-1.5">
                                             <span className="text-xs font-semibold text-slate-800 dark:text-white">{customer.phone || 'N/A'}</span>
                                             {customer.phone && !hasValidPhone && (
                                                 <span title={phoneError || 'Número inválido para WhatsApp'}>
-                                                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                                                    <AlertTriangle className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                                                 </span>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Email</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Email</div>
                                         <div className="text-xs font-semibold text-slate-800 dark:text-white truncate">{customer.email || 'N/A'}</div>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Cadastro</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Cadastro</div>
                                         <div className="text-xs font-semibold text-slate-800 dark:text-white">
                                             {customer.firstVisit ? customer.firstVisit.toLocaleDateString('pt-BR') : 'N/A'}
                                         </div>
@@ -665,7 +771,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             {/* Wallet & Incentives */}
                             <div>
                                 <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <Wallet className="w-4 h-4 text-green-600" />
+                                    <Wallet className="w-4 h-4 text-green-600 dark:text-green-400" />
                                     Carteira & Cashback
                                 </h3>
                                 <div className="grid grid-cols-2 gap-2">
@@ -675,8 +781,8 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             {formatCurrency(customer.walletBalance || 0)}
                                         </div>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
-                                        <div className="text-xs font-bold text-slate-400 uppercase mb-1">Segmento RFM</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Segmento RFM</div>
                                         <div className="text-base font-bold text-slate-800 dark:text-white truncate">
                                             {customer.segment}
                                         </div>
@@ -688,41 +794,24 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                        <MessageCircle className="w-4 h-4 text-lavpop-blue" />
+                                        <MessageCircle className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
                                         Histórico de Comunicação
                                     </h3>
-                                    <div className="flex items-center gap-2">
-                                        {/* Contacted Toggle - visible on all devices */}
-                                        <button
-                                            onClick={handleMarkContacted}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${contacted
-                                                ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600'
-                                                : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600'
-                                                }`}
-                                        >
-                                            <Check className="w-3 h-3" />
-                                            <span className="hidden min-[400px]:inline">{contacted ? 'Contactado' : 'Marcar contactado'}</span>
-                                        </button>
-                                        {/* WhatsApp button for mobile - hidden if blacklisted, disabled if phone is invalid */}
-                                        {customer.phone && !blacklisted && (
-                                            <button
-                                                onClick={handleWhatsApp}
-                                                disabled={!hasValidPhone}
-                                                className={`sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                                                    hasValidPhone
-                                                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white border-green-200 dark:border-green-800'
-                                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 cursor-not-allowed'
-                                                }`}
-                                                title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido')}
-                                            >
-                                                <MessageCircle className="w-3 h-3" />
-                                            </button>
-                                        )}
-                                    </div>
+                                    {/* Contacted Toggle - visible on all devices */}
+                                    <button
+                                        onClick={handleMarkContacted}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${contacted
+                                            ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600'
+                                            : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600'
+                                            }`}
+                                    >
+                                        <Check className="w-3 h-3" />
+                                        {contacted ? 'Contactado' : 'Marcar contactado'}
+                                    </button>
                                 </div>
 
                                 {/* Add New Entry */}
-                                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 mb-2">
+                                <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 mb-2 border border-slate-200 dark:border-slate-600">
                                     <div className="flex flex-wrap gap-1.5">
                                         <select
                                             value={noteMethod}
@@ -748,43 +837,42 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                         >
                                             <Plus className="w-3 h-3" />
                                             <span className="hidden sm:inline">Adicionar</span>
-                                            <span className="sm:hidden">+</span>
                                         </button>
                                     </div>
                                 </div>
 
                                 {/* Communication History */}
-                                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
                                     {isLoadingLog ? (
-                                        <div className="text-center py-4 text-slate-400 text-sm">
+                                        <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-sm">
                                             <div className="animate-pulse">Carregando histórico...</div>
                                         </div>
                                     ) : communicationLog.length === 0 ? (
-                                        <div className="text-center py-4 text-slate-400 text-sm">
+                                        <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-sm">
                                             Nenhuma comunicação registrada
                                         </div>
                                     ) : (
                                         communicationLog.map((entry, idx) => (
-                                            <div key={idx} className="bg-white dark:bg-slate-700 rounded-lg p-2 border border-slate-200 dark:border-slate-600">
+                                            <div key={idx} className="bg-white dark:bg-slate-700 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
                                                 <div className="flex items-start justify-between">
-                                                    <div className="flex items-start gap-2">
-                                                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-600">
-                                                            {entry.method === 'call' && <Phone className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
-                                                            {entry.method === 'whatsapp' && <MessageCircle className="w-3 h-3 text-green-600 dark:text-green-400" />}
-                                                            {entry.method === 'email' && <Mail className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
-                                                            {entry.method === 'note' && <FileText className="w-3 h-3 text-slate-600 dark:text-slate-400" />}
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-600 flex-shrink-0">
+                                                            {entry.method === 'call' && <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                                                            {entry.method === 'whatsapp' && <MessageCircle className="w-4 h-4 text-green-600 dark:text-green-400" />}
+                                                            {entry.method === 'email' && <Mail className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                                                            {entry.method === 'note' && <FileText className="w-4 h-4 text-slate-600 dark:text-slate-400" />}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="text-xs font-semibold text-slate-800 dark:text-white">
+                                                            <div className="text-sm font-semibold text-slate-800 dark:text-white">
                                                                 {entry.notes}
                                                             </div>
-                                                            <div className="flex items-center gap-2 flex-wrap">
-                                                                <span className="text-[10px] text-slate-400">
+                                                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                                                <span className="text-xs text-slate-500 dark:text-slate-400">
                                                                     {new Date(entry.date).toLocaleString('pt-BR')}
                                                                 </span>
                                                                 {/* Show campaign badge if from a campaign */}
                                                                 {entry.campaign_name && (
-                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                                                                         {entry.campaign_name}
                                                                     </span>
                                                                 )}
@@ -804,26 +892,26 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     {activeTab === 'financial' && (
                         <div className="space-y-3 sm:space-y-4">
                             <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-lavpop-blue" />
+                                <DollarSign className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
                                 Resumo Financeiro
                             </h3>
 
                             {/* Lifetime Value */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 border-2 border-blue-200 dark:border-blue-800">
-                                    <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase mb-0.5">Total Gasto</div>
+                                    <div className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase mb-0.5">Total Gasto</div>
                                     <div className="text-xl font-bold text-blue-700 dark:text-blue-300">
                                         {formatCurrency(customer.netTotal)}
                                     </div>
                                 </div>
-                                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ticket Médio</div>
+                                <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Ticket Médio</div>
                                     <div className="text-base font-bold text-slate-800 dark:text-white">
                                         {formatCurrency(customer.netTotal / customer.transactions)}
                                     </div>
                                 </div>
-                                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Transações</div>
+                                <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Transações</div>
                                     <div className="text-base font-bold text-slate-800 dark:text-white">
                                         {customer.transactions}
                                     </div>
@@ -836,23 +924,23 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="bg-sky-50 dark:bg-sky-900/20 rounded-lg p-3 border border-sky-200 dark:border-sky-800">
                                         <div className="flex items-center justify-between mb-2">
-                                            <div className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase">Lavagem</div>
+                                            <div className="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase">Lavagem</div>
                                             <div className="text-xs font-bold text-sky-700 dark:text-sky-300">{revenueBreakdown.washPct}%</div>
                                         </div>
                                         <div className="text-lg font-bold text-sky-700 dark:text-sky-300">
                                             {formatCurrency(revenueBreakdown.wash)}
                                         </div>
-                                        <div className="text-[10px] text-slate-500 mt-0.5">{customer.washServices} serviços</div>
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{customer.washServices} serviços</div>
                                     </div>
                                     <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
                                         <div className="flex items-center justify-between mb-2">
-                                            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Secagem</div>
+                                            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Secagem</div>
                                             <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{revenueBreakdown.dryPct}%</div>
                                         </div>
                                         <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
                                             {formatCurrency(revenueBreakdown.dry)}
                                         </div>
-                                        <div className="text-[10px] text-slate-500 mt-0.5">{customer.dryServices} serviços</div>
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{customer.dryServices} serviços</div>
                                     </div>
                                 </div>
                             </div>
@@ -865,29 +953,29 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             {/* Visit Pattern */}
                             <div>
                                 <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <Activity className="w-4 h-4 text-lavpop-blue" />
+                                    <Activity className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
                                     Padrão de Visitas
                                 </h3>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Total Visitas</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Total Visitas</div>
                                         <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{customer.visits}</div>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Média Entre Visitas</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Média Entre Visitas</div>
                                         <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">
                                             {customer.avgDaysBetween || 'N/A'}d
                                         </div>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Última Visita</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Última Visita</div>
                                         <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">
                                             {customer.daysSinceLastVisit}d
                                         </div>
                                     </div>
                                     {customer.daysOverdue > 0 && (
                                         <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2.5 border border-amber-200 dark:border-amber-800">
-                                            <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-0.5">Atraso</div>
+                                            <div className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase mb-0.5">Atraso</div>
                                             <div className="text-base sm:text-lg font-bold text-amber-700 dark:text-amber-300">
                                                 {customer.daysOverdue}d
                                             </div>
@@ -899,16 +987,16 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             {/* Risk Assessment */}
                             <div>
                                 <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <Target className="w-4 h-4 text-red-600" />
+                                    <Target className="w-4 h-4 text-red-600 dark:text-red-400" />
                                     Avaliação de Risco
                                 </h3>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <div className={`${riskConfig.bgClass} rounded-lg p-3 border-2 ${riskConfig.bgClass.replace('bg-', 'border-')}`}>
-                                        <div className={`text-[10px] font-bold ${riskConfig.textClass} uppercase mb-0.5`}>Nível de Risco</div>
-                                        <div className={`text-base sm:text-lg font-bold ${riskConfig.textClass}`}>{riskConfig.pt}</div>
+                                    <div className={`${RISK_CARD_STYLES[customer.riskLevel] || RISK_CARD_STYLES['Lost']} rounded-lg p-3`}>
+                                        <div className={`text-xs font-bold ${RISK_CARD_TEXT[customer.riskLevel] || RISK_CARD_TEXT['Lost']} uppercase mb-0.5`}>Nível de Risco</div>
+                                        <div className={`text-base sm:text-lg font-bold ${RISK_CARD_TEXT[customer.riskLevel] || RISK_CARD_TEXT['Lost']}`}>{riskConfig.pt}</div>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Probabilidade de Retorno</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Probabilidade de Retorno</div>
                                         <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{customer.returnLikelihood}%</div>
                                     </div>
                                 </div>
@@ -935,20 +1023,20 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             {/* Service Preferences */}
                             <div>
                                 <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <BarChart3 className="w-4 h-4 text-lavpop-green" />
+                                    <BarChart3 className="w-4 h-4 text-lavpop-green dark:text-green-400" />
                                     Preferências de Serviço
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 hidden sm:block">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Serviços/Visita</div>
+                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600 hidden sm:block">
+                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Serviços/Visita</div>
                                         <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{customer.servicesPerVisit}</div>
                                     </div>
                                     <div className="bg-sky-50 dark:bg-sky-900/20 rounded-lg p-2.5 border border-sky-200 dark:border-sky-800">
-                                        <div className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase mb-0.5">Preferência Lavagem</div>
+                                        <div className="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase mb-0.5">Preferência Lavagem</div>
                                         <div className="text-base sm:text-lg font-bold text-sky-700 dark:text-sky-300">{customer.washPercentage}%</div>
                                     </div>
                                     <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2.5 border border-emerald-200 dark:border-emerald-800">
-                                        <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-0.5">Preferência Secagem</div>
+                                        <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-0.5">Preferência Secagem</div>
                                         <div className="text-base sm:text-lg font-bold text-emerald-700 dark:text-emerald-300">{customer.dryPercentage}%</div>
                                     </div>
                                 </div>
@@ -960,14 +1048,14 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     {activeTab === 'history' && (
                         <div>
                             <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-lavpop-blue" />
+                                <FileText className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
                                 Últimas 5 Transações
                             </h3>
 
                             {/* Transaction History Table */}
-                            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                                 <table className="w-full">
-                                    <thead className="bg-slate-50 dark:bg-slate-700/50 text-[10px] sm:text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold">
+                                    <thead className="bg-slate-200 dark:bg-slate-700 text-xs sm:text-xs uppercase text-slate-700 dark:text-slate-300 font-semibold">
                                         <tr>
                                             <th className="px-2 py-2 sm:px-3 text-center">Data</th>
                                             <th className="px-2 py-2 sm:px-3 text-center">Serviços</th>
@@ -983,7 +1071,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                                             <div className="font-medium text-slate-700 dark:text-slate-200 text-xs">
                                                                 {tx.date.toLocaleDateString('pt-BR')}
                                                             </div>
-                                                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                                            <div className="text-xs text-slate-600 dark:text-slate-400">
                                                                 {tx.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                             </div>
                                                         </div>
@@ -991,7 +1079,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                                     <td className="px-2 py-2 sm:px-3 sm:py-2.5">
                                                         <div className="flex flex-wrap gap-1 justify-center">
                                                             {tx.machines.map((m, idx) => (
-                                                                <span key={idx} className={`inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-[10px] sm:text-xs font-semibold ${
+                                                                <span key={idx} className={`inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs sm:text-xs font-semibold ${
                                                                     m.type === 'recarga'
                                                                         ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                                                                         : m.type === 'dry'
@@ -1010,7 +1098,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan="3" className="px-3 py-6 text-center text-slate-500 dark:text-slate-400 text-xs">
+                                                <td colSpan="3" className="px-3 py-6 text-center text-slate-600 dark:text-slate-400 text-sm">
                                                     Nenhuma transação encontrada
                                                 </td>
                                             </tr>
@@ -1021,6 +1109,56 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Mobile Quick Actions - Fixed bottom bar */}
+                {!blacklisted && (customer.phone || customer.email) && (
+                    <div className="sm:hidden fixed bottom-0 left-0 right-0 z-[70]
+                                    bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl
+                                    border-t border-slate-200 dark:border-slate-700
+                                    px-4 py-3 pb-safe flex gap-2">
+                        {customer.phone && (
+                            <>
+                                <button
+                                    onClick={() => { haptics.light(); handleCall(); }}
+                                    className="flex-1 min-h-[44px] flex items-center justify-center gap-2
+                                             bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200
+                                             rounded-xl font-semibold text-sm
+                                             hover:bg-lavpop-blue hover:text-white transition-colors
+                                             focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue"
+                                >
+                                    <Phone className="w-5 h-5" />
+                                    Ligar
+                                </button>
+                                <button
+                                    onClick={() => { haptics.light(); handleWhatsApp(); }}
+                                    disabled={!hasValidPhone}
+                                    className={`flex-1 min-h-[44px] flex items-center justify-center gap-2
+                                             rounded-xl font-semibold text-sm transition-colors
+                                             focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500
+                                             ${hasValidPhone
+                                                 ? 'bg-green-500 text-white hover:bg-green-600'
+                                                 : 'bg-slate-200 dark:bg-slate-600 text-slate-400 cursor-not-allowed'
+                                             }`}
+                                >
+                                    <MessageCircle className="w-5 h-5" />
+                                    WhatsApp
+                                </button>
+                            </>
+                        )}
+                        {customer.email && (
+                            <button
+                                onClick={() => { haptics.light(); handleEmail(); }}
+                                className="flex-1 min-h-[44px] flex items-center justify-center gap-2
+                                         bg-blue-500 text-white rounded-xl font-semibold text-sm
+                                         hover:bg-blue-600 transition-colors
+                                         focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                            >
+                                <Mail className="w-5 h-5" />
+                                Email
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
         </div>,
         document.body

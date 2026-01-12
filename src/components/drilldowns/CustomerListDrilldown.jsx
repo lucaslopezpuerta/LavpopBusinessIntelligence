@@ -1,10 +1,10 @@
-// CustomerListDrilldown.jsx v3.8 - BLACKLIST INDICATOR
+// CustomerListDrilldown.jsx v3.12 - SWIPE GESTURE CONFLICT FIX (PARENT SIGNAL)
 // ✅ Pagination with "Ver mais" button
 // ✅ WhatsApp and Call actions
 // ✅ Dynamic sorting with controls
 // ✅ Risk severity indicators (colored dots)
 // ✅ Customer initials avatar
-// ✅ Swipe actions on mobile
+// ✅ Swipe actions on mobile (fixed conflict with view navigation)
 // ✅ Enhanced empty state
 // ✅ Contact tracking (shared across app with effectiveness tracking)
 // ✅ Communication logging (syncs with CustomerProfileModal)
@@ -14,6 +14,16 @@
 // ✅ Blacklist indicator with toggle to show/hide
 //
 // CHANGELOG:
+// v3.12 (2026-01-12): Fixed swipe gesture conflict using parent signal
+//   - Accept onSwipeStart/End props from parent
+//   - Call onSwipeStart in handleTouchStart to disable Framer Motion drag
+//   - Call onSwipeEnd in handleTouchEnd/Move/Cancel to re-enable
+//   - This properly disables view navigation during row swipe
+//   - Root cause: Framer Motion uses document-level pointer listeners
+// v3.11 (2026-01-11): Tried preventDefault (still didn't work)
+//   - e.preventDefault() only blocks React events, not Framer Motion
+// v3.10 (2026-01-11): Tried data-swipe-row attribute (didn't work)
+// v3.9 (2026-01-11): Tried onPointerDownCapture stopPropagation (didn't work)
 // v3.8 (2025-12-14): Blacklist indicator
 //   - Shows "Bloqueado" badge for blacklisted customers
 //   - Toggle to show/hide blacklisted customers (hidden by default)
@@ -77,7 +87,7 @@ const SORT_OPTIONS = {
     name: { label: 'Por nome', key: 'name' }
 };
 
-const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
+const CustomerListDrilldown = ({ customers = [], type = 'active', onSwipeStart, onSwipeEnd }) => {
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
     const [sortBy, setSortBy] = useState(type === 'atrisk' ? 'days' : 'value');
     const [swipeState, setSwipeState] = useState({ id: null, direction: null, offset: 0 });
@@ -238,10 +248,13 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
 
     // Touch handlers for swipe
     const handleTouchStart = useCallback((e, customerId) => {
+        // Signal parent to disable view navigation while row is being swiped
+        onSwipeStart?.();
+
         const touch = e.touches[0];
         touchStartRef.current = { x: touch.clientX, y: touch.clientY };
         setSwipeState({ id: customerId, direction: null, offset: 0 });
-    }, []);
+    }, [onSwipeStart]);
 
     const handleTouchMove = useCallback((e, customerId) => {
         if (swipeState.id !== customerId) return;
@@ -250,17 +263,24 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         const deltaX = touch.clientX - touchStartRef.current.x;
         const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
 
-        // Only swipe if horizontal movement is dominant
-        if (deltaY > Math.abs(deltaX) * 0.5) return;
+        // If more vertical than horizontal, reset and allow normal scroll
+        if (deltaY > Math.abs(deltaX) * 0.5) {
+            onSwipeEnd?.(); // Re-enable view navigation
+            setSwipeState({ id: null, direction: null, offset: 0 });
+            return;
+        }
 
         const maxOffset = 64;
         const offset = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
         const direction = offset > 20 ? 'right' : offset < -20 ? 'left' : null;
 
         setSwipeState({ id: customerId, direction, offset });
-    }, [swipeState.id]);
+    }, [swipeState.id, onSwipeEnd]);
 
     const handleTouchEnd = useCallback((customer, customerId) => {
+        // Signal parent to re-enable view navigation
+        onSwipeEnd?.();
+
         if (!swipeState.direction || !customer.phone) {
             setSwipeState({ id: null, direction: null, offset: 0 });
             return;
@@ -275,7 +295,13 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         }
 
         setSwipeState({ id: null, direction: null, offset: 0 });
-    }, [swipeState.direction, handleWhatsApp, handleCall]);
+    }, [swipeState.direction, handleWhatsApp, handleCall, onSwipeEnd]);
+
+    // Handle touch cancel (e.g., if user moves finger off screen)
+    const handleTouchCancel = useCallback(() => {
+        onSwipeEnd?.();
+        setSwipeState({ id: null, direction: null, offset: 0 });
+    }, [onSwipeEnd]);
 
     // Get type-specific secondary info
     const getSecondaryInfo = (customer) => {
@@ -421,7 +447,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                 </>
                             )}
 
-                            {/* Card content */}
+                            {/* Card content - uses preventDefault in touch handlers to prevent view navigation conflict */}
                             <div
                                 className={`
                                     relative flex items-center gap-2 p-2.5
@@ -438,6 +464,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                 onTouchStart={(e) => hasPhone && !contacted && canContact && handleTouchStart(e, customerId)}
                                 onTouchMove={(e) => hasPhone && !contacted && canContact && handleTouchMove(e, customerId)}
                                 onTouchEnd={() => !contacted && canContact && handleTouchEnd(customer, customerId)}
+                                onTouchCancel={handleTouchCancel}
                             >
                                 {/* Avatar with initials */}
                                 <div className="relative flex-shrink-0">

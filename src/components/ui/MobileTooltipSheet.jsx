@@ -1,9 +1,34 @@
-// MobileTooltipSheet.jsx v1.7 - PORTAL EXCLUSION FIX
+// MobileTooltipSheet.jsx v2.2 - TWO-ROW HEADER LAYOUT
 // Slide-up bottom sheet for displaying customer data on mobile touch devices
 // Replaces floating tooltip for better mobile UX
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.2 (2026-01-11): Two-row header layout
+//   - CHANGED: Name and status badge now on separate rows for better name visibility
+//   - Row 1: Full-width name + X close button
+//   - Row 2: Status badge (left-aligned)
+//   - Prevents long names from being truncated too aggressively
+// v2.1 (2026-01-11): Mobile layout improvements
+//   - FIXED: X button moved into content area to prevent clipping at screen edge
+//   - FIXED: Increased X button tap target to 44px (WCAG compliance)
+//   - FIXED: Added horizontal safe margins (mx-2) to prevent edge clipping
+//   - IMPROVED: Better spacing between header elements and close button
+//   - IMPROVED: Stats grid uses responsive gap (gap-2 sm:gap-3)
+// v2.0 (2026-01-11): Close button and improved UX
+//   - NEW: Added explicit close button (X) in top-right corner for accessibility
+//   - CHANGED: No more auto-dismiss (handled in useTouchTooltip v1.9)
+//   - Users now have: swipe-to-close, backdrop tap, close button (X)
+//   - No time pressure - users can read/decide at their own pace
+// v1.9 (2026-01-11): Swipe threshold fix
+//   - FIXED: Swipe-to-close threshold lowered from 80 to 40 (accounts for 0.5 resistance)
+//   - With resistance=0.5, threshold=40 means ~80px actual drag to close
+//   - Previously required ~160px actual drag which felt too heavy
+// v1.8 (2026-01-11): Long-press fix
+//   - FIXED: Long-press was cancelled on any touchmove (isDragging check was too aggressive)
+//   - NEW: Added movement threshold (10px) before cancelling long-press
+//   - NEW: Track touch start position to calculate actual movement distance
+//   - Long-press now works reliably even with minor finger wobble
 // v1.7 (2026-01-09): Portal exclusion fix
 //   - NEW: Added data-mobile-tooltip-sheet attribute to sheet container
 //   - This attribute is checked by useTouchTooltip's handleOutsideClick
@@ -41,10 +66,11 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, MessageCircle, Calendar, DollarSign, RefreshCw, CheckCircle, AlertTriangle, XCircle, Sparkles, MinusCircle, Eye } from 'lucide-react';
+import { User, MessageCircle, Calendar, DollarSign, RefreshCw, CheckCircle, AlertTriangle, XCircle, Sparkles, MinusCircle, Eye, X } from 'lucide-react';
 import { formatCurrency } from '../../utils/numberUtils';
 import { RISK_LABELS } from '../../utils/customerMetrics';
 import { useSwipeToClose } from '../../hooks/useSwipeToClose';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { MOBILE_SHEET, TWEEN } from '../../constants/animations';
 import { haptics } from '../../utils/haptics';
 
@@ -98,12 +124,17 @@ const MobileTooltipSheet = ({
   const sheetRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
+  const longPressStartPosRef = useRef({ x: 0, y: 0 });
+  const prefersReducedMotion = useReducedMotion();
   const LONG_PRESS_DURATION = 500; // ms
+  const LONG_PRESS_MOVE_THRESHOLD = 10; // pixels - cancel if moved more than this
 
   // Swipe-to-close gesture
+  // Note: threshold is applied to resisted dragY, so with resistance=0.5,
+  // threshold=40 means ~80px actual finger movement to trigger close
   const { handlers, style, isDragging, backdropOpacity, dragY } = useSwipeToClose({
     onClose,
-    threshold: 80,
+    threshold: 40,
     resistance: 0.5
   });
 
@@ -114,6 +145,12 @@ const MobileTooltipSheet = ({
   const handleLongPressStart = useCallback((e) => {
     // Don't start long-press if touch is on a button
     if (e.target.closest('button')) return;
+
+    // Record start position for movement threshold check
+    const touch = e.touches?.[0];
+    if (touch) {
+      longPressStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    }
 
     longPressTriggeredRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
@@ -165,9 +202,17 @@ const MobileTooltipSheet = ({
     },
     onTouchMove: (e) => {
       handlers.onTouchMove?.(e);
-      // Cancel long-press if user starts swiping
-      if (isDragging) {
-        handleLongPressEnd();
+      // Cancel long-press if user has moved beyond threshold (actual swiping)
+      // Using movement distance instead of isDragging to allow minor finger wobble
+      if (longPressTimerRef.current) {
+        const touch = e.touches?.[0];
+        if (touch) {
+          const deltaX = Math.abs(touch.clientX - longPressStartPosRef.current.x);
+          const deltaY = Math.abs(touch.clientY - longPressStartPosRef.current.y);
+          if (deltaX > LONG_PRESS_MOVE_THRESHOLD || deltaY > LONG_PRESS_MOVE_THRESHOLD) {
+            handleLongPressEnd();
+          }
+        }
       }
     }
   };
@@ -234,11 +279,11 @@ const MobileTooltipSheet = ({
           {/* Backdrop */}
           <motion.div
             data-mobile-tooltip-sheet
-            initial="hidden"
+            initial={prefersReducedMotion ? false : "hidden"}
             animate="visible"
-            exit="exit"
+            exit={prefersReducedMotion ? undefined : "exit"}
             variants={MOBILE_SHEET.BACKDROP}
-            transition={TWEEN.FADE}
+            transition={prefersReducedMotion ? { duration: 0 } : TWEEN.FADE}
             className="fixed inset-0 bg-black/30 z-50"
             style={{ opacity: backdropOpacity }}
             onClick={onClose}
@@ -249,11 +294,12 @@ const MobileTooltipSheet = ({
           <motion.div
             ref={sheetRef}
             data-mobile-tooltip-sheet
-            initial="hidden"
+            initial={prefersReducedMotion ? false : "hidden"}
             animate="visible"
-            exit="exit"
+            exit={prefersReducedMotion ? undefined : "exit"}
             variants={MOBILE_SHEET.SLIDE_UP}
-            className="fixed bottom-0 left-0 right-0 z-[60]
+            transition={prefersReducedMotion ? { duration: 0 } : undefined}
+            className="fixed bottom-0 left-2 right-2 z-[60]
                        bg-white/95 dark:bg-slate-800/95
                        backdrop-blur-xl rounded-t-3xl
                        shadow-2xl
@@ -265,7 +311,7 @@ const MobileTooltipSheet = ({
             aria-label={`Detalhes de ${data.name}`}
           >
             {/* Drag Handle */}
-            <div className="flex justify-center pt-3 pb-2">
+            <div className="flex justify-center pt-3 pb-1">
               <div
                 className={`w-10 h-1 rounded-full transition-colors ${
                   isDragging ? 'bg-slate-400 dark:bg-slate-500' : 'bg-slate-300 dark:bg-slate-600'
@@ -275,58 +321,82 @@ const MobileTooltipSheet = ({
             </div>
 
             {/* Content */}
-            <div className="px-5 pb-6">
-              {/* Header - Name and Status */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-white truncate">
+            <div className="px-4 sm:px-5 pb-6">
+              {/* Header - Name on first row, Status badge on second row */}
+              <div className="mb-4">
+                {/* Row 1: Name + Close Button */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h2 className="text-lg font-bold text-slate-800 dark:text-white truncate flex-1">
                     {data.name}
                   </h2>
+                  {/* Close Button (X) */}
+                  <button
+                    onClick={onClose}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      haptics.light();
+                      onClose();
+                    }}
+                    className="w-10 h-10 flex items-center justify-center flex-shrink-0
+                             rounded-full -mr-2
+                             text-slate-400 hover:text-slate-600
+                             dark:text-slate-500 dark:hover:text-slate-300
+                             hover:bg-slate-100 dark:hover:bg-slate-700
+                             transition-colors duration-150
+                             focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2
+                             dark:focus:ring-offset-slate-800"
+                    style={{ touchAction: 'manipulation' }}
+                    aria-label="Fechar"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${getStatusClasses(data.status)}`}>
-                  <StatusIcon status={data.status} className="w-4 h-4" />
+                {/* Row 2: Status Badge */}
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs sm:text-sm font-semibold ${getStatusClasses(data.status)}`}>
+                  <StatusIcon status={data.status} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <span>{RISK_LABELS[data.status]?.pt || data.status}</span>
                 </div>
               </div>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-3 mb-5">
+              {/* Stats Grid - responsive gap and padding */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
                 {/* Value */}
-                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center">
-                  <DollarSign className="w-5 h-5 mx-auto mb-1 text-lavpop-blue dark:text-blue-400" aria-hidden="true" />
-                  <div className="text-base font-bold text-lavpop-blue dark:text-blue-400">
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-2.5 sm:p-3 text-center">
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-lavpop-blue dark:text-blue-400" aria-hidden="true" />
+                  <div className="text-sm sm:text-base font-bold text-lavpop-blue dark:text-blue-400 truncate">
                     {formatCurrency(data.y)}
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                     Valor total
                   </div>
                 </div>
 
                 {/* Days */}
-                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center">
-                  <Calendar className="w-5 h-5 mx-auto mb-1 text-red-500 dark:text-red-400" aria-hidden="true" />
-                  <div className="text-base font-bold text-red-500 dark:text-red-400">
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-2.5 sm:p-3 text-center">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-red-500 dark:text-red-400" aria-hidden="true" />
+                  <div className="text-sm sm:text-base font-bold text-red-500 dark:text-red-400">
                     {data.x}d
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                     Última visita
                   </div>
                 </div>
 
                 {/* Visits */}
-                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 text-center">
-                  <RefreshCw className="w-5 h-5 mx-auto mb-1 text-lavpop-green dark:text-emerald-400" aria-hidden="true" />
-                  <div className="text-base font-bold text-lavpop-green dark:text-emerald-400">
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-2.5 sm:p-3 text-center">
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-lavpop-green dark:text-emerald-400" aria-hidden="true" />
+                  <div className="text-sm sm:text-base font-bold text-lavpop-green dark:text-emerald-400">
                     {data.r}
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
                     Visitas
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3">
+              {/* Action Buttons - responsive sizing */}
+              <div className="flex gap-2 sm:gap-3">
                 {/* View Profile Button */}
                 <button
                   onClick={handleViewProfile}
@@ -341,15 +411,15 @@ const MobileTooltipSheet = ({
                     handleViewProfile();
                   }}
                   className="flex-1 flex items-center justify-center gap-2
-                           h-12 px-4 rounded-xl
+                           min-h-[48px] px-3 sm:px-4 rounded-xl
                            bg-lavpop-blue hover:bg-lavpop-blue/90
-                           text-white font-semibold
+                           text-white text-sm sm:text-base font-semibold
                            transition-colors duration-150
                            focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2
                            dark:focus:ring-offset-slate-800"
                   style={{ touchAction: 'manipulation' }}
                 >
-                  <User className="w-5 h-5" aria-hidden="true" />
+                  <User className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
                   <span>Ver Perfil</span>
                 </button>
 
@@ -368,15 +438,15 @@ const MobileTooltipSheet = ({
                       handleWhatsApp();
                     }}
                     className="flex-1 flex items-center justify-center gap-2
-                             h-12 px-4 rounded-xl
+                             min-h-[48px] px-3 sm:px-4 rounded-xl
                              bg-green-500 hover:bg-green-600
-                             text-white font-semibold
+                             text-white text-sm sm:text-base font-semibold
                              transition-colors duration-150
                              focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
                              dark:focus:ring-offset-slate-800"
                     style={{ touchAction: 'manipulation' }}
                   >
-                    <MessageCircle className="w-5 h-5" aria-hidden="true" />
+                    <MessageCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
                     <span>WhatsApp</span>
                   </button>
                 )}

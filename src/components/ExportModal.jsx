@@ -18,6 +18,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileSpreadsheet, FileText, Download, Loader2, Check, AlertCircle, BookOpen, BarChart3 } from 'lucide-react';
 import { exportToCSV, exportToPDF, exportCompleteReport, exportExecutiveSummary } from '../utils/exportUtils';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 // Export configurations with correct field mappings from Supabase
 const EXPORT_CONFIGS = {
@@ -178,6 +179,7 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [showGlobal, setShowGlobal] = useState(true); // Show global reports by default
+  const prefersReducedMotion = useReducedMotion();
 
   const viewExports = VIEW_EXPORTS[activeView] || VIEW_EXPORTS.dashboard;
 
@@ -421,17 +423,19 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={prefersReducedMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          exit={prefersReducedMotion ? undefined : { opacity: 0 }}
+          transition={prefersReducedMotion ? { duration: 0 } : undefined}
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         />
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
+          exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.95 }}
+          transition={prefersReducedMotion ? { duration: 0 } : undefined}
           className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
         >
           <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">

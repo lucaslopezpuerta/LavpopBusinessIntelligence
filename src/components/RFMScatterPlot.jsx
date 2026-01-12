@@ -1,7 +1,11 @@
-// RFMScatterPlot.jsx v4.2.2 - MOBILE TOUCH UX IMPROVEMENTS
+// RFMScatterPlot.jsx v4.2.3 - MOBILE TOUCH UX IMPROVEMENTS
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v4.2.3 (2026-01-11): Configure skipTouchAutoDismiss for MobileTooltipSheet
+//   - NEW: Added skipTouchAutoDismiss: true to useTouchTooltip config
+//   - This disables auto-dismiss on touch devices since MobileTooltipSheet has
+//     explicit close controls (swipe, backdrop tap, X button)
 // v4.2.2 (2026-01-09): Fix MobileTooltipSheet "Ver Perfil" button not opening modal
 //   - FIXED: onViewProfile callback now wrapped in useCallback for stable reference
 //   - Root cause: inline JSX callback was recreated on every render, losing reference during close
@@ -193,7 +197,8 @@ const RFMScatterPlot = ({
             }
         },
         dismissTimeout: 5000,
-        longPressDuration: 500
+        longPressDuration: 500,
+        skipTouchAutoDismiss: true  // MobileTooltipSheet has explicit close controls
     });
 
     if (!data || data.length === 0) return null;
@@ -547,7 +552,9 @@ const RFMScatterPlot = ({
                     </table>
                 </div>
             ) : (
-                /* Chart View - zoom filters data to show subset */
+                /* Chart View - zoom filters data to show subset
+                   Note: chartContainerHandlers enable long-press on chart area (outside MobileTooltipSheet)
+                   when a tooltip is active. Main long-press functionality is in MobileTooltipSheet itself. */
                 <div
                     className="h-[280px] sm:h-[350px] lg:h-[420px]"
                     role="img"
