@@ -141,12 +141,3 @@ export const LazyGrowthTrendsSection = lazy(() =>
 export const LazyFinancialDrilldown = lazy(() =>
   import('../components/drilldowns/FinancialDrilldown')
 );
-
-// Other chart components
-export const LazyRevenueTrendChart = lazy(() =>
-  import('../components/RevenueTrendChart')
-);
-
-export const LazyServiceMixIndicator = lazy(() =>
-  import('../components/ServiceMixIndicator')
-);
