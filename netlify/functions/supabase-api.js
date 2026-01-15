@@ -362,6 +362,9 @@ exports.handler = async (event, context) => {
       case 'contacts.clear':  // Mark pending contact as 'cleared' (manual uncheck)
         return await clearContactStatus(supabase, body, headers);
 
+      case 'contacts.getWelcomeHistory':  // All historical welcome/post_visit contacts for conversion analysis
+        return await getWelcomeContactHistory(supabase, headers);
+
       // ==================== CONTACT ELIGIBILITY ====================
       case 'eligibility.check':
         return await checkCustomerEligibility(supabase, data, headers);
@@ -1887,6 +1890,36 @@ async function clearContactStatus(supabase, body, headers) {
       cleared: data?.length || 0,
       customerId
     })
+  };
+}
+
+/**
+ * Get ALL historical welcome/post_visit contacts (regardless of status)
+ * Used for first-visit conversion analysis to accurately measure welcome campaign effectiveness
+ * Returns customer_id for all customers who ever received a welcome campaign
+ */
+async function getWelcomeContactHistory(supabase, headers) {
+  const { data, error } = await supabase
+    .from('contact_tracking')
+    .select('customer_id')
+    .in('campaign_type', ['welcome', 'post_visit']);
+
+  if (error) {
+    // If table doesn't exist, return empty array
+    if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ contacts: [] })
+      };
+    }
+    throw error;
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ contacts: data || [] })
   };
 }
 

@@ -1,8 +1,34 @@
-// Customers View v5.5 - PULL TO REFRESH
+// Customers View v5.10 - Welcome History Fix (Phase 15)
 // Customer analytics and insights dashboard
 // Clean, focused design with RFM hero and integrated table
 //
 // CHANGELOG:
+// v5.10 (2026-01-14): Phase 15 - Fix welcome campaign comparison data source
+//   - NEW: api.contacts.getWelcomeHistory() fetches ALL historical welcome contacts
+//   - FIXED: Welcome comparison now uses welcomeHistoryIds (all history) instead of
+//     welcomeContactedIds (pending only) for accurate conversion analysis
+//   - Verified: Core metrics (82%, 31/38, 6 pending) match verification script
+// v5.9 (2026-01-13): Phase 14 - New customer behavior components
+//   - NEW: FirstVisitConversionCard - Track 1st→2nd visit conversion rate
+//   - NEW: FrequencyDegradationAlert - Early warning for slipping visit patterns
+//   - NEW: getFirstVisitConversion() and getFrequencyDegradation() functions
+//   - NEW: Welcome campaign comparison (with/without lift)
+//   - NEW: Action buttons for pending customers and modal integration
+// v5.8 (2026-01-13): Enhanced HealthPill with trend and breakdown
+//   - NEW: Health rate trend indicator (current vs 30 days ago)
+//   - NEW: Risk breakdown (Healthy/Monitor/At Risk/Churning/New)
+//   - NEW: "Ver Clientes em Risco" action button opens modal
+//   - NEW: CustomerSegmentModal for at-risk customers
+// v5.7 (2026-01-13): Removed RetentionPulse header pill
+//   - REMOVED: RetentionPulse component from header (showed 53% from old algorithm)
+//   - REMOVED: getRetentionCohorts() usage (replaced by getRetentionMetrics)
+//   - RetentionCard (38%) is now the sole retention metric display
+//   - HealthPill remains for quick health status
+// v5.6 (2026-01-12): State-of-the-art Visit Heatmap
+//   - NEW: VisitHeatmap component with 7×15 grid (8h-23h business hours)
+//   - NEW: Segment toggle: Todos | Fiéis (VIP+Frequente) | Novos (Novato)
+//   - NEW: Non-linear quantile color scale to highlight bottlenecks
+//   - Insight: "Do loyalists prefer quiet Tuesday mornings while new users crowd weekends?"
 // v5.5 (2026-01-12): Pull-to-refresh support
 //   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
 //   - Accepts onDataChange prop for refresh callback
@@ -30,12 +56,12 @@
 // v4.1 (2025-12-16): Full-width layout
 // v4.0 (2025-12-16): Intelligence Hub Redesign
 
-import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
-import { Users as UsersIcon, UserPlus } from 'lucide-react';
-import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionCohorts, getAcquisitionTrend } from '../utils/customerMetrics';
-import HeroKPICard from '../components/ui/HeroKPICard';
-import RetentionPulse from '../components/RetentionPulse';
+import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
+import { Users as UsersIcon, UserPlus, Crown, Sparkles, AlertTriangle, Mail, UserX, TrendingDown } from 'lucide-react';
+import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionMetrics, getAcquisitionTrend, getHealthTrend, getFirstVisitConversion, getFrequencyDegradation } from '../utils/customerMetrics';
+import CleanKPICard from '../components/ui/CleanKPICard';
 import HealthPill from '../components/HealthPill';
+import RetentionCard from '../components/RetentionCard';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import { formatNumber } from '../utils/formatters';
 import { isValidBrazilianMobile } from '../utils/phoneUtils';
@@ -45,8 +71,12 @@ const CustomerProfileModal = lazy(() => import('../components/CustomerProfileMod
 const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
 const KPIDetailModal = lazy(() => import('../components/modals/KPIDetailModal'));
 const CustomerTrendDrilldown = lazy(() => import('../components/drilldowns/CustomerTrendDrilldown'));
-import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, ChartLoadingFallback } from '../utils/lazyCharts';
+const CustomerSegmentModal = lazy(() => import('../components/modals/CustomerSegmentModal'));
+const FirstVisitConversionCard = lazy(() => import('../components/FirstVisitConversionCard'));
+const FrequencyDegradationAlert = lazy(() => import('../components/FrequencyDegradationAlert'));
+import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, LazyVisitHeatmap, ChartLoadingFallback } from '../utils/lazyCharts';
 import { useContactTracking } from '../hooks/useContactTracking';
+import { api } from '../utils/apiService';
 import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
@@ -59,8 +89,43 @@ const Customers = ({ data, onDataChange }) => {
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
   const [preSelectedCustomerIds, setPreSelectedCustomerIds] = useState([]);
 
+  // Retention re-engage modal state
+  const [retentionModalOpen, setRetentionModalOpen] = useState(false);
+  const [retentionModalSegment, setRetentionModalSegment] = useState(null); // 'loyalists' | 'new'
+  const [retentionModalCustomers, setRetentionModalCustomers] = useState([]);
+
+  // Health at-risk modal state (from HealthPill)
+  const [healthAtRiskModalOpen, setHealthAtRiskModalOpen] = useState(false);
+
+  // First visit conversion modal states
+  const [welcomeModalOpen, setWelcomeModalOpen] = useState(false);
+  const [welcomeModalCustomers, setWelcomeModalCustomers] = useState([]);
+  const [lostCustomersModalOpen, setLostCustomersModalOpen] = useState(false);
+  const [lostCustomersModalData, setLostCustomersModalData] = useState([]);
+
+  // Frequency degradation modal state
+  const [degradationModalOpen, setDegradationModalOpen] = useState(false);
+  const [degradationModalCustomers, setDegradationModalCustomers] = useState([]);
+
+  // Welcome history IDs (ALL historical welcome contacts for conversion analysis)
+  const [welcomeHistoryIds, setWelcomeHistoryIds] = useState(new Set());
+
   // Contact tracking for charts visualization
   const { contactedIds, pendingContacts, markContacted } = useContactTracking();
+
+  // Fetch ALL historical welcome contacts for accurate conversion analysis
+  // This is different from pendingContacts which only has active pending/queued contacts
+  useEffect(() => {
+    const loadWelcomeHistory = async () => {
+      try {
+        const records = await api.contacts.getWelcomeHistory();
+        setWelcomeHistoryIds(new Set(records.map(r => r.customer_id)));
+      } catch (err) {
+        console.error('Failed to load welcome history:', err);
+      }
+    };
+    loadWelcomeHistory();
+  }, []);
 
   // Derive welcome campaign contacts (campaign_type === 'welcome')
   const welcomeContactedIds = useMemo(() => {
@@ -93,13 +158,28 @@ const Customers = ({ data, onDataChange }) => {
   // 2. Prepare Intelligence Data
   const intelligence = useMemo(() => {
     if (!metrics) return null;
+
+    // Build customerMap first for retention metrics
+    const tempCustomerMap = {};
+    metrics.allCustomers.forEach(c => {
+      const id = c.doc || c.id;
+      tempCustomerMap[id] = c;
+    });
+
     return {
       rfm: getRFMCoordinates(metrics.activeCustomers),
       histogram: getChurnHistogramData(metrics.activeCustomers),
-      retention: getRetentionCohorts(data.sales),
-      acquisition: getAcquisitionTrend(metrics.activeCustomers)
+      retentionMetrics: getRetentionMetrics(data.sales, tempCustomerMap),
+      acquisition: getAcquisitionTrend(metrics.activeCustomers),
+      // Phase 14: New customer behavior insights
+      // Use welcomeHistoryIds (ALL historical) instead of welcomeContactedIds (pending only)
+      // This ensures accurate welcome campaign effectiveness measurement
+      firstVisitConversion: getFirstVisitConversion(data.sales, tempCustomerMap, welcomeHistoryIds),
+      frequencyDegradation: getFrequencyDegradation(data.sales, tempCustomerMap, {
+        focusSegments: ['VIP', 'Frequente']
+      })
     };
-  }, [metrics, data]);
+  }, [metrics, data, welcomeHistoryIds]);
 
   // 2b. Customer spending map for revenue at risk calculation
   const customerSpending = useMemo(() => {
@@ -120,6 +200,20 @@ const Customers = ({ data, onDataChange }) => {
       map[id] = c;
     });
     return map;
+  }, [metrics]);
+
+  // 2d. Health trend calculation (current vs 30 days ago)
+  const healthTrend = useMemo(() => {
+    if (!metrics || !data?.sales) return { current: 0, previous: 0, trend: 0 };
+    return getHealthTrend(metrics, data.sales, data.rfm || [], data.customer || []);
+  }, [metrics, data]);
+
+  // 2e. At-risk customers list for HealthPill modal
+  const atRiskCustomers = useMemo(() => {
+    if (!metrics?.activeCustomers) return [];
+    return metrics.activeCustomers
+      .filter(c => c.riskLevel === 'At Risk' || c.riskLevel === 'Churning')
+      .sort((a, b) => (b.netTotal || 0) - (a.netTotal || 0)); // Sort by revenue (highest first)
   }, [metrics]);
 
   // Handler to open customer profile from charts
@@ -144,6 +238,35 @@ const Customers = ({ data, onDataChange }) => {
   const handleCreateCampaign = useCallback((customerIds) => {
     setPreSelectedCustomerIds(customerIds);
     setCampaignModalOpen(true);
+  }, []);
+
+  // Handler for opening retention segment modal (from RetentionCard re-engage buttons)
+  const handleOpenRetentionSegment = useCallback((segment, customers) => {
+    setRetentionModalSegment(segment);
+    setRetentionModalCustomers(customers);
+    setRetentionModalOpen(true);
+  }, []);
+
+  // Handler for opening at-risk modal from HealthPill
+  const handleOpenAtRiskModal = useCallback(() => {
+    setHealthAtRiskModalOpen(true);
+  }, []);
+
+  // Handlers for FirstVisitConversionCard
+  const handleSendWelcomeToCustomers = useCallback((customers) => {
+    setWelcomeModalCustomers(customers);
+    setWelcomeModalOpen(true);
+  }, []);
+
+  const handleOpenLostCustomersModal = useCallback((customers) => {
+    setLostCustomersModalData(customers);
+    setLostCustomersModalOpen(true);
+  }, []);
+
+  // Handler for FrequencyDegradationAlert
+  const handleContactDegradingCustomers = useCallback((customers) => {
+    setDegradationModalCustomers(customers);
+    setDegradationModalOpen(true);
   }, []);
 
   // Build audience segments for NewCampaignModal (includes pre-selected custom segment)
@@ -304,20 +427,28 @@ const Customers = ({ data, onDataChange }) => {
 
         {/* Header Pills */}
         <div className="flex items-center gap-2 flex-wrap">
-          <RetentionPulse data={intelligence?.retention} />
           <HealthPill
             healthRate={metrics.healthRate}
             activeCount={metrics.activeCount}
             atRiskCount={metrics.needsAttentionCount}
+            trend={healthTrend.trend}
+            breakdown={{
+              healthy: metrics.healthyCount,
+              monitor: metrics.monitorCount,
+              atRisk: metrics.atRiskCount,
+              churning: metrics.churningCount,
+              newCustomer: metrics.newCustomerCount
+            }}
+            atRiskCustomers={atRiskCustomers}
+            onOpenAtRiskModal={handleOpenAtRiskModal}
           />
         </div>
       </header>
 
-      {/* Hero KPI Cards - New Clients + Active Clients */}
+      {/* Clean KPI Cards - New Clients + Active Clients */}
       <div className="grid grid-cols-2 gap-4">
-        <HeroKPICard
+        <CleanKPICard
           title="Novos Clientes"
-          shortTitle="Novos"
           value={newClientsCount}
           displayValue={formatNumber(newClientsCount)}
           subtitle="Últimos 30 dias"
@@ -325,14 +456,12 @@ const Customers = ({ data, onDataChange }) => {
           color="purple"
           sparklineData={sparklineData.newCustomers}
           onClick={() => setSelectedKPI(kpiDefinitions.newClients)}
-          tooltip={kpiPills.newCustomersTotal > 0 ? `${kpiPills.welcomePct}% receberam boas-vindas` : undefined}
         />
-        <HeroKPICard
+        <CleanKPICard
           title="Clientes Ativos"
-          shortTitle="Ativos"
           value={metrics.activeCount}
           displayValue={formatNumber(metrics.activeCount)}
-          subtitle="Base ativa total"
+          subtitle="Visitaram nos últimos 90 dias"
           icon={UsersIcon}
           color="blue"
           sparklineData={sparklineData.activeCustomers}
@@ -352,14 +481,39 @@ const Customers = ({ data, onDataChange }) => {
         />
       </Suspense>
 
+      {/* Customer Behavior Insights Row - Phase 14 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* First Visit Conversion - Primary focus */}
+        <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+          <FirstVisitConversionCard
+            data={intelligence.firstVisitConversion}
+            onSendWelcome={handleSendWelcomeToCustomers}
+            onOpenLostCustomers={handleOpenLostCustomersModal}
+          />
+        </Suspense>
+
+        {/* Frequency Degradation Alert - Conditional */}
+        {(intelligence.frequencyDegradation?.count >= 3 || intelligence.frequencyDegradation?.priorityCount >= 1) && (
+          <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+            <FrequencyDegradationAlert
+              data={intelligence.frequencyDegradation}
+              maxPreview={3}
+              onContactCustomers={handleContactDegradingCustomers}
+              onOpenCustomerProfile={handleOpenCustomerProfile}
+            />
+          </Suspense>
+        )}
+      </div>
+
       {/* Integrated Layout: AtRiskTable + Secondary Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* At-Risk Customers Table - 3/5 width on desktop, spans 2 rows */}
+        {/* At-Risk Customers Table - 3/5 width on desktop, spans 2 rows, fills height */}
         {metrics.needsAttentionCount > 0 && (
-          <div className="lg:col-span-3 lg:row-span-2">
+          <div className="lg:col-span-3 lg:row-span-2 flex">
             <AtRiskCustomersTable
               customerMetrics={metrics}
               salesData={data.sales}
+              className="flex-1"
             />
           </div>
         )}
@@ -391,6 +545,24 @@ const Customers = ({ data, onDataChange }) => {
               onMarkContacted={handleMarkContacted}
               onCreateCampaign={handleCreateCampaign}
               compact
+            />
+          </Suspense>
+        </div>
+
+        {/* Retention Card - 3/5 width, segment comparison with re-engage actions */}
+        <div className="lg:col-span-3">
+          <RetentionCard
+            data={intelligence.retentionMetrics}
+            onOpenSegmentModal={handleOpenRetentionSegment}
+          />
+        </div>
+
+        {/* Visit Heatmap - 2/5 width (right column), Day × Hour patterns with segment filtering */}
+        <div className="lg:col-span-2">
+          <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
+            <LazyVisitHeatmap
+              salesData={data.sales}
+              customerMap={customerMap}
             />
           </Suspense>
         </div>
@@ -437,6 +609,119 @@ const Customers = ({ data, onDataChange }) => {
             }}
             audienceSegments={audienceSegments}
             initialAudience={preSelectedCustomerIds.length > 0 ? 'custom' : null}
+          />
+        </Suspense>
+      )}
+
+      {/* Retention Re-engage Modal - for overdue customers from RetentionCard */}
+      {retentionModalOpen && retentionModalCustomers.length > 0 && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+          <CustomerSegmentModal
+            isOpen={retentionModalOpen}
+            onClose={() => {
+              setRetentionModalOpen(false);
+              setRetentionModalSegment(null);
+              setRetentionModalCustomers([]);
+            }}
+            title={retentionModalSegment === 'loyalists' ? 'Clientes Fiéis Atrasados' : 'Clientes Novos Atrasados'}
+            subtitle="Clientes que não voltaram há 21+ dias"
+            icon={retentionModalSegment === 'loyalists' ? Crown : Sparkles}
+            color={retentionModalSegment === 'loyalists' ? 'amber' : 'purple'}
+            customers={retentionModalCustomers}
+            audienceType="retention"
+            contactedIds={contactedIds}
+            onOpenCustomerProfile={handleOpenCustomerProfile}
+            onMarkContacted={handleMarkContacted}
+            onCreateCampaign={handleCreateCampaign}
+          />
+        </Suspense>
+      )}
+
+      {/* Health At-Risk Modal - for at-risk customers from HealthPill */}
+      {healthAtRiskModalOpen && atRiskCustomers.length > 0 && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+          <CustomerSegmentModal
+            isOpen={healthAtRiskModalOpen}
+            onClose={() => setHealthAtRiskModalOpen(false)}
+            title="Clientes em Risco"
+            subtitle="Clientes que precisam de atenção imediata"
+            icon={AlertTriangle}
+            color="red"
+            customers={atRiskCustomers}
+            audienceType="atRisk"
+            contactedIds={contactedIds}
+            onOpenCustomerProfile={handleOpenCustomerProfile}
+            onMarkContacted={handleMarkContacted}
+            onCreateCampaign={handleCreateCampaign}
+          />
+        </Suspense>
+      )}
+
+      {/* Welcome Modal - for new customers without welcome campaign */}
+      {welcomeModalOpen && welcomeModalCustomers.length > 0 && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+          <CustomerSegmentModal
+            isOpen={welcomeModalOpen}
+            onClose={() => {
+              setWelcomeModalOpen(false);
+              setWelcomeModalCustomers([]);
+            }}
+            title="Enviar Boas-vindas"
+            subtitle="Novos clientes sem campanha de boas-vindas"
+            icon={Mail}
+            color="purple"
+            customers={welcomeModalCustomers}
+            audienceType="welcome"
+            contactedIds={contactedIds}
+            onOpenCustomerProfile={handleOpenCustomerProfile}
+            onMarkContacted={handleMarkContacted}
+            onCreateCampaign={handleCreateCampaign}
+          />
+        </Suspense>
+      )}
+
+      {/* Lost Customers Modal - first-time visitors who didn't return */}
+      {lostCustomersModalOpen && lostCustomersModalData.length > 0 && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+          <CustomerSegmentModal
+            isOpen={lostCustomersModalOpen}
+            onClose={() => {
+              setLostCustomersModalOpen(false);
+              setLostCustomersModalData([]);
+            }}
+            title="Clientes Não Retornaram"
+            subtitle="Primeira visita há 30+ dias sem retorno"
+            icon={UserX}
+            color="red"
+            customers={lostCustomersModalData}
+            audienceType="newCustomers"
+            contactedIds={contactedIds}
+            onOpenCustomerProfile={handleOpenCustomerProfile}
+            onMarkContacted={handleMarkContacted}
+            onCreateCampaign={handleCreateCampaign}
+          />
+        </Suspense>
+      )}
+
+      {/* Frequency Degradation Modal - customers with slipping visit patterns */}
+      {degradationModalOpen && degradationModalCustomers.length > 0 && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+          <CustomerSegmentModal
+            isOpen={degradationModalOpen}
+            onClose={() => {
+              setDegradationModalOpen(false);
+              setDegradationModalCustomers([]);
+            }}
+            title="Clientes Esfriando"
+            subtitle="Intervalos de visita aumentando"
+            icon={TrendingDown}
+            color="amber"
+            customers={degradationModalCustomers}
+            audienceType="atRisk"
+            contactedIds={contactedIds}
+            onOpenCustomerProfile={handleOpenCustomerProfile}
+            onMarkContacted={handleMarkContacted}
+            onCreateCampaign={handleCreateCampaign}
           />
         </Suspense>
       )}

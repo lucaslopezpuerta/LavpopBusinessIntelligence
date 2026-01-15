@@ -48,13 +48,14 @@
 
 import React, { useMemo, useCallback, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { AlertCircle, AlertTriangle, CheckCircle, ChevronRight, DollarSign } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle, ChevronRight, DollarSign, Clock } from 'lucide-react';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { getChartColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBlacklist } from '../hooks/useBlacklist';
 import { haptics } from '../utils/haptics';
+import { DAY_THRESHOLDS } from '../utils/customerMetrics';
 
 const ChurnHistogram = ({
     data,
@@ -98,7 +99,7 @@ const ChurnHistogram = ({
                 subtitle: `${customers.length} clientes`,
                 customers,
                 audienceType: 'atRisk',
-                color: binData.min >= 30 ? 'red' : binData.min >= 20 ? 'amber' : 'green',
+                color: binData.min >= DAY_THRESHOLDS.HEALTHY ? 'red' : binData.min >= 20 ? 'amber' : 'green',
                 icon: AlertCircle
             });
             setModalOpen(true);
@@ -112,15 +113,13 @@ const ChurnHistogram = ({
     const stats = useMemo(() => {
         const total = data.reduce((sum, d) => sum + d.count, 0);
 
-        // Check bins that represent 0-20 days (healthy)
-        const healthy = data.filter(d => {
-            const binStr = d.bin || '';
-            return binStr === '0-10' || binStr === '10-20';
-        }).reduce((sum, d) => sum + d.count, 0);
+        // Check bins within healthy threshold (v3.8.0: uses DAY_THRESHOLDS)
+        // Healthy = bins where max is <= HEALTHY threshold (30 days)
+        const healthy = data.filter(d => d.max <= DAY_THRESHOLDS.HEALTHY).reduce((sum, d) => sum + d.count, 0);
         const healthyPct = total > 0 ? Math.round((healthy / total) * 100) : 0;
 
-        // Danger zone: bins with min >= 30
-        const dangerBins = data.filter(d => d.min >= 30);
+        // Danger zone: bins with min >= HEALTHY threshold (v3.8.0: 30 days)
+        const dangerBins = data.filter(d => d.min >= DAY_THRESHOLDS.HEALTHY);
         const dangerCount = dangerBins.reduce((sum, d) => sum + d.count, 0);
 
         // Get customer IDs in danger zone
@@ -168,7 +167,7 @@ const ChurnHistogram = ({
         if (customers.length === 0) return;
 
         setModalData({
-            title: 'Zona de Perigo (30+ dias)',
+            title: `Zona de Perigo (${DAY_THRESHOLDS.HEALTHY}+ dias)`,
             subtitle: `${customers.length} clientes`,
             customers,
             audienceType: 'atRisk',
@@ -255,84 +254,89 @@ const ChurnHistogram = ({
 
     return (
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
+            {/* Header */}
             <div className="mb-4">
-                {/* Header row with title and insight pills */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                            Zona de Perigo (Churn)
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Distribuição do tempo de retorno. A maioria dos clientes volta em <span className="font-bold text-slate-700 dark:text-slate-300">0-20 dias</span>.
-                            <br />
-                            Após <span className="font-bold text-red-500">30 dias</span>, a chance de retorno cai drasticamente.
-                        </p>
+                {/* Title + Subtitle */}
+                <div className="flex items-start gap-3 mb-3">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg shrink-0">
+                        <Clock className="w-5 h-5 text-red-600 dark:text-red-400" />
                     </div>
-
-                    {/* Insight Pills - relocated to header */}
-                    <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-                        {/* Danger zone status pill */}
-                        {stats.notContactedInDanger > 0 ? (
-                            <button
-                                onClick={() => { haptics.light(); handleDangerZoneClick(); }}
-                                className="flex items-center gap-1.5 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
-                            >
-                                <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                                <span className="text-xs font-medium text-red-700 dark:text-red-300 whitespace-nowrap">
-                                    {stats.notContactedInDanger} em perigo sem contato
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                            <h3 className="text-base font-bold text-slate-800 dark:text-white">
+                                Risco de Churn
+                            </h3>
+                            {/* Contact status badge */}
+                            {contactedIds.size > 0 && stats.dangerCount > 0 && (
+                                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0">
+                                    {stats.contactedInDanger}/{stats.dangerCount} contactados
                                 </span>
-                                <ChevronRight className="w-3 h-3 text-red-500 dark:text-red-400 group-hover:translate-x-0.5 transition-transform" />
-                            </button>
-                        ) : stats.dangerCount > 0 ? (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full">
-                                <CheckCircle className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                <span className="text-xs font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap">
-                                    Todos em perigo contactados
-                                </span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-                                    Sem clientes em perigo
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Revenue at risk / healthy rate pill */}
-                        {stats.revenueAtRisk > 0 ? (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full">
-                                <DollarSign className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                                <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                                    {formatCurrency(stats.revenueAtRisk)} em risco
-                                </span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-                                    {stats.healthyPct}% retornam em 20d
-                                </span>
-                            </div>
-                        )}
+                            )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Dias desde última visita. Após <span className="font-semibold text-red-500">30 dias</span>, risco aumenta.
+                        </p>
                     </div>
                 </div>
 
-                {/* Contact status legend - Design System compliant (min text-xs) */}
-                {contactedIds.size > 0 && stats.dangerCount > 0 && (
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded-sm bg-red-500/60"></div>
-                            <span className="text-slate-600 dark:text-slate-400">Zona de perigo</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
-                            <span className="text-blue-600 dark:text-blue-400 font-medium">
-                                {stats.contactedInDanger}/{stats.dangerCount} contactados
+                {/* Insight Pills - responsive grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Danger zone status pill */}
+                    {stats.notContactedInDanger > 0 ? (
+                        <button
+                            onClick={() => { haptics.light(); handleDangerZoneClick(); }}
+                            className="flex items-center justify-between gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors group"
+                        >
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400" />
+                                <span className="text-sm font-semibold text-red-700 dark:text-red-300">
+                                    {stats.notContactedInDanger}
+                                </span>
+                                <span className="text-xs text-red-600 dark:text-red-400">
+                                    sem contato
+                                </span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-red-400 dark:text-red-500 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                    ) : stats.dangerCount > 0 ? (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
+                            <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                Todos contactados
                             </span>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
+                            <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                Nenhum em perigo
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Revenue at risk pill */}
+                    {stats.revenueAtRisk > 0 ? (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+                            <DollarSign className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                                {formatCurrency(stats.revenueAtRisk)}
+                            </span>
+                            <span className="text-xs text-amber-600 dark:text-amber-400">
+                                em risco
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
+                            <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                {stats.healthyPct}%
+                            </span>
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                                retornam em 20d
+                            </span>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="flex-1 min-h-[250px]">

@@ -1,19 +1,94 @@
-// HealthPill.jsx v1.0
-// Compact health rate indicator for header integration
-// Matches RetentionPulse design pattern
+// HealthPill.jsx v2.0
+// Enhanced health rate indicator for header integration
+// Now includes trend, full risk breakdown, and action button
 //
 // CHANGELOG:
+// v2.0 (2026-01-13): Enhanced HealthPill
+//   - NEW: Trend indicator in collapsed pill (↑+3% or ↓-2%)
+//   - NEW: Full risk breakdown (Healthy/Monitor/At Risk/Churning/New)
+//   - NEW: "Ver Clientes em Risco" action button
+//   - NEW: Dynamic insights with specific customer counts
+//   - Improved visual hierarchy with color-coded risk bars
 // v1.0 (2025-12-16): Initial implementation
 //   - Compact pill showing customer health rate percentage
 //   - Status-based coloring (Excelente/Bom/Atenção/Crítico)
 //   - Expandable dropdown with breakdown details
-//   - Animated pulse effect matching RetentionPulse
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, TrendingUp, TrendingDown, ChevronDown, AlertTriangle, Users } from 'lucide-react';
+import {
+  Heart,
+  TrendingUp,
+  TrendingDown,
+  ChevronDown,
+  AlertTriangle,
+  Users,
+  Eye,
+  Sparkles,
+  Bell,
+  CheckCircle
+} from 'lucide-react';
 
-const HealthPill = ({ healthRate, activeCount, atRiskCount, className = '' }) => {
+/**
+ * Trend Indicator Component
+ */
+const TrendIndicator = ({ value, className = '' }) => {
+  if (value === 0 || value === null || value === undefined) return null;
+
+  const isPositive = value > 0;
+  const Icon = isPositive ? TrendingUp : TrendingDown;
+  const colorClass = isPositive
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : 'text-red-600 dark:text-red-400';
+
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${colorClass} ${className}`}>
+      <Icon className="w-3 h-3" />
+      <span className="text-xs font-semibold">
+        {isPositive ? '+' : ''}{value}%
+      </span>
+    </span>
+  );
+};
+
+/**
+ * Risk Breakdown Bar Component
+ */
+const RiskBreakdownBar = ({ label, count, total, icon: Icon, colorClass, bgClass }) => {
+  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Icon className={`w-3 h-3 ${colorClass}`} />
+          <span className="text-xs text-slate-600 dark:text-slate-300">{label}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-bold ${colorClass}`}>{count}</span>
+          <span className="text-xs text-slate-400">({percentage}%)</span>
+        </div>
+      </div>
+      <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${bgClass} rounded-full transition-all duration-500`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const HealthPill = ({
+  healthRate,
+  activeCount,
+  atRiskCount,
+  trend = 0,
+  breakdown = {},
+  atRiskCustomers = [],
+  onOpenAtRiskModal,
+  className = ''
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (healthRate === null || healthRate === undefined) return null;
@@ -56,7 +131,59 @@ const HealthPill = ({ healthRate, activeCount, atRiskCount, className = '' }) =>
 
   const status = getStatus(healthRate);
   const StatusIcon = status.icon;
-  const healthyCount = activeCount - atRiskCount;
+
+  // Extract breakdown values with defaults
+  const {
+    healthy = 0,
+    monitor = 0,
+    atRisk = 0,
+    churning = 0,
+    newCustomer = 0
+  } = breakdown;
+
+  const needsAttention = atRisk + churning;
+
+  // Generate dynamic insight
+  const getInsight = () => {
+    if (healthRate >= 80) {
+      return {
+        icon: CheckCircle,
+        color: 'text-emerald-600 dark:text-emerald-400',
+        text: `Excelente! ${healthy} clientes saudáveis.`
+      };
+    }
+    if (healthRate >= 60) {
+      return {
+        icon: Eye,
+        color: 'text-blue-600 dark:text-blue-400',
+        text: `${monitor} clientes em monitoramento. ${needsAttention} precisam de atenção.`
+      };
+    }
+    if (healthRate >= 40) {
+      return {
+        icon: AlertTriangle,
+        color: 'text-amber-600 dark:text-amber-400',
+        text: `${needsAttention} clientes em risco. ${churning} em estado crítico.`
+      };
+    }
+    return {
+      icon: Bell,
+      color: 'text-red-600 dark:text-red-400',
+      text: `Crítico: ${needsAttention} clientes precisam de ação urgente!`
+    };
+  };
+
+  const insight = getInsight();
+  const InsightIcon = insight.icon;
+
+  // Handle action button click
+  const handleActionClick = (e) => {
+    e.stopPropagation();
+    setIsExpanded(false);
+    if (onOpenAtRiskModal) {
+      onOpenAtRiskModal(atRiskCustomers);
+    }
+  };
 
   return (
     <div className={`relative ${className}`}>
@@ -80,6 +207,11 @@ const HealthPill = ({ healthRate, activeCount, atRiskCount, className = '' }) =>
           Saúde: {Math.round(healthRate)}%
         </span>
 
+        {/* Trend Indicator - Inline in pill */}
+        {trend !== 0 && (
+          <TrendIndicator value={trend} />
+        )}
+
         {/* Status Badge - Hidden on mobile to save space */}
         <span className={`hidden sm:inline text-xs font-bold ${status.color} uppercase tracking-wide`}>
           {status.label}
@@ -99,76 +231,116 @@ const HealthPill = ({ healthRate, activeCount, atRiskCount, className = '' }) =>
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-2 z-50"
+            className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50"
           >
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 min-w-[220px]">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 min-w-[280px] max-w-[320px]">
               {/* Header */}
-              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-700">
-                <div className={`w-8 h-8 rounded-lg ${status.bg} flex items-center justify-center`}>
-                  <StatusIcon className={`w-4 h-4 ${status.color}`} />
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-lg ${status.bg} flex items-center justify-center`}>
+                    <StatusIcon className={`w-4 h-4 ${status.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Taxa de Saúde
+                    </p>
+                    <p className={`text-xs font-semibold ${status.color} uppercase`}>
+                      {status.label}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    Taxa de Saúde
-                  </p>
-                  <p className={`text-xs font-semibold ${status.color} uppercase`}>
-                    {status.label}
-                  </p>
+                {trend !== 0 && (
+                  <div className="text-right">
+                    <TrendIndicator value={trend} />
+                    <p className="text-xs text-slate-400 mt-0.5">vs 30 dias</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Risk Distribution Section */}
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                  Distribuição por Risco
+                </h4>
+
+                <div className="space-y-3">
+                  <RiskBreakdownBar
+                    label="Saudáveis"
+                    count={healthy}
+                    total={activeCount}
+                    icon={CheckCircle}
+                    colorClass="text-emerald-600 dark:text-emerald-400"
+                    bgClass="bg-emerald-500"
+                  />
+
+                  <RiskBreakdownBar
+                    label="Monitor"
+                    count={monitor}
+                    total={activeCount}
+                    icon={Eye}
+                    colorClass="text-blue-600 dark:text-blue-400"
+                    bgClass="bg-blue-500"
+                  />
+
+                  <RiskBreakdownBar
+                    label="Em Risco"
+                    count={atRisk}
+                    total={activeCount}
+                    icon={AlertTriangle}
+                    colorClass="text-amber-600 dark:text-amber-400"
+                    bgClass="bg-amber-500"
+                  />
+
+                  <RiskBreakdownBar
+                    label="Churning"
+                    count={churning}
+                    total={activeCount}
+                    icon={TrendingDown}
+                    colorClass="text-red-600 dark:text-red-400"
+                    bgClass="bg-red-500"
+                  />
+
+                  <RiskBreakdownBar
+                    label="Novos"
+                    count={newCustomer}
+                    total={activeCount}
+                    icon={Sparkles}
+                    colorClass="text-purple-600 dark:text-purple-400"
+                    bgClass="bg-purple-500"
+                  />
                 </div>
               </div>
 
-              {/* Health Breakdown */}
-              <div className="space-y-3">
-                {/* Health Bar */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Clientes Saudáveis</span>
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      {healthyCount > 0 ? healthyCount : 0}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                      style={{ width: `${healthRate}%` }}
-                    />
-                  </div>
+              {/* Total */}
+              <div className="flex items-center justify-between py-2 px-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg mb-4">
+                <div className="flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Total Ativos</span>
                 </div>
-
-                {/* At Risk Count */}
-                <div className="flex items-center justify-between py-2 px-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                    <span className="text-xs text-red-700 dark:text-red-300">Em Risco</span>
-                  </div>
-                  <span className="text-xs font-bold text-red-600 dark:text-red-400">
-                    {atRiskCount || 0}
-                  </span>
-                </div>
-
-                {/* Total */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Total Ativos</span>
-                  </div>
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    {activeCount || 0}
-                  </span>
-                </div>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                  {activeCount || 0}
+                </span>
               </div>
+
+              {/* Action Button */}
+              {needsAttention > 0 && onOpenAtRiskModal && (
+                <button
+                  onClick={handleActionClick}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors mb-4"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  Ver Clientes em Risco ({needsAttention})
+                </button>
+              )}
 
               {/* Insight */}
-              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {healthRate >= 80
-                    ? 'Base de clientes muito saudável!'
-                    : healthRate >= 60
-                    ? 'Boa saúde, monitore os em risco.'
-                    : healthRate >= 40
-                    ? 'Atenção: muitos clientes em risco.'
-                    : 'Crítico: ação de retenção urgente!'}
-                </p>
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-start gap-2">
+                  <InsightIcon className={`w-4 h-4 ${insight.color} flex-shrink-0 mt-0.5`} />
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {insight.text}
+                  </p>
+                </div>
               </div>
             </div>
           </motion.div>

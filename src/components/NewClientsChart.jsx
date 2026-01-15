@@ -243,93 +243,107 @@ const NewClientsChart = ({
 
   return (
     <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
+      {/* Header */}
       <div className="mb-4">
-        {/* Header row with title and insight pills */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
-          <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              Novos Clientes
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Aquisição nos últimos 30 dias.
-            </p>
+        {/* Title + Subtitle */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+            <UserPlus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-
-          {/* Insight Pills - relocated to header */}
-          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-            {/* Welcome status pill */}
-            {stats.notWelcomed > 0 ? (
-              <button
-                onClick={() => { haptics.light(); handleNewCustomersClick(); }}
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
-              >
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                  {stats.notWelcomed} sem boas-vindas
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-base font-bold text-slate-800 dark:text-white">
+                Novos Clientes
+              </h3>
+              {/* Welcome coverage badge */}
+              {welcomeContactedIds.size > 0 && allNewCustomerIds.length > 0 && (
+                <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
+                  {stats.welcomeCount}/{allNewCustomerIds.length} com boas-vindas
                 </span>
-                <ChevronRight className="w-3 h-3 text-amber-500 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            ) : stats.welcomeCount > 0 ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-full">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-                  {stats.welcomePct}% com boas-vindas
-                </span>
-              </div>
-            ) : null}
-
-            {/* Return/trend pill */}
-            {stats.returnedCount > 0 ? (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
-                stats.returnPct >= 50
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800'
-                  : 'bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
-              }`}>
-                <CheckCircle className={`w-3.5 h-3.5 ${
-                  stats.returnPct >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'
-                }`} />
-                <span className={`text-xs font-medium whitespace-nowrap ${
-                  stats.returnPct >= 50 ? 'text-emerald-700 dark:text-emerald-300' : 'text-blue-700 dark:text-blue-300'
-                }`}>
-                  {stats.returnPct}% retornaram
-                </span>
-              </div>
-            ) : stats.weekChange !== 0 ? (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
-                stats.weekChange > 0
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800'
-                  : 'bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600'
-              }`}>
-                {stats.weekChange > 0 ? (
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <TrendingDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                )}
-                <span className={`text-xs font-medium whitespace-nowrap ${
-                  stats.weekChange > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400'
-                }`}>
-                  {stats.weekChange > 0 ? '+' : ''}{stats.weekChange}% vs semana
-                </span>
-              </div>
-            ) : null}
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Aquisição nos últimos 30 dias
+            </p>
           </div>
         </div>
 
-        {/* Welcome coverage legend - Design System compliant (min text-xs) */}
-        {welcomeContactedIds.size > 0 && allNewCustomerIds.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
-              <span className="text-slate-600 dark:text-slate-400">Total novos</span>
-            </div>
-            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
-              <span className="text-green-600 dark:text-green-400 font-medium">
-                {stats.welcomeCount}/{allNewCustomerIds.length} com boas-vindas ({stats.welcomePct}%)
+        {/* Insight Pills - responsive grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* Welcome status pill */}
+          {stats.notWelcomed > 0 ? (
+            <button
+              onClick={() => { haptics.light(); handleNewCustomersClick(); }}
+              className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                  {stats.notWelcomed}
+                </span>
+                <span className="text-xs text-amber-600 dark:text-amber-400">
+                  sem boas-vindas
+                </span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-amber-400 dark:text-amber-500 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          ) : stats.welcomeCount > 0 ? (
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                {stats.welcomePct}%
+              </span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                com boas-vindas
               </span>
             </div>
-          </div>
-        )}
+          ) : null}
+
+          {/* Return/trend pill */}
+          {stats.returnedCount > 0 ? (
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+              stats.returnPct >= 50
+                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'
+                : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50'
+            }`}>
+              <CheckCircle className={`w-4 h-4 ${
+                stats.returnPct >= 50 ? 'text-emerald-500 dark:text-emerald-400' : 'text-blue-500 dark:text-blue-400'
+              }`} />
+              <span className={`text-sm font-semibold ${
+                stats.returnPct >= 50 ? 'text-emerald-700 dark:text-emerald-300' : 'text-blue-700 dark:text-blue-300'
+              }`}>
+                {stats.returnPct}%
+              </span>
+              <span className={`text-xs ${
+                stats.returnPct >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'
+              }`}>
+                retornaram
+              </span>
+            </div>
+          ) : stats.weekChange !== 0 ? (
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+              stats.weekChange > 0
+                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'
+                : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-600/50'
+            }`}>
+              {stats.weekChange > 0 ? (
+                <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              )}
+              <span className={`text-sm font-semibold ${
+                stats.weekChange > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400'
+              }`}>
+                {stats.weekChange > 0 ? '+' : ''}{stats.weekChange}%
+              </span>
+              <span className={`text-xs ${
+                stats.weekChange > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'
+              }`}>
+                vs semana
+              </span>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex-1 min-h-[200px]">

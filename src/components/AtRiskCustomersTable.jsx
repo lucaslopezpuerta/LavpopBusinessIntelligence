@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v9.8 - REMOVED SWIPE VIEW NAVIGATION CALLBACKS
+// AtRiskCustomersTable.jsx v9.9 - RESPONSIVE PAGINATION + HEIGHT FILL
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
@@ -10,8 +10,14 @@
 // ✅ Descriptive column names
 // ✅ Hide checkbox for contacted customers
 // ✅ Row swipe actions (call/WhatsApp) work reliably
+// ✅ Responsive pagination (10 desktop, 5 mobile)
+// ✅ Fills container height when used with flex layout
 //
 // CHANGELOG:
+// v9.9 (2026-01-12): Responsive pagination + height fill
+//   - NEW: Desktop shows 10 items per page, mobile shows 5
+//   - NEW: Component fills available container height with flex layout
+//   - NEW: Accepts className prop for container styling
 // v9.8 (2026-01-12): Removed swipe view navigation callbacks
 //   - REMOVED: onSwipeStart/End props (no longer needed)
 //   - Swipe view navigation removed from App.jsx entirely
@@ -45,7 +51,7 @@
 
 import React, { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, ArrowUpDown, Users, Ban, EyeOff, Eye, Search, X, Send } from 'lucide-react';
-import { RISK_LABELS } from '../utils/customerMetrics';
+import { RISK_LABELS, DAY_THRESHOLDS } from '../utils/customerMetrics';
 
 // Lazy-load heavy modals
 const CustomerProfileModal = lazy(() => import('./CustomerProfileModal'));
@@ -56,8 +62,24 @@ import { useBlacklist } from '../hooks/useBlacklist';
 import { addCommunicationEntry, getDefaultNotes } from '../utils/communicationLog';
 import { isValidBrazilianMobile, normalizePhone } from '../utils/phoneUtils';
 
-const ITEMS_PER_PAGE = 5;
 const STORAGE_KEY = 'atRiskTable_sortBy';
+
+// Hook for responsive items per page
+const useItemsPerPage = () => {
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
+  useEffect(() => {
+    const checkSize = () => {
+      // Desktop (lg+): 10 items, Mobile: 5 items
+      setItemsPerPage(window.innerWidth >= 1024 ? 10 : 5);
+    };
+    checkSize();
+    window.addEventListener('resize', checkSize);
+    return () => window.removeEventListener('resize', checkSize);
+  }, []);
+
+  return itemsPerPage;
+};
 
 // Sort options
 const SORT_OPTIONS = {
@@ -73,16 +95,20 @@ const FILTER_TABS = {
   contacted: { label: 'Contactados', color: 'emerald' }
 };
 
-// Days urgency thresholds and colors
+// Days urgency thresholds and colors (v3.8.0 - uses DAY_THRESHOLDS)
+// Aligned with data-driven thresholds from customerMetrics.js
 const getDaysUrgencyColor = (days) => {
-  if (days >= 45) return 'bg-red-600 text-white';
-  if (days >= 35) return 'bg-red-500 text-white';
-  if (days >= 30) return 'bg-orange-500 text-white';
-  if (days >= 25) return 'bg-amber-500 text-white';
-  return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
+  if (days >= DAY_THRESHOLDS.CHURNING) return 'bg-red-600 text-white';      // 60+ days: Critical
+  if (days >= DAY_THRESHOLDS.AT_RISK) return 'bg-red-500 text-white';       // 50+ days: At Risk
+  if (days >= DAY_THRESHOLDS.MONITOR) return 'bg-orange-500 text-white';    // 40+ days: Monitor
+  if (days >= DAY_THRESHOLDS.HEALTHY) return 'bg-amber-500 text-white';     // 30+ days: Overdue
+  return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'; // 0-29 days: Normal
 };
 
-const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
+const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) => {
+  // Responsive items per page
+  const itemsPerPage = useItemsPerPage();
+
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -213,12 +239,19 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
     return allAtRiskCustomers.filter(c => isBlacklisted(c.phone)).length;
   }, [allAtRiskCustomers, isBlacklisted]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+  // Pagination - uses responsive itemsPerPage
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
   const paginatedCustomers = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredCustomers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredCustomers, currentPage]);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredCustomers, currentPage, itemsPerPage]);
+
+  // Reset page when items per page changes (screen resize)
+  useEffect(() => {
+    if (currentPage > Math.ceil(filteredCustomers.length / itemsPerPage)) {
+      setCurrentPage(1);
+    }
+  }, [itemsPerPage, filteredCustomers.length, currentPage]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -422,9 +455,9 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
 
   return (
     <>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700">
+      <div className={`bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden h-full flex flex-col ${className}`}>
+        {/* Header - fixed height */}
+        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center border-l-4 border-red-500">
@@ -544,8 +577,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
           </div>
         </div>
 
-        {/* Mobile Card View */}
-        <div className="lg:hidden p-4 space-y-2">
+        {/* Mobile Card View - grows to fill space */}
+        <div className="lg:hidden p-4 space-y-2 flex-1 overflow-y-auto">
           {paginatedCustomers.length === 0 ? (
             <div className="text-center py-8 text-slate-500 dark:text-slate-400">
               Nenhum cliente encontrado
@@ -668,8 +701,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
           )}
         </div>
 
-        {/* Desktop Table View - with sticky headers */}
-        <div className="hidden lg:block overflow-x-auto max-h-[500px] overflow-y-auto" ref={tableRef} onKeyDown={handleKeyDown}>
+        {/* Desktop Table View - grows to fill space with sticky headers */}
+        <div className="hidden lg:flex lg:flex-col flex-1 overflow-x-auto overflow-y-auto min-h-0" ref={tableRef} onKeyDown={handleKeyDown}>
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
               <tr className="border-b-2 border-slate-200 dark:border-slate-700">
@@ -864,11 +897,11 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData }) => {
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Pagination - fixed height */}
         {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-200 dark:border-slate-700">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
             <div className="text-xs text-slate-500 dark:text-slate-400 order-2 sm:order-1">
-              {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredCustomers.length)} de {filteredCustomers.length}
+              {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredCustomers.length)} de {filteredCustomers.length}
             </div>
             <div className="flex items-center gap-1.5 order-1 sm:order-2">
               <button

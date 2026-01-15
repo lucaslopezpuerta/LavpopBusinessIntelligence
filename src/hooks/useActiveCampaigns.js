@@ -32,6 +32,7 @@ const AUTOMATION_MAPPINGS = {
   welcome: ['welcome_new', 'post_visit'],
   wallet: ['wallet_reminder'],
   vip: ['winback_30'], // High-value customers also match winback
+  retention: ['winback_30', 'winback_45', 'post_visit'], // Retention re-engage campaigns
 };
 
 // Mapping from customer segment type to matching campaign audience types
@@ -44,6 +45,7 @@ const AUDIENCE_MAPPINGS = {
   vip: ['vip', 'frequent'],
   frequent: ['frequent', 'vip'],
   champions: ['vip', 'frequent'],
+  retention: ['atRisk', 'newCustomers', 'healthy'], // Show relevant campaigns for retention modal
 };
 
 /**

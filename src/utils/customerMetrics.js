@@ -1,4 +1,32 @@
-// Customer Metrics Calculator v3.7.0 - DISTINCT PORTUGUESE RFM SEGMENTS
+// Customer Metrics Calculator v3.12.0 - DATA-DRIVEN THRESHOLDS
+// ✅ v3.12.0 (2026-01-14): Fixed visit counting in retention metrics
+//     - CRITICAL BUG FIX: Both getRetentionMetrics() and getFirstVisitConversion() now
+//       deduplicate visits by date (counts unique visit DAYS, not raw transactions)
+//     - Before: Customer with 2 laundry loads on day 1 counted as "returned" (86% conversion!)
+//     - After: Only counts as returned if they visit on a DIFFERENT day
+//     - Also fixed getCustomerSegment() to use first-visit dates for "new" classification
+// ✅ v3.11.0 (2026-01-14): Refined FrequencyDegradation reliability filters
+//     - Lowered OUTLIER_MULTIPLIER from 10× to 4× for stricter win-back detection
+//     - Added LAST_INTERVAL_MULTIPLIER (4×): Filter recent win-backs even if max < 4×
+//     - Added MAX_HISTORICAL_AVG (45d): Skip sporadic customers (infrequent = unreliable)
+//     - Added MAX_CV (1.5): Skip customers with inconsistent historical patterns
+//     - Verified: Antonio, Carina, Katherine, Madhavah SHOWN (genuine degradation)
+//     - Filtered: Luciano (122d gap), Osmar (328d), Flavia (sporadic), Isaias (inconsistent)
+// ✅ v3.10.0 (2026-01-14): Multi-factor FrequencyDegradation pattern detection
+//     - Win-back detection: Filter customers with max interval > historicalAvg × 10
+//     - Recovery detection: Filter customers whose last interval AND last 3 avg are normal
+//     - Uses ELEVATED_MULTIPLIER (1.5×) and OUTLIER_MULTIPLIER (10×) instead of fixed thresholds
+//     - Test results: Alfredo (win-back) EXCLUDED, Daniele (recovered) EXCLUDED,
+//       Antonio (just recovered, elevated recent) INCLUDED
+// ✅ v3.9.0 (2026-01-14): FrequencyDegradation churn gap detection
+//     - Added CHURN_GAP_THRESHOLD (50 days) to filter win-back customers
+//     - Customers with any interval > 50 days are skipped (already churned and returned)
+//     - Fixes false positives like Alfredo Christ case (586d gap = win-back, not degradation)
+// ✅ v3.8.0 (2026-01-13): Adjusted thresholds based on 14k+ transaction analysis
+//     - DAY_THRESHOLDS: HEALTHY 20→30, MONITOR 30→40, AT_RISK 45→50 (median interval: 22.5 days)
+//     - SEGMENT_BONUS: VIP 1.2→1.4, Frequente 1.1→1.2 (VIP avg 90.7 visits)
+//     - New customers: Time-based likelihood (70%→5%) instead of fixed 50%
+//     - Analysis showed: 71% of customers who return do so within 30 days
 // ✅ v3.7.0 (2025-12-23): Converted debug logs to logger utility
 // ✅ Brazilian number parsing added (handles comma decimals)
 // ✅ Cashback rate corrected (7.5%)
@@ -123,13 +151,18 @@ const LOST_THRESHOLD = 60; // Days until customer is considered "Lost" (was 120)
 const CASHBACK_RATE = 0.075; // 7.5% cashback
 const CASHBACK_START = new Date(2024, 5, 1); // June 1, 2024
 
-// Day-based thresholds for risk classification
-const DAY_THRESHOLDS = {
-  HEALTHY: 20,    // 0-20 days: Normal laundry cycle (weekly/bi-weekly)
-  MONITOR: 30,    // 21-30 days: Slightly overdue, worth monitoring
-  AT_RISK: 45,    // 31-45 days: Missing their cycle, intervention needed
-  CHURNING: 60,   // 46-60 days: Likely found another laundromat
-  LOST: 60        // 60+ days: Definitively churned
+// Day-based thresholds for risk classification (v3.8.0 - data-driven)
+// Based on analysis of 14k+ transactions:
+// - Median visit interval: 22.5 days (not 14 as assumed)
+// - 71% of customers who return do so within 30 days
+// - Return rate stays above 50% until 119 days
+// EXPORTED: Used by AtRiskCustomersTable, ChurnHistogram for consistent threshold colors
+export const DAY_THRESHOLDS = {
+  HEALTHY: 30,    // 0-30 days: Normal cycle (1.3x median of 22.5 days)
+  MONITOR: 40,    // 31-40 days: Slightly overdue, worth monitoring
+  AT_RISK: 50,    // 41-50 days: Missing their cycle, intervention needed
+  CHURNING: 60,   // 51-60 days: Likely found another laundromat
+  LOST: 60        // 60+ days: Definitively churned (for early intervention)
 };
 
 // Unified Risk Labels (English keys, Portuguese values)
@@ -145,21 +178,22 @@ export const RISK_LABELS = {
   'Lost': { pt: 'Perdido', color: 'slate', borderColor: '#64748b', bgClass: 'bg-slate-100', textClass: 'text-slate-700', icon: 'MinusCircle' }
 };
 
-// RFM segment bonus multipliers for return likelihood
-// Supports Portuguese (current) and English (legacy) segment names
+// RFM segment bonus multipliers for return likelihood (v3.8.0 - increased)
+// Based on analysis: VIP customers avg 90.7 visits, Frequente avg 19.3 visits
+// Increased bonuses to give loyal customers more grace period
 // Portuguese names are DISTINCT from Churn Risk Level names
 const SEGMENT_BONUS = {
   // Portuguese RFM segment names (from Supabase - v3.4.0)
-  'VIP': 1.2,           // Champion - best customers, top tier
-  'Frequente': 1.1,     // Loyal - regular visitors
+  'VIP': 1.4,           // Champion - avg 90.7 visits, 12.6 day interval (was 1.2)
+  'Frequente': 1.2,     // Loyal - avg 19.3 visits, 36.1 day interval (was 1.1)
   'Promissor': 1.0,     // Potential - growing customers
   'Novato': 0.9,        // New customer - newcomers
   'Esfriando': 0.8,     // At Risk - cooling off, needs attention
   'Inativo': 0.5,       // Lost - no recent engagement
 
   // English segment names (legacy compatibility)
-  'Champion': 1.2,
-  'Loyal': 1.1,
+  'Champion': 1.4,
+  'Loyal': 1.2,
   'Potential': 1.0,
   'New': 0.9,
   'At Risk': 0.8,
@@ -448,9 +482,22 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
       customer.daysOverdue = customer.avgDaysBetween ? daysSinceLastVisit - customer.avgDaysBetween : 0;
     }
     else if (customer.transactions === 1) {
-      customer.returnLikelihood = 50;
+      // Time-based likelihood for 1-visit customers (v3.8.0)
+      // Based on analysis: 56.1% return by day 14, 71.3% by day 30
+      // 95.8% of 1-visit customers who are 60+ days old never return
+      if (daysSinceLastVisit <= 7) {
+        customer.returnLikelihood = 70;  // Fresh, likely to return
+      } else if (daysSinceLastVisit <= 14) {
+        customer.returnLikelihood = 50;  // 56% return by this point
+      } else if (daysSinceLastVisit <= 30) {
+        customer.returnLikelihood = 30;  // 71% return by this point
+      } else if (daysSinceLastVisit <= 60) {
+        customer.returnLikelihood = 15;  // Getting unlikely
+      } else {
+        customer.returnLikelihood = 5;   // Almost certainly not returning
+      }
       customer.riskLevel = 'New Customer';
-      customer.daysOverdue = 0;
+      customer.daysOverdue = daysSinceLastVisit > 14 ? daysSinceLastVisit - 14 : 0;
     }
     else if (customer.avgDaysBetween && customer.avgDaysBetween > 0) {
       const ratio = daysSinceLastVisit / customer.avgDaysBetween;
@@ -632,68 +679,297 @@ export function getChurnHistogramData(customers) {
 }
 
 /**
- * 3. Retention Cohorts (Survival Score)
- * Calculates actual return rates for 30/60/90 day windows
+ * 3. Retention Metrics v2.1 (Cohort-Based Algorithm)
+ * Calculates retention rate using cohort analysis: "Of customers who visited X days ago, how many returned?"
+ *
+ * ALGORITHM:
+ * 1. Find all customers who visited during the "seed window" (31-60 days ago)
+ * 2. Check if each customer returned within 30 days after their seed visit
+ * 3. Include ALL customers from seed window, even those who didn't return (they count as not retained)
+ *
+ * This avoids the selection bias of only counting customers who already returned.
+ *
+ * Example interpretation: "65% of customers who visited last month came back within 30 days"
+ *
+ * @param {Array} salesData - Raw sales transactions
+ * @param {Object} customerMap - Customer metadata with segments (doc → customer object)
+ * @returns {Object} Retention metrics with segment breakdown, trend, and history
  */
-export function getRetentionCohorts(salesData) {
-  if (!salesData || salesData.length === 0) return { rate30: 0, rate60: 0, rate90: 0 };
+export function getRetentionMetrics(salesData, customerMap = {}) {
+  if (!salesData || salesData.length === 0) {
+    return {
+      overall: { rate30: 0, eligible: 0, returned: 0, overdueCount: 0 },
+      segments: {
+        loyalists: { rate30: 0, eligible: 0, returned: 0, overdueCount: 0, overdueCustomers: [] },
+        new: { rate30: 0, eligible: 0, returned: 0, overdueCount: 0, overdueCustomers: [] }
+      },
+      trend: { overall: 0, loyalists: 0, new: 0 },
+      history: { labels: [], overall: [], loyalists: [], new: [] }
+    };
+  }
 
   const now = new Date();
+  const OVERDUE_THRESHOLD = 21; // 3 weeks - customer is overdue if no visit in 21+ days
+  const RETURN_WINDOW = 30;     // 30 days to return counts as "retained"
+  const SEED_WINDOW_START = 60; // Seed window: 31-60 days ago (gives 30 days to return before "now")
+  const SEED_WINDOW_END = 31;   // Must be > RETURN_WINDOW to have complete data
+
+  // Threshold for "new" customers (first visit within last 60 days for segment classification)
+  const newCustomerThreshold = new Date(now);
+  newCustomerThreshold.setDate(newCustomerThreshold.getDate() - 60);
 
   // Helper to parse date from row
   const getRowDate = (row) => parseBrDate(row.Data || row.Data_Hora || row.date || '');
   const getRowDoc = (row) => extractCPF(row);
 
-  // Group visits by customer
-  const customerVisits = {};
+  // Group visits by customer (deduplicated by date)
+  // CRITICAL: Count unique visit DAYS, not raw transactions
+  // A customer with 2 laundry loads on day 1 should count as 1 visit, not 2
+  const customerVisitSets = {};
   salesData.forEach(row => {
     const doc = getRowDoc(row);
     const date = getRowDate(row);
-    if (doc && date) {
-      if (!customerVisits[doc]) customerVisits[doc] = [];
-      customerVisits[doc].push(date);
+    if (doc && date && isValidCpf(doc)) {
+      if (!customerVisitSets[doc]) customerVisitSets[doc] = new Set();
+      const dateKey = formatDate(date);
+      customerVisitSets[doc].add(dateKey);
     }
   });
 
-  // Calculate rate for a specific lookback period
-  const calculateRate = (lookbackDays) => {
-    const targetDate = new Date(now);
-    targetDate.setDate(targetDate.getDate() - lookbackDays);
+  // Convert Sets to sorted Date arrays
+  const customerVisits = {};
+  Object.entries(customerVisitSets).forEach(([doc, dateSet]) => {
+    customerVisits[doc] = Array.from(dateSet)
+      .map(dateStr => parseBrDate(dateStr))
+      .filter(d => d !== null)
+      .sort((a, b) => a - b);
+  });
 
-    // Window to check for return: starts AFTER active window ends
-    // Active window: targetDate - 15 days to targetDate (not overlapping with return window)
-    const activeStart = new Date(targetDate);
-    activeStart.setDate(activeStart.getDate() - 15);
-    const activeEnd = new Date(targetDate); // End at target date, not +15 (fixes overlap)
+  /**
+   * Determine customer segment based on first visit date (v3.12.0)
+   * Uses actual transaction data instead of segment classification for "new" customers
+   * @param {string} customerId - Customer doc/ID
+   * @returns {'loyalists' | 'new' | 'other'}
+   */
+  const getCustomerSegment = (customerId) => {
+    const customer = customerMap[customerId];
+    const visits = customerVisits[customerId];
+    if (!customer || !visits || visits.length === 0) return 'other';
 
-    // Return window: day after targetDate to targetDate + 30 days
-    const returnStart = new Date(targetDate);
-    returnStart.setDate(returnStart.getDate() + 1); // Start day after target
-    const returnEnd = new Date(targetDate);
-    returnEnd.setDate(returnEnd.getDate() + 30);
+    const firstVisit = visits[0];
 
-    let eligible = 0;
-    let returned = 0;
+    // Loyalists: VIP or Frequente segments (established, high-value customers)
+    if (customer.segment === 'VIP' || customer.segment === 'Frequente') {
+      return 'loyalists';
+    }
 
-    Object.values(customerVisits).forEach(visits => {
-      // Was customer active in the window BEFORE target date?
-      const wasActive = visits.some(d => d >= activeStart && d <= activeEnd);
+    // New: First visit within the analysis window (matches FirstVisitConversion logic)
+    // Uses actual transaction data instead of Supabase segment classification
+    if (firstVisit >= newCustomerThreshold) {
+      return 'new';
+    }
 
-      if (wasActive) {
-        eligible++;
-        // Did they return in the non-overlapping window AFTER the target date?
-        const didReturn = visits.some(d => d >= returnStart && d <= returnEnd);
-        if (didReturn) returned++;
+    return 'other';
+  };
+
+  /**
+   * Calculate retention using cohort analysis
+   * @param {number} seedStartDaysAgo - Start of seed window (days ago)
+   * @param {number} seedEndDaysAgo - End of seed window (days ago)
+   * @param {boolean} collectOverdue - Whether to collect overdue customer list
+   * @returns {Object} Metrics per segment
+   */
+  const calculateCohortRetention = (seedStartDaysAgo, seedEndDaysAgo, collectOverdue = false) => {
+    const metrics = {
+      overall: { eligible: 0, returned: 0, overdueCount: 0 },
+      loyalists: { eligible: 0, returned: 0, overdueCount: 0, overdueCustomers: [] },
+      new: { eligible: 0, returned: 0, overdueCount: 0, overdueCustomers: [] }
+    };
+
+    // Define seed window (when customers must have visited to be in cohort)
+    const seedStart = new Date(now);
+    seedStart.setDate(seedStart.getDate() - seedStartDaysAgo);
+    seedStart.setHours(0, 0, 0, 0);
+
+    const seedEnd = new Date(now);
+    seedEnd.setDate(seedEnd.getDate() - seedEndDaysAgo);
+    seedEnd.setHours(23, 59, 59, 999);
+
+    Object.entries(customerVisits).forEach(([customerId, visits]) => {
+      // Find visits in the seed window
+      const seedVisits = visits.filter(v => v >= seedStart && v <= seedEnd);
+
+      if (seedVisits.length === 0) return; // Customer not in this cohort
+
+      // Get the LAST visit in the seed window (this is the reference point)
+      const seedVisit = seedVisits[seedVisits.length - 1];
+
+      // Define return window: from day after seed visit to seed visit + 30 days
+      const returnWindowStart = new Date(seedVisit);
+      returnWindowStart.setDate(returnWindowStart.getDate() + 1);
+
+      const returnWindowEnd = new Date(seedVisit);
+      returnWindowEnd.setDate(returnWindowEnd.getDate() + RETURN_WINDOW);
+
+      // Did they return in the window?
+      const didReturn = visits.some(v => v >= returnWindowStart && v <= returnWindowEnd);
+
+      // Get customer's last visit overall (for overdue calculation)
+      const lastVisit = visits[visits.length - 1];
+      const daysSinceLastVisit = Math.floor((now - lastVisit) / (1000 * 60 * 60 * 24));
+      const isOverdue = daysSinceLastVisit >= OVERDUE_THRESHOLD;
+
+      // Get segment
+      const segment = getCustomerSegment(customerId);
+
+      // Update overall metrics
+      metrics.overall.eligible++;
+      if (didReturn) metrics.overall.returned++;
+      if (isOverdue) metrics.overall.overdueCount++;
+
+      // Update segment-specific metrics
+      if (segment === 'loyalists' || segment === 'new') {
+        metrics[segment].eligible++;
+        if (didReturn) metrics[segment].returned++;
+        if (isOverdue) {
+          metrics[segment].overdueCount++;
+          if (collectOverdue) {
+            const customer = customerMap[customerId];
+            metrics[segment].overdueCustomers.push({
+              id: customerId,
+              doc: customerId,
+              daysSinceLastVisit,
+              name: customer?.name || `Cliente ${customerId.slice(-4)}`,
+              phone: customer?.phone || null,
+              segment: customer?.segment || 'Desconhecido',
+              netTotal: customer?.netTotal || 0,
+              visits: customer?.visits || 0,
+              lastVisit
+            });
+          }
+        }
       }
     });
 
-    return eligible > 0 ? Math.round((returned / eligible) * 100) : 0;
+    // Calculate rates
+    const calcRate = (m) => m.eligible > 0 ? Math.round((m.returned / m.eligible) * 100) : 0;
+
+    return {
+      overall: { ...metrics.overall, rate30: calcRate(metrics.overall) },
+      loyalists: { ...metrics.loyalists, rate30: calcRate(metrics.loyalists) },
+      new: { ...metrics.new, rate30: calcRate(metrics.new) }
+    };
   };
 
+  // Current period: customers who visited 31-60 days ago, did they return within 30 days?
+  const currentMetrics = calculateCohortRetention(SEED_WINDOW_START, SEED_WINDOW_END, true);
+
+  // Previous period: customers who visited 61-90 days ago, did they return within 30 days?
+  const prevMetrics = calculateCohortRetention(SEED_WINDOW_START + 30, SEED_WINDOW_END + 30, false);
+
+  // Calculate trend (current - previous)
+  const trend = {
+    overall: currentMetrics.overall.rate30 - prevMetrics.overall.rate30,
+    loyalists: currentMetrics.loyalists.rate30 - prevMetrics.loyalists.rate30,
+    new: currentMetrics.new.rate30 - prevMetrics.new.rate30
+  };
+
+  // Calculate 6-month history for sparkline
+  const history = { labels: [], overall: [], loyalists: [], new: [] };
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+  for (let i = 5; i >= 0; i--) {
+    // For each month, calculate retention of cohort that visited in that month
+    // Seed window: the month itself
+    // Return window: 30 days after their visit in that month
+    const monthEnd = new Date(now);
+    monthEnd.setMonth(monthEnd.getMonth() - i - 1); // Go back i+1 months
+    monthEnd.setDate(0); // Last day of that month
+    monthEnd.setHours(23, 59, 59, 999);
+
+    const monthStart = new Date(monthEnd);
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    // Days ago for the month
+    const startDaysAgo = Math.ceil((now - monthStart) / (1000 * 60 * 60 * 24));
+    const endDaysAgo = Math.ceil((now - monthEnd) / (1000 * 60 * 60 * 24));
+
+    // Only calculate if we have complete return window data (at least 30 days since month end)
+    if (endDaysAgo >= RETURN_WINDOW) {
+      const monthMetrics = calculateCohortRetention(startDaysAgo, endDaysAgo, false);
+      history.labels.push(monthNames[monthStart.getMonth()]);
+      history.overall.push(monthMetrics.overall.rate30);
+      history.loyalists.push(monthMetrics.loyalists.rate30);
+      history.new.push(monthMetrics.new.rate30);
+    } else {
+      // Not enough data yet for this month
+      history.labels.push(monthNames[monthStart.getMonth()]);
+      history.overall.push(null);
+      history.loyalists.push(null);
+      history.new.push(null);
+    }
+  }
+
+  // Sort overdue customers by days since last visit (most urgent first)
+  currentMetrics.loyalists.overdueCustomers.sort((a, b) => b.daysSinceLastVisit - a.daysSinceLastVisit);
+  currentMetrics.new.overdueCustomers.sort((a, b) => b.daysSinceLastVisit - a.daysSinceLastVisit);
+
   return {
-    rate30: calculateRate(30),
-    rate60: calculateRate(60),
-    rate90: calculateRate(90)
+    overall: currentMetrics.overall,
+    segments: {
+      loyalists: currentMetrics.loyalists,
+      new: currentMetrics.new
+    },
+    trend,
+    history
+  };
+}
+
+/**
+ * 3b. Health Rate Trend Calculator
+ * Calculates health rate trend by comparing current period vs previous 30-day period
+ *
+ * @param {Object} currentMetrics - Result from calculateCustomerMetrics() for current state
+ * @param {Array} salesData - Raw sales data (used to calculate previous period)
+ * @param {Array} rfmData - RFM segment data
+ * @param {Array} customerData - Customer CSV data
+ * @returns {{ current: number, previous: number, trend: number }}
+ */
+export function getHealthTrend(currentMetrics, salesData, rfmData, customerData) {
+  if (!currentMetrics || !salesData || salesData.length === 0) {
+    return { current: 0, previous: 0, trend: 0 };
+  }
+
+  const currentHealthRate = currentMetrics.healthRate || 0;
+
+  // Filter salesData to only include transactions from 30+ days ago
+  // This simulates what the data looked like 30 days ago
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const previousPeriodSales = salesData.filter(row => {
+    const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
+    return date && date < thirtyDaysAgo;
+  });
+
+  // If not enough historical data, return current with no trend
+  if (previousPeriodSales.length < 10) {
+    return { current: Math.round(currentHealthRate), previous: 0, trend: 0 };
+  }
+
+  // Calculate metrics for the previous period
+  // Note: We pass the same rfmData and customerData since segments don't change
+  const previousMetrics = calculateCustomerMetrics(previousPeriodSales, rfmData, customerData);
+  const previousHealthRate = previousMetrics?.healthRate || 0;
+
+  const trend = Math.round(currentHealthRate) - Math.round(previousHealthRate);
+
+  return {
+    current: Math.round(currentHealthRate),
+    previous: Math.round(previousHealthRate),
+    trend
   };
 }
 
@@ -744,5 +1020,567 @@ export function getAcquisitionTrend(customers, days = 30) {
   return {
     daily: Object.values(dailyCounts),
     newCustomerIds
+  };
+}
+
+/**
+ * 5. Visit Heatmap Data (State-of-the-Art)
+ * Creates a 7x15 grid (days × hours 8-23) with segment filtering and quantile-based color scale
+ *
+ * @param {Array} salesData - Raw sales data with Data_Hora field
+ * @param {Object} customerMap - Map of customer ID → customer object (includes segment, firstVisit)
+ * @param {string} segment - 'all' | 'loyalists' | 'new'
+ * @param {number} days - Number of days to analyze (default 30)
+ * @returns {Object} { grid, quantiles, peak, totalVisits }
+ */
+export function getVisitHeatmapData(salesData, customerMap = {}, segment = 'all', days = 30) {
+  const HOUR_START = 8;
+  const HOUR_END = 23;
+  const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+  // Calculate date window
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - days);
+  startDate.setHours(0, 0, 0, 0);
+
+  // Threshold for "new" customers (first visit within last 30 days)
+  const newCustomerThreshold = new Date(now);
+  newCustomerThreshold.setDate(newCustomerThreshold.getDate() - 30);
+
+  // Initialize grid: [day][hour] with Sets to track unique customers per cell
+  const grid = {};
+  for (let day = 0; day < 7; day++) {
+    grid[day] = {};
+    for (let hour = HOUR_START; hour < HOUR_END; hour++) {
+      grid[day][hour] = new Set(); // Track unique customer IDs
+    }
+  }
+
+  // Process sales data
+  salesData.forEach(row => {
+    const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
+    if (!date || date < startDate || date > now) return;
+
+    const customerId = extractCpf(row, CPF_COLUMNS);
+    if (!customerId) return;
+
+    // Segment filtering
+    if (segment !== 'all') {
+      const customer = customerMap[customerId];
+      if (!customer) return;
+
+      if (segment === 'loyalists') {
+        // VIP or Frequente segments
+        if (customer.segment !== 'VIP' && customer.segment !== 'Frequente') return;
+      } else if (segment === 'new') {
+        // Novato segment OR first visit within last 30 days
+        const isNovatoSegment = customer.segment === 'Novato';
+        const isRecentFirstVisit = customer.firstVisit && customer.firstVisit >= newCustomerThreshold;
+        if (!isNovatoSegment && !isRecentFirstVisit) return;
+      }
+    }
+
+    // Extract hour and day using timezone-safe Brazil components
+    const hour = date.brazil?.hour ?? date.getHours();
+    const dayOfWeek = date.brazil
+      ? new Date(date.brazil.year, date.brazil.month - 1, date.brazil.day).getDay()
+      : date.getDay();
+
+    // Only count visits within business hours
+    if (hour >= HOUR_START && hour < HOUR_END) {
+      grid[dayOfWeek][hour].add(customerId);
+    }
+  });
+
+  // Convert Sets to counts and build processed grid
+  const processedGrid = [];
+  const allValues = [];
+  let maxCount = 0;
+  let peakDay = 0;
+  let peakHour = HOUR_START;
+
+  for (let day = 0; day < 7; day++) {
+    const dayRow = {
+      day,
+      dayName: DAYS[day],
+      dayNameFull: DAYS_FULL[day],
+      cells: []
+    };
+
+    for (let hour = HOUR_START; hour < HOUR_END; hour++) {
+      const count = grid[day][hour].size;
+      allValues.push(count);
+
+      if (count > maxCount) {
+        maxCount = count;
+        peakDay = day;
+        peakHour = hour;
+      }
+
+      dayRow.cells.push({
+        hour,
+        count,
+        customerIds: Array.from(grid[day][hour])
+      });
+    }
+
+    processedGrid.push(dayRow);
+  }
+
+  // Calculate quantile thresholds for non-linear color scale
+  // Filter out zeros for better distribution
+  const nonZeroValues = allValues.filter(v => v > 0).sort((a, b) => a - b);
+  const getQuantile = (arr, q) => {
+    if (arr.length === 0) return 0;
+    const idx = Math.floor(arr.length * q);
+    return arr[Math.min(idx, arr.length - 1)];
+  };
+
+  const quantiles = {
+    p50: getQuantile(nonZeroValues, 0.50),
+    p75: getQuantile(nonZeroValues, 0.75),
+    p90: getQuantile(nonZeroValues, 0.90),
+    p95: getQuantile(nonZeroValues, 0.95),
+    max: maxCount
+  };
+
+  return {
+    grid: processedGrid,
+    quantiles,
+    peak: {
+      day: peakDay,
+      dayName: DAYS[peakDay],
+      dayNameFull: DAYS_FULL[peakDay],
+      hour: peakHour,
+      count: maxCount
+    },
+    totalVisits: allValues.reduce((a, b) => a + b, 0),
+    hourRange: { start: HOUR_START, end: HOUR_END },
+    dateRange: { start: startDate, end: now }
+  };
+}
+
+/**
+ * 6. First-to-Second Visit Conversion Metrics
+ * Tracks the critical 1st→2nd visit conversion - the moment with highest churn risk.
+ *
+ * ALGORITHM (Cohort-Based):
+ * - SEED_WINDOW: Look at customers whose first visit was 31-60 days ago
+ * - These customers have had a full 30-day window to make their second visit
+ * - This avoids the bias of recent customers who haven't had time to convert
+ *
+ * @param {Array} salesData - Raw sales transactions
+ * @param {Object} customerMap - Customer metadata with contact tracking
+ * @param {Set} welcomeContactedIds - Customers who received welcome campaign
+ * @returns {Object} Conversion metrics with welcome campaign comparison
+ */
+export function getFirstVisitConversion(salesData, customerMap = {}, welcomeContactedIds = new Set()) {
+  if (!salesData || salesData.length === 0) {
+    return {
+      conversionRate: 0,
+      totalNewCustomers: 0,
+      converted: 0,
+      notConverted: 0,
+      pending: 0,
+      avgDaysToSecondVisit: 0,
+      withWelcome: { total: 0, converted: 0, rate: 0 },
+      withoutWelcome: { total: 0, converted: 0, rate: 0 },
+      welcomeLift: 0,
+      pendingCustomers: [],
+      lostCustomers: []
+    };
+  }
+
+  const now = new Date();
+  const RETURN_WINDOW = 30;      // 30 days to count as "converted"
+  const SEED_START = 60;         // Seed window: first visit 31-60 days ago
+  const SEED_END = 31;           // (gives full 30-day return window)
+  const PENDING_LOOKBACK = 30;   // For pending: first visit in last 30 days
+
+  // Helper to parse date from row
+  const getRowDate = (row) => parseBrDate(row.Data || row.Data_Hora || row.date || '');
+  const getRowDoc = (row) => extractCPF(row);
+
+  // Build per-customer visit history (deduplicated by date)
+  // CRITICAL: Count unique visit DAYS, not raw transactions
+  // A customer with 2 laundry loads on day 1 should count as 1 visit, not 2
+  const customerVisitSets = {};
+  salesData.forEach(row => {
+    const doc = getRowDoc(row);
+    const date = getRowDate(row);
+    if (!doc || !date || !isValidCpf(doc)) return;
+
+    if (!customerVisitSets[doc]) customerVisitSets[doc] = new Set();
+    const dateKey = formatDate(date);
+    customerVisitSets[doc].add(dateKey);
+  });
+
+  // Convert Sets to sorted Date arrays
+  const customerVisits = {};
+  Object.entries(customerVisitSets).forEach(([doc, dateSet]) => {
+    customerVisits[doc] = Array.from(dateSet)
+      .map(dateStr => parseBrDate(dateStr))
+      .filter(d => d !== null)
+      .sort((a, b) => a - b);
+  });
+
+  // Define seed window (31-60 days ago) for completed cohort
+  const seedStartDate = new Date(now);
+  seedStartDate.setDate(seedStartDate.getDate() - SEED_START);
+  const seedEndDate = new Date(now);
+  seedEndDate.setDate(seedEndDate.getDate() - SEED_END);
+
+  // Define pending window (0-30 days ago) for actionable customers
+  const pendingDate = new Date(now);
+  pendingDate.setDate(pendingDate.getDate() - PENDING_LOOKBACK);
+
+  const metrics = {
+    totalNewCustomers: 0,
+    converted: 0,          // Made 2nd visit within window
+    notConverted: 0,       // Past window, never returned
+    pending: 0,            // Within return window (too early to judge)
+    avgDaysToSecondVisit: 0,
+
+    // Welcome campaign comparison (based on completed cohort)
+    withWelcome: { total: 0, converted: 0, rate: 0 },
+    withoutWelcome: { total: 0, converted: 0, rate: 0 },
+
+    // Customers who need attention (for modal)
+    pendingCustomers: [],  // Recent new customers who haven't returned yet
+    lostCustomers: [],     // Customers from seed window who didn't convert
+  };
+
+  const daysToReturn = [];
+
+  Object.entries(customerVisits).forEach(([customerId, visits]) => {
+    const firstVisit = visits[0];
+    const daysSinceFirst = Math.floor((now - firstVisit) / (1000 * 60 * 60 * 24));
+    const hasWelcome = welcomeContactedIds.has(customerId);
+    const customer = customerMap[customerId] || {};
+
+    // Check if customer is in the COMPLETED COHORT (first visit 31-60 days ago)
+    const isInSeedWindow = firstVisit >= seedStartDate && firstVisit <= seedEndDate;
+
+    // Check if customer is PENDING (first visit in last 30 days, no 2nd visit yet)
+    const isInPendingWindow = firstVisit >= pendingDate;
+
+    if (isInSeedWindow) {
+      // COMPLETED COHORT: These customers have had full 30 days to convert
+      metrics.totalNewCustomers++;
+
+      if (hasWelcome) {
+        metrics.withWelcome.total++;
+      } else {
+        metrics.withoutWelcome.total++;
+      }
+
+      if (visits.length >= 2) {
+        // Customer returned - check if within 30 days of first visit
+        const secondVisit = visits[1];
+        const daysToSecond = Math.floor((secondVisit - firstVisit) / (1000 * 60 * 60 * 24));
+
+        if (daysToSecond <= RETURN_WINDOW) {
+          metrics.converted++;
+          daysToReturn.push(daysToSecond);
+
+          if (hasWelcome) metrics.withWelcome.converted++;
+          else metrics.withoutWelcome.converted++;
+        } else {
+          // Returned but after 30 days - counts as not converted
+          metrics.notConverted++;
+          metrics.lostCustomers.push({
+            id: customerId,
+            doc: customerId,
+            daysSinceFirstVisit: daysSinceFirst,
+            hasWelcome,
+            name: customer.name || `Cliente ${customerId.slice(-4)}`,
+            phone: customer.phone || null,
+            segment: customer.segment || 'Novo',
+            netTotal: customer.netTotal || 0,
+            firstVisit,
+            returnedLate: true
+          });
+        }
+      } else {
+        // Never returned
+        metrics.notConverted++;
+        metrics.lostCustomers.push({
+          id: customerId,
+          doc: customerId,
+          daysSinceFirstVisit: daysSinceFirst,
+          hasWelcome,
+          name: customer.name || `Cliente ${customerId.slice(-4)}`,
+          phone: customer.phone || null,
+          segment: customer.segment || 'Novo',
+          netTotal: customer.netTotal || 0,
+          firstVisit,
+          returnedLate: false
+        });
+      }
+    } else if (isInPendingWindow && visits.length === 1) {
+      // PENDING: Recent new customers who haven't made 2nd visit yet
+      metrics.pending++;
+      metrics.pendingCustomers.push({
+        id: customerId,
+        doc: customerId,
+        daysSinceFirstVisit: daysSinceFirst,
+        hasWelcome,
+        name: customer.name || `Cliente ${customerId.slice(-4)}`,
+        phone: customer.phone || null,
+        segment: customer.segment || 'Novo',
+        netTotal: customer.netTotal || 0,
+        firstVisit
+      });
+    }
+  });
+
+  // Calculate conversion rate from completed cohort
+  const completedCohort = metrics.converted + metrics.notConverted;
+  metrics.conversionRate = completedCohort > 0
+    ? Math.round((metrics.converted / completedCohort) * 100)
+    : 0;
+
+  metrics.avgDaysToSecondVisit = daysToReturn.length > 0
+    ? Math.round(daysToReturn.reduce((a, b) => a + b, 0) / daysToReturn.length * 10) / 10
+    : 0;
+
+  // Calculate welcome campaign rates (from completed cohort only)
+  metrics.withWelcome.rate = metrics.withWelcome.total > 0
+    ? Math.round((metrics.withWelcome.converted / metrics.withWelcome.total) * 100)
+    : 0;
+
+  metrics.withoutWelcome.rate = metrics.withoutWelcome.total > 0
+    ? Math.round((metrics.withoutWelcome.converted / metrics.withoutWelcome.total) * 100)
+    : 0;
+
+  // Welcome campaign lift
+  metrics.welcomeLift = metrics.withWelcome.rate - metrics.withoutWelcome.rate;
+
+  // Sort customers by days since first visit (most urgent first)
+  metrics.pendingCustomers.sort((a, b) => b.daysSinceFirstVisit - a.daysSinceFirstVisit);
+  metrics.lostCustomers.sort((a, b) => b.daysSinceFirstVisit - a.daysSinceFirstVisit);
+
+  return metrics;
+}
+
+/**
+ * 7. Frequency Degradation Detection (Early Churn Warning)
+ * Detects customers whose visit intervals are growing - an early signal of churn risk
+ * before they enter the At Risk threshold.
+ *
+ * NOTE: This function rebuilds visit dates from salesData because the dates array
+ * is deleted from customer objects for memory optimization.
+ *
+ * @param {Array} salesData - Raw sales transactions (to rebuild visit dates)
+ * @param {Object} customerMap - Customer metadata (doc → customer object)
+ * @param {Object} options - Configuration options
+ * @returns {Object} Degradation metrics and prioritized customer list
+ */
+export function getFrequencyDegradation(salesData, customerMap = {}, options = {}) {
+  if (!salesData || salesData.length === 0) {
+    return {
+      customers: [],
+      count: 0,
+      priorityCount: 0,
+      totalRevenue: 0,
+      avgDegradation: 0
+    };
+  }
+
+  const {
+    minVisits = 4,              // Need history to detect pattern change
+    degradationThreshold = 50,  // 50% interval increase = concerning
+    maxDaysSince = 30,          // Only active customers (not already flagged)
+    focusSegments = ['VIP', 'Frequente']  // Priority segments
+  } = options;
+
+  const now = new Date();
+
+  // Helper to parse date from row
+  const getRowDate = (row) => parseBrDate(row.Data || row.Data_Hora || row.date || '');
+  const getRowDoc = (row) => extractCPF(row);
+
+  // Rebuild visit dates per customer from salesData
+  const customerVisits = {};
+  salesData.forEach(row => {
+    const doc = getRowDoc(row);
+    const date = getRowDate(row);
+    if (!doc || !date || !isValidCpf(doc)) return;
+
+    if (!customerVisits[doc]) customerVisits[doc] = [];
+    customerVisits[doc].push(date);
+  });
+
+  // Sort all customer visits by date
+  Object.values(customerVisits).forEach(visits => {
+    visits.sort((a, b) => a - b);
+  });
+
+  const degradingCustomers = [];
+
+  // Calculate average intervals helper
+  const calcAvgInterval = (dates) => {
+    if (dates.length < 2) return null;
+    const intervals = [];
+    for (let i = 1; i < dates.length; i++) {
+      const days = Math.round((dates[i] - dates[i-1]) / (1000 * 60 * 60 * 24));
+      if (days > 0) intervals.push(days);
+    }
+    return intervals.length > 0
+      ? intervals.reduce((a, b) => a + b, 0) / intervals.length
+      : null;
+  };
+
+  Object.entries(customerVisits).forEach(([customerId, sortedDates]) => {
+    // Skip if not enough history
+    if (sortedDates.length < minVisits) return;
+
+    const customer = customerMap[customerId];
+    if (!customer) return;
+
+    // Calculate days since last visit
+    const lastVisit = sortedDates[sortedDates.length - 1];
+    const daysSinceLastVisit = Math.floor((now - lastVisit) / (1000 * 60 * 60 * 24));
+
+    // Skip if already at risk or beyond threshold
+    if (daysSinceLastVisit > maxDaysSince) return;
+    if (customer.riskLevel === 'At Risk' || customer.riskLevel === 'Churning' || customer.riskLevel === 'Lost') return;
+
+    // Split into historical (older 80%) and recent (newest 20%)
+    const splitIndex = Math.floor(sortedDates.length * 0.8);
+    if (splitIndex < 2) return; // Need at least 2 historical visits
+
+    const historicalDates = sortedDates.slice(0, splitIndex);
+    const recentDates = sortedDates.slice(splitIndex - 1); // Include overlap point
+
+    const historicalAvg = calcAvgInterval(historicalDates);
+    const recentAvg = calcAvgInterval(recentDates);
+
+    if (!historicalAvg || !recentAvg || historicalAvg === 0) return;
+
+    // === MULTI-FACTOR PATTERN DETECTION (v3.11.0) ===
+    // Purpose: Filter win-backs, recovered, and sporadic customers - keep true degrading ones
+
+    // Constants for pattern detection
+    const OUTLIER_MULTIPLIER = 4;           // Was 5 - lowered to catch gaps like Luciano (122d > 25d*4=100d)
+    const ELEVATED_MULTIPLIER = 1.5;        // Above avg × 1.5 = elevated interval
+    const LAST_INTERVAL_MULTIPLIER = 4;     // If last interval > 4× historical = recent win-back
+    const MAX_HISTORICAL_AVG = 45;          // Skip customers with >45d avg (inherently sporadic)
+    const MAX_CV = 1.5;                     // Skip if coefficient of variation > 1.5 (inconsistent pattern)
+
+    // 0. Filter SPORADIC customers - degradation detection unreliable for infrequent visitors
+    if (historicalAvg > MAX_HISTORICAL_AVG) {
+      return; // Skip - customer visits too infrequently for meaningful degradation detection
+    }
+
+    // Calculate historical intervals for consistency check
+    const historicalIntervals = [];
+    for (let i = 1; i < historicalDates.length; i++) {
+      const days = Math.round((historicalDates[i] - historicalDates[i-1]) / (1000 * 60 * 60 * 24));
+      if (days > 0) historicalIntervals.push(days);
+    }
+
+    // Filter INCONSISTENT patterns - if historical intervals vary wildly, baseline is unreliable
+    if (historicalIntervals.length >= 2) {
+      const variance = historicalIntervals.reduce((sum, x) => sum + Math.pow(x - historicalAvg, 2), 0) / historicalIntervals.length;
+      const cv = Math.sqrt(variance) / historicalAvg;
+      if (cv > MAX_CV) {
+        return; // Skip - historical pattern too inconsistent to detect degradation reliably
+      }
+    }
+
+    // Calculate ALL intervals for pattern analysis
+    const allIntervals = [];
+    for (let i = 1; i < sortedDates.length; i++) {
+      const days = Math.round((sortedDates[i] - sortedDates[i-1]) / (1000 * 60 * 60 * 24));
+      if (days > 0) allIntervals.push(days);
+    }
+    const maxInterval = allIntervals.length > 0 ? Math.max(...allIntervals) : 0;
+
+    const elevatedThreshold = historicalAvg * ELEVATED_MULTIPLIER;
+    const outlierThreshold = historicalAvg * OUTLIER_MULTIPLIER;
+
+    // 1. Filter WIN-BACK customers (extreme outlier)
+    // If max interval is 5× the historical average, they already churned and returned
+    if (maxInterval > outlierThreshold) {
+      return; // Skip - this is a win-back, not gradual degradation
+    }
+
+    // 2. Filter RECENT WIN-BACK (last interval alone is very large)
+    const lastOverallInterval = allIntervals[allIntervals.length - 1];
+    if (lastOverallInterval > historicalAvg * LAST_INTERVAL_MULTIPLIER) {
+      return; // Skip - recent gap too large, likely win-back not gradual degradation
+    }
+
+    // 3. Check for RECOVERY in recent behavior
+    // Calculate recent intervals to check if customer has recovered
+    const recentIntervals = [];
+    for (let i = 1; i < recentDates.length; i++) {
+      const days = Math.round((recentDates[i] - recentDates[i-1]) / (1000 * 60 * 60 * 24));
+      if (days > 0) recentIntervals.push(days);
+    }
+
+    if (recentIntervals.length > 0) {
+      const lastInterval = recentIntervals[recentIntervals.length - 1];
+      const last3 = recentIntervals.slice(-3);
+      const last3Avg = last3.reduce((a, b) => a + b, 0) / last3.length;
+
+      // Check if customer has recovered (back to normal patterns)
+      const lastIsNormal = lastInterval <= elevatedThreshold;
+      const last3Normal = last3Avg <= elevatedThreshold;
+
+      // 4. Filter FULLY RECOVERED customers
+      // If both last interval AND last 3 average are normal, they've recovered
+      if (lastIsNormal && last3Normal) {
+        return; // Skip - customer has fully recovered to normal patterns
+      }
+    }
+
+    // Calculate degradation percentage
+    const degradationPct = ((recentAvg - historicalAvg) / historicalAvg) * 100;
+
+    if (degradationPct >= degradationThreshold) {
+      // Get last 5 intervals for visual history (shows trend clarity)
+      const recentGaps = allIntervals.slice(-5).map(d => Math.round(d));
+
+      degradingCustomers.push({
+        id: customerId,
+        doc: customerId,
+        name: customer.name,
+        phone: customer.phone,
+        segment: customer.segment,
+        netTotal: customer.netTotal || 0,
+        visits: customer.visits || sortedDates.length,
+        daysSinceLastVisit,
+        riskLevel: customer.riskLevel,
+        historicalAvg: Math.round(historicalAvg * 10) / 10,
+        recentAvg: Math.round(recentAvg * 10) / 10,
+        degradationPct: Math.round(degradationPct),
+        isPriority: focusSegments.includes(customer.segment),
+        recentGaps  // Last 5 visit intervals for UI display
+      });
+    }
+  });
+
+  // Sort by priority (VIP first), then by degradation severity
+  degradingCustomers.sort((a, b) => {
+    if (a.isPriority !== b.isPriority) return b.isPriority - a.isPriority;
+    return b.degradationPct - a.degradationPct;
+  });
+
+  // Summary metrics
+  const priorityCount = degradingCustomers.filter(c => c.isPriority).length;
+  const totalRevenue = degradingCustomers.reduce((sum, c) => sum + (c.netTotal || 0), 0);
+
+  return {
+    customers: degradingCustomers,
+    count: degradingCustomers.length,
+    priorityCount,
+    totalRevenue,
+    avgDegradation: degradingCustomers.length > 0
+      ? Math.round(degradingCustomers.reduce((sum, c) => sum + c.degradationPct, 0) / degradingCustomers.length)
+      : 0
   };
 }

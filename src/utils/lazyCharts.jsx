@@ -118,6 +118,10 @@ export const LazyNewClientsChart = lazy(() =>
   import('../components/NewClientsChart')
 );
 
+export const LazyVisitHeatmap = lazy(() =>
+  import('../components/VisitHeatmap')
+);
+
 // Operations charts
 export const LazyDayOfWeekChart = lazy(() =>
   import('../components/DayOfWeekChart')

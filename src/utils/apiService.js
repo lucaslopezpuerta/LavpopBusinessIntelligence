@@ -1,6 +1,11 @@
-// apiService.js v2.10
+// apiService.js v2.11
 // Unified API service for Supabase backend communication
 // Provides fallback to localStorage when backend is unavailable
+//
+// Version: 2.11 (2026-01-14) - Welcome history API for conversion analysis
+//   - Added api.contacts.getWelcomeHistory() - fetch ALL historical welcome/post_visit contacts
+//   - Used by FirstVisitConversionCard to accurately measure welcome campaign effectiveness
+//   - Different from getPending() which only returns active pending/queued contacts
 //
 // Version: 2.10 (2025-12-26) - Added debug logging for native app troubleshooting
 //   - Logs platform detection and API URL selection
@@ -420,6 +425,18 @@ export const api = {
         customer_id: customerId,
         limit
       });
+      return result.contacts || [];
+    },
+
+    /**
+     * Get ALL historical welcome campaign contacts (regardless of status)
+     * Used for first-visit conversion analysis to accurately measure welcome campaign effectiveness
+     * Different from getPending() which only returns active pending/queued contacts
+     *
+     * @returns {Promise<Array>} Array of { customer_id } for all welcome/post_visit contacts
+     */
+    async getWelcomeHistory() {
+      const result = await apiRequest('contacts.getWelcomeHistory');
       return result.contacts || [];
     }
   },

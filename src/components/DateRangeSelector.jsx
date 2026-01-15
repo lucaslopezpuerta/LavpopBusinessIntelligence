@@ -1,7 +1,10 @@
-// DateRangeSelector Component v3.4.0 - SIDEBAR AWARENESS
+// DateRangeSelector Component v3.4.1 - HOOKS ORDER FIX
 // Unified date filter - consistent with DashboardDateControl
 //
 // CHANGELOG:
+// v3.4.1 (2026-01-12): Hooks order fix (React error #300)
+//   - FIXED: Moved useCallback before conditional return
+//   - All hooks must run in same order every render (Rules of Hooks)
 // v3.4.0 (2026-01-12): Sidebar awareness
 //   - Added useSidebar hook to detect mobile drawer state
 //   - Returns null when sticky AND mobile sidebar is open
@@ -39,16 +42,17 @@ const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false
   const { isMobileOpen } = useSidebar();
   const options = useMemo(() => getDateOptions({ excludeAllTime }), [excludeAllTime]);
 
-  // Hide sticky selector when mobile sidebar is open to prevent z-index conflicts
-  if (sticky && isMobileOpen) {
-    return null;
-  }
-
   // Handle change with haptic feedback
+  // NOTE: Must be before conditional return to satisfy Rules of Hooks
   const handleChange = useCallback((e) => {
     haptics.tick();
     onChange(e.target.value);
   }, [onChange]);
+
+  // Hide sticky selector when mobile sidebar is open to prevent z-index conflicts
+  if (sticky && isMobileOpen) {
+    return null;
+  }
 
   const content = (
     <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-sm">

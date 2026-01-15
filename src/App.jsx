@@ -543,7 +543,7 @@ function AppContent() {
   // Main App
   return (
     <MotionConfig reducedMotion={prefersReducedMotion ? 'always' : 'never'}>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
         {/* Sidebar Navigation */}
         <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} />
 
