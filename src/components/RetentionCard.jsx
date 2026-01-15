@@ -1,7 +1,21 @@
-// RetentionCard.jsx v1.0
+// RetentionCard.jsx v1.3
 // Full retention analytics card with segment comparison and re-engage actions
 //
 // CHANGELOG:
+// v1.3 (2026-01-15): Added ContextHelp tooltip to main header
+//   - NEW: Tooltip explaining "Taxa de Retorno" metric
+//   - Clarifies difference from "Conversão 1ª→2ª Visita"
+//   - Includes formula for transparency
+// v1.2 (2026-01-15): Card styling upgrade
+//   - Added hover animation (lift + shadow) matching AcquisitionCard
+//   - Added left accent border (border-l-4 border-l-blue-500)
+//   - Added gradient background for depth
+//   - Optimized padding for consistent feel
+// v1.1 (2026-01-15): Header consistency with Design System
+//   - FIXED: Icon now wrapped in colored background (p-2 bg-blue-100 rounded-lg)
+//   - FIXED: Icon size updated to w-5 h-5 (was w-4 h-4)
+//   - FIXED: Title font updated to text-base font-bold (was text-sm)
+//   - Matches AcquisitionCard and FirstVisitConversionCard styling
 // v1.0 (2026-01-13): Initial implementation
 //   - Last-Visit Based retention algorithm visualization
 //   - Segment comparison bars (Fiéis vs Novos)
@@ -38,6 +52,13 @@ const STATUS_THRESHOLDS = {
   MODERATE: 50,   // 50-69% = Moderado
   AT_RISK: 30     // 30-49% = Em Risco, <30% = Crítico
 };
+
+// Card hover animation - lift + shadow effect (matches AcquisitionCard)
+const cardHoverAnimation = {
+  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
+  hover: { y: -2, boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }
+};
+const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
 /**
  * Get status color classes based on retention rate
@@ -342,14 +363,36 @@ const RetentionCard = ({
   };
 
   return (
-    <div className={`bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col ${className}`}>
+    <motion.div
+      initial="rest"
+      whileHover="hover"
+      variants={cardHoverAnimation}
+      transition={cardHoverTransition}
+      className={`
+        bg-gradient-to-br from-blue-50/40 via-white to-white
+        dark:from-blue-900/10 dark:via-slate-800 dark:to-slate-800
+        backdrop-blur-md rounded-2xl p-5
+        border border-slate-200/80 dark:border-slate-700/80
+        border-l-4 border-l-blue-500 dark:border-l-blue-400
+        overflow-hidden
+        h-full flex flex-col
+        ${className}
+      `}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
+            <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
               Taxa de Retorno
+              <ContextHelp
+                title="O que é Taxa de Retorno?"
+                description="Mede a porcentagem de clientes que visitaram há 31-60 dias e VOLTARAM nos últimos 30 dias. Diferente da 'Conversão 1ª→2ª Visita', esta métrica avalia engajamento CONTÍNUO - se os clientes estão mantendo o hábito de voltar."
+                formula="(Clientes que retornaram ÷ Clientes elegíveis) × 100"
+              />
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Clientes que voltam em 30 dias
@@ -436,7 +479,7 @@ const RetentionCard = ({
           Últimos 90 dias
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

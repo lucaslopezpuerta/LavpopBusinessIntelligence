@@ -1,10 +1,19 @@
-# LavpopBI Design System v3.4
+# LavpopBI Design System v3.5
 
-> **Last Updated:** January 7, 2026
+> **Last Updated:** January 15, 2026
 > **Status:** Active - All components aligned with this system
 > **Audit Completed:** Design System Reconciliation Audit (Documentation vs Implementation)
 
 ## 📋 Changelog
+
+### v3.5 (January 15, 2026) - Dark Mode Contrast Fix
+- **FIXED:** Section Title dark mode color corrected to `dark:text-white` (was `dark:text-slate-200`)
+- **FIXED:** Card Title dark mode color corrected to `dark:text-white` (was `dark:text-slate-300`)
+- **ADDED:** Card Title (Muted) variant for secondary cards using `dark:text-slate-200`
+- **ADDED:** Blue text dark mode guidance - use `dark:text-blue-400` for lavpop-blue text
+- **ADDED:** Color mapping table entries for headings and blue text
+- **ADDED:** Warning notes about dark mode contrast requirements
+- **ALIGNED:** Documentation now matches actual component implementations
 
 ### v3.4 (January 7, 2026) - Design System Reconciliation
 - **FIXED:** Brand green color corrected to `#55b03b` (was incorrectly documented as emerald `#10b981`)
@@ -481,8 +490,14 @@ active:scale-95
 | `bg-slate-50` | `bg-slate-800` | Card backgrounds |
 | `bg-slate-100` | `bg-slate-800` | Widget backgrounds |
 | `text-slate-900` | `text-white` | Primary text |
+| `text-slate-800` | `text-white` | Headings, card titles |
 | `text-slate-600` | `text-slate-400` | Secondary text |
+| `text-lavpop-blue` | `text-blue-400` | Brand blue text, links |
+| `text-blue-600` | `text-blue-400` | Interactive blue text |
 | `border-slate-200` | `border-slate-700` | Borders |
+
+> ⚠️ **Blue Text in Dark Mode:** The base `lavpop-blue` (#1a5a8e) is too dark for dark mode backgrounds.
+> Always pair with `dark:text-blue-400` (#60a5fa) or `dark:text-lavpop-blue-400` (#478fc7) for proper contrast.
 
 ### Implementation
 
@@ -566,11 +581,17 @@ hover:scale-105      /* Cards (optional) */
 <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
 
 // Section Title
-<h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">
+<h2 className="text-xl font-semibold text-slate-800 dark:text-white">
 
-// Card Title
-<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">
+// Card Title (Standard)
+<h3 className="text-base font-bold text-slate-800 dark:text-white">
+
+// Card Title (Muted) - for secondary cards
+<h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
 ```
+
+> ⚠️ **Dark Mode Contrast:** Always use `dark:text-white` for primary headings.
+> Avoid `dark:text-slate-300` or lighter which has poor contrast against dark backgrounds.
 
 ### Body Text
 

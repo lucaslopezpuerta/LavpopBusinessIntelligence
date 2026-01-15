@@ -1,7 +1,15 @@
-// RFMScatterPlot.jsx v4.2.3 - MOBILE TOUCH UX IMPROVEMENTS
+// RFMScatterPlot.jsx v4.4.0 - ContextHelp tooltip
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v4.4.0 (2026-01-15): Added ContextHelp tooltip
+//   - NEW: Tooltip explaining RFM methodology
+//   - Import ContextHelp component
+//   - Explains axes, bubble size, and danger zone
+// v4.3.0 (2026-01-15): Header styling consistency
+//   - Updated header to match Design System pattern
+//   - Added Target icon in colored background pill
+//   - Title uses text-base font-bold for consistency with other cards
 // v4.2.3 (2026-01-11): Configure skipTouchAutoDismiss for MobileTooltipSheet
 //   - NEW: Added skipTouchAutoDismiss: true to useTouchTooltip config
 //   - This disables auto-dismiss on touch devices since MobileTooltipSheet has
@@ -118,7 +126,8 @@
 
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, ReferenceArea, Label } from 'recharts';
-import { AlertTriangle, CheckCircle, ChevronRight, XCircle, Eye, Sparkles, MinusCircle, ZoomIn, ZoomOut, List, Grid2X2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronRight, XCircle, Eye, Sparkles, MinusCircle, ZoomIn, ZoomOut, List, Grid2X2, Target } from 'lucide-react';
+import ContextHelp from './ContextHelp';
 import { formatCurrency } from '../utils/numberUtils';
 import { RISK_LABELS } from '../utils/customerMetrics';
 import { getChartColors } from '../utils/chartColors';
@@ -353,16 +362,24 @@ const RFMScatterPlot = ({
             <div className="mb-4">
                 {/* Header row with title and insight pills */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-lavpop-blue"></span>
-                            Mapa de Risco (RFM)
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            <span className="hidden sm:inline">Valor x Recência: </span>
-                            <span className="font-semibold text-green-600 dark:text-green-400">VIPs</span> (esq) |
-                            <span className="font-semibold text-red-500 ml-1">Em Risco</span> (dir)
-                        </p>
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
+                            <Target className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                                Mapa de Risco (RFM)
+                                <ContextHelp
+                                    title="Como funciona o RFM?"
+                                    description="RFM = Recência, Frequência, Valor Monetário. Cada bolha é um cliente: posição horizontal = dias sem visitar (esquerda = recente, direita = risco), posição vertical = valor gasto, tamanho = frequência de visitas. A zona vermelha (30+ dias) indica clientes em risco de churn."
+                                />
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                <span className="hidden sm:inline">Valor x Recência: </span>
+                                <span className="font-semibold text-green-600 dark:text-green-400">VIPs</span> (esq) |
+                                <span className="font-semibold text-red-500 ml-1">Em Risco</span> (dir)
+                            </p>
+                        </div>
                     </div>
 
                     {/* At-Risk Pill - discrete on mobile, full on desktop */}

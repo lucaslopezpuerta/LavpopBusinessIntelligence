@@ -1,7 +1,20 @@
-// VisitHeatmap Component v2.2.0
+// VisitHeatmap Component v2.5.0
 // Size-based density visualization with segment filtering
 //
 // CHANGELOG:
+// v2.5.0 (2026-01-15): Added ContextHelp tooltip
+//   - NEW: Tooltip explaining how to read the heatmap
+//   - Import ContextHelp component
+//   - Updated header h3 to include tooltip
+// v2.4.0 (2026-01-15): Card styling upgrade
+//   - Added hover animation (lift + shadow) matching AcquisitionCard
+//   - Added left accent border (border-l-4 border-l-blue-500)
+//   - Added gradient background for depth
+//   - Optimized padding for chart to fill more of the card
+// v2.3.0 (2026-01-15): Header styling consistency
+//   - Updated header to match Design System pattern
+//   - Icon wrapped in colored background pill
+//   - Title uses text-base font-bold for consistency
 // v2.2.0 (2026-01-12): Segment-based color palettes
 //   - Each segment now has its own color palette (blue/amber/purple)
 //   - Todos: lavpop-blue (default brand color)
@@ -31,6 +44,7 @@ import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Users, Sparkles, Crown, X } from 'lucide-react';
+import ContextHelp from './ContextHelp';
 import { getVisitHeatmapData } from '../utils/customerMetrics';
 import { useSwipeToClose } from '../hooks/useSwipeToClose';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -81,6 +95,13 @@ const SEGMENTS = [
     }
   }
 ];
+
+// Card hover animation - lift + shadow effect (matches AcquisitionCard)
+const cardHoverAnimation = {
+  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
+  hover: { y: -2, boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }
+};
+const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
 // Tooltip animation config - refined spring with subtle overshoot
 const tooltipAnimation = {
@@ -490,14 +511,36 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
   const palette = currentSegment.palette;
 
   return (
-    <div className={`bg-white dark:bg-slate-800 rounded-xl px-2 py-3 sm:p-4 border border-slate-200 dark:border-slate-700 shadow-sm h-full flex flex-col ${className}`}>
+    <motion.div
+      initial="rest"
+      whileHover="hover"
+      variants={cardHoverAnimation}
+      transition={cardHoverTransition}
+      className={`
+        bg-gradient-to-br from-blue-50/40 via-white to-white
+        dark:from-blue-900/10 dark:via-slate-800 dark:to-slate-800
+        rounded-2xl
+        border border-slate-200/80 dark:border-slate-700/80
+        border-l-4 border-l-blue-500 dark:border-l-blue-400
+        overflow-hidden
+        px-3 py-3 sm:px-4 sm:py-4
+        h-full flex flex-col
+        ${className}
+      `}
+    >
       {/* Header */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-lavpop-blue dark:text-blue-400" />
-            <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
+      <div className="mb-2">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-0.5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
+              <Clock className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
               Mapa de Visitas
+              <ContextHelp
+                title="Como ler este mapa?"
+                description="Mostra quando os clientes visitam durante a semana. Células maiores e mais escuras indicam mais visitas naquele horário. O horário em destaque (dourado) é o pico de movimento. Use os filtros para ver padrões de diferentes segmentos de clientes."
+              />
             </h3>
             {/* Inline Legend - uses segment color palette */}
             <div className="hidden sm:flex items-center gap-1 ml-2 text-[10px] text-slate-500 dark:text-slate-400">
@@ -607,7 +650,7 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
       </div>
 
       {/* Mobile Legend (only visible on small screens) - uses segment color palette */}
-      <div className="sm:hidden mt-2 flex items-center justify-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+      <div className="sm:hidden mt-1.5 flex items-center justify-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
         <span>MIN</span>
         <div className="flex items-center gap-0.5">
           <div className={`w-1.5 h-1.5 rounded-sm ${palette.low}`} />
@@ -622,7 +665,7 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
       </div>
 
       {/* Footer - Data date range */}
-      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50 text-center">
+      <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700/50 text-center">
         <span className="text-[10px] text-slate-400 dark:text-slate-500">
           {formatDateRange()}
         </span>
@@ -645,7 +688,7 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
         data={sheetData}
         quantiles={quantiles}
       />
-    </div>
+    </motion.div>
   );
 };
 

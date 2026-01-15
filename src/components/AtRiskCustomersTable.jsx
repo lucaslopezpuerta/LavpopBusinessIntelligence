@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v9.9 - RESPONSIVE PAGINATION + HEIGHT FILL
+// AtRiskCustomersTable.jsx v9.10 - COLUMN HEADER SORTING
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
@@ -12,8 +12,14 @@
 // ✅ Row swipe actions (call/WhatsApp) work reliably
 // ✅ Responsive pagination (10 desktop, 5 mobile)
 // ✅ Fills container height when used with flex layout
+// ✅ Clickable column headers with chevron sort indicators
 //
 // CHANGELOG:
+// v9.10 (2026-01-15): Column header sorting
+//   - NEW: Clickable column headers for sorting (Cliente, Valor, Dias)
+//   - NEW: Chevron indicators show current sort column and direction
+//   - REMOVED: Dropdown sort selector (replaced by header clicks)
+//   - Better UX: Sort by clicking directly on column names
 // v9.9 (2026-01-12): Responsive pagination + height fill
 //   - NEW: Desktop shows 10 items per page, mobile shows 5
 //   - NEW: Component fills available container height with flex layout
@@ -50,7 +56,8 @@
 // v8.4 (2025-12-03): Phone validation for WhatsApp
 
 import React, { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
-import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, ArrowUpDown, Users, Ban, EyeOff, Eye, Search, X, Send } from 'lucide-react';
+import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Users, Ban, EyeOff, Eye, Search, X, Send } from 'lucide-react';
+// Note: ArrowUpDown removed in v9.10 - replaced by clickable column headers with chevrons
 import { RISK_LABELS, DAY_THRESHOLDS } from '../utils/customerMetrics';
 
 // Lazy-load heavy modals
@@ -63,6 +70,7 @@ import { addCommunicationEntry, getDefaultNotes } from '../utils/communicationLo
 import { isValidBrazilianMobile, normalizePhone } from '../utils/phoneUtils';
 
 const STORAGE_KEY = 'atRiskTable_sortBy';
+const STORAGE_KEY_DIR = 'atRiskTable_sortDir';
 
 // Hook for responsive items per page
 const useItemsPerPage = () => {
@@ -79,13 +87,6 @@ const useItemsPerPage = () => {
   }, []);
 
   return itemsPerPage;
-};
-
-// Sort options
-const SORT_OPTIONS = {
-  days: { label: 'Dias ausente', key: 'daysSinceLastVisit' },
-  value: { label: 'Valor gasto', key: 'netTotal' },
-  name: { label: 'Nome', key: 'name' }
 };
 
 // Filter tabs
@@ -118,6 +119,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
       return localStorage.getItem(STORAGE_KEY) || 'days';
     }
     return 'days';
+  });
+  const [sortDirection, setSortDirection] = useState(() => {
+    // Restore from localStorage
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEY_DIR) || 'desc';
+    }
+    return 'desc';
   });
   const [showBlacklisted, setShowBlacklisted] = useState(false);
   const [filterTab, setFilterTab] = useState('all'); // Default to "Todos"
@@ -209,17 +217,18 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
       );
     }
 
-    // Sort
+    // Sort with direction
+    const multiplier = sortDirection === 'asc' ? 1 : -1;
     switch (sortBy) {
       case 'days':
-        return filtered.sort((a, b) => (b.daysSinceLastVisit || 0) - (a.daysSinceLastVisit || 0));
+        return filtered.sort((a, b) => multiplier * ((a.daysSinceLastVisit || 0) - (b.daysSinceLastVisit || 0)));
       case 'name':
-        return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        return filtered.sort((a, b) => multiplier * (a.name || '').localeCompare(b.name || ''));
       case 'value':
       default:
-        return filtered.sort((a, b) => (b.netTotal || 0) - (a.netTotal || 0));
+        return filtered.sort((a, b) => multiplier * ((a.netTotal || 0) - (b.netTotal || 0)));
     }
-  }, [allAtRiskCustomers, sortBy, showBlacklisted, filterTab, searchQuery, isBlacklisted, isContacted]);
+  }, [allAtRiskCustomers, sortBy, sortDirection, showBlacklisted, filterTab, searchQuery, isBlacklisted, isContacted]);
 
   // Stats for tabs
   const tabCounts = useMemo(() => {
@@ -258,14 +267,26 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
     setCurrentPage(1);
   }, [filterTab, searchQuery, showBlacklisted]);
 
-  // Persist sort preference
-  const handleSortChange = (newSort) => {
-    setSortBy(newSort);
-    setCurrentPage(1);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, newSort);
+  // Handle column header click for sorting
+  const handleColumnSort = useCallback((column) => {
+    if (sortBy === column) {
+      // Toggle direction if same column
+      const newDir = sortDirection === 'desc' ? 'asc' : 'desc';
+      setSortDirection(newDir);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_DIR, newDir);
+      }
+    } else {
+      // New column: set to desc (highest first for value/days, Z-A for name)
+      setSortBy(column);
+      setSortDirection('desc');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, column);
+        localStorage.setItem(STORAGE_KEY_DIR, 'desc');
+      }
     }
-  };
+    setCurrentPage(1);
+  }, [sortBy, sortDirection]);
 
   // Selection handlers
   const toggleSelectAll = useCallback(() => {
@@ -543,19 +564,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
               )}
             </div>
 
-            {/* Sort + Blacklist controls */}
+            {/* Blacklist control */}
             <div className="flex items-center gap-2 sm:ml-auto">
-              <ArrowUpDown className="w-4 h-4 text-slate-400 dark:text-slate-500 hidden sm:block" />
-              <select
-                value={sortBy}
-                onChange={(e) => handleSortChange(e.target.value)}
-                className="text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-slate-600 dark:text-slate-300"
-              >
-                {Object.entries(SORT_OPTIONS).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-
               {blacklistedInList > 0 && (
                 <button
                   onClick={() => setShowBlacklisted(!showBlacklisted)}
@@ -715,9 +725,23 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                   />
                 </th>
                 <th scope="col" className="px-4 py-3 text-left">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Cliente
-                  </span>
+                  <button
+                    onClick={() => handleColumnSort('name')}
+                    className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-lavpop-blue dark:hover:text-blue-400 group"
+                  >
+                    <span className={sortBy === 'name' ? 'text-lavpop-blue dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
+                      Cliente
+                    </span>
+                    {sortBy === 'name' ? (
+                      sortDirection === 'desc' ? (
+                        <ChevronDown className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                      ) : (
+                        <ChevronUp className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                      )
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </button>
                 </th>
                 <th scope="col" className="px-4 py-3 text-center">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
@@ -725,14 +749,42 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                   </span>
                 </th>
                 <th scope="col" className="px-4 py-3 text-center">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Valor Gasto
-                  </span>
+                  <button
+                    onClick={() => handleColumnSort('value')}
+                    className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-lavpop-blue dark:hover:text-blue-400 group w-full"
+                  >
+                    <span className={sortBy === 'value' ? 'text-lavpop-blue dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
+                      Valor Gasto
+                    </span>
+                    {sortBy === 'value' ? (
+                      sortDirection === 'desc' ? (
+                        <ChevronDown className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                      ) : (
+                        <ChevronUp className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                      )
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </button>
                 </th>
                 <th scope="col" className="px-4 py-3 text-center">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Dias Ausente
-                  </span>
+                  <button
+                    onClick={() => handleColumnSort('days')}
+                    className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-lavpop-blue dark:hover:text-blue-400 group w-full"
+                  >
+                    <span className={sortBy === 'days' ? 'text-lavpop-blue dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
+                      Dias Ausente
+                    </span>
+                    {sortBy === 'days' ? (
+                      sortDirection === 'desc' ? (
+                        <ChevronDown className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                      ) : (
+                        <ChevronUp className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                      )
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </button>
                 </th>
                 <th scope="col" className="px-4 py-3 text-center">
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">

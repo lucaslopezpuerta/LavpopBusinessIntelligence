@@ -1,8 +1,37 @@
-// Customers View v5.10 - Welcome History Fix (Phase 15)
+// Customers View v5.14 - Layout Optimization
 // Customer analytics and insights dashboard
-// Clean, focused design with RFM hero and integrated table
+// Clean, focused design with logical information flow
 //
 // CHANGELOG:
+// v5.14 (2026-01-15): Layout optimization
+//   - MOVED: VisitHeatmap relocated to Section 2, paired with AcquisitionCard
+//   - CHANGED: AcquisitionCard + VisitHeatmap now side-by-side (1/2 + 1/2)
+//   - CHANGED: RFMScatterPlot now full width in Section 5
+//   - Better information flow: acquisition + visit patterns together at top
+// v5.13 (2026-01-15): Unified AcquisitionCard component
+//   - NEW: AcquisitionCard replaces CleanKPICard + NewClientsChart
+//   - Eliminates redundant "total" display (hero metric is the single source)
+//   - Hero section: Large metric with animated sparkline
+//   - Status pills: Welcome %, week trend, return rate
+//   - Integrated bar chart with same touch interactions
+//   - Action CTA for pending welcomes (conditional)
+//   - Soft Dashboard aesthetic with subtle purple gradient
+// v5.12 (2026-01-15): Fix ChurnHistogram layout when FrequencyAlert hidden
+//   - FIXED: ChurnHistogram now expands to full width when FrequencyDegradationAlert is not shown
+//   - Dynamic grid: lg:grid-cols-2 when both shown, single column when only ChurnHistogram
+//   - Prevents half-width chart when alert condition not met
+// v5.11 (2026-01-15): Story-driven layout reorganization
+//   - RESTRUCTURED: Layout now follows user's information journey:
+//     1. Overview (Header + HealthPill)
+//     2. Acquisition (Novos KPI + NewClientsChart)
+//     3. Conversion (FirstVisitConversion + RetentionCard)
+//     4. Risk Management (FrequencyAlert + ChurnHistogram + AtRiskTable)
+//     5. Deep Dive (RFM Scatter + VisitHeatmap)
+//   - REMOVED: "Clientes Ativos" KPI card (redundant with HealthPill breakdown)
+//   - MOVED: NewClientsChart up to pair with acquisition KPI
+//   - MOVED: RetentionCard up to pair with FirstVisitConversionCard
+//   - MOVED: RFM Scatter to bottom (detailed analytics section)
+//   - GROUPED: All risk-related components together
 // v5.10 (2026-01-14): Phase 15 - Fix welcome campaign comparison data source
 //   - NEW: api.contacts.getWelcomeHistory() fetches ALL historical welcome contacts
 //   - FIXED: Welcome comparison now uses welcomeHistoryIds (all history) instead of
@@ -59,7 +88,7 @@
 import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
 import { Users as UsersIcon, UserPlus, Crown, Sparkles, AlertTriangle, Mail, UserX, TrendingDown } from 'lucide-react';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionMetrics, getAcquisitionTrend, getHealthTrend, getFirstVisitConversion, getFrequencyDegradation } from '../utils/customerMetrics';
-import CleanKPICard from '../components/ui/CleanKPICard';
+// Note: CleanKPICard replaced by AcquisitionCard in v5.13
 import HealthPill from '../components/HealthPill';
 import RetentionCard from '../components/RetentionCard';
 import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
@@ -74,7 +103,7 @@ const CustomerTrendDrilldown = lazy(() => import('../components/drilldowns/Custo
 const CustomerSegmentModal = lazy(() => import('../components/modals/CustomerSegmentModal'));
 const FirstVisitConversionCard = lazy(() => import('../components/FirstVisitConversionCard'));
 const FrequencyDegradationAlert = lazy(() => import('../components/FrequencyDegradationAlert'));
-import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, LazyVisitHeatmap, ChartLoadingFallback } from '../utils/lazyCharts';
+import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, LazyVisitHeatmap, LazyAcquisitionCard, ChartLoadingFallback } from '../utils/lazyCharts';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { api } from '../utils/apiService';
 import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
@@ -445,128 +474,126 @@ const Customers = ({ data, onDataChange }) => {
         </div>
       </header>
 
-      {/* Clean KPI Cards - New Clients + Active Clients */}
-      <div className="grid grid-cols-2 gap-4">
-        <CleanKPICard
-          title="Novos Clientes"
-          value={newClientsCount}
-          displayValue={formatNumber(newClientsCount)}
-          subtitle="Últimos 30 dias"
-          icon={UserPlus}
-          color="purple"
-          sparklineData={sparklineData.newCustomers}
-          onClick={() => setSelectedKPI(kpiDefinitions.newClients)}
-        />
-        <CleanKPICard
-          title="Clientes Ativos"
-          value={metrics.activeCount}
-          displayValue={formatNumber(metrics.activeCount)}
-          subtitle="Visitaram nos últimos 90 dias"
-          icon={UsersIcon}
-          color="blue"
-          sparklineData={sparklineData.activeCustomers}
-          onClick={() => setSelectedKPI(kpiDefinitions.activeClients)}
-        />
-      </div>
-
-      {/* RFM Scatter Plot - Full Width Hero */}
-      <Suspense fallback={<ChartLoadingFallback height="h-[400px]" />}>
-        <LazyRFMScatterPlot
-          data={intelligence.rfm}
-          contactedIds={contactedIds}
-          pendingContacts={pendingContacts}
-          onOpenCustomerProfile={handleOpenCustomerProfile}
-          onMarkContacted={handleMarkContacted}
-          onCreateCampaign={handleCreateCampaign}
-        />
-      </Suspense>
-
-      {/* Customer Behavior Insights Row - Phase 14 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* First Visit Conversion - Primary focus */}
-        <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
-          <FirstVisitConversionCard
-            data={intelligence.firstVisitConversion}
-            onSendWelcome={handleSendWelcomeToCustomers}
-            onOpenLostCustomers={handleOpenLostCustomersModal}
-          />
-        </Suspense>
-
-        {/* Frequency Degradation Alert - Conditional */}
-        {(intelligence.frequencyDegradation?.count >= 3 || intelligence.frequencyDegradation?.priorityCount >= 1) && (
-          <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
-            <FrequencyDegradationAlert
-              data={intelligence.frequencyDegradation}
-              maxPreview={3}
-              onContactCustomers={handleContactDegradingCustomers}
-              onOpenCustomerProfile={handleOpenCustomerProfile}
-            />
-          </Suspense>
-        )}
-      </div>
-
-      {/* Integrated Layout: AtRiskTable + Secondary Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* At-Risk Customers Table - 3/5 width on desktop, spans 2 rows, fills height */}
-        {metrics.needsAttentionCount > 0 && (
-          <div className="lg:col-span-3 lg:row-span-2 flex">
-            <AtRiskCustomersTable
-              customerMetrics={metrics}
-              salesData={data.sales}
-              className="flex-1"
-            />
-          </div>
-        )}
-
-        {/* Secondary Charts - 2/5 width on desktop (or full if no at-risk) */}
-        <div className={`${metrics.needsAttentionCount > 0 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
-          <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
-            <LazyChurnHistogram
-              data={intelligence.histogram}
-              contactedIds={contactedIds}
-              customerSpending={customerSpending}
-              customerMap={customerMap}
-              onOpenCustomerProfile={handleOpenCustomerProfile}
-              onMarkContacted={handleMarkContacted}
-              onCreateCampaign={handleCreateCampaign}
-              compact
-            />
-          </Suspense>
-        </div>
-
-        <div className={`${metrics.needsAttentionCount > 0 ? 'lg:col-span-2' : 'lg:col-span-5'}`}>
-          <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
-            <LazyNewClientsChart
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 2: ACQUISITION + VISIT PATTERNS
+          "How are we getting new customers?" + "When do they visit?"
+          Side-by-side: AcquisitionCard + VisitHeatmap
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section aria-label="Aquisição e Padrões de Visita">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Acquisition Card - New customer metrics + daily chart */}
+          <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
+            <LazyAcquisitionCard
               data={intelligence.acquisition}
+              totalNewCustomers={newClientsCount}
+              sparklineData={sparklineData.newCustomers}
               welcomeContactedIds={welcomeContactedIds}
               returnedCustomerIds={returnedCustomerIds}
               customerMap={customerMap}
               onOpenCustomerProfile={handleOpenCustomerProfile}
               onMarkContacted={handleMarkContacted}
               onCreateCampaign={handleCreateCampaign}
-              compact
+              onOpenKPIDrilldown={() => setSelectedKPI(kpiDefinitions.newClients)}
             />
           </Suspense>
-        </div>
 
-        {/* Retention Card - 3/5 width, segment comparison with re-engage actions */}
-        <div className="lg:col-span-3">
-          <RetentionCard
-            data={intelligence.retentionMetrics}
-            onOpenSegmentModal={handleOpenRetentionSegment}
-          />
-        </div>
-
-        {/* Visit Heatmap - 2/5 width (right column), Day × Hour patterns with segment filtering */}
-        <div className="lg:col-span-2">
-          <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
+          {/* Visit Heatmap - Day × Hour patterns */}
+          <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
             <LazyVisitHeatmap
               salesData={data.sales}
               customerMap={customerMap}
             />
           </Suspense>
         </div>
-      </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 3: NEW CUSTOMER CONVERSION
+          "Are new customers becoming regulars?"
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section aria-label="Conversão de Novos Clientes">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Stage 1: Initial conversion (1st → 2nd visit) */}
+          <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+            <FirstVisitConversionCard
+              data={intelligence.firstVisitConversion}
+              onSendWelcome={handleSendWelcomeToCustomers}
+              onOpenLostCustomers={handleOpenLostCustomersModal}
+            />
+          </Suspense>
+
+          {/* Stage 2: Ongoing retention (sustained engagement) */}
+          <RetentionCard
+            data={intelligence.retentionMetrics}
+            onOpenSegmentModal={handleOpenRetentionSegment}
+          />
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 4: RISK MANAGEMENT
+          "Who needs attention right now?"
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section aria-label="Gestão de Risco">
+        {/* Early warning alerts + distribution chart */}
+        {(() => {
+          const showDegradationAlert = intelligence.frequencyDegradation?.count >= 3 || intelligence.frequencyDegradation?.priorityCount >= 1;
+          return (
+            <div className={`grid grid-cols-1 ${showDegradationAlert ? 'lg:grid-cols-2' : ''} gap-6 mb-6`}>
+              {/* Frequency Degradation Alert - Conditional early warning */}
+              {showDegradationAlert && (
+                <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+                  <FrequencyDegradationAlert
+                    data={intelligence.frequencyDegradation}
+                    maxPreview={3}
+                    onContactCustomers={handleContactDegradingCustomers}
+                    onOpenCustomerProfile={handleOpenCustomerProfile}
+                  />
+                </Suspense>
+              )}
+
+              {/* Churn Histogram - Days since last visit distribution */}
+              <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+                <LazyChurnHistogram
+                  data={intelligence.histogram}
+                  contactedIds={contactedIds}
+                  customerSpending={customerSpending}
+                  customerMap={customerMap}
+                  onOpenCustomerProfile={handleOpenCustomerProfile}
+                  onMarkContacted={handleMarkContacted}
+                  onCreateCampaign={handleCreateCampaign}
+                />
+              </Suspense>
+            </div>
+          );
+        })()}
+
+        {/* At-Risk Customers Table - Full width action list */}
+        {metrics.needsAttentionCount > 0 && (
+          <AtRiskCustomersTable
+            customerMetrics={metrics}
+            salesData={data.sales}
+          />
+        )}
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 5: DEEP DIVE ANALYTICS
+          "Customer segmentation for power users"
+          ═══════════════════════════════════════════════════════════════════ */}
+      <section aria-label="Análise Detalhada">
+        {/* RFM Scatter Plot - Full width customer segmentation */}
+        <Suspense fallback={<ChartLoadingFallback height="h-[400px]" />}>
+          <LazyRFMScatterPlot
+            data={intelligence.rfm}
+            contactedIds={contactedIds}
+            pendingContacts={pendingContacts}
+            onOpenCustomerProfile={handleOpenCustomerProfile}
+            onMarkContacted={handleMarkContacted}
+            onCreateCampaign={handleCreateCampaign}
+          />
+        </Suspense>
+      </section>
 
       {/* KPI Drilldown Modal */}
       {selectedKPI && (

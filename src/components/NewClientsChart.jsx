@@ -1,7 +1,11 @@
-// NewClientsChart.jsx v3.9 - HAPTIC FEEDBACK
+// NewClientsChart.jsx v4.0 - LONG-PRESS DIRECT ACTION
 // New customer acquisition with campaign integration
 //
 // CHANGELOG:
+// v4.0 (2026-01-15): Long-press opens modal directly
+//   - NEW: onLongPressHitTest callback for bar hit-testing
+//   - Long-press on bar → opens modal directly (skips tooltip preview)
+//   - Uses chartContainerHandlers and setChartRef from useTouchTooltip
 // v3.9 (2025-12-22): Added haptic feedback on insight button
 // v3.8 (2025-12-16): Theme-aware chart colors
 //   - ADDED: Uses getChartColors/getSeriesColors from chartColors.js
@@ -51,7 +55,7 @@
 // v2.1 (2025-11-24): Added actionable insights
 // v2.0 (2025-11-23): Redesign for Customer Intelligence Hub
 
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { UserPlus, AlertTriangle, CheckCircle, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
@@ -138,6 +142,9 @@ const NewClientsChart = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState({ title: '', customers: [], audienceType: 'newCustomers', color: 'purple' });
 
+  // Chart container ref for hit-testing
+  const chartContainerRef = useRef(null);
+
   // Helper to convert customer IDs to customer objects (moved up for use in hook callback)
   const getCustomersFromIds = useCallback((customerIds) => {
     return customerIds
@@ -145,10 +152,37 @@ const NewClientsChart = ({
       .filter(Boolean);
   }, [customerMap]);
 
+  /**
+   * Hit-test callback for long-press on chart
+   * Finds which bar is under the touch X position
+   * v4.0: Enables long-press to directly open modal (skips tooltip preview)
+   */
+  const handleLongPressHitTest = useCallback((touchX, touchY, chartRect) => {
+    if (!chartRect || !dailyData || dailyData.length === 0) return null;
+
+    // Calculate position relative to chart
+    const relativeX = touchX - chartRect.left;
+    const chartWidth = chartRect.width;
+
+    // Account for chart margins (from BarChart: left: 0, right: 10)
+    const marginLeft = 45; // Actual left margin accounting for YAxis
+    const marginRight = 10;
+    const plotWidth = chartWidth - marginLeft - marginRight;
+
+    // Calculate which bar index the touch is over
+    const barWidth = plotWidth / dailyData.length;
+    const barIndex = Math.floor((relativeX - marginLeft) / barWidth);
+
+    // Bounds check
+    if (barIndex < 0 || barIndex >= dailyData.length) return null;
+
+    return dailyData[barIndex];
+  }, [dailyData]);
+
   // Use shared touch tooltip hook for mobile-friendly interactions
   // Desktop: single click opens modal immediately
-  // Mobile: tap-to-preview, tap-again-to-action
-  const { handleTouch, isActive: isActiveTouch, tooltipHidden } = useTouchTooltip({
+  // Mobile: tap-to-preview, tap-again-to-action, OR long-press for direct action
+  const { handleTouch, isActive: isActiveTouch, tooltipHidden, chartContainerHandlers, setChartRef } = useTouchTooltip({
     onAction: (dayData) => {
       if (!dayData || !dayData.customerIds || dayData.customerIds.length === 0) return;
 
@@ -165,8 +199,16 @@ const NewClientsChart = ({
       });
       setModalOpen(true);
     },
+    onLongPressHitTest: handleLongPressHitTest,
     dismissTimeout: 5000
   });
+
+  // Set chart ref when component mounts
+  useEffect(() => {
+    if (chartContainerRef.current) {
+      setChartRef(chartContainerRef.current);
+    }
+  }, [setChartRef]);
 
   // Click handler for new customers insight - passes ALL new customers
   const handleNewCustomersClick = useCallback(() => {
@@ -346,7 +388,11 @@ const NewClientsChart = ({
         </div>
       </div>
 
-      <div className="flex-1 min-h-[200px]">
+      <div
+        ref={chartContainerRef}
+        className="flex-1 min-h-[200px]"
+        {...chartContainerHandlers}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={dailyData} margin={{ top: 20, right: 10, left: 0, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />

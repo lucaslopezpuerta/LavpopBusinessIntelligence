@@ -1,7 +1,23 @@
-// ChurnHistogram.jsx v2.9 - HAPTIC FEEDBACK
+// ChurnHistogram.jsx v3.3 - ContextHelp tooltip
 // Time-to-churn distribution histogram with contact tracking integration
 //
 // CHANGELOG:
+// v3.3 (2026-01-15): Added ContextHelp tooltip
+//   - NEW: Tooltip explaining churn risk histogram
+//   - Import ContextHelp component
+//   - Explains color coding (green/amber/red) and interaction
+// v3.2 (2026-01-15): Card styling upgrade
+//   - Added hover animation (lift + shadow) matching AcquisitionCard
+//   - Added left accent border (border-l-4 border-l-red-500)
+//   - Added gradient background for depth
+//   - Applied consistent styling to loading state
+// v3.1 (2026-01-15): Fix white/empty rendering issue
+//   - FIXED: Now shows loading state instead of returning null when data is empty
+//   - Prevents white flash during initial render or data loading
+// v3.0 (2026-01-15): Long-press opens modal directly
+//   - NEW: onLongPressHitTest callback for bar hit-testing
+//   - Long-press on bar → opens modal directly (skips tooltip preview)
+//   - Uses chartContainerHandlers and setChartRef from useTouchTooltip
 // v2.9 (2025-12-22): Added haptic feedback on insight button
 // v2.8 (2025-12-16): Blacklist integration
 //   - Added blacklisted count to bar tooltips
@@ -46,9 +62,11 @@
 // v1.1 (2025-11-24): Added actionable insights
 // v1.0 (2025-11-23): Initial implementation
 
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { AlertCircle, AlertTriangle, CheckCircle, ChevronRight, DollarSign, Clock } from 'lucide-react';
+import ContextHelp from './ContextHelp';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { getChartColors } from '../utils/chartColors';
@@ -56,6 +74,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useBlacklist } from '../hooks/useBlacklist';
 import { haptics } from '../utils/haptics';
 import { DAY_THRESHOLDS } from '../utils/customerMetrics';
+
+// Card hover animation - lift + shadow effect (matches AcquisitionCard)
+const cardHoverAnimation = {
+  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
+  hover: { y: -2, boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }
+};
+const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
 const ChurnHistogram = ({
     data,
@@ -77,6 +102,9 @@ const ChurnHistogram = ({
     // Blacklist check for tooltip display
     const { isBlacklisted } = useBlacklist();
 
+    // Chart container ref for hit-testing
+    const chartContainerRef = useRef(null);
+
     // Helper to convert customer IDs to customer objects (moved up for use in hook callback)
     const getCustomersFromIds = useCallback((customerIds) => {
         return customerIds
@@ -84,10 +112,37 @@ const ChurnHistogram = ({
             .filter(Boolean);
     }, [customerMap]);
 
+    /**
+     * Hit-test callback for long-press on chart
+     * Finds which bar is under the touch X position
+     * v3.0: Enables long-press to directly open modal (skips tooltip preview)
+     */
+    const handleLongPressHitTest = useCallback((touchX, touchY, chartRect) => {
+        if (!chartRect || !data || data.length === 0) return null;
+
+        // Calculate position relative to chart
+        const relativeX = touchX - chartRect.left;
+        const chartWidth = chartRect.width;
+
+        // Account for chart margins (from BarChart: left: -20, right: 10)
+        const marginLeft = 30; // Actual left margin accounting for YAxis
+        const marginRight = 10;
+        const plotWidth = chartWidth - marginLeft - marginRight;
+
+        // Calculate which bar index the touch is over
+        const barWidth = plotWidth / data.length;
+        const barIndex = Math.floor((relativeX - marginLeft) / barWidth);
+
+        // Bounds check
+        if (barIndex < 0 || barIndex >= data.length) return null;
+
+        return data[barIndex];
+    }, [data]);
+
     // Use shared touch tooltip hook for mobile-friendly interactions
     // Desktop: single click opens modal immediately
-    // Mobile: tap-to-preview, tap-again-to-action
-    const { handleTouch, isActive: isActiveTouch, tooltipHidden } = useTouchTooltip({
+    // Mobile: tap-to-preview, tap-again-to-action, OR long-press for direct action
+    const { handleTouch, isActive: isActiveTouch, tooltipHidden, chartContainerHandlers, setChartRef } = useTouchTooltip({
         onAction: (binData) => {
             if (!binData || !binData.customerIds || binData.customerIds.length === 0) return;
 
@@ -104,10 +159,51 @@ const ChurnHistogram = ({
             });
             setModalOpen(true);
         },
+        onLongPressHitTest: handleLongPressHitTest,
         dismissTimeout: 5000
     });
 
-    if (!data || data.length === 0) return null;
+    // Set chart ref when component mounts
+    useEffect(() => {
+        if (chartContainerRef.current) {
+            setChartRef(chartContainerRef.current);
+        }
+    }, [setChartRef]);
+
+    // Show loading/empty state instead of returning null (prevents white flash)
+    if (!data || data.length === 0) {
+        return (
+            <motion.div
+                initial="rest"
+                whileHover="hover"
+                variants={cardHoverAnimation}
+                transition={cardHoverTransition}
+                className="bg-gradient-to-br from-red-50/40 via-white to-white dark:from-red-900/10 dark:via-slate-800 dark:to-slate-800 backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-red-500 dark:border-l-red-400 overflow-hidden h-full flex flex-col"
+            >
+                <div className="mb-4">
+                    <div className="flex items-start gap-3 mb-3">
+                        <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg shrink-0">
+                            <Clock className="w-5 h-5 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h3 className="text-base font-bold text-slate-800 dark:text-white">
+                                Risco de Churn
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                Dias desde última visita
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex-1 min-h-[250px] flex items-center justify-center">
+                    <div className="text-center text-slate-400 dark:text-slate-500">
+                        <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Carregando dados...</p>
+                    </div>
+                </div>
+            </motion.div>
+        );
+    }
 
     // Memoize all calculations
     const stats = useMemo(() => {
@@ -253,7 +349,13 @@ const ChurnHistogram = ({
     }, [contactedIds, isActiveTouch, customerMap, isBlacklisted]);
 
     return (
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
+        <motion.div
+            initial="rest"
+            whileHover="hover"
+            variants={cardHoverAnimation}
+            transition={cardHoverTransition}
+            className="bg-gradient-to-br from-red-50/40 via-white to-white dark:from-red-900/10 dark:via-slate-800 dark:to-slate-800 backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-red-500 dark:border-l-red-400 overflow-hidden h-full flex flex-col"
+        >
             {/* Header */}
             <div className="mb-4">
                 {/* Title + Subtitle */}
@@ -263,8 +365,12 @@ const ChurnHistogram = ({
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                            <h3 className="text-base font-bold text-slate-800 dark:text-white">
+                            <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                                 Risco de Churn
+                                <ContextHelp
+                                    title="Como funciona o risco de churn?"
+                                    description="Mostra quantos clientes estão em cada faixa de dias desde a última visita. Verde (< 20 dias) = ativo, Amarelo (20-30 dias) = atenção, Vermelho (30+ dias) = risco de perder o cliente. Clique em uma barra para ver os clientes daquela faixa."
+                                />
                             </h3>
                             {/* Contact status badge */}
                             {contactedIds.size > 0 && stats.dangerCount > 0 && (
@@ -339,7 +445,11 @@ const ChurnHistogram = ({
                 </div>
             </div>
 
-            <div className="flex-1 min-h-[250px]">
+            <div
+                ref={chartContainerRef}
+                className="flex-1 min-h-[250px]"
+                {...chartContainerHandlers}
+            >
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
@@ -395,7 +505,7 @@ const ChurnHistogram = ({
                 onMarkContacted={onMarkContacted}
                 onCreateCampaign={onCreateCampaign}
             />
-        </div>
+        </motion.div>
     );
 };
 

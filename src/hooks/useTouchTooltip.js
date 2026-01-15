@@ -1,7 +1,12 @@
-// useTouchTooltip.js v2.0 - CONFIGURABLE TOUCH AUTO-DISMISS
+// useTouchTooltip.js v2.1 - LONG-PRESS AS PRIMARY GESTURE
 // Shared hook for mobile-friendly tooltip interactions on charts
 //
 // CHANGELOG:
+// v2.1 (2026-01-15): Long-press works without prior tap
+//   - FIXED: Long-press no longer requires activeTooltip
+//   - NEW: onLongPressHitTest callback for components to provide hit-tested data
+//   - NEW: lastTouchPos exposed for component hit-testing
+//   - Now long-press directly opens detail view (skips tooltip preview)
 // v2.0 (2026-01-11): Configurable auto-dismiss for touch devices
 //   - NEW: skipTouchAutoDismiss option (default: false)
 //   - When true: No auto-dismiss on touch (for MobileTooltipSheet with explicit close)
@@ -71,19 +76,22 @@ const getIsTouchDevice = () => {
  * Pattern:
  * - First tap: Show tooltip for that data point
  * - Second tap on same point: Execute action (open modal)
+ * - Long-press: Execute action directly (skip tooltip preview)
  * - Tap elsewhere: Dismiss tooltip
  * - Auto-dismiss after 5 seconds of inactivity
  *
  * @param {Object} options
- * @param {Function} options.onAction - Callback when user double-taps (opens modal)
+ * @param {Function} options.onAction - Callback when user double-taps or long-presses (opens modal)
+ * @param {Function} options.onLongPressHitTest - Callback to find data under touch position: (x, y, chartRect) => data | null
+ *                  If provided, long-press works without prior tap by using hit-testing
  * @param {number} options.dismissTimeout - Auto-dismiss timeout in ms (default: 5000)
  * @param {number} options.modalAnimationDelay - Time to wait for modal animations (default: 300)
  * @param {number} options.longPressDuration - Long-press duration in ms (default: 500)
  * @param {boolean} options.skipTouchAutoDismiss - Skip auto-dismiss on touch devices (default: false)
  *                  Set to true when using MobileTooltipSheet (has explicit close controls)
- * @returns {Object} { activeTooltip, handleTouch, clearTooltip, tooltipHidden, resetTooltipVisibility, isTouchDevice }
+ * @returns {Object} { activeTooltip, handleTouch, clearTooltip, tooltipHidden, resetTooltipVisibility, isTouchDevice, lastTouchPos }
  */
-export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimationDelay = 300, longPressDuration = 500, skipTouchAutoDismiss = false } = {}) {
+export function useTouchTooltip({ onAction, onLongPressHitTest, dismissTimeout = 5000, modalAnimationDelay = 300, longPressDuration = 500, skipTouchAutoDismiss = false } = {}) {
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [tooltipHidden, setTooltipHidden] = useState(false);
   const [isLongPressing, setIsLongPressing] = useState(false);
@@ -94,6 +102,7 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
   const longPressTimerRef = useRef(null);
   const longPressStartPosRef = useRef({ x: 0, y: 0 });
   const longPressTriggeredRef = useRef(false);
+  const chartRefInternal = useRef(null); // Reference to chart container for hit-testing
   const LONG_PRESS_MOVE_THRESHOLD = 10; // pixels
 
   // Use matchMedia for reliable touch detection (handles hybrid devices)
@@ -205,10 +214,23 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
   }, []);
 
   /**
-   * Trigger long-press action (when tooltip is active)
+   * Trigger long-press action
+   * Now supports two modes:
+   * 1. If activeTooltip exists, use its data (original behavior)
+   * 2. If no activeTooltip but onLongPressHitTest provided, use hit-testing to find data under touch
    */
   const triggerLongPressAction = useCallback(() => {
-    if (!activeTooltip?.data) return;
+    let targetData = activeTooltip?.data;
+
+    // If no activeTooltip, try hit-testing
+    if (!targetData && onLongPressHitTest) {
+      const { x, y } = longPressStartPosRef.current;
+      const chartRect = chartRefInternal.current?.getBoundingClientRect?.();
+      targetData = onLongPressHitTest(x, y, chartRect);
+    }
+
+    // Still no data? Abort
+    if (!targetData) return;
 
     longPressTriggeredRef.current = true;
     setIsLongPressing(true);
@@ -219,7 +241,7 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
 
     if (onAction) {
       requestAnimationFrame(() => {
-        onAction(activeTooltip.data);
+        onAction(targetData);
         setTimeout(() => {
           actionPendingRef.current = false;
           setIsLongPressing(false);
@@ -228,14 +250,15 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
     } else {
       setTimeout(() => setIsLongPressing(false), 200);
     }
-  }, [activeTooltip, onAction, hideTooltip, modalAnimationDelay]);
+  }, [activeTooltip, onAction, onLongPressHitTest, hideTooltip, modalAnimationDelay]);
 
   /**
    * Long-press touch start handler
+   * v2.1: Now works without prior tap (removed activeTooltip requirement)
    */
   const handleLongPressStart = useCallback((e) => {
-    // Only enable long-press on touch devices when tooltip is active
-    if (!checkIsTouchDevice() || !activeTooltip) return;
+    // Only enable long-press on touch devices
+    if (!checkIsTouchDevice()) return;
 
     const touch = e.touches?.[0];
     if (!touch) return;
@@ -246,7 +269,7 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
     longPressTimerRef.current = setTimeout(() => {
       triggerLongPressAction();
     }, longPressDuration);
-  }, [checkIsTouchDevice, activeTooltip, longPressDuration, triggerLongPressAction]);
+  }, [checkIsTouchDevice, longPressDuration, triggerLongPressAction]);
 
   /**
    * Long-press touch move handler - cancel if moved too much
@@ -354,6 +377,11 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
     return activeTooltip?.id === id;
   }, [activeTooltip]);
 
+  // Callback to set chart ref for hit-testing
+  const setChartRef = useCallback((ref) => {
+    chartRefInternal.current = ref;
+  }, []);
+
   return {
     activeTooltip,
     handleTouch,
@@ -364,6 +392,8 @@ export function useTouchTooltip({ onAction, dismissTimeout = 5000, modalAnimatio
     resetTooltipVisibility, // Optional: call from modal onClose
     chartContainerHandlers, // Spread onto chart container for long-press support
     isLongPressing, // Visual feedback during long-press
+    lastTouchPos: longPressStartPosRef.current, // Touch position for external hit-testing
+    setChartRef, // Call with chart container ref for hit-testing
   };
 }
 

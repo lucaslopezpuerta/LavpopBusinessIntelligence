@@ -122,6 +122,10 @@ export const LazyVisitHeatmap = lazy(() =>
   import('../components/VisitHeatmap')
 );
 
+export const LazyAcquisitionCard = lazy(() =>
+  import('../components/AcquisitionCard')
+);
+
 // Operations charts
 export const LazyDayOfWeekChart = lazy(() =>
   import('../components/DayOfWeekChart')
