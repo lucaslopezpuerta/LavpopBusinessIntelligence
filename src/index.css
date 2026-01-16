@@ -1,9 +1,10 @@
-/* Lavpop BI - Base Styles v3.0 (Tailwind Edition)
- * Premium design system with Google Fonts and enhanced animations
+/* Bilavnova BI - Base Styles v4.0 (Cosmic Precision)
+ * Space-age futurist design system
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
  *
  * CHANGELOG:
+ * v4.0 (2025-01-16): Cosmic Precision - Orbitron font, starfield, glassmorphism
  * v3.0 (2025-11-23): Google Fonts (Inter, JetBrains Mono), enhanced animations
  * v2.1 Refined Custom Scrollbar for Modals
  * v2.0 (2025-11-20): Complete Tailwind migration
@@ -13,8 +14,8 @@
  * v1.0: Legacy CSS version (deprecated)
  */
 
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* Import Google Fonts - Orbitron for display (space-age), Inter for body */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -25,41 +26,84 @@
    ============================================ */
 
 :root {
-  /* Lavpop Brand Colors */
+  /* Cosmic Precision - Stellar Colors (v4.0) */
+  --stellar-blue: #2d388a;
+  --stellar-cyan: #00aeef;
+  --stellar-gradient: linear-gradient(135deg, #2d388a 0%, #00aeef 100%);
+  --space-void: #050816;
+  --space-nebula: #0a0f1e;
+  --space-dust: #1a1f35;
+
+  /* Bilavnova Brand Gradient (from logo) */
+  --bilavnova-gradient-start: #2d388a;
+  --bilavnova-gradient-end: #00aeef;
+  --bilavnova-gradient: linear-gradient(135deg, #2d388a 0%, #00aeef 100%);
+
+  /* Lavpop Brand Colors (legacy) */
   --color-lavpop-blue: #1a5a8e;
   --color-lavpop-green: #55b03b;
 
-  /* Light Theme (Default) */
-  --color-background: #f5f7fa;
+  /* Light Theme (Default) - Clean geometric space */
+  --color-background: #f8fafc;
   --color-surface: #ffffff;
-  --color-surface-hover: #f9fafb;
-  --color-border: #e5e7eb;
-  --color-text-primary: #1f2937;
-  --color-text-secondary: #6b7280;
-  --color-text-muted: #9ca3af;
+  --color-surface-hover: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+
+  /* Loading/Login Screen - Light Theme */
+  --loading-bg: #f8fafc;
+  --loading-surface: #ffffff;
+  --loading-border: #e2e8f0;
+  --loading-text: #0f172a;
+  --loading-text-secondary: #64748b;
+
+  /* Glassmorphism - Light Theme */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(45, 56, 138, 0.1);
+  --glass-blur: 12px;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --shadow-lavpop: 0 4px 14px 0 rgba(26, 90, 142, 0.15);
+  --shadow-bilavnova: 0 4px 24px rgba(45, 56, 138, 0.15);
+  --shadow-bilavnova-glow: 0 4px 32px rgba(0, 174, 239, 0.25);
+  --shadow-stellar: 0 0 20px rgba(45, 56, 138, 0.2), 0 0 40px rgba(0, 174, 239, 0.1);
 }
 
 .dark {
-  /* Dark Theme */
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
-  --color-surface-hover: #334155;
-  --color-border: #334155;
+  /* Dark Theme - Deep space */
+  --color-background: #050816;
+  --color-surface: #0a0f1e;
+  --color-surface-hover: #1a1f35;
+  --color-border: #1e293b;
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
   --color-text-muted: #64748b;
 
-  /* Darker shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  /* Loading/Login Screen - Dark Theme (Cosmic) */
+  --loading-bg: #050816;
+  --loading-surface: #0a0f1e;
+  --loading-border: #1e293b;
+  --loading-text: #f1f5f9;
+  --loading-text-secondary: #94a3b8;
+
+  /* Glassmorphism - Dark Theme */
+  --glass-bg: rgba(10, 15, 30, 0.7);
+  --glass-border: rgba(0, 174, 239, 0.15);
+  --glass-blur: 16px;
+
+  /* Darker shadows with stellar glow */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
   --shadow-lavpop: 0 4px 14px 0 rgba(26, 90, 142, 0.3);
+  --shadow-bilavnova: 0 4px 24px rgba(45, 56, 138, 0.3);
+  --shadow-bilavnova-glow: 0 4px 32px rgba(0, 174, 239, 0.4);
+  --shadow-stellar: 0 0 30px rgba(0, 174, 239, 0.3), 0 0 60px rgba(45, 56, 138, 0.2);
 }
 
 /* ============================================
@@ -258,6 +302,150 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ============================================
+   COSMIC PRECISION UTILITIES (v4.0)
+   ============================================ */
+
+/* Star field background - scattered tiny gradient dots */
+.bg-starfield {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(0, 174, 239, 0.4), transparent),
+    radial-gradient(1px 1px at 40px 70px, rgba(45, 56, 138, 0.3), transparent),
+    radial-gradient(1px 1px at 50px 160px, rgba(0, 174, 239, 0.25), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(0, 174, 239, 0.2), transparent),
+    radial-gradient(1px 1px at 160px 120px, rgba(255, 255, 255, 0.25), transparent),
+    radial-gradient(1px 1px at 180px 20px, rgba(45, 56, 138, 0.3), transparent),
+    radial-gradient(1px 1px at 200px 160px, rgba(0, 174, 239, 0.3), transparent);
+  background-size: 220px 180px;
+}
+
+/* Subtle grid pattern for light theme */
+.bg-grid-light {
+  background-image:
+    linear-gradient(rgba(45, 56, 138, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 56, 138, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glassmorphism card */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(12px)) {
+  .glass {
+    background: rgba(10, 15, 30, 0.95);
+  }
+  :root .glass {
+    background: rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* Gradient text */
+.text-gradient-stellar {
+  background: var(--stellar-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Orbital glow animation */
+@keyframes orbital-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(0, 174, 239, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 40px rgba(0, 174, 239, 0.5));
+  }
+}
+
+.animate-orbital-glow {
+  animation: orbital-glow 2.5s ease-in-out infinite;
+}
+
+/* Orbital ring rotation */
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-orbit-spin {
+  animation: orbit-spin 3s linear infinite;
+}
+
+/* Button shimmer effect */
+@keyframes button-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-effect::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: button-shimmer 2s ease-in-out infinite;
+}
+
+/* Pulse ring for loading states */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border: 2px solid var(--stellar-cyan);
+  border-radius: inherit;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* Focus glow for inputs */
+.focus-glow:focus {
+  box-shadow: 0 0 0 3px rgba(0, 174, 239, 0.2), 0 0 20px rgba(0, 174, 239, 0.15);
+}
+
+/* Aurora gradient overlay */
+.aurora-overlay {
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    rgba(45, 56, 138, 0.15),
+    transparent
+  );
+}
+
+.dark .aurora-overlay {
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    rgba(45, 56, 138, 0.25),
+    transparent
+  );
 }
 
 /* ============================================

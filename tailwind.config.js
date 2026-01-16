@@ -1,11 +1,17 @@
-// Lavpop BI - Tailwind Configuration v3.0
-// Premium design system with enhanced typography, gradients, and animations
-// 
+// Bilavnova BI - Tailwind Configuration v4.1
+// "Cosmic Precision" design system - Space-age futurist aesthetic
+//
 // BRAND COLORS:
-// - Primary Blue: #1a5a8e (Lavpop brand blue)
-// - Accent Green: #55b03b (Lavpop brand green)
+// - Stellar Blue: #2d388a (Gradient start - deep indigo)
+// - Stellar Cyan: #00aeef (Gradient end - bright cyan)
+// - Space Void: #050816 (Deep space background)
 //
 // CHANGELOG:
+// v4.1 (2026-01-16): Dark mode safelist fix
+//   - Added comprehensive safelist for dark: class generation
+//   - Fixes Tailwind scanner not detecting classes in JS object properties
+//   - Enables all 3,215 dark: patterns in codebase to generate CSS
+// v4.0 (2025-01-16): Cosmic Precision - Orbitron font, space colors, orbital animations
 // v3.0 (2025-11-23): Premium enhancements - Google Fonts, gradients, animations
 // v2.0 (2025-11-20): Tailwind setup with complete design system
 
@@ -16,6 +22,68 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   darkMode: 'class', // Enable dark mode with class strategy
+
+  // Safelist: Explicit dark: classes found in codebase (extracted via grep)
+  // Only includes classes actually used, to minimize CSS bundle size
+  safelist: [
+    // Text colors - slate (most common)
+    'dark:text-slate-200', 'dark:text-slate-300', 'dark:text-slate-400',
+    'dark:text-slate-500', 'dark:text-slate-600',
+    'dark:text-white',
+    // Text colors - semantic
+    'dark:text-blue-300', 'dark:text-blue-400', 'dark:text-blue-200',
+    'dark:text-emerald-300', 'dark:text-emerald-400', 'dark:text-emerald-100',
+    'dark:text-amber-200', 'dark:text-amber-300', 'dark:text-amber-400',
+    'dark:text-red-200', 'dark:text-red-300', 'dark:text-red-400',
+    'dark:text-purple-300', 'dark:text-purple-400',
+    'dark:text-green-300', 'dark:text-green-400',
+    'dark:text-cyan-300', 'dark:text-cyan-400',
+    'dark:text-teal-300', 'dark:text-teal-400',
+    'dark:text-indigo-100', 'dark:text-indigo-400',
+    'dark:text-sky-300', 'dark:text-sky-400',
+    'dark:text-orange-300', 'dark:text-orange-400',
+    // Background colors - slate
+    'dark:bg-slate-600', 'dark:bg-slate-700', 'dark:bg-slate-800', 'dark:bg-slate-900',
+    'dark:bg-slate-700/30', 'dark:bg-slate-700/50',
+    'dark:bg-slate-800/50', 'dark:bg-slate-800/95',
+    'dark:bg-slate-900/50',
+    // Background colors - semantic with opacity
+    'dark:bg-emerald-900/20', 'dark:bg-emerald-900/30', 'dark:bg-emerald-900/40',
+    'dark:bg-amber-900/20', 'dark:bg-amber-900/30', 'dark:bg-amber-900/40',
+    'dark:bg-blue-900/20', 'dark:bg-blue-900/30', 'dark:bg-blue-900/40',
+    'dark:bg-red-900/20', 'dark:bg-red-900/30', 'dark:bg-red-900/40',
+    'dark:bg-purple-900/20', 'dark:bg-purple-900/30', 'dark:bg-purple-900/40',
+    'dark:bg-green-900/20', 'dark:bg-green-900/30', 'dark:bg-green-900/40',
+    'dark:bg-cyan-900/20', 'dark:bg-cyan-900/40',
+    'dark:bg-teal-900/30',
+    'dark:bg-orange-900/40',
+    // Border colors
+    'dark:border-slate-500', 'dark:border-slate-600', 'dark:border-slate-700', 'dark:border-slate-800',
+    'dark:border-slate-600/50', 'dark:border-slate-700/50', 'dark:border-slate-700/80',
+    'dark:border-blue-800', 'dark:border-emerald-800', 'dark:border-amber-800',
+    'dark:border-red-800', 'dark:border-purple-800', 'dark:border-green-800', 'dark:border-indigo-800',
+    'dark:border-emerald-800/50', 'dark:border-amber-800/50',
+    'dark:border-l-blue-400',
+    // Divide colors
+    'dark:divide-slate-700',
+    // Gradient classes
+    'dark:from-slate-600', 'dark:from-slate-900',
+    'dark:from-purple-900/20', 'dark:from-indigo-900/20', 'dark:from-blue-900/20',
+    'dark:from-emerald-900/20', 'dark:from-amber-900/20',
+    'dark:via-slate-800', 'dark:via-orange-600',
+    'dark:to-slate-700', 'dark:to-slate-800',
+    'dark:to-indigo-900/20', 'dark:to-rose-600',
+    // Custom space colors
+    'bg-space-void', 'bg-space-nebula', 'bg-space-dust',
+    'dark:bg-space-void', 'dark:bg-space-nebula', 'dark:bg-space-dust',
+    'bg-space-dust/50', 'bg-space-dust/70', 'bg-space-dust/80',
+    // Custom stellar colors
+    'text-stellar-cyan', 'border-stellar-cyan', 'bg-stellar-cyan',
+    'dark:text-stellar-cyan', 'dark:border-stellar-cyan', 'dark:bg-stellar-cyan',
+    'border-stellar-cyan/5', 'border-stellar-cyan/10', 'border-stellar-cyan/15', 'border-stellar-cyan/20',
+    'bg-stellar-cyan/5', 'bg-stellar-cyan/10', 'bg-stellar-cyan/20',
+  ],
+
   theme: {
     screens: {
       'xs': '475px',
@@ -27,7 +95,38 @@ export default {
     },
     extend: {
       colors: {
-        // Lavpop Brand Colors
+        // Cosmic Space Colors (v4.0)
+        'space': {
+          'void': '#050816',      // Deep space black (primary dark bg)
+          'nebula': '#0a0f1e',    // Slightly lighter
+          'dust': '#1a1f35',      // Card backgrounds (dark mode)
+          'light': '#f8fafc',     // Light mode background
+          'light-card': '#ffffff', // Light mode card
+        },
+        // Stellar Gradient Colors (v4.0 - from brand logo)
+        'stellar': {
+          'blue': '#2d388a',      // Gradient start (deep indigo)
+          'cyan': '#00aeef',      // Gradient end (bright cyan)
+          'glow': 'rgba(0, 174, 239, 0.5)',
+          'glow-subtle': 'rgba(0, 174, 239, 0.2)',
+        },
+        // Bilavnova Brand Gradient Colors (from logo SVG)
+        'bilavnova': {
+          'gradient-start': '#2d388a',  // Deep blue
+          'gradient-end': '#00aeef',    // Cyan
+          50: '#e6f4fc',
+          100: '#cce9f9',
+          200: '#99d3f3',
+          300: '#66bdec',
+          400: '#33a7e6',
+          500: '#00aeef',  // Primary cyan
+          600: '#008bbf',
+          700: '#00688f',
+          800: '#004560',
+          900: '#002330',
+        },
+
+        // Lavpop Brand Colors (legacy, keep for compatibility)
         'lavpop-blue': {
           DEFAULT: '#1a5a8e',
           50: '#e8f1f8',
@@ -93,6 +192,11 @@ export default {
       },
 
       fontFamily: {
+        // Display font - Orbitron for brand name (space-age geometric)
+        display: [
+          'Orbitron',
+          'sans-serif',
+        ],
         sans: [
           'Inter',
           '-apple-system',
@@ -196,6 +300,31 @@ export default {
           '0%, 100%': { transform: 'translateX(0)', opacity: '0.7' },
           '50%': { transform: 'translateX(6px)', opacity: '0.5' },
         },
+        // Cosmic Precision animations (v4.0)
+        'orbit': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        'orbital-glow': {
+          '0%, 100%': {
+            filter: 'drop-shadow(0 0 20px rgba(0, 174, 239, 0.3))',
+          },
+          '50%': {
+            filter: 'drop-shadow(0 0 40px rgba(0, 174, 239, 0.5))',
+          },
+        },
+        'shimmer': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        'pulse-ring': {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '100%': { transform: 'scale(1.5)', opacity: '0' },
+        },
+        'float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
       },
       animation: {
         'slide-up': 'slide-up 0.3s ease-out',
@@ -212,9 +341,27 @@ export default {
         'lightning-flash': 'lightning-flash 3s ease-in-out infinite',
         'wind-blow': 'wind-blow 2s ease-in-out infinite',
         'fog-drift': 'fog-drift 6s ease-in-out infinite',
+        // Cosmic Precision animations (v4.0)
+        'orbit': 'orbit 3s linear infinite',
+        'orbit-slow': 'orbit 8s linear infinite',
+        'orbital-glow': 'orbital-glow 2.5s ease-in-out infinite',
+        'shimmer': 'shimmer 2s ease-in-out infinite',
+        'pulse-ring': 'pulse-ring 1.5s ease-out infinite',
+        'float': 'float 6s ease-in-out infinite',
       },
 
       backgroundImage: {
+        // Cosmic Precision gradients (v4.0)
+        'gradient-stellar': 'linear-gradient(135deg, #2d388a 0%, #00aeef 100%)',
+        'gradient-stellar-vertical': 'linear-gradient(180deg, #2d388a 0%, #00aeef 100%)',
+        'gradient-stellar-horizontal': 'linear-gradient(90deg, #2d388a 0%, #00aeef 100%)',
+        'gradient-aurora': 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(45, 56, 138, 0.15), transparent)',
+        'gradient-aurora-strong': 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(45, 56, 138, 0.3), transparent)',
+        // Bilavnova brand gradient (from logo)
+        'gradient-bilavnova': 'linear-gradient(135deg, #2d388a 0%, #00aeef 100%)',
+        'gradient-bilavnova-vertical': 'linear-gradient(180deg, #2d388a 0%, #00aeef 100%)',
+        'gradient-bilavnova-radial': 'radial-gradient(ellipse at center, #00aeef 0%, #2d388a 100%)',
+        // Legacy lavpop gradients
         'gradient-lavpop': 'linear-gradient(135deg, #1a5a8e 0%, #2a7ab8 100%)',
         'gradient-lavpop-dark': 'linear-gradient(135deg, #0d3a5c 0%, #1a5a8e 100%)',
         'gradient-green': 'linear-gradient(135deg, #55b03b 0%, #6bc04d 100%)',
@@ -244,6 +391,11 @@ export default {
         'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
         'lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
         'xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        // Bilavnova brand glow effects
+        'bilavnova': '0 4px 24px rgba(45, 56, 138, 0.15)',
+        'bilavnova-lg': '0 4px 32px rgba(0, 174, 239, 0.25)',
+        'bilavnova-glow': '0 0 20px rgba(0, 174, 239, 0.3)',
+        // Legacy lavpop shadows
         'lavpop': '0 4px 14px 0 rgba(26, 90, 142, 0.15)',
         'lavpop-lg': '0 10px 40px -10px rgba(26, 90, 142, 0.25)',
         // New soft shadows for cards
@@ -254,6 +406,12 @@ export default {
         'glow-blue': '0 0 20px rgba(26, 90, 142, 0.15)',
         'glow-green': '0 0 20px rgba(85, 176, 59, 0.15)',
         'glow-amber': '0 0 20px rgba(245, 158, 11, 0.15)',
+        // Cosmic Precision shadows (v4.0)
+        'stellar': '0 0 20px rgba(45, 56, 138, 0.3), 0 0 40px rgba(0, 174, 239, 0.1)',
+        'stellar-lg': '0 0 30px rgba(0, 174, 239, 0.4), 0 0 60px rgba(45, 56, 138, 0.2)',
+        'stellar-glow': '0 0 40px rgba(0, 174, 239, 0.5)',
+        'glass': '0 8px 32px rgba(0, 0, 0, 0.12)',
+        'glass-dark': '0 8px 32px rgba(0, 0, 0, 0.4)',
       },
     },
   },

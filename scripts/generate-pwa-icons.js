@@ -211,8 +211,8 @@ async function generateAndroidIcons() {
         }
       }).png().toBuffer();
 
-      // Resize logo - use white logo for foreground (works with colored backgrounds)
-      const logoResized = await sharp(whiteLogo)
+      // Resize logo - use Android icon for foreground (square icon, not wide text logo)
+      const logoResized = await sharp(androidIcon)
         .resize(logoSize, logoSize, { fit: 'contain' })
         .toBuffer();
 

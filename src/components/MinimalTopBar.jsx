@@ -1,7 +1,11 @@
-// MinimalTopBar.jsx v3.6 - LOGOUT BUTTON
+// MinimalTopBar.jsx v3.7 - THEME-AWARE COLORS FIX
 // Modern top bar with discreet hover-expandable actions
 //
 // CHANGELOG:
+// v3.7 (2026-01-16): Theme-aware colors fix
+//   - Added useTheme hook for reliable dark mode detection
+//   - Converted all Tailwind dark: prefixes to JavaScript conditionals
+//   - Matches proven LoadingScreen pattern for consistent theming
 // v3.6 (2025-12-26): Logout button
 //   - Added LogOut button to QuickActionsDropdown
 //   - Uses useAuth hook for signOut
@@ -32,6 +36,7 @@ import ThemeToggle from './ThemeToggle';
 import IconButton from './ui/IconButton';
 import { haptics } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Hook to detect touch/mobile device
 const useIsTouchDevice = () => {
@@ -51,16 +56,16 @@ const useIsTouchDevice = () => {
 };
 
 // ActionItem component for dropdown menu
-const ActionItem = ({ icon: Icon, label, onClick, loading, shortcut }) => (
+const ActionItem = ({ icon: Icon, label, onClick, loading, shortcut, isDark }) => (
   <button
     onClick={onClick}
     disabled={loading}
-    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50"
+    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${isDark ? 'text-slate-200 hover:bg-slate-700/50' : 'text-slate-700 hover:bg-slate-100'} transition-colors disabled:opacity-50`}
   >
-    <Icon className={`w-4 h-4 text-slate-500 dark:text-slate-400 ${loading ? 'animate-spin' : ''}`} />
+    <Icon className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'} ${loading ? 'animate-spin' : ''}`} />
     <span className="flex-1 text-left">{label}</span>
     {shortcut && (
-      <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 rounded border border-slate-200 dark:border-slate-600">
+      <kbd className={`px-1.5 py-0.5 text-[10px] font-mono ${isDark ? 'bg-slate-700 text-slate-500 border-slate-600' : 'bg-slate-100 text-slate-400 border-slate-200'} rounded border`}>
         {shortcut}
       </kbd>
     )}
@@ -74,6 +79,7 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
   const closeTimeoutRef = useRef(null);
   const isTouch = useIsTouchDevice();
   const { signOut, user } = useAuth();
+  const { isDark } = useTheme();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -139,15 +145,7 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
       {/* Subtle icon button */}
       <button
         onClick={handleClick}
-        className={`
-          flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg
-          transition-all duration-200
-          ${isOpen
-            ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
-          }
-          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-        `}
+        className={`flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan ${isOpen ? (isDark ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700') : (isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700')}`}
         aria-expanded={isOpen}
         aria-haspopup="true"
         title="Acoes rapidas"
@@ -162,13 +160,14 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.95 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 mt-1 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1.5 z-50"
+            className={`absolute right-0 mt-1 w-48 ${isDark ? 'bg-space-dust' : 'bg-white/95'} backdrop-blur-xl rounded-xl shadow-xl border ${isDark ? 'border-stellar-cyan/20' : 'border-stellar-cyan/10'} py-1.5 z-50`}
           >
             <ActionItem
               icon={FileDown}
               label="Exportar"
               onClick={() => { onOpenExport?.(); setIsOpen(false); }}
               shortcut="E"
+              isDark={isDark}
             />
             <ActionItem
               icon={RefreshCw}
@@ -176,18 +175,21 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
               onClick={() => { onRefresh?.(); setIsOpen(false); }}
               loading={refreshing}
               shortcut="R"
+              isDark={isDark}
             />
-            <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+            <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`} />
             <ActionItem
               icon={Bell}
               label="Alertas"
               onClick={() => setIsOpen(false)}
+              isDark={isDark}
             />
-            <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+            <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`} />
             <ActionItem
               icon={LogOut}
               label="Sair"
               onClick={() => { signOut(); setIsOpen(false); }}
+              isDark={isDark}
             />
           </motion.div>
         )}
@@ -201,6 +203,7 @@ const KeyboardHintsSubtle = () => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const closeTimeoutRef = useRef(null);
+  const { isDark } = useTheme();
 
   const shortcuts = [
     { key: '1-9', desc: 'Navegar' },
@@ -238,14 +241,7 @@ const KeyboardHintsSubtle = () => {
       onMouseLeave={handleMouseLeave}
     >
       {/* Subtle kbd indicator */}
-      <div className={`
-        px-2 py-1.5 rounded cursor-default min-h-[44px] flex items-center
-        transition-colors duration-200
-        ${isOpen
-          ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-          : 'text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-400'
-        }
-      `}>
+      <div className={`px-2 py-1.5 rounded cursor-default min-h-[44px] flex items-center transition-colors duration-200 ${isOpen ? (isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600') : (isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500')}`}>
         <span className="text-[11px] font-mono">?</span>
       </div>
 
@@ -256,18 +252,18 @@ const KeyboardHintsSubtle = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.95 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 mt-1 w-36 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-2 px-2 z-50"
+            className={`absolute right-0 mt-1 w-36 ${isDark ? 'bg-space-dust' : 'bg-white/95'} backdrop-blur-xl rounded-xl shadow-xl border ${isDark ? 'border-stellar-cyan/20' : 'border-stellar-cyan/10'} py-2 px-2 z-50`}
           >
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 px-1">
+            <p className={`text-[10px] uppercase tracking-wider mb-1.5 px-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               Atalhos
             </p>
             <div className="space-y-1">
               {shortcuts.map(({ key, desc }) => (
                 <div key={key} className="flex items-center justify-between px-1 py-0.5">
-                  <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded border border-slate-200 dark:border-slate-600">
+                  <kbd className={`px-1.5 py-0.5 text-[10px] font-mono rounded border ${isDark ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                     {key}
                   </kbd>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{desc}</span>
+                  <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</span>
                 </div>
               ))}
             </div>
@@ -279,18 +275,22 @@ const KeyboardHintsSubtle = () => {
 };
 
 // Location Badge Component
-const LocationBadge = () => (
-  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50">
-    <MapPin className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
-    <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
-      Caxias do Sul
-    </span>
-  </div>
-);
+const LocationBadge = () => {
+  const { isDark } = useTheme();
+  return (
+    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full ${isDark ? 'bg-space-dust/80 border-stellar-cyan/20' : 'bg-slate-100/80 border-slate-200/50'} border`}>
+      <MapPin className="w-3.5 h-3.5 text-stellar-cyan" />
+      <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        Caxias do Sul
+      </span>
+    </div>
+  );
+};
 
 const MinimalTopBar = ({ refreshing, onRefresh, onOpenSettings, onOpenExport }) => {
+  const { isDark } = useTheme();
   return (
-    <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm transition-all duration-300 safe-area-top">
+    <header className={`sticky top-0 z-40 ${isDark ? 'bg-space-nebula' : 'bg-white/85'} backdrop-blur-xl border-b ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} shadow-sm transition-all duration-300 safe-area-top`}>
       {/* Height: 56px on mobile (h-14), 60px on desktop */}
       <div className="h-14 lg:h-[60px] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-3">
 

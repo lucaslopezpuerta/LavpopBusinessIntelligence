@@ -1,9 +1,9 @@
-// BottomNavItem.jsx v1.4 - LANDSCAPE MODE OPTIMIZATION
+// BottomNavItem.jsx v1.5 - THEME-AWARE COLORS FIX
 // Individual navigation item for mobile bottom navigation bar
 //
 // FEATURES:
 // - Icon + label layout (portrait), icon-only (landscape)
-// - Active state with lavpop-blue gradient
+// - Active state with stellar-cyan accent
 // - Touch-optimized (44px+ touch target)
 // - Dark mode support
 // - Smooth transitions
@@ -13,6 +13,10 @@
 // - Landscape mode: smaller icons, hidden labels (v1.4)
 //
 // CHANGELOG:
+// v1.5 (2026-01-16): Theme-aware colors fix
+//   - Added useTheme hook for reliable dark mode detection
+//   - Converted Tailwind dark: prefixes to JavaScript conditionals
+//   - Matches proven LoadingScreen pattern for consistent theming
 // v1.4 (2026-01-12): Landscape mode optimization
 //   - Accepts isLandscape prop from BottomNavBar
 //   - Reduced touch target in landscape (48x44px vs 64x56px)
@@ -31,6 +35,7 @@
 import React, { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { haptics } from '../../utils/haptics';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const BottomNavItem = ({
   id,
@@ -42,6 +47,8 @@ const BottomNavItem = ({
   isButton = false,
   isLandscape = false
 }) => {
+  const { isDark } = useTheme();
+
   // Wrap click handler with haptic feedback and re-tap scroll-to-top
   const handleClick = useCallback((e) => {
     if (isActive) {
@@ -57,39 +64,23 @@ const BottomNavItem = ({
   }, [isActive, onClick]);
   // Landscape mode: smaller touch targets (still WCAG 44px min)
   // Portrait: 64x56px, Landscape: 48x44px
-  const baseClasses = `
-    flex flex-col items-center justify-center
-    ${isLandscape ? 'min-w-[48px] min-h-[44px] px-1' : 'min-w-[64px] min-h-[56px] px-2'} py-1
-    rounded-xl
-    transition-all duration-200 ease-out
-    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2
-  `;
+  const baseClasses = `flex flex-col items-center justify-center ${isLandscape ? 'min-w-[48px] min-h-[44px] px-1' : 'min-w-[64px] min-h-[56px] px-2'} py-1 rounded-xl transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2`;
 
   const activeClasses = isActive
-    ? 'text-lavpop-blue dark:text-blue-400'
-    : 'text-slate-500 dark:text-slate-400 active:text-lavpop-blue dark:active:text-blue-400';
+    ? 'text-stellar-cyan'
+    : isDark
+      ? 'text-slate-400 active:text-stellar-cyan'
+      : 'text-slate-500 active:text-stellar-cyan';
 
   const content = (
     <>
       {/* Icon container - smaller in landscape mode */}
-      <div className={`
-        relative flex items-center justify-center
-        ${isLandscape ? 'w-8 h-6' : 'w-12 h-8'} rounded-2xl
-        transition-all duration-200
-        ${isActive
-          ? 'bg-lavpop-blue/15 dark:bg-blue-500/20'
-          : 'group-active:bg-slate-100 dark:group-active:bg-slate-800'
-        }
-      `}>
+      <div className={`relative flex items-center justify-center ${isLandscape ? 'w-8 h-6' : 'w-12 h-8'} rounded-2xl transition-all duration-200 ${isActive ? (isDark ? 'bg-stellar-cyan/20' : 'bg-stellar-cyan/15') : (isDark ? 'group-active:bg-slate-800' : 'group-active:bg-slate-100')}`}>
         <Icon className={`${isLandscape ? 'w-4 h-4' : 'w-5 h-5'} transition-transform duration-200 ${isActive ? 'scale-110' : 'group-active:scale-95'}`} />
       </div>
       {/* Label - hidden in landscape mode for space efficiency */}
       {!isLandscape && (
-        <span className={`
-          mt-0.5 text-xs font-semibold leading-tight
-          transition-all duration-200
-          ${isActive ? 'opacity-100' : 'opacity-80'}
-        `}>
+        <span className={`mt-0.5 text-xs font-semibold leading-tight transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-80'}`}>
           {label}
         </span>
       )}

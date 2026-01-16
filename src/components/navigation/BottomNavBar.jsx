@@ -1,11 +1,11 @@
-// BottomNavBar.jsx v1.4 - LANDSCAPE MODE OPTIMIZATION
+// BottomNavBar.jsx v1.5 - THEME-AWARE COLORS FIX
 // Mobile bottom navigation bar with 5 tabs
 //
 // FEATURES:
 // - 5 primary navigation tabs
 // - Fixed position at bottom with safe-area support
 // - "Mais" tab opens sidebar drawer for secondary routes
-// - Active state with lavpop-blue indicator
+// - Active state with stellar-cyan indicator
 // - Backdrop blur with dark mode support
 // - Only renders on mobile (< lg breakpoint)
 // - Haptic feedback on tap (v1.1)
@@ -19,6 +19,10 @@
 // 5. Mais (opens drawer)
 //
 // CHANGELOG:
+// v1.5 (2026-01-16): Theme-aware colors fix
+//   - Added useTheme hook for reliable dark mode detection
+//   - Converted Tailwind dark: prefixes to JavaScript conditionals
+//   - Matches proven LoadingScreen pattern for consistent theming
 // v1.4 (2026-01-12): Landscape mode optimization
 //   - Detects landscape orientation on mobile (max-height: 500px)
 //   - Reduces nav height from 64px to 48px in landscape
@@ -39,6 +43,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { BarChart3, Search, Users, MessageSquare, Menu } from 'lucide-react';
 import { useNavigation } from '../../contexts/NavigationContext';
 import { useSidebar } from '../../contexts/SidebarContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import BottomNavItem from './BottomNavItem';
 
 // Navigation items for bottom bar (5 tabs)
@@ -56,6 +61,7 @@ const MORE_ROUTES = ['social', 'weather', 'intelligence', 'operations', 'upload'
 const BottomNavBar = () => {
   const { activeTab } = useNavigation();
   const { toggleMobileSidebar } = useSidebar();
+  const { isDark } = useTheme();
 
   // Detect landscape orientation on mobile devices
   // Only triggers when height is below 500px (excludes tablets in landscape)
@@ -83,16 +89,7 @@ const BottomNavBar = () => {
       }}
     >
       {/* Background layer - extends to screen edge */}
-      <div
-        className="
-          absolute inset-0
-          bg-white/95 dark:bg-slate-900/95
-          backdrop-blur-lg
-          border-t border-slate-200/80 dark:border-slate-800/80
-          shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]
-          dark:shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.3)]
-        "
-      />
+      <div className={`absolute inset-0 ${isDark ? 'bg-space-dust' : 'bg-white/90'} backdrop-blur-xl border-t ${isDark ? 'border-stellar-cyan/15' : 'border-stellar-cyan/10'} ${isDark ? 'shadow-[0_-4px_24px_-4px_rgba(0,174,239,0.1)]' : 'shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)]'}`} />
 
       {/* Nav content - positioned at top, above safe area */}
       {/* Landscape mode uses h-12 (48px), portrait uses h-16 (64px) */}

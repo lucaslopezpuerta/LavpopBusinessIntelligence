@@ -1,7 +1,11 @@
-// IconSidebar.jsx v3.5 - FAVICON LOGO
+// IconSidebar.jsx v3.6 - THEME-AWARE COLORS FIX
 // Modern sidebar with navigation groups, hero branding, and polished mobile drawer
 //
 // CHANGELOG:
+// v3.6 (2026-01-16): Theme-aware colors fix
+//   - Added useTheme hook for reliable dark mode detection
+//   - Converted all Tailwind dark: prefixes to JavaScript conditionals
+//   - Matches proven LoadingScreen pattern for consistent theming
 // v3.5 (2026-01-15): Use favicon.ico for sidebar logo
 //   - Simplified to use single favicon.ico from public folder
 // v3.4 (2026-01-15): Theme-aware logo (reverted)
@@ -30,6 +34,7 @@ import FocusTrap from 'focus-trap-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from './ThemeToggle';
 
 // Sidebar logo from public folder
@@ -71,6 +76,7 @@ const utilityItem = { id: 'upload', label: 'Importar', icon: Upload, path: '/upl
 const IconSidebar = ({ activeTab, onNavigate }) => {
   const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar, isPinned, togglePinned } = useSidebar();
   const prefersReducedMotion = useReducedMotion();
+  const { isDark } = useTheme();
   const collapseTimeoutRef = useRef(null);
 
   // Clean up timeout on unmount
@@ -113,15 +119,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
         to={item.path}
         onClick={isMobile ? handleMobileNavigate : handleDesktopNavigate}
         aria-current={isActive ? 'page' : undefined}
-        className={`
-          relative flex items-center gap-3 rounded-lg transition-all duration-200
-          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2
-          ${isMobile ? 'h-11 px-3' : `h-10 ${isExpanded ? 'mx-2 px-3' : 'mx-2 justify-center'}`}
-          ${isActive
-            ? 'bg-gradient-to-r from-lavpop-blue via-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80'
-          }
-        `}
+        className={`relative flex items-center gap-3 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 ${isMobile ? 'h-11 px-3' : `h-10 ${isExpanded ? 'mx-2 px-3' : 'mx-2 justify-center'}`} ${isActive ? 'bg-gradient-stellar-horizontal text-white shadow-md shadow-bilavnova' : isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
         title={(!isExpanded && !isMobile) ? item.label : undefined}
       >
         <Icon className="w-5 h-5 flex-shrink-0" />
@@ -142,7 +140,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
   // Desktop Sidebar (no safe-area needed - desktop browsers don't have status bar insets)
   const DesktopSidebar = () => (
     <motion.aside
-      className="hidden lg:flex fixed left-0 top-0 h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 flex-col"
+      className={`hidden lg:flex fixed left-0 top-0 h-screen ${isDark ? 'bg-space-nebula' : 'bg-white/95'} backdrop-blur-xl border-r ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} z-50 flex-col`}
       initial={false}
       animate={{ width: isExpanded ? 240 : 64 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.3, ease: 'easeInOut' }}
@@ -150,11 +148,11 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
       onMouseLeave={() => !isPinned && setIsHovered(false)}
     >
       {/* Hero Logo Header (72px) */}
-      <div className="h-[72px] px-3 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 flex-shrink-0">
+      <div className={`h-[72px] px-3 flex items-center justify-between border-b ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
         <div className="flex items-center gap-3 min-w-0">
           {/* Logo with glow effect */}
           <div className="relative flex-shrink-0">
-            <div className="absolute inset-0 bg-lavpop-blue/20 blur-xl rounded-full scale-150" />
+            <div className="absolute inset-0 bg-stellar-cyan/20 blur-xl rounded-full scale-150" />
             <img
               src={BilavnovaLogo}
               alt="Bilavnova"
@@ -168,10 +166,10 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
               transition={{ duration: 0.2, delay: 0.1 }}
               className="flex flex-col min-w-0"
             >
-              <span className="text-lg font-bold leading-tight">
-                <span className="text-slate-900 dark:text-white">BILAV</span><span className="text-lavpop-blue">NOVA</span>
+              <span className="font-display text-lg font-bold leading-tight tracking-wide" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                <span className={isDark ? 'text-white' : 'text-slate-900'}>BILAV</span><span className="text-stellar-cyan">NOVA</span>
               </span>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">
+              <span className={`text-[10px] leading-tight ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                 Business Intelligence
               </span>
             </motion.div>
@@ -184,14 +182,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
             onClick={togglePinned}
-            className={`
-              p-1.5 rounded-md transition-colors flex-shrink-0
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue
-              ${isPinned
-                ? 'text-lavpop-blue bg-lavpop-blue/10'
-                : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300'
-              }
-            `}
+            className={`p-1.5 rounded-md transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan ${isPinned ? 'text-stellar-cyan bg-stellar-cyan/10' : isDark ? 'text-slate-400 hover:bg-stellar-cyan/10 hover:text-slate-300' : 'text-slate-400 hover:bg-stellar-cyan/5 hover:text-slate-600'}`}
             title={isPinned ? 'Desafixar menu' : 'Fixar menu'}
             aria-label={isPinned ? 'Desafixar menu' : 'Fixar menu'}
           >
@@ -210,14 +201,14 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
-                className="px-5 mb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider"
+                className={`px-5 mb-2 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
               >
                 {group.label}
               </motion.p>
             )}
             {/* Section divider when collapsed */}
             {!isExpanded && groupIndex > 0 && (
-              <div className="mx-4 mb-2 border-t border-slate-200 dark:border-slate-700" />
+              <div className={`mx-4 mb-2 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}`} />
             )}
             {/* Navigation items */}
             <div className="space-y-1">
@@ -230,7 +221,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
       </nav>
 
       {/* Utility Item (Importar) */}
-      <div className="p-2 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
+      <div className={`p-2 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
         <NavItem item={utilityItem} />
       </div>
 
@@ -242,7 +233,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
           animate={{ opacity: isHovered ? 0.6 : 0, x: isHovered ? 0 : -4 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="bg-white dark:bg-slate-800 rounded-full p-1 shadow-md border border-slate-200 dark:border-slate-700">
+          <div className={`${isDark ? 'bg-space-dust' : 'bg-white'} rounded-full p-1 shadow-md border ${isDark ? 'border-stellar-cyan/20' : 'border-slate-200'}`}>
             <ChevronRight className="w-3 h-3 text-slate-400" />
           </div>
         </motion.div>
@@ -278,7 +269,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
             }}
           >
             <motion.aside
-              className="lg:hidden fixed left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-top safe-area-left safe-area-right"
+              className={`lg:hidden fixed left-0 top-0 bottom-0 w-[280px] ${isDark ? 'bg-space-nebula' : 'bg-white/95'} backdrop-blur-xl z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-top safe-area-left safe-area-right`}
               initial={prefersReducedMotion ? false : { x: -300 }}
               animate={{ x: 0 }}
               exit={prefersReducedMotion ? undefined : { x: -300 }}
@@ -288,23 +279,23 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
               aria-label="Menu de navegacao"
             >
               {/* Header with close button */}
-              <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+              <div className={`h-16 px-4 flex items-center justify-between border-b ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-lavpop-blue/20 blur-lg rounded-full scale-150" />
+                    <div className="absolute inset-0 bg-stellar-cyan/20 blur-lg rounded-full scale-150" />
                     <img
                       src={BilavnovaLogo}
                       alt="Bilavnova"
                       className="relative w-9 h-9 object-contain"
                     />
                   </div>
-                  <span className="text-lg font-bold">
-                    <span className="text-slate-900 dark:text-white">BILAV</span><span className="text-lavpop-blue">NOVA</span>
+                  <span className="font-display text-lg font-bold tracking-wide" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    <span className={isDark ? 'text-white' : 'text-slate-900'}>BILAV</span><span className="text-stellar-cyan">NOVA</span>
                   </span>
                 </div>
                 <button
                   onClick={toggleMobileSidebar}
-                  className="p-2 -mr-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                  className="p-2 -mr-2 rounded-lg text-slate-500 hover:bg-stellar-cyan/10 hover:text-stellar-cyan transition-colors"
                   aria-label="Fechar menu"
                 >
                   <X className="w-5 h-5" />
@@ -315,7 +306,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
               <nav className="flex-1 py-4 px-3 overflow-y-auto">
                 {navigationGroups.map((group, groupIndex) => (
                   <div key={group.id} className={groupIndex > 0 ? 'mt-5' : ''}>
-                    <p className="px-3 mb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    <p className={`px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                       {group.label}
                     </p>
                     <div className="space-y-1">
@@ -328,7 +319,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
               </nav>
 
               {/* Utility footer with ThemeToggle */}
-              <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
+              <div className={`p-3 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <NavItem item={utilityItem} isMobile />

@@ -1,4 +1,4 @@
-// App.jsx v8.15.0 - NAVIGATION SCROLL FIX
+// App.jsx v8.16.0 - THEME-AWARE COLORS FIX
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -24,6 +24,10 @@
 // ✅ Realtime transaction updates - auto-refresh when new data inserted
 //
 // CHANGELOG:
+// v8.16.0 (2026-01-16): Theme-aware colors fix
+//   - Converted Tailwind dark: prefixes to JavaScript conditionals
+//   - Uses useTheme hook for reliable dark mode detection
+//   - Matches proven LoadingScreen pattern for consistent theming
 // v8.15.0 (2026-01-12): Navigation scroll-to-top fix
 //   - Added scroll-to-top when navigating between views
 //   - Fixes bug where new view opened at previous scroll position
@@ -150,7 +154,7 @@ import { useReducedMotion } from './hooks/useReducedMotion';
 // Loading and Error screens
 import LoadingScreen from './components/ui/LoadingScreen';
 import ErrorScreen from './components/ui/ErrorScreen';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { DataFreshnessProvider } from './contexts/DataFreshnessContext';
@@ -243,14 +247,17 @@ const VIEW_SKELETONS = {
 };
 
 // Generic fallback for views without specific skeleton
-const GenericLoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-[400px]">
-    <div className="text-center">
-      <div className="w-16 h-16 border-4 border-lavpop-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="text-slate-600 dark:text-slate-400 font-medium">Carregando...</p>
+const GenericLoadingFallback = () => {
+  const { isDark } = useTheme();
+  return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-stellar-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className={`font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Carregando...</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // View-specific loading fallback selector
 const getLoadingFallback = (tabId) => {
@@ -261,6 +268,7 @@ const getLoadingFallback = (tabId) => {
 function AppContent() {
   const { activeTab, navigateTo } = useNavigation();
   const { isPinned } = useSidebar();
+  const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -543,7 +551,7 @@ function AppContent() {
   // Main App
   return (
     <MotionConfig reducedMotion={prefersReducedMotion ? 'always' : 'never'}>
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
+      <div className={`min-h-screen ${isDark ? 'bg-space-void' : 'bg-slate-50'} transition-colors duration-300`}>
         {/* Sidebar Navigation */}
         <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} />
 
@@ -595,17 +603,17 @@ function AppContent() {
           </main>
 
         {/* Footer */}
-        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto">
+        <footer className={`border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'} ${isDark ? 'bg-space-void' : 'bg-white/50'} backdrop-blur-sm mt-auto`}>
           <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3">
             {/* Mobile: Compact with labels */}
-            <div className="flex sm:hidden items-center justify-center gap-4 text-[10px] text-slate-400 dark:text-slate-500">
+            <div className={`flex sm:hidden items-center justify-center gap-4 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               <span>Dados: {formatBrDateOnly(data?.lastImportedAt)}</span>
               <span>•</span>
               <span>Build: {formatBrDateOnly(BUILD_TIME)}</span>
             </div>
 
             {/* Desktop: Full details with company name */}
-            <div className="hidden sm:flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className={`hidden sm:flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               {/* CSV Upload Date */}
               <div className="flex items-center gap-1.5" title="Última importação de dados CSV">
                 <Upload className="w-3.5 h-3.5" />
@@ -625,8 +633,8 @@ function AppContent() {
               </div>
 
               {/* Company Name */}
-              <span className="text-slate-400 dark:text-slate-500">•</span>
-              <span className="font-medium text-slate-600 dark:text-slate-300">Nova Lopez Lavanderia Ltd.</span>
+              <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>•</span>
+              <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Nova Lopez Lavanderia Ltd.</span>
             </div>
           </div>
         </footer>
