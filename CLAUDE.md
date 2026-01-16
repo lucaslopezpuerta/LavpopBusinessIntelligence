@@ -4,7 +4,7 @@ This file provides guidance for Claude Code when working with this repository.
 
 ## Project Overview
 
-Lavpop Business Intelligence (LAVPOP-BI) is a React-based business analytics dashboard for a Brazilian laundromat chain. It provides real-time insights into customer behavior, revenue, operations, and marketing campaigns.
+Bilavnova Business Intelligence is a React-based business analytics dashboard for a Brazilian laundromat chain (formerly branded as Lavpop). It provides real-time insights into customer behavior, revenue, operations, and marketing campaigns.
 
 **Live site:** https://www.bilavnova.com/
 

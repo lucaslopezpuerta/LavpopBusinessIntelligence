@@ -34,7 +34,7 @@ export const loadCSV = async (filename, skipCache = false) => {
       }
     }
 
-    // Use base path from Vite config (/LavpopBusinessIntelligence/)
+    // Use base path from Vite config
     const basePath = import.meta.env.BASE_URL;
     const url = `${basePath}data/${filename}`;
 

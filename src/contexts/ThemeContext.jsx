@@ -32,7 +32,7 @@ export const ThemeProvider = ({ children }) => {
   // Initialize theme from localStorage or system preference
   const [theme, setTheme] = useState(() => {
     // Check localStorage first
-    const savedTheme = localStorage.getItem('lavpop-theme');
+    const savedTheme = localStorage.getItem('bilavnova-theme');
     if (savedTheme) {
       return savedTheme;
     }
@@ -47,12 +47,12 @@ export const ThemeProvider = ({ children }) => {
 
   // Dashboard layout preference: 'compact' or 'expanded'
   const [dashboardLayout, setDashboardLayout] = useState(() => {
-    return localStorage.getItem('lavpop-dashboard-layout') || 'compact';
+    return localStorage.getItem('bilavnova-dashboard-layout') || 'compact';
   });
 
   // Persist dashboard layout to localStorage
   useEffect(() => {
-    localStorage.setItem('lavpop-dashboard-layout', dashboardLayout);
+    localStorage.setItem('bilavnova-dashboard-layout', dashboardLayout);
   }, [dashboardLayout]);
 
   // Apply theme to document root and native status bar
@@ -66,7 +66,7 @@ export const ThemeProvider = ({ children }) => {
     }
 
     // Save to localStorage
-    localStorage.setItem('lavpop-theme', theme);
+    localStorage.setItem('bilavnova-theme', theme);
 
     // Update native status bar style (no-op on web)
     // Light theme = dark status bar icons, Dark theme = light status bar icons
@@ -79,7 +79,7 @@ export const ThemeProvider = ({ children }) => {
     
     const handleChange = (e) => {
       // Only update if user hasn't manually set a preference
-      const savedTheme = localStorage.getItem('lavpop-theme');
+      const savedTheme = localStorage.getItem('bilavnova-theme');
       if (!savedTheme) {
         setTheme(e.matches ? 'dark' : 'light');
       }

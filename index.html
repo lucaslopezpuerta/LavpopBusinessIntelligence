@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Bilavnova</title>
-    <meta name="description" content="Lavpop Business Intelligence - Dashboard de análise de dados" />
+    <meta name="description" content="Bilavnova Business Intelligence - Dashboard de análise de dados" />
 
     <!-- Mobile optimizations -->
     <meta name="theme-color" content="#0f172a" />
@@ -22,12 +22,14 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
 
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Theme-aware favicons (follows system preference) -->
+    <link rel="icon" type="image/png" href="/favicon-light.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" href="/favicon-dark.png" media="(prefers-color-scheme: dark)" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     <!-- iOS PWA Configuration -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Lavpop BI" />
+    <meta name="apple-mobile-web-app-title" content="Bilavnova" />
 
     <!-- iOS PWA Splash Screens (generated from brand gradient) -->
     <!-- iPhone 14 Pro Max, 15 Pro Max (430x932 @3x) -->
@@ -137,10 +139,10 @@
   <body>
     <div id="root">
       <!-- Minimal loading screen - just logo, React adds full UI -->
-      <!-- Uses same PNG as LoadingScreen.jsx for seamless transition -->
+      <!-- Uses PWA icon for seamless transition -->
       <div id="initial-loader">
         <div class="loader-logo">
-          <img src="/Bilavnova-Logo-Dark-Bg.png" alt="Bilavnova" width="48" height="48" />
+          <img src="/pwa-192x192.png" alt="Bilavnova" width="48" height="48" />
         </div>
       </div>
     </div>

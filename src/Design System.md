@@ -1,4 +1,4 @@
-# LavpopBI Design System v3.5
+# Bilavnova Design System v3.5
 
 > **Last Updated:** January 15, 2026
 > **Status:** Active - All components aligned with this system
@@ -10,7 +10,7 @@
 - **FIXED:** Section Title dark mode color corrected to `dark:text-white` (was `dark:text-slate-200`)
 - **FIXED:** Card Title dark mode color corrected to `dark:text-white` (was `dark:text-slate-300`)
 - **ADDED:** Card Title (Muted) variant for secondary cards using `dark:text-slate-200`
-- **ADDED:** Blue text dark mode guidance - use `dark:text-blue-400` for lavpop-blue text
+- **ADDED:** Blue text dark mode guidance - use `dark:text-blue-400` for brand blue text
 - **ADDED:** Color mapping table entries for headings and blue text
 - **ADDED:** Warning notes about dark mode contrast requirements
 - **ALIGNED:** Documentation now matches actual component implementations

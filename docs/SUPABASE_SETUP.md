@@ -1,4 +1,4 @@
-# Supabase Setup Guide for Lavpop BI
+# Supabase Setup Guide for Bilavnova
 
 This guide will walk you through setting up Supabase as your backend database.
 

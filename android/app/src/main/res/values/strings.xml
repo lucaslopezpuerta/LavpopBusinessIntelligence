@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Lavpop BI</string>
-    <string name="title_activity_main">Lavpop BI</string>
-    <string name="package_name">com.lavpop.bi</string>
-    <string name="custom_url_scheme">com.lavpop.bi</string>
+    <string name="app_name">Bilavnova</string>
+    <string name="title_activity_main">Bilavnova</string>
+    <string name="package_name">com.bilavnova</string>
+    <string name="custom_url_scheme">com.bilavnova</string>
 </resources>

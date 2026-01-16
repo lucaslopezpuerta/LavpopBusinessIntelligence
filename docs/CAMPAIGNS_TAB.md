@@ -97,7 +97,7 @@
 
 ## Overview
 
-The Campaigns tab is the WhatsApp marketing and customer retention center for Lavpop. It enables:
+The Campaigns tab is the WhatsApp marketing and customer retention center for Bilavnova. It enables:
 
 - **Campaign Analytics** - Track return rates, revenue recovered, and A/B test results
 - **Audience Targeting** - Segment customers by churn risk or RFM scores

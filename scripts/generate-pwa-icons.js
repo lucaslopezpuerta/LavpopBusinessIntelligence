@@ -1,16 +1,19 @@
 /**
  * App Icon Generator
- * Generates PWA and Android icons from Bilavnova logo PNG files
+ * Generates PWA and Android icons from Bilavnova logo files
  *
  * Usage: node scripts/generate-pwa-icons.js
  *
- * Source files:
- * - public/Bilavnova-Logo-Light-Bg.png (light background - for dark mode)
- * - public/Bilavnova-Logo-Dark-Bg.png (dark background - for light mode / main icon)
+ * Source files (in src/assets/Logo Files/):
+ * - Favicons/Android.png - Main icon for Android and PWA
+ * - Favicons/iPhone.png - Apple touch icon
+ * - Favicons/browser.png - Browser favicon
+ * - png/Color logo - no background.png - Full color logo
+ * - png/White logo - no background.png - White logo for dark backgrounds
  */
 
 import sharp from 'sharp';
-import { mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync, copyFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -18,9 +21,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 
-// Source images
-const darkBgLogo = join(rootDir, 'public/Bilavnova-Logo-Dark-Bg.png');   // Main icon (dark bg)
-const lightBgLogo = join(rootDir, 'public/Bilavnova-Logo-Light-Bg.png'); // Alternative (light bg)
+// Source images from src/assets/Logo Files/
+const logoFilesDir = join(rootDir, 'src/assets/Logo Files');
+const androidIcon = join(logoFilesDir, 'Favicons/Android.png');    // Main icon for Android/PWA
+const iphoneIcon = join(logoFilesDir, 'Favicons/iPhone.png');      // Apple touch icon
+const browserIcon = join(logoFilesDir, 'Favicons/browser.png');    // Browser favicon
+const colorLogo = join(logoFilesDir, 'png/Color logo - no background.png');   // Full color logo
+const whiteLogo = join(logoFilesDir, 'png/White logo - no background.png');   // White logo for adaptive icons
 
 // Output directories
 const publicDir = join(rootDir, 'public');
@@ -59,13 +66,17 @@ const androidForegrounds = [
 ];
 
 async function generatePWAIcons() {
-  console.log('Generating PWA icons from Bilavnova-Logo-Dark-Bg.png...\n');
+  console.log('Generating PWA icons from Bilavnova logo files...\n');
 
+  // Generate PWA icons from Android.png source
   for (const icon of pwaIcons) {
     const outputPath = join(publicDir, icon.name);
 
+    // Use iPhone.png for apple-touch-icon, Android.png for others
+    const sourceIcon = icon.name === 'apple-touch-icon.png' ? iphoneIcon : androidIcon;
+
     try {
-      await sharp(darkBgLogo)
+      await sharp(sourceIcon)
         .resize(icon.size, icon.size, {
           fit: 'contain',
           background: { r: 15, g: 23, b: 42, alpha: 1 } // slate-900
@@ -91,12 +102,12 @@ async function generatePWAIcons() {
         width: maskableSize,
         height: maskableSize,
         channels: 4,
-        background: { r: 26, g: 90, b: 142, alpha: 1 } // Lavpop blue #1a5a8e
+        background: { r: 26, g: 90, b: 142, alpha: 1 } // Bilavnova blue #1a5a8e
       }
     }).png().toBuffer();
 
     // Resize logo
-    const logoResized = await sharp(darkBgLogo)
+    const logoResized = await sharp(androidIcon)
       .resize(iconSize, iconSize, { fit: 'contain' })
       .toBuffer();
 
@@ -132,7 +143,7 @@ async function generateAndroidIcons() {
     }
 
     try {
-      await sharp(darkBgLogo)
+      await sharp(androidIcon)
         .resize(mipmap.size, mipmap.size, {
           fit: 'contain',
           background: { r: 15, g: 23, b: 42, alpha: 1 }
@@ -147,7 +158,7 @@ async function generateAndroidIcons() {
 
     // Round icon
     try {
-      const roundedImage = await sharp(darkBgLogo)
+      const roundedImage = await sharp(androidIcon)
         .resize(mipmap.size, mipmap.size, {
           fit: 'contain',
           background: { r: 15, g: 23, b: 42, alpha: 1 }
@@ -200,8 +211,8 @@ async function generateAndroidIcons() {
         }
       }).png().toBuffer();
 
-      // Resize logo
-      const logoResized = await sharp(lightBgLogo) // Use light bg version for foreground
+      // Resize logo - use white logo for foreground (works with colored backgrounds)
+      const logoResized = await sharp(whiteLogo)
         .resize(logoSize, logoSize, { fit: 'contain' })
         .toBuffer();
 
@@ -223,25 +234,33 @@ async function generateAndroidIcons() {
 }
 
 async function generateFavicon() {
-  console.log('\nGenerating favicon.ico...\n');
+  console.log('\nGenerating theme-aware browser favicons from browser.png...\n');
 
   try {
-    // Generate multiple sizes for favicon
-    const sizes = [16, 32, 48];
-    const buffers = await Promise.all(
-      sizes.map(size =>
-        sharp(darkBgLogo)
-          .resize(size, size, {
-            fit: 'contain',
-            background: { r: 15, g: 23, b: 42, alpha: 1 }
-          })
-          .png()
-          .toBuffer()
-      )
-    );
+    // Generate favicon for LIGHT system theme (browser icon on white background)
+    await sharp(browserIcon)
+      .resize(32, 32, {
+        fit: 'contain',
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      })
+      .png()
+      .toFile(join(publicDir, 'favicon-light.png'));
 
-    // For simplicity, just use 32x32 as favicon.ico (browsers handle it)
-    await sharp(darkBgLogo)
+    console.log(`  ✓ favicon-light.png (32x32) - for light system theme`);
+
+    // Generate favicon for DARK system theme (browser icon on dark background)
+    await sharp(browserIcon)
+      .resize(32, 32, {
+        fit: 'contain',
+        background: { r: 15, g: 23, b: 42, alpha: 1 } // slate-900
+      })
+      .png()
+      .toFile(join(publicDir, 'favicon-dark.png'));
+
+    console.log(`  ✓ favicon-dark.png (32x32) - for dark system theme`);
+
+    // Generate favicon.ico (32x32) - fallback for older browsers (use dark variant)
+    await sharp(browserIcon)
       .resize(32, 32, {
         fit: 'contain',
         background: { r: 15, g: 23, b: 42, alpha: 1 }
@@ -249,9 +268,39 @@ async function generateFavicon() {
       .png()
       .toFile(join(publicDir, 'favicon.ico'));
 
-    console.log(`  ✓ favicon.ico (32x32)`);
+    console.log(`  ✓ favicon.ico (32x32) - fallback`);
   } catch (error) {
-    console.error(`  ✗ Failed favicon.ico:`, error.message);
+    console.error(`  ✗ Failed favicon:`, error.message);
+  }
+}
+
+async function generateInAppLogos() {
+  console.log('\nGenerating in-app theme-aware logos...\n');
+
+  try {
+    // Color logo for light theme (resized for sidebar use ~48px)
+    await sharp(colorLogo)
+      .resize(96, 96, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 } // transparent
+      })
+      .png()
+      .toFile(join(publicDir, 'logo-color.png'));
+
+    console.log(`  ✓ logo-color.png (96x96) - for light app theme`);
+
+    // White logo for dark theme
+    await sharp(whiteLogo)
+      .resize(96, 96, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 } // transparent
+      })
+      .png()
+      .toFile(join(publicDir, 'logo-white.png'));
+
+    console.log(`  ✓ logo-white.png (96x96) - for dark app theme`);
+  } catch (error) {
+    console.error(`  ✗ Failed in-app logos:`, error.message);
   }
 }
 
@@ -264,6 +313,7 @@ async function main() {
   await generatePWAIcons();
   await generateAndroidIcons();
   await generateFavicon();
+  await generateInAppLogos();
 
   console.log('\n' + '='.repeat(50));
   console.log('Done! Run "npx cap sync" to update Android project.');

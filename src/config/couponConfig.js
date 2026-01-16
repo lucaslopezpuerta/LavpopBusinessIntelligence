@@ -1,5 +1,5 @@
 /**
- * Comprehensive Coupon Configuration for Lavpop Campaign System
+ * Comprehensive Coupon Configuration for Bilavnova Campaign System
  *
  * This file defines all available coupon codes for the self-service laundromat.
  * Customers enter these codes at the POS kiosk when paying for services.

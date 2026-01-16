@@ -4,10 +4,10 @@
 //
 // CHANGELOG:
 // v1.0 (2025-11-29): Initial implementation
-//   - lavpopNivoTheme for Nivo charts with dark mode
+//   - bilavnovaNivoTheme for Nivo charts with dark mode
 //   - Color palettes matching Tailwind config
 
-// Lavpop brand colors (matching tailwind.config.js)
+// Bilavnova brand colors (matching tailwind.config.js)
 export const CHART_COLORS = {
   lavpopBlue: '#1a5a8e',
   lavpopGreen: '#55b03b',
@@ -34,7 +34,7 @@ export const CHART_PALETTE = {
  * @param {boolean} isDark - Whether dark mode is active
  * @returns {object} Nivo theme configuration
  */
-export const getLavpopNivoTheme = (isDark) => ({
+export const getBilavnovaNivoTheme = (isDark) => ({
   // Background
   background: isDark ? '#0f172a' : '#ffffff',
 
@@ -155,4 +155,4 @@ export const getLavpopNivoTheme = (isDark) => ({
 export const getChartPalette = (isDark) =>
   isDark ? CHART_PALETTE.dark : CHART_PALETTE.light;
 
-export default getLavpopNivoTheme;
+export default getBilavnovaNivoTheme;

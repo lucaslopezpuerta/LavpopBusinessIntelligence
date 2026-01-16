@@ -1,7 +1,10 @@
-// IconSidebar.jsx v3.3 - SAFE AREA COMPLIANCE
+// IconSidebar.jsx v3.5 - FAVICON LOGO
 // Modern sidebar with navigation groups, hero branding, and polished mobile drawer
 //
 // CHANGELOG:
+// v3.5 (2026-01-15): Use favicon.ico for sidebar logo
+//   - Simplified to use single favicon.ico from public folder
+// v3.4 (2026-01-15): Theme-aware logo (reverted)
 // v3.3 (2026-01-12): Safe area compliance
 //   - Added safe-area-right to mobile drawer for landscape/foldable devices
 // v3.2 (2025-12-26): PNG logo update
@@ -16,7 +19,7 @@
 //   - NEW: Pin button moved to header
 //   - NEW: Mobile drawer with blur backdrop and rounded corners
 //   - NEW: Spring animation for mobile drawer
-//   - Branding: "Bilavnova" (was LavpopBI)
+//   - Branding: "Bilavnova"
 // v2.0 (2025-12-22): Focus trap & collapse delay
 // v1.x: Previous implementations
 
@@ -29,8 +32,8 @@ import { useSidebar } from '../contexts/SidebarContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import ThemeToggle from './ThemeToggle';
 
-// PNG logo from public folder (matches LoadingScreen/LoginPage for consistency)
-const BilavnovaLogo = '/Bilavnova-Logo-Dark-Bg.png';
+// Sidebar logo from public folder
+const BilavnovaLogo = '/pwa-192x192.png';
 
 // Navigation grouped by section
 const navigationGroups = [

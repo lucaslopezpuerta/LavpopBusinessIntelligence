@@ -133,7 +133,7 @@
 // v6.2 (2025-11-30): Mobile improvements
 //   - Pass activeTab to MinimalTopBar for mobile breadcrumb
 //   - Header height aligned with sidebar (60px)
-// v6.1 (2025-11-27): Added Lavpop logo to loading/error screens
+// v6.1 (2025-11-27): Added Bilavnova logo to loading/error screens
 // v6.0 (2025-11-27): Sidebar layout implementation
 // v5.0 (2025-11-23): Error boundaries + code splitting
 // v4.2 (2025-11-21): Reload button added

@@ -1,5 +1,5 @@
 // LoginPage.jsx v1.2 - Admin Login Screen
-// Clean login experience matching Lavpop BI design
+// Clean login experience matching Bilavnova design
 //
 // Features:
 // - Dark slate-900 background (matches LoadingScreen)
@@ -26,8 +26,8 @@ import { Mail, Lock, LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useAuth } from '../../contexts/AuthContext';
 
-// PNG logo from public folder (matches LoadingScreen for consistency)
-const BilavnovaLogo = '/Bilavnova-Logo-Dark-Bg.png';
+// PWA icon from public folder (matches LoadingScreen for consistency)
+const BilavnovaLogo = '/pwa-192x192.png';
 
 const LoginPage = () => {
   const { signIn, error: authError, isAuthenticated } = useAuth();

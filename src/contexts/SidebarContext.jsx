@@ -19,7 +19,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 
 const SidebarContext = createContext();
 
-const STORAGE_KEY = 'lavpop-sidebar-pinned';
+const STORAGE_KEY = 'bilavnova-sidebar-pinned';
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext);

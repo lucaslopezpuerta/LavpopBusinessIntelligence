@@ -12,9 +12,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Lavpop Business Intelligence',
-        short_name: 'Lavpop BI',
-        description: 'Dashboard de análise de dados para Lavpop',
+        name: 'Bilavnova Business Intelligence',
+        short_name: 'Bilavnova',
+        description: 'Dashboard de análise de dados para Bilavnova',
         theme_color: '#1a5a8e',
         background_color: '#1a5a8e',
         display: 'standalone',

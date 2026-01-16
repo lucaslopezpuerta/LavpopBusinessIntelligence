@@ -103,7 +103,7 @@ export const invalidateCache = async (key) => {
 };
 
 /**
- * Clear all Lavpop cache entries
+ * Clear all Bilavnova cache entries
  * @returns {Promise<void>}
  */
 export const clearAllCache = async () => {

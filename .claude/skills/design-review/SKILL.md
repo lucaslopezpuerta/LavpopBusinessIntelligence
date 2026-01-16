@@ -6,7 +6,7 @@ allowed-tools: Read, Glob, Grep, Edit
 
 # Design System Review
 
-Evaluate React components against the LavpopBI Design System (`src/Design System.md`) and propose UX/UI improvements.
+Evaluate React components against the Bilavnova Design System (`src/Design System.md`) and propose UX/UI improvements.
 
 ## Instructions
 

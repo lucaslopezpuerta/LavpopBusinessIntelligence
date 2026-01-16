@@ -1,4 +1,4 @@
-package com.lavpop.bi;
+package com.bilavnova;
 
 import com.getcapacitor.BridgeActivity;
 

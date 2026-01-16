@@ -1,6 +1,6 @@
-# Lavpop Business Intelligence
+# Bilavnova Business Intelligence
 
-Modern React-based BI dashboard for Lavpop laundromat business analytics.
+Modern React-based BI dashboard for Bilavnova laundromat business analytics.
 
 ## 🎯 Features
 
@@ -36,7 +36,7 @@ The app expects the following CSV files in `/public/data/`:
 cd lavpop-bi
 git init
 git add .
-git commit -m "Initial commit - Lavpop BI Foundation"
+git commit -m "Initial commit - Bilavnova BI Foundation"
 git branch -M main
 git remote add origin https://github.com/lucaslopezpuerta/LavpopBusinessIntelligence.git
 git push -u origin main

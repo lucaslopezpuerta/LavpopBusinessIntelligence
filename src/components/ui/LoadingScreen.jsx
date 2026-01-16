@@ -1,5 +1,5 @@
 /**
- * LoadingScreen - Clean loading experience for Lavpop BI
+ * LoadingScreen - Clean loading experience for Bilavnova
  *
  * Features:
  * - Solid dark background (slate-900)
@@ -16,8 +16,8 @@ import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 
-// PNG logo from public folder (matches index.html for seamless transition)
-const BilavnovaLogo = '/Bilavnova-Logo-Dark-Bg.png';
+// PWA icon from public folder (matches index.html for seamless transition)
+const BilavnovaLogo = '/pwa-192x192.png';
 
 // Progress steps configuration (ordered by typical load time, smallest first)
 const STEPS = [

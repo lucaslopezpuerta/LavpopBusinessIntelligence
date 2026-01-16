@@ -1,5 +1,5 @@
 // exportUtils.js v1.4
-// PDF export following Lavpop Design System
+// PDF export following Bilavnova Design System
 //
 // CHANGELOG:
 // v1.4 (2025-12-17): Complete Report & Executive Summary
@@ -9,7 +9,7 @@
 //   - Revenue trend mini-charts
 //   - Professional executive formatting
 // v1.3 (2025-12-17): Design System compliance
-//   - Lavpop brand colors (#1a5a8e, #10b981)
+//   - Brand colors (#1a5a8e, #10b981)
 //   - Non-redundant layout (chart OR table, not both)
 //   - Cleaner visual hierarchy
 //   - Gradient header matching app design
@@ -21,7 +21,7 @@ import Papa from 'papaparse';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Lavpop Design System Colors (from Design System.md)
+// Bilavnova Design System Colors (from Design System.md)
 const COLORS = {
   // Primary brand
   lavpopBlue: [26, 90, 142],      // #1a5a8e
@@ -105,7 +105,7 @@ function formatValue(value, type) {
 }
 
 /**
- * Draw Lavpop branded header
+ * Draw Bilavnova branded header
  */
 function drawHeader(doc, title, pageWidth, margin) {
   // Gradient header bar (simulated with two rects)

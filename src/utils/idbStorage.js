@@ -12,7 +12,7 @@
  * v1.0: Initial implementation
  */
 
-const DB_NAME = 'LavpopBI_DB';
+const DB_NAME = 'BilavnovaBI_DB';
 const DB_VERSION = 1;
 const STORE_NAME = 'key_value_store';
 

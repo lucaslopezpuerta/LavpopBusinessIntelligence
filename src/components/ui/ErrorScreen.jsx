@@ -1,5 +1,5 @@
 /**
- * ErrorScreen - User-friendly error display for Lavpop BI
+ * ErrorScreen - User-friendly error display for Bilavnova
  *
  * Features:
  * - Solid dark background (matches LoadingScreen)

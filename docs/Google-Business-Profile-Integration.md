@@ -1,6 +1,6 @@
 # Google Business Profile Analytics Integration
 
-Complete guide for implementing Google Business Profile analytics in the Lavpop Business Intelligence dashboard.
+Complete guide for implementing Google Business Profile analytics in the Bilavnova Business Intelligence dashboard.
 
 ---
 
