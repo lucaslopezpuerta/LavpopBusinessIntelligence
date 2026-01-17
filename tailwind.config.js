@@ -1,4 +1,4 @@
-// Bilavnova BI - Tailwind Configuration v4.1
+// Bilavnova BI - Tailwind Configuration v4.2
 // "Cosmic Precision" design system - Space-age futurist aesthetic
 //
 // BRAND COLORS:
@@ -7,6 +7,10 @@
 // - Space Void: #050816 (Deep space background)
 //
 // CHANGELOG:
+// v4.2 (2026-01-16): Cosmic Effects expansion
+//   - Added cosmic accent colors (purple, pink, orange, gold, indigo, violet)
+//   - Added new shadow utilities (nebula, solar-flare, cosmic-inner)
+//   - Added new gradients (nebula, aurora-subtle, solar, cosmic-radial)
 // v4.1 (2026-01-16): Dark mode safelist fix
 //   - Added comprehensive safelist for dark: class generation
 //   - Fixes Tailwind scanner not detecting classes in JS object properties
@@ -109,6 +113,17 @@ export default {
           'cyan': '#00aeef',      // Gradient end (bright cyan)
           'glow': 'rgba(0, 174, 239, 0.5)',
           'glow-subtle': 'rgba(0, 174, 239, 0.2)',
+          'indigo': '#4f46e5',    // Deep stellar indigo
+          'gold': '#fbbf24',      // Star gold accent
+        },
+        // Cosmic Accent Colors (v4.1 - expanded palette)
+        'cosmic': {
+          'purple': '#6366f1',    // Nebula purple
+          'pink': '#ec4899',      // Supernova pink
+          'orange': '#f97316',    // Solar flare orange
+        },
+        'nebula': {
+          'violet': '#8b5cf6',    // Nebula violet
         },
         // Bilavnova Brand Gradient Colors (from logo SVG)
         'bilavnova': {
@@ -368,6 +383,12 @@ export default {
         'gradient-green-dark': 'linear-gradient(135deg, #448d2f 0%, #55b03b 100%)',
         'gradient-blue-green': 'linear-gradient(135deg, #1a5a8e 0%, #55b03b 100%)',
         'gradient-subtle': 'linear-gradient(135deg, rgba(26, 90, 142, 0.05) 0%, rgba(85, 176, 59, 0.05) 100%)',
+        // Cosmic Effects gradients (v4.1)
+        'gradient-nebula': 'linear-gradient(135deg, #2d388a 0%, #6366f1 50%, #00aeef 100%)',
+        'gradient-aurora-subtle': 'linear-gradient(180deg, rgba(0, 174, 239, 0.1) 0%, rgba(99, 102, 241, 0.1) 50%, rgba(139, 92, 246, 0.1) 100%)',
+        'gradient-solar': 'linear-gradient(135deg, #f97316 0%, #fbbf24 100%)',
+        'gradient-cosmic-radial': 'radial-gradient(ellipse at center, rgba(0, 174, 239, 0.15) 0%, transparent 70%)',
+        'gradient-nebula-radial': 'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.1) 50%, transparent 80%)',
       },
 
       zIndex: {
@@ -412,6 +433,13 @@ export default {
         'stellar-glow': '0 0 40px rgba(0, 174, 239, 0.5)',
         'glass': '0 8px 32px rgba(0, 0, 0, 0.12)',
         'glass-dark': '0 8px 32px rgba(0, 0, 0, 0.4)',
+        // Cosmic Effects shadows (v4.1)
+        'stellar-glow-soft': '0 0 20px rgba(0, 174, 239, 0.4), 0 0 40px rgba(0, 174, 239, 0.2)',
+        'stellar-glow-lg': '0 0 30px rgba(0, 174, 239, 0.5), 0 0 60px rgba(0, 174, 239, 0.25)',
+        'nebula': '0 0 30px rgba(99, 102, 241, 0.3), 0 0 60px rgba(139, 92, 246, 0.2)',
+        'solar-flare': '0 0 20px rgba(249, 115, 22, 0.4), 0 0 40px rgba(251, 191, 36, 0.2)',
+        'cosmic-inner': 'inset 0 0 20px rgba(0, 174, 239, 0.15)',
+        'cosmic-inner-strong': 'inset 0 0 30px rgba(0, 174, 239, 0.25)',
       },
     },
   },

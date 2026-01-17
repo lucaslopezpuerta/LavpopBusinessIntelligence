@@ -1,7 +1,22 @@
-// DateRangeSelector Component v3.4.1 - HOOKS ORDER FIX
+// DateRangeSelector Component v3.7.1 - COSMIC DROPDOWN
 // Unified date filter - consistent with DashboardDateControl
 //
 // CHANGELOG:
+// v3.7.1 (2026-01-17): Removed hover-stellar-glow from container
+// v3.7.0 (2026-01-16): Custom CosmicDropdown integration
+//   - Replaced native <select> with CosmicDropdown component
+//   - Full Design System compliance for dropdown menu
+//   - Glassmorphism panel with stellar-cyan accents
+//   - Keyboard navigation and accessible ARIA attributes
+// v3.6.0 (2026-01-16): Cosmic Effects enhancement (reverted in v3.7.1)
+//   - Enhanced dropdown with cosmic inner glow on focus
+//   - Added gradient background for dropdown in dark mode
+//   - Uses new Cosmic Effects v4.1 utilities
+// v3.5.0 (2026-01-16): Theme-aware colors fix
+//   - Added useTheme hook for reliable dark mode detection
+//   - Converted all Tailwind dark: prefixes to JavaScript conditionals
+//   - Uses Cosmic Precision color tokens (space-dust, stellar-cyan)
+//   - Matches proven MinimalTopBar/LoadingScreen pattern
 // v3.4.1 (2026-01-12): Hooks order fix (React error #300)
 //   - FIXED: Moved useCallback before conditional return
 //   - All hooks must run in same order every render (Rules of Hooks)
@@ -36,17 +51,21 @@ import { Calendar } from 'lucide-react';
 import { getDateOptions } from '../utils/dateWindows';
 import { haptics } from '../utils/haptics';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useTheme } from '../contexts/ThemeContext';
+import CosmicDropdown from './ui/CosmicDropdown';
 
 const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false, sticky = false }) => {
   // Get sidebar state to hide sticky nav when mobile sidebar is open
   const { isMobileOpen } = useSidebar();
+  const { isDark } = useTheme();
   const options = useMemo(() => getDateOptions({ excludeAllTime }), [excludeAllTime]);
 
   // Handle change with haptic feedback
   // NOTE: Must be before conditional return to satisfy Rules of Hooks
-  const handleChange = useCallback((e) => {
+  // CosmicDropdown passes value directly (not event object)
+  const handleChange = useCallback((newValue) => {
     haptics.tick();
-    onChange(e.target.value);
+    onChange(newValue);
   }, [onChange]);
 
   // Hide sticky selector when mobile sidebar is open to prevent z-index conflicts
@@ -55,38 +74,32 @@ const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false
   }
 
   const content = (
-    <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-sm">
+    <div className={`flex items-center justify-between gap-4 ${isDark ? 'bg-space-dust' : 'bg-white'} border ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'} rounded-xl p-3 shadow-sm transition-all duration-300`}>
       {/* Left: Date range display */}
-      <div className="flex items-center gap-2 text-xs sm:text-base text-slate-600 dark:text-slate-400">
-        <Calendar className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+      <div className={`flex items-center gap-2 text-xs sm:text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        <Calendar className={`w-4 h-4 ${isDark ? 'text-stellar-gold' : 'text-amber-500'}`} />
         <span className="font-medium">
           {dateWindow.dateRange}
         </span>
-        <span className="hidden sm:inline text-slate-400 dark:text-slate-500">•</span>
+        <span className={`hidden sm:inline ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>•</span>
         <span className="hidden sm:inline font-medium">
           {dateWindow.label}
         </span>
       </div>
 
-      {/* Right: Dropdown selector */}
-      <select
+      {/* Right: Dropdown selector - Cosmic styled */}
+      <CosmicDropdown
         value={value}
         onChange={handleChange}
-        className="h-9 px-3 bg-slate-100 dark:bg-slate-700/50 border-0 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 transition-all"
-      >
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        options={options}
+      />
     </div>
   );
 
   if (sticky) {
     return (
       <div
-        className="sticky z-30 -mt-2 mb-6 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm"
+        className={`sticky z-30 -mt-2 mb-6 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 ${isDark ? 'bg-space-void/80' : 'bg-slate-50/80'} backdrop-blur-sm`}
         style={{
           top: 'calc(3.5rem + env(safe-area-inset-top, 0px))'
         }}
