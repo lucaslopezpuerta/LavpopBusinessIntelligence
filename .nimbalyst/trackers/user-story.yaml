@@ -1,0 +1,72 @@
+# Package metadata
+packageVersion: 1.0.0
+packageId: product-manager
+
+type: user-story
+displayName: User Story
+displayNamePlural: User Stories
+icon: person
+color: "#8b5cf6"
+
+modes:
+  inline: true
+  fullDocument: false
+
+idPrefix: story
+idFormat: ulid
+
+fields:
+  - name: title
+    type: string
+    required: true
+    displayInline: true
+
+  - name: status
+    type: select
+    default: backlog
+    options:
+      - value: backlog
+        label: Backlog
+      - value: ready
+        label: Ready
+      - value: in-progress
+        label: In Progress
+      - value: review
+        label: In Review
+      - value: done
+        label: Done
+
+  - name: priority
+    type: select
+    default: medium
+    options:
+      - value: low
+        label: Low
+      - value: medium
+        label: Medium
+      - value: high
+        label: High
+      - value: critical
+        label: Critical
+
+  - name: storyPoints
+    type: number
+    min: 0
+    max: 13
+    displayInline: true
+
+  - name: owner
+    type: string
+    displayInline: true
+
+  - name: acceptanceCriteria
+    type: text
+    displayInline: false
+
+  - name: created
+    type: string
+    displayInline: false
+
+  - name: updated
+    type: string
+    displayInline: false

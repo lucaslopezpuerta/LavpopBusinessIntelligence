@@ -1,8 +1,14 @@
-// KPIDetailModal.jsx v2.7 - REFACTORED TO useScrollLock HOOK
-// Enhanced modal with metric-aware header
-// Design System v4.0 compliant
+// KPIDetailModal.jsx v2.8 - COSMIC PRECISION UPDATE
+// Enhanced modal with metric-aware header and cosmic glassmorphism
+// Design System v4.3 compliant - Tier 2 Enhanced
 //
 // CHANGELOG:
+// v2.8 (2026-01-17): Cosmic Precision upgrade
+//   - Added useTheme hook for reliable dark mode
+//   - Updated to space-dust background (from slate-800)
+//   - Updated to stellar-cyan borders (from slate-700)
+//   - Added glassmorphism (backdrop-blur-xl)
+//   - Cosmic compliant: Tier 2 Enhanced
 // v2.7 (2026-01-12): Refactored to useScrollLock hook
 //   - Replaced inline scroll lock useEffect with shared useScrollLock hook
 //   - Reduces code duplication across modals
@@ -33,6 +39,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Color mapping for accent backgrounds
 const colorMap = {
@@ -57,6 +64,7 @@ const KPIDetailModal = ({
     badge
 }) => {
     const prefersReducedMotion = useReducedMotion();
+    const { isDark } = useTheme();
 
     // Close on escape key
     useEffect(() => {
@@ -89,7 +97,7 @@ const KPIDetailModal = ({
                         onClick={onClose}
                         className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
                     >
-                        {/* Modal Container */}
+                        {/* Modal Container - Cosmic Tier 2 */}
                         <motion.div
                             initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -97,15 +105,19 @@ const KPIDetailModal = ({
                             transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", duration: 0.5, bounce: 0.3 }}
                             onClick={(e) => e.stopPropagation()}
                             className={`
-                relative w-full ${maxWidth}
-                bg-white dark:bg-slate-800 
-                rounded-2xl shadow-2xl 
-                border border-slate-200 dark:border-slate-700
-                flex flex-col max-h-[90vh]
-              `}
+                                relative w-full ${maxWidth}
+                                ${isDark ? 'bg-space-dust' : 'bg-white/95'}
+                                backdrop-blur-xl
+                                rounded-2xl shadow-2xl
+                                border ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200'}
+                                flex flex-col max-h-[90vh]
+                            `}
                         >
-                            {/* Header */}
-                            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700">
+                            {/* Header - Cosmic border */}
+                            <div className={`
+                                flex items-center justify-between p-4 sm:p-6
+                                border-b ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+                            `}>
                                 <div className="flex items-center gap-3">
                                     {Icon && (
                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorMap[color] || colorMap.slate}`}>
@@ -113,11 +125,11 @@ const KPIDetailModal = ({
                                         </div>
                                     )}
                                     <div>
-                                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                        <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                             {title}
                                         </h2>
                                         {subtitle && (
-                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                 {subtitle}
                                             </p>
                                         )}
@@ -125,13 +137,22 @@ const KPIDetailModal = ({
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {badge && (
-                                        <span className="text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full">
+                                        <span className={`
+                                            text-xs font-medium px-2.5 py-1 rounded-full
+                                            ${isDark ? 'bg-space-nebula text-slate-300' : 'bg-slate-100 text-slate-600'}
+                                        `}>
                                             {badge}
                                         </span>
                                     )}
                                     <button
                                         onClick={onClose}
-                                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                                        className={`
+                                            p-2 rounded-full transition-colors
+                                            ${isDark
+                                                ? 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
+                                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                                            }
+                                        `}
                                     >
                                         <X className="w-5 h-5" />
                                     </button>

@@ -1,0 +1,79 @@
+# Package metadata
+packageVersion: 1.0.0
+packageId: developer
+
+type: tech-debt
+displayName: Technical Debt
+displayNamePlural: Technical Debt
+icon: construction
+color: "#f59e0b"
+
+modes:
+  inline: true
+  fullDocument: false
+
+idPrefix: debt
+idFormat: ulid
+
+fields:
+  - name: title
+    type: string
+    required: true
+    displayInline: true
+
+  - name: status
+    type: select
+    default: identified
+    options:
+      - value: identified
+        label: Identified
+      - value: planned
+        label: Planned
+      - value: in-progress
+        label: In Progress
+      - value: resolved
+        label: Resolved
+
+  - name: severity
+    type: select
+    default: medium
+    options:
+      - value: low
+        label: Low
+      - value: medium
+        label: Medium
+      - value: high
+        label: High
+      - value: critical
+        label: Critical
+
+  - name: category
+    type: select
+    default: code-quality
+    options:
+      - value: code-quality
+        label: Code Quality
+      - value: architecture
+        label: Architecture
+      - value: performance
+        label: Performance
+      - value: security
+        label: Security
+      - value: documentation
+        label: Documentation
+
+  - name: owner
+    type: string
+    displayInline: true
+
+  - name: description
+    type: text
+    displayInline: false
+
+  - name: created
+    type: string
+    displayInline: false
+
+  - name: updated
+    type: string
+    displayInline: false

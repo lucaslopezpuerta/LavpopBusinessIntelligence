@@ -1,8 +1,12 @@
-// SectionCard.jsx v2.5
+// SectionCard.jsx v2.6 - COSMIC PRECISION UPDATE
 // Wrapper component for Intelligence sections
-// Design System v3.1 compliant - Unified header pattern
+// Design System v4.3 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v2.6 (2026-01-17): Cosmic Precision upgrade
+//   - Updated to space-dust background (from slate-800)
+//   - Updated to stellar-cyan borders (from slate-700)
+//   - Cosmic compliant: Tier 1 Essential
 // v2.5 (2025-12-28): Expanded header layout matches non-collapsible
 //   - Expanded header uses same flex-col/sm:flex-row layout as non-collapsible
 //   - Chevron positioned at bottom-right on mobile, center-right on desktop
@@ -190,8 +194,8 @@ const SectionCard = ({
     <section
       aria-labelledby={headingId}
       className={`
-        bg-white dark:bg-slate-800
-        rounded-2xl shadow-soft border border-slate-200 dark:border-slate-700
+        bg-white dark:bg-space-dust
+        rounded-2xl shadow-soft border border-slate-200 dark:border-stellar-cyan/10
         ${collapsible && isCollapsed ? 'px-3 py-2' : 'p-4 sm:p-6 lg:p-8'}
         animate-slide-up
         transition-all duration-200

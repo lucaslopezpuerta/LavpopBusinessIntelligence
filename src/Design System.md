@@ -1,428 +1,862 @@
-# Bilavnova Design System v4.2
+# Bilavnova Design System v5.0
 
-> **Last Updated:** January 17, 2026
-> **Status:** Active - All components aligned with this system
 > **Theme:** Cosmic Precision - Space-age aesthetics with stellar gradients
+> **Last Updated:** January 17, 2026
 > **Dark Mode:** Fully functional via Tailwind safelist + useTheme pattern
 
-## 📋 Changelog
+---
 
-### v4.2 (January 17, 2026) - Cosmic Dashboard Cards
+## Quick Start (Agent TL;DR)
 
-**Enhancement: Standardized dashboard card pattern with cosmic glassmorphism**
+### The One Decision: Which Variant?
 
-- **NEW:** "Cosmic Dashboard Card" pattern - soft gradients (light) + space-nebula (dark) + accent borders
-- **NEW:** Component Container Architecture documentation (self-contained vs wrapper-dependent)
-- **NEW:** Internal Element Styling guide for tooltips, filter buttons, dividers
-- **UPDATED:** 10 dashboard components now use consistent cosmic card styling:
-  - `AcquisitionCard`, `VisitHeatmap`, `RetentionCard`, `ChurnHistogram`
-  - `RFMScatterPlot`, `AtRiskCustomersTable`, `FirstVisitConversionCard`
-  - `FrequencyDegradationAlert`, `OperatingCyclesChart` (via Dashboard.jsx wrapper)
-- **PATTERN:** `from-{accent}-50/40 via-white` (light) + `dark:via-space-nebula` (dark)
-- **PATTERN:** `border-stellar-cyan/10` for dark mode borders
-- **PATTERN:** `border-l-4 border-l-{accent}-500` semantic accent borders
+```
+What are you styling?
+│
+├─► Primitive (Button, Input, Badge, Tooltip)     → VARIANT A
+├─► Container (KPICard, SectionCard)              → VARIANT A
+├─► Dashboard widget WITH semantic category       → VARIANT B (pick accent color)
+├─► Dashboard widget, neutral/dynamic content     → VARIANT C
+├─► Navigation or Overlay (Sidebar, Modal)        → VARIANT D
+└─► Hero/Branding (Login, Loading)                → VARIANT E
+```
 
-### v4.1 (January 16, 2026) - Cosmic Effects Expansion
+### Complete Component → Variant Matrix
 
-**Enhancement: Advanced cosmic visual effects for immersive space-age aesthetics**
+| Component | Variant | Container Classes |
+|-----------|---------|-------------------|
+| **Button** | A | `bg-white dark:bg-space-dust border-slate-200 dark:border-stellar-cyan/10` |
+| **Input/Select** | A | `bg-white dark:bg-space-dust border-slate-200 dark:border-stellar-cyan/10` |
+| **Badge** | A | `bg-white dark:bg-space-dust border-slate-200 dark:border-stellar-cyan/10` |
+| **Tooltip** | A | `bg-white dark:bg-space-dust border-slate-200 dark:border-stellar-cyan/10` |
+| **KPICard** | A | `bg-white dark:bg-space-dust border-slate-200 dark:border-stellar-cyan/10` |
+| **SectionCard** | A | `bg-white dark:bg-space-dust border-slate-200 dark:border-stellar-cyan/10` |
+| **AcquisitionCard** | B | `from-purple-50/40 dark:via-space-nebula border-l-purple-500` |
+| **RetentionCard** | B | `from-emerald-50/40 dark:via-space-nebula border-l-emerald-500` |
+| **ChurnCard** | B | `from-red-50/40 dark:via-space-nebula border-l-red-500` |
+| **Generic Dashboard** | C | `from-slate-50/60 dark:via-space-nebula` |
+| **Sidebar** | D | `bg-space-nebula/90 backdrop-blur-xl border-stellar-cyan/10` |
+| **TopBar** | D | `bg-white/95 dark:bg-space-nebula/90 backdrop-blur-xl` |
+| **Modal** | D | `bg-white/98 dark:bg-space-dust/95 backdrop-blur-xl` |
+| **Dropdown** | D | `bg-white/95 dark:bg-space-dust backdrop-blur-xl` |
+| **Login Page** | E | `bg-space-void` + starfield + aurora |
+| **Loading Screen** | E | `bg-space-void` + orbital animation |
 
-- **NEW:** Animated glow borders (`border-glow`, `border-pulse-glow`, `border-nebula`)
-- **NEW:** Cosmic divider patterns (`divider-cosmic`, `divider-cosmic-animated`)
-- **NEW:** Orbital hover effects (`hover-stellar-glow`, `hover-nebula-glow`, `hover-orbital`)
-- **NEW:** Background effects (`bg-nebula-clouds`, `bg-cosmic-dust`, `bg-solar-flare`)
-- **NEW:** Color tokens: `cosmic-purple`, `cosmic-pink`, `cosmic-orange`, `stellar-gold`, `stellar-indigo`, `nebula-violet`
-- **NEW:** Shadow utilities: `shadow-nebula`, `shadow-solar-flare`, `shadow-cosmic-inner`
-- **NEW:** Gradients: `gradient-nebula`, `gradient-aurora-subtle`, `gradient-solar`, `gradient-cosmic-radial`
+### Semantic Accent Colors (for Variant B)
 
-### v4.0 (January 16, 2026) - Cosmic Precision Theme & Dark Mode Fix
-
-**MAJOR UPDATE: Complete dark mode system overhaul**
-
-- **NEW:** "Cosmic Precision" theme system with space-age aesthetics
-- **NEW:** Space color tokens: `space-void`, `space-nebula`, `space-dust`, `space-light`
-- **NEW:** Stellar color tokens: `stellar-blue`, `stellar-cyan`, `stellar-glow`
-- **NEW:** Tailwind safelist configuration for reliable dark: class generation
-- **NEW:** `useTheme()` + `isDark` pattern for JavaScript conditional theming
-- **NEW:** Glassmorphism specifications for light and dark modes
-- **NEW:** Theme-aware shadow system with brand color tints
-- **FIXED:** Dark mode styling now works across all 181 components
-- **FIXED:** Tailwind dark: classes now generate properly in production builds
-- **CONVERTED:** Navigation components to use useTheme pattern (IconSidebar, MinimalTopBar, BottomNavBar)
-- **ADDED:** Design system skill at `.claude/skills/design-system/index.md`
-
-### Previous Versions (v3.2 - v3.5)
-
-<details>
-<summary>Click to expand older changelog</summary>
-
-**v3.5** (Jan 15, 2026): Dark mode contrast fixes for headings
-**v3.4** (Jan 7, 2026): Design reconciliation - brand colors, fonts, shadow utilities, KPI cards
-**v3.3** (Dec 18, 2025): Mobile transformation - BottomNavBar, safe areas, swipe/pull gestures
-**v3.2** (Dec 16, 2025): Z-index system, icon sidebar, modal UX requirements, touch tooltips
-
-</details>
+| Category | Accent | Example Components |
+|----------|--------|--------------------|
+| Acquisition/New | `purple` | AcquisitionCard, NewCustomers |
+| Retention/Success | `emerald` | RetentionCard, HealthMetrics |
+| Revenue/Financial | `teal` | RevenueCard, ProfitMetrics |
+| Operations/Cycles | `cyan` | OperatingCyclesChart |
+| Warning/Attention | `amber` | FrequencyDegradationAlert |
+| Risk/Critical | `red` | ChurnHistogram, AtRiskTable |
+| Analytics/General | `blue` | VisitHeatmap, RFMScatterPlot |
 
 ---
 
-## 🎨 Brand Identity
+## Part 1: Foundation Tokens
 
-### Primary Colors (Cosmic Precision v4.0)
+### 1.1 Color System
 
-See **🌌 Cosmic Precision Theme System** section for the primary color tokens:
-- **Space colors:** `space-void`, `space-nebula`, `space-dust` (dark backgrounds)
-- **Stellar colors:** `stellar-blue` (#2d388a), `stellar-cyan` (#00aeef) (accents)
+#### Space Colors (Dark Backgrounds)
 
-### Legacy Brand Colors (Still Available)
-
-```javascript
-'lavpop-blue':  '#1a5a8e'  // Legacy primary blue
-'lavpop-green': '#55b03b'  // Legacy brand green
-```
-
-> **Note:** For new components, prefer stellar/space colors. Legacy lavpop colors remain available for backwards compatibility.
-
-### Typography
-
-**Primary Font:** Inter (with System UI fallback)
-```css
-font-family: 'Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"',
-             'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif';
-```
-
-**Monospace Font:** JetBrains Mono (for code/data)
-```css
-font-family: '"JetBrains Mono"', '"Fira Code"', 'Consolas', 'Monaco',
-             '"Courier New"', 'monospace';
-```
-
-**Font Sizes:**
-- **Display:** `text-2xl` (24px) - Logo, major headings
-- **Heading:** `text-xl` (20px) - Section titles
-- **Body:** `text-sm` (14px) - Standard text
-- **Small:** `text-xs` (12px) - Labels, captions, minimum allowed size
-
-> ⚠️ **IMPORTANT:** The minimum font size is `text-xs` (12px). Never use `text-[10px]` or smaller.
-> This ensures readability on all devices and accessibility compliance.
-
----
-
-## 🌌 Cosmic Precision Theme System (v4.0)
-
-The Bilavnova design system uses a "Cosmic Precision" theme with space-age aesthetics. Dark mode features deep space backgrounds with cyan stellar accents, while light mode uses clean grids with subtle blue tints.
-
-### Theme Architecture
-
-The theme system consists of four interconnected layers:
+| Token | Hex | Tailwind | Usage |
+|-------|-----|----------|-------|
+| **Space Void** | `#050816` | `bg-space-void` | Page background (deepest) |
+| **Space Nebula** | `#0a0f1e` | `bg-space-nebula` | Fixed elements (sidebar, topbar) |
+| **Space Dust** | `#1a1f35` | `bg-space-dust` | Cards, modals, elevated surfaces |
+| **Space Light** | `#f8fafc` | `bg-space-light` | Light mode page background |
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  1. ThemeContext (React)                                     │
-│     └── Provides isDark state to all components              │
-├─────────────────────────────────────────────────────────────┤
-│  2. CSS Custom Properties (index.css)                        │
-│     └── :root and .dark variables for theming               │
-├─────────────────────────────────────────────────────────────┤
-│  3. Tailwind Safelist (tailwind.config.js)                   │
-│     └── Forces generation of dark: utility classes           │
-├─────────────────────────────────────────────────────────────┤
-│  4. useTheme Pattern (Components)                            │
-│     └── JavaScript conditionals for reliable styling         │
-└─────────────────────────────────────────────────────────────┘
+Depth Hierarchy (Dark Mode):
+┌────────────────────────────────────────┐
+│  VOID (#050816)    - Page background   │
+│  ├── NEBULA (#0a0f1e) - Fixed nav      │
+│  │   └── DUST (#1a1f35) - Cards        │
+└────────────────────────────────────────┘
 ```
 
-### Space Color Tokens
+#### Stellar Colors (Accents)
 
-Custom colors for dark mode backgrounds, creating a cosmic depth effect:
-
-| Token | Hex | CSS Variable | Tailwind Class | Usage |
-|-------|-----|--------------|----------------|-------|
-| Space Void | `#050816` | `--space-void` | `bg-space-void` | Primary dark background |
-| Space Nebula | `#0a0f1e` | `--space-nebula` | `bg-space-nebula` | Card/surface backgrounds |
-| Space Dust | `#1a1f35` | `--space-dust` | `bg-space-dust` | Elevated surfaces, hover states |
-| Space Light | `#f8fafc` | `--space-light` | `bg-space-light` | Light mode background |
-| Space Light Card | `#ffffff` | - | `bg-space-light-card` | Light mode card background |
-
-**Usage Hierarchy (Dark Mode):**
-```
-space-void     → Page background (deepest)
-space-nebula   → Fixed elements (sidebars, headers)
-space-dust     → Cards, modals, popovers (elevated)
-```
-
-### Stellar Color Tokens
-
-Brand accent colors derived from the Bilavnova logo gradient:
-
-| Token | Hex | CSS Variable | Tailwind Class | Usage |
-|-------|-----|--------------|----------------|-------|
-| Stellar Blue | `#2d388a` | `--stellar-blue` | `text-stellar-blue` | Gradient start, deep accents |
-| Stellar Cyan | `#00aeef` | `--stellar-cyan` | `text-stellar-cyan` | Active states, focus, links |
-| Stellar Glow | `rgba(0,174,239,0.5)` | `--stellar-glow` | - | Glow effects, shadows |
-| Stellar Glow Subtle | `rgba(0,174,239,0.2)` | `--stellar-glow-subtle` | - | Subtle glows |
+| Token | Hex | Tailwind | Usage |
+|-------|-----|----------|-------|
+| **Stellar Blue** | `#2d388a` | `text-stellar-blue` | Gradient start, deep accents |
+| **Stellar Cyan** | `#00aeef` | `text-stellar-cyan` | Active states, links, focus |
 
 **Stellar Cyan Opacity Scale:**
+- `/5` - Light mode subtle borders
+- `/10` - Dark mode card borders (most common)
+- `/15` - Visible borders, navigation
+- `/20` - Active state backgrounds
 
-| Opacity | Class | Usage |
-|---------|-------|-------|
-| 5% | `border-stellar-cyan/5` | Light mode subtle borders |
-| 10% | `border-stellar-cyan/10` | Dark mode subtle borders |
-| 15% | `border-stellar-cyan/15` | Visible borders |
-| 20% | `bg-stellar-cyan/20` | Active state backgrounds (dark) |
+#### Semantic Colors
 
-### Bilavnova Gradient Palette
+| Semantic | Light BG | Dark BG | Border | Use For |
+|----------|----------|---------|--------|---------|
+| Revenue | `teal-50` | `teal-900/20` | `teal-500` | Financial metrics |
+| Cost | `red-50` | `red-900/20` | `red-500` | Expenses, negative |
+| Profit | `emerald-50` | `emerald-900/20` | `emerald-500` | Positive outcomes |
+| Warning | `amber-50` | `amber-900/20` | `amber-500` | Attention needed |
+| Info | `blue-50` | `blue-900/20` | `blue-500` | Informational |
 
-The brand gradient spans from deep indigo to bright cyan:
+### 1.2 Typography
 
+**Fonts:**
+- **Primary:** Inter (body text)
+- **Display:** Orbitron (brand name only)
+- **Monospace:** JetBrains Mono (code, data)
+
+**Size Scale:**
+| Name | Class | Size | Usage |
+|------|-------|------|-------|
+| Display | `text-2xl` | 24px | Page titles, hero headings |
+| Heading | `text-xl` | 20px | Section titles |
+| Subheading | `text-lg` | 18px | Card titles |
+| Body | `text-sm` | 14px | Standard text |
+| Small | `text-xs` | 12px | Labels, captions (MINIMUM) |
+
+> **Rule:** Never use `text-[10px]` or smaller. Minimum is `text-xs` (12px).
+
+**Text Color Hierarchy:**
+
+| Level | Light Mode | Dark Mode |
+|-------|------------|-----------|
+| Primary | `text-slate-900` | `text-white` |
+| Secondary | `text-slate-700` | `text-slate-200` |
+| Body | `text-slate-600` | `text-slate-300` |
+| Muted | `text-slate-500` | `text-slate-400` |
+| Subtle | `text-slate-400` | `text-slate-500` |
+
+### 1.3 Spacing & Layout
+
+**Breakpoints:**
 ```javascript
-'bilavnova': {
-  'gradient-start': '#2d388a',  // stellar-blue
-  'gradient-end': '#00aeef',    // stellar-cyan
-  50: '#e6f4fc',
-  100: '#cce9f9',
-  200: '#99d3f3',
-  300: '#66bdec',
-  400: '#33a7e6',
-  500: '#00aeef',  // Primary cyan
-  600: '#008bbf',
-  700: '#00688f',
-  800: '#004560',
-  900: '#002330',
-}
+xs: '475px'   // Large phones
+sm: '640px'   // Mobile landscape
+md: '768px'   // Tablets
+lg: '1024px'  // Desktop
+xl: '1280px'  // Large desktop
 ```
 
-### Gradient Backgrounds
+**Z-Index System:**
+| Layer | Z-Index | Tailwind | Use For |
+|-------|---------|----------|---------|
+| Dropdown | 40 | `z-40` | Dropdowns, popovers |
+| Sidebar | 40 | `z-40` | Icon sidebar |
+| Modal | 50 | `z-50` | Primary modals |
+| Child Modal | 60 | `z-[60]` | Modal over modal |
+| Alert | 70 | `z-[70]` | Confirmation dialogs |
+| Toast | 80 | `z-[80]` | Notifications |
 
-| Gradient | Class | Direction | Usage |
-|----------|-------|-----------|-------|
-| Stellar | `bg-gradient-stellar` | 135° diagonal | Buttons, headers |
-| Stellar Horizontal | `bg-gradient-stellar-horizontal` | 90° left-right | Nav items, pills |
-| Stellar Vertical | `bg-gradient-stellar-vertical` | 180° top-bottom | Cards, sections |
-| Aurora | `aurora-overlay` | Radial from top | Background decoration |
-
-**Gradient Usage:**
-```jsx
-// Primary button
-<button className="bg-gradient-stellar-horizontal text-white">
-
-// Active nav item
-<div className="bg-gradient-stellar-horizontal text-white shadow-md shadow-bilavnova">
-
-// Gradient text (logo)
-<span className="text-gradient-stellar">BILAVNOVA</span>
+**Spacing Scale:**
+```
+gap-1  (4px)  - Tight
+gap-2  (8px)  - Compact
+gap-3  (12px) - Standard
+gap-4  (16px) - Comfortable
+gap-6  (24px) - Spacious
+gap-8  (32px) - Sections
 ```
 
-### Theme-Aware Shadows
-
-Shadows should include theme-appropriate colors:
-
-**Dark Mode Shadows (Cyan Tint):**
-```css
-shadow-[0_-4px_24px_-4px_rgba(0,174,239,0.1)]   /* Bottom nav */
-shadow-md shadow-bilavnova                       /* Active elements */
+**Border Radius:**
+```
+rounded-lg   (8px)  - Buttons, inputs
+rounded-xl   (12px) - Cards, containers
+rounded-2xl  (16px) - Large cards, modals
+rounded-3xl  (24px) - Hero elements
 ```
 
-**Light Mode Shadows (Neutral Black):**
-```css
-shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)]      /* Bottom nav */
-shadow-lg                                        /* Cards, modals */
-```
+---
 
-**Pre-defined Shadow Classes:**
-- `shadow-bilavnova` - Brand shadow with stellar blue tint
-- `shadow-bilavnova-lg` - Larger brand shadow
-- `shadow-bilavnova-glow` - Glowing effect with stellar cyan
-- `shadow-stellar` - Cosmic shadow effect
-- `shadow-stellar-lg` - Large cosmic shadow
+## Part 2: The Cosmic Variants
 
-### Cosmic Effects (v4.1)
+### 2.1 Variant A: Solid Cosmic
 
-Advanced cosmic visual effects for creating immersive space-age aesthetics. Use sparingly for emphasis.
+**Use for:** Reusable primitives, containers, simple cards
 
-#### Animated Glow Borders
-
-| Class | Effect | Use For |
-|-------|--------|---------|
-| `border-glow` | Animated gradient border (stellar colors) | Featured cards, premium CTAs |
-| `border-pulse-glow` | Pulsing glow shadow | Active states, focus rings |
-| `border-nebula` | Purple/violet gradient border | Alternative accent |
+**Characteristics:**
+- Clean solid backgrounds
+- No gradients, maximum reusability
+- Works in any context
 
 ```jsx
-// Featured card with animated border
-<div className="border-glow rounded-xl p-6 bg-space-dust">
-  <h3>Premium Feature</h3>
-</div>
-
-// Active element with pulse
-<button className="border-pulse-glow rounded-lg">Active</button>
-```
-
-#### Cosmic Dividers
-
-| Class | Effect | Use For |
-|-------|--------|---------|
-| `divider-cosmic` | Static gradient divider | Section separators |
-| `divider-cosmic-animated` | Flowing gradient animation | Hero sections |
-| `divider-cosmic-vertical` | Vertical gradient divider | Sidebars |
-
-```jsx
-// Section separator
-<div className="divider-cosmic my-8" />
-
-// Animated divider
-<div className="divider-cosmic-animated my-8" />
-```
-
-#### Hover Effects
-
-| Class | Effect | Use For |
-|-------|--------|---------|
-| `hover-stellar-glow` | Cyan glow on hover | Interactive cards, buttons |
-| `hover-nebula-glow` | Purple glow on hover | Alternative accent |
-| `hover-orbital` | Orbital ring animation on hover | Premium interactions |
-
-```jsx
-// Card with stellar glow on hover
-<div className="hover-stellar-glow rounded-xl p-6 transition-all">
-  <p>Hover me</p>
+// VARIANT A - Complete Template
+<div className="
+  bg-white dark:bg-space-dust
+  border border-slate-200 dark:border-stellar-cyan/10
+  rounded-xl
+  p-4
+">
+  <h3 className="text-base font-bold text-slate-800 dark:text-white">
+    Title
+  </h3>
+  <p className="text-sm text-slate-600 dark:text-slate-400">
+    Content
+  </p>
 </div>
 ```
 
-#### Background Effects
+**Reference:** `KPICard.jsx`, `SectionCard.jsx`, `Button.jsx`
 
-| Class | Effect | Use For |
-|-------|--------|---------|
-| `bg-nebula-clouds` | Multi-color nebula radials | Hero backgrounds |
-| `bg-cosmic-dust` | Scattered dust particles | Subtle depth |
-| `bg-solar-flare` | Orange/gold radial from top | Warm accents |
-| `bg-deep-space` | Darkening vignette | Edge emphasis |
-| `cosmic-inner-glow` | Inset cyan glow | Containers |
+---
+
+### 2.2 Variant B: Accent-Tinted Cosmic
+
+**Use for:** Dashboard widgets with semantic category
+
+**Characteristics:**
+- Accent-tinted gradient background
+- Permanent left border stripe
+- Strong category identity
 
 ```jsx
-// Hero with nebula effect
-<section className="bg-space-void bg-nebula-clouds min-h-screen">
-  <h1>Welcome</h1>
+// VARIANT B - Complete Template
+// Replace {accent} with: purple, emerald, teal, cyan, amber, red, blue
+<div className="
+  bg-gradient-to-br from-{accent}-50/40 via-white to-white
+  dark:from-{accent}-900/10 dark:via-space-nebula dark:to-space-nebula
+  border border-slate-200/80 dark:border-stellar-cyan/10
+  border-l-4 border-l-{accent}-500 dark:border-l-{accent}-400
+  rounded-2xl
+  p-4 sm:p-5
+">
+  {/* Header with icon */}
+  <div className="flex items-center gap-2 mb-3">
+    <div className="p-2 bg-{accent}-100 dark:bg-{accent}-900/40 rounded-lg">
+      <Icon className="w-5 h-5 text-{accent}-600 dark:text-{accent}-400" />
+    </div>
+    <div>
+      <h3 className="text-base font-bold text-slate-800 dark:text-white">
+        Card Title
+      </h3>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Subtitle
+      </p>
+    </div>
+  </div>
+
+  {/* Content */}
+  <div className="mt-4">
+    {children}
+  </div>
+</div>
+```
+
+**Reference:** `AcquisitionCard.jsx`, `RetentionCard.jsx`, `ChurnHistogram.jsx`
+
+---
+
+### 2.3 Variant C: Neutral Dashboard Cosmic
+
+**Use for:** Dashboard widgets with dynamic/mixed content
+
+**Characteristics:**
+- Neutral gradient (no accent tint)
+- Flexible for status-based styling
+- Optional dynamic accent border
+
+```jsx
+// VARIANT C - Complete Template
+<div className="
+  bg-gradient-to-br from-slate-50/60 via-white to-white
+  dark:from-space-dust/40 dark:via-space-nebula dark:to-space-nebula
+  border border-slate-200/80 dark:border-stellar-cyan/10
+  rounded-2xl
+  p-4 sm:p-5
+">
+  <h3 className="text-base font-bold text-slate-800 dark:text-white">
+    Card Title
+  </h3>
+  <p className="text-sm text-slate-600 dark:text-slate-400">
+    Dynamic content here
+  </p>
+</div>
+
+// With dynamic accent border:
+<div className={`
+  bg-gradient-to-br from-slate-50/60 via-white to-white
+  dark:from-space-dust/40 dark:via-space-nebula dark:to-space-nebula
+  border border-slate-200/80 dark:border-stellar-cyan/10
+  ${status === 'warning' ? 'border-l-4 border-l-amber-500' : ''}
+  rounded-2xl p-4
+`}>
+```
+
+**Reference:** `AtRiskCustomersTable.jsx`, `FirstVisitConversionCard.jsx`
+
+---
+
+### 2.4 Variant D: Glassmorphism Cosmic
+
+**Use for:** Navigation, modals, dropdowns, overlays
+
+**Characteristics:**
+- Semi-transparent background
+- Backdrop blur effect
+- Requires `useTheme()` hook
+
+```jsx
+// VARIANT D - Complete Template
+import { useTheme } from '../contexts/ThemeContext';
+
+const MyOverlay = () => {
+  const { isDark } = useTheme();
+
+  // For NAVIGATION (sidebar, topbar):
+  return (
+    <div className={`
+      ${isDark ? 'bg-space-nebula/90' : 'bg-white/95'}
+      backdrop-blur-xl
+      border-r ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+      ${isDark ? 'shadow-[0_0_24px_rgba(0,174,239,0.05)]' : 'shadow-sm'}
+    `}>
+      {/* Navigation content */}
+    </div>
+  );
+
+  // For MODALS:
+  return (
+    <div className={`
+      ${isDark ? 'bg-space-dust/95' : 'bg-white/98'}
+      backdrop-blur-xl
+      border ${isDark ? 'border-stellar-cyan/20' : 'border-slate-200'}
+      shadow-2xl
+      rounded-2xl
+      p-6
+    `}>
+      <h2 className={isDark ? 'text-white' : 'text-slate-900'}>
+        Modal Title
+      </h2>
+      {/* Modal content */}
+    </div>
+  );
+
+  // For DROPDOWNS:
+  return (
+    <div className={`
+      ${isDark ? 'bg-space-dust' : 'bg-white/95'}
+      backdrop-blur-xl
+      border ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200'}
+      shadow-xl
+      rounded-xl
+      p-2
+    `}>
+      {/* Dropdown items */}
+    </div>
+  );
+};
+```
+
+**Reference:** `IconSidebar.jsx`, `BottomNavBar.jsx`, `KPIDetailModal.jsx`
+
+---
+
+### 2.5 Variant E: Premium Cosmic
+
+**Use for:** Login, loading, splash, hero sections
+
+**Characteristics:**
+- Full cosmic experience
+- Starfield background (dark mode)
+- Aurora overlay effects
+- Maximum visual impact
+
+```jsx
+// VARIANT E - Complete Template
+import { useTheme } from '../contexts/ThemeContext';
+
+const MyHeroPage = () => {
+  const { isDark } = useTheme();
+
+  return (
+    <div className={`
+      min-h-screen relative overflow-hidden
+      ${isDark ? 'bg-space-void' : 'bg-gradient-to-br from-slate-50 to-blue-50'}
+    `}>
+      {/* Starfield - dark mode only */}
+      {isDark && (
+        <div className="absolute inset-0 bg-starfield opacity-60 pointer-events-none" />
+      )}
+
+      {/* Aurora overlay */}
+      <div className="aurora-overlay pointer-events-none" />
+
+      {/* Content card */}
+      <div className={`
+        relative z-10 mx-auto max-w-md
+        ${isDark ? 'bg-space-dust/80' : 'bg-white/90'}
+        backdrop-blur-2xl
+        border ${isDark ? 'border-stellar-cyan/20' : 'border-white/50'}
+        shadow-2xl
+        rounded-3xl
+        p-8
+      `}>
+        {/* Brand text with gradient */}
+        <h1 className="text-gradient-stellar font-display text-4xl text-center">
+          BILAVNOVA
+        </h1>
+
+        {/* Content */}
+        {children}
+      </div>
+    </div>
+  );
+};
+```
+
+**Reference:** `LoginPage.jsx`, `LoadingScreen.jsx`
+
+---
+
+## Part 3: Component Catalog
+
+### 3.1 Buttons
+
+**Variant:** A (Solid Cosmic)
+
+| Type | Classes |
+|------|---------|
+| **Primary** | `bg-gradient-stellar text-white font-semibold shadow-md hover:shadow-lg rounded-xl px-4 py-2` |
+| **Secondary** | `bg-white dark:bg-space-dust text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-stellar-cyan/15 rounded-xl px-4 py-2` |
+| **Ghost** | `bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-space-dust rounded-xl px-4 py-2` |
+| **Danger** | `bg-gradient-to-r from-red-500 to-rose-500 text-white font-semibold rounded-xl px-4 py-2` |
+| **Icon** | `p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust` |
+
+```jsx
+// Primary Button
+<button className="
+  bg-gradient-stellar text-white font-semibold
+  shadow-md hover:shadow-lg hover:shadow-stellar-cyan/25
+  rounded-xl px-4 py-2
+  active:scale-[0.98] transition-all
+">
+  Primary Action
+</button>
+
+// Secondary Button
+<button className="
+  bg-white dark:bg-space-dust
+  text-slate-700 dark:text-slate-200
+  border border-slate-200 dark:border-stellar-cyan/15
+  hover:bg-slate-50 dark:hover:bg-space-nebula
+  rounded-xl px-4 py-2
+  transition-all
+">
+  Secondary Action
+</button>
+```
+
+**Reference:** `Button.jsx`
+
+---
+
+### 3.2 Cards
+
+**KPICard (Variant A):**
+```jsx
+<div className="
+  bg-white dark:bg-space-dust
+  border border-slate-200 dark:border-stellar-cyan/10
+  rounded-xl p-4
+">
+  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+    Label
+  </p>
+  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+    Value
+  </p>
+  <p className="text-xs text-slate-500 dark:text-slate-400">
+    Subtitle
+  </p>
+</div>
+```
+
+**SectionCard (Variant A):**
+```jsx
+<section className="
+  bg-white dark:bg-space-dust
+  border border-slate-200 dark:border-stellar-cyan/10
+  rounded-2xl p-6
+">
+  {/* Section header */}
+  <div className="flex items-center gap-3 mb-4">
+    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg border-l-4 border-emerald-500">
+      <Icon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+    </div>
+    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+      Section Title
+    </h2>
+  </div>
+  {/* Content */}
+  {children}
 </section>
 ```
 
-#### New Color Tokens (v4.1)
+**Dashboard Card (Variant B/C):** See Part 2.2 and 2.3
 
-Expanded palette for cosmic accents:
-
-| Token | Hex | Tailwind Class | Usage |
-|-------|-----|----------------|-------|
-| Cosmic Purple | `#6366f1` | `text-cosmic-purple` | Nebula accents |
-| Cosmic Pink | `#ec4899` | `text-cosmic-pink` | Supernova highlights |
-| Cosmic Orange | `#f97316` | `text-cosmic-orange` | Solar flare effects |
-| Stellar Gold | `#fbbf24` | `text-stellar-gold` | Star accents |
-| Stellar Indigo | `#4f46e5` | `text-stellar-indigo` | Deep stellar |
-| Nebula Violet | `#8b5cf6` | `text-nebula-violet` | Nebula accent |
-
-#### New Shadows (v4.1)
-
-| Shadow | Class | Effect |
-|--------|-------|--------|
-| Stellar Glow Soft | `shadow-stellar-glow-soft` | Soft cyan outer glow |
-| Stellar Glow Large | `shadow-stellar-glow-lg` | Large cyan glow |
-| Nebula | `shadow-nebula` | Purple/violet glow |
-| Solar Flare | `shadow-solar-flare` | Orange/gold warm glow |
-| Cosmic Inner | `shadow-cosmic-inner` | Inset cyan glow |
-
-#### New Gradients (v4.1)
-
-| Gradient | Class | Colors |
-|----------|-------|--------|
-| Nebula | `bg-gradient-nebula` | stellar-blue → cosmic-purple → stellar-cyan |
-| Aurora Subtle | `bg-gradient-aurora-subtle` | Vertical aurora transition |
-| Solar | `bg-gradient-solar` | cosmic-orange → stellar-gold |
-| Cosmic Radial | `bg-gradient-cosmic-radial` | Radial cyan center fade |
-| Nebula Radial | `bg-gradient-nebula-radial` | Radial purple/violet fade |
-
-#### Performance & Accessibility
-
-- **Use sparingly:** Max 2-3 animated effects visible at once
-- **Reduced motion:** All animations respect `prefers-reduced-motion`
-- **Performance:** CSS animations are GPU-accelerated
-
-### CSS Custom Properties Reference
-
-**Light Theme (`:root`):**
-```css
-:root {
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #64748b;
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(45, 56, 138, 0.1);
-  --glass-blur: 12px;
-}
-```
-
-**Dark Theme (`.dark`):**
-```css
-.dark {
-  --color-background: #050816;      /* space-void */
-  --color-surface: #0a0f1e;         /* space-nebula */
-  --color-surface-hover: #1a1f35;   /* space-dust */
-  --color-border: #1e293b;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --glass-bg: rgba(10, 15, 30, 0.7);
-  --glass-border: rgba(0, 174, 239, 0.15);
-  --glass-blur: 16px;
-}
-```
-
-### Tailwind Safelist Configuration
-
-The `safelist` in `tailwind.config.js` ensures all `dark:` utility classes are generated, even when stored in JavaScript variables:
-
-```javascript
-// tailwind.config.js v4.1
-safelist: [
-  // Text colors
-  'dark:text-slate-200', 'dark:text-slate-300', 'dark:text-slate-400',
-  'dark:text-white', 'dark:text-blue-300', 'dark:text-emerald-300',
-
-  // Background colors with opacity
-  'dark:bg-slate-700/30', 'dark:bg-slate-800/50', 'dark:bg-emerald-900/20',
-
-  // Border colors
-  'dark:border-slate-600', 'dark:border-slate-700', 'dark:border-slate-700/50',
-
-  // Custom space/stellar classes
-  'bg-space-void', 'bg-space-nebula', 'bg-space-dust',
-  'dark:bg-space-void', 'dark:bg-space-nebula', 'dark:bg-space-dust',
-  'text-stellar-cyan', 'border-stellar-cyan',
-  'border-stellar-cyan/5', 'border-stellar-cyan/10', 'border-stellar-cyan/15',
-  // ... ~100 explicit classes total
-]
-```
-
-**Why Safelist is Needed:**
-Tailwind's content scanner cannot detect classes stored in JavaScript object properties:
-```javascript
-// Tailwind CANNOT detect these classes
-const variants = {
-  success: 'bg-emerald-50 dark:bg-emerald-900/30',
-};
-className={variants[variant]}  // Scanner can't trace this
-```
-
-**Adding New dark: Patterns:**
-1. Add the class to the safelist in `tailwind.config.js`
-2. Run `npm run build` to verify it's generated
-3. Check with: `Select-String -Pattern "your-class" -Path "dist/assets/*.css"`
+**Reference:** `KPICard.jsx`, `SectionCard.jsx`, `AcquisitionCard.jsx`
 
 ---
 
-## 🎭 Theme-Aware Component Patterns (useTheme)
+### 3.3 Navigation
 
-### The useTheme Pattern
+**Sidebar (Variant D):**
+```jsx
+const { isDark } = useTheme();
 
-For components requiring reliable dark mode styling, use JavaScript conditionals:
+<aside className={`
+  fixed left-0 top-0 h-full w-[60px] hover:w-[240px]
+  ${isDark ? 'bg-space-nebula' : 'bg-white/95'}
+  backdrop-blur-xl
+  border-r ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+  z-40 transition-all duration-300
+`}>
+  {/* Logo */}
+  <div className="p-4">
+    <span className={isDark ? 'text-white' : 'text-slate-900'}>BILAV</span>
+    <span className="text-stellar-cyan">NOVA</span>
+  </div>
+
+  {/* Nav items */}
+  <nav className="mt-4">
+    {/* Active item */}
+    <a className="
+      flex items-center gap-3 px-4 py-3
+      bg-gradient-stellar-horizontal text-white
+      shadow-md shadow-bilavnova
+    ">
+      <Icon className="w-5 h-5" />
+      <span>Dashboard</span>
+    </a>
+
+    {/* Inactive item */}
+    <a className={`
+      flex items-center gap-3 px-4 py-3
+      ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}
+    `}>
+      <Icon className="w-5 h-5" />
+      <span>Customers</span>
+    </a>
+  </nav>
+</aside>
+```
+
+**TopBar (Variant D):**
+```jsx
+<header className={`
+  sticky top-0 z-40 h-14
+  ${isDark ? 'bg-space-nebula/90' : 'bg-white/85'}
+  backdrop-blur-xl
+  border-b ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+`}>
+  {/* Content */}
+</header>
+```
+
+**BottomNavBar (Variant D):**
+```jsx
+<nav className={`
+  fixed bottom-0 left-0 right-0
+  ${isDark ? 'bg-space-dust' : 'bg-white/90'}
+  backdrop-blur-xl
+  border-t ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200'}
+  ${isDark
+    ? 'shadow-[0_-4px_24px_-4px_rgba(0,174,239,0.1)]'
+    : 'shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)]'
+  }
+  safe-area-bottom
+`}>
+  {/* 5 nav items */}
+</nav>
+```
+
+**Reference:** `IconSidebar.jsx`, `MinimalTopBar.jsx`, `BottomNavBar.jsx`
+
+---
+
+### 3.4 Modals & Overlays
+
+**Modal (Variant D):**
+```jsx
+const { isDark } = useTheme();
+
+{/* Backdrop */}
+<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
+
+{/* Modal */}
+<div className={`
+  fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+  w-full max-w-lg max-h-[90vh] overflow-auto
+  ${isDark ? 'bg-space-dust' : 'bg-white'}
+  border ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200'}
+  shadow-2xl rounded-2xl
+  z-50 p-6
+`}>
+  {/* Header */}
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+      Modal Title
+    </h2>
+    <button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-space-nebula">
+      <X className="w-5 h-5" />
+    </button>
+  </div>
+
+  {/* Content */}
+  {children}
+
+  {/* Footer */}
+  <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-stellar-cyan/10">
+    <Button variant="secondary">Cancel</Button>
+    <Button variant="primary">Confirm</Button>
+  </div>
+</div>
+```
+
+**Dropdown (Variant D):**
+```jsx
+<div className={`
+  absolute top-full right-0 mt-2 w-56
+  ${isDark ? 'bg-space-dust' : 'bg-white/95'}
+  backdrop-blur-xl
+  border ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200'}
+  shadow-xl rounded-xl
+  z-40 p-1
+`}>
+  {/* Items */}
+  <button className={`
+    w-full text-left px-3 py-2 rounded-lg
+    ${isDark ? 'hover:bg-white/5 text-slate-200' : 'hover:bg-slate-100 text-slate-700'}
+  `}>
+    Menu Item
+  </button>
+</div>
+```
+
+**Reference:** `KPIDetailModal.jsx`, `CustomerSegmentModal.jsx`, `CosmicDropdown.jsx`
+
+---
+
+### 3.5 Forms & Inputs
+
+**Variant:** A (Solid Cosmic)
+
+**Text Input:**
+```jsx
+<input
+  type="text"
+  className="
+    w-full px-4 py-2.5
+    bg-white dark:bg-space-dust
+    border border-slate-200 dark:border-stellar-cyan/10
+    rounded-xl
+    text-slate-900 dark:text-white
+    placeholder:text-slate-400 dark:placeholder:text-slate-500
+    focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:border-transparent
+    transition-all
+  "
+  placeholder="Enter text..."
+/>
+```
+
+**Select:**
+```jsx
+<select className="
+  w-full px-4 py-2.5
+  bg-white dark:bg-space-dust
+  border border-slate-200 dark:border-stellar-cyan/10
+  rounded-xl
+  text-slate-900 dark:text-white
+  focus:outline-none focus:ring-2 focus:ring-stellar-cyan
+">
+  <option>Option 1</option>
+</select>
+```
+
+**Checkbox:**
+```jsx
+<label className="flex items-center gap-2 cursor-pointer">
+  <input
+    type="checkbox"
+    className="
+      w-4 h-4 rounded
+      border-slate-300 dark:border-stellar-cyan/20
+      text-stellar-cyan
+      focus:ring-stellar-cyan focus:ring-offset-0
+      dark:bg-space-dust
+    "
+  />
+  <span className="text-sm text-slate-700 dark:text-slate-300">
+    Label
+  </span>
+</label>
+```
+
+---
+
+### 3.6 Tables & Data
+
+**Variant:** A (Solid Cosmic)
+
+```jsx
+<div className="
+  bg-white dark:bg-space-dust
+  border border-slate-200 dark:border-stellar-cyan/10
+  rounded-xl overflow-hidden
+">
+  <table className="w-full">
+    <thead>
+      <tr className="border-b border-slate-200 dark:border-stellar-cyan/10">
+        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+          Column
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr className="border-b border-slate-100 dark:border-stellar-cyan/5 hover:bg-slate-50 dark:hover:bg-white/5">
+        <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+          Data
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+```
+
+---
+
+### 3.7 Charts & Visualization
+
+**Chart Container:**
+```jsx
+<div className="
+  bg-white dark:bg-space-dust
+  border border-slate-200 dark:border-stellar-cyan/10
+  rounded-xl p-4
+">
+  <ResponsiveContainer width="100%" height={300}>
+    <BarChart data={data}>
+      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e293b' : '#e2e8f0'} />
+      <XAxis stroke={isDark ? '#64748b' : '#94a3b8'} />
+      <YAxis stroke={isDark ? '#64748b' : '#94a3b8'} />
+      <Tooltip content={<CustomTooltip />} />
+      <Bar dataKey="value" fill="#00aeef" />
+    </BarChart>
+  </ResponsiveContainer>
+</div>
+```
+
+**Chart Tooltip (Variant A):**
+```jsx
+const CustomTooltip = ({ active, payload }) => {
+  if (!active || !payload) return null;
+
+  return (
+    <div className="
+      bg-white dark:bg-space-dust
+      border border-slate-200 dark:border-stellar-cyan/10
+      rounded-lg shadow-lg p-3
+    ">
+      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+        {payload[0].value}
+      </p>
+    </div>
+  );
+};
+```
+
+**Reference:** `src/utils/chartColors.js` for theme-aware chart colors
+
+---
+
+### 3.8 Tooltips
+
+**Static Tooltip (Variant A):**
+```jsx
+<div className="
+  bg-white dark:bg-space-dust
+  border border-slate-200 dark:border-stellar-cyan/10
+  rounded-lg shadow-lg
+  px-3 py-2
+  text-sm text-slate-700 dark:text-slate-300
+">
+  Tooltip content
+</div>
+```
+
+**Touch Tooltip (Charts):**
+```jsx
+// Use useTouchTooltip hook for mobile chart interactions
+import { useTouchTooltip } from '../hooks/useTouchTooltip';
+
+// First tap: show tooltip
+// Second tap (same element): trigger action
+// Tap elsewhere: dismiss
+```
+
+---
+
+## Part 4: Advanced Cosmic Effects
+
+> Use sparingly. Maximum 2-3 animated effects visible at once.
+
+### Glow Borders
+```jsx
+// Animated gradient border
+<div className="border-glow rounded-xl p-6 bg-space-dust">
+  Premium Feature
+</div>
+
+// Pulsing glow
+<button className="border-pulse-glow rounded-lg">Active</button>
+```
+
+### Cosmic Dividers
+```jsx
+// Static gradient divider
+<div className="divider-cosmic my-8" />
+
+// Animated flowing divider
+<div className="divider-cosmic-animated my-8" />
+```
+
+### Hover Effects
+```jsx
+// Cyan glow on hover
+<div className="hover-stellar-glow rounded-xl p-6 transition-all">
+  Hover me
+</div>
+```
+
+### Background Effects
+```jsx
+// Nebula clouds (hero backgrounds)
+<section className="bg-space-void bg-nebula-clouds min-h-screen">
+
+// Starfield (dark mode)
+{isDark && <div className="absolute inset-0 bg-starfield opacity-60" />}
+
+// Aurora overlay
+<div className="aurora-overlay" />
+```
+
+### Special Gradients
+| Class | Effect |
+|-------|--------|
+| `bg-gradient-stellar` | 135° stellar blue → cyan |
+| `bg-gradient-nebula` | Blue → purple → cyan |
+| `bg-gradient-aurora-subtle` | Vertical aurora fade |
+| `text-gradient-stellar` | Gradient text (brand name) |
+
+---
+
+## Part 5: Technical Reference
+
+### useTheme Pattern
+
+Required for Variant D and E components:
 
 ```jsx
 import { useTheme } from '../contexts/ThemeContext';
@@ -432,2014 +866,135 @@ const MyComponent = () => {
 
   return (
     <div className={`
-      ${isDark ? 'bg-space-nebula' : 'bg-white/95'}
-      ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'}
-      backdrop-blur-xl
-      rounded-xl
+      ${isDark ? 'bg-space-dust' : 'bg-white'}
+      ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
     `}>
-      <h2 className={isDark ? 'text-white' : 'text-slate-900'}>
-        Title
-      </h2>
+      {/* Content */}
     </div>
   );
 };
 ```
 
-### When to Use Each Approach
+**When to use:**
+- `useTheme + isDark`: Navigation, modals, glassmorphism (100% reliable)
+- `dark:` prefix: Simple components, badges (95% reliable)
 
-| Approach | Reliability | Use Cases |
-|----------|-------------|-----------|
-| `useTheme + isDark` | 100% reliable | Navigation, headers, glassmorphism, critical UI |
-| `dark:` prefix | ~95% reliable* | Simple components, status badges, semantic colors |
+### Tailwind Safelist
 
-*The `dark:` prefix works in most cases thanks to the safelist, but may fail for dynamically constructed class names or deeply nested object properties.
+Classes stored in JavaScript objects must be in `tailwind.config.js` safelist:
 
-### Glassmorphism Pattern
-
-**Dark Mode Glassmorphism:**
-```jsx
-className={`
-  bg-space-dust              // Solid dark background
-  backdrop-blur-xl           // Strong blur
-  border border-stellar-cyan/15  // Cyan-tinted border
-  rounded-xl
-`}
+```javascript
+safelist: [
+  'bg-space-void', 'bg-space-nebula', 'bg-space-dust',
+  'dark:bg-space-void', 'dark:bg-space-nebula', 'dark:bg-space-dust',
+  'border-stellar-cyan/5', 'border-stellar-cyan/10', 'border-stellar-cyan/15',
+  // ... etc
+]
 ```
 
-**Light Mode Glassmorphism:**
-```jsx
-className={`
-  bg-white/95               // Semi-transparent white
-  backdrop-blur-xl          // Strong blur
-  border border-stellar-cyan/5  // Subtle cyan border
-  rounded-xl
-`}
+### Accessibility Requirements
+
+1. **Minimum touch target:** 44x44px (`min-h-[44px] min-w-[44px]`)
+2. **Minimum font size:** 12px (`text-xs`)
+3. **Color contrast:** Don't rely solely on color
+4. **Focus states:** Visible focus rings on all interactive elements
+5. **Reduced motion:** Animations respect `prefers-reduced-motion`
+
+---
+
+## Appendix A: Version History
+
+| Version | Date | Major Changes |
+|---------|------|---------------|
+| v5.0 | Jan 17, 2026 | Complete restructure for agent-friendliness |
+| v4.4 | Jan 17, 2026 | Cosmic Variant Selection Guide |
+| v4.3 | Jan 17, 2026 | Cosmic Concept Documentation |
+| v4.2 | Jan 17, 2026 | Cosmic Dashboard Cards pattern |
+| v4.1 | Jan 16, 2026 | Advanced cosmic effects |
+| v4.0 | Jan 16, 2026 | Cosmic Precision theme, dark mode fix |
+| v3.x | Dec 2025 | Mobile transformation, z-index system |
+
+---
+
+## Appendix B: Legacy Patterns (Backwards Compatibility)
+
+> **Warning:** These patterns are deprecated. Use Cosmic patterns for new components.
+
+### Legacy Brand Colors
+```javascript
+'lavpop-blue': '#1a5a8e'   // Use stellar-blue instead
+'lavpop-green': '#55b03b'  // Use emerald-500 instead
 ```
 
-**Combined Pattern:**
+### Legacy Dark Backgrounds
 ```jsx
+// AVOID - Legacy pattern
+<div className="bg-white dark:bg-slate-800">
+
+// USE - Cosmic pattern
+<div className="bg-white dark:bg-space-dust">
+```
+
+### Legacy Borders
+```jsx
+// AVOID - Legacy pattern
+<div className="border dark:border-slate-700">
+
+// USE - Cosmic pattern
+<div className="border border-slate-200 dark:border-stellar-cyan/10">
+```
+
+---
+
+## Appendix C: Migration Guide
+
+### Background Migration
+```jsx
+// Before
+dark:bg-slate-800 → dark:bg-space-dust
+dark:bg-slate-900 → dark:bg-space-nebula (fixed elements)
+dark:bg-gray-900  → dark:bg-space-void (page backgrounds)
+```
+
+### Border Migration
+```jsx
+// Before
+dark:border-slate-700 → dark:border-stellar-cyan/10
+dark:border-slate-600 → dark:border-stellar-cyan/15
+```
+
+### Button Migration
+```jsx
+// Before
+<button className="bg-gradient-to-r from-lavpop-blue to-blue-600">
+
+// After
+<button className="bg-gradient-stellar">
+```
+
+### Modal Migration
+```jsx
+// Before
+<div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl">
+
+// After
+const { isDark } = useTheme();
 <div className={`
-  ${isDark ? 'bg-space-dust' : 'bg-white/95'}
-  backdrop-blur-xl
-  border
-  ${isDark ? 'border-stellar-cyan/15' : 'border-stellar-cyan/5'}
-  rounded-xl
+  ${isDark ? 'bg-space-dust' : 'bg-white'}
+  backdrop-blur-xl rounded-2xl shadow-2xl
+  border ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200'}
 `}>
 ```
 
-### Text Hierarchy Pattern
-
-| Level | Dark Mode | Light Mode |
-|-------|-----------|------------|
-| Primary Heading | `text-white` | `text-slate-900` |
-| Secondary Heading | `text-slate-200` | `text-slate-800` |
-| Body Text | `text-slate-300` | `text-slate-700` |
-| Secondary Text | `text-slate-400` | `text-slate-600` |
-| Muted Text | `text-slate-500` | `text-slate-500` |
-| Active/Link | `text-stellar-cyan` | `text-stellar-cyan` |
-
-### Border Pattern
-
-| Context | Dark Mode | Light Mode |
-|---------|-----------|------------|
-| Card/Container | `border-stellar-cyan/10` | `border-slate-200` |
-| Header/Fixed Element | `border-stellar-cyan/10` | `border-stellar-cyan/5` |
-| Active/Selected | `border-stellar-cyan` | `border-stellar-cyan` |
-| Divider | `border-slate-700` | `border-slate-100` |
-
-### Background Pattern
-
-| Element | Dark Mode | Light Mode |
-|---------|-----------|------------|
-| Page | `bg-space-void` | `bg-slate-50` |
-| Fixed Container | `bg-space-nebula` | `bg-white/95` |
-| Card | `bg-space-dust` | `bg-white` |
-| Dropdown | `bg-space-dust` | `bg-white/95` |
-| Hover State | `hover:bg-white/5` | `hover:bg-slate-100` |
-| Active State | `bg-stellar-cyan/20` | `bg-stellar-cyan/15` |
-
 ---
 
-## 📐 Layout System
-
-### Responsive Breakpoints
-
-```javascript
-xs: '475px'   // Large phones (custom breakpoint)
-sm: '640px'   // Mobile landscape, small tablets
-md: '768px'   // Tablets
-lg: '1024px'  // Desktop
-xl: '1280px'  // Large desktop
-2xl: '1536px' // Extra large screens
-```
-
-### Container Widths
-
-```css
-max-w-[100rem]  /* 1600px - Main app container */
-max-w-7xl       /* 1280px - Content sections */
-max-w-md        /* 448px - Modals, cards */
-```
-
-### Spacing Scale
-
-```javascript
-gap-1    // 4px  - Tight spacing
-gap-2    // 8px  - Compact elements
-gap-3    // 12px - Standard spacing
-gap-4    // 16px - Section spacing
-gap-6    // 24px - Large spacing
-gap-8    // 32px - Major sections
-```
-
-### Z-Index System
-
-Use semantic z-index layers from `src/constants/zIndex.js`:
-
-```javascript
-// Z-Index Constants (src/constants/zIndex.js)
-export const Z_INDEX = {
-  // Base layers
-  DROPDOWN: 40,        // Dropdowns, popovers
-
-  // Modal layers (50-69)
-  MODAL_PRIMARY: 50,   // Primary modals (KPIDetailModal, CustomerSegmentModal)
-  MODAL_CHILD: 60,     // Child modals opened from primary (CustomerProfileModal)
-
-  // Alert layers (70+)
-  ALERT: 70,           // Confirmation dialogs, alerts
-  TOAST: 80,           // Toast notifications
-};
-```
-
-**Usage Guidelines:**
-
-| Layer | Z-Index | Tailwind | Use Case |
-|-------|---------|----------|----------|
-| Sidebar | 40 | `z-40` | Icon sidebar navigation |
-| Dropdown | 40 | `z-40` | Dropdown menus, popovers |
-| Primary Modal | 50 | `z-50` | Main modals (CustomerSegmentModal, KPIDetailModal) |
-| Child Modal | 60 | `z-[60]` | Modals opened from other modals (CustomerProfileModal) |
-| Alert | 70 | `z-[70]` | Confirmation dialogs |
-| Toast | 80 | `z-[80]` | Toast notifications |
-
-> ⚠️ **IMPORTANT:** For component z-index, use the semantic constants above. Arbitrary values like `z-[1050]` should be avoided.
-
-### Tailwind Z-Index Utilities
-
-The `tailwind.config.js` also defines extended z-index utilities for compatibility:
-
-```javascript
-// Extended z-index in tailwind.config.js
-zIndex: {
-  'dropdown': '1000',
-  'sticky': '1020',
-  'modal-backdrop': '1040',
-  'modal': '1050',
-  'tooltip': '1060',
-  'notification': '1070',
-}
-```
-
-> **Note:** Prefer semantic constants from `src/constants/zIndex.js` for new components. The Tailwind utilities exist for legacy compatibility.
-
-### Box Shadows
-
-**Soft Shadows (Cards & Surfaces):**
-```css
-shadow-soft      /* 0 2px 8px -2px rgba(0,0,0,0.08), 0 4px 12px -4px rgba(0,0,0,0.04) */
-shadow-soft-lg   /* 0 4px 16px -4px rgba(0,0,0,0.1), 0 8px 24px -8px rgba(0,0,0,0.06) */
-shadow-soft-xl   /* 0 8px 24px -6px rgba(0,0,0,0.12), 0 12px 32px -8px rgba(0,0,0,0.08) */
-```
-
-**Brand Shadows:**
-```css
-shadow-lavpop    /* 0 4px 14px 0 rgba(26,90,142,0.15) */
-shadow-lavpop-lg /* 0 10px 40px -10px rgba(26,90,142,0.25) */
-```
-
-**Glow Effects (Emphasis):**
-```css
-shadow-glow-blue  /* 0 0 20px rgba(26,90,142,0.15) */
-shadow-glow-green /* 0 0 20px rgba(85,176,59,0.15) */
-shadow-glow-amber /* 0 0 20px rgba(245,158,11,0.15) */
-```
-
----
-
-## 🎯 Component Patterns
-
-### Navigation System
-
-#### Icon Sidebar (Desktop - `IconSidebar.jsx` v3.6)
-
-**Collapsed State (60px):**
-```
-[Logo]
-[Icon] ← Hover to expand
-[Icon]
-[Icon]
-...
-[Theme Toggle]
-```
-
-**Expanded State (240px on hover):**
-```
-[Logo + Title]
-[Icon] [Label] ← Full width with label
-[Icon] [Label]
-[Icon] [Label]
-...
-[Theme Toggle]
-```
-
-**Theme-Aware Specifications (useTheme pattern):**
-```jsx
-const { isDark } = useTheme();
-
-// Desktop sidebar container
-<aside className={`
-  ${isDark ? 'bg-space-nebula' : 'bg-white/95'}
-  backdrop-blur-xl
-  border-r
-  ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'}
-  z-50 flex-col
-`}>
-
-// Navigation item (active state)
-className={isActive
-  ? 'bg-gradient-stellar-horizontal text-white shadow-md shadow-bilavnova'
-  : isDark
-    ? 'text-slate-400 hover:bg-white/5'
-    : 'text-slate-600 hover:bg-slate-100'
-}
-
-// Section divider
-className={`border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}`}
-
-// Logo text
-<span className={isDark ? 'text-white' : 'text-slate-900'}>BILAV</span>
-<span className="text-stellar-cyan">NOVA</span>
-```
-
-- Collapsed width: `w-[60px]`
-- Expanded width: `w-[240px]`
-- Position: `fixed left-0 top-0 h-full z-50`
-- Transition: `transition-all duration-300`
-
-#### Top Bar (Desktop - `MinimalTopBar.jsx` v3.7)
-
-**Layout:**
-```
-[Weather] [Location] | [Quick Actions] [Settings] [Theme] [Keyboard Hints]
-```
-
-**Theme-Aware Specifications:**
-```jsx
-const { isDark } = useTheme();
-
-// Header container
-<header className={`
-  sticky top-0 z-40
-  ${isDark ? 'bg-space-nebula' : 'bg-white/85'}
-  backdrop-blur-xl
-  border-b
-  ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'}
-  shadow-sm transition-all duration-300 safe-area-top
-`}>
-
-// Dropdown menu
-<div className={`
-  ${isDark ? 'bg-space-dust' : 'bg-white/95'}
-  backdrop-blur-xl rounded-xl shadow-xl
-  border ${isDark ? 'border-stellar-cyan/20' : 'border-stellar-cyan/10'}
-`}>
-
-// Action items
-className={`
-  ${isDark ? 'text-slate-200 hover:bg-slate-700/50' : 'text-slate-700 hover:bg-slate-100'}
-`}
-
-// Location badge
-<div className={`
-  ${isDark ? 'bg-space-dust/80 border-stellar-cyan/20' : 'bg-slate-100/80 border-slate-200/50'}
-  border rounded-full
-`}>
-```
-
-- Height: `h-14 lg:h-[60px]`
-- Position: `sticky top-0 z-40`
-
-#### Mobile Navigation
-
-**Mobile Layout (< 1024px):**
-```
-Top Bar:  [Weather] [Location] | [Quick Actions] [Settings]
-Bottom:   [Dashboard] [Diretório] [Clientes] [Campanhas] [Mais]
-```
-
-**Bottom Navigation Bar (`BottomNavBar.jsx` v1.5):**
-
-Theme-aware specifications:
-```jsx
-const { isDark } = useTheme();
-
-// Background layer with theme shadow
-<div className={`
-  ${isDark ? 'bg-space-dust' : 'bg-white/90'}
-  backdrop-blur-xl
-  border-t
-  ${isDark ? 'border-stellar-cyan/15' : 'border-stellar-cyan/10'}
-  ${isDark
-    ? 'shadow-[0_-4px_24px_-4px_rgba(0,174,239,0.1)]'  // Cyan-tinted
-    : 'shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)]'    // Neutral
-  }
-`}>
-```
-
-**Bottom Nav Item (`BottomNavItem.jsx` v1.5):**
-```jsx
-const { isDark } = useTheme();
-
-// Icon container
-className={`
-  ${isActive
-    ? (isDark ? 'bg-stellar-cyan/20' : 'bg-stellar-cyan/15')
-    : (isDark ? 'group-active:bg-slate-800' : 'group-active:bg-slate-100')
-  }
-`}
-
-// Text color
-const activeClasses = isActive
-  ? 'text-stellar-cyan'
-  : isDark
-    ? 'text-slate-400 active:text-stellar-cyan'
-    : 'text-slate-500 active:text-stellar-cyan';
-```
-
-- 5 primary tabs: Dashboard, Diretório, Clientes, Campanhas, Mais
-- "Mais" tab opens drawer for secondary routes
-- Active state: `bg-stellar-cyan/20` (dark) or `bg-stellar-cyan/15` (light)
-- 64px height + safe-area-inset-bottom
-- Backdrop blur with glassmorphism
-
-```jsx
-// Bottom Nav Specification
-{
-  tabs: [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/' },
-    { id: 'diretorio', label: 'Diretório', icon: Search, path: '/diretorio' },
-    { id: 'customers', label: 'Clientes', icon: Users, path: '/customers' },
-    { id: 'campaigns', label: 'Campanhas', icon: MessageSquare, path: '/campaigns' },
-    { id: 'more', label: 'Mais', icon: Menu, onClick: toggleMobileSidebar }
-  ]
-}
-```
-
-**Mobile Drawer (Secondary Navigation):**
-- Full-screen overlay with backdrop blur
-- Slide-in animation from left
-- Contains secondary routes: Inteligência, Operações, Upload
-- Close on backdrop tap or X button
-
-### Cards & Containers
-
-**Cosmic Dashboard Card (Primary Pattern):**
-
-The standard pattern for dashboard analytics cards. Uses soft gradients in light mode with cosmic colors in dark mode, plus a semantic accent border.
-
-**Pattern A - Accent-Tinted Dark Mode** (most common):
-```jsx
-// Light: accent-tinted gradient | Dark: accent-tinted cosmic
-<div className="
-  bg-gradient-to-br from-{accent}-50/40 via-white to-white
-  dark:from-{accent}-900/10 dark:via-space-nebula dark:to-space-nebula
-  rounded-2xl
-  border border-slate-200/80 dark:border-stellar-cyan/10
-  border-l-4 border-l-{accent}-500 dark:border-l-{accent}-400
-  p-4 sm:p-5
-">
-```
-
-**Pattern B - Neutral Dark Mode** (for status-based or neutral cards):
-```jsx
-// Light: accent-tinted gradient | Dark: neutral space-dust
-<div className="
-  bg-gradient-to-br from-slate-50/60 via-white to-white
-  dark:from-space-dust/40 dark:via-space-nebula dark:to-space-nebula
-  rounded-2xl
-  border border-slate-200/80 dark:border-stellar-cyan/10
-  border-l-4 border-l-{accent}-500 dark:border-l-{accent}-400
-  p-4 sm:p-5
-">
-```
-
-| Pattern | Accent Color | Use Case | Components |
-|---------|--------------|----------|------------|
-| A | `cyan` | Operations/Cycles | OperatingCyclesChart (Dashboard.jsx) |
-| A | `blue` | Analytics/Data | VisitHeatmap, RetentionCard |
-| A | `purple` | Acquisition | AcquisitionCard |
-| A | `amber` | Warnings | FrequencyDegradationAlert |
-| A | `red` | Risk/Critical | ChurnHistogram |
-| B | `red` | Tables/Lists | AtRiskCustomersTable |
-| B | `blue` | Charts with blur | RFMScatterPlot |
-| B | dynamic | Status-based | FirstVisitConversionCard |
-
-**When to use each pattern:**
-- **Pattern A**: Cards with a strong semantic color identity (operations=cyan, warnings=amber)
-- **Pattern B**: Cards where the accent color changes dynamically, or neutral data displays
-
-**Standard Card (Legacy):**
-```css
-bg-white dark:bg-slate-800
-rounded-xl
-shadow-sm
-border border-slate-200 dark:border-slate-700
-p-6
-```
-
-**Glassmorphism Card (Navigation/Overlays):**
-```css
-bg-white/80 dark:bg-slate-800/80
-backdrop-blur-md
-border border-slate-200/50 dark:border-slate-700/50
-rounded-xl
-shadow-sm
-```
-
-**KPI Card (Gradient Hero):**
-```css
-bg-gradient-to-br from-{color}-500 to-{color}-600
-text-white
-rounded-xl
-shadow-lg
-p-6
-```
-
-### Component Container Architecture
-
-Components follow one of two patterns for container styling:
-
-**1. Self-Contained Components** - Own their card styling
-- Include gradient background, borders, padding
-- Can be placed directly in page layouts
-- Examples: `AcquisitionCard`, `VisitHeatmap`, `RetentionCard`, `ChurnHistogram`, `RFMScatterPlot`
-
-**2. Wrapper-Dependent Components** - Rendered inside parent containers
-- Do NOT include card styling (no bg, border, padding)
-- Parent view provides the container
-- Internal elements use cosmic styling (tooltips, buttons, dividers)
-- Example: `OperatingCyclesChart` (wrapped by Dashboard.jsx)
-
-```jsx
-// Wrapper-Dependent Pattern
-// In Dashboard.jsx (parent provides container)
-<div className="bg-gradient-to-br from-cyan-50/40 ... p-4">
-  <OperatingCyclesChart salesData={data} />
-</div>
-
-// In OperatingCyclesChart.jsx (no container styling)
-<div className="transition-all duration-300 flex flex-col">
-  {/* Internal elements use cosmic styling */}
-</div>
-```
-
-### Internal Element Styling (Cosmic)
-
-For elements inside dashboard components:
-
-**Tooltips:**
-```css
-bg-white dark:bg-space-dust
-border border-slate-200 dark:border-stellar-cyan/10
-rounded-lg p-3 shadow-lg
-```
-
-**Filter/Control Buttons:**
-```css
-bg-slate-100 dark:bg-space-dust/80
-rounded-lg
-```
-
-**Dividers/Borders:**
-```css
-border-slate-200 dark:border-stellar-cyan/10
-```
-
-### Section Headers
-
-Use the `SectionHeader` component for consistent section headers within views:
-
-```jsx
-import SectionHeader from '../components/ui/SectionHeader';
-import { Gauge } from 'lucide-react';
-
-<SectionHeader
-  title="Equipamentos"
-  subtitle="Análise de máquinas e equipamentos"
-  icon={Gauge}
-  color="amber"
-  id="equipment-heading"
-/>
-```
-
-**Available Colors:** `amber`, `emerald`, `blue`, `lavpop`, `purple`, `red`, `slate`, `teal`, `cyan`, `indigo`
-
-**Props:**
-| Prop | Type | Description |
-|------|------|-------------|
-| `title` | string | Section title (required) |
-| `subtitle` | string | Optional description text |
-| `icon` | LucideIcon | Lucide icon component (required) |
-| `color` | string | Color theme key (default: amber) |
-| `id` | string | ID for h2 element (for aria-labelledby) |
-
-**Usage Pattern:**
-```jsx
-<section id="section-id" aria-labelledby="section-heading">
-  <SectionHeader
-    title="Section Title"
-    subtitle="Description"
-    icon={IconComponent}
-    color="amber"
-    id="section-heading"
-  />
-  {/* Section content */}
-</section>
-```
-
-### Buttons
-
-**Primary Button:**
-```css
-bg-gradient-to-r from-lavpop-blue to-blue-600
-hover:from-blue-600 hover:to-blue-700
-text-white font-bold
-rounded-xl
-px-6 py-3.5
-shadow-lg hover:shadow-blue-500/25
-active:scale-[0.98]
-transition-all duration-200
-```
-
-**Secondary Button:**
-```css
-bg-slate-100 dark:bg-slate-800
-hover:bg-slate-200 dark:hover:bg-slate-700
-text-slate-700 dark:text-slate-300
-rounded-xl
-px-4 py-2
-transition-all duration-200
-```
-
-**Icon Button:**
-```css
-p-2.5 rounded-xl
-text-slate-500 dark:text-slate-400
-hover:bg-slate-100 dark:hover:bg-slate-800
-hover:text-lavpop-blue
-transition-all
-active:scale-95
-```
-
----
-
-## 📱 Mobile-First Principles
-
-### 1. **Progressive Enhancement**
-- Start with mobile layout
-- Add desktop features with `sm:`, `lg:`, `xl:` breakpoints
-- Hide non-essential elements on mobile
-
-### 2. **Touch Targets**
-- **Minimum size: 44x44px** for all interactive elements (Apple HIG)
-- Use `min-h-[44px] min-w-[44px]` or `touch-target` CSS class
-- Adequate spacing between clickable items (minimum 8px gap)
-- For Material Design compliance: 48x48dp (`touch-target-lg` class)
-
-### 3. **Content Priority**
-- Show essential data first (temperature, not icon)
-- Use hamburger menu for secondary controls
-- Collapse complex layouts into vertical stacks
-
-### 4. **Performance**
-- Use `backdrop-blur-md` sparingly
-- Lazy load off-screen content
-- Optimize images and icons
-
----
-
-## 🎭 Animation & Transitions
-
-### Standard Transitions
-
-```css
-transition-all duration-200  /* Standard hover/state changes */
-transition-colors duration-300  /* Theme switching */
-```
-
-### Framer Motion Patterns
-
-**Page Transitions:**
-```jsx
-initial={{ opacity: 0, y: 10 }}
-animate={{ opacity: 1, y: 0 }}
-exit={{ opacity: 0, y: -10 }}
-transition={{ duration: 0.3 }}
-```
-
-**Tab Indicator:**
-```jsx
-<motion.div
-  layoutId="activeTab"
-  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-/>
-```
-
-**Scale Feedback:**
-```css
-active:scale-95      /* Buttons */
-active:scale-[0.98]  /* Large buttons */
-hover:scale-105      /* Cards (optional) */
-```
-
----
-
-## 🔤 Text Styles
-
-### Headings
-
-```jsx
-// Page Title
-<h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-
-// Section Title
-<h2 className="text-xl font-semibold text-slate-800 dark:text-white">
-
-// Card Title (Standard)
-<h3 className="text-base font-bold text-slate-800 dark:text-white">
-
-// Card Title (Muted) - for secondary cards
-<h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-```
-
-> ⚠️ **Dark Mode Contrast:** Always use `dark:text-white` for primary headings.
-> Avoid `dark:text-slate-300` or lighter which has poor contrast against dark backgrounds.
-
-### Body Text
-
-```jsx
-// Primary
-<p className="text-sm text-slate-700 dark:text-slate-300">
-
-// Secondary
-<p className="text-xs text-slate-600 dark:text-slate-400">
-
-// Muted
-<p className="text-xs text-slate-500 dark:text-slate-500">
-```
-
-### Labels & Captions
-
-```jsx
-// Label
-<span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-
-// Caption (minimum size - never use text-[10px])
-<span className="text-xs font-medium text-slate-600 dark:text-slate-400">
-```
-
-> ⚠️ Never use `text-[10px]` for captions. Use `text-xs` (12px) as the minimum.
-
----
-
-## 📊 Data Visualization
-
-### Chart Colors
-
-```javascript
-// Primary data series
-colors: ['#1a5a8e', '#10b981', '#f59e0b', '#ef4444']
-
-// Gradient bars
-from-lavpop-blue to-blue-600
-from-lavpop-green to-emerald-600
-```
-
-### Chart Styling
-
-```css
-/* Container */
-bg-white dark:bg-slate-800
-rounded-xl
-border border-slate-200 dark:border-slate-700
-p-6
-
-/* Responsive height */
-h-64 sm:h-80 lg:h-96
-```
-
-### Chart Best Practices
-
-**1. Color Selection**
-- Use semantic colors: Green for positive, Red for negative, Blue for neutral
-- Maintain consistent color mapping across all charts
-- Ensure sufficient contrast in dark mode
-
-**2. Data Presentation**
-- Limit to 4-5 data series per chart for readability
-- Use gradients for visual appeal but maintain clarity
-- Include legends for multi-series charts
-
-**3. Responsive Design**
-- Reduce chart height on mobile: `h-48 sm:h-64 lg:h-80`
-- Simplify labels on small screens
-- Consider horizontal scrolling for dense data
-
-**4. Accessibility**
-- Don't rely solely on color to convey information
-- Include text labels and values
-- Provide alternative data views (tables)
-
-### Chart Tooltip Styling
-
-All chart tooltips (Recharts & Nivo) should follow this pattern:
-
-```jsx
-/* Use the ChartTooltip component from src/components/ui/ChartTooltip.jsx */
-import ChartTooltip from './ui/ChartTooltip';
-
-/* Container Classes */
-bg-white dark:bg-slate-800
-border border-slate-200 dark:border-slate-700
-rounded-lg
-p-3
-shadow-lg
-min-w-[140px]
-
-/* Title */
-text-sm font-semibold text-slate-900 dark:text-white
-
-/* Data Items */
-text-xs
-label: text-slate-600 dark:text-slate-400 font-medium
-value: font-bold text-slate-900 dark:text-white
-
-/* Color Indicator */
-w-2 h-2 rounded-sm (square for bars)
-w-2 h-2 rounded-full (circle for lines)
-```
-
-### Chart Color Utility
-
-Use the centralized chart colors from `src/utils/chartColors.js`:
-
-```javascript
-import { getChartColors, chartGradients, getSeriesColors } from '../utils/chartColors';
-
-// In component
-const { isDark } = useTheme();
-const colors = useMemo(() => getChartColors(isDark), [isDark]);
-```
-
-### Semantic Color Mapping (colorMapping.js)
-
-For programmatic color access with built-in dark mode support, use the centralized color mapping utility:
-
-```javascript
-import { getSemanticColor, getValueColor, semanticColors } from '../utils/colorMapping';
-
-// Get color object by semantic type
-const colors = getSemanticColor('revenue');
-// Returns: { bg, bgGradient, border, text, textMuted, textSubtle, icon, iconBg, gradient, ring, solidGradient }
-
-// Get color based on value (positive/negative)
-const trendColor = getValueColor(percentChange);
-// Returns positive (emerald) or negative (red) colors
-
-// Get confidence level colors
-import { getConfidenceColor } from '../utils/colorMapping';
-const confidenceColors = getConfidenceColor(85); // Returns high/medium/low colors
-```
-
-**Available Color Categories:**
-
-| Category | Keys | Usage |
-|----------|------|-------|
-| Business | `revenue`, `cost`, `profit` | Financial metrics |
-| Trends | `positive`, `negative`, `neutral`, `warning` | Trend indicators |
-| Weather | `sunny`, `cloudy`, `rainy`, `muggy`, `hot`, `cold`, `mild`, `humid` | Weather conditions |
-| Comfort | `abafado`, `quente`, `ameno`, `frio`, `umido`, `chuvoso` | Thermal comfort (PT) |
-| Confidence | `high`, `medium`, `low` | Certainty levels |
-| Campaign | `excellent`, `good`, `fair`, `poor` | Performance status |
-| Brand | `blue`, `lavpop`, `indigo`, `purple`, `whatsapp`, `whatsappTeal` | Brand colors |
-
-**Usage in Components:**
-```jsx
-const colors = getSemanticColor('revenue');
-
-<div className={`${colors.bg} ${colors.border} border rounded-xl p-4`}>
-  <span className={colors.icon}><TrendingUp /></span>
-  <p className={colors.text}>Revenue increased</p>
-</div>
-```
-
----
-
-## 🎨 Card Color Palette
-
-### KPI Cards (Gradient Backgrounds)
-
-**Revenue/Financial (Teal/Emerald):**
-```css
-bg-gradient-to-br from-teal-500 to-emerald-600
-hover:from-teal-600 hover:to-emerald-700
-```
-**Usage:** Revenue, sales, financial metrics
-
-**Customer/Growth (Blue/Indigo):**
-```css
-bg-gradient-to-br from-blue-500 to-indigo-600
-hover:from-blue-600 hover:to-indigo-700
-```
-**Usage:** Customer count, growth metrics, engagement
-
-**Operations (Purple/Violet):**
-```css
-bg-gradient-to-br from-purple-500 to-violet-600
-hover:from-purple-600 hover:to-violet-700
-```
-**Usage:** Operational metrics, efficiency, cycles
-
-**Performance (Orange/Amber):**
-```css
-bg-gradient-to-br from-orange-500 to-amber-600
-hover:from-orange-600 hover:to-amber-700
-```
-**Usage:** Performance indicators, utilization, capacity
-
-**Alert/Warning (Red/Rose):**
-```css
-bg-gradient-to-br from-red-500 to-rose-600
-hover:from-red-600 hover:to-rose-700
-```
-**Usage:** At-risk customers, warnings, critical metrics
-
-**Success/Positive (Green/Emerald):**
-```css
-bg-gradient-to-br from-green-500 to-emerald-600
-hover:from-green-600 hover:to-emerald-700
-```
-**Usage:** Achievements, positive trends, goals met
-
----
-
-## 🎴 KPI Card System
-
-### KPI Card Props Standard
-
-Both Hero and Secondary KPI cards use consistent prop naming:
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `title` | string | Card title |
-| `value` | number | Raw numeric value |
-| `displayValue` | string | Formatted display string |
-| `subtitle` | string | Secondary text |
-| `trend` | TrendData | Trend badge configuration |
-| `icon` | LucideIcon | Icon component |
-| `color` | string | Color key from palette |
-| `onClick` | function | Click handler |
-| `className` | string | Additional classes |
-
-### KPI Card Selection Guide
-
-Use this decision tree to choose the right card component:
-
-```
-Which KPI card should I use?
-│
-├─ Need sparkline mini-chart?
-│   ├─ Yes, primary metric → HeroKPICard
-│   └─ Yes, secondary metric → SecondaryKPICard
-│
-├─ Need vibrant gradient background with white text?
-│   └─ Yes → KPICard variant="gradient"
-│
-├─ Compact dashboard view?
-│   ├─ Primary metrics → HeroKPICard compact={true}
-│   └─ Secondary metrics → SecondaryKPICard compact={true}
-│
-└─ Basic metric display?
-    └─ KPICard (default variant)
-```
-
-**Component Files:**
-- `src/components/ui/KPICard.jsx` - Unified card (default, hero, compact, gradient variants)
-- `src/components/ui/HeroKPICard.jsx` - Premium gradient with sparklines
-- `src/components/ui/SecondaryKPICard.jsx` - Compact gradient with sparklines
-
-### Secondary KPI Card Color Mapping
-
-| Color Key | Gradient | Use Case |
-|-----------|----------|----------|
-| `cyan` | cyan-500 → blue-600 | Water/Wash metrics |
-| `orange` | orange-500 → red-600 | Heat/Dry metrics |
-| `purple` | purple-500 → violet-600 | New customers |
-| `blue` | blue-500 → indigo-600 | Active customers, general blue |
-| `amber` | amber-500 → yellow-600 | Warnings, attention needed |
-| `red` | red-500 → rose-600 | At-risk, alerts |
-| `green` | green-500 → emerald-600 | Health, positive metrics |
-| `slate` | slate-500 → gray-600 | Neutral/disabled |
-
-### Hero KPI Card Color Mapping (Icon Background)
-
-| Color Key | Background | Use Case |
-|-----------|------------|----------|
-| `blue` | blue-100 / blue-900 | Cycles, operations |
-| `green` | emerald-100 / emerald-900 | Revenue, financial |
-| `purple` | purple-100 / purple-900 | Utilization, percentage |
-| `amber` | amber-100 / amber-900 | Performance, warnings |
-| `red` | red-100 / red-900 | Alerts, critical |
-| `slate` | slate-100 / slate-700 | Neutral |
-
----
-
-### Information Cards (Neutral Backgrounds)
-
-**Standard Card:**
-```css
-bg-white dark:bg-slate-800
-border border-slate-200 dark:border-slate-700
-```
-
-**Highlighted Card:**
-```css
-bg-slate-50 dark:bg-slate-800/50
-border border-slate-200 dark:border-slate-700
-```
-
-**Interactive Card:**
-```css
-bg-white dark:bg-slate-800
-hover:bg-slate-50 dark:hover:bg-slate-700
-border border-slate-200 dark:border-slate-700
-hover:border-lavpop-blue dark:hover:border-blue-500
-cursor-pointer
-transition-all duration-200
-```
-
-### Status Indicators
-
-**Success:**
-```css
-bg-emerald-50 dark:bg-emerald-900/20
-text-emerald-700 dark:text-emerald-400
-border-emerald-200 dark:border-emerald-800
-```
-
-**Warning:**
-```css
-bg-amber-50 dark:bg-amber-900/20
-text-amber-700 dark:text-amber-400
-border-amber-200 dark:border-amber-800
-```
-
-**Error:**
-```css
-bg-red-50 dark:bg-red-900/20
-text-red-700 dark:text-red-400
-border-red-200 dark:border-red-800
-```
-
-**Info:**
-```css
-bg-blue-50 dark:bg-blue-900/20
-text-blue-700 dark:text-blue-400
-border-blue-200 dark:border-blue-800
-```
-
----
-
-## 🪟 Modals & Overlays
-
-### Modal UX Requirements
-
-All modals MUST implement these behaviors:
-
-| Requirement | Implementation | Priority |
-|-------------|----------------|----------|
-| Escape key close | `useEffect` with `keydown` listener | Required |
-| Click-outside close | Backdrop `onClick` handler | Required |
-| Portal rendering | `createPortal(modal, document.body)` | Required for child modals |
-| Body scroll lock | `document.body.style.overflow = 'hidden'` | Required |
-| Focus trap | Focus stays within modal | Recommended |
-| ARIA attributes | `role="dialog"`, `aria-modal="true"` | Recommended |
-
-### Modal Container
-
-```jsx
-import { createPortal } from 'react-dom';
-
-const Modal = ({ isOpen, onClose, children }) => {
-  // Escape key handler
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen, onClose]);
-
-  // Click-outside handler
-  const handleBackdropClick = useCallback((e) => {
-    if (e.target === e.currentTarget) onClose();
-  }, [onClose]);
-
-  if (!isOpen) return null;
-
-  const modalContent = (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-    >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-
-      {/* Modal */}
-      <div
-        className="
-          relative z-10
-          bg-white dark:bg-slate-800
-          rounded-2xl shadow-2xl
-          border border-slate-200 dark:border-slate-700
-          max-w-2xl w-full max-h-[90vh]
-          overflow-hidden
-        "
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>
-  );
-
-  // Use portal for child modals (z-[60])
-  return createPortal(modalContent, document.body);
-};
-```
-
-### Modal Sizes
-
-```css
-/* Small - Confirmations, alerts */
-max-w-md
-
-/* Medium - Forms, details */
-max-w-2xl
-
-/* Large - Complex data, tables */
-max-w-4xl
-
-/* Full - Image viewers, detailed reports */
-max-w-6xl
-```
-
-### Modal Header
-
-```jsx
-<div className="
-  flex items-center justify-between
-  px-6 py-4
-  border-b border-slate-200 dark:border-slate-700
-  bg-gradient-to-r from-lavpop-blue to-blue-600
-">
-  <h2 className="text-xl font-bold text-white">
-    Modal Title
-  </h2>
-  <button className="
-    p-2 rounded-lg
-    text-white/80 hover:text-white
-    hover:bg-white/10
-    transition-colors
-  ">
-    <X className="w-5 h-5" />
-  </button>
-</div>
-```
-
-### Modal Body
-
-```jsx
-<div className="
-  px-6 py-4
-  overflow-y-auto
-  max-h-[calc(90vh-8rem)]
-">
-  {/* Scrollable content */}
-</div>
-```
-
-### Modal Footer
-
-```jsx
-<div className="
-  flex items-center justify-end gap-3
-  px-6 py-4
-  border-t border-slate-200 dark:border-slate-700
-  bg-slate-50 dark:bg-slate-900/50
-">
-  <button className="secondary-button">Cancel</button>
-  <button className="primary-button">Confirm</button>
-</div>
-```
-
-### Modal Animation (Framer Motion)
-
-```jsx
-<AnimatePresence>
-  {isOpen && (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
-    >
-      {/* Modal content */}
-    </motion.div>
-  )}
-</AnimatePresence>
-```
-
----
-
-## 💬 Tooltips
-
-### Tooltip Component Structure
-
-```jsx
-<div className="relative group">
-  {/* Trigger element */}
-  <button>Hover me</button>
-  
-  {/* Tooltip */}
-  <div className="
-    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
-    px-3 py-2
-    bg-slate-900 dark:bg-slate-700
-    text-white text-xs font-medium
-    rounded-lg
-    shadow-lg
-    opacity-0 group-hover:opacity-100
-    pointer-events-none
-    transition-opacity duration-200
-    whitespace-nowrap
-    z-50
-  ">
-    Tooltip text
-    {/* Arrow */}
-    <div className="
-      absolute top-full left-1/2 -translate-x-1/2
-      w-0 h-0
-      border-l-4 border-l-transparent
-      border-r-4 border-r-transparent
-      border-t-4 border-t-slate-900 dark:border-t-slate-700
-    " />
-  </div>
-</div>
-```
-
-### Tooltip Positions
-
-**Top (default):**
-```css
-bottom-full left-1/2 -translate-x-1/2 mb-2
-```
-
-**Bottom:**
-```css
-top-full left-1/2 -translate-x-1/2 mt-2
-```
-
-**Left:**
-```css
-right-full top-1/2 -translate-y-1/2 mr-2
-```
-
-**Right:**
-```css
-left-full top-1/2 -translate-y-1/2 ml-2
-```
-
-### Tooltip Variants
-
-**Standard (Dark):**
-```css
-bg-slate-900 dark:bg-slate-700
-text-white
-```
-
-**Light:**
-```css
-bg-white dark:bg-slate-800
-text-slate-900 dark:text-white
-border border-slate-200 dark:border-slate-700
-shadow-xl
-```
-
-**Info:**
-```css
-bg-blue-600 dark:bg-blue-700
-text-white
-```
-
-**Warning:**
-```css
-bg-amber-600 dark:bg-amber-700
-text-white
-```
-
-**Error:**
-```css
-bg-red-600 dark:bg-red-700
-text-white
-```
-
-### Tooltip Best Practices
-
-1. **Keep it concise** - Max 1-2 lines
-2. **Use for clarification** - Not for essential information
-3. **Delay appearance** - 300-500ms hover delay
-4. **Portal rendering** - Use React Portal for z-index issues
-5. **Mobile alternative** - Use the touch tooltip pattern below
-
----
-
-## 📱 Mobile Touch Tooltips (Charts)
-
-Use **tap-to-preview, tap-again-to-action** pattern for chart interactions.
-
-| Action | Desktop | Mobile |
-|--------|---------|--------|
-| Show tooltip | Hover | First tap |
-| Perform action | Click | Second tap |
-| Dismiss | Mouse leave | Tap elsewhere / 5s auto |
-
-**Implementation:** Use `useTouchTooltip` hook from `src/hooks/useTouchTooltip.js`
-
-**Components:** `RFMScatterPlot`, `ChurnHistogram`, `NewClientsChart`
-
----
-
-## 📋 Tables & Data Grids
-
-```css
-/* Container */
-overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700
-
-/* Header */
-bg-slate-50 dark:bg-slate-800/50 text-xs font-semibold uppercase
-
-/* Rows */
-border-b hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors
-
-/* Cells */
-px-4 py-3 text-sm
-```
-
----
-
-## 🎯 Layout Patterns
-
-**Standard spacing:** `space-y-6` (sections), `gap-6` (grids), `p-6` (cards)
-
-**Loading:** Center a spinner with `flex items-center justify-center h-64`
-
-**Empty state:** Center icon + heading + description with `flex flex-col items-center`
-
----
-
-## ✅ Accessibility
-
-### Color Contrast
-- Text on background: Minimum 4.5:1 ratio
-- Large text (18px+): Minimum 3:1 ratio
-- Interactive elements: Clear focus states
-
-### Focus States
-
-```css
-focus:outline-none
-focus:ring-2
-focus:ring-lavpop-blue
-focus:ring-offset-2
-```
-
-### ARIA Labels
-
-```jsx
-<button aria-label="Menu">
-<nav aria-label="Main navigation">
-<div role="status" aria-live="polite">
-```
-
----
-
-## 🎯 Best Practices
-
-### 1. **Consistency**
-- Use design tokens from `tailwind.config.js`
-- Follow established component patterns
-- Maintain spacing rhythm
-
-### 2. **Performance**
-- Minimize re-renders with `useMemo`, `useCallback`
-- Use CSS transforms for animations
-- Lazy load heavy components
-
-### 3. **Maintainability**
-- Extract repeated patterns into components
-- Document complex logic
-- Use semantic HTML
-
-### 4. **Responsiveness**
-- Test on multiple screen sizes
-- Use relative units (`rem`, `%`, `vh/vw`)
-- Provide fallbacks for older browsers
-
----
-
-## 📱 Mobile View Best Practices
-
-### Viewport & Scaling
-
-```html
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-```
-
-**Guidelines:**
-- `viewport-fit=cover` enables safe area CSS variables
-- Allow zoom for accessibility (don't use `user-scalable=no`)
-- Set initial scale to 1.0
-
-### Safe Area Support (Notched Devices)
-
-For iPhone X+, Android devices with notches/cutouts, use safe area insets:
-
-```css
-/* Safe Area CSS Utilities (src/index.css) */
-.safe-area-top {
-  padding-top: env(safe-area-inset-top, 0px);
-}
-
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-.bottom-nav-safe {
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
-}
-
-/* Touch Target Utilities */
-.touch-target {
-  min-height: 44px;
-  min-width: 44px;
-}
-
-.touch-target-lg {
-  min-height: 48px;
-  min-width: 48px;
-}
-```
-
-**Usage:**
-```jsx
-// Top bar with notch support
-<header className="safe-area-top">
-
-// Bottom nav with home indicator support
-<nav className="bottom-nav-safe">
-
-// Button with proper touch target
-<button className="touch-target">
-```
-
-### Offline Indicator (`OfflineIndicator.jsx`)
-
-Shows banner when user loses connection:
-
-```jsx
-// Automatically detects online/offline status
-<OfflineIndicator lastSyncTime={timestamp} />
-
-// Features:
-// - Animated slide-in banner (amber for offline, green for reconnecting)
-// - Shows "última sincronização: há X min" when offline
-// - Auto-hides when connection restored
-// - Uses safe-area-top for notched devices
-```
-
-### Preventing Horizontal Scroll
-
-**1. Container Constraints:**
-```css
-/* Always constrain width */
-max-w-full
-overflow-x-hidden
-
-/* For the body/root */
-<body className="overflow-x-hidden">
-```
-
-**2. Responsive Images:**
-```css
-/* Images */
-max-w-full h-auto
-
-/* Background images */
-bg-cover bg-center
-```
-
-**3. Tables & Wide Content:**
-```jsx
-<div className="overflow-x-auto -mx-4 px-4">
-  <table className="min-w-full">
-    {/* Table content */}
-  </table>
-</div>
-```
-
-**4. Fixed Width Elements:**
-```css
-/* Avoid fixed widths, use max-width instead */
-❌ w-[500px]
-✅ max-w-[500px] w-full
-```
-
-### Touch Targets
-
-**Minimum Sizes:**
-```css
-/* Buttons, links, interactive elements */
-min-h-[44px] min-w-[44px]  /* iOS guideline */
-min-h-[48px] min-w-[48px]  /* Android guideline */
-
-/* Standard touch target */
-h-11 px-4  /* 44px height */
-```
-
-**Spacing Between Targets:**
-```css
-/* Minimum 8px gap between interactive elements */
-gap-2  /* 8px */
-gap-3  /* 12px - preferred */
-```
-
-### Mobile Navigation Patterns
-
-**1. Bottom Navigation (Primary - `BottomNavBar.jsx`):**
-```jsx
-<nav className="
-  lg:hidden fixed bottom-0 inset-x-0 z-40
-  bg-white/95 dark:bg-slate-900/95
-  backdrop-blur-lg
-  border-t border-slate-200/80 dark:border-slate-800/80
-  bottom-nav-safe
-">
-  <div className="flex items-center justify-around h-16 px-1">
-    {/* 5 nav items: Dashboard, Diretório, Clientes, Campanhas, Mais */}
-  </div>
-</nav>
-```
-
-**2. Secondary Navigation (Drawer via "Mais" tab):**
-- Accessible via "Mais" tab in bottom nav
-- Contains: Inteligência, Operações, Upload
-- Full-screen overlay with backdrop
-
-### Mobile Gesture Hooks
-
-**1. Swipe Navigation (`useSwipeNavigation.js`):**
-```jsx
-import { useSwipeNavigation } from '../hooks/useSwipeNavigation';
-
-const { handlers, isSwipeable } = useSwipeNavigation();
-
-// Wrap content with swipe handlers
-<motion.div {...handlers}>
-  {/* View content - swipe left/right to navigate */}
-</motion.div>
-
-// Configuration:
-// - Swipe threshold: 50px
-// - Velocity threshold: 500px/s
-// - Only active on mobile (< lg breakpoint)
-// - Navigates between: dashboard, diretorio, customers, campaigns
-```
-
-**2. Pull-to-Refresh (`usePullToRefresh.js`):**
-```jsx
-import { usePullToRefresh } from '../hooks/usePullToRefresh';
-
-const { pullDistance, isPulling, isRefreshing, progress, handlers } = usePullToRefresh(onRefresh);
-
-// Wrap scrollable content
-<div {...handlers}>
-  {/* Pull indicator */}
-  {showIndicator && (
-    <div style={{ height: pullDistance }}>
-      <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
-    </div>
-  )}
-  {/* Content */}
-</div>
-
-// Configuration:
-// - Pull threshold: 80px
-// - Resistance factor: 2.5
-// - Only triggers when at top of scroll
-```
-
-### Mobile Typography
-
-```css
-/* Reduce font sizes on mobile */
-text-2xl sm:text-3xl lg:text-4xl  /* Headings */
-text-sm sm:text-base              /* Body */
-text-xs sm:text-sm                /* Small text */
-```
-
-### Mobile Spacing
-
-```css
-/* Reduce padding on mobile */
-p-4 sm:p-6 lg:p-8
-gap-4 sm:gap-6 lg:gap-8
-
-/* Reduce margins */
-space-y-4 sm:space-y-6
-```
-
-### Mobile Forms
-
-**Input Styling:**
-```css
-/* Larger inputs for touch */
-h-12 px-4
-text-base  /* Prevents zoom on iOS */
-rounded-xl
-```
-
-**Input Types:**
-```jsx
-{/* Use appropriate input types for mobile keyboards */}
-<input type="email" inputMode="email" />
-<input type="tel" inputMode="tel" />
-<input type="number" inputMode="numeric" />
-```
-
-### Mobile Performance
-
-**1. Reduce Animations:**
-```jsx
-// Disable complex animations on mobile
-const shouldAnimate = useMediaQuery('(min-width: 1024px)');
-
-<motion.div
-  animate={shouldAnimate ? { ... } : undefined}
->
-```
-
-**2. Lazy Loading:**
-```jsx
-// Load heavy components only when needed
-const HeavyComponent = lazy(() => import('./HeavyComponent'));
-
-<Suspense fallback={<Loader />}>
-  <HeavyComponent />
-</Suspense>
-```
-
-**3. Image Optimization:**
-```jsx
-<img
-  src="image.jpg"
-  srcSet="image-small.jpg 640w, image-medium.jpg 1024w, image-large.jpg 1920w"
-  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-  loading="lazy"
-  alt="Description"
-/>
-```
-
----
-
-## 🎠 Card Carousels (Embla)
-
-### Basic Carousel Setup
-
-```jsx
-import useEmblaCarousel from 'embla-carousel-react';
-
-const MyCarousel = ({ items }) => {
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    align: 'start',
-    containScroll: 'trimSnaps',
-    dragFree: false,
-    loop: false,
-  });
-
-  return (
-    <div className="overflow-hidden" ref={emblaRef}>
-      <div className="flex gap-4">
-        {items.map((item, index) => (
-          <div
-            key={index}
-            className="flex-[0_0_100%] sm:flex-[0_0_50%] lg:flex-[0_0_33.333%] min-w-0"
-          >
-            {/* Card content */}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-```
-
-### Carousel Configuration
-
-**Options:**
-```javascript
-{
-  align: 'start',        // 'start', 'center', 'end'
-  containScroll: 'trimSnaps',  // Prevents blank space
-  dragFree: false,       // Snap to slides
-  loop: false,           // Infinite loop
-  skipSnaps: false,      // Skip empty snaps
-  slidesToScroll: 1,     // Number of slides per scroll
-}
-```
-
-### Responsive Slide Widths
-
-```css
-/* Mobile: 1 card */
-flex-[0_0_100%]
-
-/* Tablet: 2 cards */
-sm:flex-[0_0_50%]
-
-/* Desktop: 3 cards */
-lg:flex-[0_0_33.333%]
-
-/* Large desktop: 4 cards */
-xl:flex-[0_0_25%]
-```
-
-### Carousel Navigation
-
-```jsx
-const [emblaRef, emblaApi] = useEmblaCarousel();
-const [canScrollPrev, setCanScrollPrev] = useState(false);
-const [canScrollNext, setCanScrollNext] = useState(false);
-
-useEffect(() => {
-  if (!emblaApi) return;
-
-  const onSelect = () => {
-    setCanScrollPrev(emblaApi.canScrollPrev());
-    setCanScrollNext(emblaApi.canScrollNext());
-  };
-
-  emblaApi.on('select', onSelect);
-  onSelect();
-
-  return () => emblaApi.off('select', onSelect);
-}, [emblaApi]);
-
-// Navigation buttons
-<button
-  onClick={() => emblaApi?.scrollPrev()}
-  disabled={!canScrollPrev}
-  className="carousel-button"
->
-  <ChevronLeft />
-</button>
-```
-
-### Carousel Dots
-
-```jsx
-const [selectedIndex, setSelectedIndex] = useState(0);
-const [scrollSnaps, setScrollSnaps] = useState([]);
-
-useEffect(() => {
-  if (!emblaApi) return;
-
-  setScrollSnaps(emblaApi.scrollSnapList());
-  
-  const onSelect = () => {
-    setSelectedIndex(emblaApi.selectedScrollSnap());
-  };
-
-  emblaApi.on('select', onSelect);
-  onSelect();
-
-  return () => emblaApi.off('select', onSelect);
-}, [emblaApi]);
-
-// Dots
-<div className="flex justify-center gap-2 mt-4">
-  {scrollSnaps.map((_, index) => (
-    <button
-      key={index}
-      onClick={() => emblaApi?.scrollTo(index)}
-      className={`
-        w-2 h-2 rounded-full transition-all
-        ${index === selectedIndex
-          ? 'bg-lavpop-blue w-6'
-          : 'bg-slate-300 dark:bg-slate-600'}
-      `}
-    />
-  ))}
-</div>
-```
-
-### Carousel Best Practices
-
-1. **Always set min-w-0** - Prevents flex items from overflowing
-2. **Use gap instead of margin** - Better spacing control
-3. **Disable on desktop when not needed** - Show grid instead
-4. **Add touch feedback** - Visual indication of draggability
-5. **Preload adjacent slides** - Better performance
-
-### When to Use Carousels
-
-**✅ Good Use Cases:**
-- KPI cards on mobile (limited screen space)
-- Image galleries
-- Product showcases
-- Testimonials
-
-**❌ Avoid Carousels For:**
-- Critical information (users might miss it)
-- Long lists (use pagination or infinite scroll)
-- Desktop layouts with plenty of space
-
----
-
-## 🔍 Search & Filtering
-
-### Search Input
-
-```jsx
-<div className="relative">
-  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-  <input
-    type="search"
-    placeholder="Search..."
-    className="
-      w-full h-11 pl-10 pr-4
-      bg-slate-50 dark:bg-slate-800
-      border border-slate-200 dark:border-slate-700
-      rounded-xl
-      text-sm
-      placeholder:text-slate-400
-      focus:outline-none focus:ring-2 focus:ring-lavpop-blue
-      transition-all
-    "
-  />
-</div>
-```
-
-### Filter Chips
-
-```jsx
-<div className="flex flex-wrap gap-2">
-  {filters.map(filter => (
-    <button
-      key={filter.id}
-      className={`
-        px-3 py-1.5 rounded-full text-xs font-medium
-        transition-all
-        ${filter.active
-          ? 'bg-lavpop-blue text-white'
-          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}
-      `}
-    >
-      {filter.label}
-      {filter.active && (
-        <X className="inline-block w-3 h-3 ml-1" />
-      )}
-    </button>
-  ))}
-</div>
-```
-
----
-
-## 📊 Data States
-
-### Loading Skeleton
-
-```jsx
-<div className="animate-pulse space-y-4">
-  <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/4" />
-  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
-</div>
-```
-
-### Error State
-
-```jsx
-<div className="flex flex-col items-center justify-center h-64 text-center">
-  <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
-    <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
-  </div>
-  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-    Error loading data
-  </h3>
-  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 max-w-sm">
-    {errorMessage}
-  </p>
-  <button onClick={retry} className="primary-button">
-    Try Again
-  </button>
-</div>
-```
-
----
-
-## 🎨 Micro-interactions
-
-### Button Press Feedback
-
-```css
-active:scale-95
-transition-transform duration-100
-```
-
-### Hover Lift
-
-```css
-hover:-translate-y-1
-hover:shadow-lg
-transition-all duration-200
-```
-
-### Ripple Effect (CSS only)
-
-```css
-relative overflow-hidden
-before:absolute before:inset-0
-before:bg-white/20
-before:scale-0 before:rounded-full
-hover:before:scale-100
-before:transition-transform before:duration-500
-```
-
-### Loading Spinner
-
-```jsx
-<div className="relative">
-  <div className="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 border-t-lavpop-blue rounded-full animate-spin" />
-</div>
-```
-
----
-
-## 🔐 Security & Privacy
-
-### Data Handling
-
-1. **Never log sensitive data** to console in production
-2. **Sanitize user inputs** before displaying
-3. **Use HTTPS** for all API calls
-4. **Implement CORS** properly on backend
-
-### Local Storage
-
-```javascript
-// Encrypt sensitive data before storing
-const encryptedData = encrypt(sensitiveData);
-localStorage.setItem('key', encryptedData);
-
-// Clear on logout
-const clearUserData = () => {
-  localStorage.clear();
-  sessionStorage.clear();
-};
-```
-
----
-
-## 📦 Component Checklist
-
-When creating new components, ensure:
-
-**Core Requirements:**
-- [ ] Responsive design (mobile-first)
-- [ ] Dark mode support (all `bg-*` have `dark:bg-*` pair)
-- [ ] Minimum font size `text-xs` (never `text-[10px]`)
-- [ ] Proper spacing and typography
-- [ ] Smooth transitions
-
-**Theme Compliance (v4.0+ NEW):**
-- [ ] Use `useTheme()` hook for critical UI components (navigation, headers, modals)
-- [ ] Use space color tokens for dark backgrounds (`space-void`, `space-nebula`, `space-dust`)
-- [ ] Use stellar color tokens for accents (`stellar-cyan`, `stellar-blue`)
-- [ ] Use glassmorphism pattern for overlays (`backdrop-blur-xl` + themed border)
-- [ ] Theme-aware borders: `border-stellar-cyan/10` (dark) vs `border-stellar-cyan/5` (light)
-- [ ] Theme-aware shadows: cyan-tinted for dark, neutral for light
-- [ ] If using new `dark:` classes, verify they're in the safelist or add them
-
-**Accessibility:**
-- [ ] Accessible markup and labels (`aria-*` attributes)
-- [ ] Keyboard navigation (focus states, escape key for modals)
-- [ ] **Minimum touch target size: 44x44px** (use `touch-target` class)
-- [ ] Focus-visible states for keyboard users
-
-**Mobile Requirements (v3.3+):**
-- [ ] Safe area support for fixed elements (`safe-area-top`, `bottom-nav-safe`)
-- [ ] Touch-friendly tooltips (tap-to-toggle, no hover-only)
-- [ ] Bottom nav clearance (`pb-24 lg:pb-6` for main content)
-- [ ] Works offline (graceful degradation)
-
-**Interactive Elements:**
-- [ ] Loading and error states
-- [ ] Touch-friendly on mobile (tap-to-preview for charts)
-- [ ] Click-outside to close (for modals/dropdowns)
-- [ ] No hover-only interactions (always provide tap fallback)
-
-**Architecture:**
-- [ ] Use semantic z-index from constants (never arbitrary values)
-- [ ] Portal rendering for modals that can be stacked
-- [ ] Consistent with design system patterns
-
----
-
-## 🔗 Related Files
-
-### Design System Resources (v4.0 NEW)
-- **Design System Skill:** `.claude/skills/design-system/index.md` - Interactive guide for applying patterns
-- **This Document:** `src/Design System.md` - Comprehensive reference
-
-### Configuration
-- **Tailwind Config:** `tailwind.config.js` (v4.1 - includes safelist, space/stellar colors)
-- **Z-Index Constants:** `src/constants/zIndex.js`
-- **Global CSS:** `src/index.css` (safe areas, touch targets, CSS variables)
-
-### Contexts & Hooks
-- **Theme Context:** `src/contexts/ThemeContext.jsx`
-- **Sidebar Context:** `src/contexts/SidebarContext.jsx`
-- **Navigation Context:** `src/contexts/NavigationContext.jsx`
-- **Touch Tooltip Hook:** `src/hooks/useTouchTooltip.js`
-- **Swipe Navigation Hook:** `src/hooks/useSwipeNavigation.js` *(NEW v3.3)*
-- **Pull-to-Refresh Hook:** `src/hooks/usePullToRefresh.js` *(NEW v3.3)*
-- **Media Query Hook:** `src/hooks/useMediaQuery.js`
-
-### Navigation
-- **Main App:** `src/App.jsx`
-- **Icon Sidebar:** `src/components/IconSidebar.jsx`
-- **Top Bar:** `src/components/MinimalTopBar.jsx`
-- **Bottom Nav Bar:** `src/components/navigation/BottomNavBar.jsx` *(NEW v3.3)*
-- **Bottom Nav Item:** `src/components/navigation/BottomNavItem.jsx` *(NEW v3.3)*
-- **Mobile Backdrop:** `src/components/Backdrop.jsx`
-
-### Mobile Components
-- **Offline Indicator:** `src/components/OfflineIndicator.jsx` *(NEW v3.3)*
-
-### Modals
-- **KPI Detail Modal:** `src/components/modals/KPIDetailModal.jsx`
-- **Customer Segment Modal:** `src/components/modals/CustomerSegmentModal.jsx`
-- **Customer Profile Modal:** `src/components/CustomerProfileModal.jsx`
-
-### Charts (with Mobile Touch Support)
-- **RFM Scatter Plot:** `src/components/RFMScatterPlot.jsx`
-- **Churn Histogram:** `src/components/ChurnHistogram.jsx`
-- **New Clients Chart:** `src/components/NewClientsChart.jsx`
-
-### Widgets
-- **Retention Pulse:** `src/components/RetentionPulse.jsx`
-- **Secondary KPI Card:** `src/components/ui/SecondaryKPICard.jsx`
-- **Hero KPI Card:** `src/components/ui/HeroKPICard.jsx`
-- **Section Header:** `src/components/ui/SectionHeader.jsx` *(NEW v3.4)*
-- **Context Help:** `src/components/ContextHelp.jsx`
-
-### Utilities
-- **Color Mapping:** `src/utils/colorMapping.js`
-- **Metric Tooltips:** `src/constants/metricTooltips.js`
-
-### Documentation
-- **Mobile App Audit:** `docs/mobile-app-audit.md` *(NEW v3.3)*
-
----
-
-**Powered by Nova Lopez Lavanderia Ltd.**
+## Related Files
+
+| File | Description |
+|------|-------------|
+| `tailwind.config.js` | Color tokens, safelist, custom utilities |
+| `src/index.css` | CSS custom properties, aurora-overlay, starfield |
+| `src/contexts/ThemeContext.jsx` | Theme provider and useTheme hook |
+| `src/utils/colorMapping.js` | Semantic color utility functions |
+| `src/utils/chartColors.js` | Theme-aware chart color utility |
+| `src/constants/zIndex.js` | Z-index semantic constants |

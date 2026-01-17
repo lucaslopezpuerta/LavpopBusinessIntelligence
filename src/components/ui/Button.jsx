@@ -1,8 +1,13 @@
-// Button.jsx v1.0 - PREMIUM BUTTON WITH MICRO-INTERACTIONS
+// Button.jsx v1.1 - COSMIC PRECISION UPDATE
 // Reusable button component with Framer Motion animations
-// Design System v3.4 compliant
+// Design System v4.3 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.1 (2026-01-17): Cosmic Precision upgrade
+//   - NEW: 'cosmic' variant using stellar gradient (bg-gradient-stellar)
+//   - Updated secondary variant to use space-dust background
+//   - Updated ghost variant hover to use space-dust
+//   - Cosmic compliant: Tier 1 Essential
 // v1.0 (2026-01-07): Initial implementation (Figma-quality enhancement)
 //   - Multiple variants: primary, secondary, ghost, danger
 //   - Multiple sizes: sm, md, lg
@@ -27,7 +32,7 @@ const springConfig = { type: 'spring', stiffness: 400, damping: 25 };
 /**
  * Premium Button Component
  *
- * @param {string} variant - 'primary' | 'secondary' | 'ghost' | 'danger'
+ * @param {string} variant - 'primary' | 'secondary' | 'ghost' | 'danger' | 'cosmic'
  * @param {string} size - 'sm' | 'md' | 'lg'
  * @param {boolean} loading - Show loading spinner
  * @param {boolean} disabled - Disable button
@@ -51,11 +56,13 @@ const Button = ({
 }) => {
   const isDisabled = disabled || loading;
 
-  // Variant styles
+  // Variant styles - Cosmic Precision (v4.3)
   const variants = {
     primary: 'bg-gradient-to-r from-lavpop-blue-500 to-lavpop-blue-600 hover:from-lavpop-blue-600 hover:to-lavpop-blue-700 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-lavpop-blue-500/25 focus-visible:ring-lavpop-blue-500 dark:from-lavpop-blue-600 dark:to-lavpop-blue-700 dark:hover:from-lavpop-blue-500 dark:hover:to-lavpop-blue-600',
-    secondary: 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-500 shadow-sm hover:shadow focus-visible:ring-slate-400',
-    ghost: 'bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:ring-slate-400',
+    // NEW: Cosmic variant using stellar gradient
+    cosmic: 'bg-gradient-stellar text-white font-semibold shadow-md hover:shadow-lg hover:shadow-stellar-cyan/25 focus-visible:ring-stellar-cyan',
+    secondary: 'bg-white dark:bg-space-dust text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-stellar-cyan/15 hover:bg-slate-50 dark:hover:bg-space-nebula hover:border-slate-300 dark:hover:border-stellar-cyan/20 shadow-sm hover:shadow focus-visible:ring-slate-400',
+    ghost: 'bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-space-dust focus-visible:ring-slate-400',
     danger: 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-red-500/25 focus-visible:ring-red-500',
   };
 
@@ -123,9 +130,10 @@ export const IconButton = ({
     lg: 'w-6 h-6',
   };
 
+  // Cosmic Precision (v4.3) - Uses space-dust for dark backgrounds
   const variants = {
-    ghost: 'bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200',
-    secondary: 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm',
+    ghost: 'bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust hover:text-slate-700 dark:hover:text-slate-200',
+    secondary: 'bg-white dark:bg-space-dust text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/10 hover:bg-slate-50 dark:hover:bg-space-nebula shadow-sm',
   };
 
   return (

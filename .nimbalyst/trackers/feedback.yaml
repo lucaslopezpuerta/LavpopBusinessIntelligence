@@ -1,0 +1,77 @@
+# Package metadata
+packageVersion: 1.0.0
+packageId: product-manager
+
+type: feedback
+displayName: User Feedback
+displayNamePlural: User Feedback
+icon: feedback
+color: "#ec4899"
+
+modes:
+  inline: true
+  fullDocument: false
+
+idPrefix: fb
+idFormat: ulid
+
+fields:
+  - name: title
+    type: string
+    required: true
+    displayInline: true
+
+  - name: status
+    type: select
+    default: new
+    options:
+      - value: new
+        label: New
+      - value: reviewing
+        label: Reviewing
+      - value: addressed
+        label: Addressed
+      - value: wont-address
+        label: Won't Address
+
+  - name: sentiment
+    type: select
+    default: neutral
+    options:
+      - value: positive
+        label: Positive
+      - value: neutral
+        label: Neutral
+      - value: negative
+        label: Negative
+
+  - name: source
+    type: select
+    default: direct
+    options:
+      - value: direct
+        label: Direct Feedback
+      - value: support
+        label: Support Ticket
+      - value: survey
+        label: Survey
+      - value: review
+        label: App Review
+      - value: social
+        label: Social Media
+
+  - name: userSegment
+    type: string
+    displayInline: true
+
+  - name: description
+    type: text
+    displayInline: false
+
+  - name: created
+    type: string
+    displayInline: false
+
+  - name: updated
+    type: string
+    displayInline: false

@@ -1,8 +1,15 @@
-// KPICard.jsx v1.9 - STATUS COLOR BADGES
+// KPICard.jsx v1.10 - COSMIC PRECISION UPDATE
 // Unified KPI card component for Intelligence dashboard
-// Design System v4.0 compliant - Replaces duplicated patterns
+// Design System v4.3 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.11 (2026-01-17): Cosmic Precision - neutral trend badge
+//   - Updated neutral trend badge to space-dust/80 (from slate-700)
+//   - Full cosmic compliance achieved
+// v1.10 (2026-01-17): Cosmic Precision upgrade
+//   - Updated to space-dust background (from slate-800)
+//   - Updated to stellar-cyan borders (from slate-700)
+//   - Cosmic compliant: Tier 1 Essential
 // v1.9 (2026-01-07): Status color badges (Plan Item 1.3)
 //   - NEW: status prop for colored left border ('success'|'warning'|'danger'|'neutral')
 //   - Green border for good metrics, yellow for warning, red for critical
@@ -95,22 +102,23 @@ const KPICard = ({
 }) => {
   const colors = getSemanticColor(color);
 
-  // Variant-specific styling - reduced mobile padding for more content space
+  // Variant-specific styling - Cosmic Precision (v4.3)
+  // Uses space-dust for dark backgrounds (Tier 1 Essential)
   const variants = {
     default: {
-      container: 'p-3 sm:p-5 bg-white dark:bg-slate-800',
+      container: 'p-3 sm:p-5 bg-white dark:bg-space-dust',
       value: 'text-lg sm:text-2xl',
       label: 'text-xs',
       subtitle: 'text-xs',
     },
     hero: {
-      container: 'p-4 sm:p-6 bg-white dark:bg-slate-800',
+      container: 'p-4 sm:p-6 bg-white dark:bg-space-dust',
       value: 'text-xl sm:text-3xl lg:text-4xl',
       label: 'text-xs sm:text-sm',
       subtitle: 'text-xs sm:text-sm',
     },
     compact: {
-      container: 'p-2.5 sm:p-4 bg-white dark:bg-slate-800',
+      container: 'p-2.5 sm:p-4 bg-white dark:bg-space-dust',
       value: 'text-base sm:text-xl',
       label: 'text-xs',
       subtitle: 'text-xs',
@@ -145,7 +153,7 @@ const KPICard = ({
     if (isNeutral) {
       return (
         <span
-          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium bg-slate-100 dark:bg-space-dust/80 text-slate-600 dark:text-slate-300"
           role="status"
           aria-label="Sem variacao significativa"
         >
@@ -177,9 +185,9 @@ const KPICard = ({
   const cardClasses = `
     ${v.container}
     rounded-xl
-    border border-slate-100 dark:border-slate-700
+    border border-slate-100 dark:border-stellar-cyan/10
     ${statusBorders[status] || ''}
-    ${onClick ? 'cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2 dark:focus:ring-offset-slate-800' : ''}
+    ${onClick ? 'cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2 dark:focus:ring-offset-space-dust' : ''}
     ${className}
   `.trim();
 
