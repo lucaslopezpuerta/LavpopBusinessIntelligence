@@ -1,8 +1,11 @@
-// Intelligence.jsx v3.17.0 - PULL TO REFRESH WRAPPER
+// Intelligence.jsx v3.18.0 - COSMIC PRECISION UPDATE
 // Refactored with Priority Matrix, auto-refresh, collapsible sections
-// Design System v3.2 compliant with dark mode support
+// Design System v5.0 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v3.18.0 (2026-01-17): Cosmic Precision upgrade
+//   - Updated StaleDataIndicator: dark:bg-space-dust, dark:border-stellar-cyan/10
+//   - Cosmic compliant: Design System v5.0
 // v3.17.0 (2026-01-12): Pull-to-refresh wrapper integration
 //   - REPLACED: Custom pull-to-refresh with PullToRefreshWrapper component
 //   - REMOVED: pullDistance, isPulling, touchStartY state vars
@@ -173,10 +176,10 @@ const StaleDataIndicator = ({ lastUpdated, isRefreshing, onRefresh, isMobile }) 
         flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
         transition-all duration-200
         ${isStale
-          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
-          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60'
+          : 'bg-slate-100 dark:bg-space-dust text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-stellar-cyan/10'
         }
-        hover:bg-slate-200 dark:hover:bg-slate-700
+        hover:bg-slate-200 dark:hover:bg-space-nebula
         disabled:opacity-50 disabled:cursor-not-allowed
       `}
       title={isRefreshing ? 'Atualizando...' : 'Clique para atualizar'}

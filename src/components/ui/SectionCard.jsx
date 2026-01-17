@@ -1,8 +1,11 @@
-// SectionCard.jsx v2.6 - COSMIC PRECISION UPDATE
+// SectionCard.jsx v2.7 - DEEPER COSMIC UPDATE
 // Wrapper component for Intelligence sections
-// Design System v4.3 compliant - Tier 1 Essential
+// Design System v5.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v2.7 (2026-01-17): Deeper cosmic background
+//   - Changed dark:bg-space-dust to dark:bg-space-nebula (darker)
+//   - Better contrast for internal card gradients to space-void
 // v2.6 (2026-01-17): Cosmic Precision upgrade
 //   - Updated to space-dust background (from slate-800)
 //   - Updated to stellar-cyan borders (from slate-700)
@@ -194,7 +197,7 @@ const SectionCard = ({
     <section
       aria-labelledby={headingId}
       className={`
-        bg-white dark:bg-space-dust
+        bg-white dark:bg-space-nebula
         rounded-2xl shadow-soft border border-slate-200 dark:border-stellar-cyan/10
         ${collapsible && isCollapsed ? 'px-3 py-2' : 'p-4 sm:p-6 lg:p-8'}
         animate-slide-up
