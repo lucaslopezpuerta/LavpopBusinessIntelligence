@@ -487,7 +487,15 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
   return (
     <>
-      <div className={`bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden h-full flex flex-col ${className}`}>
+      <div className={`
+        bg-gradient-to-br from-red-50/30 via-white to-white
+        dark:from-space-dust/40 dark:via-space-nebula dark:to-space-nebula
+        rounded-2xl
+        border border-slate-200/80 dark:border-stellar-cyan/10
+        shadow-sm
+        overflow-hidden h-full flex flex-col
+        ${className}
+      `}>
         {/* Header - fixed height */}
         <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -725,7 +733,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
         {/* Desktop Table View - grows to fill space with sticky headers */}
         <div className="hidden lg:flex lg:flex-col flex-1 overflow-x-auto overflow-y-auto min-h-0" ref={tableRef} onKeyDown={handleKeyDown}>
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800/95 backdrop-blur-sm shadow-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-space-dust/80 backdrop-blur-sm shadow-sm">
               <tr className="border-b-2 border-slate-200 dark:border-slate-700">
                 <th scope="col" className="px-4 py-3 text-left w-10">
                   <input

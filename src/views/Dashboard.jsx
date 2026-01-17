@@ -195,7 +195,7 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
           {/* Row 2: Chart - Full width */}
           <section aria-labelledby="operations-heading-compact">
             <h2 id="operations-heading-compact" className="sr-only">Operações</h2>
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+            <div className="bg-gradient-to-br from-cyan-50/40 via-white to-white dark:from-cyan-900/10 dark:via-space-nebula dark:to-space-nebula rounded-2xl shadow-sm border border-slate-200/80 dark:border-stellar-cyan/10 border-l-4 border-l-cyan-500 dark:border-l-cyan-400 p-4">
               <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
                 <LazyOperatingCyclesChart salesData={salesData} compact={true} />
               </Suspense>
@@ -220,7 +220,7 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
           {/* Operations Chart */}
           <section aria-labelledby="operations-heading">
             <h2 id="operations-heading" className="sr-only">Operações</h2>
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            <div className="bg-gradient-to-br from-cyan-50/40 via-white to-white dark:from-cyan-900/10 dark:via-space-nebula dark:to-space-nebula rounded-2xl shadow-sm border border-slate-200/80 dark:border-stellar-cyan/10 border-l-4 border-l-cyan-500 dark:border-l-cyan-400 p-6">
               <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
                 <LazyOperatingCyclesChart salesData={salesData} />
               </Suspense>

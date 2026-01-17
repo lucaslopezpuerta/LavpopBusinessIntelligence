@@ -358,7 +358,15 @@ const RFMScatterPlot = ({
     };
 
     return (
-        <div className="relative bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/20 dark:border-slate-700/50 shadow-sm">
+        <div className="
+            relative
+            bg-gradient-to-br from-blue-50/40 via-white/90 to-white
+            dark:from-space-dust/50 dark:via-space-nebula/80 dark:to-space-nebula
+            backdrop-blur-md
+            rounded-2xl p-4 sm:p-5
+            border border-slate-200/80 dark:border-stellar-cyan/10
+            shadow-sm
+        ">
             <div className="mb-4">
                 {/* Header row with title and insight pills */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">

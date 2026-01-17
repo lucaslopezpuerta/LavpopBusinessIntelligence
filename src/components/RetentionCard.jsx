@@ -370,9 +370,9 @@ const RetentionCard = ({
       transition={cardHoverTransition}
       className={`
         bg-gradient-to-br from-blue-50/40 via-white to-white
-        dark:from-blue-900/10 dark:via-slate-800 dark:to-slate-800
+        dark:from-blue-900/10 dark:via-space-nebula dark:to-space-nebula
         backdrop-blur-md rounded-2xl p-5
-        border border-slate-200/80 dark:border-slate-700/80
+        border border-slate-200/80 dark:border-stellar-cyan/10
         border-l-4 border-l-blue-500 dark:border-l-blue-400
         overflow-hidden
         h-full flex flex-col

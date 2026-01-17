@@ -1,11 +1,26 @@
-# Bilavnova Design System v4.1
+# Bilavnova Design System v4.2
 
-> **Last Updated:** January 16, 2026
+> **Last Updated:** January 17, 2026
 > **Status:** Active - All components aligned with this system
 > **Theme:** Cosmic Precision - Space-age aesthetics with stellar gradients
 > **Dark Mode:** Fully functional via Tailwind safelist + useTheme pattern
 
 ## 📋 Changelog
+
+### v4.2 (January 17, 2026) - Cosmic Dashboard Cards
+
+**Enhancement: Standardized dashboard card pattern with cosmic glassmorphism**
+
+- **NEW:** "Cosmic Dashboard Card" pattern - soft gradients (light) + space-nebula (dark) + accent borders
+- **NEW:** Component Container Architecture documentation (self-contained vs wrapper-dependent)
+- **NEW:** Internal Element Styling guide for tooltips, filter buttons, dividers
+- **UPDATED:** 10 dashboard components now use consistent cosmic card styling:
+  - `AcquisitionCard`, `VisitHeatmap`, `RetentionCard`, `ChurnHistogram`
+  - `RFMScatterPlot`, `AtRiskCustomersTable`, `FirstVisitConversionCard`
+  - `FrequencyDegradationAlert`, `OperatingCyclesChart` (via Dashboard.jsx wrapper)
+- **PATTERN:** `from-{accent}-50/40 via-white` (light) + `dark:via-space-nebula` (dark)
+- **PATTERN:** `border-stellar-cyan/10` for dark mode borders
+- **PATTERN:** `border-l-4 border-l-{accent}-500` semantic accent borders
 
 ### v4.1 (January 16, 2026) - Cosmic Effects Expansion
 
@@ -789,7 +804,52 @@ const activeClasses = isActive
 
 ### Cards & Containers
 
-**Standard Card:**
+**Cosmic Dashboard Card (Primary Pattern):**
+
+The standard pattern for dashboard analytics cards. Uses soft gradients in light mode with cosmic colors in dark mode, plus a semantic accent border.
+
+**Pattern A - Accent-Tinted Dark Mode** (most common):
+```jsx
+// Light: accent-tinted gradient | Dark: accent-tinted cosmic
+<div className="
+  bg-gradient-to-br from-{accent}-50/40 via-white to-white
+  dark:from-{accent}-900/10 dark:via-space-nebula dark:to-space-nebula
+  rounded-2xl
+  border border-slate-200/80 dark:border-stellar-cyan/10
+  border-l-4 border-l-{accent}-500 dark:border-l-{accent}-400
+  p-4 sm:p-5
+">
+```
+
+**Pattern B - Neutral Dark Mode** (for status-based or neutral cards):
+```jsx
+// Light: accent-tinted gradient | Dark: neutral space-dust
+<div className="
+  bg-gradient-to-br from-slate-50/60 via-white to-white
+  dark:from-space-dust/40 dark:via-space-nebula dark:to-space-nebula
+  rounded-2xl
+  border border-slate-200/80 dark:border-stellar-cyan/10
+  border-l-4 border-l-{accent}-500 dark:border-l-{accent}-400
+  p-4 sm:p-5
+">
+```
+
+| Pattern | Accent Color | Use Case | Components |
+|---------|--------------|----------|------------|
+| A | `cyan` | Operations/Cycles | OperatingCyclesChart (Dashboard.jsx) |
+| A | `blue` | Analytics/Data | VisitHeatmap, RetentionCard |
+| A | `purple` | Acquisition | AcquisitionCard |
+| A | `amber` | Warnings | FrequencyDegradationAlert |
+| A | `red` | Risk/Critical | ChurnHistogram |
+| B | `red` | Tables/Lists | AtRiskCustomersTable |
+| B | `blue` | Charts with blur | RFMScatterPlot |
+| B | dynamic | Status-based | FirstVisitConversionCard |
+
+**When to use each pattern:**
+- **Pattern A**: Cards with a strong semantic color identity (operations=cyan, warnings=amber)
+- **Pattern B**: Cards where the accent color changes dynamically, or neutral data displays
+
+**Standard Card (Legacy):**
 ```css
 bg-white dark:bg-slate-800
 rounded-xl
@@ -798,7 +858,7 @@ border border-slate-200 dark:border-slate-700
 p-6
 ```
 
-**Glassmorphism Card:**
+**Glassmorphism Card (Navigation/Overlays):**
 ```css
 bg-white/80 dark:bg-slate-800/80
 backdrop-blur-md
@@ -807,13 +867,63 @@ rounded-xl
 shadow-sm
 ```
 
-**KPI Card:**
+**KPI Card (Gradient Hero):**
 ```css
 bg-gradient-to-br from-{color}-500 to-{color}-600
 text-white
 rounded-xl
 shadow-lg
 p-6
+```
+
+### Component Container Architecture
+
+Components follow one of two patterns for container styling:
+
+**1. Self-Contained Components** - Own their card styling
+- Include gradient background, borders, padding
+- Can be placed directly in page layouts
+- Examples: `AcquisitionCard`, `VisitHeatmap`, `RetentionCard`, `ChurnHistogram`, `RFMScatterPlot`
+
+**2. Wrapper-Dependent Components** - Rendered inside parent containers
+- Do NOT include card styling (no bg, border, padding)
+- Parent view provides the container
+- Internal elements use cosmic styling (tooltips, buttons, dividers)
+- Example: `OperatingCyclesChart` (wrapped by Dashboard.jsx)
+
+```jsx
+// Wrapper-Dependent Pattern
+// In Dashboard.jsx (parent provides container)
+<div className="bg-gradient-to-br from-cyan-50/40 ... p-4">
+  <OperatingCyclesChart salesData={data} />
+</div>
+
+// In OperatingCyclesChart.jsx (no container styling)
+<div className="transition-all duration-300 flex flex-col">
+  {/* Internal elements use cosmic styling */}
+</div>
+```
+
+### Internal Element Styling (Cosmic)
+
+For elements inside dashboard components:
+
+**Tooltips:**
+```css
+bg-white dark:bg-space-dust
+border border-slate-200 dark:border-stellar-cyan/10
+rounded-lg p-3 shadow-lg
+```
+
+**Filter/Control Buttons:**
+```css
+bg-slate-100 dark:bg-space-dust/80
+rounded-lg
+```
+
+**Dividers/Borders:**
+```css
+border-slate-200 dark:border-stellar-cyan/10
 ```
 
 ### Section Headers

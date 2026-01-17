@@ -221,9 +221,10 @@ const FirstVisitConversionCard = ({
       variants={hoverAnimation}
       transition={hoverTransition}
       className={`
-        bg-white dark:bg-slate-800
-        rounded-xl
-        border border-slate-200 dark:border-slate-700
+        bg-gradient-to-br from-slate-50/60 via-white to-white
+        dark:from-space-dust/40 dark:via-space-nebula dark:to-space-nebula
+        rounded-2xl
+        border border-slate-200/80 dark:border-stellar-cyan/10
         border-l-4 ${colors.accent}
         p-4 sm:p-5
         overflow-hidden

@@ -248,9 +248,10 @@ const FrequencyDegradationAlert = ({
       variants={hoverAnimation}
       transition={hoverTransition}
       className={`
-        bg-white dark:bg-slate-800
-        rounded-xl
-        border border-amber-200 dark:border-amber-800/50
+        bg-gradient-to-br from-amber-50/40 via-white to-white
+        dark:from-amber-900/10 dark:via-space-nebula dark:to-space-nebula
+        rounded-2xl
+        border border-amber-200/80 dark:border-stellar-cyan/10
         border-l-4 border-l-amber-500 dark:border-l-amber-400
         p-4 sm:p-5
         overflow-hidden

@@ -241,7 +241,7 @@ const OperatingCyclesChart = ({
       });
 
       return (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-lg z-50">
+        <div className="bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/10 rounded-lg p-3 shadow-lg z-50">
           <div className="flex items-center gap-2 mb-2">
             <Calendar className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
             <p className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -342,7 +342,7 @@ const OperatingCyclesChart = ({
           {/* Desktop: Controls inline with title */}
           <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
             {/* Split By Filter - icons only on mobile */}
-            <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+            <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
               <button
                 onClick={() => setSplitBy('all')}
                 className={`
@@ -389,7 +389,7 @@ const OperatingCyclesChart = ({
 
             {/* Month Selector Tabs - compact on mobile */}
             {propMonth === null && (
-              <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+              <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
                 {monthOptions.map((opt) => {
                   const isSelected = opt.month === month && opt.year === year;
                   return (
@@ -417,7 +417,7 @@ const OperatingCyclesChart = ({
         {/* Mobile: Controls row below title */}
         <div className="flex sm:hidden items-center justify-between gap-2 mb-3">
           {/* Split By Filter */}
-          <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+          <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
             <button
               onClick={() => setSplitBy('all')}
               className={`
@@ -461,7 +461,7 @@ const OperatingCyclesChart = ({
 
           {/* Month Selector */}
           {propMonth === null && (
-            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
               {monthOptions.map((opt) => {
                 const isSelected = opt.month === month && opt.year === year;
                 return (
@@ -632,7 +632,7 @@ const OperatingCyclesChart = ({
       )}
 
       {/* Stats Footer - Inline row in compact mode */}
-      <div className={compact ? 'mt-2 pt-2 border-t border-slate-200 dark:border-slate-700' : 'mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-700'}>
+      <div className={compact ? 'mt-2 pt-2 border-t border-slate-200 dark:border-stellar-cyan/10' : 'mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200 dark:border-stellar-cyan/10'}>
         {compact ? (
           /* Compact: Inline stats row */
           <div className="flex items-center justify-center gap-4 text-xs">

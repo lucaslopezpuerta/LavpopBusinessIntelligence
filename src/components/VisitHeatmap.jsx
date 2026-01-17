@@ -518,9 +518,9 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
       transition={cardHoverTransition}
       className={`
         bg-gradient-to-br from-blue-50/40 via-white to-white
-        dark:from-blue-900/10 dark:via-slate-800 dark:to-slate-800
+        dark:from-blue-900/10 dark:via-space-nebula dark:to-space-nebula
         rounded-2xl
-        border border-slate-200/80 dark:border-slate-700/80
+        border border-slate-200/80 dark:border-stellar-cyan/10
         border-l-4 border-l-blue-500 dark:border-l-blue-400
         overflow-hidden
         px-3 py-3 sm:px-4 sm:py-4

@@ -178,7 +178,7 @@ const ChurnHistogram = ({
                 whileHover="hover"
                 variants={cardHoverAnimation}
                 transition={cardHoverTransition}
-                className="bg-gradient-to-br from-red-50/40 via-white to-white dark:from-red-900/10 dark:via-slate-800 dark:to-slate-800 backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-red-500 dark:border-l-red-400 overflow-hidden h-full flex flex-col"
+                className="bg-gradient-to-br from-red-50/40 via-white to-white dark:from-red-900/10 dark:via-space-nebula dark:to-space-nebula backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-stellar-cyan/10 border-l-4 border-l-red-500 dark:border-l-red-400 overflow-hidden h-full flex flex-col"
             >
                 <div className="mb-4">
                     <div className="flex items-start gap-3 mb-3">
@@ -354,7 +354,7 @@ const ChurnHistogram = ({
             whileHover="hover"
             variants={cardHoverAnimation}
             transition={cardHoverTransition}
-            className="bg-gradient-to-br from-red-50/40 via-white to-white dark:from-red-900/10 dark:via-slate-800 dark:to-slate-800 backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/80 border-l-4 border-l-red-500 dark:border-l-red-400 overflow-hidden h-full flex flex-col"
+            className="bg-gradient-to-br from-red-50/40 via-white to-white dark:from-red-900/10 dark:via-space-nebula dark:to-space-nebula backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-stellar-cyan/10 border-l-4 border-l-red-500 dark:border-l-red-400 overflow-hidden h-full flex flex-col"
         >
             {/* Header */}
             <div className="mb-4">
