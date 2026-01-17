@@ -12,7 +12,8 @@
 // v1.0 (2025-12-20): Initial implementation
 
 import React from 'react';
-import { WeatherSection } from '../components/weather';
+// Direct import to avoid barrel file overhead (tree-shaking optimization)
+import WeatherSection from '../components/weather/WeatherSection';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 /**

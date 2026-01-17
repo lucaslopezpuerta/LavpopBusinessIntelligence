@@ -1,9 +1,28 @@
-// CampaignFunnel.jsx v3.4
+// CampaignFunnel.jsx v3.8
 // Campaign Delivery Funnel + Outcomes Panel
-// Design System v4.0 compliant
+// Design System v4.2 compliant - Cosmic Precision Theme
 // ANALYTICAL INTEGRITY ENFORCED
 //
 // CHANGELOG:
+// v3.8 (2026-01-17): Glassmorphism fix + subtle badge indicator
+//   - Added backdrop-blur-sm and semi-transparent backgrounds (bg-white/80, bg-space-dust/80)
+//   - True glassmorphism effect now visible on cards
+//   - Replaced prominent amber ring with small badge in top-right corner
+// v3.7 (2026-01-17): Fixed OutcomeCard colors
+//   - Custom colors (cosmic-purple, stellar-gold) don't support Tailwind opacity modifiers
+//   - Switched to standard Tailwind colors (purple-500, amber-500) for reliable styling
+//   - Values now show proper colored text (purple-400, amber-400, emerald-400 in dark)
+// v3.6 (2026-01-17): Design System v4.1 compliance
+//   - Applied proper Cosmic Glassmorphism pattern from Design System
+//   - Cards now use bg-space-dust (dark) with border-stellar-cyan/10
+//   - Colors expressed through icon backgrounds, not card borders
+//   - FunnelStage uses consistent subtle borders
+//   - Removed harsh colored borders in favor of Design System pattern
+// v3.5 (2026-01-17): Cosmic Precision theme conversion
+//   - Added useTheme hook for reliable dark mode
+//   - Converted dark: prefixes to isDark conditionals
+//   - Uses space/stellar color tokens
+//   - Enhanced with cosmic glassmorphism patterns
 // v3.4 (2026-01-09): Typography compliance (12px minimum)
 //   - Fixed text-[10px] → text-xs throughout component
 //   - All text now meets minimum 12px requirement
@@ -60,6 +79,7 @@ import {
   Info
 } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -89,50 +109,67 @@ const FunnelStage = ({
   isFirst = false,
   isLast = false,
   isCompact = false,
-  isBiggestLoss = false
+  isBiggestLoss = false,
+  isDark = false
 }) => {
-  const colorClasses = {
+  // Design System v4.1 - Cosmic Glassmorphism pattern
+  // Cards use bg-space-dust with color-coordinated subtle borders
+  // Colors are expressed through icon backgrounds and subtle border tints
+  const colorStyles = {
     blue: {
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      icon: 'text-blue-600 dark:text-blue-400',
-      ring: 'ring-blue-500/20',
-      border: 'border-blue-500'
+      bg: isDark ? 'bg-blue-500/20' : 'bg-blue-100',
+      icon: isDark ? 'text-blue-400' : 'text-blue-600',
+      border: isDark ? 'border-blue-500/20' : 'border-blue-200'
     },
     emerald: {
-      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-      icon: 'text-emerald-600 dark:text-emerald-400',
-      ring: 'ring-emerald-500/20',
-      border: 'border-emerald-500'
+      bg: isDark ? 'bg-emerald-500/20' : 'bg-emerald-100',
+      icon: isDark ? 'text-emerald-400' : 'text-emerald-600',
+      border: isDark ? 'border-emerald-500/20' : 'border-emerald-200'
     },
     cyan: {
-      bg: 'bg-cyan-100 dark:bg-cyan-900/30',
-      icon: 'text-cyan-600 dark:text-cyan-400',
-      ring: 'ring-cyan-500/20',
-      border: 'border-cyan-500'
+      bg: isDark ? 'bg-stellar-cyan/20' : 'bg-cyan-100',
+      icon: isDark ? 'text-stellar-cyan' : 'text-cyan-600',
+      border: isDark ? 'border-stellar-cyan/20' : 'border-cyan-200'
     }
   };
 
-  const colors = colorClasses[color] || colorClasses.blue;
+  const style = colorStyles[color] || colorStyles.blue;
+
+  // Conversion rate color based on value
+  const getConversionColor = (rate) => {
+    if (rate >= 90) return isDark ? 'text-emerald-400' : 'text-emerald-600';
+    if (rate >= 70) return isDark ? 'text-blue-400' : 'text-blue-600';
+    if (rate >= 50) return isDark ? 'text-amber-400' : 'text-amber-600';
+    return isDark ? 'text-red-400' : 'text-red-600';
+  };
 
   return (
     <div className="flex flex-row items-center gap-1 sm:gap-2">
-      {/* Stage Card - Compact on mobile, full on desktop */}
+      {/* Stage Card - Glassmorphism with color-coordinated border */}
       <div className={`
         relative flex flex-col items-center justify-center rounded-xl
-        ${colors.bg} ring-1 ${colors.ring}
+        ${isDark ? 'bg-space-dust/80' : 'bg-white/80'}
+        backdrop-blur-sm
+        border ${style.border}
         ${isCompact ? 'p-2.5 min-w-[70px]' : 'p-3 sm:p-4 min-w-[90px] sm:min-w-[110px]'}
-        ${isBiggestLoss ? 'ring-2 ring-amber-500' : ''}
+        transition-all duration-200
       `}>
-        {/* Icon - hidden on compact mobile */}
-        {!isCompact && (
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${colors.bg} flex items-center justify-center mb-1.5`}>
-            <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${colors.icon}`} />
+        {/* Biggest loss badge - subtle indicator */}
+        {isBiggestLoss && (
+          <div className={`absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-500/80' : 'bg-amber-400'}`}>
+            <span className="text-[8px] font-bold text-white">!</span>
           </div>
         )}
-        <p className={`font-bold text-slate-900 dark:text-white ${isCompact ? 'text-base' : 'text-lg sm:text-xl'}`}>
+        {/* Icon - hidden on compact mobile */}
+        {!isCompact && (
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${style.bg} flex items-center justify-center mb-1.5`}>
+            <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${style.icon}`} />
+          </div>
+        )}
+        <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'} ${isCompact ? 'text-base' : 'text-lg sm:text-xl'}`}>
           {value.toLocaleString('pt-BR')}
         </p>
-        <p className={`text-slate-600 dark:text-slate-400 text-center font-medium ${isCompact ? 'text-xs' : 'text-xs'}`}>
+        <p className={`${isDark ? 'text-slate-400' : 'text-slate-600'} text-center font-medium ${isCompact ? 'text-xs' : 'text-xs'}`}>
           {label}
         </p>
       </div>
@@ -140,20 +177,17 @@ const FunnelStage = ({
       {/* Arrow with conversion rate and drop-off - visible on all sizes */}
       {!isLast && (
         <div className="flex flex-col items-center gap-0.5 px-0.5 sm:px-2">
-          <ArrowRight className={`text-slate-300 dark:text-slate-600 ${isCompact ? 'w-4 h-4' : 'w-5 h-5'}`} />
+          <ArrowRight className={`${isDark ? 'text-slate-600' : 'text-slate-300'} ${isCompact ? 'w-4 h-4' : 'w-5 h-5'}`} />
           {conversionRate !== undefined && (
-            <span className={`font-bold ${isCompact ? 'text-xs' : 'text-xs sm:text-sm'} ${
-              conversionRate >= 90 ? 'text-emerald-600 dark:text-emerald-400' :
-              conversionRate >= 70 ? 'text-blue-600 dark:text-blue-400' :
-              conversionRate >= 50 ? 'text-amber-600 dark:text-amber-400' :
-              'text-red-600 dark:text-red-400'
-            }`}>
+            <span className={`font-bold ${isCompact ? 'text-xs' : 'text-xs sm:text-sm'} ${getConversionColor(conversionRate)}`}>
               {conversionRate.toFixed(0)}%
             </span>
           )}
           {dropOff > 0 && (
             <span className={`text-xs ${
-              isBiggestLoss ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-slate-400'
+              isBiggestLoss
+                ? (isDark ? 'text-amber-400 font-semibold' : 'text-amber-600 font-semibold')
+                : (isDark ? 'text-slate-500' : 'text-slate-400')
             }`}>
               -{dropOff.toLocaleString('pt-BR')}
             </span>
@@ -174,44 +208,59 @@ const OutcomeCard = ({
   denominator,
   denominatorLabel,
   subtitle,
-  color
+  color,
+  isDark = false
 }) => {
-  const colorClasses = {
+  // Design System v4.1 - Cosmic Glassmorphism pattern
+  // Cards use bg-space-dust with color-coordinated subtle borders
+  // NOTE: Using standard Tailwind colors for reliable opacity support
+  const colorStyles = {
     purple: {
-      bg: 'bg-purple-50 dark:bg-purple-900/20',
-      icon: 'text-purple-600 dark:text-purple-400',
-      value: 'text-purple-700 dark:text-purple-300'
+      iconBg: isDark ? 'bg-purple-500/20' : 'bg-purple-100',
+      icon: isDark ? 'text-purple-400' : 'text-purple-600',
+      value: isDark ? 'text-purple-400' : 'text-purple-700',
+      border: isDark ? 'border-purple-500/20' : 'border-purple-200'
     },
     amber: {
-      bg: 'bg-amber-50 dark:bg-amber-900/20',
-      icon: 'text-amber-600 dark:text-amber-400',
-      value: 'text-amber-700 dark:text-amber-300'
+      iconBg: isDark ? 'bg-amber-500/20' : 'bg-amber-100',
+      icon: isDark ? 'text-amber-400' : 'text-amber-600',
+      value: isDark ? 'text-amber-400' : 'text-amber-700',
+      border: isDark ? 'border-amber-500/20' : 'border-amber-200'
     },
     emerald: {
-      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-      icon: 'text-emerald-600 dark:text-emerald-400',
-      value: 'text-emerald-700 dark:text-emerald-300'
+      iconBg: isDark ? 'bg-emerald-500/20' : 'bg-emerald-100',
+      icon: isDark ? 'text-emerald-400' : 'text-emerald-600',
+      value: isDark ? 'text-emerald-400' : 'text-emerald-700',
+      border: isDark ? 'border-emerald-500/20' : 'border-emerald-200'
     }
   };
 
-  const colors = colorClasses[color] || colorClasses.purple;
+  const style = colorStyles[color] || colorStyles.purple;
 
   return (
-    <div className={`flex flex-col items-center p-3 sm:p-4 rounded-xl ${colors.bg} min-w-[100px]`}>
+    <div className={`
+      flex flex-col items-center p-3 sm:p-4 rounded-xl min-w-[100px]
+      ${isDark ? 'bg-space-dust/80' : 'bg-white/80'}
+      backdrop-blur-sm
+      border ${style.border}
+      transition-all duration-200
+    `}>
       <div className="flex items-center gap-1.5 mb-1">
-        <Icon className={`w-4 h-4 ${colors.icon}`} />
-        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</span>
+        <div className={`w-6 h-6 rounded-full ${style.iconBg} flex items-center justify-center`}>
+          <Icon className={`w-3.5 h-3.5 ${style.icon}`} />
+        </div>
+        <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{label}</span>
       </div>
-      <p className={`text-xl sm:text-2xl font-bold ${colors.value}`}>
+      <p className={`text-xl sm:text-2xl font-bold ${style.value}`}>
         {typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
       </p>
       {rate !== undefined && rate !== null && denominator > 0 && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 text-center">
+        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} mt-0.5 text-center`}>
           <span className="font-semibold">{rate.toFixed(1)}%</span> de {denominator.toLocaleString('pt-BR')} {denominatorLabel}
         </p>
       )}
       {subtitle && (
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{subtitle}</p>
+        <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'} mt-0.5`}>{subtitle}</p>
       )}
     </div>
   );
@@ -219,27 +268,28 @@ const OutcomeCard = ({
 
 // ==================== FUNNEL INSIGHT COMPONENT ====================
 
-const FunnelInsight = ({ insight }) => {
+const FunnelInsight = ({ insight, isDark = false }) => {
   if (!insight) return null;
 
+  // Cosmic-aware insight styles
   const typeStyles = {
     warning: {
-      bg: 'bg-amber-50 dark:bg-amber-900/20',
-      border: 'border-amber-200 dark:border-amber-800',
-      icon: 'text-amber-600 dark:text-amber-400',
-      text: 'text-amber-700 dark:text-amber-300'
+      bg: isDark ? 'bg-amber-900/20' : 'bg-amber-50',
+      border: isDark ? 'border-amber-800' : 'border-amber-200',
+      icon: isDark ? 'text-amber-400' : 'text-amber-600',
+      text: isDark ? 'text-amber-300' : 'text-amber-700'
     },
     success: {
-      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-      border: 'border-emerald-200 dark:border-emerald-800',
-      icon: 'text-emerald-600 dark:text-emerald-400',
-      text: 'text-emerald-700 dark:text-emerald-300'
+      bg: isDark ? 'bg-emerald-900/20' : 'bg-emerald-50',
+      border: isDark ? 'border-emerald-800' : 'border-emerald-200',
+      icon: isDark ? 'text-emerald-400' : 'text-emerald-600',
+      text: isDark ? 'text-emerald-300' : 'text-emerald-700'
     },
     info: {
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
-      border: 'border-blue-200 dark:border-blue-800',
-      icon: 'text-blue-600 dark:text-blue-400',
-      text: 'text-blue-700 dark:text-blue-300'
+      bg: isDark ? 'bg-stellar-cyan/10' : 'bg-blue-50',
+      border: isDark ? 'border-stellar-cyan/30' : 'border-blue-200',
+      icon: isDark ? 'text-stellar-cyan' : 'text-blue-600',
+      text: isDark ? 'text-blue-300' : 'text-blue-700'
     }
   };
 
@@ -256,7 +306,7 @@ const FunnelInsight = ({ insight }) => {
             {insight.title}
           </p>
           {insight.action && (
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'} mt-0.5`}>
               {insight.action}
             </p>
           )}
@@ -268,7 +318,7 @@ const FunnelInsight = ({ insight }) => {
 
 // ==================== DELIVERY FUNNEL (PRIMARY) ====================
 
-const DeliveryFunnel = ({ sent, delivered, read, isLoading, isCompact = false }) => {
+const DeliveryFunnel = ({ sent, delivered, read, isLoading, isCompact = false, isDark = false }) => {
   // Calculate step-to-step conversion rates
   const deliveryRate = sent > 0 ? (delivered / sent) * 100 : 0;
   const readRate = delivered > 0 ? (read / delivered) * 100 : 0;
@@ -318,6 +368,7 @@ const DeliveryFunnel = ({ sent, delivered, read, isLoading, isCompact = false })
           key={stage.label}
           {...stage}
           isCompact={isCompact}
+          isDark={isDark}
         />
       ))}
     </div>
@@ -332,7 +383,8 @@ const OutcomesPanel = ({
   revenue,
   basePopulation,
   avgDaysToReturn,
-  avgRevenuePerReturn
+  avgRevenuePerReturn,
+  isDark = false
 }) => {
   // Calculate rates with explicit denominator (basePopulation = read messages)
   const engagementRate = basePopulation > 0 ? (engaged / basePopulation) * 100 : null;
@@ -348,6 +400,7 @@ const OutcomesPanel = ({
         denominator={basePopulation}
         denominatorLabel="lidas"
         color="purple"
+        isDark={isDark}
       />
       <OutcomeCard
         icon={UserCheck}
@@ -358,6 +411,7 @@ const OutcomesPanel = ({
         denominatorLabel="lidas"
         subtitle={avgDaysToReturn > 0 ? `~${avgDaysToReturn.toFixed(0)}d para retornar` : null}
         color="amber"
+        isDark={isDark}
       />
       <OutcomeCard
         icon={DollarSign}
@@ -365,6 +419,7 @@ const OutcomesPanel = ({
         value={formatCurrency(revenue)}
         subtitle={avgRevenuePerReturn > 0 ? `${formatCurrency(avgRevenuePerReturn)}/retorno` : null}
         color="emerald"
+        isDark={isDark}
       />
     </div>
   );
@@ -378,6 +433,7 @@ const CampaignFunnel = ({
   avgRevenuePerReturn = 0,
   isLoading = false
 }) => {
+  const { isDark } = useTheme();
   const {
     sent = 0,
     delivered = 0,
@@ -455,13 +511,13 @@ const CampaignFunnel = ({
         <div className="animate-pulse space-y-6">
           <div className="flex justify-center gap-4 py-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="w-24 h-28 bg-slate-200 dark:bg-slate-700 rounded-xl" />
+              <div key={i} className={`w-24 h-28 ${isDark ? 'bg-slate-700' : 'bg-slate-200'} rounded-xl`} />
             ))}
           </div>
-          <div className="h-px bg-slate-200 dark:bg-slate-700" />
+          <div className={`h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
           <div className="flex justify-center gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="w-28 h-24 bg-slate-200 dark:bg-slate-700 rounded-xl" />
+              <div key={i} className={`w-28 h-24 ${isDark ? 'bg-slate-700' : 'bg-slate-200'} rounded-xl`} />
             ))}
           </div>
         </div>
@@ -479,13 +535,13 @@ const CampaignFunnel = ({
         color="blue"
       >
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <Send className="w-8 h-8 text-blue-500" />
+          <div className={`w-16 h-16 mx-auto mb-4 rounded-full ${isDark ? 'bg-stellar-cyan/20' : 'bg-blue-100'} flex items-center justify-center`}>
+            <Send className={`w-8 h-8 ${isDark ? 'text-stellar-cyan' : 'text-blue-500'}`} />
           </div>
-          <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">
+          <h4 className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'} mb-2`}>
             Nenhuma campanha enviada
           </h4>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'} max-w-md mx-auto`}>
             Quando você enviar campanhas, verá aqui o funil de entrega mostrando
             quantas mensagens foram enviadas, entregues e lidas.
           </p>
@@ -504,14 +560,14 @@ const CampaignFunnel = ({
         color="blue"
       >
         <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          <div className={`p-3 rounded-lg ${isDark ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'} border`}>
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'} mt-0.5 shrink-0`} />
               <div>
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                <p className={`text-xs font-semibold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
                   Dados inconsistentes detectados
                 </p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'} mt-0.5`}>
                   Os valores não seguem a sequência esperada (enviadas ≥ entregues ≥ lidas).
                   Isso pode indicar dados parciais ou erro de sincronização.
                 </p>
@@ -522,15 +578,15 @@ const CampaignFunnel = ({
           {/* Show raw numbers anyway */}
           <div className="flex flex-wrap justify-center gap-4 text-sm">
             <div className="text-center">
-              <p className="font-bold text-slate-900 dark:text-white">{sent.toLocaleString('pt-BR')}</p>
+              <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{sent.toLocaleString('pt-BR')}</p>
               <p className="text-xs text-slate-500">Enviadas</p>
             </div>
             <div className="text-center">
-              <p className="font-bold text-slate-900 dark:text-white">{delivered.toLocaleString('pt-BR')}</p>
+              <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{delivered.toLocaleString('pt-BR')}</p>
               <p className="text-xs text-slate-500">Entregues</p>
             </div>
             <div className="text-center">
-              <p className="font-bold text-slate-900 dark:text-white">{read.toLocaleString('pt-BR')}</p>
+              <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{read.toLocaleString('pt-BR')}</p>
               <p className="text-xs text-slate-500">Lidas</p>
             </div>
           </div>
@@ -556,6 +612,7 @@ const CampaignFunnel = ({
             read={read}
             isLoading={isLoading}
             isCompact={false}
+            isDark={isDark}
           />
         </div>
         {/* Mobile: compact horizontal (no icons, smaller text) */}
@@ -566,21 +623,22 @@ const CampaignFunnel = ({
             read={read}
             isLoading={isLoading}
             isCompact={true}
+            isDark={isDark}
           />
         </div>
 
         {/* Insight (if any) */}
         {insight && (
-          <FunnelInsight insight={insight} />
+          <FunnelInsight insight={insight} isDark={isDark} />
         )}
 
-        {/* Divider */}
+        {/* Divider - Cosmic styled */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+            <div className={`w-full border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}`} />
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-white dark:bg-slate-800 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span className={`${isDark ? 'bg-space-dust' : 'bg-white'} px-3 text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'} uppercase tracking-wider`}>
               Resultados
             </span>
           </div>
@@ -588,7 +646,7 @@ const CampaignFunnel = ({
 
         {/* SECONDARY: Outcomes Panel */}
         <div>
-          <p className="text-center text-xs text-slate-400 dark:text-slate-500 mb-3 flex items-center justify-center gap-1">
+          <p className={`text-center text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'} mb-3 flex items-center justify-center gap-1`}>
             <Info className="w-3 h-3" />
             Métricas de engajamento e conversão (base: mensagens lidas)
           </p>
@@ -599,6 +657,7 @@ const CampaignFunnel = ({
             basePopulation={read}
             avgDaysToReturn={avgDaysToReturn}
             avgRevenuePerReturn={avgRevenuePerReturn}
+            isDark={isDark}
           />
         </div>
       </div>

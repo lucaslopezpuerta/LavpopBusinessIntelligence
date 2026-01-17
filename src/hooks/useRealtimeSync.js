@@ -93,22 +93,37 @@ export function useRealtimeSync({
   const setupRealtimeRef = useRef(null); // Ref to hold latest setupRealtime function
   const intentionalDisconnectRef = useRef(false); // Flag to skip CLOSED handler during intentional cleanup
 
+  // Store callbacks in refs to break dependency chain (stable references)
+  const onContactChangeRef = useRef(onContactChange);
+  const onTransactionInsertRef = useRef(onTransactionInsert);
+
+  // Keep refs in sync with latest props
+  useEffect(() => {
+    onContactChangeRef.current = onContactChange;
+  }, [onContactChange]);
+
+  useEffect(() => {
+    onTransactionInsertRef.current = onTransactionInsert;
+  }, [onTransactionInsert]);
+
   // Debounce rapid updates to prevent UI thrashing
   const pendingUpdates = useRef([]);
   const flushTimeoutRef = useRef(null);
 
+  // Stable callback - uses ref to avoid dependency chain
   const flushUpdates = useCallback(() => {
     const updates = pendingUpdates.current;
 
-    if (updates.length > 0 && onContactChange) {
-      onContactChange(updates);
+    if (updates.length > 0 && onContactChangeRef.current) {
+      onContactChangeRef.current(updates);
     }
 
     // Reset pending
     pendingUpdates.current = [];
     setLastUpdate(new Date());
-  }, [onContactChange]);
+  }, []); // Empty deps - uses ref
 
+  // Stable callback - uses ref to avoid dependency chain
   const queueUpdate = useCallback((payload) => {
     pendingUpdates.current.push(payload);
 
@@ -119,7 +134,7 @@ export function useRealtimeSync({
     flushTimeoutRef.current = setTimeout(flushUpdates, 300);
   }, [flushUpdates]);
 
-  // Handle transaction INSERT - dispatch custom event for App.jsx to catch
+  // Handle transaction INSERT - stable callback using ref
   const handleTransactionInsert = useCallback((payload) => {
     console.info('[useRealtimeSync] Transaction INSERT detected:', payload.new?.id || 'batch');
 
@@ -128,11 +143,11 @@ export function useRealtimeSync({
       detail: { type: 'INSERT', data: payload.new }
     }));
 
-    // Call provided callback if any
-    onTransactionInsert?.(payload);
+    // Call provided callback if any (via ref for stability)
+    onTransactionInsertRef.current?.(payload);
 
     setLastUpdate(new Date());
-  }, [onTransactionInsert]);
+  }, []); // Empty deps - uses ref
 
   // Cleanup existing channels before reconnecting
   const cleanupChannels = useCallback(async () => {

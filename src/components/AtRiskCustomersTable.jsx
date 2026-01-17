@@ -72,7 +72,7 @@ import { isValidBrazilianMobile, normalizePhone } from '../utils/phoneUtils';
 const STORAGE_KEY = 'atRiskTable_sortBy';
 const STORAGE_KEY_DIR = 'atRiskTable_sortDir';
 
-// Hook for responsive items per page
+// Hook for responsive items per page with debounced resize handler
 const useItemsPerPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
@@ -81,9 +81,20 @@ const useItemsPerPage = () => {
       // Desktop (lg+): 10 items, Mobile: 5 items
       setItemsPerPage(window.innerWidth >= 1024 ? 10 : 5);
     };
-    checkSize();
-    window.addEventListener('resize', checkSize);
-    return () => window.removeEventListener('resize', checkSize);
+
+    // Debounce resize events to prevent excessive re-renders
+    let timeoutId;
+    const debouncedCheckSize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(checkSize, 150);
+    };
+
+    checkSize(); // Initial check
+    window.addEventListener('resize', debouncedCheckSize);
+    return () => {
+      window.removeEventListener('resize', debouncedCheckSize);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   return itemsPerPage;

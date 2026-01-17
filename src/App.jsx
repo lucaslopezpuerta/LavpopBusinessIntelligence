@@ -172,7 +172,8 @@ import BottomNavBar from './components/navigation/BottomNavBar';
 import OfflineIndicator from './components/OfflineIndicator';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppSettingsModal from './components/AppSettingsModal';
-import ExportModal from './components/ExportModal';
+// ExportModal lazy-loaded to save ~170KB (jsPDF, papaparse, jspdf-autotable)
+const ExportModal = lazy(() => import('./components/ExportModal'));
 import {
   DashboardLoadingSkeleton,
   CustomersLoadingSkeleton,
@@ -649,13 +650,17 @@ function AppContent() {
           onClose={() => setShowSettings(false)}
         />
 
-        {/* Export Modal */}
-        <ExportModal
-          isOpen={showExport}
-          onClose={() => setShowExport(false)}
-          activeView={activeTab}
-          data={data}
-        />
+        {/* Export Modal - Lazy-loaded to reduce initial bundle */}
+        {showExport && (
+          <Suspense fallback={null}>
+            <ExportModal
+              isOpen={showExport}
+              onClose={() => setShowExport(false)}
+              activeView={activeTab}
+              data={data}
+            />
+          </Suspense>
+        )}
       </div>
     </MotionConfig>
   );

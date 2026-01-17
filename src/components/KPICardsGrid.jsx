@@ -53,7 +53,7 @@
 // v1.1 (2025-11-30): Prop standardization & responsive fix
 // v1.0 (2025-11-30): Initial implementation
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   DollarSign, WashingMachine, Percent, Droplet, Flame,
   AlertCircle, Heart, CalendarDays
@@ -221,21 +221,21 @@ const KPICardsGrid = ({
     };
   }, [salesData]);
 
-  // Time subtitle
-  const getTimeSubtitle = () => {
+  // Time subtitle - memoized to avoid recalculation
+  const timeSubtitle = useMemo(() => {
     if (viewMode === 'current' && businessMetrics.windows?.currentWeek) {
       const days = businessMetrics.windows.currentWeek.daysElapsed || 1;
       return `${days} ${days === 1 ? 'dia' : 'dias'}`;
     }
     return '7 dias';
-  };
+  }, [viewMode, businessMetrics.windows?.currentWeek]);
 
-  // Modal handlers
-  const handleCardClick = (kpi) => {
+  // Modal handlers - memoized to prevent re-renders in child components
+  const handleCardClick = useCallback((kpi) => {
     if (kpi.drilldownType) {
       setSelectedKPI(kpi);
     }
-  };
+  }, []);
 
   const handleCloseModal = () => setSelectedKPI(null);
 
@@ -257,9 +257,9 @@ const KPICardsGrid = ({
   // Only show WoW trends for complete week (not partial/current)
   const showTrends = viewMode === 'complete';
 
-  // Hero KPIs (primary metrics) - with sparkline data
+  // Hero KPIs (primary metrics) - memoized to prevent recreation on every render
   // Now includes 4 cards: Revenue, Cycles, Utilization, MTD Revenue
-  const heroKPIs = [
+  const heroKPIs = useMemo(() => [
     {
       id: 'revenue',
       title: 'Receita Líquida',
@@ -267,7 +267,7 @@ const KPICardsGrid = ({
       value: metricsSource.netRevenue || 0,
       displayValue: formatCurrency(metricsSource.netRevenue),
       trend: showTrends ? getTrendData(wow.netRevenue) : null,
-      subtitle: getTimeSubtitle(),
+      subtitle: timeSubtitle,
       icon: DollarSign,
       color: 'green',
       drilldownType: 'financial',
@@ -282,7 +282,7 @@ const KPICardsGrid = ({
       value: metricsSource.totalServices || 0,
       displayValue: formatNumber(metricsSource.totalServices),
       trend: showTrends ? getTrendData(wow.totalServices) : null,
-      subtitle: getTimeSubtitle(),
+      subtitle: timeSubtitle,
       icon: WashingMachine,
       color: 'blue',
       drilldownType: 'financial',
@@ -297,7 +297,7 @@ const KPICardsGrid = ({
       value: Math.round(operationsMetrics?.utilization?.totalUtilization || 0),
       displayValue: formatPercent(operationsMetrics?.utilization?.totalUtilization || 0),
       trend: showTrends ? getTrendData(wow.utilization) : null,
-      subtitle: getTimeSubtitle(),
+      subtitle: timeSubtitle,
       icon: Percent,
       color: 'purple',
       drilldownType: 'financial',
@@ -323,10 +323,10 @@ const KPICardsGrid = ({
       sparklineData: sparklineData.mtdDaily,
       tooltip: METRIC_TOOLTIPS.mtdRevenue,
     }
-  ];
+  ], [metricsSource, showTrends, wow, timeSubtitle, sparklineData, operationsMetrics, businessMetrics?.monthToDate]);
 
-  // Secondary KPIs (compact) - with sparkline data
-  const secondaryKPIs = [
+  // Secondary KPIs (compact) - memoized to prevent recreation on every render
+  const secondaryKPIs = useMemo(() => [
     {
       id: 'wash',
       title: 'Lavagens',
@@ -379,7 +379,7 @@ const KPICardsGrid = ({
       tooltip: METRIC_TOOLTIPS.healthRate,
       // No sparkline for health rate (not time-series)
     }
-  ];
+  ], [washCount, washPercent, dryCount, dryPercent, showTrends, wow, sparklineData, needsAttentionCount, atRiskPercent, healthRate, totalActiveCustomers]);
 
   return (
     <>

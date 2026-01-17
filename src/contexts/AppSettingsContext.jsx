@@ -204,11 +204,16 @@ export const AppSettingsProvider = ({ children }) => {
   };
 
   // Update settings (optimistic UI)
+  // Uses functional setState to avoid dependency on settings object (prevents re-renders)
   const updateSettings = useCallback(async (newSettings) => {
-    const merged = { ...settings, ...newSettings };
+    // Compute merged inside functional update to avoid settings dependency
+    let merged;
+    setSettings(prev => {
+      merged = { ...prev, ...newSettings };
+      return merged;
+    });
 
-    // Optimistic update
-    setSettings(merged);
+    // Optimistic update already applied above
     setIsSaving(true);
     setError(null);
 
@@ -227,7 +232,7 @@ export const AppSettingsProvider = ({ children }) => {
     } finally {
       setIsSaving(false);
     }
-  }, [settings]);
+  }, []); // Empty deps - stable callback reference
 
   // Reset to defaults
   const resetToDefaults = useCallback(async () => {

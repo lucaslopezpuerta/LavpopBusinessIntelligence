@@ -1,4 +1,4 @@
-// Bilavnova BI - Tailwind Configuration v4.2
+// Bilavnova BI - Tailwind Configuration v4.3
 // "Cosmic Precision" design system - Space-age futurist aesthetic
 //
 // BRAND COLORS:
@@ -7,6 +7,11 @@
 // - Space Void: #050816 (Deep space background)
 //
 // CHANGELOG:
+// v4.3 (2026-01-17): CampaignFunnel cosmic safelist
+//   - Added stellar-gold color classes (text, bg, border with opacity variants)
+//   - Added cosmic-purple color classes (text, bg, border with opacity variants)
+//   - Added nebula-violet color classes
+//   - Added funnel stage border opacity classes
 // v4.2 (2026-01-16): Cosmic Effects expansion
 //   - Added cosmic accent colors (purple, pink, orange, gold, indigo, violet)
 //   - Added new shadow utilities (nebula, solar-flare, cosmic-inner)
@@ -86,6 +91,18 @@ export default {
     'dark:text-stellar-cyan', 'dark:border-stellar-cyan', 'dark:bg-stellar-cyan',
     'border-stellar-cyan/5', 'border-stellar-cyan/10', 'border-stellar-cyan/15', 'border-stellar-cyan/20',
     'bg-stellar-cyan/5', 'bg-stellar-cyan/10', 'bg-stellar-cyan/20',
+    // Stellar gold (v4.2 - CampaignFunnel outcomes)
+    'text-stellar-gold', 'bg-stellar-gold', 'border-stellar-gold',
+    'bg-stellar-gold/20', 'bg-stellar-gold/30', 'border-stellar-gold/30',
+    // Cosmic purple (v4.2 - CampaignFunnel outcomes)
+    'text-cosmic-purple', 'bg-cosmic-purple', 'border-cosmic-purple',
+    'bg-cosmic-purple/20', 'bg-cosmic-purple/30', 'border-cosmic-purple/30',
+    // Nebula violet
+    'text-nebula-violet', 'bg-nebula-violet/20', 'border-nebula-violet/30',
+    // Funnel stage borders (v4.2)
+    'bg-stellar-cyan/15', 'border-stellar-cyan/40',
+    'border-blue-500/40', 'border-emerald-500/40', 'border-emerald-500/30',
+    'bg-blue-900/50', 'bg-emerald-900/50',
   ],
 
   theme: {
