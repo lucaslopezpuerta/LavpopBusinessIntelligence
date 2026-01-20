@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v9.10 - COLUMN HEADER SORTING
+// AtRiskCustomersTable.jsx v10.1 - PREMIUM GLASS CARD
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
@@ -15,6 +15,16 @@
 // ✅ Clickable column headers with chevron sort indicators
 //
 // CHANGELOG:
+// v10.1 (2026-01-20): Premium Glass Effects
+//   - Replaced hard borders with soft glow system
+//   - Added ring-1 for subtle edge definition
+//   - Added inner top-edge reflection for glass realism
+//   - Outer cyan glow in dark mode for layered depth
+// v10.0 (2026-01-20): Cosmic Glass Card refactor
+//   - Replaced gradient background with glass effect (bg-space-dust/50)
+//   - Added backdrop-blur-xl for unified glassmorphism
+//   - Softer borders blending with page background
+//   - Updated empty and loading states to match glass pattern
 // v9.10 (2026-01-15): Column header sorting
 //   - NEW: Clickable column headers for sorting (Cliente, Valor, Dias)
 //   - NEW: Chevron indicators show current sort column and direction
@@ -66,6 +76,7 @@ const CustomerSegmentModal = lazy(() => import('./modals/CustomerSegmentModal'))
 import { formatCurrency } from '../utils/formatters';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { useBlacklist } from '../hooks/useBlacklist';
+import { useTheme } from '../contexts/ThemeContext';
 import { addCommunicationEntry, getDefaultNotes } from '../utils/communicationLog';
 import { isValidBrazilianMobile, normalizePhone } from '../utils/phoneUtils';
 
@@ -118,6 +129,8 @@ const getDaysUrgencyColor = (days) => {
 };
 
 const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) => {
+  const { isDark } = useTheme();
+
   // Responsive items per page
   const itemsPerPage = useItemsPerPage();
 
@@ -347,7 +360,12 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
   if (!customerMetrics?.activeCustomers) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">
+      <div className={`
+        ${isDark ? 'bg-space-dust/50' : 'bg-white/60'}
+        backdrop-blur-xl rounded-2xl p-4
+        border ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200/50'}
+        text-center text-slate-500 dark:text-slate-400
+      `}>
         Carregando clientes...
       </div>
     );
@@ -355,7 +373,12 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
   if (allAtRiskCustomers.length === 0) {
     return (
-      <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-2xl p-8 text-center border border-emerald-200 dark:border-emerald-800 shadow-sm">
+      <div className={`
+        ${isDark ? 'bg-space-dust/50' : 'bg-white/60'}
+        backdrop-blur-xl rounded-2xl p-8 text-center
+        border ${isDark ? 'border-emerald-500/20' : 'border-emerald-200/60'}
+        shadow-sm dark:shadow-glass-dark
+      `}>
         <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
         </div>
@@ -488,11 +511,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
   return (
     <>
       <div className={`
-        bg-gradient-to-br from-red-50/30 via-white to-white
-        dark:from-space-dust/40 dark:via-space-nebula dark:to-space-nebula
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl
         rounded-2xl
-        border border-slate-200/80 dark:border-stellar-cyan/10
-        shadow-sm
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
         overflow-hidden h-full flex flex-col
         ${className}
       `}>

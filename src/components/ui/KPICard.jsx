@@ -1,8 +1,12 @@
-// KPICard.jsx v1.10 - COSMIC PRECISION UPDATE
+// KPICard.jsx v1.12 - COSMIC PRECISION UPDATE
 // Unified KPI card component for Intelligence dashboard
-// Design System v4.3 compliant - Tier 1 Essential
+// Design System v5.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.12 (2026-01-18): Dark mode status border colors
+//   - Added brighter dark mode variants for status borders
+//   - success: dark:border-l-emerald-400, warning: dark:border-l-amber-400, danger: dark:border-l-red-400
+//   - Better visibility against space-dust background
 // v1.11 (2026-01-17): Cosmic Precision - neutral trend badge
 //   - Updated neutral trend badge to space-dust/80 (from slate-700)
 //   - Full cosmic compliance achieved
@@ -136,10 +140,11 @@ const KPICard = ({
   const isGradient = variant === 'gradient';
 
   // Status border classes for metric health indication
+  // Brighter variants in dark mode for visibility against space-dust
   const statusBorders = {
-    success: 'border-l-4 border-l-emerald-500',
-    warning: 'border-l-4 border-l-amber-500',
-    danger: 'border-l-4 border-l-red-500',
+    success: 'border-l-4 border-l-emerald-500 dark:border-l-emerald-400',
+    warning: 'border-l-4 border-l-amber-500 dark:border-l-amber-400',
+    danger: 'border-l-4 border-l-red-500 dark:border-l-red-400',
     neutral: ''
   };
 

@@ -1,7 +1,12 @@
-// IconSidebar.jsx v3.6 - THEME-AWARE COLORS FIX
+// IconSidebar.jsx v3.7 - HEIGHT ALIGNMENT WITH TOPBAR
 // Modern sidebar with navigation groups, hero branding, and polished mobile drawer
 //
 // CHANGELOG:
+// v3.7 (2026-01-18): Height alignment with TopBar
+//   - Desktop header: 72px → 60px to match TopBar
+//   - Mobile header: 64px → 56px (h-14) to match TopBar mobile
+//   - Logo size reduced from w-10 h-10 to w-8 h-8
+//   - Better visual symmetry with app chrome
 // v3.6 (2026-01-16): Theme-aware colors fix
 //   - Added useTheme hook for reliable dark mode detection
 //   - Converted all Tailwind dark: prefixes to JavaScript conditionals
@@ -147,16 +152,16 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
       onMouseEnter={() => !isPinned && setIsHovered(true)}
       onMouseLeave={() => !isPinned && setIsHovered(false)}
     >
-      {/* Hero Logo Header (72px) */}
-      <div className={`h-[72px] px-3 flex items-center justify-between border-b ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
-        <div className="flex items-center gap-3 min-w-0">
+      {/* Hero Logo Header (60px - matches TopBar) */}
+      <div className={`h-[60px] px-3 flex items-center justify-between border-b ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
+        <div className="flex items-center gap-2.5 min-w-0">
           {/* Logo with glow effect */}
           <div className="relative flex-shrink-0">
             <div className="absolute inset-0 bg-stellar-cyan/20 blur-xl rounded-full scale-150" />
             <img
               src={BilavnovaLogo}
               alt="Bilavnova"
-              className="relative w-10 h-10 object-contain"
+              className="relative w-8 h-8 object-contain"
             />
           </div>
           {isExpanded && (
@@ -278,15 +283,15 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
               aria-modal="true"
               aria-label="Menu de navegacao"
             >
-              {/* Header with close button */}
-              <div className={`h-16 px-4 flex items-center justify-between border-b ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
-                <div className="flex items-center gap-3">
+              {/* Header with close button (h-14 matches TopBar mobile) */}
+              <div className={`h-14 px-4 flex items-center justify-between border-b ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
+                <div className="flex items-center gap-2.5">
                   <div className="relative">
                     <div className="absolute inset-0 bg-stellar-cyan/20 blur-lg rounded-full scale-150" />
                     <img
                       src={BilavnovaLogo}
                       alt="Bilavnova"
-                      className="relative w-9 h-9 object-contain"
+                      className="relative w-8 h-8 object-contain"
                     />
                   </div>
                   <span className="font-display text-lg font-bold tracking-wide" style={{ fontFamily: "'Orbitron', sans-serif" }}>

@@ -2,6 +2,12 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v3.0 (2026-01-20): Prediction tracking and drift detection
+//   - Added evaluatePredictions() to compare yesterday's prediction with actual
+//   - Added checkModelDrift() to detect when recent errors exceed baseline
+//   - Updated runRevenueModelTraining() to run evaluation and drift checks
+//   - Enables honest out-of-sample accuracy metrics in ModelDiagnostics UI
+//
 // v2.17 (2025-12-21): Enhanced model training with holidays & tiered complexity
 //   - Added Brazilian holiday detection (fixed + Easter-based)
 //   - Interaction terms: weekend×drying, weekend×rain, holiday×drying
@@ -1716,13 +1722,198 @@ async function trainRevenueModel(supabase, options = {}) {
 }
 
 /**
+ * Evaluate yesterday's prediction against actual revenue
+ * Called during midnight training run to close the feedback loop
+ * @param {Object} supabase - Supabase client
+ * @returns {Object} Evaluation result or null if no prediction/actual found
+ */
+async function evaluatePredictions(supabase) {
+  const yesterday = getLocalDate(-1);
+  console.log(`Evaluating prediction for ${yesterday}...`);
+
+  try {
+    // Get actual revenue for yesterday from daily_revenue view
+    const { data: actualData, error: actualError } = await supabase
+      .from('daily_revenue')
+      .select('total_revenue')
+      .eq('date', yesterday)
+      .single();
+
+    if (actualError || !actualData?.total_revenue) {
+      console.log(`No actual revenue data for ${yesterday}`);
+      return { evaluated: false, reason: 'no_actual_revenue' };
+    }
+
+    const actualRevenue = parseFloat(actualData.total_revenue);
+
+    // Find the pending prediction for yesterday
+    const { data: prediction, error: predError } = await supabase
+      .from('revenue_predictions')
+      .select('id, predicted_revenue')
+      .eq('prediction_date', yesterday)
+      .is('actual_revenue', null)
+      .single();
+
+    if (predError || !prediction) {
+      console.log(`No pending prediction found for ${yesterday}`);
+      return { evaluated: false, reason: 'no_pending_prediction' };
+    }
+
+    const predictedRevenue = parseFloat(prediction.predicted_revenue);
+    const error = actualRevenue - predictedRevenue;
+    const absError = Math.abs(error);
+    const pctError = actualRevenue > 0
+      ? ((error / actualRevenue) * 100)
+      : null;
+
+    // Update the prediction record with actual values
+    const { error: updateError } = await supabase
+      .from('revenue_predictions')
+      .update({
+        actual_revenue: actualRevenue,
+        error: Math.round(error * 100) / 100,
+        abs_error: Math.round(absError * 100) / 100,
+        pct_error: pctError ? Math.round(pctError * 10) / 10 : null,
+        evaluated_at: new Date().toISOString()
+      })
+      .eq('id', prediction.id);
+
+    if (updateError) {
+      console.error('Failed to update prediction:', updateError.message);
+      return { evaluated: false, reason: 'update_failed', error: updateError.message };
+    }
+
+    console.log(`Prediction evaluated: predicted R$${predictedRevenue.toFixed(0)}, actual R$${actualRevenue.toFixed(0)}, error R$${error.toFixed(0)} (${pctError?.toFixed(1) || '—'}%)`);
+
+    return {
+      evaluated: true,
+      date: yesterday,
+      predicted: predictedRevenue,
+      actual: actualRevenue,
+      error: Math.round(error),
+      pct_error: pctError ? Math.round(pctError * 10) / 10 : null
+    };
+  } catch (err) {
+    console.error('Prediction evaluation error:', err.message);
+    return { evaluated: false, reason: 'exception', error: err.message };
+  }
+}
+
+/**
+ * Check for model drift by comparing recent errors to baseline
+ * Drift indicates the model may need retraining or investigation
+ * @param {Object} supabase - Supabase client
+ * @returns {Object} Drift detection result
+ */
+async function checkModelDrift(supabase) {
+  console.log('Checking for model drift...');
+
+  try {
+    const today = getLocalDate(0);
+    const sevenDaysAgo = getLocalDate(-7);
+    const thirtySevenDaysAgo = getLocalDate(-37);
+
+    // Get recent errors (last 7 days)
+    const { data: recentPreds, error: recentError } = await supabase
+      .from('revenue_predictions')
+      .select('abs_error')
+      .gte('prediction_date', sevenDaysAgo)
+      .lt('prediction_date', today)
+      .not('abs_error', 'is', null);
+
+    if (recentError) {
+      console.warn('Failed to fetch recent predictions:', recentError.message);
+      return null;
+    }
+
+    // Get baseline errors (7-37 days ago, i.e., preceding 30 days)
+    const { data: baselinePreds, error: baselineError } = await supabase
+      .from('revenue_predictions')
+      .select('abs_error')
+      .gte('prediction_date', thirtySevenDaysAgo)
+      .lt('prediction_date', sevenDaysAgo)
+      .not('abs_error', 'is', null);
+
+    if (baselineError) {
+      console.warn('Failed to fetch baseline predictions:', baselineError.message);
+      return null;
+    }
+
+    // Need at least 5 points in each period for meaningful comparison
+    if (!recentPreds?.length || recentPreds.length < 5 || !baselinePreds?.length || baselinePreds.length < 5) {
+      console.log(`Insufficient data for drift detection (recent: ${recentPreds?.length || 0}, baseline: ${baselinePreds?.length || 0})`);
+      return { canCheck: false, reason: 'insufficient_data' };
+    }
+
+    const recentMAE = recentPreds.reduce((sum, p) => sum + parseFloat(p.abs_error), 0) / recentPreds.length;
+    const baselineMAE = baselinePreds.reduce((sum, p) => sum + parseFloat(p.abs_error), 0) / baselinePreds.length;
+    const driftRatio = baselineMAE > 0 ? recentMAE / baselineMAE : 1;
+
+    // Drift threshold: 1.5x baseline MAE indicates significant degradation
+    const isDrifting = driftRatio > 1.5;
+
+    console.log(`Drift check: recent MAE=R$${recentMAE.toFixed(0)}, baseline MAE=R$${baselineMAE.toFixed(0)}, ratio=${driftRatio.toFixed(2)}, drifting=${isDrifting}`);
+
+    // Update model_coefficients with drift info
+    if (isDrifting) {
+      await supabase
+        .from('model_coefficients')
+        .update({
+          drift_detected: true,
+          drift_ratio: Math.round(driftRatio * 100) / 100
+        })
+        .eq('id', 'revenue_prediction');
+    } else {
+      // Clear drift flag if no longer drifting
+      await supabase
+        .from('model_coefficients')
+        .update({
+          drift_detected: false,
+          drift_ratio: Math.round(driftRatio * 100) / 100
+        })
+        .eq('id', 'revenue_prediction');
+    }
+
+    return {
+      canCheck: true,
+      isDrifting,
+      recentMAE: Math.round(recentMAE),
+      baselineMAE: Math.round(baselineMAE),
+      driftRatio: Math.round(driftRatio * 100) / 100,
+      recentPoints: recentPreds.length,
+      baselinePoints: baselinePreds.length
+    };
+  } catch (err) {
+    console.error('Drift check error:', err.message);
+    return { canCheck: false, reason: 'exception', error: err.message };
+  }
+}
+
+/**
  * Run revenue model training (wrapper for scheduler)
+ * v3.0: Also evaluates yesterday's prediction and checks for drift
  */
 async function runRevenueModelTraining(supabase) {
+  const results = {
+    skipped: true,
+    evaluation: null,
+    drift: null,
+    training: null
+  };
+
+  // Always try to evaluate yesterday's prediction (even if we don't retrain)
+  results.evaluation = await evaluatePredictions(supabase);
+
+  // Check for model drift
+  results.drift = await checkModelDrift(supabase);
+
+  // Run training if due
   if (await shouldRetrainRevenueModel(supabase)) {
-    return await trainRevenueModel(supabase);
+    results.training = await trainRevenueModel(supabase);
+    results.skipped = false;
   }
-  return { skipped: true };
+
+  return results;
 }
 
 /**

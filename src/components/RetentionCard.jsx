@@ -1,7 +1,17 @@
-// RetentionCard.jsx v1.3
+// RetentionCard.jsx v2.1
 // Full retention analytics card with segment comparison and re-engage actions
 //
 // CHANGELOG:
+// v2.1 (2026-01-20): Premium Glass Effects
+//   - Replaced hard borders with soft glow system
+//   - Added ring-1 for subtle edge definition
+//   - Added inner top-edge reflection for glass realism
+//   - Outer cyan glow in dark mode for layered depth
+// v2.0 (2026-01-20): Cosmic Glass Card refactor
+//   - Replaced gradient background with glass effect (bg-space-dust/50)
+//   - Upgraded backdrop-blur-md to backdrop-blur-xl
+//   - Removed left border stripe (accent via icon badge only)
+//   - Softer borders blending with page background
 // v1.3 (2026-01-15): Added ContextHelp tooltip to main header
 //   - NEW: Tooltip explaining "Taxa de Retorno" metric
 //   - Clarifies difference from "Conversão 1ª→2ª Visita"
@@ -32,6 +42,7 @@
 
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   RefreshCw,
   TrendingUp,
@@ -53,10 +64,10 @@ const STATUS_THRESHOLDS = {
   AT_RISK: 30     // 30-49% = Em Risco, <30% = Crítico
 };
 
-// Card hover animation - lift + shadow effect (matches AcquisitionCard)
+// Premium glass hover - subtle lift (no boxShadow to preserve CSS glow)
 const cardHoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
-  hover: { y: -2, boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }
+  rest: { y: 0, scale: 1 },
+  hover: { y: -3, scale: 1.005 }
 };
 const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
@@ -295,6 +306,8 @@ const RetentionCard = ({
   onOpenSegmentModal,
   className = ''
 }) => {
+  const { isDark } = useTheme();
+
   // Generate insight based on data
   const insight = useMemo(() => {
     if (!data) return null;
@@ -335,7 +348,15 @@ const RetentionCard = ({
   // Handle empty/loading state
   if (!data) {
     return (
-      <div className={`bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm ${className}`}>
+      <div className={`
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl rounded-2xl p-5
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
+        ${className}
+      `}>
         <div className="animate-pulse space-y-4">
           <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
           <div className="h-16 bg-slate-200 dark:bg-slate-700 rounded" />
@@ -369,11 +390,12 @@ const RetentionCard = ({
       variants={cardHoverAnimation}
       transition={cardHoverTransition}
       className={`
-        bg-gradient-to-br from-blue-50/40 via-white to-white
-        dark:from-blue-900/10 dark:via-space-nebula dark:to-space-nebula
-        backdrop-blur-md rounded-2xl p-5
-        border border-slate-200/80 dark:border-stellar-cyan/10
-        border-l-4 border-l-blue-500 dark:border-l-blue-400
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl rounded-2xl p-5
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
         overflow-hidden
         h-full flex flex-col
         ${className}

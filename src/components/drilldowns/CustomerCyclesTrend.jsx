@@ -1,9 +1,18 @@
-// CustomerCyclesTrend.jsx v1.2
+// CustomerCyclesTrend.jsx v2.1 - CARD LABEL CONTRAST FIX
 // Lifetime cycles trend chart for customer profile modal
 // Triggered by clicking customer name - shows monthly service history
-// Design System v3.2 compliant
+// Design System v5.0 compliant - Variant D (Glassmorphism Cosmic)
 //
 // CHANGELOG:
+// v2.1 (2026-01-18): Improved card label contrast in dark mode
+//   - Changed stat card titles from dark:text-slate-500 to dark:text-slate-300
+//   - Better readability for Total, Média, Melhor Mês labels
+// v2.0 (2026-01-18): Cosmic Design System v5.0 overhaul
+//   - Updated to space-nebula/space-dust backgrounds
+//   - Stellar-cyan accents for icons and borders
+//   - Glassmorphism cards with cosmic borders
+//   - Chart gradient uses stellar-cyan palette
+//   - Cosmic hover states on buttons
 // v1.2 (2025-12-22): Improved "Melhor Mês" card UX
 //   - Changed layout: month as value, cycles as subtitle
 //   - Header now says "Melhor Mês" for clarity
@@ -21,15 +30,17 @@ import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, ChevronUp } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getChartColors, getSeriesColors } from '../../utils/chartColors';
+import { getChartColors } from '../../utils/chartColors';
 import { haptics } from '../../utils/haptics';
 import { parseBrDate } from '../../utils/dateUtils';
 import { countMachines } from '../../utils/transactionParser';
 
+// Cosmic color palette for chart
+const STELLAR_CYAN = '#22d3ee';
+
 const CustomerCyclesTrend = ({ sales, customerDoc, onCollapse }) => {
   const { isDark } = useTheme();
   const chartColors = getChartColors(isDark);
-  const seriesColors = getSeriesColors(isDark);
 
   // Calculate monthly cycles data
   const { monthlyData, stats } = useMemo(() => {
@@ -106,23 +117,22 @@ const CustomerCyclesTrend = ({ sales, customerDoc, onCollapse }) => {
     onCollapse?.();
   };
 
-  const gradientId = 'customer-cycles-gradient';
-  const color = seriesColors[0]; // Primary blue
+  const gradientId = 'customer-cycles-gradient-cosmic';
 
   // Empty state
   if (monthlyData.length === 0) {
     return (
-      <div className="p-4 bg-slate-50 dark:bg-slate-800/50">
+      <div className="p-4 bg-slate-50 dark:bg-space-nebula/50">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-lavpop-blue" />
+            <TrendingUp className="w-4 h-4 text-stellar-cyan" />
             <h4 className="text-sm font-bold text-slate-800 dark:text-white">
               Histórico de Ciclos
             </h4>
           </div>
           <button
             onClick={handleCollapse}
-            className="flex items-center gap-1 px-2 py-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-stellar-cyan hover:bg-slate-200 dark:hover:bg-space-dust rounded-lg transition-colors"
           >
             <ChevronUp className="w-4 h-4" />
             <span className="text-xs font-medium">Ocultar</span>
@@ -136,57 +146,61 @@ const CustomerCyclesTrend = ({ sales, customerDoc, onCollapse }) => {
   }
 
   return (
-    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 space-y-3">
+    <div className="p-4 bg-slate-50 dark:bg-space-nebula/50 space-y-3">
       {/* Header with collapse button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-lavpop-blue" />
+          <TrendingUp className="w-4 h-4 text-stellar-cyan" />
           <h4 className="text-sm font-bold text-slate-800 dark:text-white">
             Histórico de Ciclos
           </h4>
         </div>
         <button
           onClick={handleCollapse}
-          className="flex items-center gap-1 px-2 py-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+          className="flex items-center gap-1 px-2 py-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-stellar-cyan hover:bg-slate-200 dark:hover:bg-space-dust rounded-lg transition-colors"
         >
           <ChevronUp className="w-4 h-4" />
           <span className="text-xs font-medium">Ocultar</span>
         </button>
       </div>
 
-      {/* Stats cards (3 cols) */}
+      {/* Stats cards (3 cols) - Cosmic glassmorphism */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2 border border-slate-200 dark:border-slate-600">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Total</p>
+        <div className="bg-white dark:bg-space-dust/80 rounded-xl p-2.5 border border-slate-200 dark:border-stellar-cyan/15">
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Total</p>
           <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.total}</p>
-          <p className="text-[10px] text-slate-400">ciclos</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">ciclos</p>
         </div>
-        <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2 border border-slate-200 dark:border-slate-600">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Média</p>
+        <div className="bg-white dark:bg-space-dust/80 rounded-xl p-2.5 border border-slate-200 dark:border-stellar-cyan/15">
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Média</p>
           <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.average}</p>
-          <p className="text-[10px] text-slate-400">por mês</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">por mês</p>
         </div>
-        <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2 border border-slate-200 dark:border-slate-600">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Melhor Mês</p>
+        <div className="bg-white dark:bg-space-dust/80 rounded-xl p-2.5 border border-slate-200 dark:border-stellar-cyan/15">
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Melhor Mês</p>
           <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.bestMonth}</p>
-          <p className="text-[10px] text-slate-400">{stats.bestValue} ciclos</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">{stats.bestValue} ciclos</p>
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart - Stellar cyan gradient */}
       <div className="h-32 sm:h-40 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={monthlyData}>
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                <stop offset="5%" stopColor={STELLAR_CYAN} stopOpacity={0.4} />
+                <stop offset="95%" stopColor={STELLAR_CYAN} stopOpacity={0.05} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.axis} vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={isDark ? 'rgba(34, 211, 238, 0.1)' : chartColors.axis}
+              vertical={false}
+            />
             <XAxis
               dataKey="displayMonth"
-              tick={{ fontSize: 10, fill: chartColors.tickText }}
+              tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : chartColors.tickText }}
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
@@ -195,18 +209,21 @@ const CustomerCyclesTrend = ({ sales, customerDoc, onCollapse }) => {
             <YAxis hide={true} />
             <Tooltip
               contentStyle={{
-                backgroundColor: chartColors.tooltipBg,
-                borderColor: chartColors.tooltipBorder,
-                borderRadius: '8px',
-                fontSize: '12px'
+                backgroundColor: isDark ? '#1e293b' : chartColors.tooltipBg,
+                borderColor: isDark ? 'rgba(34, 211, 238, 0.2)' : chartColors.tooltipBorder,
+                borderRadius: '12px',
+                fontSize: '12px',
+                boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)'
               }}
               formatter={(value) => [`${value} ciclos`, 'Ciclos']}
               labelFormatter={(label) => label}
+              labelStyle={{ color: isDark ? '#e2e8f0' : '#1e293b', fontWeight: 600 }}
+              itemStyle={{ color: STELLAR_CYAN }}
             />
             <Area
               type="monotone"
               dataKey="services"
-              stroke={color}
+              stroke={STELLAR_CYAN}
               fillOpacity={1}
               fill={`url(#${gradientId})`}
               strokeWidth={2}

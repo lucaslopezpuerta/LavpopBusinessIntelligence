@@ -1,6 +1,10 @@
 // useRevenuePrediction.js
 // React hook for fetching revenue predictions from backend
 //
+// v1.1 (2026-01-20): Added data quality and OOS metrics support
+//   - Now exposes dataQuality from API response
+//   - Supports drift_detected and oos_* fields in modelInfo
+//
 // v1.0 (2025-12-21): Initial implementation
 //   - Fetches 7-day predictions from Netlify function
 //   - Handles loading, error, and refresh states
@@ -38,6 +42,7 @@ export default function useRevenuePrediction(options = {}) {
 
   const [predictions, setPredictions] = useState(null);
   const [modelInfo, setModelInfo] = useState(null);
+  const [dataQuality, setDataQuality] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
@@ -95,6 +100,7 @@ export default function useRevenuePrediction(options = {}) {
       if (cached) {
         setPredictions(cached.predictions);
         setModelInfo(cached.model_info);
+        setDataQuality(cached.data_quality || null);
         setLoading(false);
         setLastFetched(new Date(cached.timestamp));
         return;
@@ -122,6 +128,7 @@ export default function useRevenuePrediction(options = {}) {
 
       setPredictions(data.predictions);
       setModelInfo(data.model_info);
+      setDataQuality(data.data_quality || null);
       setLastFetched(new Date(data.timestamp));
 
       // Cache the result
@@ -137,6 +144,7 @@ export default function useRevenuePrediction(options = {}) {
         console.log('[useRevenuePrediction] Using stale cache as fallback');
         setPredictions(staleCache.predictions);
         setModelInfo(staleCache.model_info);
+        setDataQuality(staleCache.data_quality || null);
       }
     } finally {
       setLoading(false);
@@ -162,6 +170,7 @@ export default function useRevenuePrediction(options = {}) {
   return {
     predictions,
     modelInfo,
+    dataQuality,
     loading,
     error,
     lastFetched,

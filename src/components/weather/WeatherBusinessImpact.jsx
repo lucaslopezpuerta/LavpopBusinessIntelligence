@@ -510,6 +510,7 @@ const WeatherBusinessImpact = ({
   const {
     predictions,
     modelInfo,
+    dataQuality,
     loading,
     error,
     refresh,
@@ -666,7 +667,7 @@ const WeatherBusinessImpact = ({
         isOpen={showDiagnostics}
         onClose={() => setShowDiagnostics(false)}
         modelInfo={modelInfo}
-        dataQuality={predictions?.[0]?.data_quality}
+        dataQuality={dataQuality}
       />
     </div>
   );

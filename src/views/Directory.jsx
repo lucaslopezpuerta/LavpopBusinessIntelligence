@@ -1,8 +1,20 @@
-// Directory.jsx v2.7 - THEME-AWARE COLORS FIX
+// Directory.jsx v2.9 - COSMIC DROPDOWN PAGINATION
 // Dedicated view for browsing and searching customers
-// Design System v4.0 compliant - coherent with Dashboard, SocialMedia, etc.
+// Design System v5.0 compliant - Cosmic Precision theme
 //
 // CHANGELOG:
+// v2.9 (2026-01-18): CosmicDropdown for pagination
+//   - Replaced native <select> with CosmicDropdown component
+//   - Consistent cosmic styling with glassmorphism panel
+//   - Keyboard navigation and haptic feedback support
+// v2.8 (2026-01-18): Design System v5.0 Cosmic Precision
+//   - StatsPill: Updated to cosmic tokens (space-dust, space-nebula)
+//   - Filter toggle: bg-space-dust, hover:bg-space-nebula
+//   - Filter presets: Cosmic-styled active/inactive states
+//   - Advanced filters: space-nebula backgrounds, stellar-cyan borders
+//   - Pagination: Cosmic buttons with stellar-cyan focus
+//   - Empty state: space-nebula text colors
+//   - All borders updated to stellar-cyan/10 pattern
 // v2.7 (2026-01-16): Theme-aware colors fix
 //   - Added useTheme hook for reliable dark mode detection
 //   - Converted all Tailwind dark: prefixes to JavaScript conditionals
@@ -77,6 +89,7 @@ import CustomerCard from '../components/CustomerCard';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { DirectoryLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
+import CosmicDropdown from '../components/ui/CosmicDropdown';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Lazy-load heavy modals
@@ -117,28 +130,32 @@ const cardVariants = {
   }
 };
 
-// Stats Pill Component
+// Stats Pill Component - Design System v5.0
 const StatsPill = ({ icon: Icon, value, label, color = 'slate', pulse = false, isDark }) => {
   const colorMap = {
     slate: {
-      bg: isDark ? 'bg-slate-800' : 'bg-slate-100',
+      bg: isDark ? 'bg-space-dust' : 'bg-slate-100',
       text: isDark ? 'text-slate-300' : 'text-slate-600',
       icon: isDark ? 'text-slate-400' : 'text-slate-500',
+      border: isDark ? 'border-stellar-cyan/10' : 'border-slate-200',
     },
     blue: {
-      bg: isDark ? 'bg-blue-900/20' : 'bg-blue-50',
+      bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50',
       text: isDark ? 'text-blue-400' : 'text-blue-600',
       icon: isDark ? 'text-blue-400' : 'text-blue-500',
+      border: isDark ? 'border-blue-500/20' : 'border-blue-200',
     },
     amber: {
-      bg: isDark ? 'bg-amber-900/20' : 'bg-amber-50',
+      bg: isDark ? 'bg-amber-900/30' : 'bg-amber-50',
       text: isDark ? 'text-amber-400' : 'text-amber-600',
       icon: isDark ? 'text-amber-400' : 'text-amber-500',
+      border: isDark ? 'border-amber-500/20' : 'border-amber-200',
     },
     purple: {
-      bg: isDark ? 'bg-purple-900/20' : 'bg-purple-50',
+      bg: isDark ? 'bg-purple-900/30' : 'bg-purple-50',
       text: isDark ? 'text-purple-400' : 'text-purple-600',
       icon: isDark ? 'text-purple-400' : 'text-purple-500',
+      border: isDark ? 'border-purple-500/20' : 'border-purple-200',
     },
   };
 
@@ -148,7 +165,7 @@ const StatsPill = ({ icon: Icon, value, label, color = 'slate', pulse = false, i
     <div className={`
       flex items-center gap-2 px-3 py-1.5
       ${colors.bg}
-      rounded-lg border border-transparent
+      rounded-lg border ${colors.border}
       transition-all duration-200
     `}>
       {pulse && (
@@ -534,10 +551,10 @@ const Directory = ({ data, onDataChange }) => {
                 transition-all duration-200
                 min-w-[120px]
                 ${filtersExpanded
-                  ? 'bg-lavpop-blue text-white shadow-md'
+                  ? 'bg-gradient-stellar text-white shadow-md'
                   : isDark
-                    ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-space-dust text-slate-300 border border-stellar-cyan/10 hover:bg-space-nebula hover:border-stellar-cyan/20'
+                    : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
                 }
               `}
               aria-expanded={filtersExpanded}
@@ -571,31 +588,31 @@ const Directory = ({ data, onDataChange }) => {
             </button>
           </div>
 
-          {/* Smart Filter Presets */}
+          {/* Smart Filter Presets - Design System v5.0 */}
           <div className="flex flex-wrap gap-2 mt-4">
             {FILTER_PRESETS.map((preset) => {
               const Icon = preset.icon;
               const isActive = activePreset === preset.id;
               const colorClasses = {
                 red: isActive
-                  ? 'bg-red-500 text-white shadow-md'
+                  ? 'bg-red-500 text-white shadow-md border border-red-400'
                   : isDark
-                    ? 'bg-slate-700 text-slate-300 border border-slate-600 hover:border-red-500 hover:text-red-400'
+                    ? 'bg-space-dust text-slate-300 border border-stellar-cyan/10 hover:border-red-500/50 hover:text-red-400'
                     : 'bg-white text-slate-600 border border-slate-200 hover:border-red-300 hover:text-red-600',
                 amber: isActive
-                  ? 'bg-amber-500 text-white shadow-md'
+                  ? 'bg-amber-500 text-white shadow-md border border-amber-400'
                   : isDark
-                    ? 'bg-slate-700 text-slate-300 border border-slate-600 hover:border-amber-500 hover:text-amber-400'
+                    ? 'bg-space-dust text-slate-300 border border-stellar-cyan/10 hover:border-amber-500/50 hover:text-amber-400'
                     : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-600',
                 emerald: isActive
-                  ? 'bg-emerald-500 text-white shadow-md'
+                  ? 'bg-emerald-500 text-white shadow-md border border-emerald-400'
                   : isDark
-                    ? 'bg-slate-700 text-slate-300 border border-slate-600 hover:border-emerald-500 hover:text-emerald-400'
+                    ? 'bg-space-dust text-slate-300 border border-stellar-cyan/10 hover:border-emerald-500/50 hover:text-emerald-400'
                     : 'bg-white text-slate-600 border border-slate-200 hover:border-emerald-300 hover:text-emerald-600',
                 rose: isActive
-                  ? 'bg-rose-500 text-white shadow-md'
+                  ? 'bg-rose-500 text-white shadow-md border border-rose-400'
                   : isDark
-                    ? 'bg-slate-700 text-slate-300 border border-slate-600 hover:border-rose-500 hover:text-rose-400'
+                    ? 'bg-space-dust text-slate-300 border border-stellar-cyan/10 hover:border-rose-500/50 hover:text-rose-400'
                     : 'bg-white text-slate-600 border border-slate-200 hover:border-rose-300 hover:text-rose-600',
               };
               return (
@@ -636,7 +653,7 @@ const Directory = ({ data, onDataChange }) => {
 
                   {/* Segment */}
                   <div>
-                    <label className={`block text-[10px] sm:text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'} mb-2 uppercase tracking-wide`}>
+                    <label className={`block text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'} mb-2 uppercase tracking-wide`}>
                       Segmento
                     </label>
                     <div className="flex flex-wrap gap-1.5">
@@ -645,12 +662,12 @@ const Directory = ({ data, onDataChange }) => {
                           key={seg}
                           onClick={() => setSelectedSegment(seg)}
                           className={`
-                            px-2.5 py-1 rounded-full text-[11px] font-semibold
+                            px-2.5 py-1 rounded-full text-xs font-semibold
                             transition-all duration-200
                             ${selectedSegment === seg
-                              ? 'bg-lavpop-blue text-white shadow-md'
+                              ? 'bg-gradient-stellar text-white shadow-md'
                               : isDark
-                                ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-lavpop-blue hover:text-lavpop-blue'
+                                ? 'bg-space-dust text-slate-400 border border-stellar-cyan/10 hover:border-stellar-cyan/30 hover:text-stellar-cyan'
                                 : 'bg-white text-slate-600 border border-slate-200 hover:border-lavpop-blue hover:text-lavpop-blue'
                             }
                           `}
@@ -663,7 +680,7 @@ const Directory = ({ data, onDataChange }) => {
 
                   {/* Risk Level */}
                   <div>
-                    <label className={`block text-[10px] sm:text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'} mb-2 uppercase tracking-wide`}>
+                    <label className={`block text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'} mb-2 uppercase tracking-wide`}>
                       Risco
                     </label>
                     <div className="flex flex-wrap gap-1.5">
@@ -680,14 +697,14 @@ const Directory = ({ data, onDataChange }) => {
                           key={risk.value}
                           onClick={() => setSelectedRisk(risk.value)}
                           className={`
-                            flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold
+                            flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
                             transition-all duration-200
                             ${selectedRisk === risk.value
                               ? isDark
                                 ? 'bg-white text-slate-800 shadow-md'
                                 : 'bg-slate-800 text-white shadow-md'
                               : isDark
-                                ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500'
+                                ? 'bg-space-dust text-slate-400 border border-stellar-cyan/10 hover:border-stellar-cyan/20'
                                 : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-400'
                             }
                           `}
@@ -701,7 +718,7 @@ const Directory = ({ data, onDataChange }) => {
 
                   {/* Sort Options */}
                   <div>
-                    <label className={`block text-[10px] sm:text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'} mb-2 uppercase tracking-wide`}>
+                    <label className={`block text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'} mb-2 uppercase tracking-wide`}>
                       Ordenar
                     </label>
                     <div className="flex flex-wrap gap-1.5">
@@ -725,12 +742,12 @@ const Directory = ({ data, onDataChange }) => {
                             }
                           }}
                           className={`
-                            flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold
+                            flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
                             transition-all duration-200
                             ${sortBy === sort.value
-                              ? 'bg-lavpop-blue text-white shadow-md'
+                              ? 'bg-gradient-stellar text-white shadow-md'
                               : isDark
-                                ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-lavpop-blue hover:text-lavpop-blue'
+                                ? 'bg-space-dust text-slate-400 border border-stellar-cyan/10 hover:border-stellar-cyan/30 hover:text-stellar-cyan'
                                 : 'bg-white text-slate-600 border border-slate-200 hover:border-lavpop-blue hover:text-lavpop-blue'
                             }
                           `}
@@ -749,14 +766,14 @@ const Directory = ({ data, onDataChange }) => {
                   {/* Contacted Toggle + Clear */}
                   <div className="flex flex-col gap-2">
                     <div>
-                      <label className={`block text-[10px] sm:text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'} mb-2 uppercase tracking-wide`}>
+                      <label className={`block text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'} mb-2 uppercase tracking-wide`}>
                         Contactados
                       </label>
                       <button
                         onClick={() => setExcludeContacted(!excludeContacted)}
                         className={`
                           w-full max-w-[180px] h-[32px] p-0.5
-                          ${isDark ? 'bg-slate-700' : 'bg-slate-200'}
+                          ${isDark ? 'bg-space-nebula border border-stellar-cyan/10' : 'bg-slate-200'}
                           rounded-full
                           relative
                           transition-colors
@@ -768,7 +785,7 @@ const Directory = ({ data, onDataChange }) => {
                         <div
                           className={`
                             absolute top-0.5 h-[28px] w-[calc(50%-2px)]
-                            ${isDark ? 'bg-slate-800' : 'bg-white'}
+                            ${isDark ? 'bg-space-dust' : 'bg-white'}
                             rounded-full shadow-sm
                             transition-all duration-200 ease-out
                             ${excludeContacted ? 'left-[calc(50%)]' : 'left-0.5'}
@@ -779,8 +796,8 @@ const Directory = ({ data, onDataChange }) => {
                           <span
                             className={`
                               flex-1 flex items-center justify-center
-                              text-[11px] font-semibold transition-colors z-10
-                              ${!excludeContacted ? 'text-lavpop-blue' : isDark ? 'text-slate-500' : 'text-slate-400'}
+                              text-xs font-semibold transition-colors z-10
+                              ${!excludeContacted ? 'text-stellar-cyan' : isDark ? 'text-slate-500' : 'text-slate-400'}
                             `}
                           >
                             Incluir
@@ -788,8 +805,8 @@ const Directory = ({ data, onDataChange }) => {
                           <span
                             className={`
                               flex-1 flex items-center justify-center
-                              text-[11px] font-semibold transition-colors z-10
-                              ${excludeContacted ? 'text-lavpop-blue' : isDark ? 'text-slate-500' : 'text-slate-400'}
+                              text-xs font-semibold transition-colors z-10
+                              ${excludeContacted ? 'text-stellar-cyan' : isDark ? 'text-slate-500' : 'text-slate-400'}
                             `}
                           >
                             Excluir
@@ -804,8 +821,8 @@ const Directory = ({ data, onDataChange }) => {
                         onClick={handleClearFilters}
                         className={`
                           flex items-center gap-1.5 px-3 py-1.5
-                          rounded-full text-[11px] font-semibold
-                          ${isDark ? 'text-red-400 bg-red-900/20 hover:bg-red-900/30' : 'text-red-500 bg-red-50 hover:bg-red-100'}
+                          rounded-full text-xs font-semibold
+                          ${isDark ? 'text-red-400 bg-red-900/30 border border-red-500/20 hover:bg-red-900/40' : 'text-red-500 bg-red-50 hover:bg-red-100'}
                           transition-all w-fit
                         `}
                       >
@@ -848,28 +865,27 @@ const Directory = ({ data, onDataChange }) => {
                   {/* Items per page selector */}
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <span className={`text-xs sm:text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Mostrar:</span>
-                    <select
+                    <CosmicDropdown
                       value={itemsPerPage}
-                      onChange={(e) => {
-                        setItemsPerPage(Number(e.target.value));
+                      onChange={(val) => {
+                        setItemsPerPage(Number(val));
                         setCurrentPage(1);
                       }}
-                      className={`px-2 sm:px-3 py-1 sm:py-1.5 ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-700'} border rounded-lg text-[11px] sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-stellar-cyan/20`}
-                    >
-                      {isMobile ? (
-                        <>
-                          <option value={5}>5</option>
-                          <option value={10}>10</option>
-                          <option value={20}>20</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value={25}>25</option>
-                          <option value={50}>50</option>
-                          <option value={100}>100</option>
-                        </>
-                      )}
-                    </select>
+                      options={isMobile
+                        ? [
+                            { value: 5, label: '5' },
+                            { value: 10, label: '10' },
+                            { value: 20, label: '20' },
+                          ]
+                        : [
+                            { value: 25, label: '25' },
+                            { value: 50, label: '50' },
+                            { value: 100, label: '100' },
+                          ]
+                      }
+                      className="min-w-[80px]"
+                      dropUp
+                    />
                     <span className={`text-xs sm:text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>por página</span>
                   </div>
 
@@ -884,7 +900,7 @@ const Directory = ({ data, onDataChange }) => {
                     <button
                       onClick={() => setCurrentPage(1)}
                       disabled={currentPage === 1}
-                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} border rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${isDark ? 'bg-space-dust border-stellar-cyan/10 text-slate-300 hover:bg-space-nebula' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} border rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                       title="Primeira página"
                     >
                       «
@@ -894,7 +910,7 @@ const Directory = ({ data, onDataChange }) => {
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} border rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${isDark ? 'bg-space-dust border-stellar-cyan/10 text-slate-300 hover:bg-space-nebula' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} border rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                       title="Página anterior"
                     >
                       ‹
@@ -918,9 +934,9 @@ const Directory = ({ data, onDataChange }) => {
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
                             className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg text-sm font-bold transition-colors ${currentPage === pageNum
-                              ? 'bg-lavpop-blue text-white'
+                              ? 'bg-gradient-stellar text-white shadow-md'
                               : isDark
-                                ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700'
+                                ? 'bg-space-dust border border-stellar-cyan/10 text-slate-300 hover:bg-space-nebula'
                                 : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                               }`}
                           >
@@ -934,7 +950,7 @@ const Directory = ({ data, onDataChange }) => {
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} border rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${isDark ? 'bg-space-dust border-stellar-cyan/10 text-slate-300 hover:bg-space-nebula' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} border rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                       title="Próxima página"
                     >
                       ›
@@ -944,7 +960,7 @@ const Directory = ({ data, onDataChange }) => {
                     <button
                       onClick={() => setCurrentPage(totalPages)}
                       disabled={currentPage === totalPages}
-                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} border rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center ${isDark ? 'bg-space-dust border-stellar-cyan/10 text-slate-300 hover:bg-space-nebula' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'} border rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
                       title="Última página"
                     >
                       »
@@ -955,9 +971,9 @@ const Directory = ({ data, onDataChange }) => {
             </>
           ) : (
             <div className="text-center py-16">
-              <UsersIcon className={`w-16 h-16 ${isDark ? 'text-slate-600' : 'text-slate-300'} mx-auto mb-4`} />
-              <h3 className={`text-lg font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Nenhum cliente encontrado</h3>
-              <p className={isDark ? 'text-slate-500' : 'text-slate-400'}>Tente ajustar seus filtros de busca</p>
+              <UsersIcon className={`w-16 h-16 ${isDark ? 'text-slate-500' : 'text-slate-300'} mx-auto mb-4`} />
+              <h3 className={`text-lg font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Nenhum cliente encontrado</h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>Tente ajustar seus filtros de busca</p>
             </div>
           )}
         </div>

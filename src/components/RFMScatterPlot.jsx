@@ -1,7 +1,16 @@
-// RFMScatterPlot.jsx v4.4.0 - ContextHelp tooltip
+// RFMScatterPlot.jsx v5.1.0 - Premium Glass Effects
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v5.1.0 (2026-01-20): Premium Glass Effects
+//   - Upgraded to soft glow border system (ring + layered shadows)
+//   - Added cyan outer glow (dark) / subtle elevation (light)
+//   - Added inner top-edge reflection for glass depth
+//   - Improved transparency for premium feel
+// v5.0.0 (2026-01-20): Cosmic Glass Card refactor
+//   - Replaced gradient background with glass effect (bg-space-dust/50)
+//   - Upgraded backdrop-blur-md to backdrop-blur-xl
+//   - Softer borders blending with page background
 // v4.4.0 (2026-01-15): Added ContextHelp tooltip
 //   - NEW: Tooltip explaining RFM methodology
 //   - Import ContextHelp component
@@ -358,15 +367,16 @@ const RFMScatterPlot = ({
     };
 
     return (
-        <div className="
+        <div className={`
             relative
-            bg-gradient-to-br from-blue-50/40 via-white/90 to-white
-            dark:from-space-dust/50 dark:via-space-nebula/80 dark:to-space-nebula
-            backdrop-blur-md
+            ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+            backdrop-blur-xl
             rounded-2xl p-4 sm:p-5
-            border border-slate-200/80 dark:border-stellar-cyan/10
-            shadow-sm
-        ">
+            ${isDark
+                ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+                : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+            }
+        `}>
             <div className="mb-4">
                 {/* Header row with title and insight pills */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">

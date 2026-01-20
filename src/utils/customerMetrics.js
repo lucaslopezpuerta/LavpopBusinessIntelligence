@@ -1,4 +1,8 @@
-// Customer Metrics Calculator v3.12.0 - DATA-DRIVEN THRESHOLDS
+// Customer Metrics Calculator v3.13.0 - DATA-DRIVEN THRESHOLDS
+// ✅ v3.13.0 (2026-01-18): Added monthly service sparkline data
+//     - NEW: washSparkline/drySparkline arrays on customer objects (last 6 months)
+//     - Tracks monthly wash/dry service counts during salesData processing
+//     - Enables mini sparkline charts in CustomerProfileModal Financial tab
 // ✅ v3.12.0 (2026-01-14): Fixed visit counting in retention metrics
 //     - CRITICAL BUG FIX: Both getRetentionMetrics() and getFirstVisitConversion() now
 //       deduplicate visits by date (counts unique visit DAYS, not raw transactions)
@@ -340,6 +344,7 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
         dryServices: 0,
         washRevenue: 0,
         dryRevenue: 0,
+        monthlyServices: {}, // Track services per month for sparklines (YYYY-MM → { wash, dry })
         phone: null,
         rawPhone: null,
         hasValidPhone: false,
@@ -364,6 +369,14 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
       customer.washRevenue += (netValue * machineInfo.wash) / machineInfo.total;
       customer.dryRevenue += (netValue * machineInfo.dry) / machineInfo.total;
     }
+
+    // Track monthly services for sparklines (YYYY-MM key)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    if (!customer.monthlyServices[monthKey]) {
+      customer.monthlyServices[monthKey] = { wash: 0, dry: 0 };
+    }
+    customer.monthlyServices[monthKey].wash += machineInfo.wash;
+    customer.monthlyServices[monthKey].dry += machineInfo.dry;
   });
 
   logger.debug('CustomerMetrics', 'Processed customers', {
@@ -524,6 +537,23 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
   // The raw dates array is no longer needed and can consume significant memory
   Object.values(customers).forEach(customer => {
     delete customer.dates;
+  });
+
+  // Convert monthly services to sparkline arrays (last 6 months)
+  // This provides trend data for UI visualization
+  // Note: `now` already declared at function start
+  const last6Months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    last6Months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  Object.values(customers).forEach(customer => {
+    // Build sparkline arrays from monthly data
+    customer.washSparkline = last6Months.map(key => customer.monthlyServices[key]?.wash || 0);
+    customer.drySparkline = last6Months.map(key => customer.monthlyServices[key]?.dry || 0);
+    // Clean up monthlyServices map (no longer needed)
+    delete customer.monthlyServices;
   });
 
   // Aggregate metrics

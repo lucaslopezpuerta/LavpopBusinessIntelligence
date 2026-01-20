@@ -1,8 +1,48 @@
-// NewCampaignModal.jsx v5.5 - REFACTORED TO useScrollLock HOOK
+// NewCampaignModal.jsx v6.6 - COMPACT SCHEDULING UX
 // Campaign creation wizard modal
-// Design System v4.0 compliant
+// Design System v5.0 compliant - Variant D (Glassmorphism Cosmic)
 //
 // CHANGELOG:
+// v6.6 (2026-01-18): Compact scheduling step
+//   - Removed pb-48 padding from scheduling inputs (was 192px of empty space)
+//   - Added dropUp prop to CosmicDatePicker and CosmicTimePicker
+//   - Pickers now open upward, eliminating gap between inputs and button
+// v6.5 (2026-01-18): Safe area compliance + Portal rendering
+//   - Added createPortal to render modal to document.body (fixes backdrop not covering entire screen)
+//   - Fixed top gap issue on mobile (h-[95vh] → h-full)
+//   - Added pt-safe to header wrapper for notch/Dynamic Island support
+//   - Header background extends into safe area (same pattern as CustomerProfileModal)
+// v6.4 (2026-01-18): Full-screen mobile modal
+//   - Modal slides up from bottom on mobile (items-end, rounded-t-2xl)
+//   - Content area uses flex-1 for proper scrolling in full-screen mode
+//   - Fixed checkmark icon positioning on audience cards (inline vs absolute)
+//   - Fixed date/time picker truncation with overflow-visible on scheduler
+// v6.3 (2026-01-18): Mobile UX Overhaul
+//   - Reduced padding throughout for mobile (p-3 sm:p-4 lg:p-6)
+//   - Compact progress steps with dot indicators on mobile
+//   - Audience cards: 1 column on mobile, compact layout
+//   - Template cards: reduced spacing and smaller icons on mobile
+//   - Coupon config: responsive grid with stacked layout on mobile
+//   - Preview stats: 3 cols on mobile with smaller text
+//   - Send confirmation: tighter spacing, smaller icons
+//   - Fixed pickers with rightAlign to prevent off-screen overflow
+//   - Footer: compact buttons with better touch targets
+// v6.2 (2026-01-18): CosmicTimePicker integration
+//   - Replaced native time input with CosmicTimePicker in scheduler
+//   - Full cosmic styling for all date/time inputs
+// v6.1 (2026-01-18): Deep space backgrounds + CosmicDatePicker
+//   - Audience cards: space-nebula/50 (available), space-void/50 (disabled)
+//   - Template cards: space-nebula/50 for deeper contrast
+//   - Send mode buttons: space-nebula/50 unselected state
+//   - Replaced native date input with CosmicDatePicker in scheduler
+//   - Consistent cosmic styling throughout
+// v6.0 (2026-01-18): Cosmic Precision redesign
+//   - Applied Design System v5.0 Variant D (Glassmorphism Cosmic)
+//   - Modal: space-dust background with stellar-cyan borders
+//   - Progress steps: stellar gradient for active state
+//   - Audience/template cards: cosmic borders and backgrounds
+//   - Send mode buttons: cosmic gradient styling
+//   - Clean, professional aesthetic without over-animation
 // v5.5 (2026-01-12): Refactored to useScrollLock hook
 //   - Replaced inline scroll lock useEffect with shared useScrollLock hook
 //   - Reduces code duplication across modals
@@ -92,6 +132,7 @@
 //   - Integrates with campaignService for sending
 
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   ChevronLeft,
@@ -117,7 +158,8 @@ import {
   Moon,
   UserMinus,
   UserCheck,
-  Filter
+  Filter,
+  Megaphone
 } from 'lucide-react';
 import AudienceFilterBuilder from './AudienceFilterBuilder';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
@@ -144,6 +186,8 @@ import {
 import { TEMPLATE_CAMPAIGN_TYPE_MAP } from '../../config/couponConfig';
 import { haptics } from '../../utils/haptics';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import CosmicDatePicker from '../ui/CosmicDatePicker';
+import CosmicTimePicker from '../ui/CosmicTimePicker';
 
 // Icon mapping for templates and audiences
 const ICON_MAP = {
@@ -720,25 +764,59 @@ const NewCampaignModal = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl max-h-[90vh] bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-slate-700/50 overflow-hidden animate-fade-in">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Nova Campanha WhatsApp
-          </h2>
-          <button
-            onClick={handleClose}
-            className="p-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
-          >
-            <X className="w-5 h-5" />
-          </button>
+  // Portal rendering ensures fixed positioning works correctly
+  // (avoids issues with parent transforms/filters affecting backdrop)
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 dark:backdrop-blur-sm">
+      <div className="w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-stellar-cyan/15 animate-fade-in flex flex-col">
+        {/* Header wrapper with safe area - extends background into notch/Dynamic Island */}
+        <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl">
+          {/* Header content */}
+          <div className="px-3 py-2.5 sm:px-6 sm:py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-stellar flex items-center justify-center shadow-md shadow-stellar-cyan/20">
+                <Megaphone className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              </div>
+              <h2 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white">
+                Nova Campanha
+              </h2>
+            </div>
+            <button
+              onClick={handleClose}
+              className="p-2 sm:p-2.5 -mr-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg sm:rounded-xl hover:bg-slate-100 dark:hover:bg-space-nebula transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Progress Steps */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between">
+        {/* Progress Steps - Dot indicators on mobile, full on desktop */}
+        <div className="px-3 py-2 sm:px-6 sm:py-3 bg-slate-50 dark:bg-space-nebula/50 border-b border-slate-200 dark:border-stellar-cyan/10">
+          {/* Mobile: Compact dot progress */}
+          <div className="flex sm:hidden items-center justify-center gap-2">
+            {STEPS.map((step, index) => {
+              const isActive = index === currentStep;
+              const isCompleted = index < currentStep;
+              return (
+                <div key={step.id} className="flex items-center">
+                  <div className={`
+                    w-2.5 h-2.5 rounded-full transition-all
+                    ${isActive
+                      ? 'w-6 bg-gradient-stellar'
+                      : isCompleted
+                        ? 'bg-emerald-500'
+                        : 'bg-slate-300 dark:bg-slate-600'
+                    }
+                  `} />
+                </div>
+              );
+            })}
+            <span className="ml-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+              {STEPS[currentStep].label}
+            </span>
+          </div>
+          {/* Desktop: Full progress with icons */}
+          <div className="hidden sm:flex items-center justify-between">
             {STEPS.map((step, index) => {
               const Icon = step.icon;
               const isActive = index === currentStep;
@@ -749,7 +827,7 @@ const NewCampaignModal = ({
                   <div className={`
                     flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors
                     ${isActive
-                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                      ? 'bg-gradient-stellar text-white shadow-md shadow-stellar-cyan/20'
                       : isCompleted
                         ? 'text-emerald-600 dark:text-emerald-400'
                         : 'text-slate-400 dark:text-slate-500'
@@ -760,10 +838,10 @@ const NewCampaignModal = ({
                     ) : (
                       <Icon className="w-4 h-4" />
                     )}
-                    <span className="text-sm font-medium hidden sm:inline">{step.label}</span>
+                    <span className="text-sm font-medium">{step.label}</span>
                   </div>
                   {index < STEPS.length - 1 && (
-                    <ChevronRight className="w-4 h-4 mx-2 text-slate-300 dark:text-slate-600" />
+                    <ChevronRight className="w-4 h-4 mx-2 text-slate-300 dark:text-stellar-cyan/30" />
                   )}
                 </div>
               );
@@ -771,13 +849,13 @@ const NewCampaignModal = ({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
+        {/* Content - Flex-1 fills available space in full-screen mobile mode */}
+        <div className="p-3 sm:p-4 lg:p-6 flex-1 overflow-y-auto min-h-0">
           {/* Step 1: Audience Selection */}
           {currentStep === 0 && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* v5.1: Mode Selector (Preset vs Filter) */}
-              <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <div className="flex gap-1.5 p-1 bg-slate-100 dark:bg-space-nebula rounded-lg sm:rounded-xl">
                 <button
                   onClick={() => {
                     setAudienceMode('preset');
@@ -786,25 +864,25 @@ const NewCampaignModal = ({
                       setSelectedAudience(null);
                     }
                   }}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-md sm:rounded-lg text-xs sm:text-sm font-medium transition-all ${
                     audienceMode === 'preset'
-                      ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                      ? 'bg-white dark:bg-space-dust text-stellar-cyan shadow-sm'
                       : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  <Users className="w-4 h-4" />
+                  <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   Segmentos
                 </button>
                 <button
                   onClick={() => setAudienceMode('filter')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 rounded-md sm:rounded-lg text-xs sm:text-sm font-medium transition-all ${
                     audienceMode === 'filter'
-                      ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                      ? 'bg-white dark:bg-space-dust text-stellar-cyan shadow-sm'
                       : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  <Filter className="w-4 h-4" />
-                  Filtro Avançado
+                  <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  Filtro
                 </button>
               </div>
 
@@ -826,11 +904,11 @@ const NewCampaignModal = ({
               {/* Preset Audiences (existing) */}
               {audienceMode === 'preset' && (
                 <>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Selecione o público-alvo para sua campanha:
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                    Selecione o público-alvo:
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {availableAudiences.map((audience) => {
                   const Icon = audience.icon;
                   const count = getAudienceCount(audience.id);
@@ -842,56 +920,62 @@ const NewCampaignModal = ({
                       onClick={() => setSelectedAudience(audience.id)}
                       disabled={count === 0}
                       className={`
-                        relative p-4 rounded-xl border-2 text-left transition-all
+                        p-2.5 sm:p-4 rounded-lg sm:rounded-xl border-2 text-left transition-all
                         ${isSelected
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                          ? 'border-stellar-cyan bg-stellar-cyan/5 dark:bg-stellar-cyan/10 ring-2 ring-stellar-cyan/20'
                           : count > 0
-                            ? 'border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700'
-                            : 'border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
+                            ? 'border-slate-200 dark:border-stellar-cyan/15 hover:border-stellar-cyan/50 dark:hover:border-stellar-cyan/30 bg-white dark:bg-space-nebula/50'
+                            : 'border-slate-200 dark:border-stellar-cyan/10 opacity-50 cursor-not-allowed bg-slate-50 dark:bg-space-void/50'
                         }
                       `}
                     >
-                      {isSelected && (
-                        <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-purple-600" />
-                      )}
-                      <div className={`
-                        w-8 h-8 rounded-xl flex items-center justify-center mb-2
-                        ${audience.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40' :
-                          audience.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/40' :
-                          audience.color === 'emerald' ? 'bg-emerald-100 dark:bg-emerald-900/40' :
-                          audience.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40' :
-                          audience.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/40' :
-                          audience.color === 'cyan' ? 'bg-cyan-100 dark:bg-cyan-900/40' :
-                          audience.color === 'green' ? 'bg-green-100 dark:bg-green-900/40' :
-                          audience.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700' :
-                          audience.color === 'indigo' ? 'bg-indigo-100 dark:bg-indigo-900/40' :
-                          'bg-slate-100 dark:bg-slate-700'
-                        }
-                      `}>
-                        <Icon className={`
-                          w-4 h-4
-                          ${audience.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
-                            audience.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
-                            audience.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
-                            audience.color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' :
-                            audience.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                            audience.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
-                            audience.color === 'cyan' ? 'text-cyan-600 dark:text-cyan-400' :
-                            audience.color === 'green' ? 'text-green-600 dark:text-green-400' :
-                            audience.color === 'gray' ? 'text-gray-600 dark:text-gray-400' :
-                            'text-slate-600 dark:text-slate-400'
+                      <div className="flex items-start gap-2 sm:block">
+                        <div className={`
+                          w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center sm:mb-2 flex-shrink-0
+                          ${audience.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40' :
+                            audience.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/40' :
+                            audience.color === 'emerald' ? 'bg-emerald-100 dark:bg-emerald-900/40' :
+                            audience.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40' :
+                            audience.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/40' :
+                            audience.color === 'cyan' ? 'bg-cyan-100 dark:bg-cyan-900/40' :
+                            audience.color === 'green' ? 'bg-green-100 dark:bg-green-900/40' :
+                            audience.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700' :
+                            audience.color === 'indigo' ? 'bg-indigo-100 dark:bg-indigo-900/40' :
+                            'bg-slate-100 dark:bg-slate-700'
                           }
-                        `} />
+                        `}>
+                          <Icon className={`
+                            w-3.5 h-3.5 sm:w-4 sm:h-4
+                            ${audience.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
+                              audience.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
+                              audience.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
+                              audience.color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' :
+                              audience.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                              audience.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
+                              audience.color === 'cyan' ? 'text-cyan-600 dark:text-cyan-400' :
+                              audience.color === 'green' ? 'text-green-600 dark:text-green-400' :
+                              audience.color === 'gray' ? 'text-gray-600 dark:text-gray-400' :
+                              'text-slate-600 dark:text-slate-400'
+                            }
+                          `} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-tight truncate flex-1">
+                              {audience.label}
+                            </h3>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 text-stellar-cyan flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                            {audience.description}
+                          </p>
+                          <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white mt-1 sm:mt-2">
+                            {count} <span className="text-[10px] sm:text-xs font-normal text-slate-500">clientes</span>
+                          </p>
+                        </div>
                       </div>
-                      <h3 className="font-semibold text-slate-900 dark:text-white">
-                        {audience.label}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {audience.description}
-                      </p>
-                      <p className="text-lg font-bold text-slate-900 dark:text-white mt-2">
-                        {count} <span className="text-xs font-normal text-slate-500">clientes</span>
-                      </p>
                     </button>
                   );
                 })}
@@ -903,15 +987,15 @@ const NewCampaignModal = ({
 
           {/* Step 2: Template Selection */}
           {currentStep === 1 && (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            <div className="space-y-3 sm:space-y-4">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                 {selectedAudience && filteredTemplates.length < MESSAGE_TEMPLATES.length
-                  ? `Templates recomendados para esta audiência (${filteredTemplates.length} de ${MESSAGE_TEMPLATES.length}):`
-                  : 'Escolha o template da mensagem:'
+                  ? `Templates recomendados (${filteredTemplates.length}/${MESSAGE_TEMPLATES.length}):`
+                  : 'Escolha o template:'
                 }
               </p>
 
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {filteredTemplates.map((template) => {
                   const Icon = ICON_MAP[template.icon] || Gift;
                   const isSelected = selectedTemplate?.id === template.id;
@@ -929,24 +1013,24 @@ const NewCampaignModal = ({
                         setCouponValidityDays(defaults.couponValidityDays || 7);
                       }}
                       className={`
-                        w-full p-4 rounded-xl border-2 text-left transition-all
+                        w-full p-2.5 sm:p-4 rounded-lg sm:rounded-xl border-2 text-left transition-all
                         ${isSelected
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700'
+                          ? 'border-stellar-cyan bg-stellar-cyan/5 dark:bg-stellar-cyan/10 ring-2 ring-stellar-cyan/20'
+                          : 'border-slate-200 dark:border-stellar-cyan/15 hover:border-stellar-cyan/50 dark:hover:border-stellar-cyan/30 bg-white dark:bg-space-nebula/50'
                         }
                       `}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2.5 sm:gap-3">
                         <div className={`
-                          w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
-                          ${template.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40' :
-                            template.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/40' :
-                            template.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40' :
-                            'bg-emerald-100 dark:bg-emerald-900/40'
+                          w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0
+                          ${template.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                            template.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/30' :
+                            template.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                            'bg-emerald-100 dark:bg-emerald-900/30'
                           }
                         `}>
                           <Icon className={`
-                            w-5 h-5
+                            w-4 h-4 sm:w-5 sm:h-5
                             ${template.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
                               template.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
                               template.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
@@ -954,25 +1038,25 @@ const NewCampaignModal = ({
                             }
                           `} />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-slate-900 dark:text-white">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                            <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white truncate">
                               {template.name}
                             </h3>
                             <span className={`
-                              px-2 py-0.5 text-xs font-medium rounded
+                              px-1.5 py-0.5 text-[10px] sm:text-xs font-medium rounded flex-shrink-0
                               ${template.category === 'MARKETING'
-                                ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                                : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                                ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                               }
                             `}>
-                              {template.category}
+                              {template.category === 'MARKETING' ? 'MKT' : 'UTIL'}
                             </span>
                             {isSelected && (
-                              <CheckCircle2 className="w-4 h-4 text-purple-600 ml-auto" />
+                              <CheckCircle2 className="w-4 h-4 text-stellar-cyan ml-auto flex-shrink-0" />
                             )}
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
                             {template.description}
                           </p>
                         </div>
@@ -984,28 +1068,28 @@ const NewCampaignModal = ({
 
               {/* Discount & Service Configuration (A/B Testing) */}
               {selectedTemplate && hasCouponConfig && (
-                <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
-                  <h4 className="text-sm font-semibold text-purple-900 dark:text-purple-200 mb-3 flex items-center gap-2">
-                    <Gift className="w-4 h-4" />
-                    Configuração do Cupom
+                <div className="mt-3 sm:mt-6 p-3 sm:p-4 bg-gradient-to-r from-stellar-cyan/5 to-stellar-blue/5 dark:from-stellar-cyan/10 dark:to-stellar-blue/10 rounded-lg sm:rounded-xl border border-stellar-cyan/20 dark:border-stellar-cyan/15">
+                  <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-1.5 sm:gap-2">
+                    <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stellar-cyan" />
+                    Cupom
                   </h4>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {/* Discount Percentage Selector */}
                     <div>
-                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                      <label className="block text-[10px] sm:text-xs font-medium text-slate-600 dark:text-slate-400 mb-1 sm:mb-1.5">
                         Desconto
                       </label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {discountOptions.map((discount) => (
                           <button
                             key={discount}
                             onClick={() => setSelectedDiscount(discount)}
                             className={`
-                              px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                              px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg text-xs sm:text-sm font-medium transition-all
                               ${selectedDiscount === discount
-                                ? 'bg-purple-600 text-white shadow-md'
-                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500'
+                                ? 'bg-gradient-stellar text-white shadow-md shadow-stellar-cyan/20'
+                                : 'bg-white dark:bg-space-dust text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/20 hover:border-stellar-cyan/50'
                               }
                             `}
                           >
@@ -1018,19 +1102,19 @@ const NewCampaignModal = ({
                     {/* Service Type Selector */}
                     {serviceOptions.length > 1 && (
                       <div>
-                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                        <label className="block text-[10px] sm:text-xs font-medium text-slate-600 dark:text-slate-400 mb-1 sm:mb-1.5">
                           Válido para
                         </label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
                           {serviceOptions.map((service) => (
                             <button
                               key={service}
                               onClick={() => setSelectedServiceType(service)}
                               className={`
-                                px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                                px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg text-xs sm:text-sm font-medium transition-all
                                 ${selectedServiceType === service
-                                  ? 'bg-indigo-600 text-white shadow-md'
-                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-500'
+                                  ? 'bg-gradient-stellar text-white shadow-md shadow-stellar-cyan/20'
+                                  : 'bg-white dark:bg-space-dust text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/20 hover:border-stellar-cyan/50'
                                 }
                               `}
                             >
@@ -1043,61 +1127,55 @@ const NewCampaignModal = ({
                   </div>
 
                   {/* Coupon Validity Days Selector */}
-                  <div className="mt-4">
-                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                      Validade do cupom (dias)
+                  <div className="mt-3 sm:mt-4">
+                    <label className="block text-[10px] sm:text-xs font-medium text-slate-600 dark:text-slate-400 mb-1 sm:mb-1.5">
+                      Validade (dias)
                     </label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {[5, 7, 10, 14, 21, 30].map((days) => (
                         <button
                           key={days}
                           onClick={() => setCouponValidityDays(days)}
                           className={`
-                            px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                            px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg text-xs sm:text-sm font-medium transition-all
                             ${couponValidityDays === days
                               ? 'bg-emerald-600 text-white shadow-md'
-                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-500'
+                              : 'bg-white dark:bg-space-dust text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/20 hover:border-emerald-400'
                             }
                           `}
                         >
-                          {days} dias
+                          {days}d
                         </button>
                       ))}
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                      Tempo para o cliente usar o cupom e ser rastreado como retorno
-                    </p>
                   </div>
 
                   {/* Coupon Code Preview */}
                   {selectedCoupon && (
-                    <div className="mt-4 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 bg-white dark:bg-space-nebula rounded-md sm:rounded-lg border border-slate-200 dark:border-stellar-cyan/15">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Código do cupom:</p>
-                          <p className="text-lg font-bold text-purple-700 dark:text-purple-300 font-mono">
+                          <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Código:</p>
+                          <p className="text-sm sm:text-lg font-bold text-stellar-cyan font-mono">
                             {selectedCoupon.code}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Desconto:</p>
-                          <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                          <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Desconto:</p>
+                          <p className="text-sm sm:text-lg font-bold text-emerald-600 dark:text-emerald-400">
                             {selectedCoupon.discountPercent}% OFF
                           </p>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                        {selectedCoupon.description}
-                      </p>
                     </div>
                   )}
 
                   {/* Warning if no coupon found */}
                   {selectedDiscount && selectedServiceType && !selectedCoupon && (
-                    <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4" />
-                        Esta combinação de desconto e serviço não tem cupom configurado no POS.
+                    <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md sm:rounded-lg border border-amber-200 dark:border-amber-800">
+                      <p className="text-[10px] sm:text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5 sm:gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                        <span>Combinação sem cupom configurado no POS.</span>
                       </p>
                     </div>
                   )}
@@ -1108,27 +1186,27 @@ const NewCampaignModal = ({
 
           {/* Step 3: Preview */}
           {currentStep === 2 && selectedTemplate && (
-            <div className="space-y-4">
-              {/* Stats Summary */}
+            <div className="space-y-3 sm:space-y-4">
+              {/* Stats Summary - Compact on mobile */}
               {validationStats && (
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="p-2 sm:p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg sm:rounded-xl text-center border border-emerald-200 dark:border-emerald-700/30">
+                    <p className="text-lg sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300">
                       {validationStats.stats.readyCount}
                     </p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400">Prontos</p>
+                    <p className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400">Prontos</p>
                   </div>
-                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                  <div className="p-2 sm:p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg sm:rounded-xl text-center border border-amber-200 dark:border-amber-700/30">
+                    <p className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-300">
                       {validationStats.stats.blacklistedCount}
                     </p>
-                    <p className="text-xs text-amber-600 dark:text-amber-400">Bloqueados</p>
+                    <p className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400">Bloqueados</p>
                   </div>
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                  <div className="p-2 sm:p-3 bg-slate-50 dark:bg-space-nebula rounded-lg sm:rounded-xl text-center border border-slate-200 dark:border-stellar-cyan/10">
+                    <p className="text-lg sm:text-2xl font-bold text-slate-700 dark:text-slate-300">
                       {validationStats.stats.invalidCount}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Inválidos</p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Inválidos</p>
                   </div>
                 </div>
               )}
@@ -1136,34 +1214,34 @@ const NewCampaignModal = ({
               {/* Toggle Preview */}
               <button
                 onClick={() => setShowPhonePreview(!showPhonePreview)}
-                className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 hover:underline"
+                className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-stellar-cyan hover:text-stellar-cyan/80 transition-colors"
               >
-                <Smartphone className="w-4 h-4" />
-                {showPhonePreview ? 'Ocultar preview' : 'Ver como aparece no celular'}
+                <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                {showPhonePreview ? 'Ocultar preview' : 'Ver no celular'}
               </button>
 
-              {/* Phone Preview */}
+              {/* Phone Preview - Smaller on mobile */}
               {showPhonePreview ? (
                 <div className="flex justify-center">
-                  <div className="w-[280px] bg-slate-900 rounded-[32px] p-2.5 shadow-xl">
-                    <div className="w-16 h-5 bg-slate-900 rounded-full mx-auto mb-1.5" />
-                    <div className="bg-[#e5ddd5] rounded-2xl overflow-hidden">
-                      <div className="bg-[#075e54] px-3 py-2 flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-white/20" />
+                  <div className="w-[240px] sm:w-[280px] bg-slate-900 rounded-[24px] sm:rounded-[32px] p-2 sm:p-2.5 shadow-xl">
+                    <div className="w-12 sm:w-16 h-4 sm:h-5 bg-slate-900 rounded-full mx-auto mb-1" />
+                    <div className="bg-[#e5ddd5] rounded-xl sm:rounded-2xl overflow-hidden">
+                      <div className="bg-[#075e54] px-2.5 sm:px-3 py-1.5 sm:py-2 flex items-center gap-2">
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white/20" />
                         <div>
-                          <p className="text-white font-medium text-xs">Lavpop</p>
-                          <p className="text-white/70 text-[10px]">Online</p>
+                          <p className="text-white font-medium text-[10px] sm:text-xs">Lavpop</p>
+                          <p className="text-white/70 text-[8px] sm:text-[10px]">Online</p>
                         </div>
                       </div>
-                      <div className="p-3 min-h-[200px]">
-                        <div className="bg-white rounded-lg p-2.5 shadow-sm max-w-[90%]">
-                          <p className="text-xs font-medium text-slate-900 mb-1">
+                      <div className="p-2 sm:p-3 min-h-[160px] sm:min-h-[200px]">
+                        <div className="bg-white rounded-lg p-2 sm:p-2.5 shadow-sm max-w-[90%]">
+                          <p className="text-[10px] sm:text-xs font-medium text-slate-900 mb-0.5 sm:mb-1">
                             {getHeaderText(selectedTemplate.header)}
                           </p>
-                          <p className="text-[11px] text-slate-700 whitespace-pre-line leading-relaxed">
+                          <p className="text-[9px] sm:text-[11px] text-slate-700 whitespace-pre-line leading-relaxed">
                             {formatPreview(selectedTemplate)}
                           </p>
-                          <p className="text-[9px] text-slate-400 mt-1.5">
+                          <p className="text-[7px] sm:text-[9px] text-slate-400 mt-1 sm:mt-1.5">
                             {selectedTemplate.footer}
                           </p>
                         </div>
@@ -1173,14 +1251,14 @@ const NewCampaignModal = ({
                 </div>
               ) : (
                 /* Text Preview */
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white mb-2">
+                <div className="p-3 sm:p-4 bg-slate-50 dark:bg-space-nebula/50 rounded-lg sm:rounded-xl border border-slate-200 dark:border-stellar-cyan/10">
+                  <p className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white mb-1.5 sm:mb-2">
                     {getHeaderText(selectedTemplate.header)}
                   </p>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">
+                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
                     {formatPreview(selectedTemplate)}
                   </p>
-                  <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                  <p className="text-[10px] sm:text-xs text-slate-400 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-200 dark:border-stellar-cyan/10">
                     {selectedTemplate.footer}
                   </p>
                 </div>
@@ -1190,71 +1268,68 @@ const NewCampaignModal = ({
 
           {/* Step 4: Send Confirmation */}
           {currentStep === 3 && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {sendResult ? (
-                /* Result Display */
-                <div className={`p-6 rounded-xl ${
+                /* Result Display - Compact on mobile */
+                <div className={`p-4 sm:p-6 rounded-lg sm:rounded-xl border ${
                   sendResult.success
                     ? sendResult.scheduled
-                      ? 'bg-blue-50 dark:bg-blue-900/20'
+                      ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700/30'
                       : sendResult.partial
-                        ? 'bg-amber-50 dark:bg-amber-900/20'
-                        : 'bg-emerald-50 dark:bg-emerald-900/20'
-                    : 'bg-red-50 dark:bg-red-900/20'
+                        ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700/30'
+                        : 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-700/30'
+                    : 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700/30'
                 }`}>
                   <div className="text-center">
                     {sendResult.success ? (
                       sendResult.scheduled ? (
                         <>
-                          <Calendar className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-                          <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
+                          <Calendar className="w-10 h-10 sm:w-16 sm:h-16 text-blue-500 mx-auto mb-2 sm:mb-4" />
+                          <h3 className="text-base sm:text-xl font-bold text-blue-800 dark:text-blue-200 mb-1 sm:mb-2">
                             Campanha Agendada!
                           </h3>
-                          <p className="text-blue-600 dark:text-blue-400">
-                            Será enviada em {formatBrazilTime(sendResult.scheduledFor, { day: '2-digit', month: '2-digit', year: 'numeric' })} às {formatBrazilTime(sendResult.scheduledFor, { hour: '2-digit', minute: '2-digit' })}
+                          <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">
+                            {formatBrazilTime(sendResult.scheduledFor, { day: '2-digit', month: '2-digit' })} às {formatBrazilTime(sendResult.scheduledFor, { hour: '2-digit', minute: '2-digit' })}
                           </p>
-                          <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                            (Horário de Brasília)
-                          </p>
-                          <p className="text-sm text-blue-500 dark:text-blue-400 mt-2">
-                            {validationStats?.stats?.readyCount || 0} clientes receberão a mensagem
+                          <p className="text-[10px] sm:text-xs text-blue-500 dark:text-blue-400 mt-0.5 sm:mt-1">
+                            {validationStats?.stats?.readyCount || 0} clientes receberão
                           </p>
                         </>
                       ) : sendResult.partial ? (
                         <>
-                          <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-                          <h3 className="text-xl font-bold text-amber-800 dark:text-amber-200 mb-2">
-                            Campanha Parcialmente Enviada
+                          <AlertTriangle className="w-10 h-10 sm:w-16 sm:h-16 text-amber-500 mx-auto mb-2 sm:mb-4" />
+                          <h3 className="text-base sm:text-xl font-bold text-amber-800 dark:text-amber-200 mb-1 sm:mb-2">
+                            Parcialmente Enviada
                           </h3>
-                          <p className="text-amber-600 dark:text-amber-400">
-                            ✅ {sendResult.sent} enviadas
-                            {sendResult.failed > 0 && ` • ❌ ${sendResult.failed} falharam`}
-                            {sendResult.ineligibleCount > 0 && ` • ⏳ ${sendResult.ineligibleCount} em cooldown`}
+                          <p className="text-xs sm:text-sm text-amber-600 dark:text-amber-400">
+                            ✅ {sendResult.sent}
+                            {sendResult.failed > 0 && ` • ❌ ${sendResult.failed}`}
+                            {sendResult.ineligibleCount > 0 && ` • ⏳ ${sendResult.ineligibleCount}`}
                           </p>
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-                          <h3 className="text-xl font-bold text-emerald-800 dark:text-emerald-200 mb-2">
+                          <CheckCircle2 className="w-10 h-10 sm:w-16 sm:h-16 text-emerald-500 mx-auto mb-2 sm:mb-4" />
+                          <h3 className="text-base sm:text-xl font-bold text-emerald-800 dark:text-emerald-200 mb-1 sm:mb-2">
                             Campanha Enviada!
                           </h3>
-                          <p className="text-emerald-600 dark:text-emerald-400">
-                            {sendResult.sent} mensagens enviadas com sucesso
+                          <p className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">
+                            {sendResult.sent} mensagens enviadas
                           </p>
                         </>
                       )
                     ) : (
                       <>
-                        <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                        <h3 className="text-xl font-bold text-red-800 dark:text-red-200 mb-2">
+                        <AlertCircle className="w-10 h-10 sm:w-16 sm:h-16 text-red-500 mx-auto mb-2 sm:mb-4" />
+                        <h3 className="text-base sm:text-xl font-bold text-red-800 dark:text-red-200 mb-1 sm:mb-2">
                           Erro ao Enviar
                         </h3>
-                        <p className="text-red-600 dark:text-red-400">
+                        <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">
                           {sendResult.error}
                         </p>
                         {sendResult.retryable && (
-                          <p className="text-sm text-red-500 dark:text-red-400 mt-2">
-                            Este erro pode ser temporário. Tente novamente em alguns minutos.
+                          <p className="text-[10px] sm:text-sm text-red-500 dark:text-red-400 mt-1 sm:mt-2">
+                            Erro temporário. Tente novamente.
                           </p>
                         )}
                       </>
@@ -1263,7 +1338,7 @@ const NewCampaignModal = ({
 
                   {/* Detailed Error Breakdown */}
                   {sendResult.summary?.errorsByType && Object.keys(sendResult.summary.errorsByType).length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
+                    <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-700/30">
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Detalhes das falhas:
                       </p>
@@ -1271,7 +1346,7 @@ const NewCampaignModal = ({
                         {Object.entries(sendResult.summary.errorsByType).map(([type, data]) => (
                           <div
                             key={type}
-                            className="flex items-center justify-between text-sm bg-white/50 dark:bg-slate-800/50 p-2 rounded-lg"
+                            className="flex items-center justify-between text-sm bg-white/50 dark:bg-space-dust/50 p-2 rounded-lg"
                           >
                             <span className="text-slate-600 dark:text-slate-400">
                               {data.message}
@@ -1293,16 +1368,16 @@ const NewCampaignModal = ({
 
                   {/* Ineligible Contacts (Cooldown) */}
                   {sendResult.ineligibleCount > 0 && (
-                    <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
+                    <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-700/30">
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
-                        <UserMinus className="w-4 h-4 text-blue-500" />
+                        <UserMinus className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                         Contatos em período de cooldown ({sendResult.ineligibleCount}):
                       </p>
                       <div className="max-h-32 overflow-y-auto space-y-1.5">
                         {sendResult.ineligibleContacts.slice(0, 10).map((contact, idx) => (
                           <div
                             key={idx}
-                            className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg"
+                            className="text-xs bg-blue-50 dark:bg-blue-900/30 p-2 rounded-lg"
                           >
                             <span className="font-medium text-slate-700 dark:text-slate-300">
                               {contact.customerName}
@@ -1326,155 +1401,150 @@ const NewCampaignModal = ({
                   )}
                 </div>
               ) : (
-                /* Confirmation Display */
-                <div className="space-y-6">
+                /* Confirmation Display - Compact on mobile */
+                <div className="space-y-4 sm:space-y-6">
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Send className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-stellar rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-4 shadow-lg shadow-stellar-cyan/20">
+                      <Send className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                    <h3 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">
                       Confirmar Envio
                     </h3>
-                    <p className="text-slate-600 dark:text-slate-400">
-                      Você está prestes a enviar <span className="font-semibold">{validationStats?.stats?.readyCount || 0}</span> mensagens
-                      usando o template <span className="font-semibold">{selectedTemplate?.name}</span>.
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                      Enviar <span className="font-semibold text-stellar-cyan">{validationStats?.stats?.readyCount || 0}</span> mensagens
+                      com <span className="font-semibold">{selectedTemplate?.name}</span>
                     </p>
                   </div>
 
-                  {/* Summary */}
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl text-left">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  {/* Summary - 2x2 grid on mobile, same on desktop */}
+                  <div className="p-3 sm:p-4 bg-slate-50 dark:bg-space-nebula/50 rounded-lg sm:rounded-xl border border-slate-200 dark:border-stellar-cyan/10 text-left">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                       <div>
-                        <p className="text-slate-500 dark:text-slate-400">Audiência</p>
-                        <p className="font-medium text-slate-900 dark:text-white">
+                        <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Audiência</p>
+                        <p className="font-medium text-slate-900 dark:text-white truncate">
                           {availableAudiences.find(a => a.id === selectedAudience)?.label}
                         </p>
                       </div>
                       <div>
-                        <p className="text-slate-500 dark:text-slate-400">Template</p>
-                        <p className="font-medium text-slate-900 dark:text-white">
+                        <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Template</p>
+                        <p className="font-medium text-slate-900 dark:text-white truncate">
                           {selectedTemplate?.name}
                         </p>
                       </div>
                       <div>
-                        <p className="text-slate-500 dark:text-slate-400">Destinatários</p>
+                        <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Destinatários</p>
                         <p className="font-medium text-emerald-600 dark:text-emerald-400">
-                          {validationStats?.stats?.readyCount || 0} clientes
+                          {validationStats?.stats?.readyCount || 0}
                         </p>
                       </div>
                       <div>
-                        <p className="text-slate-500 dark:text-slate-400">Excluídos</p>
+                        <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Excluídos</p>
                         <p className="font-medium text-amber-600 dark:text-amber-400">
-                          {(validationStats?.stats?.blacklistedCount || 0) + (validationStats?.stats?.invalidCount || 0)} clientes
+                          {(validationStats?.stats?.blacklistedCount || 0) + (validationStats?.stats?.invalidCount || 0)}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Send Mode Selector */}
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                  {/* Send Mode Selector - More compact on mobile */}
+                  <div className="p-3 sm:p-4 bg-slate-50 dark:bg-space-nebula/50 rounded-lg sm:rounded-xl border border-slate-200 dark:border-stellar-cyan/10">
+                    <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 sm:mb-3">
                       Quando enviar?
                     </p>
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 sm:gap-3">
                       <button
                         onClick={() => setSendMode('now')}
                         className={`
-                          flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all
+                          flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl border-2 transition-all
                           ${sendMode === 'now'
-                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                            : 'border-slate-200 dark:border-stellar-cyan/15 text-slate-600 dark:text-slate-400 hover:border-stellar-cyan/30 dark:hover:border-stellar-cyan/30 bg-white dark:bg-space-nebula/50'
                           }
                         `}
                       >
-                        <Send className="w-4 h-4" />
-                        <span className="font-medium">Enviar Agora</span>
+                        <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="text-xs sm:text-sm font-medium">Agora</span>
                       </button>
                       <button
                         onClick={() => setSendMode('scheduled')}
                         className={`
-                          flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all
+                          flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl border-2 transition-all
                           ${sendMode === 'scheduled'
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                            ? 'border-stellar-cyan bg-stellar-cyan/10 dark:bg-stellar-cyan/20 text-stellar-cyan'
+                            : 'border-slate-200 dark:border-stellar-cyan/15 text-slate-600 dark:text-slate-400 hover:border-stellar-cyan/30 dark:hover:border-stellar-cyan/30 bg-white dark:bg-space-nebula/50'
                           }
                         `}
                       >
-                        <Clock className="w-4 h-4" />
-                        <span className="font-medium">Agendar</span>
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="text-xs sm:text-sm font-medium">Agendar</span>
                       </button>
                     </div>
 
-                    {/* Scheduling Inputs */}
+                    {/* Scheduling Inputs - pickers drop up to avoid overflow */}
                     {sendMode === 'scheduled' && (
-                      <div className="mt-4">
-                        <div className="grid grid-cols-2 gap-3">
+                      <div className="mt-3 sm:mt-4">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
                           <div>
-                            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                            <label className="block text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5 sm:mb-1">
                               Data
                             </label>
-                            <div className="relative">
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                              <input
-                                type="date"
-                                value={scheduledDate}
-                                onChange={(e) => setScheduledDate(e.target.value)}
-                                min={getBrazilNow().date}
-                                className="w-full h-12 pl-10 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
-                              />
-                            </div>
+                            <CosmicDatePicker
+                              value={scheduledDate}
+                              onChange={(date) => setScheduledDate(date)}
+                              placeholder="Selecione..."
+                              minDate={getBrazilNow().date}
+                              dropUp
+                            />
                           </div>
                           <div>
-                            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
+                            <label className="block text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mb-0.5 sm:mb-1">
                               Hora
                             </label>
-                            <div className="relative">
-                              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                              <input
-                                type="time"
-                                value={scheduledTime}
-                                onChange={(e) => setScheduledTime(e.target.value)}
-                                className="w-full h-12 pl-10 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base text-slate-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
-                              />
-                            </div>
+                            <CosmicTimePicker
+                              value={scheduledTime}
+                              onChange={(time) => setScheduledTime(time)}
+                              placeholder="Selecione..."
+                              dropUp
+                              rightAlign
+                            />
                           </div>
                         </div>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 text-center">
-                          ⏰ Horário de Brasília (São Paulo)
+                        <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-1.5 sm:mt-2 text-center">
+                          Horário de Brasília
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {/* Action Button */}
+                  {/* Action Button - More compact on mobile */}
                   <button
                     onClick={handleSend}
                     disabled={isSending || !validationStats?.stats?.readyCount || (sendMode === 'scheduled' && (!scheduledDate || !scheduledTime))}
                     className={`
-                      w-full flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-xl shadow-lg transition-all
+                      w-full flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl shadow-lg transition-all
                       ${sendMode === 'scheduled'
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                        ? 'bg-gradient-stellar hover:opacity-90 shadow-stellar-cyan/20'
                         : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700'
                       }
-                      disabled:from-slate-400 disabled:to-slate-500 text-white
+                      disabled:from-slate-400 disabled:to-slate-500 disabled:bg-none disabled:bg-slate-400 dark:disabled:bg-slate-600 text-white
                     `}
                   >
                     {isSending ? (
                       <>
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        {sendMode === 'scheduled' ? 'Agendando...' : 'Enviando...'}
+                        <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>{sendMode === 'scheduled' ? 'Agendando...' : 'Enviando...'}</span>
                       </>
                     ) : (
                       <>
                         {sendMode === 'scheduled' ? (
                           <>
-                            <Calendar className="w-5 h-5" />
-                            Agendar Campanha
+                            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <span>Agendar</span>
                           </>
                         ) : (
                           <>
-                            <Send className="w-5 h-5" />
-                            Enviar Campanha
+                            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <span>Enviar</span>
                           </>
                         )}
                       </>
@@ -1486,38 +1556,39 @@ const NewCampaignModal = ({
           )}
         </div>
 
-        {/* Footer Navigation - with safe area for notch devices */}
-        <div className="px-6 py-4 pb-safe border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-3 sm:gap-4">
+        {/* Footer Navigation - Compact on mobile with safe area */}
+        <div className="px-3 py-2.5 sm:px-6 sm:py-4 pb-safe border-t border-slate-200 dark:border-stellar-cyan/10 bg-slate-50 dark:bg-space-nebula/50 flex flex-row gap-2 sm:gap-4">
           <button
             onClick={currentStep === 0 ? handleClose : handleBack}
             disabled={isSending}
-            className="order-2 sm:order-1 w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-700 sm:border-0 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+            className="flex-1 sm:flex-initial sm:w-auto min-h-[40px] sm:min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust rounded-lg sm:rounded-xl border border-slate-200 dark:border-stellar-cyan/15 sm:border-0 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
           >
-            <ChevronLeft className="w-4 h-4" />
-            {currentStep === 0 ? 'Cancelar' : 'Voltar'}
+            <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>{currentStep === 0 ? 'Cancelar' : 'Voltar'}</span>
           </button>
 
           {currentStep < STEPS.length - 1 ? (
             <button
               onClick={handleNext}
               disabled={!canProceed()}
-              className="order-1 sm:order-2 w-full sm:w-auto sm:ml-auto min-h-[44px] flex items-center justify-center gap-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white font-semibold rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              className="flex-1 sm:flex-initial sm:w-auto sm:ml-auto min-h-[40px] sm:min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 text-xs sm:text-sm bg-gradient-stellar hover:opacity-90 disabled:bg-none disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white font-semibold rounded-lg sm:rounded-xl shadow-md shadow-stellar-cyan/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
             >
-              Próximo
-              <ChevronRight className="w-4 h-4" />
+              <span>Próximo</span>
+              <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           ) : sendResult?.success ? (
             <button
               onClick={handleClose}
-              className="order-1 sm:order-2 w-full sm:w-auto sm:ml-auto min-h-[44px] flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              className="flex-1 sm:flex-initial sm:w-auto sm:ml-auto min-h-[40px] sm:min-h-[44px] flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2 text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg sm:rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              Concluir
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>Concluir</span>
             </button>
           ) : null}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

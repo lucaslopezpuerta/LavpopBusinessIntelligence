@@ -1,7 +1,17 @@
-// VisitHeatmap Component v2.5.0
+// VisitHeatmap Component v3.1.0
 // Size-based density visualization with segment filtering
 //
 // CHANGELOG:
+// v3.1.0 (2026-01-20): Premium Glass Effects
+//   - Replaced hard borders with soft glow system
+//   - Added ring-1 for subtle edge definition
+//   - Added inner top-edge reflection for glass realism
+//   - Outer cyan glow in dark mode for layered depth
+// v3.0.0 (2026-01-20): Cosmic Glass Card refactor
+//   - Replaced gradient background with glass effect (bg-space-dust/50)
+//   - Added backdrop-blur-xl for unified glassmorphism
+//   - Removed left border stripe (accent via icon badge only)
+//   - Softer borders blending with page background
 // v2.5.0 (2026-01-15): Added ContextHelp tooltip
 //   - NEW: Tooltip explaining how to read the heatmap
 //   - Import ContextHelp component
@@ -48,6 +58,7 @@ import ContextHelp from './ContextHelp';
 import { getVisitHeatmapData } from '../utils/customerMetrics';
 import { useSwipeToClose } from '../hooks/useSwipeToClose';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useTheme } from '../contexts/ThemeContext';
 import { MOBILE_SHEET, TWEEN } from '../constants/animations';
 
 // Segment configuration with color palettes
@@ -96,10 +107,10 @@ const SEGMENTS = [
   }
 ];
 
-// Card hover animation - lift + shadow effect (matches AcquisitionCard)
+// Premium glass hover - subtle lift (no boxShadow to preserve CSS glow)
 const cardHoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
-  hover: { y: -2, boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }
+  rest: { y: 0, scale: 1 },
+  hover: { y: -3, scale: 1.005 }
 };
 const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
@@ -429,6 +440,7 @@ const MobileSheet = ({ isOpen, onClose, data, quantiles }) => {
 };
 
 const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
+  const { isDark } = useTheme();
   const [selectedSegment, setSelectedSegment] = useState('all');
   const [isMobile, setIsMobile] = useState(false);
   const [sheetData, setSheetData] = useState(null);
@@ -490,7 +502,15 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
 
   if (!heatmapData) {
     return (
-      <div className={`bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400 ${className}`}>
+      <div className={`
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl rounded-2xl p-4
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
+        text-center text-slate-600 dark:text-slate-400 ${className}
+      `}>
         Carregando mapa de visitas...
       </div>
     );
@@ -517,11 +537,13 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
       variants={cardHoverAnimation}
       transition={cardHoverTransition}
       className={`
-        bg-gradient-to-br from-blue-50/40 via-white to-white
-        dark:from-blue-900/10 dark:via-space-nebula dark:to-space-nebula
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl
         rounded-2xl
-        border border-slate-200/80 dark:border-stellar-cyan/10
-        border-l-4 border-l-blue-500 dark:border-l-blue-400
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
         overflow-hidden
         px-3 py-3 sm:px-4 sm:py-4
         h-full flex flex-col

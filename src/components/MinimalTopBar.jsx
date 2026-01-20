@@ -1,32 +1,25 @@
-// MinimalTopBar.jsx v3.7 - THEME-AWARE COLORS FIX
-// Modern top bar with discreet hover-expandable actions
+// MinimalTopBar.jsx v4.1 - STELLAR COMMAND CENTER
+// Cosmic precision top bar with Horizon Line signature element
+// Design System v5.1 compliant - Space station command bridge viewport
 //
 // CHANGELOG:
+// v4.1 (2026-01-20): Weather capsule simplification
+//   - Removed orbital ring hover effect from CosmicWeatherCapsule
+//   - Changed location text from "Caxias Station" to "Caxias do Sul"
+// v4.0 (2026-01-18): Stellar Command Center cosmic redesign
+//   - NEW: HorizonLine - Animated breathing gradient border (signature element)
+//   - NEW: StellarLocationBadge - Breathing MapPin glow
+//   - NEW: CosmicQuickActions - Orbital indicator dot when open
+//   - NEW: ThemeOrbit - Rotating radial gradient background
+//   - Enhanced glassmorphism with aurora overlay (dark mode)
+//   - Reduced motion support for accessibility
+//   - Premium spring physics on all interactions
 // v3.7 (2026-01-16): Theme-aware colors fix
-//   - Added useTheme hook for reliable dark mode detection
-//   - Converted all Tailwind dark: prefixes to JavaScript conditionals
-//   - Matches proven LoadingScreen pattern for consistent theming
 // v3.6 (2025-12-26): Logout button
-//   - Added LogOut button to QuickActionsDropdown
-//   - Uses useAuth hook for signOut
 // v3.5 (2025-12-22): Theme toggle hidden on mobile
-//   - ThemeToggle now desktop-only (lg+)
-//   - Mobile uses ThemeToggle in IconSidebar drawer footer
 // v3.4 (2025-12-22): Mobile uses click+haptics, desktop uses hover
-//   - Desktop (lg+): Hover to expand dropdowns
-//   - Mobile: Click/tap with haptic feedback
-//   - Uses pointer: coarse media query to detect touch devices
 // v3.3 (2025-12-22): Removed hamburger menu
-//   - Removed redundant hamburger button (BottomNavBar "Mais" handles sidebar)
-//   - Cleaner mobile layout with more space for Weather + Location
-//   - Removed unused activeTab prop and useSidebar import
-// v3.2 (2025-12-22): Fixed hover menus + reorder controls
-//   - FIXED: Menus now properly close when mouse leaves
-//   - Keyboard shortcuts moved to last position (less important)
-//   - Simplified hover state management
-// v3.1 (2025-12-22): Subtle hover controls
-// v3.0 (2025-12-22): Complete redesign
-// v2.x: Previous implementations
+// v3.2-v1.x: Previous implementations
 
 import React, { useState, useRef, useEffect } from 'react';
 import { MapPin, Settings, FileDown, RefreshCw, Bell, MoreHorizontal, LogOut } from 'lucide-react';
@@ -37,13 +30,13 @@ import IconButton from './ui/IconButton';
 import { haptics } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 // Hook to detect touch/mobile device
 const useIsTouchDevice = () => {
   const [isTouch, setIsTouch] = useState(false);
 
   useEffect(() => {
-    // Check for coarse pointer (touch screens)
     const mediaQuery = window.matchMedia('(pointer: coarse)');
     setIsTouch(mediaQuery.matches);
 
@@ -55,30 +48,129 @@ const useIsTouchDevice = () => {
   return isTouch;
 };
 
-// ActionItem component for dropdown menu
+// ═══════════════════════════════════════════════════════════════════════════
+// SIGNATURE ELEMENT: HorizonLine
+// A living, breathing animated gradient border that pulses with cosmic energy
+// ═══════════════════════════════════════════════════════════════════════════
+const HorizonLine = ({ isDark, prefersReducedMotion }) => {
+  if (prefersReducedMotion) {
+    // Static fallback for reduced motion
+    return (
+      <div
+        className="absolute bottom-0 inset-x-0 h-[2px]"
+        style={{
+          background: isDark
+            ? 'linear-gradient(90deg, transparent 10%, rgba(45,56,138,0.5) 30%, rgba(0,174,239,0.8) 50%, rgba(45,56,138,0.5) 70%, transparent 90%)'
+            : 'linear-gradient(90deg, transparent 10%, rgba(45,56,138,0.3) 30%, rgba(0,174,239,0.5) 50%, rgba(45,56,138,0.3) 70%, transparent 90%)'
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="absolute bottom-0 inset-x-0 h-[2px] overflow-hidden">
+      <motion.div
+        className="w-full h-full"
+        style={{
+          background: isDark
+            ? 'linear-gradient(90deg, transparent, #2d388a, #00aeef, #2d388a, transparent)'
+            : 'linear-gradient(90deg, transparent, rgba(45,56,138,0.4), rgba(0,174,239,0.6), rgba(45,56,138,0.4), transparent)',
+          backgroundSize: '200% 100%'
+        }}
+        animate={{
+          backgroundPosition: ['100% 0', '-100% 0'],
+          opacity: isDark ? [0.6, 1, 0.6] : [0.4, 0.7, 0.4]
+        }}
+        transition={{
+          backgroundPosition: { duration: 4, repeat: Infinity, ease: 'linear' },
+          opacity: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
+        }}
+      />
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// StellarLocationBadge - Enhanced with breathing MapPin glow
+// ═══════════════════════════════════════════════════════════════════════════
+const StellarLocationBadge = ({ isDark, prefersReducedMotion }) => {
+  return (
+    <div
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors
+        ${isDark
+          ? 'bg-gradient-to-r from-space-dust to-space-nebula border border-stellar-cyan/20'
+          : 'bg-gradient-to-r from-slate-50 to-white border border-stellar-blue/15 shadow-sm'
+        }`}
+    >
+      <motion.div
+        className="w-4 h-4 rounded-full flex items-center justify-center"
+        animate={prefersReducedMotion ? {} : {
+          boxShadow: isDark
+            ? ['0 0 4px rgba(0,174,239,0.3)', '0 0 8px rgba(0,174,239,0.5)', '0 0 4px rgba(0,174,239,0.3)']
+            : ['0 0 2px rgba(45,56,138,0.2)', '0 0 4px rgba(45,56,138,0.3)', '0 0 2px rgba(45,56,138,0.2)']
+        }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <MapPin className="w-3.5 h-3.5 text-stellar-cyan" />
+      </motion.div>
+      <span className={`text-xs font-medium tracking-wide ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+        Caxias do Sul
+      </span>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CosmicWeatherCapsule - Weather widget wrapper with subtle hover effect
+// ═══════════════════════════════════════════════════════════════════════════
+const CosmicWeatherCapsule = ({ prefersReducedMotion }) => {
+  return (
+    <motion.div
+      className="relative"
+      whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+    >
+      <WeatherWidget compact />
+    </motion.div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ActionItem - Enhanced dropdown action with cosmic hover
+// ═══════════════════════════════════════════════════════════════════════════
 const ActionItem = ({ icon: Icon, label, onClick, loading, shortcut, isDark }) => (
   <button
     onClick={onClick}
     disabled={loading}
-    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${isDark ? 'text-slate-200 hover:bg-slate-700/50' : 'text-slate-700 hover:bg-slate-100'} transition-colors disabled:opacity-50`}
+    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 disabled:opacity-50
+      ${isDark
+        ? 'text-slate-200 hover:bg-stellar-cyan/10 hover:text-stellar-cyan'
+        : 'text-slate-700 hover:bg-stellar-cyan/5 hover:text-stellar-cyan'
+      }`}
   >
-    <Icon className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'} ${loading ? 'animate-spin' : ''}`} />
-    <span className="flex-1 text-left">{label}</span>
+    <Icon className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'} ${loading ? 'animate-spin' : ''} group-hover:text-stellar-cyan`} />
+    <span className="flex-1 text-left font-medium">{label}</span>
     {shortcut && (
-      <kbd className={`px-1.5 py-0.5 text-[10px] font-mono ${isDark ? 'bg-slate-700 text-slate-500 border-slate-600' : 'bg-slate-100 text-slate-400 border-slate-200'} rounded border`}>
+      <kbd className={`px-1.5 py-0.5 text-[10px] font-mono rounded border
+        ${isDark
+          ? 'bg-space-void/50 text-slate-500 border-stellar-cyan/20'
+          : 'bg-slate-100 text-slate-400 border-slate-200'
+        }`}>
         {shortcut}
       </kbd>
     )}
   </button>
 );
 
-// Subtle QuickActions - hover on desktop, click+haptics on mobile
-const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
+// ═══════════════════════════════════════════════════════════════════════════
+// CosmicQuickActions - Dropdown with orbital indicator
+// ═══════════════════════════════════════════════════════════════════════════
+const CosmicQuickActions = ({ onOpenExport, onRefresh, refreshing, prefersReducedMotion }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const closeTimeoutRef = useRef(null);
   const isTouch = useIsTouchDevice();
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const { isDark } = useTheme();
 
   // Close dropdown when clicking outside
@@ -112,7 +204,7 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
 
   // Desktop only: hover handlers
   const handleMouseEnter = () => {
-    if (isTouch) return; // Disable hover on touch devices
+    if (isTouch) return;
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
@@ -121,7 +213,7 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
   };
 
   const handleMouseLeave = () => {
-    if (isTouch) return; // Disable hover on touch devices
+    if (isTouch) return;
     closeTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
     }, 150);
@@ -142,16 +234,40 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Subtle icon button */}
-      <button
+      {/* Orbital indicator dot - circles when open */}
+      {isOpen && !prefersReducedMotion && (
+        <motion.div
+          className="absolute w-2 h-2 rounded-full bg-stellar-cyan z-10 pointer-events-none"
+          style={{ top: -4, left: '50%', marginLeft: -4 }}
+          animate={{
+            x: [0, 16, 0, -16, 0],
+            y: [0, 8, 16, 8, 0]
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+        />
+      )}
+
+      {/* Trigger button */}
+      <motion.button
         onClick={handleClick}
-        className={`flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan ${isOpen ? (isDark ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700') : (isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700')}`}
+        whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+        whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+        className={`flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan
+          ${isOpen
+            ? isDark
+              ? 'bg-stellar-cyan/15 text-stellar-cyan'
+              : 'bg-stellar-cyan/10 text-stellar-cyan'
+            : isDark
+              ? 'text-slate-400 hover:bg-stellar-cyan/10 hover:text-stellar-cyan'
+              : 'text-slate-500 hover:bg-stellar-cyan/5 hover:text-stellar-cyan'
+          }`}
         aria-expanded={isOpen}
         aria-haspopup="true"
         title="Acoes rapidas"
       >
         <MoreHorizontal className="w-5 h-5" />
-      </button>
+      </motion.button>
 
       <AnimatePresence>
         {isOpen && (
@@ -159,8 +275,12 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
             initial={{ opacity: 0, y: -4, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.95 }}
-            transition={{ duration: 0.12 }}
-            className={`absolute right-0 mt-1 w-48 ${isDark ? 'bg-space-dust' : 'bg-white/95'} backdrop-blur-xl rounded-xl shadow-xl border ${isDark ? 'border-stellar-cyan/20' : 'border-stellar-cyan/10'} py-1.5 z-50`}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute right-0 mt-2 w-52 rounded-xl shadow-xl border py-2 z-50
+              ${isDark
+                ? 'bg-space-dust/95 backdrop-blur-xl border-stellar-cyan/20 shadow-stellar'
+                : 'bg-white/95 backdrop-blur-xl border-stellar-blue/10 shadow-bilavnova'
+              }`}
           >
             <ActionItem
               icon={FileDown}
@@ -177,14 +297,20 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
               shortcut="R"
               isDark={isDark}
             />
-            <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`} />
+
+            {/* Cosmic divider */}
+            <div className={`my-2 mx-3 h-px ${isDark ? 'divider-cosmic' : 'bg-slate-200'}`} />
+
             <ActionItem
               icon={Bell}
               label="Alertas"
               onClick={() => setIsOpen(false)}
               isDark={isDark}
             />
-            <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`} />
+
+            {/* Cosmic divider */}
+            <div className={`my-2 mx-3 h-px ${isDark ? 'divider-cosmic' : 'bg-slate-200'}`} />
+
             <ActionItem
               icon={LogOut}
               label="Sair"
@@ -198,8 +324,40 @@ const QuickActionsDropdown = ({ onOpenExport, onRefresh, refreshing }) => {
   );
 };
 
-// Subtle Keyboard Hints - shows on hover
-const KeyboardHintsSubtle = () => {
+// ═══════════════════════════════════════════════════════════════════════════
+// ThemeOrbit - Enhanced theme toggle with rotating radial gradient
+// ═══════════════════════════════════════════════════════════════════════════
+const ThemeOrbit = ({ prefersReducedMotion }) => {
+  const { isDark } = useTheme();
+
+  return (
+    <div className="relative">
+      {/* Rotating radial gradient background */}
+      {!prefersReducedMotion && (
+        <motion.div
+          className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+        >
+          <div
+            className="w-full h-full"
+            style={{
+              background: isDark
+                ? 'radial-gradient(circle at 30% 30%, rgba(0,174,239,0.2) 0%, transparent 60%)'
+                : 'radial-gradient(circle at 30% 30%, rgba(251,191,36,0.25) 0%, transparent 60%)'
+            }}
+          />
+        </motion.div>
+      )}
+      <ThemeToggle className="no-print relative z-10" />
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CommandPalette - Subtle Keyboard Hints (desktop only)
+// ═══════════════════════════════════════════════════════════════════════════
+const CommandPalette = ({ prefersReducedMotion }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const closeTimeoutRef = useRef(null);
@@ -241,8 +399,18 @@ const KeyboardHintsSubtle = () => {
       onMouseLeave={handleMouseLeave}
     >
       {/* Subtle kbd indicator */}
-      <div className={`px-2 py-1.5 rounded cursor-default min-h-[44px] flex items-center transition-colors duration-200 ${isOpen ? (isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600') : (isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500')}`}>
-        <span className="text-[11px] font-mono">?</span>
+      <div
+        className={`px-2.5 py-2 rounded-lg cursor-default min-h-[44px] flex items-center transition-all duration-200
+          ${isOpen
+            ? isDark
+              ? 'bg-stellar-cyan/15 text-stellar-cyan'
+              : 'bg-stellar-cyan/10 text-stellar-cyan'
+            : isDark
+              ? 'text-slate-500 hover:text-stellar-cyan hover:bg-stellar-cyan/10'
+              : 'text-slate-400 hover:text-stellar-cyan hover:bg-stellar-cyan/5'
+          }`}
+      >
+        <span className="text-[11px] font-mono font-bold">?</span>
       </div>
 
       <AnimatePresence>
@@ -252,18 +420,26 @@ const KeyboardHintsSubtle = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.95 }}
             transition={{ duration: 0.12 }}
-            className={`absolute right-0 mt-1 w-36 ${isDark ? 'bg-space-dust' : 'bg-white/95'} backdrop-blur-xl rounded-xl shadow-xl border ${isDark ? 'border-stellar-cyan/20' : 'border-stellar-cyan/10'} py-2 px-2 z-50`}
+            className={`absolute right-0 mt-2 w-40 rounded-xl shadow-xl border py-3 px-3 z-50
+              ${isDark
+                ? 'bg-space-dust/95 backdrop-blur-xl border-stellar-cyan/20 shadow-stellar'
+                : 'bg-white/95 backdrop-blur-xl border-stellar-blue/10 shadow-bilavnova'
+              }`}
           >
-            <p className={`text-[10px] uppercase tracking-wider mb-1.5 px-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${isDark ? 'text-stellar-cyan/70' : 'text-stellar-cyan'}`}>
               Atalhos
             </p>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {shortcuts.map(({ key, desc }) => (
-                <div key={key} className="flex items-center justify-between px-1 py-0.5">
-                  <kbd className={`px-1.5 py-0.5 text-[10px] font-mono rounded border ${isDark ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                <div key={key} className="flex items-center justify-between">
+                  <kbd className={`px-1.5 py-0.5 text-[10px] font-mono rounded border
+                    ${isDark
+                      ? 'bg-space-void/50 text-slate-400 border-stellar-cyan/20'
+                      : 'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}>
                     {key}
                   </kbd>
-                  <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</span>
+                  <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</span>
                 </div>
               ))}
             </div>
@@ -274,59 +450,78 @@ const KeyboardHintsSubtle = () => {
   );
 };
 
-// Location Badge Component
-const LocationBadge = () => {
-  const { isDark } = useTheme();
-  return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full ${isDark ? 'bg-space-dust/80 border-stellar-cyan/20' : 'bg-slate-100/80 border-slate-200/50'} border`}>
-      <MapPin className="w-3.5 h-3.5 text-stellar-cyan" />
-      <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-        Caxias do Sul
-      </span>
-    </div>
-  );
-};
-
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT: MinimalTopBar (Stellar Command Center)
+// ═══════════════════════════════════════════════════════════════════════════
 const MinimalTopBar = ({ refreshing, onRefresh, onOpenSettings, onOpenExport }) => {
   const { isDark } = useTheme();
-  return (
-    <header className={`sticky top-0 z-40 ${isDark ? 'bg-space-nebula' : 'bg-white/85'} backdrop-blur-xl border-b ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} shadow-sm transition-all duration-300 safe-area-top`}>
-      {/* Height: 56px on mobile (h-14), 60px on desktop */}
-      <div className="h-14 lg:h-[60px] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-3">
+  const prefersReducedMotion = useReducedMotion();
 
+  return (
+    <header
+      className={`sticky top-0 z-40 transition-all duration-300 safe-area-top relative
+        ${isDark
+          ? 'bg-space-nebula shadow-stellar'
+          : 'bg-white/90 shadow-bilavnova'
+        }`}
+      style={{
+        backdropFilter: isDark ? 'blur(24px)' : 'blur(16px)',
+        WebkitBackdropFilter: isDark ? 'blur(24px)' : 'blur(16px)',
+      }}
+    >
+      {/* Aurora overlay - dark mode only */}
+      {isDark && (
+        <div
+          className="absolute inset-0 pointer-events-none aurora-overlay opacity-40"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Main content container */}
+      <div className="relative h-14 lg:h-[60px] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-3">
         {/* Left Section: Weather + Location */}
         <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-          <WeatherWidget compact />
-          <LocationBadge />
+          <CosmicWeatherCapsule prefersReducedMotion={prefersReducedMotion} />
+          <StellarLocationBadge isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
         </div>
 
-        {/* Right Section: Subtle controls */}
+        {/* Right Section: Controls */}
         <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-          {/* Quick Actions - subtle dropdown */}
-          <QuickActionsDropdown
+          {/* Quick Actions with orbital indicator */}
+          <CosmicQuickActions
             onOpenExport={onOpenExport}
             onRefresh={onRefresh}
             refreshing={refreshing}
+            prefersReducedMotion={prefersReducedMotion}
           />
 
-          {/* Settings Button */}
-          <IconButton
-            icon={Settings}
-            label="Configuracoes"
-            onClick={onOpenSettings}
-          />
+          {/* Settings Button with hover glow */}
+          <motion.div
+            whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+            whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          >
+            <IconButton
+              icon={Settings}
+              label="Configuracoes"
+              onClick={onOpenSettings}
+            />
+          </motion.div>
 
-          {/* Theme Toggle - desktop only (mobile uses sidebar footer) */}
+          {/* Theme Toggle with orbital effect - desktop only */}
           <div className="hidden lg:block">
-            <ThemeToggle className="no-print" />
+            <ThemeOrbit prefersReducedMotion={prefersReducedMotion} />
           </div>
 
-          {/* Keyboard Hints (desktop only) - last, less important */}
+          {/* Keyboard Hints (desktop only) */}
           <div className="hidden lg:block">
-            <KeyboardHintsSubtle />
+            <CommandPalette prefersReducedMotion={prefersReducedMotion} />
           </div>
         </div>
       </div>
+
+      {/* Signature Element: Horizon Line */}
+      <HorizonLine isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
     </header>
   );
 };

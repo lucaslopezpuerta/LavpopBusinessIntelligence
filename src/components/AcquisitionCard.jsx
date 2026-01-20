@@ -1,9 +1,22 @@
-// AcquisitionCard.jsx v1.4
+// AcquisitionCard.jsx v2.1 - PREMIUM GLASS CARD
 // Unified acquisition metrics + daily chart
 // Replaces: CleanKPICard (Novos) + NewClientsChart
-// Design System v3.4 compliant - Soft Dashboard aesthetic
+// Design System v5.1 compliant - Cosmic Glass Cards
 //
 // CHANGELOG:
+// v2.1 (2026-01-20): Enhanced Premium Glass Effects
+//   - CHANGED: Replaced hard CSS borders with soft inner glow
+//   - ADDED: Subtle outer cyan glow in dark mode (layered depth)
+//   - ADDED: Inner top-edge reflection for glass realism
+//   - ADDED: ring-1 ring-white/5 for soft edge definition
+//   - Reduced bg opacity for more transparency/depth
+//   - Overall effect: softer, more premium frosted glass
+// v2.0 (2026-01-20): Cosmic Glass Card refactor
+//   - CHANGED: Removed gradient background → clean glass (bg-space-dust/50)
+//   - CHANGED: Removed left border stripe → icon badge provides color
+//   - ADDED: backdrop-blur-xl for consistent glassmorphism
+//   - ADDED: Softer borders (border-stellar-cyan/10 dark mode)
+//   - Uses theme-aware isDark for glass backgrounds
 // v1.4 (2026-01-15): Bar color coherence
 //   - CHANGED: Bar colors now use purple tones matching accent border and icon
 //   - Above average: purple-500 (light) / purple-400 (dark)
@@ -76,9 +89,10 @@ const pillVariants = {
   })
 };
 
+// Premium glass hover - subtle lift with enhanced glow
 const cardHoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
-  hover: { y: -2, boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }
+  rest: { y: 0, scale: 1 },
+  hover: { y: -3, scale: 1.005 }
 };
 
 const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
@@ -455,7 +469,15 @@ const AcquisitionCard = ({
   // Loading state
   if (!dailyData || dailyData.length === 0) {
     return (
-      <div className={`bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-l-4 border-l-purple-500 p-4 ${className}`}>
+      <div className={`
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl rounded-2xl
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
+        p-4 ${className}
+      `}>
         <div className="flex items-center justify-center h-48 text-slate-400 dark:text-slate-500">
           <div className="text-center">
             <UserPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -473,11 +495,13 @@ const AcquisitionCard = ({
       variants={cardHoverAnimation}
       transition={cardHoverTransition}
       className={`
-        bg-gradient-to-br from-purple-50/40 via-white to-white
-        dark:from-purple-900/10 dark:via-space-nebula dark:to-space-nebula
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl
         rounded-2xl
-        border border-slate-200/80 dark:border-stellar-cyan/10
-        border-l-4 border-l-purple-500 dark:border-l-purple-400
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
         overflow-hidden
         ${className}
       `}

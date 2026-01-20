@@ -1,7 +1,17 @@
-// ChurnHistogram.jsx v3.3 - ContextHelp tooltip
+// ChurnHistogram.jsx v4.1 - Premium Glass Card
 // Time-to-churn distribution histogram with contact tracking integration
 //
 // CHANGELOG:
+// v4.1 (2026-01-20): Premium Glass Effects
+//   - Replaced hard borders with soft glow system
+//   - Added ring-1 for subtle edge definition
+//   - Added inner top-edge reflection for glass realism
+//   - Outer cyan glow in dark mode for layered depth
+// v4.0 (2026-01-20): Cosmic Glass Card refactor
+//   - Replaced red gradient with glass effect (bg-space-dust/50)
+//   - Upgraded backdrop-blur-md to backdrop-blur-xl
+//   - Removed left border stripe (red accent via icon badge)
+//   - Softer borders blending with page background
 // v3.3 (2026-01-15): Added ContextHelp tooltip
 //   - NEW: Tooltip explaining churn risk histogram
 //   - Import ContextHelp component
@@ -75,10 +85,10 @@ import { useBlacklist } from '../hooks/useBlacklist';
 import { haptics } from '../utils/haptics';
 import { DAY_THRESHOLDS } from '../utils/customerMetrics';
 
-// Card hover animation - lift + shadow effect (matches AcquisitionCard)
+// Premium glass hover - subtle lift (no boxShadow to preserve CSS glow)
 const cardHoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
-  hover: { y: -2, boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }
+  rest: { y: 0, scale: 1 },
+  hover: { y: -3, scale: 1.005 }
 };
 const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
@@ -178,7 +188,15 @@ const ChurnHistogram = ({
                 whileHover="hover"
                 variants={cardHoverAnimation}
                 transition={cardHoverTransition}
-                className="bg-gradient-to-br from-red-50/40 via-white to-white dark:from-red-900/10 dark:via-space-nebula dark:to-space-nebula backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-stellar-cyan/10 border-l-4 border-l-red-500 dark:border-l-red-400 overflow-hidden h-full flex flex-col"
+                className={`
+                    ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+                    backdrop-blur-xl rounded-2xl p-5
+                    ${isDark
+                        ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+                        : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+                    }
+                    overflow-hidden h-full flex flex-col
+                `}
             >
                 <div className="mb-4">
                     <div className="flex items-start gap-3 mb-3">
@@ -354,7 +372,15 @@ const ChurnHistogram = ({
             whileHover="hover"
             variants={cardHoverAnimation}
             transition={cardHoverTransition}
-            className="bg-gradient-to-br from-red-50/40 via-white to-white dark:from-red-900/10 dark:via-space-nebula dark:to-space-nebula backdrop-blur-md rounded-2xl p-5 border border-slate-200/80 dark:border-stellar-cyan/10 border-l-4 border-l-red-500 dark:border-l-red-400 overflow-hidden h-full flex flex-col"
+            className={`
+                ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+                backdrop-blur-xl rounded-2xl p-5
+                ${isDark
+                    ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+                    : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+                }
+                overflow-hidden h-full flex flex-col
+            `}
         >
             {/* Header */}
             <div className="mb-4">

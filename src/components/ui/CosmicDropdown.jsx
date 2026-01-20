@@ -1,4 +1,4 @@
-// CosmicDropdown.jsx v1.0.0
+// CosmicDropdown.jsx v1.1.0
 // Custom dropdown component with cosmic Design System styling
 // Replaces native <select> elements for consistent theming
 //
@@ -9,15 +9,20 @@
 // - Click outside to close
 // - Touch-friendly with haptic feedback
 // - Accessible with ARIA attributes
+// - Drop-up support for bottom-positioned dropdowns
 //
 // USAGE:
 // <CosmicDropdown
 //   value={selectedValue}
 //   onChange={handleChange}
 //   options={[{ value: 'opt1', label: 'Option 1' }]}
+//   dropUp={true}  // Opens menu above the button
 // />
 //
 // CHANGELOG:
+// v1.1.0 (2026-01-18): Drop-up support
+//   - Added dropUp prop to open menu above the trigger
+//   - Adjusted animation direction for drop-up mode
 // v1.0.0 (2026-01-16): Initial implementation
 //   - Cosmic Precision design system styling
 //   - Framer Motion animations
@@ -35,6 +40,7 @@ const CosmicDropdown = ({
   options = [],
   placeholder = 'Selecione...',
   className = '',
+  dropUp = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -162,12 +168,13 @@ const CosmicDropdown = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.95 }}
+            initial={{ opacity: 0, y: dropUp ? 4 : -4, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.95 }}
+            exit={{ opacity: 0, y: dropUp ? 4 : -4, scale: 0.95 }}
             transition={{ duration: 0.12 }}
             className={`
-              absolute z-50 mt-1 w-full min-w-[160px]
+              absolute z-50 w-full min-w-[160px]
+              ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}
               ${isDark ? 'bg-space-dust' : 'bg-white/95'}
               backdrop-blur-xl
               rounded-xl

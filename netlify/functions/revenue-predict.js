@@ -1,6 +1,12 @@
 // netlify/functions/revenue-predict.js
 // Revenue prediction using OLS regression with weather features
 //
+// v3.0 (2026-01-20): Prediction tracking & validation
+//   - Save predictions to revenue_predictions table for accuracy tracking
+//   - Walk-forward cross-validation for honest out-of-sample metrics
+//   - Configurable drying pain weights (preparing for optimization)
+//   - Return OOS MAE/MAPE alongside in-sample metrics
+//
 // v2.0 (2025-12-21): Enhanced features & data quality
 //   - Brazilian holiday detection (fixed + Easter-based moveable)
 //   - Interaction terms: weekend×drying, weekend×rain, holiday×drying
@@ -52,6 +58,13 @@ const FEATURE_NAMES = {
   reduced: ['intercept', 'rev_lag_1', 'rev_lag_7', 'is_weekend', 'drying_pain', 'is_rainy', 'heavy_rain'],
   minimal: ['intercept', 'rev_lag_1', 'rev_lag_7'],
   fallback: ['intercept']
+};
+
+// Default drying pain weights (can be optimized via grid search)
+const DEFAULT_DRYING_WEIGHTS = {
+  humidity: 0.03,
+  precip: 0.08,
+  sunDeficit: 0.20
 };
 
 // ============== SUPABASE CLIENT ==============
@@ -109,17 +122,22 @@ function isWeekend(dateStr) {
  * Measures how hard it is to dry clothes outdoors
  * Higher values = more customers come to laundromat
  *
- * Formula: 0.03 * humidity + 0.08 * precipitation + 0.20 * (8 - sun_hours_est)
+ * Formula: w.humidity * humidity + w.precip * precipitation + w.sunDeficit * sunDeficit
+ *
+ * @param {Object} weather - Weather data object
+ * @param {Object} weights - Weight coefficients { humidity, precip, sunDeficit }
+ * @returns {number} Drying pain index value
  */
-function calculateDryingPain(weather) {
+function calculateDryingPain(weather, weights = DEFAULT_DRYING_WEIGHTS) {
   const humidity = parseFloat(weather.humidity_avg) || 60;
   const precip = parseFloat(weather.precipitation) || 0;
   const cloudCover = parseFloat(weather.cloud_cover) || 50;
 
   // Estimate sun hours from cloud cover (max 8 hours of useful sun)
   const sunHoursEst = Math.max(0, 8 - (cloudCover / 100) * 8);
+  const sunDeficit = Math.max(0, 8 - sunHoursEst);
 
-  return 0.03 * humidity + 0.08 * precip + 0.20 * Math.max(0, 8 - sunHoursEst);
+  return weights.humidity * humidity + weights.precip * precip + weights.sunDeficit * sunDeficit;
 }
 
 /**
@@ -161,9 +179,14 @@ function detectOutliers(values) {
  * Build feature matrix for training
  * Joins revenue data with weather data by date
  * Returns { features, dataQuality }
+ *
+ * @param {Array} revenueRows - Revenue data rows
+ * @param {Array} weatherRows - Weather data rows
+ * @param {Object} options - Options { tier, dryingPainWeights }
+ * @returns {Object} { features, dataQuality }
  */
 function buildTrainingFeatures(revenueRows, weatherRows, options = {}) {
-  const { tier = 'full' } = options;
+  const { tier = 'full', dryingPainWeights = DEFAULT_DRYING_WEIGHTS } = options;
 
   // Create date-keyed maps
   const revenueMap = {};
@@ -216,7 +239,7 @@ function buildTrainingFeatures(revenueRows, weatherRows, options = {}) {
     }
 
     // Calculate features
-    const dryingPain = calculateDryingPain(w);
+    const dryingPain = calculateDryingPain(w, dryingPainWeights);
     const precip = parseFloat(w.precipitation) || 0;
     const isWknd = isWeekend(date);
     const isRainy = precip >= 2;
@@ -518,6 +541,66 @@ function predict(beta, x) {
 }
 
 /**
+ * Walk-forward cross-validation for honest out-of-sample metrics
+ * Uses expanding window: train on days 1..t, predict day t+1
+ * This provides realistic estimates of prediction accuracy
+ *
+ * @param {Array} trainingData - Array of { x, y } training samples
+ * @param {number} minTrainSize - Minimum samples before starting validation
+ * @param {number} stepSize - Step between validation points (1 = every day)
+ * @returns {Object|null} { oosMAE, oosMAPE, oosBias, nPoints } or null if insufficient data
+ */
+function walkForwardValidation(trainingData, minTrainSize = 30, stepSize = 1) {
+  const errors = [];
+  const absErrors = [];
+  const pctErrors = [];
+
+  // Need at least minTrainSize days before we can validate
+  for (let t = minTrainSize; t < trainingData.length; t += stepSize) {
+    // Train on days 0..t-1
+    const trainSet = trainingData.slice(0, t);
+
+    // Test on day t
+    const testPoint = trainingData[t];
+
+    try {
+      const model = fitOLS(trainSet);
+      const predicted = predict(model.beta, testPoint.x);
+      const actual = testPoint.y;
+
+      const error = actual - predicted;
+      errors.push(error);
+      absErrors.push(Math.abs(error));
+      if (actual > 0) {
+        pctErrors.push(Math.abs(error / actual) * 100);
+      }
+    } catch (e) {
+      // Skip if model fails (e.g., singular matrix with too few samples)
+      continue;
+    }
+  }
+
+  // Need at least 10 validation points for meaningful metrics
+  if (absErrors.length < 10) {
+    return null;
+  }
+
+  // Calculate out-of-sample metrics
+  const oosMAE = absErrors.reduce((a, b) => a + b, 0) / absErrors.length;
+  const oosMAPE = pctErrors.length > 0
+    ? pctErrors.reduce((a, b) => a + b, 0) / pctErrors.length
+    : 0;
+  const oosBias = errors.reduce((a, b) => a + b, 0) / errors.length;
+
+  return {
+    oosMAE: Math.round(oosMAE),
+    oosMAPE: Math.round(oosMAPE * 10) / 10,
+    oosBias: Math.round(oosBias),
+    nPoints: absErrors.length
+  };
+}
+
+/**
  * Save trained model to Supabase for caching
  * Called after on-the-fly training to avoid retraining on every request
  *
@@ -626,6 +709,7 @@ async function loadOrTrainModel(supabase, trainingData, tier = 'full', metadata 
     console.log(`Using cached model (trained ${Math.round(age / 3600000)}h ago, R²=${cached.r_squared})`);
 
     // Return cached model in the expected format
+    // Include drift detection info from model_coefficients (set by campaign-scheduler)
     return {
       beta,
       mae: cached.mae || 0,
@@ -633,7 +717,12 @@ async function loadOrTrainModel(supabase, trainingData, tier = 'full', metadata 
       rSquared: cached.r_squared || 0,
       n: cached.n_training_samples || 0,
       meanRevenue: cached.mean_revenue || 0,
-      standardError: cached.mae ? Math.round(cached.mae * 1.25) : 100 // Approximate SE from MAE
+      standardError: cached.mae ? Math.round(cached.mae * 1.25) : 100, // Approximate SE from MAE
+      // Drift detection (populated by campaign-scheduler nightly)
+      driftDetected: cached.drift_detected || false,
+      driftRatio: cached.drift_ratio || null,
+      oosMAE: cached.oos_mae || null,
+      oosMAPE: cached.oos_mape || null
     };
   } catch (loadError) {
     console.warn('Error loading cached model:', loadError.message);
@@ -665,6 +754,66 @@ function getTierMessage(tier) {
     fallback: 'Usando média histórica'
   };
   return messages[tier] || null;
+}
+
+/**
+ * Save prediction to database for later accuracy tracking
+ * Called when generating predictions to enable comparison with actual outcomes
+ *
+ * @param {Object} supabase - Supabase client
+ * @param {Object} prediction - Prediction object with date, predicted_revenue, etc.
+ * @param {string} tier - Model tier used
+ * @param {number} inSampleR2 - In-sample R-squared for reference
+ */
+async function savePrediction(supabase, prediction, tier, inSampleR2 = null) {
+  try {
+    const { error } = await supabase
+      .from('revenue_predictions')
+      .upsert({
+        prediction_date: prediction.date,
+        predicted_revenue: prediction.predicted_revenue,
+        confidence_low: prediction.confidence_low,
+        confidence_high: prediction.confidence_high,
+        model_tier: tier,
+        in_sample_r_squared: inSampleR2,
+        features: prediction.features
+      }, { onConflict: 'prediction_date' });
+
+    if (error) {
+      console.warn(`Failed to save prediction for ${prediction.date}:`, error.message);
+    }
+  } catch (err) {
+    // Non-blocking - prediction still works even if saving fails
+    console.warn('Error saving prediction:', err.message);
+  }
+}
+
+/**
+ * Load recent prediction accuracy metrics from database
+ *
+ * @param {Object} supabase - Supabase client
+ * @returns {Object|null} { avgMae, avgMape, predictions } or null if no data
+ */
+async function loadPredictionAccuracy(supabase) {
+  try {
+    const { data, error } = await supabase
+      .from('prediction_accuracy')
+      .select('*')
+      .single();
+
+    if (error || !data) return null;
+
+    return {
+      avgMae: data.avg_mae,
+      avgMape: data.avg_mape,
+      medianAe: data.median_ae,
+      maeStd: data.mae_std,
+      totalPredictions: data.total_predictions
+    };
+  } catch (err) {
+    console.warn('Error loading prediction accuracy:', err.message);
+    return null;
+  }
 }
 
 /**
@@ -907,6 +1056,22 @@ async function generatePredictions(supabase) {
 
   console.log(`Model ready: R²=${model.rSquared}, MAE=R$${model.mae}, tier=${tier}`);
 
+  // Run walk-forward cross-validation for honest out-of-sample metrics
+  // Skip every 3rd day to reduce computation time (stepSize = 3)
+  let oosMetrics = null;
+  if (tier !== 'fallback' && trainingData.length >= 40) {
+    oosMetrics = walkForwardValidation(trainingData, 30, 3);
+    if (oosMetrics) {
+      console.log(`OOS validation: MAE=R$${oosMetrics.oosMAE}, MAPE=${oosMetrics.oosMAPE}%, bias=${oosMetrics.oosBias}, n=${oosMetrics.nPoints}`);
+    }
+  }
+
+  // Load historical prediction accuracy from tracked predictions
+  const predictionAccuracy = await loadPredictionAccuracy(supabase);
+  if (predictionAccuracy) {
+    console.log(`Historical accuracy (30d): MAE=R$${predictionAccuracy.avgMae}, MAPE=${predictionAccuracy.avgMape}%`);
+  }
+
   // Get recent revenue for lag features
   const recentRevenue = revenue.slice(-8).reverse(); // Last 8 days, newest first
 
@@ -968,6 +1133,11 @@ async function generatePredictions(supabase) {
     }
 
     predictions.push(predictionObj);
+
+    // Save today's prediction for accuracy tracking (only first day = today)
+    if (i === 0 && !closedInfo.isClosed) {
+      await savePrediction(supabase, predictionObj, tier, model.rSquared);
+    }
   }
 
   // Build response
@@ -977,6 +1147,7 @@ async function generatePredictions(supabase) {
     success: true,
     predictions,
     model_info: {
+      // In-sample metrics (fitting quality)
       r_squared: model.rSquared,
       mae: model.mae,
       rmse: model.rmse,
@@ -986,7 +1157,23 @@ async function generatePredictions(supabase) {
       feature_names: FEATURE_NAMES[tier],
       coefficients: model.beta.map(b => Math.round(b * 100) / 100),
       model_tier: tier,
-      tier_message: tierMessage
+      tier_message: tierMessage,
+
+      // Out-of-sample metrics (prediction quality - THESE ARE THE HONEST METRICS)
+      // Prefer cached OOS metrics from model_coefficients (more stable), fall back to computed
+      oos_mae: model.oosMAE || oosMetrics?.oosMAE || null,
+      oos_mape: model.oosMAPE || oosMetrics?.oosMAPE || null,
+      oos_bias: oosMetrics?.oosBias || null,
+      oos_validation_points: oosMetrics?.nPoints || null,
+
+      // Drift detection (populated by campaign-scheduler nightly)
+      drift_detected: model.driftDetected || false,
+      drift_ratio: model.driftRatio || null,
+
+      // Historical tracking (actual vs predicted from past predictions)
+      tracked_mae: predictionAccuracy?.avgMae || null,
+      tracked_mape: predictionAccuracy?.avgMape || null,
+      tracked_predictions: predictionAccuracy?.totalPredictions || 0
     },
     data_quality: dataQuality
   };

@@ -1,8 +1,29 @@
-// AudienceFilterBuilder.jsx v1.0
+// AudienceFilterBuilder.jsx v2.1 - INPUT OVERFLOW FIX
 // Custom audience filtering for campaign creation
-// Provides on-the-fly filtering as alternative to predefined segments
+// Design System v5.0 compliant - Variant D (Glassmorphism Cosmic)
+//
+// FEATURES:
+// - Accordion behavior: only one section expanded at a time
+// - Cosmic glassmorphism styling with stellar-cyan accents
+// - Framer Motion animations for smooth expand/collapse
+// - Segment-specific color coding (VIP=yellow, Frequente=blue, etc.)
+// - Risk level color coding (Healthy=emerald, Churning=red, etc.)
+// - Touch-friendly chip buttons with haptic feedback
 //
 // CHANGELOG:
+// v2.1 (2026-01-18): Input overflow fix
+//   - Changed number inputs from flex to grid layout
+//   - Added min-w-0 to allow inputs to shrink properly
+//   - Inputs no longer overflow container on mobile
+// v2.0 (2026-01-18): Cosmic Design Overhaul
+//   - Full Design System v5.0 compliance
+//   - Accordion behavior (single section expanded)
+//   - Framer Motion animations for section transitions
+//   - Cosmic gradients and glassmorphism panels
+//   - Segment-specific colors for RFM chips
+//   - Risk-specific colors for risk level chips
+//   - Enhanced results preview with gradient background
+//   - Stellar-cyan accents throughout
 // v1.0 (2026-01-08): Initial implementation
 //   - Time-based filters (last visit range)
 //   - Financial filters (spend, wallet balance)
@@ -11,6 +32,7 @@
 //   - Collapsible filter sections
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Filter,
   Calendar,
@@ -18,31 +40,35 @@ import {
   Users,
   Clock,
   ChevronDown,
-  ChevronUp,
   X,
   CheckCircle2,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Sparkles,
+  TrendingUp,
+  Activity
 } from 'lucide-react';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
+import { useTheme } from '../../contexts/ThemeContext';
+import { haptics } from '../../utils/haptics';
 
-// RFM Segments available for filtering
+// RFM Segments with cosmic color mapping
 const RFM_SEGMENTS = [
-  { id: 'VIP', label: 'VIP', color: 'yellow' },
-  { id: 'Frequente', label: 'Frequente', color: 'blue' },
-  { id: 'Promissor', label: 'Promissor', color: 'cyan' },
-  { id: 'Esfriando', label: 'Esfriando', color: 'slate' },
-  { id: 'Inativo', label: 'Inativo', color: 'gray' }
+  { id: 'VIP', label: 'VIP', color: 'yellow', bgLight: 'bg-yellow-100', bgDark: 'dark:bg-yellow-900/40', textLight: 'text-yellow-700', textDark: 'dark:text-yellow-300', selectedBg: 'bg-yellow-500', borderHover: 'hover:border-yellow-400 dark:hover:border-yellow-500/50' },
+  { id: 'Frequente', label: 'Frequente', color: 'blue', bgLight: 'bg-blue-100', bgDark: 'dark:bg-blue-900/40', textLight: 'text-blue-700', textDark: 'dark:text-blue-300', selectedBg: 'bg-blue-500', borderHover: 'hover:border-blue-400 dark:hover:border-blue-500/50' },
+  { id: 'Promissor', label: 'Promissor', color: 'cyan', bgLight: 'bg-cyan-100', bgDark: 'dark:bg-cyan-900/40', textLight: 'text-cyan-700', textDark: 'dark:text-cyan-300', selectedBg: 'bg-cyan-500', borderHover: 'hover:border-cyan-400 dark:hover:border-cyan-500/50' },
+  { id: 'Esfriando', label: 'Esfriando', color: 'slate', bgLight: 'bg-slate-200', bgDark: 'dark:bg-slate-700/50', textLight: 'text-slate-700', textDark: 'dark:text-slate-300', selectedBg: 'bg-slate-500', borderHover: 'hover:border-slate-400 dark:hover:border-slate-500/50' },
+  { id: 'Inativo', label: 'Inativo', color: 'gray', bgLight: 'bg-gray-200', bgDark: 'dark:bg-gray-700/50', textLight: 'text-gray-600', textDark: 'dark:text-gray-400', selectedBg: 'bg-gray-500', borderHover: 'hover:border-gray-400 dark:hover:border-gray-500/50' }
 ];
 
-// Risk Levels available for filtering
+// Risk Levels with cosmic color mapping
 const RISK_LEVELS = [
-  { id: 'Healthy', label: 'Saudavel', color: 'emerald' },
-  { id: 'Monitor', label: 'Monitorar', color: 'blue' },
-  { id: 'At Risk', label: 'Em Risco', color: 'amber' },
-  { id: 'Churning', label: 'Critico', color: 'red' },
-  { id: 'New Customer', label: 'Novo', color: 'purple' },
-  { id: 'Lost', label: 'Perdido', color: 'slate' }
+  { id: 'Healthy', label: 'Saudavel', color: 'emerald', bgLight: 'bg-emerald-100', bgDark: 'dark:bg-emerald-900/40', textLight: 'text-emerald-700', textDark: 'dark:text-emerald-300', selectedBg: 'bg-emerald-500', borderHover: 'hover:border-emerald-400 dark:hover:border-emerald-500/50' },
+  { id: 'Monitor', label: 'Monitorar', color: 'blue', bgLight: 'bg-blue-100', bgDark: 'dark:bg-blue-900/40', textLight: 'text-blue-700', textDark: 'dark:text-blue-300', selectedBg: 'bg-blue-500', borderHover: 'hover:border-blue-400 dark:hover:border-blue-500/50' },
+  { id: 'At Risk', label: 'Em Risco', color: 'amber', bgLight: 'bg-amber-100', bgDark: 'dark:bg-amber-900/40', textLight: 'text-amber-700', textDark: 'dark:text-amber-300', selectedBg: 'bg-amber-500', borderHover: 'hover:border-amber-400 dark:hover:border-amber-500/50' },
+  { id: 'Churning', label: 'Critico', color: 'red', bgLight: 'bg-red-100', bgDark: 'dark:bg-red-900/40', textLight: 'text-red-700', textDark: 'dark:text-red-300', selectedBg: 'bg-red-500', borderHover: 'hover:border-red-400 dark:hover:border-red-500/50' },
+  { id: 'New Customer', label: 'Novo', color: 'purple', bgLight: 'bg-purple-100', bgDark: 'dark:bg-purple-900/40', textLight: 'text-purple-700', textDark: 'dark:text-purple-300', selectedBg: 'bg-purple-500', borderHover: 'hover:border-purple-400 dark:hover:border-purple-500/50' },
+  { id: 'Lost', label: 'Perdido', color: 'slate', bgLight: 'bg-slate-200', bgDark: 'dark:bg-slate-700/50', textLight: 'text-slate-600', textDark: 'dark:text-slate-400', selectedBg: 'bg-slate-500', borderHover: 'hover:border-slate-400 dark:hover:border-slate-500/50' }
 ];
 
 // Time range options
@@ -57,12 +83,28 @@ const TIME_RANGES = [
   { id: 'moreThan90', label: 'Mais de 90 dias', days: 90, type: 'inactive' }
 ];
 
+// Animation variants for section content
+const sectionVariants = {
+  collapsed: {
+    height: 0,
+    opacity: 0,
+    transition: { duration: 0.2, ease: 'easeInOut' }
+  },
+  expanded: {
+    height: 'auto',
+    opacity: 1,
+    transition: { duration: 0.25, ease: 'easeOut' }
+  }
+};
+
 const AudienceFilterBuilder = ({
   allCustomers = [],
   onFilteredCustomers,
   initialFilters = {},
   className = ''
 }) => {
+  const { isDark } = useTheme();
+
   // Filter state
   const [filters, setFilters] = useState({
     // Time-based
@@ -83,28 +125,24 @@ const AudienceFilterBuilder = ({
     ...initialFilters
   });
 
-  // Expanded sections state
-  const [expandedSections, setExpandedSections] = useState({
-    time: true,
-    financial: false,
-    behavior: false
-  });
+  // Accordion state - only one section open at a time (null = all closed)
+  const [expandedSection, setExpandedSection] = useState('time');
 
-  // Toggle section expansion
+  // Toggle section expansion (accordion behavior)
   const toggleSection = useCallback((section) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    haptics.tick();
+    setExpandedSection(prev => prev === section ? null : section);
   }, []);
 
   // Update a single filter
   const updateFilter = useCallback((key, value) => {
+    haptics.tick();
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 
   // Toggle item in array filter
   const toggleArrayFilter = useCallback((key, value) => {
+    haptics.tick();
     setFilters(prev => {
       const current = prev[key] || [];
       const updated = current.includes(value)
@@ -116,6 +154,7 @@ const AudienceFilterBuilder = ({
 
   // Reset all filters
   const resetFilters = useCallback(() => {
+    haptics.tick();
     setFilters({
       lastVisitRange: null,
       minSpend: '',
@@ -215,45 +254,6 @@ const AudienceFilterBuilder = ({
     }
   }, [validPhoneCustomers, onFilteredCustomers]);
 
-  // Section header component
-  const SectionHeader = ({ title, icon: Icon, section, count }) => (
-    <button
-      onClick={() => toggleSection(section)}
-      className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-    >
-      <div className="flex items-center gap-2">
-        <Icon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{title}</span>
-        {count > 0 && (
-          <span className="px-1.5 py-0.5 text-xs font-medium bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-full">
-            {count}
-          </span>
-        )}
-      </div>
-      {expandedSections[section] ? (
-        <ChevronUp className="w-4 h-4 text-slate-400" />
-      ) : (
-        <ChevronDown className="w-4 h-4 text-slate-400" />
-      )}
-    </button>
-  );
-
-  // Chip button for selections
-  const ChipButton = ({ selected, onClick, children, color = 'slate' }) => (
-    <button
-      onClick={onClick}
-      className={`
-        px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-        ${selected
-          ? `bg-${color}-600 text-white shadow-md`
-          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500'
-        }
-      `}
-    >
-      {children}
-    </button>
-  );
-
   // Count active filters in each section
   const timeFilterCount = filters.lastVisitRange ? 1 : 0;
   const financialFilterCount = [
@@ -265,20 +265,75 @@ const AudienceFilterBuilder = ({
     filters.rfmSegments.length +
     filters.riskLevels.length;
 
+  // Section header component with cosmic styling
+  const SectionHeader = ({ title, icon: Icon, section, count, accentColor = 'stellar-cyan' }) => {
+    const isExpanded = expandedSection === section;
+
+    return (
+      <button
+        onClick={() => toggleSection(section)}
+        className={`
+          w-full flex items-center justify-between px-3 py-3 rounded-xl transition-all duration-200
+          ${isExpanded
+            ? 'bg-gradient-to-r from-stellar-cyan/10 via-stellar-cyan/5 to-transparent dark:from-stellar-cyan/20 dark:via-stellar-cyan/10 dark:to-transparent border-stellar-cyan/30 dark:border-stellar-cyan/40'
+            : 'bg-slate-50 dark:bg-space-nebula/50 hover:bg-slate-100 dark:hover:bg-space-nebula border-slate-200 dark:border-stellar-cyan/10'
+          }
+          border
+        `}
+      >
+        <div className="flex items-center gap-2.5">
+          <div className={`
+            w-7 h-7 rounded-lg flex items-center justify-center
+            ${isExpanded
+              ? 'bg-stellar-cyan/20 dark:bg-stellar-cyan/30'
+              : 'bg-slate-200 dark:bg-space-dust'
+            }
+          `}>
+            <Icon className={`
+              w-3.5 h-3.5
+              ${isExpanded
+                ? 'text-stellar-cyan'
+                : 'text-slate-500 dark:text-slate-400'
+              }
+            `} />
+          </div>
+          <span className={`
+            text-sm font-semibold
+            ${isExpanded
+              ? 'text-stellar-cyan dark:text-stellar-cyan'
+              : 'text-slate-700 dark:text-slate-300'
+            }
+          `}>
+            {title}
+          </span>
+          {count > 0 && (
+            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-stellar-cyan/20 dark:bg-stellar-cyan/30 text-stellar-cyan rounded-full min-w-[18px] text-center">
+              {count}
+            </span>
+          )}
+        </div>
+        <ChevronDown className={`
+          w-4 h-4 transition-transform duration-200
+          ${isExpanded ? 'rotate-180 text-stellar-cyan' : 'text-slate-400 dark:text-slate-500'}
+        `} />
+      </button>
+    );
+  };
+
   return (
-    <div className={`space-y-4 ${className}`}>
-      {/* Results Preview */}
-      <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+    <div className={`space-y-3 ${className}`}>
+      {/* Results Preview - Cosmic Gradient Card */}
+      <div className="p-3 sm:p-4 bg-gradient-to-br from-stellar-cyan/10 via-purple-500/5 to-indigo-500/10 dark:from-stellar-cyan/20 dark:via-purple-900/20 dark:to-indigo-900/20 rounded-xl border border-stellar-cyan/20 dark:border-stellar-cyan/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
-              <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-stellar flex items-center justify-center shadow-lg shadow-stellar-cyan/20">
+              <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {validPhoneCustomers.length}
               </p>
-              <p className="text-xs text-purple-600 dark:text-purple-400">
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
                 clientes com WhatsApp valido
               </p>
             </div>
@@ -286,15 +341,15 @@ const AudienceFilterBuilder = ({
           {hasActiveFilters && (
             <button
               onClick={resetFilters}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-stellar-cyan hover:bg-stellar-cyan/10 dark:hover:bg-stellar-cyan/20 rounded-lg transition-colors border border-stellar-cyan/20 dark:border-stellar-cyan/30"
             >
-              <RotateCcw className="w-4 h-4" />
-              Limpar filtros
+              <RotateCcw className="w-3.5 h-3.5" />
+              Limpar
             </button>
           )}
         </div>
         {filteredCustomers.length !== validPhoneCustomers.length && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
             {filteredCustomers.length - validPhoneCustomers.length} clientes sem WhatsApp valido
           </p>
@@ -302,216 +357,270 @@ const AudienceFilterBuilder = ({
       </div>
 
       {/* Time-based Filters */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <SectionHeader
           title="Ultima visita"
           icon={Calendar}
           section="time"
           count={timeFilterCount}
         />
-        {expandedSections.time && (
-          <div className="px-4 py-3 space-y-3">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-              Clientes que visitaram recentemente:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {TIME_RANGES.filter(r => r.type === 'recent').map(range => (
-                <button
-                  key={range.id}
-                  onClick={() => updateFilter('lastVisitRange', filters.lastVisitRange === range.id ? null : range.id)}
-                  className={`
-                    px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                    ${filters.lastVisitRange === range.id
-                      ? 'bg-emerald-600 text-white shadow-md'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-500'
-                    }
-                  `}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 mb-2">
-              Clientes inativos (win-back):
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {TIME_RANGES.filter(r => r.type === 'inactive').map(range => (
-                <button
-                  key={range.id}
-                  onClick={() => updateFilter('lastVisitRange', filters.lastVisitRange === range.id ? null : range.id)}
-                  className={`
-                    px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                    ${filters.lastVisitRange === range.id
-                      ? 'bg-amber-600 text-white shadow-md'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-amber-300 dark:hover:border-amber-500'
-                    }
-                  `}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {expandedSection === 'time' && (
+            <motion.div
+              key="time-content"
+              initial="collapsed"
+              animate="expanded"
+              exit="collapsed"
+              variants={sectionVariants}
+              className="overflow-hidden"
+            >
+              <div className="pt-3 pb-1 px-1 space-y-3">
+                {/* Recent visitors */}
+                <div>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                    <TrendingUp className="w-3 h-3 text-emerald-500" />
+                    Clientes que visitaram recentemente
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TIME_RANGES.filter(r => r.type === 'recent').map(range => {
+                      const isSelected = filters.lastVisitRange === range.id;
+                      return (
+                        <button
+                          key={range.id}
+                          onClick={() => updateFilter('lastVisitRange', isSelected ? null : range.id)}
+                          className={`
+                            px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
+                            ${isSelected
+                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                              : 'bg-white dark:bg-space-dust text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/15 hover:border-emerald-400 dark:hover:border-emerald-500/50'
+                            }
+                          `}
+                        >
+                          {isSelected && <CheckCircle2 className="w-3 h-3 inline mr-1" />}
+                          {range.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Inactive (win-back) */}
+                <div>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3 text-amber-500" />
+                    Clientes inativos (win-back)
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TIME_RANGES.filter(r => r.type === 'inactive').map(range => {
+                      const isSelected = filters.lastVisitRange === range.id;
+                      return (
+                        <button
+                          key={range.id}
+                          onClick={() => updateFilter('lastVisitRange', isSelected ? null : range.id)}
+                          className={`
+                            px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
+                            ${isSelected
+                              ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
+                              : 'bg-white dark:bg-space-dust text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/15 hover:border-amber-400 dark:hover:border-amber-500/50'
+                            }
+                          `}
+                        >
+                          {isSelected && <CheckCircle2 className="w-3 h-3 inline mr-1" />}
+                          {range.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Financial Filters */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <SectionHeader
           title="Gasto e Saldo"
           icon={DollarSign}
           section="financial"
           count={financialFilterCount}
         />
-        {expandedSections.financial && (
-          <div className="px-4 py-3 space-y-4">
-            {/* Total Spend Range */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                Gasto total (R$)
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  placeholder="Min"
-                  value={filters.minSpend}
-                  onChange={(e) => updateFilter('minSpend', e.target.value)}
-                  className="w-24 px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <span className="text-slate-400">-</span>
-                <input
-                  type="number"
-                  placeholder="Max"
-                  value={filters.maxSpend}
-                  onChange={(e) => updateFilter('maxSpend', e.target.value)}
-                  className="w-24 px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-            </div>
+        <AnimatePresence initial={false}>
+          {expandedSection === 'financial' && (
+            <motion.div
+              key="financial-content"
+              initial="collapsed"
+              animate="expanded"
+              exit="collapsed"
+              variants={sectionVariants}
+              className="overflow-hidden"
+            >
+              <div className="pt-3 pb-1 px-1 space-y-4">
+                {/* Total Spend Range */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2">
+                    Gasto total (R$)
+                  </label>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={filters.minSpend}
+                      onChange={(e) => updateFilter('minSpend', e.target.value)}
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                    <span className="text-slate-400 dark:text-slate-500 text-xs">até</span>
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={filters.maxSpend}
+                      onChange={(e) => updateFilter('maxSpend', e.target.value)}
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
 
-            {/* Wallet Balance Range */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                Saldo na carteira (R$)
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  placeholder="Min"
-                  value={filters.minWalletBalance}
-                  onChange={(e) => updateFilter('minWalletBalance', e.target.value)}
-                  className="w-24 px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <span className="text-slate-400">-</span>
-                <input
-                  type="number"
-                  placeholder="Max"
-                  value={filters.maxWalletBalance}
-                  onChange={(e) => updateFilter('maxWalletBalance', e.target.value)}
-                  className="w-24 px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
+                {/* Wallet Balance Range */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2">
+                    Saldo na carteira (R$)
+                  </label>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={filters.minWalletBalance}
+                      onChange={(e) => updateFilter('minWalletBalance', e.target.value)}
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                    <span className="text-slate-400 dark:text-slate-500 text-xs">até</span>
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={filters.maxWalletBalance}
+                      onChange={(e) => updateFilter('maxWalletBalance', e.target.value)}
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Behavior Filters */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <SectionHeader
           title="Comportamento"
-          icon={Users}
+          icon={Activity}
           section="behavior"
           count={behaviorFilterCount}
         />
-        {expandedSections.behavior && (
-          <div className="px-4 py-3 space-y-4">
-            {/* Visit Count */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                Numero de visitas
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  placeholder="Min"
-                  value={filters.minVisits}
-                  onChange={(e) => updateFilter('minVisits', e.target.value)}
-                  className="w-20 px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <span className="text-slate-400">-</span>
-                <input
-                  type="number"
-                  placeholder="Max"
-                  value={filters.maxVisits}
-                  onChange={(e) => updateFilter('maxVisits', e.target.value)}
-                  className="w-20 px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-            </div>
+        <AnimatePresence initial={false}>
+          {expandedSection === 'behavior' && (
+            <motion.div
+              key="behavior-content"
+              initial="collapsed"
+              animate="expanded"
+              exit="collapsed"
+              variants={sectionVariants}
+              className="overflow-hidden"
+            >
+              <div className="pt-3 pb-1 px-1 space-y-4">
+                {/* Visit Count */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2">
+                    Numero de visitas
+                  </label>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 max-w-[200px]">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={filters.minVisits}
+                      onChange={(e) => updateFilter('minVisits', e.target.value)}
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                    <span className="text-slate-400 dark:text-slate-500 text-xs">até</span>
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={filters.maxVisits}
+                      onChange={(e) => updateFilter('maxVisits', e.target.value)}
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
 
-            {/* RFM Segments */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                Segmento RFM
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {RFM_SEGMENTS.map(segment => (
-                  <button
-                    key={segment.id}
-                    onClick={() => toggleArrayFilter('rfmSegments', segment.id)}
-                    className={`
-                      px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                      ${filters.rfmSegments.includes(segment.id)
-                        ? 'bg-purple-600 text-white shadow-md'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500'
-                      }
-                    `}
-                  >
-                    {filters.rfmSegments.includes(segment.id) && (
-                      <CheckCircle2 className="w-3 h-3 inline mr-1" />
-                    )}
-                    {segment.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+                {/* RFM Segments */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-yellow-500" />
+                    Segmento RFM
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {RFM_SEGMENTS.map(segment => {
+                      const isSelected = filters.rfmSegments.includes(segment.id);
+                      return (
+                        <button
+                          key={segment.id}
+                          onClick={() => toggleArrayFilter('rfmSegments', segment.id)}
+                          className={`
+                            px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
+                            ${isSelected
+                              ? `${segment.selectedBg} text-white shadow-md`
+                              : `bg-white dark:bg-space-dust text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/15 ${segment.borderHover}`
+                            }
+                          `}
+                        >
+                          {isSelected && <CheckCircle2 className="w-3 h-3 inline mr-1" />}
+                          {segment.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            {/* Risk Levels */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                Nivel de risco
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {RISK_LEVELS.map(level => (
-                  <button
-                    key={level.id}
-                    onClick={() => toggleArrayFilter('riskLevels', level.id)}
-                    className={`
-                      px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                      ${filters.riskLevels.includes(level.id)
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-500'
-                      }
-                    `}
-                  >
-                    {filters.riskLevels.includes(level.id) && (
-                      <CheckCircle2 className="w-3 h-3 inline mr-1" />
-                    )}
-                    {level.label}
-                  </button>
-                ))}
+                {/* Risk Levels */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                    Nivel de risco
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {RISK_LEVELS.map(level => {
+                      const isSelected = filters.riskLevels.includes(level.id);
+                      return (
+                        <button
+                          key={level.id}
+                          onClick={() => toggleArrayFilter('riskLevels', level.id)}
+                          className={`
+                            px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
+                            ${isSelected
+                              ? `${level.selectedBg} text-white shadow-md`
+                              : `bg-white dark:bg-space-dust text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/15 ${level.borderHover}`
+                            }
+                          `}
+                        >
+                          {isSelected && <CheckCircle2 className="w-3 h-3 inline mr-1" />}
+                          {level.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Empty state when no customers match */}
       {hasActiveFilters && validPhoneCustomers.length === 0 && (
-        <div className="p-6 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 text-center">
-          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+        <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-200 dark:border-amber-800/50 text-center">
+          <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
             Nenhum cliente encontrado
           </p>
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">

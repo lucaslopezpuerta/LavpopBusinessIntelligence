@@ -1,8 +1,44 @@
-// CustomerProfileModal.jsx v3.7 - HEADER SAFE AREA GRADIENT FIX
+// CustomerProfileModal.jsx v4.6 - CARD LABEL CONTRAST FIX
 // Comprehensive customer profile modal for Customer Directory
-// Now the ONLY customer modal (CustomerDetailModal deprecated)
+// Design System v5.1 compliant - Variant D (Glassmorphism Cosmic)
 //
 // CHANGELOG:
+// v4.6 (2026-01-18): Improved card label contrast in dark mode
+//   - Changed all card titles from dark:text-slate-400 to dark:text-slate-300
+//   - Better readability for CPF, Telefone, Email, Desde, Segmento RFM, etc.
+// v4.5 (2026-01-18): Prominent WhatsApp button
+//   - Changed desktop WhatsApp from ghost to solid cosmic-green
+//   - Now matches mobile floating bar prominence
+//   - Added subtle shadow for depth (shadow-cosmic-green/25)
+// v4.4 (2026-01-18): Cosmic action buttons design
+//   - Header buttons: stellar-cyan (call), cosmic-green (WhatsApp), stellar-blue (email)
+//   - Mobile floating bar: Same cosmic color scheme
+//   - Uses new cosmic-green (#00d68f) from Design System v5.1
+// v4.3 (2026-01-18): Service sparklines in Financial tab
+//   - NEW: MiniSparkline inline component for 6-month service trends
+//   - Added sparklines to Lavagem/Secagem cards filling empty space
+//   - Uses washSparkline/drySparkline data from customerMetrics.js v3.13.0
+//   - Sparklines show service count trend with gradient fill
+// v4.2 (2026-01-18): Balanced mobile layout
+//   - FIXED: Text was too small (9-10px) and space was wasted
+//   - Now uses flexbox with h-full and flex-1 to fill viewport properly
+//   - Minimum text size increased to 11px for labels, 12px+ for values
+//   - Larger cards with p-3 padding and rounded-xl corners
+//   - Profile tab: 2x2 grid for personal info, larger wallet cards
+//   - Financial tab: Hero total card, larger service breakdown
+//   - Behavior tab: 2x2 grid for visit stats, proper spacing
+//   - Communication log fills remaining space with scrollable entries
+//   - All value text now text-lg to text-xl for readability
+// v4.0 (2026-01-18): Cosmic Design System v5.0 overhaul
+//   - Full glassmorphism styling with space-dust/space-nebula backgrounds
+//   - Stellar-cyan accent colors throughout (borders, active states, icons)
+//   - Updated header with cosmic gradient and improved safe area handling
+//   - Redesigned tabs with stellar-cyan active indicators
+//   - Glassmorphism content cards with subtle borders
+//   - Ghost-style action buttons (transparent bg, subtle borders)
+//   - Enhanced mobile floating action bar with cosmic styling
+//   - Improved dark mode contrast and visual hierarchy
+//   - Framer Motion animations preserved
 // v3.7 (2026-01-12): Fix header safe area gradient in dark mode
 //   - Moved pt-safe from container to header wrapper
 //   - Header gradient now extends into safe area (no color mismatch)
@@ -172,6 +208,16 @@ import {
     Ban,
     ChevronDown,
 } from 'lucide-react';
+import { formatCurrency } from '../utils/numberUtils';
+import { RISK_LABELS } from '../utils/customerMetrics';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useContactTracking } from '../hooks/useContactTracking';
+import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, getDefaultNotes } from '../utils/communicationLog';
+import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
+import { parseBrDate } from '../utils/dateUtils';
+import { useBlacklist } from '../hooks/useBlacklist';
+import { useSwipeToClose } from '../hooks/useSwipeToClose';
+import { haptics } from '../utils/haptics';
 
 // Segment-based avatar configuration
 // Maps RFM segments to icons and gradient colors for visual recognition
@@ -230,16 +276,65 @@ const RISK_CARD_TEXT = {
     'New Customer': 'text-purple-700 dark:text-purple-400',
     'Lost': 'text-slate-700 dark:text-slate-400',
 };
-import { formatCurrency } from '../utils/numberUtils';
-import { RISK_LABELS } from '../utils/customerMetrics';
-import { useMediaQuery } from '../hooks/useMediaQuery';
-import { useContactTracking } from '../hooks/useContactTracking';
-import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, getDefaultNotes } from '../utils/communicationLog';
-import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
-import { parseBrDate } from '../utils/dateUtils';
-import { useBlacklist } from '../hooks/useBlacklist';
-import { useSwipeToClose } from '../hooks/useSwipeToClose';
-import { haptics } from '../utils/haptics';
+
+// MiniSparkline - Inline SVG sparkline for service trend visualization
+// Displays last 6 months of data as a smooth area chart
+const MiniSparkline = ({ data, color = 'sky', height = 32, className = '' }) => {
+    const width = 80;
+    const padding = 2;
+
+    // Handle empty or all-zero data
+    const hasData = data && data.length > 0 && data.some(v => v > 0);
+    if (!hasData) {
+        return (
+            <div className={`flex items-center justify-center ${className}`} style={{ width, height }}>
+                <span className="text-[9px] text-slate-400 dark:text-slate-500">Sem dados</span>
+            </div>
+        );
+    }
+
+    const maxVal = Math.max(...data, 1); // Avoid division by zero
+    const points = data.map((val, i) => {
+        const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+        const y = height - padding - ((val / maxVal) * (height - 2 * padding));
+        return `${x},${y}`;
+    });
+
+    // Build path for line and area
+    const linePath = `M ${points.join(' L ')}`;
+    const areaPath = `M ${padding},${height - padding} L ${points.join(' L ')} L ${width - padding},${height - padding} Z`;
+
+    // Color mapping
+    const colorMap = {
+        sky: { stroke: '#0ea5e9', fill: 'url(#sparkline-sky)' },
+        emerald: { stroke: '#10b981', fill: 'url(#sparkline-emerald)' },
+    };
+    const colorConfig = colorMap[color] || colorMap.sky;
+
+    return (
+        <svg width={width} height={height} className={className}>
+            <defs>
+                <linearGradient id="sparkline-sky" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.05" />
+                </linearGradient>
+                <linearGradient id="sparkline-emerald" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.05" />
+                </linearGradient>
+            </defs>
+            <path d={areaPath} fill={colorConfig.fill} />
+            <path d={linePath} fill="none" stroke={colorConfig.stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Dot on the last point */}
+            {points.length > 0 && (() => {
+                const lastPoint = points[points.length - 1].split(',');
+                return (
+                    <circle cx={lastPoint[0]} cy={lastPoint[1]} r="2.5" fill={colorConfig.stroke} />
+                );
+            })()}
+        </svg>
+    );
+};
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [activeTab, setActiveTab] = useState('profile');
@@ -540,28 +635,25 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     // Portal rendering for proper z-index stacking
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-0 sm:p-4 animate-fade-in"
+            className="fixed inset-0 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
             aria-labelledby="customer-profile-title"
         >
             <div
-                className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl max-w-2xl w-full h-full sm:h-auto max-h-full sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-white/20 dark:border-slate-700/50"
+                className="bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl max-w-2xl w-full h-full sm:h-auto max-h-full sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
                 onClick={(e) => e.stopPropagation()}
                 style={swipeStyle}
                 {...swipeHandlers}
             >
-                {/* v3.7 Header restructure: pt-safe moved here from container so the gradient
-                    extends into the safe area (notch/Dynamic Island). Previously, putting pt-safe
-                    on the container caused a white/dark gap above the header gradient. Now the
-                    gradient wrapper includes pt-safe, so the entire safe area is gradient-filled. */}
-                <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 pt-safe sm:pt-0 border-b border-slate-200 dark:border-slate-700">
+                {/* Header wrapper with safe area - cosmic gradient background */}
+                <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-space-nebula dark:to-space-dust pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl">
                     {/* Swipe handle indicator (mobile only) */}
                     <div className="sm:hidden flex justify-center pt-2 pb-1">
                         <div
                             className={`w-10 h-1 rounded-full transition-colors ${
-                                isDragging ? 'bg-slate-400 dark:bg-slate-500' : 'bg-slate-300 dark:bg-slate-600'
+                                isDragging ? 'bg-slate-400 dark:bg-stellar-cyan/50' : 'bg-slate-300 dark:bg-stellar-cyan/20'
                             }`}
                             aria-hidden="true"
                         />
@@ -586,10 +678,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                     className="flex items-center gap-1.5 group text-left"
                                     title="Ver histórico de ciclos"
                                 >
-                                    <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate group-hover:text-lavpop-blue dark:group-hover:text-blue-400 transition-colors">
+                                    <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate group-hover:text-stellar-cyan transition-colors">
                                         {customer.name}
                                     </h2>
-                                    <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-lavpop-blue dark:group-hover:text-blue-400 transition-all flex-shrink-0 ${showCyclesTrend ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-stellar-cyan transition-all flex-shrink-0 ${showCyclesTrend ? 'rotate-180' : ''}`} />
                                 </button>
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     {/* Blacklist indicator */}
@@ -619,41 +711,42 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             </div>
                             {/* Quick Actions - desktop only (contacted toggle moved to Communication History) */}
                             {/* Hide all actions if blacklisted */}
+                            {/* v4.4: Cosmic design with stellar-cyan (call), cosmic-green (WhatsApp), stellar-blue (email) */}
                             {!blacklisted && (
                                 <div className="hidden sm:flex gap-2">
                                     {customer.phone && (
                                         <>
-                                            {/* Call button */}
+                                            {/* Call button - Stellar cyan cosmic style */}
                                             <button
                                                 onClick={handleCall}
-                                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-lavpop-blue hover:text-white transition-colors text-xs font-semibold border border-slate-200 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stellar-cyan/10 dark:bg-stellar-cyan/15 text-stellar-cyan border border-stellar-cyan/30 dark:border-stellar-cyan/25 hover:bg-stellar-cyan/20 dark:hover:bg-stellar-cyan/25 hover:border-stellar-cyan/50 transition-all text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
                                             >
-                                                <Phone className="w-3 h-3" />
+                                                <Phone className="w-3.5 h-3.5" />
                                                 <span className="hidden min-[500px]:inline">Ligar</span>
                                             </button>
-                                            {/* WhatsApp button - disabled if phone is invalid */}
+                                            {/* WhatsApp button - Solid cosmic green (primary action) */}
                                             <button
                                                 onClick={handleWhatsApp}
                                                 disabled={!hasValidPhone}
-                                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 ${
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-cosmic-green/40 ${
                                                     hasValidPhone
-                                                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white border-green-200 dark:border-green-800 cursor-pointer'
-                                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 cursor-not-allowed'
+                                                        ? 'bg-cosmic-green text-white border-cosmic-green hover:bg-cosmic-green/90 shadow-sm shadow-cosmic-green/25 cursor-pointer'
+                                                        : 'bg-slate-100/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed opacity-60'
                                                 }`}
                                                 title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido para WhatsApp')}
                                             >
-                                                <MessageCircle className="w-4 h-4" />
+                                                <MessageCircle className="w-3.5 h-3.5" />
                                                 <span className="hidden min-[500px]:inline">WhatsApp</span>
                                             </button>
                                         </>
                                     )}
-                                    {/* Email button */}
+                                    {/* Email button - Stellar blue cosmic style */}
                                     {customer.email && (
                                         <button
                                             onClick={handleEmail}
-                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white transition-colors text-xs font-semibold border border-blue-200 dark:border-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stellar-blue/10 dark:bg-blue-500/15 text-stellar-blue dark:text-blue-400 border border-stellar-blue/30 dark:border-blue-500/25 hover:bg-stellar-blue/20 dark:hover:bg-blue-500/25 hover:border-stellar-blue/50 dark:hover:border-blue-500/50 transition-all text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-blue/40"
                                         >
-                                            <Mail className="w-3 h-3" />
+                                            <Mail className="w-3.5 h-3.5" />
                                             <span className="hidden min-[500px]:inline">Email</span>
                                         </button>
                                     )}
@@ -663,10 +756,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
                         <button
                             onClick={() => { haptics.light(); onClose(); }}
-                            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors ml-2 sm:ml-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-space-nebula rounded-lg transition-colors ml-2 sm:ml-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
                             aria-label="Fechar"
                         >
-                            <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+                            <X className="w-6 h-6 text-slate-500 dark:text-slate-400" />
                         </button>
                     </div>
                     </div>
@@ -680,7 +773,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={prefersReducedMotion ? undefined : { height: 0, opacity: 0 }}
                             transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeInOut' }}
-                            className="border-b border-slate-200 dark:border-slate-700 overflow-hidden"
+                            className="border-b border-slate-200 dark:border-stellar-cyan/10 overflow-hidden"
                         >
                             <CustomerCyclesTrend
                                 sales={sales}
@@ -691,14 +784,14 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     )}
                 </AnimatePresence>
 
-                {/* Tab Navigation - No horizontal scroll, icons + text */}
-                <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                {/* Tab Navigation - Cosmic styling with stellar-cyan accents */}
+                <div className="border-b border-slate-200 dark:border-stellar-cyan/10 bg-white dark:bg-space-dust/50">
                     <div className="flex px-2 sm:px-4">
                         <button
                             onClick={() => { haptics.tick(); setActiveTab('profile'); }}
-                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'profile'
-                                ? 'border-lavpop-blue text-lavpop-blue dark:text-blue-400 dark:border-blue-400'
-                                : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40 rounded-t-lg ${activeTab === 'profile'
+                                ? 'border-stellar-cyan text-stellar-cyan'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
                             <User className="w-4 h-4" />
@@ -707,9 +800,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </button>
                         <button
                             onClick={() => { haptics.tick(); setActiveTab('financial'); }}
-                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'financial'
-                                ? 'border-lavpop-blue text-lavpop-blue dark:text-blue-400 dark:border-blue-400'
-                                : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40 rounded-t-lg ${activeTab === 'financial'
+                                ? 'border-stellar-cyan text-stellar-cyan'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
                             <DollarSign className="w-4 h-4" />
@@ -718,9 +811,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </button>
                         <button
                             onClick={() => { haptics.tick(); setActiveTab('behavior'); }}
-                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'behavior'
-                                ? 'border-lavpop-blue text-lavpop-blue dark:text-blue-400 dark:border-blue-400'
-                                : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40 rounded-t-lg ${activeTab === 'behavior'
+                                ? 'border-stellar-cyan text-stellar-cyan'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
                             <Activity className="w-4 h-4" />
@@ -729,9 +822,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </button>
                         <button
                             onClick={() => { haptics.tick(); setActiveTab('history'); }}
-                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800 rounded-t-lg ${activeTab === 'history'
-                                ? 'border-lavpop-blue text-lavpop-blue dark:text-blue-400 dark:border-blue-400'
-                                : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40 rounded-t-lg ${activeTab === 'history'
+                                ? 'border-stellar-cyan text-stellar-cyan'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                                 }`}
                         >
                             <FileText className="w-4 h-4" />
@@ -741,24 +834,24 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     </div>
                 </div>
 
-                {/* Tab Content - Optimized Padding with safe area for floating action bar */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-24 sm:pb-4 custom-scrollbar">
-                    {/* TAB 1: Profile & Contact */}
+                {/* Tab Content - Fill viewport on mobile, safe area for floating action bar */}
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-20 sm:pb-4 custom-scrollbar">
+                    {/* TAB 1: Profile & Contact - Flex layout to fill space on mobile */}
                     {activeTab === 'profile' && (
-                        <div className="space-y-3 sm:space-y-4">
-                            {/* Personal Information */}
+                        <div className="flex flex-col h-full gap-3 sm:gap-4">
+                            {/* Personal Information - 2x2 grid on mobile */}
                             <div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <User className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                                    <User className="w-4 h-4 text-stellar-cyan" />
                                     Informações Pessoais
                                 </h3>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">CPF</div>
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-lg p-2.5 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">CPF</div>
                                         <div className="text-xs font-semibold text-slate-800 dark:text-white">{maskCpf(customer.doc)}</div>
                                     </div>
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Telefone</div>
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-lg p-2.5 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Telefone</div>
                                         <div className="flex items-center gap-1.5">
                                             <span className="text-xs font-semibold text-slate-800 dark:text-white">{customer.phone || 'N/A'}</span>
                                             {customer.phone && !hasValidPhone && (
@@ -768,12 +861,12 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Email</div>
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-lg p-2.5 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Email</div>
                                         <div className="text-xs font-semibold text-slate-800 dark:text-white truncate">{customer.email || 'N/A'}</div>
                                     </div>
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Cadastro</div>
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-lg p-2.5 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Desde</div>
                                         <div className="text-xs font-semibold text-slate-800 dark:text-white">
                                             {customer.firstVisit ? customer.firstVisit.toLocaleDateString('pt-BR') : 'N/A'}
                                         </div>
@@ -783,53 +876,52 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
                             {/* Wallet & Incentives */}
                             <div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <Wallet className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                                    <Wallet className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                                     Carteira & Cashback
                                 </h3>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-3 border-2 border-green-200 dark:border-green-800">
-                                        <div className="text-xs font-bold text-green-600 dark:text-green-400 uppercase mb-1">Saldo Disponível</div>
-                                        <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-500/20">
+                                        <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1">Saldo Disponível</div>
+                                        <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
                                             {formatCurrency(customer.walletBalance || 0)}
                                         </div>
                                     </div>
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Segmento RFM</div>
-                                        <div className="text-base font-bold text-slate-800 dark:text-white truncate">
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-lg p-3 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Segmento RFM</div>
+                                        <div className="text-base font-bold text-slate-800 dark:text-white">
                                             {customer.segment}
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Communication Log */}
-                            <div>
+                            {/* Communication Log - Flex-1 to fill remaining space */}
+                            <div className="flex-1 flex flex-col min-h-0">
                                 <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                        <MessageCircle className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
-                                        Histórico de Comunicação
+                                    <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                        <MessageCircle className="w-4 h-4 text-stellar-cyan" />
+                                        Comunicação
                                     </h3>
-                                    {/* Contacted Toggle - visible on all devices */}
                                     <button
                                         onClick={handleMarkContacted}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${contacted
+                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${contacted
                                             ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600'
-                                            : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-200 dark:border-slate-600'
+                                            : 'bg-transparent text-slate-600 dark:text-slate-300 border-slate-300 dark:border-stellar-cyan/20 hover:bg-slate-100 dark:hover:bg-space-nebula'
                                             }`}
                                     >
                                         <Check className="w-3 h-3" />
-                                        {contacted ? 'Contactado' : 'Marcar contactado'}
+                                        {contacted ? 'Contactado' : 'Marcar'}
                                     </button>
                                 </div>
 
                                 {/* Add New Entry */}
-                                <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 mb-2 border border-slate-200 dark:border-slate-600">
-                                    <div className="flex flex-wrap gap-1.5">
+                                <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-lg p-2.5 mb-2 border border-slate-200 dark:border-stellar-cyan/10">
+                                    <div className="flex gap-1.5">
                                         <select
                                             value={noteMethod}
                                             onChange={(e) => setNoteMethod(e.target.value)}
-                                            className="px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 flex-shrink-0"
+                                            className="px-2 py-1.5 bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40"
                                         >
                                             <option value="call">Ligação</option>
                                             <option value="whatsapp">WhatsApp</option>
@@ -841,24 +933,23 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             value={newNote}
                                             onChange={(e) => setNewNote(e.target.value)}
                                             placeholder="Adicionar nota..."
-                                            className="flex-1 min-w-0 px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs"
+                                            className="flex-1 min-w-0 px-2.5 py-1.5 bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg text-xs text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40"
                                             onKeyPress={(e) => e.key === 'Enter' && addCommunication()}
                                         />
                                         <button
                                             onClick={addCommunication}
-                                            className="px-3 py-1.5 bg-lavpop-blue text-white rounded-lg font-semibold text-xs hover:bg-blue-600 transition-colors flex items-center gap-1.5 flex-shrink-0"
+                                            className="px-3 py-1.5 bg-gradient-stellar text-white rounded-lg font-medium text-xs hover:shadow-lg hover:shadow-stellar-cyan/25 transition-all flex items-center gap-1 flex-shrink-0"
                                         >
-                                            <Plus className="w-3 h-3" />
-                                            <span className="hidden sm:inline">Adicionar</span>
+                                            <Plus className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Communication History */}
-                                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                {/* Communication History - Scrollable to fill remaining space */}
+                                <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
                                     {isLoadingLog ? (
                                         <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-sm">
-                                            <div className="animate-pulse">Carregando histórico...</div>
+                                            <div className="animate-pulse">Carregando...</div>
                                         </div>
                                     ) : communicationLog.length === 0 ? (
                                         <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-sm">
@@ -866,30 +957,27 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                         </div>
                                     ) : (
                                         communicationLog.map((entry, idx) => (
-                                            <div key={idx} className="bg-white dark:bg-slate-700 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex items-start gap-3">
-                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-600 flex-shrink-0">
-                                                            {entry.method === 'call' && <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                                                            {entry.method === 'whatsapp' && <MessageCircle className="w-4 h-4 text-green-600 dark:text-green-400" />}
-                                                            {entry.method === 'email' && <Mail className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
-                                                            {entry.method === 'note' && <FileText className="w-4 h-4 text-slate-600 dark:text-slate-400" />}
+                                            <div key={idx} className="bg-white dark:bg-space-nebula/30 rounded-lg p-2.5 border border-slate-200 dark:border-stellar-cyan/10">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 dark:bg-space-dust flex-shrink-0">
+                                                        {entry.method === 'call' && <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                                                        {entry.method === 'whatsapp' && <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                                                        {entry.method === 'email' && <Mail className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
+                                                        {entry.method === 'note' && <FileText className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-xs font-semibold text-slate-800 dark:text-white truncate">
+                                                            {entry.notes}
                                                         </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="text-sm font-semibold text-slate-800 dark:text-white">
-                                                                {entry.notes}
-                                                            </div>
-                                                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                                                                <span className="text-xs text-slate-500 dark:text-slate-400">
-                                                                    {new Date(entry.date).toLocaleString('pt-BR')}
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                                {new Date(entry.date).toLocaleDateString('pt-BR')}
+                                                            </span>
+                                                            {entry.campaign_name && (
+                                                                <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">
+                                                                    {entry.campaign_name}
                                                                 </span>
-                                                                {/* Show campaign badge if from a campaign */}
-                                                                {entry.campaign_name && (
-                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                                                                        {entry.campaign_name}
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -901,97 +989,114 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </div>
                     )}
 
-                    {/* TAB 2: Financial Summary */}
+                    {/* TAB 2: Financial Summary - Fill viewport on mobile */}
                     {activeTab === 'financial' && (
-                        <div className="space-y-3 sm:space-y-4">
-                            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
-                                Resumo Financeiro
-                            </h3>
-
-                            {/* Lifetime Value */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 border-2 border-blue-200 dark:border-blue-800">
-                                    <div className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase mb-0.5">Total Gasto</div>
-                                    <div className="text-xl font-bold text-blue-700 dark:text-blue-300">
-                                        {formatCurrency(customer.netTotal)}
-                                    </div>
+                        <div className="flex flex-col h-full gap-4">
+                            {/* Hero: Total Gasto */}
+                            <div className="bg-gradient-to-br from-stellar-cyan/10 to-blue-100 dark:from-stellar-cyan/20 dark:to-blue-900/20 rounded-xl p-4 border border-stellar-cyan/30 dark:border-stellar-cyan/20">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <DollarSign className="w-5 h-5 text-stellar-cyan" />
+                                    <span className="text-xs font-bold text-stellar-cyan uppercase">Total Gasto</span>
                                 </div>
-                                <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Ticket Médio</div>
-                                    <div className="text-base font-bold text-slate-800 dark:text-white">
+                                <div className="text-3xl font-bold text-blue-700 dark:text-stellar-cyan">
+                                    {formatCurrency(customer.netTotal)}
+                                </div>
+                            </div>
+
+                            {/* Secondary metrics: Ticket + Transactions */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-xl p-3.5 border border-slate-200 dark:border-stellar-cyan/10">
+                                    <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Ticket Médio</div>
+                                    <div className="text-xl font-bold text-slate-800 dark:text-white">
                                         {formatCurrency(customer.netTotal / customer.transactions)}
                                     </div>
                                 </div>
-                                <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Transações</div>
-                                    <div className="text-base font-bold text-slate-800 dark:text-white">
+                                <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-xl p-3.5 border border-slate-200 dark:border-stellar-cyan/10">
+                                    <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Transações</div>
+                                    <div className="text-xl font-bold text-slate-800 dark:text-white">
                                         {customer.transactions}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Revenue Breakdown */}
+                            {/* Revenue Breakdown - Compact cards with inline sparklines */}
                             <div>
-                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Breakdown por Serviço</h4>
+                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Por Serviço</h4>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-sky-50 dark:bg-sky-900/20 rounded-lg p-3 border border-sky-200 dark:border-sky-800">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase">Lavagem</div>
-                                            <div className="text-xs font-bold text-sky-700 dark:text-sky-300">{revenueBreakdown.washPct}%</div>
+                                    {/* Lavagem Card */}
+                                    <div className="bg-sky-50 dark:bg-sky-900/20 rounded-xl p-3 border border-sky-200 dark:border-sky-500/20">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <div className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase">Lavagem</div>
+                                            <div className="text-[10px] font-bold text-sky-500 dark:text-sky-400/70">{revenueBreakdown.washPct}%</div>
                                         </div>
-                                        <div className="text-lg font-bold text-sky-700 dark:text-sky-300">
-                                            {formatCurrency(revenueBreakdown.wash)}
+                                        <div className="flex items-end justify-between gap-2">
+                                            <div>
+                                                <div className="text-lg font-bold text-sky-700 dark:text-sky-300 leading-tight">
+                                                    {formatCurrency(revenueBreakdown.wash)}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 dark:text-slate-400">{customer.washServices} serviços</div>
+                                            </div>
+                                            <MiniSparkline data={customer.washSparkline} color="sky" height={32} />
                                         </div>
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{customer.washServices} serviços</div>
                                     </div>
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Secagem</div>
-                                            <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{revenueBreakdown.dryPct}%</div>
+                                    {/* Secagem Card */}
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 border border-emerald-200 dark:border-emerald-500/20">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Secagem</div>
+                                            <div className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400/70">{revenueBreakdown.dryPct}%</div>
                                         </div>
-                                        <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                                            {formatCurrency(revenueBreakdown.dry)}
+                                        <div className="flex items-end justify-between gap-2">
+                                            <div>
+                                                <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300 leading-tight">
+                                                    {formatCurrency(revenueBreakdown.dry)}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 dark:text-slate-400">{customer.dryServices} serviços</div>
+                                            </div>
+                                            <MiniSparkline data={customer.drySparkline} color="emerald" height={32} />
                                         </div>
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{customer.dryServices} serviços</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* TAB 3: Behavior & Risk */}
+                    {/* TAB 3: Behavior & Risk - Fill viewport on mobile */}
                     {activeTab === 'behavior' && (
-                        <div className="space-y-3 sm:space-y-4">
-                            {/* Visit Pattern */}
+                        <div className="flex flex-col h-full gap-4">
+                            {/* Visit Pattern - 2x2 grid */}
                             <div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <Activity className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-stellar-cyan" />
                                     Padrão de Visitas
                                 </h3>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Total Visitas</div>
-                                        <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{customer.visits}</div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-xl p-3 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Total Visitas</div>
+                                        <div className="text-xl font-bold text-slate-800 dark:text-white">{customer.visits}</div>
                                     </div>
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Média Entre Visitas</div>
-                                        <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">
-                                            {customer.avgDaysBetween || 'N/A'}d
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-xl p-3 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Média Entre</div>
+                                        <div className="text-xl font-bold text-slate-800 dark:text-white">
+                                            {customer.avgDaysBetween || '-'} dias
                                         </div>
                                     </div>
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Última Visita</div>
-                                        <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">
-                                            {customer.daysSinceLastVisit}d
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-xl p-3 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Última Visita</div>
+                                        <div className="text-xl font-bold text-slate-800 dark:text-white">
+                                            {customer.daysSinceLastVisit} dias
                                         </div>
                                     </div>
-                                    {customer.daysOverdue > 0 && (
-                                        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2.5 border border-amber-200 dark:border-amber-800">
-                                            <div className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase mb-0.5">Atraso</div>
-                                            <div className="text-base sm:text-lg font-bold text-amber-700 dark:text-amber-300">
-                                                {customer.daysOverdue}d
+                                    {customer.daysOverdue > 0 ? (
+                                        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 border border-amber-200 dark:border-amber-500/20">
+                                            <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase mb-1">Atraso</div>
+                                            <div className="text-xl font-bold text-amber-700 dark:text-amber-300">
+                                                {customer.daysOverdue} dias
                                             </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 border border-emerald-200 dark:border-emerald-500/20">
+                                            <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1">Status</div>
+                                            <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">Em dia</div>
                                         </div>
                                     )}
                                 </div>
@@ -999,92 +1104,74 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
                             {/* Risk Assessment */}
                             <div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <Target className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                                    <Target className="w-4 h-4 text-red-500 dark:text-red-400" />
                                     Avaliação de Risco
                                 </h3>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <div className={`${RISK_CARD_STYLES[customer.riskLevel] || RISK_CARD_STYLES['Lost']} rounded-lg p-3`}>
-                                        <div className={`text-xs font-bold ${RISK_CARD_TEXT[customer.riskLevel] || RISK_CARD_TEXT['Lost']} uppercase mb-0.5`}>Nível de Risco</div>
-                                        <div className={`text-base sm:text-lg font-bold ${RISK_CARD_TEXT[customer.riskLevel] || RISK_CARD_TEXT['Lost']}`}>{riskConfig.pt}</div>
+                                    <div className={`${RISK_CARD_STYLES[customer.riskLevel] || RISK_CARD_STYLES['Lost']} rounded-xl p-3`}>
+                                        <div className={`text-[11px] font-bold ${RISK_CARD_TEXT[customer.riskLevel] || RISK_CARD_TEXT['Lost']} uppercase mb-1`}>Nível de Risco</div>
+                                        <div className={`text-lg font-bold ${RISK_CARD_TEXT[customer.riskLevel] || RISK_CARD_TEXT['Lost']}`}>{riskConfig.pt}</div>
                                     </div>
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Probabilidade de Retorno</div>
-                                        <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{customer.returnLikelihood}%</div>
-                                    </div>
-                                </div>
-
-                                {/* Recommended Action - Hidden on mobile */}
-                                <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800 hidden sm:block">
-                                    <div className="flex items-start gap-2">
-                                        <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
-                                        <div>
-                                            <div className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-0.5">Ação Recomendada</div>
-                                            <div className="text-xs text-blue-600 dark:text-blue-400">
-                                                {customer.riskLevel === 'Churning' && 'Contato urgente necessário! Cliente em risco crítico de churn.'}
-                                                {customer.riskLevel === 'At Risk' && 'Agendar contato em breve. Oferecer promoção ou incentivo.'}
-                                                {customer.riskLevel === 'Monitor' && 'Monitorar comportamento. Considerar campanha de engajamento.'}
-                                                {customer.riskLevel === 'Healthy' && 'Cliente saudável. Manter relacionamento e qualidade.'}
-                                                {customer.riskLevel === 'New Customer' && 'Cliente novo. Garantir boa primeira experiência.'}
-                                                {customer.riskLevel === 'Lost' && 'Cliente perdido. Campanha de reativação necessária.'}
-                                            </div>
-                                        </div>
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-xl p-3 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Prob. Retorno</div>
+                                        <div className="text-lg font-bold text-slate-800 dark:text-white">{customer.returnLikelihood}%</div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Service Preferences */}
-                            <div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                    <BarChart3 className="w-4 h-4 text-lavpop-green dark:text-green-400" />
+                            {/* Service Preferences - Fill remaining space */}
+                            <div className="flex-1">
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                                    <BarChart3 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                                     Preferências de Serviço
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    <div className="bg-white dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600 hidden sm:block">
-                                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-0.5">Serviços/Visita</div>
-                                        <div className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">{customer.servicesPerVisit}</div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-xl p-3 border border-slate-200 dark:border-stellar-cyan/10">
+                                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Serv/Visita</div>
+                                        <div className="text-lg font-bold text-slate-800 dark:text-white">{customer.servicesPerVisit}</div>
                                     </div>
-                                    <div className="bg-sky-50 dark:bg-sky-900/20 rounded-lg p-2.5 border border-sky-200 dark:border-sky-800">
-                                        <div className="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase mb-0.5">Preferência Lavagem</div>
-                                        <div className="text-base sm:text-lg font-bold text-sky-700 dark:text-sky-300">{customer.washPercentage}%</div>
+                                    <div className="bg-sky-50 dark:bg-sky-900/20 rounded-xl p-3 border border-sky-200 dark:border-sky-500/20">
+                                        <div className="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase mb-1">Lavagem</div>
+                                        <div className="text-lg font-bold text-sky-700 dark:text-sky-300">{customer.washPercentage}%</div>
                                     </div>
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2.5 border border-emerald-200 dark:border-emerald-800">
-                                        <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-0.5">Preferência Secagem</div>
-                                        <div className="text-base sm:text-lg font-bold text-emerald-700 dark:text-emerald-300">{customer.dryPercentage}%</div>
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 border border-emerald-200 dark:border-emerald-500/20">
+                                        <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1">Secagem</div>
+                                        <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{customer.dryPercentage}%</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* TAB 4: Transaction History - ULTRA COMPACT */}
+                    {/* TAB 4: Transaction History - Compact on mobile */}
                     {activeTab === 'history' && (
                         <div>
-                            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
-                                Últimas 5 Transações
+                            <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-1.5 sm:mb-2 flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stellar-cyan" />
+                                Últimas Transações
                             </h3>
 
                             {/* Transaction History Table */}
-                            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-stellar-cyan/10 bg-white dark:bg-space-nebula/30">
                                 <table className="w-full">
-                                    <thead className="bg-slate-200 dark:bg-slate-700 text-xs sm:text-xs uppercase text-slate-700 dark:text-slate-300 font-semibold">
+                                    <thead className="bg-slate-100 dark:bg-space-dust text-xs sm:text-xs uppercase text-slate-700 dark:text-slate-300 font-semibold">
                                         <tr>
                                             <th className="px-2 py-2 sm:px-3 text-center">Data</th>
                                             <th className="px-2 py-2 sm:px-3 text-center">Serviços</th>
                                             <th className="px-2 py-2 sm:px-3 text-center min-[400px]:table-cell hidden">Valor</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                    <tbody className="divide-y divide-slate-100 dark:divide-stellar-cyan/5">
                                         {transactionHistory.length > 0 ? (
                                             transactionHistory.map((tx, i) => (
-                                                <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                                                <tr key={i} className="hover:bg-slate-50 dark:hover:bg-space-nebula/50 transition-colors">
                                                     <td className="px-2 py-2 sm:px-3 sm:py-2.5 whitespace-nowrap">
                                                         <div className="text-center">
                                                             <div className="font-medium text-slate-700 dark:text-slate-200 text-xs">
                                                                 {tx.date.toLocaleDateString('pt-BR')}
                                                             </div>
-                                                            <div className="text-xs text-slate-600 dark:text-slate-400">
+                                                            <div className="text-xs text-slate-500 dark:text-slate-400">
                                                                 {tx.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                             </div>
                                                         </div>
@@ -1111,7 +1198,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan="3" className="px-3 py-6 text-center text-slate-600 dark:text-slate-400 text-sm">
+                                                <td colSpan="3" className="px-3 py-6 text-center text-slate-500 dark:text-slate-400 text-sm">
                                                     Nenhuma transação encontrada
                                                 </td>
                                             </tr>
@@ -1123,21 +1210,24 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     )}
                 </div>
 
-                {/* Mobile Quick Actions - Fixed bottom bar */}
+                {/* Mobile Quick Actions - Fixed bottom bar with cosmic styling */}
+                {/* v4.4: Uses stellar-cyan (call), cosmic-green (WhatsApp), stellar-blue (email) */}
                 {!blacklisted && (customer.phone || customer.email) && (
                     <div className="sm:hidden fixed bottom-0 left-0 right-0 z-[70]
-                                    bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl
-                                    border-t border-slate-200 dark:border-slate-700
+                                    bg-white/95 dark:bg-space-dust/95 backdrop-blur-xl
+                                    border-t border-slate-200 dark:border-stellar-cyan/10
                                     px-4 py-3 pb-safe flex gap-2">
                         {customer.phone && (
                             <>
                                 <button
                                     onClick={() => { haptics.light(); handleCall(); }}
                                     className="flex-1 min-h-[44px] flex items-center justify-center gap-2
-                                             bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200
+                                             bg-stellar-cyan/10 dark:bg-stellar-cyan/15 text-stellar-cyan
+                                             border border-stellar-cyan/30 dark:border-stellar-cyan/25
                                              rounded-xl font-semibold text-sm
-                                             hover:bg-lavpop-blue hover:text-white transition-colors
-                                             focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue"
+                                             hover:bg-stellar-cyan/20 dark:hover:bg-stellar-cyan/25
+                                             active:scale-[0.97] transition-all
+                                             focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
                                 >
                                     <Phone className="w-5 h-5" />
                                     Ligar
@@ -1146,11 +1236,11 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                     onClick={() => { haptics.light(); handleWhatsApp(); }}
                                     disabled={!hasValidPhone}
                                     className={`flex-1 min-h-[44px] flex items-center justify-center gap-2
-                                             rounded-xl font-semibold text-sm transition-colors
-                                             focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500
+                                             rounded-xl font-semibold text-sm transition-all active:scale-[0.97]
+                                             focus:outline-none focus-visible:ring-2 focus-visible:ring-cosmic-green/40
                                              ${hasValidPhone
-                                                 ? 'bg-green-500 text-white hover:bg-green-600'
-                                                 : 'bg-slate-200 dark:bg-slate-600 text-slate-400 cursor-not-allowed'
+                                                 ? 'bg-cosmic-green text-white hover:bg-cosmic-green/90 border border-cosmic-green'
+                                                 : 'bg-slate-200/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
                                              }`}
                                 >
                                     <MessageCircle className="w-5 h-5" />
@@ -1162,9 +1252,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             <button
                                 onClick={() => { haptics.light(); handleEmail(); }}
                                 className="flex-1 min-h-[44px] flex items-center justify-center gap-2
-                                         bg-blue-500 text-white rounded-xl font-semibold text-sm
-                                         hover:bg-blue-600 transition-colors
-                                         focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                         bg-stellar-blue text-white rounded-xl font-semibold text-sm
+                                         hover:bg-stellar-blue/90 border border-stellar-blue
+                                         active:scale-[0.97] transition-all
+                                         focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-blue/40"
                             >
                                 <Mail className="w-5 h-5" />
                                 Email

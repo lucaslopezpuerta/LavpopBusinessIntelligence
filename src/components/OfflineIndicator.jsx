@@ -1,22 +1,32 @@
-// OfflineIndicator.jsx v1.0
+// OfflineIndicator.jsx v2.0
 // Banner component that shows when the user is offline
 //
 // FEATURES:
 // - Detects online/offline status via navigator.onLine
-// - Animated slide-in/out banner
+// - Animated slide-in/out banner with glassmorphism
 // - Shows last sync time when offline
 // - Auto-hides when back online
-// - Dark mode support
+// - Bilavnova brand integration (Saturn logo, Orbitron font)
+// - Full dark mode support via useTheme
 //
 // USAGE:
 // <OfflineIndicator lastSyncTime={timestamp} />
 //
 // CHANGELOG:
+// v2.0 (2026-01-18): Cosmic Precision upgrade + Bilavnova brand migration
+//   - Applied Variant D: Glassmorphism Cosmic with amber/emerald accents
+//   - Added useTheme() hook for proper dark mode support
+//   - Added backdrop-blur-xl glassmorphism effect
+//   - Replaced WifiOff/RefreshCw icons with BilavnovaIcon (Saturn logo)
+//   - Added Orbitron font for status text (brand consistency)
+//   - Updated colors for cosmic theme compliance
+//   - Cosmic compliant: Design System v5.0
 // v1.0 (2025-12-18): Initial implementation
 
 import React, { useState, useEffect } from 'react';
-import { WifiOff, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../contexts/ThemeContext';
+import { BilavnovaIcon } from './ui/BilavnovaLogo';
 
 /**
  * Format time for display (e.g., "há 5 minutos")
@@ -43,6 +53,7 @@ const formatTimeAgo = (timestamp) => {
 const OfflineIndicator = ({ lastSyncTime }) => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showBanner, setShowBanner] = useState(false);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const handleOnline = () => {
@@ -81,30 +92,69 @@ const OfflineIndicator = ({ lastSyncTime }) => {
           className={`
             fixed top-0 inset-x-0 z-50
             safe-area-top
+            backdrop-blur-xl
             ${isOffline
-              ? 'bg-amber-500 dark:bg-amber-600'
-              : 'bg-green-500 dark:bg-green-600'
+              ? isDark
+                ? 'bg-amber-900/80 border-b border-amber-500/30 shadow-[0_4px_24px_rgba(245,158,11,0.15)]'
+                : 'bg-amber-50/95 border-b border-amber-300 shadow-md'
+              : isDark
+                ? 'bg-emerald-900/80 border-b border-emerald-500/30 shadow-[0_4px_24px_rgba(16,185,129,0.15)]'
+                : 'bg-emerald-50/95 border-b border-emerald-300 shadow-md'
             }
           `}
         >
-          <div className="flex items-center justify-center gap-2 px-4 py-2 text-white">
+          <div className="flex items-center justify-center gap-3 px-4 py-2.5">
             {isOffline ? (
               <>
-                <WifiOff className="w-4 h-4" />
-                <span className="text-sm font-medium">
-                  Você está offline
+                {/* Saturn icon with amber glow - Offline */}
+                <div className={`
+                  w-7 h-7 rounded-lg flex items-center justify-center
+                  ${isDark
+                    ? 'bg-amber-500/20 border border-amber-400/30'
+                    : 'bg-amber-100 border border-amber-300'}
+                `}>
+                  <BilavnovaIcon
+                    className="w-4 h-4"
+                    variant="current"
+                    style={{ color: isDark ? '#fbbf24' : '#b45309' }}
+                  />
+                </div>
+                <span
+                  className={`text-sm font-medium tracking-wide ${isDark ? 'text-amber-100' : 'text-amber-900'}`}
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                >
+                  OFFLINE
                 </span>
                 {lastSyncTime && (
-                  <span className="text-sm opacity-90">
+                  <span className={`text-sm ${isDark ? 'text-amber-200/80' : 'text-amber-700'}`}>
                     • Última sincronização: {formatTimeAgo(lastSyncTime)}
                   </span>
                 )}
               </>
             ) : (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span className="text-sm font-medium">
-                  Reconectado! Sincronizando...
+                {/* Saturn icon with emerald glow + spin - Reconnected */}
+                <motion.div
+                  className={`
+                    w-7 h-7 rounded-lg flex items-center justify-center
+                    ${isDark
+                      ? 'bg-emerald-500/20 border border-emerald-400/30'
+                      : 'bg-emerald-100 border border-emerald-300'}
+                  `}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                >
+                  <BilavnovaIcon
+                    className="w-4 h-4"
+                    variant="current"
+                    style={{ color: isDark ? '#34d399' : '#047857' }}
+                  />
+                </motion.div>
+                <span
+                  className={`text-sm font-medium tracking-wide ${isDark ? 'text-emerald-100' : 'text-emerald-900'}`}
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                >
+                  SINCRONIZANDO
                 </span>
               </>
             )}

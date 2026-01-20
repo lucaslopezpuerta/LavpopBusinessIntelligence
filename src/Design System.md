@@ -1,7 +1,7 @@
-# Bilavnova Design System v5.0
+# Bilavnova Design System v5.1
 
 > **Theme:** Cosmic Precision - Space-age aesthetics with stellar gradients
-> **Last Updated:** January 17, 2026
+> **Last Updated:** January 18, 2026
 > **Dark Mode:** Fully functional via Tailwind safelist + useTheme pattern
 
 ---
@@ -84,12 +84,19 @@ Depth Hierarchy (Dark Mode):
 |-------|-----|----------|-------|
 | **Stellar Blue** | `#2d388a` | `text-stellar-blue` | Gradient start, deep accents |
 | **Stellar Cyan** | `#00aeef` | `text-stellar-cyan` | Active states, links, focus |
+| **Cosmic Green** | `#00d68f` | `text-cosmic-green` | Success states, WhatsApp, positive actions |
 
 **Stellar Cyan Opacity Scale:**
 - `/5` - Light mode subtle borders
 - `/10` - Dark mode card borders (most common)
 - `/15` - Visible borders, navigation
 - `/20` - Active state backgrounds
+
+**Cosmic Green Opacity Scale:**
+- `/10` - Subtle background tint
+- `/20` - Hover state backgrounds
+- `/30` - Border color (light mode)
+- `/40` - Active/focus borders
 
 #### Semantic Colors
 
@@ -421,6 +428,7 @@ const MyHeroPage = () => {
 | **Primary** | `bg-gradient-stellar text-white font-semibold shadow-md hover:shadow-lg rounded-xl px-4 py-2` |
 | **Secondary** | `bg-white dark:bg-space-dust text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-stellar-cyan/15 rounded-xl px-4 py-2` |
 | **Ghost** | `bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-space-dust rounded-xl px-4 py-2` |
+| **Success/WhatsApp** | `bg-cosmic-green/10 dark:bg-cosmic-green/20 text-cosmic-green border border-cosmic-green/30 hover:bg-cosmic-green/20 dark:hover:border-cosmic-green/50 rounded-xl px-4 py-2` |
 | **Danger** | `bg-gradient-to-r from-red-500 to-rose-500 text-white font-semibold rounded-xl px-4 py-2` |
 | **Icon** | `p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust` |
 
@@ -906,6 +914,7 @@ safelist: [
 
 | Version | Date | Major Changes |
 |---------|------|---------------|
+| v5.1 | Jan 18, 2026 | Added cosmic-green color, Success/WhatsApp button variant |
 | v5.0 | Jan 17, 2026 | Complete restructure for agent-friendliness |
 | v4.4 | Jan 17, 2026 | Cosmic Variant Selection Guide |
 | v4.3 | Jan 17, 2026 | Cosmic Concept Documentation |

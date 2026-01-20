@@ -1,5 +1,11 @@
-// ModelDiagnostics.jsx v1.0
+// ModelDiagnostics.jsx v2.0
 // Modal component showing detailed model diagnostics
+//
+// v2.0 (2026-01-20): OOS metrics and drift detection
+//   - Added "Desempenho Real" section with OOS MAE/MAPE
+//   - Added drift warning when model degradation detected
+//   - Clearly distinguishes in-sample (training) vs OOS (real) metrics
+//   - Rolling 30-day accuracy from prediction_accuracy view
 //
 // v1.0 (2025-12-21): Initial implementation
 //   - Coefficient table with translated feature names
@@ -14,9 +20,12 @@ import {
   TrendingUp,
   BarChart3,
   AlertCircle,
+  AlertTriangle,
   CheckCircle,
   Calendar,
-  Database
+  Database,
+  Target,
+  Activity
 } from 'lucide-react';
 
 // Feature name translations (Portuguese)
@@ -139,6 +148,58 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
 
         {/* Content */}
         <div className="p-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+          {/* Drift Warning */}
+          {modelInfo?.drift_detected && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                    Modelo pode estar desatualizado
+                  </h4>
+                  <p className="text-xs text-red-700 dark:text-red-400 mt-1">
+                    Os erros recentes são {modelInfo.drift_ratio ? `${modelInfo.drift_ratio.toFixed(1)}×` : ''} maiores que a média histórica.
+                    Considere investigar mudanças no padrão de receita.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Real Performance (OOS Metrics) - Most Important */}
+          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Desempenho Real (Validação Cruzada)
+              </h3>
+            </div>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+              Métricas honestas baseadas em previsões que o modelo nunca viu durante o treino.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white dark:bg-slate-800 rounded p-2">
+                <span className="text-xs text-amber-600 dark:text-amber-500">MAE Real:</span>
+                <div className="text-lg font-bold text-amber-900 dark:text-amber-200">
+                  {modelInfo?.oos_mae ? `R$ ${modelInfo.oos_mae}` : '—'}
+                </div>
+                <span className="text-xs text-amber-600 dark:text-amber-500">erro médio por dia</span>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded p-2">
+                <span className="text-xs text-amber-600 dark:text-amber-500">MAPE:</span>
+                <div className="text-lg font-bold text-amber-900 dark:text-amber-200">
+                  {modelInfo?.oos_mape ? `${modelInfo.oos_mape}%` : '—'}
+                </div>
+                <span className="text-xs text-amber-600 dark:text-amber-500">erro percentual médio</span>
+              </div>
+            </div>
+            {modelInfo?.oos_validation_points && (
+              <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                Baseado em {modelInfo.oos_validation_points} previsões out-of-sample
+              </p>
+            )}
+          </div>
+
           {/* Model Tier */}
           <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
             <div className="flex items-center justify-between">
@@ -154,37 +215,48 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
             </p>
           </div>
 
-          {/* Performance Metrics */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <MetricCard
-              icon={QualityIcon}
-              label="Precisão (R²)"
-              value={`${rSquaredPct}%`}
-              subtext={quality.label}
-              colorClass={quality.color}
-            />
-            <MetricCard
-              icon={BarChart3}
-              label="Erro Médio (MAE)"
-              value={`R$ ${modelInfo?.mae || 0}`}
-              subtext="por dia"
-              colorClass="text-slate-600 dark:text-slate-400"
-            />
-            <MetricCard
-              icon={Database}
-              label="Dados de Treino"
-              value={`${modelInfo?.n_training_samples || 0} dias`}
-              colorClass="text-slate-600 dark:text-slate-400"
-            />
-            <MetricCard
-              icon={Calendar}
-              label="Último Treino"
-              value={modelInfo?.last_trained ?
-                new Date(modelInfo.last_trained).toLocaleDateString('pt-BR') :
-                '—'
-              }
-              colorClass="text-slate-600 dark:text-slate-400"
-            />
+          {/* Training Metrics (In-Sample) */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="w-4 h-4 text-slate-500" />
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                Métricas de Treino (In-Sample)
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+              Ajuste do modelo aos dados de treino — pode superestimar a precisão real.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <MetricCard
+                icon={QualityIcon}
+                label="R² (Treino)"
+                value={`${rSquaredPct}%`}
+                subtext={quality.label}
+                colorClass={quality.color}
+              />
+              <MetricCard
+                icon={BarChart3}
+                label="MAE (Treino)"
+                value={`R$ ${modelInfo?.mae || 0}`}
+                subtext="in-sample"
+                colorClass="text-slate-600 dark:text-slate-400"
+              />
+              <MetricCard
+                icon={Database}
+                label="Dados de Treino"
+                value={`${modelInfo?.n_training_samples || 0} dias`}
+                colorClass="text-slate-600 dark:text-slate-400"
+              />
+              <MetricCard
+                icon={Calendar}
+                label="Último Treino"
+                value={modelInfo?.last_trained ?
+                  new Date(modelInfo.last_trained).toLocaleDateString('pt-BR') :
+                  '—'
+                }
+                colorClass="text-slate-600 dark:text-slate-400"
+              />
+            </div>
           </div>
 
           {/* Data Quality */}
@@ -263,8 +335,12 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
               Como interpretar
             </h4>
             <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
-              <li>• <strong>R² = {rSquaredPct}%</strong>: O modelo explica {rSquaredPct}% da variação na receita</li>
-              <li>• <strong>MAE = R${modelInfo?.mae || 0}</strong>: Em média, as previsões erram ±R${modelInfo?.mae || 0} por dia</li>
+              <li>• <strong>MAE Real</strong>: Erro médio em previsões reais — métrica mais confiável</li>
+              <li>• <strong>MAPE</strong>: Erro percentual médio — útil para comparar entre períodos</li>
+              <li>• <strong>R² (Treino)</strong>: Quanto o modelo se ajusta aos dados — pode superestimar</li>
+              {modelInfo?.oos_mae && modelInfo?.mae && (
+                <li>• O MAE real (R${modelInfo.oos_mae}) é tipicamente maior que o MAE de treino (R${modelInfo.mae})</li>
+              )}
               <li>• Coeficientes positivos indicam aumento na receita esperada</li>
             </ul>
           </div>

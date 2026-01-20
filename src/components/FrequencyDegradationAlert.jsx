@@ -1,8 +1,18 @@
-// FrequencyDegradationAlert.jsx v1.5
+// FrequencyDegradationAlert.jsx v2.1
 // Early warning for customers with growing visit intervals
-// Design System v4.0 compliant
+// Design System v5.1 compliant - Premium Glass Card pattern
 //
 // CHANGELOG:
+// v2.1 (2026-01-20): Premium Glass Effects
+//   - Replaced hard borders with soft amber glow system
+//   - Added ring-1 with amber tint for warning semantic
+//   - Added inner top-edge reflection for glass realism
+//   - Outer amber glow for layered depth (matches alert type)
+// v2.0 (2026-01-20): Cosmic Glass Card refactor
+//   - Replaced amber gradient with glass effect (bg-space-dust/50)
+//   - Added backdrop-blur-xl for unified glassmorphism
+//   - Removed left border stripe (amber accent via icon badge)
+//   - Softer borders blending with page background
 // v1.5 (2026-01-14): Responsive 2-row mobile layout
 //   - Mobile: Name on row 1, badge + gap history on row 2
 //   - Badge shown first (key insight), gap history is secondary
@@ -44,12 +54,13 @@ import {
   Phone
 } from 'lucide-react';
 import { haptics } from '../utils/haptics';
+import { useTheme } from '../contexts/ThemeContext';
 import ContextHelp from './ContextHelp';
 
-// Smooth hover animation (matches FirstVisitConversionCard)
+// Premium glass hover - subtle lift (no boxShadow to preserve CSS glow)
 const hoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
-  hover: { y: -2, boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }
+  rest: { y: 0, scale: 1 },
+  hover: { y: -3, scale: 1.005 }
 };
 
 const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
@@ -178,6 +189,7 @@ const FrequencyDegradationAlert = ({
   onOpenCustomerProfile,
   className = ''
 }) => {
+  const { isDark } = useTheme();
   const [currentPage, setCurrentPage] = useState(0);
 
   // Handle missing data
@@ -248,11 +260,13 @@ const FrequencyDegradationAlert = ({
       variants={hoverAnimation}
       transition={hoverTransition}
       className={`
-        bg-gradient-to-br from-amber-50/40 via-white to-white
-        dark:from-amber-900/10 dark:via-space-nebula dark:to-space-nebula
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl
         rounded-2xl
-        border border-amber-200/80 dark:border-stellar-cyan/10
-        border-l-4 border-l-amber-500 dark:border-l-amber-400
+        ${isDark
+          ? 'ring-1 ring-amber-500/[0.20] shadow-[0_0_20px_-5px_rgba(245,158,11,0.20),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-amber-200/80 shadow-[0_8px_32px_-12px_rgba(245,158,11,0.12),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
         p-4 sm:p-5
         overflow-hidden
         ${className}

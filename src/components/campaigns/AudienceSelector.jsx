@@ -1,8 +1,36 @@
-// AudienceSelector.jsx v3.3
+// AudienceSelector.jsx v4.3
 // Audience targeting component for campaign creation
-// Design System v4.0 compliant - Hybrid Card Design
+// Design System v5.0 compliant - Cosmic Precision + Variant B (Accent Borders)
 //
 // CHANGELOG:
+// v4.3 (2026-01-18): 4-column desktop + font size bump
+//   - Grid: 4 columns on desktop (was 3)
+//   - Icon container: w-8 h-8 → w-9 h-9
+//   - Title: text-xs sm:text-sm → text-sm
+//   - Subtitle: text-[10px] sm:text-xs → text-xs
+//   - Count: text-lg sm:text-xl → text-xl
+// v4.2 (2026-01-18): Compact card layout
+//   - Reduced card padding: p-4 → p-3
+//   - Smaller icon container: w-11 h-11 → w-8 h-8
+//   - Smaller priority badges and selected indicators
+//   - Tighter grid gaps: gap-3 sm:gap-4 → gap-2 sm:gap-3
+//   - 2 columns on mobile (was 1), 3 on desktop
+//   - Smaller count text: text-2xl → text-lg
+//   - Removed hover hint to save space
+//   - Compact selected summary
+// v4.1 (2026-01-18): Semantic accent borders (Variant B pattern)
+//   - Added left border accents to maintain semantic category identity
+//   - Each audience type has unique left border color (amber, purple, emerald, etc.)
+//   - Dark mode uses lighter accent shades (-400) for better visibility
+//   - Renamed borderColor → leftBorder for clarity
+//   - Updated bgDark values to use space-dust for cosmic compliance
+// v4.0 (2026-01-18): Cosmic Precision redesign
+//   - Applied Design System v5.0 Cosmic styling
+//   - Filter buttons: stellar-cyan accents and cosmic gradients
+//   - Audience cards: cosmic borders (dark:border-stellar-cyan/10)
+//   - Selected state: stellar-cyan ring with glow effect
+//   - Selected summary: cosmic gradient background
+//   - Updated dark mode backgrounds (slate-800 → space-dust)
 // v3.3 (2026-01-09): Light background KPI cards (Hybrid Card Design)
 //   - Migrated stats cards to Design System KPICard with variant="default"
 //   - Card bodies now use light backgrounds (bg-white dark:bg-slate-800)
@@ -114,8 +142,8 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
         color="purple"
       >
         <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-            <Users className="w-6 h-6 text-slate-400 animate-pulse" />
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-space-dust flex items-center justify-center">
+            <Users className="w-6 h-6 text-slate-400 dark:text-stellar-cyan/50 animate-pulse" />
           </div>
           Carregando dados de clientes...
         </div>
@@ -137,7 +165,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       gradient: 'from-amber-500 to-orange-500',
       bgLight: 'bg-amber-50',
       bgDark: 'dark:bg-amber-900/20',
-      borderColor: 'border-amber-200 dark:border-amber-800',
+      leftBorder: 'border-l-amber-500 dark:border-l-amber-400',
       ringColor: 'ring-amber-500'
     },
     {
@@ -152,7 +180,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       gradient: 'from-purple-500 to-indigo-500',
       bgLight: 'bg-purple-50',
       bgDark: 'dark:bg-purple-900/20',
-      borderColor: 'border-purple-200 dark:border-purple-800',
+      leftBorder: 'border-l-purple-500 dark:border-l-purple-400',
       ringColor: 'ring-purple-500'
     },
     {
@@ -167,7 +195,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       gradient: 'from-emerald-500 to-teal-500',
       bgLight: 'bg-emerald-50',
       bgDark: 'dark:bg-emerald-900/20',
-      borderColor: 'border-emerald-200 dark:border-emerald-800',
+      leftBorder: 'border-l-emerald-500 dark:border-l-emerald-400',
       ringColor: 'ring-emerald-500'
     }
   ];
@@ -186,7 +214,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       gradient: 'from-yellow-500 to-amber-500',
       bgLight: 'bg-yellow-50',
       bgDark: 'dark:bg-yellow-900/20',
-      borderColor: 'border-yellow-200 dark:border-yellow-800',
+      leftBorder: 'border-l-yellow-500 dark:border-l-yellow-400',
       ringColor: 'ring-yellow-500'
     },
     {
@@ -201,7 +229,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       gradient: 'from-blue-500 to-indigo-500',
       bgLight: 'bg-blue-50',
       bgDark: 'dark:bg-blue-900/20',
-      borderColor: 'border-blue-200 dark:border-blue-800',
+      leftBorder: 'border-l-blue-500 dark:border-l-blue-400',
       ringColor: 'ring-blue-500'
     },
     {
@@ -216,7 +244,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       gradient: 'from-cyan-500 to-teal-500',
       bgLight: 'bg-cyan-50',
       bgDark: 'dark:bg-cyan-900/20',
-      borderColor: 'border-cyan-200 dark:border-cyan-800',
+      leftBorder: 'border-l-cyan-500 dark:border-l-cyan-400',
       ringColor: 'ring-cyan-500'
     },
     {
@@ -230,8 +258,8 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       category: 'marketing',
       gradient: 'from-slate-500 to-blue-500',
       bgLight: 'bg-slate-50',
-      bgDark: 'dark:bg-slate-800/50',
-      borderColor: 'border-slate-200 dark:border-slate-700',
+      bgDark: 'dark:bg-space-dust/50',
+      leftBorder: 'border-l-slate-500 dark:border-l-slate-400',
       ringColor: 'ring-slate-500'
     },
     {
@@ -245,8 +273,8 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       category: 'marketing',
       gradient: 'from-gray-500 to-slate-500',
       bgLight: 'bg-gray-50',
-      bgDark: 'dark:bg-gray-800/50',
-      borderColor: 'border-gray-200 dark:border-gray-700',
+      bgDark: 'dark:bg-space-dust/50',
+      leftBorder: 'border-l-gray-500 dark:border-l-gray-400',
       ringColor: 'ring-gray-500'
     }
   ];
@@ -265,7 +293,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       gradient: 'from-green-500 to-emerald-500',
       bgLight: 'bg-green-50',
       bgDark: 'dark:bg-green-900/20',
-      borderColor: 'border-green-200 dark:border-green-800',
+      leftBorder: 'border-l-green-500 dark:border-l-green-400',
       ringColor: 'ring-green-500'
     },
     {
@@ -279,8 +307,8 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
       category: 'other',
       gradient: 'from-slate-500 to-gray-500',
       bgLight: 'bg-slate-50',
-      bgDark: 'dark:bg-slate-800/50',
-      borderColor: 'border-slate-200 dark:border-slate-700',
+      bgDark: 'dark:bg-space-dust/50',
+      leftBorder: 'border-l-slate-500 dark:border-l-slate-400',
       ringColor: 'ring-slate-500'
     }
   ];
@@ -352,7 +380,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
         {/* Category Filter */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 mr-2">
-            <Filter className="w-4 h-4 text-slate-400" />
+            <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               Filtrar:
             </span>
@@ -368,8 +396,8 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
               className={`
                 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200
                 ${categoryFilter === id
-                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/25'
-                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-sm'
+                  ? 'bg-gradient-stellar text-white shadow-lg shadow-stellar-cyan/25'
+                  : 'bg-white dark:bg-space-dust text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-stellar-cyan/10 hover:border-stellar-cyan/30 dark:hover:border-stellar-cyan/20 hover:shadow-sm'
                 }
               `}
             >
@@ -378,7 +406,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
               <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
                 categoryFilter === id
                   ? 'bg-white/20'
-                  : 'bg-slate-100 dark:bg-slate-700'
+                  : 'bg-slate-100 dark:bg-space-nebula'
               }`}>
                 {count}
               </span>
@@ -386,8 +414,8 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
           ))}
         </div>
 
-        {/* Audience Cards Grid - Selection Cards with Light Background + Ring */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        {/* Audience Cards Grid - Compact Selection Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           {audiences.map((audience) => {
             const Icon = audience.icon;
             const isSelected = selectedAudience === audience.id;
@@ -407,20 +435,21 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
                 }}
                 disabled={!hasCustomers}
                 className={`
-                  relative p-4 rounded-xl border-2 text-left transition-all duration-200 group shadow-sm
+                  relative p-3 rounded-xl border text-left transition-all duration-200 group shadow-sm
+                  border-l-4 ${audience.leftBorder}
                   ${isSelected
-                    ? `bg-white dark:bg-slate-800 border-transparent shadow-md ring-2 ${audience.ringColor} ring-offset-2 dark:ring-offset-slate-900`
+                    ? 'bg-white dark:bg-space-dust border-t-transparent border-r-transparent border-b-transparent shadow-md ring-2 ring-stellar-cyan ring-offset-2 dark:ring-offset-space-nebula'
                     : hasCustomers
-                      ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md'
-                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
+                      ? 'bg-white dark:bg-space-dust border-t-slate-200 border-r-slate-200 border-b-slate-200 dark:border-t-stellar-cyan/10 dark:border-r-stellar-cyan/10 dark:border-b-stellar-cyan/10 hover:shadow-md'
+                      : 'bg-slate-50 dark:bg-space-dust/50 border-t-slate-200 border-r-slate-200 border-b-slate-200 dark:border-t-stellar-cyan/5 dark:border-r-stellar-cyan/5 dark:border-b-stellar-cyan/5 opacity-50 cursor-not-allowed'
                   }
                 `}
               >
                 {/* Selected Indicator */}
                 {isSelected && (
-                  <div className="absolute top-3 right-3">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg">
-                      <CheckCircle2 className="w-4 h-4 text-white" />
+                  <div className="absolute top-2.5 right-2.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-stellar flex items-center justify-center shadow-md shadow-stellar-cyan/30">
+                      <CheckCircle2 className="w-3 h-3 text-white" />
                     </div>
                   </div>
                 )}
@@ -428,7 +457,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
                 {/* Priority Badge */}
                 {audience.priority && !isSelected && (
                   <span className={`
-                    absolute top-3 right-3 px-2 py-0.5 text-xs font-bold rounded-full shadow-sm
+                    absolute top-2 right-2 px-1.5 py-0.5 text-[10px] font-bold rounded-full shadow-sm
                     ${getPriorityColor(audience.priority)}
                   `}>
                     {audience.priority}
@@ -436,58 +465,52 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
                 )}
 
                 {/* Icon with Gradient */}
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${audience.gradient} flex items-center justify-center mb-3 shadow-lg group-hover:scale-105 transition-transform`}>
-                  <Icon className="w-5 h-5 text-white" />
+                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${audience.gradient} flex items-center justify-center mb-2 shadow-md group-hover:scale-105 transition-transform`}>
+                  <Icon className="w-4 h-4 text-white" />
                 </div>
 
                 {/* Content */}
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-0.5">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-0.5 leading-tight">
                   {audience.label}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 line-clamp-1">
                   {audience.shortDesc}
                 </p>
 
                 {/* Count */}
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-bold text-slate-900 dark:text-white">
                     {audience.count.toLocaleString()}
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     clientes
                   </span>
-                  {/* Hover hint - inline to avoid overlap */}
-                  {hasCustomers && !isSelected && (
-                    <span className="ml-auto text-xs text-purple-600 dark:text-purple-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                      Selecionar →
-                    </span>
-                  )}
                 </div>
               </motion.button>
             );
           })}
         </div>
 
-        {/* Selected Summary */}
+        {/* Selected Summary - Compact */}
         {selectedAudience && (
-          <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-xl">
+          <div className="p-3 bg-gradient-to-r from-stellar-cyan/5 to-stellar-blue/5 dark:from-stellar-cyan/10 dark:to-stellar-blue/10 border border-stellar-cyan/20 dark:border-stellar-cyan/15 rounded-xl">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center shadow-lg">
-                  <CheckCircle2 className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-gradient-stellar flex items-center justify-center shadow-md shadow-stellar-cyan/25">
+                  <CheckCircle2 className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-purple-800 dark:text-purple-200">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white">
                     {allAudiences.find(a => a.id === selectedAudience)?.label}
                   </p>
-                  <p className="text-xs text-purple-600 dark:text-purple-400">
+                  <p className="text-[10px] sm:text-xs text-stellar-cyan">
                     {allAudiences.find(a => a.id === selectedAudience)?.count.toLocaleString()} clientes selecionados
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => onSelectAudience(null)}
-                className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 font-medium"
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-stellar-cyan font-medium transition-colors"
               >
                 Limpar
               </button>

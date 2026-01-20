@@ -1,8 +1,18 @@
-// FirstVisitConversionCard.jsx v1.0
+// FirstVisitConversionCard.jsx v2.1
 // Tracks critical 1st→2nd visit conversion rate
-// Design System v4.0 compliant
+// Design System v5.1 compliant - Premium Glass Card pattern
 //
 // CHANGELOG:
+// v2.1 (2026-01-20): Premium Glass Effects
+//   - Replaced hard borders with soft glow system
+//   - Added ring-1 for subtle edge definition
+//   - Added inner top-edge reflection for glass realism
+//   - Outer cyan glow in dark mode for layered depth
+// v2.0 (2026-01-20): Cosmic Glass Card refactor
+//   - Replaced gradient background with glass effect (bg-space-dust/50)
+//   - Added backdrop-blur-xl for unified glassmorphism
+//   - Removed left border stripe (status shown via icon badge)
+//   - Softer borders blending with page background
 // v1.0 (2026-01-13): Initial implementation
 //   - Primary conversion rate metric with trend
 //   - Welcome campaign comparison (with/without)
@@ -25,12 +35,13 @@ import {
   UserX
 } from 'lucide-react';
 import { haptics } from '../utils/haptics';
+import { useTheme } from '../contexts/ThemeContext';
 import ContextHelp from './ContextHelp';
 
-// Smooth hover animation
+// Premium glass hover - subtle lift (no boxShadow to preserve CSS glow)
 const hoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
-  hover: { y: -2, boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }
+  rest: { y: 0, scale: 1 },
+  hover: { y: -3, scale: 1.005 }
 };
 
 const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
@@ -103,6 +114,8 @@ const FirstVisitConversionCard = ({
   onOpenLostCustomers,
   className = ''
 }) => {
+  const { isDark } = useTheme();
+
   // Handle missing data gracefully
   const metrics = useMemo(() => {
     if (!data) {
@@ -221,11 +234,13 @@ const FirstVisitConversionCard = ({
       variants={hoverAnimation}
       transition={hoverTransition}
       className={`
-        bg-gradient-to-br from-slate-50/60 via-white to-white
-        dark:from-space-dust/40 dark:via-space-nebula dark:to-space-nebula
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl
         rounded-2xl
-        border border-slate-200/80 dark:border-stellar-cyan/10
-        border-l-4 ${colors.accent}
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
         p-4 sm:p-5
         overflow-hidden
         ${className}

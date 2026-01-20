@@ -1,7 +1,7 @@
 /**
  * AppSettingsModal - App-wide settings modal
  *
- * VERSION: 1.9
+ * VERSION: 2.3
  *
  * Replaces BusinessSettingsModal with improved UX:
  * - Dark mode support
@@ -16,6 +16,30 @@
  * - Safe area bottom padding for notch devices (v1.8)
  *
  * CHANGELOG:
+ * v2.3 (2026-01-18): Full-screen mobile + Portal rendering
+ *   - Added createPortal for proper backdrop coverage
+ *   - Full-screen on mobile (h-full), centered modal on desktop
+ *   - Safe area compliance: pt-safe on header, pb-safe on footer
+ *   - Slides up from bottom on mobile (items-end)
+ *   - Rounded corners only on desktop (rounded-none sm:rounded-2xl)
+ * v2.2 (2026-01-18): CosmicDatePicker integration
+ *   - Replaced native date input with CosmicDatePicker component
+ *   - Consistent cosmic styling for date selection
+ * v2.1 (2026-01-18): Light mode refinements
+ *   - Modal: Solid white background (removed transparency)
+ *   - Inputs: bg-slate-50 for visibility against white modal
+ *   - Footer: Solid bg-slate-50 instead of transparent
+ *   - Backdrop blur only applied in dark mode
+ *   - Better focus states with ring-stellar-cyan/20
+ * v2.0 (2026-01-18): Cosmic Precision redesign
+ *   - Applied Design System v5.0 Variant D (Glassmorphism Cosmic)
+ *   - Modal: dark:bg-space-dust/95, backdrop-blur-xl, stellar-cyan borders
+ *   - Headers/tabs: stellar-cyan borders and hover states
+ *   - Inputs: dark:bg-space-dust, dark:border-stellar-cyan/10
+ *   - Section icons: cosmic-compliant accent backgrounds
+ *   - Buttons: cosmic secondary style with stellar-cyan borders
+ *   - ConfirmDialog: cosmic glassmorphism styling
+ *   - Option cards: cosmic gradient backgrounds
  * v1.9 (2026-01-12): Refactored to useScrollLock hook
  *   - Replaced inline scroll lock useEffect with shared useScrollLock hook
  *   - Reduces code duplication across modals
@@ -62,11 +86,13 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, DollarSign, Wrench, Settings, Palette, Sun, Moon, Monitor, AlertCircle, LayoutGrid, Rows3, Bot, Globe, Zap } from 'lucide-react';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useScrollLock } from '../hooks/useScrollLock';
+import CosmicDatePicker from './ui/CosmicDatePicker';
 
 // Tab configuration
 const TABS = [
@@ -150,25 +176,21 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity"
-        onClick={handleClose}
-      />
-
+  // Portal rendering ensures fixed positioning works correctly
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm">
       {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-2 sm:p-4">
-        <div
-          className="relative w-full max-w-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl animate-scale-in max-h-[95vh] sm:max-h-[90vh] flex flex-col border border-white/20 dark:border-slate-700/50"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header - Compact */}
-          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+      <div
+        className="w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl animate-fade-in flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header wrapper with safe area - extends background into notch/Dynamic Island */}
+        <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl flex-shrink-0">
+          {/* Header content */}
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3">
             <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-lavpop-blue/10 dark:bg-lavpop-blue/20 rounded-lg">
-                <Settings className="w-5 h-5 text-lavpop-blue" />
+              <div className="p-1.5 bg-stellar-cyan/10 dark:bg-stellar-cyan/20 rounded-lg">
+                <Settings className="w-5 h-5 text-stellar-cyan" />
               </div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                 Configurações
@@ -176,83 +198,83 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
             </div>
             <button
               onClick={handleClose}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-space-nebula rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 dark:focus-visible:ring-offset-space-dust"
               aria-label="Fechar"
             >
               <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
             </button>
           </div>
+        </div>
 
-          {/* Tab Navigation - Compact */}
-          <div className="flex border-b border-slate-200 dark:border-slate-700 px-4 sm:px-5 flex-shrink-0">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors
-                    ${isActive
-                      ? 'border-lavpop-blue text-lavpop-blue'
-                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                    }
-                  `}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
+        {/* Tab Navigation - Compact */}
+        <div className="flex border-b border-slate-200 dark:border-stellar-cyan/10 px-4 sm:px-5 flex-shrink-0">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors
+                  ${isActive
+                    ? 'border-stellar-cyan text-stellar-cyan'
+                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }
+                `}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Error Banner - Compact */}
+        {error && (
+          <div className="mx-4 sm:mx-5 mt-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 flex-shrink-0">
+            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <span className="text-xs text-red-700 dark:text-red-300">{error}</span>
           </div>
+        )}
 
-          {/* Error Banner - Compact */}
-          {error && (
-            <div className="mx-4 sm:mx-5 mt-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 flex-shrink-0">
-              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <span className="text-xs text-red-700 dark:text-red-300">{error}</span>
-            </div>
+        {/* Content - Scrollable */}
+        <div className="px-4 sm:px-5 py-3 sm:py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
+          {activeTab === 'business' && (
+            <BusinessTab
+              settings={localSettings}
+              onChange={handleChange}
+              onNumberChange={handleNumberChange}
+              totalFixedCosts={totalFixedCosts}
+            />
           )}
+          {activeTab === 'automation' && (
+            <AutomationTab
+              settings={localSettings}
+              onChange={handleChange}
+            />
+          )}
+          {activeTab === 'appearance' && (
+            <AppearanceTab theme={theme} setTheme={setTheme} />
+          )}
+        </div>
 
-          {/* Content - Scrollable */}
-          <div className="px-4 sm:px-5 py-3 sm:py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
-            {activeTab === 'business' && (
-              <BusinessTab
-                settings={localSettings}
-                onChange={handleChange}
-                onNumberChange={handleNumberChange}
-                totalFixedCosts={totalFixedCosts}
-              />
-            )}
-            {activeTab === 'automation' && (
-              <AutomationTab
-                settings={localSettings}
-                onChange={handleChange}
-              />
-            )}
-            {activeTab === 'appearance' && (
-              <AppearanceTab theme={theme} setTheme={setTheme} />
-            )}
-          </div>
-
-          {/* Footer - Compact with glass morphism + safe area */}
-          <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 pb-safe border-t border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/30 backdrop-blur-sm rounded-b-2xl flex-shrink-0">
-            <button
-              onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!hasChanges || isSaving}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-lavpop-blue rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
+        {/* Footer - Compact with glass morphism + safe area */}
+        <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 pb-safe border-t border-slate-200 dark:border-stellar-cyan/10 bg-slate-50 dark:bg-space-nebula/30 dark:backdrop-blur-sm rounded-b-none sm:rounded-b-2xl flex-shrink-0">
+          <button
+            onClick={handleClose}
+            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-space-dust border border-slate-300 dark:border-stellar-cyan/15 rounded-lg hover:bg-slate-50 dark:hover:bg-space-nebula transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-space-dust"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-gradient-stellar rounded-lg hover:shadow-lg hover:shadow-stellar-cyan/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 dark:focus-visible:ring-offset-space-dust"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? 'Salvando...' : 'Salvar'}
+          </button>
         </div>
       </div>
 
@@ -267,7 +289,8 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
           onCancel={() => setShowDiscardConfirm(false)}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -278,7 +301,7 @@ const BusinessTab = ({ settings, onChange, onNumberChange, totalFixedCosts }) =>
     <div className="space-y-4">
       {/* Pricing Section */}
       <section className="space-y-2">
-        <div className="flex items-center gap-2 text-lavpop-blue">
+        <div className="flex items-center gap-2 text-stellar-cyan">
           <DollarSign className="w-4 h-4 flex-shrink-0" />
           <h3 className="text-sm font-semibold">Preços e Cashback</h3>
         </div>
@@ -302,11 +325,11 @@ const BusinessTab = ({ settings, onChange, onNumberChange, totalFixedCosts }) =>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 truncate">
               Início Cashback
             </label>
-            <input
-              type="date"
+            <CosmicDatePicker
               value={settings.cashbackStartDate}
-              onChange={(e) => onChange('cashbackStartDate', e.target.value)}
-              className="w-full px-2 sm:px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 text-slate-900 dark:text-white"
+              onChange={(date) => onChange('cashbackStartDate', date)}
+              placeholder="Selecione a data"
+              rightAlign
             />
           </div>
         </div>
@@ -315,11 +338,11 @@ const BusinessTab = ({ settings, onChange, onNumberChange, totalFixedCosts }) =>
       {/* Fixed Costs Section */}
       <section className="space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-          <div className="flex items-center gap-2 text-lavpop-blue">
+          <div className="flex items-center gap-2 text-stellar-cyan">
             <DollarSign className="w-4 h-4 flex-shrink-0" />
             <h3 className="text-sm font-semibold">Custos Fixos</h3>
           </div>
-          <span className="text-xs sm:text-sm font-bold text-lavpop-blue">
+          <span className="text-xs sm:text-sm font-bold text-stellar-cyan">
             Total: R$ {totalFixedCosts.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </span>
         </div>
@@ -362,7 +385,7 @@ const BusinessTab = ({ settings, onChange, onNumberChange, totalFixedCosts }) =>
 
       {/* Maintenance Section */}
       <section className="space-y-2">
-        <div className="flex items-center gap-2 text-lavpop-blue">
+        <div className="flex items-center gap-2 text-stellar-cyan">
           <Wrench className="w-4 h-4 flex-shrink-0" />
           <h3 className="text-sm font-semibold">Manutenção</h3>
         </div>
@@ -418,7 +441,7 @@ const AutomationTab = ({ settings, onChange }) => {
     <div className="space-y-6">
       {/* CAPTCHA Solver Section */}
       <section className="space-y-3">
-        <div className="flex items-center gap-2 text-lavpop-blue">
+        <div className="flex items-center gap-2 text-stellar-cyan">
           <Bot className="w-4 h-4" />
           <h3 className="text-sm font-semibold">Sincronização POS</h3>
         </div>
@@ -444,14 +467,14 @@ const AutomationTab = ({ settings, onChange }) => {
                   className={`
                     flex flex-col items-start gap-1 p-3 rounded-xl border-2 transition-all text-left
                     ${isActive
-                      ? 'border-lavpop-blue bg-lavpop-blue/5 dark:bg-lavpop-blue/10'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                      ? 'border-stellar-cyan bg-stellar-cyan/5 dark:bg-stellar-cyan/10'
+                      : 'border-slate-200 dark:border-stellar-cyan/10 hover:border-slate-300 dark:hover:border-stellar-cyan/20'
                     }
                   `}
                 >
                   <div className="flex items-center gap-2">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-lavpop-blue' : 'text-slate-500 dark:text-slate-400'}`} />
-                    <span className={`text-sm font-medium ${isActive ? 'text-lavpop-blue' : 'text-slate-700 dark:text-slate-300'}`}>
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-stellar-cyan' : 'text-slate-500 dark:text-slate-400'}`} />
+                    <span className={`text-sm font-medium ${isActive ? 'text-stellar-cyan' : 'text-slate-700 dark:text-slate-300'}`}>
                       {option.label}
                     </span>
                   </div>
@@ -467,7 +490,7 @@ const AutomationTab = ({ settings, onChange }) => {
           </div>
         </div>
 
-        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/60 rounded-lg">
           <p className="text-xs text-amber-700 dark:text-amber-300">
             <strong>Nota:</strong> O modo com proxy usa um IP residencial brasileiro para resolver o CAPTCHA,
             evitando rejeições por geolocalização. O modo sem proxy é mais rápido mas pode falhar se
@@ -501,7 +524,7 @@ const AppearanceTab = ({ theme, setTheme }) => {
     <div className="space-y-6">
       {/* Theme Section */}
       <section className="space-y-3">
-        <div className="flex items-center gap-2 text-lavpop-blue">
+        <div className="flex items-center gap-2 text-stellar-cyan">
           <Palette className="w-4 h-4" />
           <h3 className="text-sm font-semibold">Tema</h3>
         </div>
@@ -518,13 +541,13 @@ const AppearanceTab = ({ theme, setTheme }) => {
                 className={`
                   flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl border-2 transition-all
                   ${isActive
-                    ? 'border-lavpop-blue bg-lavpop-blue/5 dark:bg-lavpop-blue/10'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    ? 'border-stellar-cyan bg-stellar-cyan/5 dark:bg-stellar-cyan/10'
+                    : 'border-slate-200 dark:border-stellar-cyan/10 hover:border-slate-300 dark:hover:border-stellar-cyan/20'
                   }
                 `}
               >
-                <Icon className={`w-5 h-5 sm:w-4 sm:h-4 ${isActive ? 'text-lavpop-blue' : 'text-slate-500 dark:text-slate-400'}`} />
-                <span className={`text-xs sm:text-sm font-medium ${isActive ? 'text-lavpop-blue' : 'text-slate-700 dark:text-slate-300'}`}>
+                <Icon className={`w-5 h-5 sm:w-4 sm:h-4 ${isActive ? 'text-stellar-cyan' : 'text-slate-500 dark:text-slate-400'}`} />
+                <span className={`text-xs sm:text-sm font-medium ${isActive ? 'text-stellar-cyan' : 'text-slate-700 dark:text-slate-300'}`}>
                   {option.label}
                 </span>
               </button>
@@ -540,7 +563,7 @@ const AppearanceTab = ({ theme, setTheme }) => {
       {/* Dashboard Layout Section - Hidden on mobile (compact mode is desktop-only) */}
       {!isMobile && (
         <section className="space-y-3">
-          <div className="flex items-center gap-2 text-lavpop-blue">
+          <div className="flex items-center gap-2 text-stellar-cyan">
             <LayoutGrid className="w-4 h-4" />
             <h3 className="text-sm font-semibold">Layout do Dashboard</h3>
           </div>
@@ -556,13 +579,13 @@ const AppearanceTab = ({ theme, setTheme }) => {
                   className={`
                     flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all
                     ${isActive
-                      ? 'border-lavpop-blue bg-lavpop-blue/5 dark:bg-lavpop-blue/10'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                      ? 'border-stellar-cyan bg-stellar-cyan/5 dark:bg-stellar-cyan/10'
+                      : 'border-slate-200 dark:border-stellar-cyan/10 hover:border-slate-300 dark:hover:border-stellar-cyan/20'
                     }
                   `}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-lavpop-blue' : 'text-slate-500 dark:text-slate-400'}`} />
-                  <span className={`text-sm font-medium ${isActive ? 'text-lavpop-blue' : 'text-slate-700 dark:text-slate-300'}`}>
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-stellar-cyan' : 'text-slate-500 dark:text-slate-400'}`} />
+                  <span className={`text-sm font-medium ${isActive ? 'text-stellar-cyan' : 'text-slate-700 dark:text-slate-300'}`}>
                     {option.label}
                   </span>
                   <span className="text-xs text-slate-400 dark:text-slate-500">
@@ -599,8 +622,8 @@ const NumberInput = ({ label, value, onChange, prefix, suffix, step = 1, min = 0
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={`
-            w-full py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg
-            focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900
+            w-full py-2 text-sm bg-slate-50 dark:bg-space-dust border border-slate-300 dark:border-stellar-cyan/10 rounded-lg
+            focus:outline-none focus:border-stellar-cyan focus:ring-2 focus:ring-stellar-cyan/20 dark:focus:ring-stellar-cyan/30
             text-slate-900 dark:text-white
             ${prefix ? 'pl-7 sm:pl-9 pr-2 sm:pr-3' : suffix ? 'pl-2 sm:pl-3 pr-10 sm:pr-12' : 'px-2 sm:px-3'}
           `}
@@ -618,8 +641,8 @@ const NumberInput = ({ label, value, onChange, prefix, suffix, step = 1, min = 0
 const ConfirmDialog = ({ title, message, confirmLabel, confirmVariant = 'primary', onConfirm, onCancel }) => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-5 animate-scale-in">
+      <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-space-dust rounded-xl shadow-xl border border-slate-200 dark:border-stellar-cyan/15 max-w-sm w-full p-5 animate-scale-in">
         <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">
           {title}
         </h3>
@@ -629,7 +652,7 @@ const ConfirmDialog = ({ title, message, confirmLabel, confirmVariant = 'primary
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-space-nebula rounded-lg transition-colors"
           >
             Cancelar
           </button>
@@ -639,7 +662,7 @@ const ConfirmDialog = ({ title, message, confirmLabel, confirmVariant = 'primary
               px-3 py-1.5 text-sm font-medium rounded-lg transition-colors
               ${confirmVariant === 'danger'
                 ? 'bg-red-500 text-white hover:bg-red-600'
-                : 'bg-lavpop-blue text-white hover:bg-blue-600'
+                : 'bg-gradient-stellar text-white hover:shadow-lg hover:shadow-stellar-cyan/25'
               }
             `}
           >

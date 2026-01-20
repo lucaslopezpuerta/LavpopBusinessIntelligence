@@ -1,12 +1,27 @@
-// Bilavnova BI - Tailwind Configuration v4.3
+// Bilavnova BI - Tailwind Configuration v4.5
 // "Cosmic Precision" design system - Space-age futurist aesthetic
 //
 // BRAND COLORS:
 // - Stellar Blue: #2d388a (Gradient start - deep indigo)
 // - Stellar Cyan: #00aeef (Gradient end - bright cyan)
+// - Cosmic Green: #00d68f (Aurora green - success/WhatsApp actions)
 // - Space Void: #050816 (Deep space background)
 //
 // CHANGELOG:
+// v4.5 (2026-01-20): Cosmic Glass Card safelist for Customers view
+//   - Added bg-space-dust/40, /60 and bg-white/50, /60, /70
+//   - Added bg-space-nebula/50, /60 for glass card backgrounds
+//   - Added border-slate-200/30, /50, /60 for light mode glass borders
+//   - Added border-amber-500/20, border-amber-200/60 for warning cards
+//   - Added dark: variants for all new glass card classes
+// v4.4 (2026-01-18): Cosmic green color + safelist fix
+//   - Added cosmic-green (#00d68f) to cosmic accent colors
+//   - Complete safelist entries for cosmic-green opacity variants:
+//     bg: /10, /15, /20, /25, /30 | border: /20, /25, /30, /40
+//     hover: bg/20, bg/25, bg/90, border/50
+//     dark: bg/10, bg/15, bg/25, border/25, border/30, hover:bg/25
+//     focus-visible:ring-cosmic-green/40
+//   - Used for WhatsApp buttons and success action states
 // v4.3 (2026-01-17): CampaignFunnel cosmic safelist
 //   - Added stellar-gold color classes (text, bg, border with opacity variants)
 //   - Added cosmic-purple color classes (text, bg, border with opacity variants)
@@ -99,10 +114,30 @@ export default {
     'bg-cosmic-purple/20', 'bg-cosmic-purple/30', 'border-cosmic-purple/30',
     // Nebula violet
     'text-nebula-violet', 'bg-nebula-violet/20', 'border-nebula-violet/30',
+    // Cosmic green (v4.4 - Aurora green for WhatsApp/success actions)
+    'text-cosmic-green', 'bg-cosmic-green', 'border-cosmic-green',
+    'bg-cosmic-green/10', 'bg-cosmic-green/15', 'bg-cosmic-green/20', 'bg-cosmic-green/25', 'bg-cosmic-green/30',
+    'border-cosmic-green/20', 'border-cosmic-green/25', 'border-cosmic-green/30', 'border-cosmic-green/40',
+    'hover:bg-cosmic-green/20', 'hover:bg-cosmic-green/25', 'hover:bg-cosmic-green/90',
+    'hover:border-cosmic-green/50',
+    'dark:text-cosmic-green',
+    'dark:bg-cosmic-green/10', 'dark:bg-cosmic-green/15', 'dark:bg-cosmic-green/25',
+    'dark:border-cosmic-green/25', 'dark:border-cosmic-green/30',
+    'dark:hover:bg-cosmic-green/25',
+    'focus-visible:ring-cosmic-green/40',
     // Funnel stage borders (v4.2)
     'bg-stellar-cyan/15', 'border-stellar-cyan/40',
     'border-blue-500/40', 'border-emerald-500/40', 'border-emerald-500/30',
     'bg-blue-900/50', 'bg-emerald-900/50',
+    // Cosmic Glass Card system (v4.5 - Customers view glassmorphism)
+    'bg-space-dust/40', 'bg-space-dust/60',
+    'bg-white/50', 'bg-white/60', 'bg-white/70',
+    'bg-space-nebula/50', 'bg-space-nebula/60',
+    'border-slate-200/30', 'border-slate-200/50', 'border-slate-200/60',
+    'border-amber-500/20', 'border-amber-200/60',
+    'dark:bg-space-dust/40', 'dark:bg-space-dust/50', 'dark:bg-space-dust/60',
+    'dark:bg-space-nebula/50',
+    'dark:border-amber-500/20',
   ],
 
   theme: {
@@ -138,6 +173,7 @@ export default {
           'purple': '#6366f1',    // Nebula purple
           'pink': '#ec4899',      // Supernova pink
           'orange': '#f97316',    // Solar flare orange
+          'green': '#00d68f',     // Aurora green (v4.4)
         },
         'nebula': {
           'violet': '#8b5cf6',    // Nebula violet

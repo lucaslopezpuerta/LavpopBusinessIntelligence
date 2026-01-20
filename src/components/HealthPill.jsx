@@ -1,8 +1,12 @@
-// HealthPill.jsx v2.0
+// HealthPill.jsx v3.0
 // Enhanced health rate indicator for header integration
 // Now includes trend, full risk breakdown, and action button
 //
 // CHANGELOG:
+// v3.0 (2026-01-20): Cosmic Glass Card refactor for dropdown
+//   - Dropdown now uses glassmorphism (bg-space-dust/90 + backdrop-blur-xl)
+//   - Softer borders with stellar-cyan accent
+//   - Better dark mode contrast
 // v2.0 (2026-01-13): Enhanced HealthPill
 //   - NEW: Trend indicator in collapsed pill (↑+3% or ↓-2%)
 //   - NEW: Full risk breakdown (Healthy/Monitor/At Risk/Churning/New)
@@ -16,6 +20,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   Heart,
   TrendingUp,
@@ -89,6 +94,7 @@ const HealthPill = ({
   onOpenAtRiskModal,
   className = ''
 }) => {
+  const { isDark } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (healthRate === null || healthRate === undefined) return null;
@@ -233,7 +239,14 @@ const HealthPill = ({
             transition={{ duration: 0.15 }}
             className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50"
           >
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 min-w-[280px] max-w-[320px]">
+            <div className={`
+              ${isDark ? 'bg-space-dust/90' : 'bg-white/95'}
+              backdrop-blur-xl
+              rounded-xl
+              shadow-xl dark:shadow-glass-dark
+              border ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200/60'}
+              p-4 min-w-[280px] max-w-[320px]
+            `}>
               {/* Header */}
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-2">
