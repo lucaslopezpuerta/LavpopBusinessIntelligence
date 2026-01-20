@@ -1,5 +1,23 @@
-// ModelDiagnostics.jsx v2.0
+// ModelDiagnostics.jsx v3.0
 // Modal component showing detailed model diagnostics
+//
+// CHANGELOG:
+// v3.1 (2026-01-20): UX improvements
+//   - Removed footer "Fechar" button (header close button is sufficient)
+//   - iOS-compatible body scroll lock (position:fixed approach)
+// v3.0 (2026-01-20): Cosmic Precision upgrade
+//   - Applied Variant D: Glassmorphism Cosmic (Modal)
+//   - Added useTheme hook for theme-aware styling
+//   - Modal: bg-space-dust/95 dark, bg-white/98 light
+//   - Added backdrop-blur-xl effect
+//   - Updated borders to stellar-cyan/20 in dark mode
+//   - Updated internal borders to stellar-cyan/10
+//   - Cosmic compliant: Design System v5.1
+//
+// v2.1 (2026-01-20): Closure day exclusion explanation
+//   - Added explanation that closure days (revenue < R$100) are excluded
+//   - Closure days are fundamentally unpredictable without external indicators
+//   - Normal-day MAPE ~47% vs All-day MAPE ~141%
 //
 // v2.0 (2026-01-20): OOS metrics and drift detection
 //   - Added "Desempenho Real" section with OOS MAE/MAPE
@@ -13,7 +31,7 @@
 //   - Data quality information
 //   - Model tier and training info
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   X,
   FlaskConical,
@@ -25,8 +43,11 @@ import {
   Calendar,
   Database,
   Target,
-  Activity
+  Activity,
+  Store,
+  Info
 } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Feature name translations (Portuguese)
 const FEATURE_TRANSLATIONS = {
@@ -98,7 +119,7 @@ function formatCoefficient(value, index) {
  * Metric card component
  */
 const MetricCard = ({ icon: Icon, label, value, subtext, colorClass = 'text-slate-600' }) => (
-  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+  <div className="p-3 bg-slate-50 dark:bg-space-dust/50 rounded-lg">
     <div className="flex items-center gap-2 mb-1">
       <Icon className={`w-4 h-4 ${colorClass}`} />
       <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
@@ -114,6 +135,44 @@ const MetricCard = ({ icon: Icon, label, value, subtext, colorClass = 'text-slat
  * ModelDiagnostics Modal Component
  */
 const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
+  const { isDark } = useTheme();
+
+  // Lock body scroll when modal is open (iOS-compatible)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Save current scroll position and styles
+    const scrollY = window.scrollY;
+    const originalStyles = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+    };
+
+    // Lock scrolling - position:fixed prevents iOS scroll-through
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+
+    return () => {
+      // Restore original styles
+      document.body.style.overflow = originalStyles.overflow;
+      document.body.style.position = originalStyles.position;
+      document.body.style.top = originalStyles.top;
+      document.body.style.left = originalStyles.left;
+      document.body.style.right = originalStyles.right;
+      document.body.style.width = originalStyles.width;
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const rSquared = modelInfo?.r_squared || 0;
@@ -128,10 +187,17 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
   const coefficients = modelInfo?.coefficients || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden">
+      <div className={`
+        ${isDark ? 'bg-space-dust/95' : 'bg-white/98'}
+        backdrop-blur-xl
+        border ${isDark ? 'border-stellar-cyan/20' : 'border-slate-200'}
+        shadow-2xl
+        rounded-2xl
+        max-w-lg w-full max-h-[90vh] overflow-hidden
+      `}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-stellar-cyan/10">
           <div className="flex items-center gap-2">
             <FlaskConical className="w-5 h-5 text-slate-600 dark:text-slate-400" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -140,9 +206,9 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-space-nebula transition-colors"
           >
-            <X className="w-5 h-5 text-slate-500" />
+            <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
           </button>
         </div>
 
@@ -171,37 +237,64 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
             <div className="flex items-center gap-2 mb-2">
               <Target className="w-4 h-4 text-amber-700 dark:text-amber-400" />
               <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                Desempenho Real (Validação Cruzada)
+                Desempenho Real
               </h3>
             </div>
             <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
-              Métricas honestas baseadas em previsões que o modelo nunca viu durante o treino.
+              Métricas de previsões verificadas. Dias de fechamento são excluídos do MAPE principal.
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white dark:bg-slate-800 rounded p-2">
-                <span className="text-xs text-amber-600 dark:text-amber-500">MAE Real:</span>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-white dark:bg-space-dust rounded p-2">
+                <span className="text-xs text-amber-600 dark:text-amber-500">MAE:</span>
                 <div className="text-lg font-bold text-amber-900 dark:text-amber-200">
-                  {modelInfo?.oos_mae ? `R$ ${modelInfo.oos_mae}` : '—'}
+                  {modelInfo?.tracked_mae ? `R$ ${modelInfo.tracked_mae}` : (modelInfo?.oos_mae ? `R$ ${modelInfo.oos_mae}` : '—')}
                 </div>
-                <span className="text-xs text-amber-600 dark:text-amber-500">erro médio por dia</span>
+                <span className="text-xs text-amber-600 dark:text-amber-500">erro médio</span>
               </div>
-              <div className="bg-white dark:bg-slate-800 rounded p-2">
-                <span className="text-xs text-amber-600 dark:text-amber-500">MAPE:</span>
-                <div className="text-lg font-bold text-amber-900 dark:text-amber-200">
-                  {modelInfo?.oos_mape ? `${modelInfo.oos_mape}%` : '—'}
+              <div className="bg-white dark:bg-space-dust rounded p-2">
+                <span className="text-xs text-emerald-600 dark:text-emerald-500">MAPE (Normal):</span>
+                <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                  {modelInfo?.tracked_mape ? `${Math.round(modelInfo.tracked_mape)}%` : '—'}
                 </div>
-                <span className="text-xs text-amber-600 dark:text-amber-500">erro percentual médio</span>
+                <span className="text-xs text-emerald-600 dark:text-emerald-500">dias normais</span>
+              </div>
+              <div className="bg-white dark:bg-space-dust rounded p-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">MAPE (Todos):</span>
+                <div className="text-lg font-bold text-slate-600 dark:text-slate-300">
+                  {modelInfo?.oos_mape ? `${Math.round(modelInfo.oos_mape)}%` : '—'}
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400">incl. fechamentos</span>
               </div>
             </div>
-            {modelInfo?.oos_validation_points && (
+            {modelInfo?.tracked_predictions > 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                Baseado em {modelInfo.oos_validation_points} previsões out-of-sample
+                Baseado em {modelInfo.tracked_predictions} previsões verificadas
               </p>
             )}
           </div>
 
+          {/* Closure Days Explanation */}
+          <div className="mb-4 p-3 bg-slate-50 dark:bg-space-dust/50 rounded-lg border border-slate-200 dark:border-stellar-cyan/10">
+            <div className="flex items-start gap-2">
+              <Store className="w-4 h-4 text-slate-500 dark:text-slate-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Por que dias de fechamento são excluídos?
+                </h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                  Dias com receita abaixo de R$ 100 (feriados, manutenção, etc.) são imprevisíveis
+                  sem indicadores externos. Eles representam ~17% dos dias mas causam ~40% do erro total.
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
+                  <Info className="w-3 h-3 inline mr-1" />
+                  Este modelo prevê receita para <strong>dias normais de operação</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Model Tier */}
-          <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <div className="mb-4 p-3 bg-slate-50 dark:bg-space-dust/50 rounded-lg">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Complexidade do Modelo
@@ -266,19 +359,19 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
                 Qualidade dos Dados
               </h3>
               <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded text-center">
+                <div className="p-2 bg-slate-50 dark:bg-space-dust/50 rounded text-center">
                   <div className="font-medium text-slate-900 dark:text-white">
                     {dataQuality.usableDays || 0}
                   </div>
                   <div className="text-slate-500">dias úteis</div>
                 </div>
-                <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded text-center">
+                <div className="p-2 bg-slate-50 dark:bg-space-dust/50 rounded text-center">
                   <div className="font-medium text-slate-900 dark:text-white">
                     {dataQuality.missingWeather || 0}
                   </div>
                   <div className="text-slate-500">sem clima</div>
                 </div>
-                <div className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded text-center">
+                <div className="p-2 bg-slate-50 dark:bg-space-dust/50 rounded text-center">
                   <div className="font-medium text-slate-900 dark:text-white">
                     {dataQuality.outlierCount || 0}
                   </div>
@@ -298,9 +391,9 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
               Coeficientes do Modelo
             </h3>
-            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <div className="border border-slate-200 dark:border-stellar-cyan/10 rounded-lg overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800">
+                <thead className="bg-slate-50 dark:bg-space-dust">
                   <tr>
                     <th className="text-left px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">
                       Feature
@@ -344,16 +437,6 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
               <li>• Coeficientes positivos indicam aumento na receita esperada</li>
             </ul>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-          <button
-            onClick={onClose}
-            className="w-full py-2 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
-          >
-            Fechar
-          </button>
         </div>
       </div>
     </div>

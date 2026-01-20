@@ -1,5 +1,13 @@
 // netlify/functions/revenue-predict.js
-// Revenue prediction using OLS regression with weather features
+// Revenue prediction using Ridge regression with weather features
+//
+// v4.0 (2026-01-20): Ridge regression & schema consolidation
+//   - Replace OLS with Ridge regression (L2 regularization) for stability
+//   - Add z-score feature standardization to handle scale differences
+//   - Add outlier winsorization (cap extreme values)
+//   - Lambda selection via 5-fold cross-validation
+//   - Model storage consolidated to app_settings.revenue_model
+//   - Removed dependency on model_coefficients table
 //
 // v3.0 (2026-01-20): Prediction tracking & validation
 //   - Save predictions to revenue_predictions table for accuracy tracking
@@ -540,6 +548,272 @@ function predict(beta, x) {
   return pred;
 }
 
+// ============== FEATURE STANDARDIZATION ==============
+
+/**
+ * Standardize features using z-score normalization
+ * z = (x - mean) / std
+ *
+ * Note: Intercept column (index 0) is NOT standardized
+ *
+ * @param {Array} data - Training data array with { x: features, y: target }
+ * @returns {Object} { scaledData, scaler: { means, stds } }
+ */
+function standardizeFeatures(data) {
+  const n = data.length;
+  const p = data[0].x.length;
+
+  // Initialize means and stds (keep intercept as-is)
+  const means = new Array(p).fill(0);
+  const stds = new Array(p).fill(1);
+
+  // Calculate means (skip intercept at index 0)
+  for (let j = 1; j < p; j++) {
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      sum += data[i].x[j];
+    }
+    means[j] = sum / n;
+  }
+
+  // Calculate standard deviations
+  for (let j = 1; j < p; j++) {
+    let sumSq = 0;
+    for (let i = 0; i < n; i++) {
+      sumSq += Math.pow(data[i].x[j] - means[j], 2);
+    }
+    stds[j] = Math.sqrt(sumSq / n);
+    // Avoid division by zero for constant features
+    if (stds[j] < 1e-10) stds[j] = 1;
+  }
+
+  // Scale the data
+  const scaledData = data.map(d => {
+    const scaledX = d.x.map((val, j) => {
+      if (j === 0) return 1; // Keep intercept as 1
+      return (val - means[j]) / stds[j];
+    });
+    return { ...d, x: scaledX };
+  });
+
+  return {
+    scaledData,
+    scaler: { means, stds }
+  };
+}
+
+/**
+ * Apply saved scaler to new prediction features
+ * Used when making predictions after training
+ */
+function applyScaler(x, scaler) {
+  if (!scaler || !scaler.means || !scaler.stds) return x;
+
+  return x.map((val, j) => {
+    if (j === 0) return 1; // Keep intercept
+    return (val - scaler.means[j]) / scaler.stds[j];
+  });
+}
+
+/**
+ * Back-transform standardized coefficients to original scale for display
+ *
+ * When features are standardized (z-score), coefficients are in "per standard deviation" units.
+ * To make them interpretable, we divide by the feature's std to get "per original unit".
+ *
+ * For lag features (rev_lag_1, rev_lag_7): coefficient / std gives "per R$1 of revenue"
+ * For binary features (is_weekend, etc): coefficient stays as-is (effect in R$)
+ *
+ * @param {Array} beta - Standardized coefficients
+ * @param {Object} scaler - Scaler with { means, stds }
+ * @param {Array} featureNames - Feature names for context
+ * @returns {Array} Coefficients in original scale
+ */
+function backTransformCoefficients(beta, scaler, featureNames = []) {
+  if (!scaler || !scaler.stds) return beta;
+
+  return beta.map((b, j) => {
+    if (j === 0) return b; // Intercept stays as-is
+
+    const std = scaler.stds[j];
+    if (!std || std < 1e-10) return b;
+
+    // For lag features (rev_lag_1, rev_lag_7), divide by std to get per-R$ coefficient
+    // For binary/small-range features, the std is small so effect is preserved
+    return b / std;
+  });
+}
+
+// ============== OUTLIER HANDLING ==============
+
+/**
+ * Winsorize revenue values to cap extreme outliers
+ * Replaces values outside [Q1-1.5*IQR, Q3+1.5*IQR] with boundary values
+ * This preserves sample size while reducing outlier influence
+ *
+ * @param {Array} data - Training data with { y: revenue, ... }
+ * @returns {Array} Data with winsorized y values
+ */
+function winsorizeRevenue(data) {
+  const revenues = data.map(d => d.y);
+  const sorted = [...revenues].sort((a, b) => a - b);
+
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+
+  const lower = q1 - 1.5 * iqr;
+  const upper = q3 + 1.5 * iqr;
+
+  return data.map(d => ({
+    ...d,
+    y: Math.max(lower, Math.min(upper, d.y)),
+    originalY: d.y,
+    wasWinsorized: d.y < lower || d.y > upper
+  }));
+}
+
+// ============== RIDGE REGRESSION ==============
+
+/**
+ * Fit Ridge regression model with L2 regularization
+ * beta = (X'X + lambda*I)^(-1) X'y
+ *
+ * Ridge regression handles multicollinearity by shrinking correlated
+ * coefficient estimates toward zero, producing more stable predictions.
+ *
+ * @param {Array} data - Training data with { x: features, y: target }
+ * @param {number} lambda - Regularization strength (0.01 to 10.0 typical)
+ * @returns {Object} { beta, mae, rSquared, rmse, n, standardError, lambda }
+ */
+function fitRidge(data, lambda = 1.0) {
+  const n = data.length;
+  const p = data[0].x.length;
+
+  // Build X matrix and y vector
+  const X = data.map(d => d.x);
+  const y = data.map(d => d.y);
+
+  // Calculate X'X
+  const Xt = transpose(X);
+  const XtX = multiply(Xt, X);
+
+  // Add lambda to diagonal (except intercept at position 0)
+  // This is the Ridge penalty: (X'X + lambda*I)
+  for (let i = 1; i < p; i++) {
+    XtX[i][i] += lambda;
+  }
+
+  // Calculate (X'X + lambda*I)^(-1)
+  const XtX_inv = invert(XtX);
+
+  // Calculate X'y
+  const Xty = multiplyMV(Xt, y);
+
+  // Calculate beta = (X'X + lambda*I)^(-1) X'y
+  const beta = multiplyMV(XtX_inv, Xty);
+
+  // Calculate predictions and residuals
+  const yHat = data.map(d => {
+    let pred = 0;
+    for (let j = 0; j < p; j++) {
+      pred += beta[j] * d.x[j];
+    }
+    return pred;
+  });
+
+  // Calculate metrics
+  const meanY = y.reduce((s, v) => s + v, 0) / n;
+
+  let ssRes = 0;  // Sum of squared residuals
+  let ssTot = 0;  // Total sum of squares
+  let absErrors = [];
+
+  for (let i = 0; i < n; i++) {
+    const residual = y[i] - yHat[i];
+    ssRes += residual * residual;
+    ssTot += (y[i] - meanY) * (y[i] - meanY);
+    absErrors.push(Math.abs(residual));
+  }
+
+  const rSquared = 1 - (ssRes / ssTot);
+  const rmse = Math.sqrt(ssRes / n);
+  const mae = absErrors.reduce((s, v) => s + v, 0) / n;
+
+  // Calculate standard error for confidence intervals
+  const mse = ssRes / (n - p);
+  const se = Math.sqrt(mse);
+
+  return {
+    beta,
+    mae: Math.round(mae),
+    rmse: Math.round(rmse),
+    rSquared: Math.round(rSquared * 1000) / 1000,
+    n,
+    meanRevenue: Math.round(meanY),
+    standardError: Math.round(se),
+    lambda
+  };
+}
+
+/**
+ * Select optimal lambda via k-fold cross-validation
+ * Tests multiple lambda values and returns the one with lowest CV error
+ *
+ * @param {Array} data - Scaled training data
+ * @param {number} k - Number of folds (default 5)
+ * @returns {Object} { lambda, cvMAE }
+ */
+function selectLambdaCV(data, k = 5) {
+  const lambdas = [0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0];
+  const n = data.length;
+  const foldSize = Math.floor(n / k);
+
+  let bestLambda = 1.0;
+  let bestMAE = Infinity;
+
+  for (const lambda of lambdas) {
+    let totalMAE = 0;
+    let validFolds = 0;
+
+    for (let fold = 0; fold < k; fold++) {
+      const testStart = fold * foldSize;
+      const testEnd = Math.min(testStart + foldSize, n);
+
+      const trainData = [...data.slice(0, testStart), ...data.slice(testEnd)];
+      const testData = data.slice(testStart, testEnd);
+
+      if (trainData.length < 10 || testData.length === 0) continue;
+
+      try {
+        const model = fitRidge(trainData, lambda);
+
+        // Calculate MAE on test fold
+        let foldMAE = 0;
+        for (const d of testData) {
+          const pred = predict(model.beta, d.x);
+          foldMAE += Math.abs(d.y - pred);
+        }
+        totalMAE += foldMAE / testData.length;
+        validFolds++;
+      } catch (e) {
+        // Skip if model fails
+        continue;
+      }
+    }
+
+    if (validFolds > 0) {
+      const avgMAE = totalMAE / validFolds;
+      if (avgMAE < bestMAE) {
+        bestMAE = avgMAE;
+        bestLambda = lambda;
+      }
+    }
+  }
+
+  return { lambda: bestLambda, cvMAE: Math.round(bestMAE) };
+}
+
 /**
  * Walk-forward cross-validation for honest out-of-sample metrics
  * Uses expanding window: train on days 1..t, predict day t+1
@@ -564,7 +838,7 @@ function walkForwardValidation(trainingData, minTrainSize = 30, stepSize = 1) {
     const testPoint = trainingData[t];
 
     try {
-      const model = fitOLS(trainSet);
+      const model = fitRidge(trainSet, 1.0);
       const predicted = predict(model.beta, testPoint.x);
       const actual = testPoint.y;
 
@@ -601,39 +875,46 @@ function walkForwardValidation(trainingData, minTrainSize = 30, stepSize = 1) {
 }
 
 /**
- * Save trained model to Supabase for caching
+ * Save trained model to Supabase app_settings.revenue_model
  * Called after on-the-fly training to avoid retraining on every request
  *
  * @param {Object} supabase - Supabase client
- * @param {Object} model - Trained model { beta, mae, rmse, rSquared, n, meanRevenue }
+ * @param {Object} model - Trained model { beta, mae, rmse, rSquared, n, meanRevenue, scaler, lambda }
  * @param {string} tier - Model tier (full, reduced, minimal, fallback)
  * @param {Object} metadata - Additional metadata { trainingStart, trainingEnd }
  */
 async function saveModelToCache(supabase, model, tier, metadata = {}) {
   try {
+    const revenueModel = {
+      beta: model.beta,
+      feature_names: FEATURE_NAMES[tier] || [],
+      mae: model.mae,
+      rmse: model.rmse,
+      r_squared: model.rSquared,
+      n_training_samples: model.n,
+      mean_revenue: model.meanRevenue,
+      model_complexity: tier,
+      trained_at: new Date().toISOString(),
+      training_period_start: metadata.trainingStart || null,
+      training_period_end: metadata.trainingEnd || null,
+      // Ridge-specific fields
+      regression_type: 'ridge',
+      lambda: model.lambda || 1.0,
+      scaler: model.scaler || null,
+      // OOS metrics (if available from training)
+      oos_mae: model.oosMAE || null,
+      oos_mape: model.oosMAPE || null
+    };
+
     const { error } = await supabase
-      .from('model_coefficients')
-      .upsert({
-        id: 'revenue_prediction',
-        beta: model.beta,
-        feature_names: FEATURE_NAMES[tier] || [],
-        mae: model.mae,
-        rmse: model.rmse,
-        r_squared: model.rSquared,
-        n_training_samples: model.n,
-        mean_revenue: model.meanRevenue,
-        model_complexity: tier,
-        trained_at: new Date().toISOString(),
-        training_period_start: metadata.trainingStart || null,
-        training_period_end: metadata.trainingEnd || null,
-        optimal_training_days: TRAINING_DAYS,
-        drying_pain_weights: { precip: 0.08, humidity: 0.03, sunDeficit: 0.20 }
-      }, { onConflict: 'id' });
+      .from('app_settings')
+      .update({ revenue_model: revenueModel })
+      .eq('id', 1);
 
     if (error) {
       console.error('Failed to cache model:', error.message);
     } else {
-      console.log('Model cached successfully');
+      console.log('Model cached to app_settings.revenue_model');
     }
   } catch (saveError) {
     console.error('Error saving model to cache:', saveError.message);
@@ -641,36 +922,76 @@ async function saveModelToCache(supabase, model, tier, metadata = {}) {
 }
 
 /**
- * Load trained model coefficients from Supabase
+ * Train a new Ridge regression model with the full pipeline:
+ * 1. Winsorize outliers
+ * 2. Standardize features (z-score)
+ * 3. Select optimal lambda via CV
+ * 4. Fit Ridge regression
+ *
+ * @param {Array} trainingData - Raw training data
+ * @returns {Object} Trained model with { beta, scaler, lambda, ... }
+ */
+function trainRidgeModel(trainingData) {
+  // Step 1: Winsorize outliers
+  const winsorizedData = winsorizeRevenue(trainingData);
+  const winsorizedCount = winsorizedData.filter(d => d.wasWinsorized).length;
+  if (winsorizedCount > 0) {
+    console.log(`Winsorized ${winsorizedCount} outliers`);
+  }
+
+  // Step 2: Standardize features
+  const { scaledData, scaler } = standardizeFeatures(winsorizedData);
+
+  // Step 3: Select optimal lambda via cross-validation
+  const { lambda, cvMAE } = selectLambdaCV(scaledData, 5);
+  console.log(`Selected lambda=${lambda} via CV (CV MAE=R$${cvMAE})`);
+
+  // Step 4: Fit Ridge regression with selected lambda
+  const model = fitRidge(scaledData, lambda);
+
+  // Return model with scaler for predictions
+  return {
+    ...model,
+    scaler,
+    lambda,
+    winsorizedCount
+  };
+}
+
+/**
+ * Load trained model from app_settings.revenue_model
  * Falls back to on-the-fly training if no cached model or stale (>48h)
- * Saves the model to cache after training for faster subsequent requests
+ * Uses Ridge regression with feature standardization
  *
  * @param {Object} supabase - Supabase client
  * @param {Array} trainingData - Pre-built training data for fallback
  * @param {string} tier - Model tier for saving
  * @param {Object} metadata - Additional metadata { trainingStart, trainingEnd }
- * @returns {Object} Model object with beta, mae, rSquared, etc.
+ * @returns {Object} Model object with beta, scaler, mae, rSquared, etc.
  */
 async function loadOrTrainModel(supabase, trainingData, tier = 'full', metadata = {}) {
   try {
-    // Try to load cached coefficients
-    const { data: cached, error } = await supabase
-      .from('model_coefficients')
-      .select('*')
-      .eq('id', 'revenue_prediction')
+    // Try to load cached model from app_settings.revenue_model
+    const { data: appSettings, error } = await supabase
+      .from('app_settings')
+      .select('revenue_model')
+      .eq('id', 1)
       .single();
 
     if (error) {
-      console.log('No cached model found, training on-the-fly...');
-      const model = fitOLS(trainingData);
+      console.log('Failed to load app_settings:', error.message);
+      console.log('Training new Ridge model...');
+      const model = trainRidgeModel(trainingData);
       await saveModelToCache(supabase, model, tier, metadata);
       return model;
     }
 
+    const cached = appSettings?.revenue_model;
+
     // Check if cached model exists and has coefficients
     if (!cached || !cached.beta) {
-      console.log('Cached model has no coefficients, training on-the-fly...');
-      const model = fitOLS(trainingData);
+      console.log('No cached model in app_settings.revenue_model, training...');
+      const model = trainRidgeModel(trainingData);
       await saveModelToCache(supabase, model, tier, metadata);
       return model;
     }
@@ -680,16 +1001,16 @@ async function loadOrTrainModel(supabase, trainingData, tier = 'full', metadata 
     try {
       beta = typeof cached.beta === 'string' ? JSON.parse(cached.beta) : cached.beta;
     } catch (parseError) {
-      console.log('Failed to parse cached coefficients, training on-the-fly...');
-      const model = fitOLS(trainingData);
+      console.log('Failed to parse cached coefficients, training...');
+      const model = trainRidgeModel(trainingData);
       await saveModelToCache(supabase, model, tier, metadata);
       return model;
     }
 
     // Check if beta is valid
     if (!Array.isArray(beta) || beta.length === 0) {
-      console.log('Invalid cached coefficients, training on-the-fly...');
-      const model = fitOLS(trainingData);
+      console.log('Invalid cached coefficients, training...');
+      const model = trainRidgeModel(trainingData);
       await saveModelToCache(supabase, model, tier, metadata);
       return model;
     }
@@ -700,16 +1021,23 @@ async function loadOrTrainModel(supabase, trainingData, tier = 'full', metadata 
     const maxAge = 48 * 60 * 60 * 1000; // 48 hours
 
     if (age > maxAge) {
-      console.log(`Cached model is stale (${Math.round(age / 3600000)}h old), training on-the-fly...`);
-      const model = fitOLS(trainingData);
+      console.log(`Cached model is stale (${Math.round(age / 3600000)}h old), training...`);
+      const model = trainRidgeModel(trainingData);
       await saveModelToCache(supabase, model, tier, metadata);
       return model;
     }
 
-    console.log(`Using cached model (trained ${Math.round(age / 3600000)}h ago, R²=${cached.r_squared})`);
+    // Check if cached model uses Ridge (not old OLS)
+    if (cached.regression_type !== 'ridge') {
+      console.log('Cached model is OLS, upgrading to Ridge...');
+      const model = trainRidgeModel(trainingData);
+      await saveModelToCache(supabase, model, tier, metadata);
+      return model;
+    }
+
+    console.log(`Using cached Ridge model (trained ${Math.round(age / 3600000)}h ago, λ=${cached.lambda}, R²=${cached.r_squared})`);
 
     // Return cached model in the expected format
-    // Include drift detection info from model_coefficients (set by campaign-scheduler)
     return {
       beta,
       mae: cached.mae || 0,
@@ -717,17 +1045,19 @@ async function loadOrTrainModel(supabase, trainingData, tier = 'full', metadata 
       rSquared: cached.r_squared || 0,
       n: cached.n_training_samples || 0,
       meanRevenue: cached.mean_revenue || 0,
-      standardError: cached.mae ? Math.round(cached.mae * 1.25) : 100, // Approximate SE from MAE
-      // Drift detection (populated by campaign-scheduler nightly)
-      driftDetected: cached.drift_detected || false,
-      driftRatio: cached.drift_ratio || null,
+      standardError: cached.mae ? Math.round(cached.mae * 1.25) : 100,
+      // Ridge-specific
+      scaler: cached.scaler || null,
+      lambda: cached.lambda || 1.0,
+      regressionType: cached.regression_type || 'ridge',
+      // OOS metrics
       oosMAE: cached.oos_mae || null,
       oosMAPE: cached.oos_mape || null
     };
   } catch (loadError) {
     console.warn('Error loading cached model:', loadError.message);
-    console.log('Falling back to on-the-fly training...');
-    const model = fitOLS(trainingData);
+    console.log('Falling back to on-the-fly Ridge training...');
+    const model = trainRidgeModel(trainingData);
     await saveModelToCache(supabase, model, tier, metadata);
     return model;
   }
@@ -1036,14 +1366,16 @@ async function generatePredictions(supabase) {
   let model;
   if (tier === 'fallback') {
     const meanRev = trainingData.reduce((s, d) => s + d.y, 0) / trainingData.length;
+    // Calculate MAE for fallback model (how far is each day from mean)
+    const fallbackMAE = trainingData.reduce((s, d) => s + Math.abs(d.y - meanRev), 0) / trainingData.length;
     model = {
       beta: [meanRev],
-      mae: 0,
+      mae: Math.round(fallbackMAE),
       rmse: 0,
       rSquared: 0,
       n: trainingData.length,
       meanRevenue: Math.round(meanRev),
-      standardError: 0
+      standardError: Math.round(fallbackMAE * 1.25)
     };
   } else {
     // Load cached model or train on-the-fly (and save to cache)
@@ -1099,10 +1431,24 @@ async function generatePredictions(supabase) {
       weatherImpact = 0;
       margin = 0;
     } else {
-      predictedRevenue = predict(model.beta, x);
+      // Apply scaler to features before prediction (Ridge model)
+      const scaledX = model.scaler ? applyScaler(x, model.scaler) : x;
+      predictedRevenue = predict(model.beta, scaledX);
       weatherImpact = calculateWeatherImpact(model.beta, features, model.meanRevenue, tier);
-      // Calculate confidence interval (±1.96 * SE for 95% CI)
-      margin = 1.96 * model.standardError;
+
+      // Calculate confidence interval using PERCENTAGE-based approach
+      // This is more useful than MAE-based intervals which create R$300+ ranges
+      // Tier-aware: more complex models get tighter percentages
+      const marginPercent = {
+        full: 0.30,     // ±30% for full model (12 features, more confident)
+        reduced: 0.40,  // ±40% for reduced model (7 features)
+        minimal: 0.50,  // ±50% for minimal model (3 features)
+        fallback: 0.60  // ±60% for fallback (mean only)
+      }[tier] || 0.40;
+
+      margin = predictedRevenue * marginPercent;
+      // Ensure minimum absolute margin of R$50
+      margin = Math.max(50, margin);
     }
 
     // Build prediction object
@@ -1155,20 +1501,23 @@ async function generatePredictions(supabase) {
       mean_daily_revenue: model.meanRevenue,
       last_trained: new Date().toISOString(),
       feature_names: FEATURE_NAMES[tier],
-      coefficients: model.beta.map(b => Math.round(b * 100) / 100),
+      // Back-transform coefficients from standardized to original scale for display
+      coefficients: backTransformCoefficients(model.beta, model.scaler, FEATURE_NAMES[tier])
+        .map(b => Math.round(b * 100) / 100),
       model_tier: tier,
       tier_message: tierMessage,
 
+      // Ridge regression parameters
+      regression_type: model.regressionType || 'ridge',
+      lambda: model.lambda || null,
+      standardized: model.scaler ? true : false,
+
       // Out-of-sample metrics (prediction quality - THESE ARE THE HONEST METRICS)
-      // Prefer cached OOS metrics from model_coefficients (more stable), fall back to computed
+      // Prefer cached OOS metrics from app_settings (more stable), fall back to computed
       oos_mae: model.oosMAE || oosMetrics?.oosMAE || null,
       oos_mape: model.oosMAPE || oosMetrics?.oosMAPE || null,
       oos_bias: oosMetrics?.oosBias || null,
       oos_validation_points: oosMetrics?.nPoints || null,
-
-      // Drift detection (populated by campaign-scheduler nightly)
-      drift_detected: model.driftDetected || false,
-      drift_ratio: model.driftRatio || null,
 
       // Historical tracking (actual vs predicted from past predictions)
       tracked_mae: predictionAccuracy?.avgMae || null,

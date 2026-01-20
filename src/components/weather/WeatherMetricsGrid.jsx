@@ -1,6 +1,22 @@
-// WeatherMetricsGrid.jsx v1.0
+// WeatherMetricsGrid.jsx v2.0
 // Detailed weather metrics display grid
 //
+// CHANGELOG:
+// v2.1 (2026-01-20): Removed left border stripe per user request
+// v2.0 (2026-01-20): Cosmic Precision upgrade
+//   - Applied Variant C: Neutral Dashboard Cosmic (blue tint)
+//   - Replaced glass card with gradient from-blue-50/40 via-white
+//   - Dark mode: from-blue-900/10 via-space-nebula
+//   - Cosmic compliant: Design System v5.1
+// v1.2 (2026-01-20): Design System v5.1 - no glow animations
+//   - Removed cyan outer glow per user request
+//   - Kept clean glass card with subtle shadow
+//   - Maintained backdrop-blur-xl and ring styling
+// v1.1 (2026-01-20): Cosmic Glass Card design
+//   - Applied premium glass card pattern (bg-space-dust/40 dark, bg-white/80 light)
+//   - Added backdrop-blur-xl for glassmorphism
+//   - Added soft glow ring and layered shadows
+//   - Theme-aware styling with useTheme hook
 // v1.0 (2025-12-20): Initial implementation
 //   - UV Index with level indicator
 //   - Wind speed and direction
@@ -21,6 +37,7 @@ import {
   Compass,
   Activity
 } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   getUVLevel,
   getUVColorClass,
@@ -222,9 +239,17 @@ const SunTimesCard = ({ sunrise, sunset }) => {
  * @param {string} props.className - Additional CSS classes
  */
 const WeatherMetricsGrid = ({ current, className = '' }) => {
+  const { isDark } = useTheme();
+
   if (!current) {
     return (
-      <div className={`bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl p-4 sm:p-6 ${className}`}>
+      <div className={`
+        bg-gradient-to-br from-blue-50/40 via-white to-white
+        dark:from-blue-900/10 dark:via-space-nebula dark:to-space-nebula
+        border border-slate-200/80 dark:border-stellar-cyan/10
+        rounded-2xl p-4 sm:p-6
+        ${className}
+      `}>
         <div className="text-center text-slate-500 dark:text-slate-400 py-6 sm:py-8 text-sm">
           Carregando métricas...
         </div>
@@ -233,13 +258,19 @@ const WeatherMetricsGrid = ({ current, className = '' }) => {
   }
 
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl shadow-sm ${className}`}>
+    <div className={`
+      bg-gradient-to-br from-blue-50/40 via-white to-white
+      dark:from-blue-900/10 dark:via-space-nebula dark:to-space-nebula
+      border border-slate-200/80 dark:border-stellar-cyan/10
+      rounded-2xl
+      ${className}
+    `}>
       {/* Header */}
-      <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-violet-500/20 to-purple-500/20 dark:from-violet-500/30 dark:to-purple-500/30">
-          <Activity className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+      <div className="p-3 sm:p-4 border-b border-slate-200/80 dark:border-stellar-cyan/10 flex items-center gap-2">
+        <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+          <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
         </div>
-        <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
+        <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">
           Métricas detalhadas
         </h3>
       </div>

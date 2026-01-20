@@ -2,6 +2,11 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v3.1 (2026-01-20): Schema consolidation
+//   - Model storage consolidated to app_settings.revenue_model
+//   - Removed model_coefficients and model_training_history writes
+//   - Drift detection now updates app_settings.revenue_model directly
+//
 // v3.0 (2026-01-20): Prediction tracking and drift detection
 //   - Added evaluatePredictions() to compare yesterday's prediction with actual
 //   - Added checkModelDrift() to detect when recent errors exceed baseline
@@ -13,13 +18,10 @@
 //   - Interaction terms: weekend×drying, weekend×rain, holiday×drying
 //   - Tiered model complexity: full (12 features), reduced (7), minimal (3), fallback (mean)
 //   - Data quality tracking: missing weather, outliers, holidays in range
-//   - Stores model_complexity and data_quality to model_coefficients
 //   - Prepares for weekly cross-validation (window optimization)
 //
 // v2.16 (2025-12-21): Revenue model training
 //   - Added daily model retraining at midnight Brazil time (03:00 UTC)
-//   - Stores coefficients to model_coefficients table
-//   - Logs training history to model_training_history table
 //   - Uses OLS regression with lag features (matches revenue-predict.js)
 //
 // v2.15 (2025-12-19): Blacklist sync
@@ -1642,63 +1644,35 @@ async function trainRevenueModel(supabase, options = {}) {
 
     const featureNames = FEATURE_NAMES[tier];
 
-    // Store coefficients with new fields
-    const { error: upsertError } = await supabase
-      .from('model_coefficients')
-      .upsert({
-        id: 'revenue_prediction',
-        beta: JSON.stringify(model.beta),
-        feature_names: JSON.stringify(featureNames),
-        r_squared: model.rSquared,
-        mae: model.mae,
-        rmse: model.rmse,
-        mean_revenue: model.meanRevenue,
-        n_training_samples: model.n,
-        trained_at: new Date().toISOString(),
-        training_period_start: trainingStart,
-        training_period_end: today,
-        updated_at: new Date().toISOString(),
-        // New v2.17 fields
-        model_complexity: tier,
-        data_quality: dataQuality,
-        optimal_training_days: trainingDays
-      });
+    // Store model to app_settings.revenue_model (consolidated storage)
+    const revenueModel = {
+      beta: model.beta,
+      feature_names: featureNames,
+      r_squared: model.rSquared,
+      mae: model.mae,
+      rmse: model.rmse,
+      mean_revenue: model.meanRevenue,
+      n_training_samples: model.n,
+      trained_at: new Date().toISOString(),
+      training_period_start: trainingStart,
+      training_period_end: today,
+      model_complexity: tier,
+      data_quality: dataQuality,
+      optimal_training_days: trainingDays,
+      // OLS model (campaign-scheduler still uses OLS for simplicity)
+      regression_type: 'ols',
+      lambda: null,
+      scaler: null
+    };
 
-    if (upsertError) {
-      console.error('Failed to save model coefficients:', upsertError);
-      throw new Error(`Coefficient save failed: ${upsertError.message}`);
-    }
-
-    // Add to training history with new fields
-    const { error: historyError } = await supabase
-      .from('model_training_history')
-      .insert({
-        model_id: 'revenue_prediction',
-        r_squared: model.rSquared,
-        mae: model.mae,
-        rmse: model.rmse,
-        n_training_samples: model.n,
-        training_period_start: trainingStart,
-        training_period_end: today,
-        // New v2.17 fields
-        optimal_training_days: trainingDays,
-        model_complexity: tier,
-        data_quality: dataQuality
-      });
-
-    if (historyError) {
-      console.error('Failed to save training history:', historyError);
-      // Don't throw - history is nice-to-have, not critical
-    }
-
-    // Update last trained timestamp in app_settings
     const { error: settingsError } = await supabase
       .from('app_settings')
-      .update({ revenue_model_last_trained: new Date().toISOString() })
-      .eq('id', 'default');
+      .update({ revenue_model: revenueModel })
+      .eq('id', 1);
 
     if (settingsError) {
-      console.error('Failed to update app_settings:', settingsError);
+      console.error('Failed to save model to app_settings:', settingsError);
+      throw new Error(`Model save failed: ${settingsError.message}`);
     }
 
     console.log(`Model trained: R²=${model.rSquared}, MAE=R$${model.mae}, samples=${model.n}, tier=${tier}`);
@@ -1766,6 +1740,9 @@ async function evaluatePredictions(supabase) {
       ? ((error / actualRevenue) * 100)
       : null;
 
+    // Closure day: revenue < R$100 (excluded from main accuracy metrics)
+    const isClosure = actualRevenue < 100;
+
     // Update the prediction record with actual values
     const { error: updateError } = await supabase
       .from('revenue_predictions')
@@ -1774,7 +1751,8 @@ async function evaluatePredictions(supabase) {
         error: Math.round(error * 100) / 100,
         abs_error: Math.round(absError * 100) / 100,
         pct_error: pctError ? Math.round(pctError * 10) / 10 : null,
-        evaluated_at: new Date().toISOString()
+        evaluated_at: new Date().toISOString(),
+        is_closure: isClosure
       })
       .eq('id', prediction.id);
 
@@ -1783,7 +1761,7 @@ async function evaluatePredictions(supabase) {
       return { evaluated: false, reason: 'update_failed', error: updateError.message };
     }
 
-    console.log(`Prediction evaluated: predicted R$${predictedRevenue.toFixed(0)}, actual R$${actualRevenue.toFixed(0)}, error R$${error.toFixed(0)} (${pctError?.toFixed(1) || '—'}%)`);
+    console.log(`Prediction evaluated: predicted R$${predictedRevenue.toFixed(0)}, actual R$${actualRevenue.toFixed(0)}, error R$${error.toFixed(0)} (${pctError?.toFixed(1) || '—'}%)${isClosure ? ' [CLOSURE DAY - excluded from accuracy]' : ''}`);
 
     return {
       evaluated: true,
@@ -1854,24 +1832,31 @@ async function checkModelDrift(supabase) {
 
     console.log(`Drift check: recent MAE=R$${recentMAE.toFixed(0)}, baseline MAE=R$${baselineMAE.toFixed(0)}, ratio=${driftRatio.toFixed(2)}, drifting=${isDrifting}`);
 
-    // Update model_coefficients with drift info
-    if (isDrifting) {
-      await supabase
-        .from('model_coefficients')
-        .update({
-          drift_detected: true,
-          drift_ratio: Math.round(driftRatio * 100) / 100
-        })
-        .eq('id', 'revenue_prediction');
-    } else {
-      // Clear drift flag if no longer drifting
-      await supabase
-        .from('model_coefficients')
-        .update({
-          drift_detected: false,
-          drift_ratio: Math.round(driftRatio * 100) / 100
-        })
-        .eq('id', 'revenue_prediction');
+    // Update app_settings.revenue_model with drift info via SQL (partial JSON update)
+    // We use rpc to update just the drift fields without overwriting the whole model
+    try {
+      const { data: appSettings } = await supabase
+        .from('app_settings')
+        .select('revenue_model')
+        .eq('id', 1)
+        .single();
+
+      if (appSettings?.revenue_model) {
+        const updatedModel = {
+          ...appSettings.revenue_model,
+          drift_detected: isDrifting,
+          drift_ratio: Math.round(driftRatio * 100) / 100,
+          oos_mae: Math.round(recentMAE),
+          last_drift_check: new Date().toISOString()
+        };
+
+        await supabase
+          .from('app_settings')
+          .update({ revenue_model: updatedModel })
+          .eq('id', 1);
+      }
+    } catch (updateErr) {
+      console.warn('Failed to update drift info in app_settings:', updateErr.message);
     }
 
     return {

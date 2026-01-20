@@ -1,6 +1,27 @@
-// WeatherBusinessImpact.jsx v2.2 - HAPTIC FEEDBACK
-// Forward-looking weather business impact with OLS regression model
+// WeatherBusinessImpact.jsx v3.0 - DESIGN SYSTEM v5.1
+// Forward-looking weather business impact with Ridge regression model
 //
+// CHANGELOG:
+// v3.1 (2026-01-20): Removed left border stripe per user request
+// v3.0 (2026-01-20): Cosmic Precision upgrade
+//   - Applied Variant C: Neutral Dashboard Cosmic (teal tint)
+//   - Replaced glass card with gradient from-teal-50/40 via-white
+//   - Dark mode: from-teal-900/10 via-space-nebula
+//   - Updated header icon to teal accent
+//   - Cosmic compliant: Design System v5.1
+// v2.5 (2026-01-20): Design System v5.1 - no glow animations
+//   - Removed cyan outer glow per user request
+//   - Kept clean glass card with subtle shadow
+//   - Maintained backdrop-blur-xl and ring styling
+// v2.4 (2026-01-20): Cosmic Glass Card design
+//   - Applied premium glass card pattern (bg-space-dust/40 dark, bg-white/80 light)
+//   - Added backdrop-blur-xl for glassmorphism
+//   - Added soft glow ring and layered shadows
+//   - Theme-aware styling with useTheme hook
+// v2.3 (2026-01-20): Confidence range indicators on day cards
+//   - Shows confidence interval range (R$ X - R$ Y) on each prediction
+//   - Uses OOS metrics (tracked_mape, oos_mape) for confidence badges
+//   - Supports Ridge regression model from revenue-predict.js v4.0
 // v2.2 (2025-12-22): Added haptic feedback on diagnostics modal
 // v2.1 (2025-12-21): Enhanced UX with confidence badges and holiday display
 //   - Confidence quality badge (Excelente/Bom/Razoável/Baixa based on R²)
@@ -37,6 +58,7 @@ import ModelDiagnostics from './ModelDiagnostics';
 import useRevenuePrediction, { calculateWeeklySummary } from '../../hooks/useRevenuePrediction';
 import { formatDateShort, getDayNamePt } from '../../utils/weatherUtils';
 import { haptics } from '../../utils/haptics';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ============== SUB-COMPONENTS ==============
 
@@ -105,6 +127,16 @@ function formatCurrencyCompact(value) {
 }
 
 /**
+ * Format confidence range for display
+ */
+function formatConfidenceRange(low, high) {
+  if (!low && !high) return null;
+  const lowStr = formatCurrencyCompact(low);
+  const highStr = formatCurrencyCompact(high);
+  return `${lowStr} - ${highStr}`;
+}
+
+/**
  * Single day prediction card
  */
 const DayPredictionCard = ({ prediction, forecast, isToday = false }) => {
@@ -134,6 +166,11 @@ const DayPredictionCard = ({ prediction, forecast, isToday = false }) => {
 
   // Build tooltip text: "Véspera de X" for eves, just "X" for holidays
   const tooltipText = isHoliday ? holidayName : isHolidayEve ? `Véspera de ${holidayEveName}` : null;
+
+  // Confidence interval
+  const confidenceLow = prediction?.confidence_low;
+  const confidenceHigh = prediction?.confidence_high;
+  const hasConfidence = confidenceLow && confidenceHigh && !isClosed;
 
   return (
     <div className={`
@@ -179,13 +216,20 @@ const DayPredictionCard = ({ prediction, forecast, isToday = false }) => {
       </div>
 
       {/* Predicted revenue or closed message */}
-      <div className="text-base font-bold text-slate-900 dark:text-white mb-1">
+      <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">
         {isClosed ? (
           <span className="text-red-500 dark:text-red-400">—</span>
         ) : (
           formatCurrencyCompact(prediction?.predicted_revenue)
         )}
       </div>
+
+      {/* Confidence range */}
+      {hasConfidence && (
+        <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-1">
+          {formatConfidenceRange(confidenceLow, confidenceHigh)}
+        </div>
+      )}
 
       {/* Weather impact percentage or closed indicator */}
       {isClosed ? (
@@ -378,13 +422,31 @@ const InsightCard = ({ predictions, modelInfo }) => {
 };
 
 /**
- * Get confidence quality based on R²
+ * Get confidence quality based on OOS MAPE (or fallback to R²)
+ * Lower MAPE = better predictions
  */
-function getConfidenceQuality(rSquared) {
-  if (rSquared >= 0.85) return { label: 'Excelente', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' };
-  if (rSquared >= 0.75) return { label: 'Bom', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' };
-  if (rSquared >= 0.60) return { label: 'Razoável', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' };
-  return { label: 'Baixa', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20' };
+function getConfidenceQuality(modelInfo) {
+  // Prefer tracked MAPE (actual predictions vs actuals), then OOS MAPE, then R²
+  const mape = modelInfo?.tracked_mape || modelInfo?.oos_mape;
+
+  if (mape !== null && mape !== undefined) {
+    // MAPE-based quality (lower is better)
+    // Thresholds adjusted for revenue prediction domain where:
+    // - Daily revenue has high variance (closures, holidays, weather)
+    // - 45-50% MAPE is a good result given inherent unpredictability
+    if (mape <= 25) return { label: 'Excelente', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20', metric: `MAPE ${Math.round(mape)}%` };
+    if (mape <= 40) return { label: 'Bom', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', metric: `MAPE ${Math.round(mape)}%` };
+    if (mape <= 55) return { label: 'Razoável', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20', metric: `MAPE ${Math.round(mape)}%` };
+    return { label: 'Baixa', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', metric: `MAPE ${Math.round(mape)}%` };
+  }
+
+  // Fallback to R² if no OOS metrics
+  const rSquared = modelInfo?.r_squared || 0;
+  const rSquaredPct = Math.round(rSquared * 100);
+  if (rSquared >= 0.85) return { label: 'Excelente', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20', metric: `R² ${rSquaredPct}%` };
+  if (rSquared >= 0.75) return { label: 'Bom', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', metric: `R² ${rSquaredPct}%` };
+  if (rSquared >= 0.60) return { label: 'Razoável', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20', metric: `R² ${rSquaredPct}%` };
+  return { label: 'Baixa', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', metric: `R² ${rSquaredPct}%` };
 }
 
 /**
@@ -395,9 +457,11 @@ const ModelBadge = ({ modelInfo, onClick }) => {
 
   if (!modelInfo) return null;
 
-  const rSquared = modelInfo.r_squared || 0;
-  const rSquaredPct = Math.round(rSquared * 100);
-  const quality = getConfidenceQuality(rSquared);
+  const quality = getConfidenceQuality(modelInfo);
+  const hasOOSMetrics = modelInfo.tracked_mape || modelInfo.oos_mape;
+  const trackedMAPE = modelInfo.tracked_mape;
+  const trackedMAE = modelInfo.tracked_mae;
+  const rSquaredPct = Math.round((modelInfo.r_squared || 0) * 100);
 
   return (
     <div className="relative">
@@ -409,27 +473,63 @@ const ModelBadge = ({ modelInfo, onClick }) => {
       >
         <FlaskConical className={`w-3.5 h-3.5 ${quality.color}`} />
         <span className={`text-xs font-medium ${quality.color}`}>
-          {quality.label} ({rSquaredPct}%)
+          {quality.label} ({quality.metric})
         </span>
         <Info className="w-3 h-3 text-slate-400" />
       </button>
 
       {/* Tooltip */}
       {showTooltip && (
-        <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10">
+        <div className="absolute right-0 top-full mt-2 w-72 p-3 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10">
           <p className="text-xs font-semibold text-slate-900 dark:text-white mb-2">
-            Precisão do Modelo
+            Precisão do Modelo {modelInfo.regression_type === 'ridge' ? '(Ridge)' : ''}
           </p>
           <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-            <p>
-              <span className="font-medium">R² = {rSquaredPct}%</span> — O modelo explica {rSquaredPct}% da variação na receita
+            {/* OOS metrics (most important) */}
+            {hasOOSMetrics && (
+              <>
+                <p className="font-medium text-slate-900 dark:text-white">
+                  Métricas Reais (fora da amostra):
+                </p>
+                {trackedMAPE && (
+                  <p>
+                    <span className="font-medium">MAPE = {Math.round(trackedMAPE)}%</span> — Erro percentual médio
+                  </p>
+                )}
+                {trackedMAE && (
+                  <p>
+                    <span className="font-medium">MAE = R${trackedMAE}</span> — Erro absoluto médio
+                  </p>
+                )}
+                {modelInfo.tracked_predictions > 0 && (
+                  <p className="text-slate-500">
+                    Baseado em {modelInfo.tracked_predictions} previsões verificadas
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* In-sample metrics */}
+            <p className={hasOOSMetrics ? 'mt-2 font-medium text-slate-700 dark:text-slate-300' : ''}>
+              {hasOOSMetrics ? 'Métricas de Treinamento:' : ''}
             </p>
             <p>
-              <span className="font-medium">MAE = R${modelInfo.mae}</span> — Erro médio absoluto por dia
+              <span className="font-medium">R² = {rSquaredPct}%</span> — Ajuste do modelo aos dados
             </p>
             <p>
-              <span className="font-medium">{modelInfo.n_training_samples} dias</span> de dados de treinamento
+              <span className="font-medium">MAE = R${modelInfo.mae}</span> — Erro médio (treino)
             </p>
+            <p>
+              <span className="font-medium">{modelInfo.n_training_samples} dias</span> de treinamento
+            </p>
+
+            {/* Ridge parameters */}
+            {modelInfo.lambda && (
+              <p className="text-slate-500">
+                Regularização: λ = {modelInfo.lambda}
+              </p>
+            )}
+
             {modelInfo.model_tier && modelInfo.model_tier !== 'full' && (
               <p className="text-amber-600 dark:text-amber-400">
                 Modelo simplificado devido a dados limitados
@@ -506,6 +606,8 @@ const WeatherBusinessImpact = ({
   formatCurrency = (v) => `R$ ${Math.round(v || 0)}`,
   className = ''
 }) => {
+  const { isDark } = useTheme();
+
   // Fetch predictions from backend
   const {
     predictions,
@@ -536,11 +638,19 @@ const WeatherBusinessImpact = ({
     });
   }, [predictions, forecast]);
 
+  // Variant C: Neutral Dashboard Cosmic (teal tint)
+  const cosmicCardClasses = `
+    bg-gradient-to-br from-teal-50/40 via-white to-white
+    dark:from-teal-900/10 dark:via-space-nebula dark:to-space-nebula
+    border border-slate-200/80 dark:border-stellar-cyan/10
+    rounded-2xl
+  `;
+
   // Loading state
   if (loading && !hasData) {
     return (
-      <div className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm ${className}`}>
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+      <div className={`${cosmicCardClasses} ${className}`}>
+        <div className="p-4 border-b border-slate-200/80 dark:border-stellar-cyan/10">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Impacto no Negócio
           </h3>
@@ -558,8 +668,8 @@ const WeatherBusinessImpact = ({
   // Error state
   if (error && !hasData) {
     return (
-      <div className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm ${className}`}>
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+      <div className={`${cosmicCardClasses} ${className}`}>
+        <div className="p-4 border-b border-slate-200/80 dark:border-stellar-cyan/10">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Impacto no Negócio
           </h3>
@@ -584,8 +694,8 @@ const WeatherBusinessImpact = ({
   // No data state
   if (!hasData) {
     return (
-      <div className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm ${className}`}>
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+      <div className={`${cosmicCardClasses} ${className}`}>
+        <div className="p-4 border-b border-slate-200/80 dark:border-stellar-cyan/10">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Impacto no Negócio
           </h3>
@@ -604,16 +714,16 @@ const WeatherBusinessImpact = ({
   }
 
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm ${className}`}>
+    <div className={`${cosmicCardClasses} ${className}`}>
       {/* Header */}
-      <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="p-4 border-b border-slate-200/80 dark:border-stellar-cyan/10">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30 flex-shrink-0 mt-0.5">
-              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="p-2 bg-teal-100 dark:bg-teal-900/40 rounded-lg flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-teal-600 dark:text-teal-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              <h3 className="text-base font-bold text-slate-800 dark:text-white">
                 Impacto no Negócio
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
