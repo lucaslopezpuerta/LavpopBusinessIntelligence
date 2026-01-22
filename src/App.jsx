@@ -552,7 +552,15 @@ function AppContent() {
   // Main App
   return (
     <MotionConfig reducedMotion={prefersReducedMotion ? 'always' : 'never'}>
-      <div className={`min-h-screen ${isDark ? 'bg-space-void' : 'bg-slate-50'} transition-colors duration-300`}>
+      <div className={`min-h-screen ${isDark ? 'bg-space-void' : 'bg-slate-50'} transition-colors duration-300 relative`}>
+        {/* Subtle grid pattern - light mode only */}
+        {!isDark && (
+          <div
+            className="fixed inset-0 bg-grid-light pointer-events-none z-0"
+            aria-hidden="true"
+          />
+        )}
+
         {/* Sidebar Navigation */}
         <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} />
 
@@ -564,7 +572,8 @@ function AppContent() {
 
         {/* Main Content Area - with sidebar offset (dynamic when pinned) */}
         {/* pb-bottom-nav: 80px + safe-area-inset on mobile, 0 on desktop (lg+) */}
-        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 pb-bottom-nav ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-16'}`}>
+        {/* z-10 to appear above the grid pattern background */}
+        <div className={`min-h-screen flex flex-col transition-[padding] duration-300 pb-bottom-nav ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-16'} relative z-10`}>
           {/* Top Bar */}
           <MinimalTopBar
             refreshing={refreshing}

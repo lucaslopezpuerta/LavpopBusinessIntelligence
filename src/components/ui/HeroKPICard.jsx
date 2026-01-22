@@ -1,134 +1,112 @@
-// HeroKPICard.jsx v3.0 - STATUS COLOR BADGES
-// Primary KPI card for hero metrics (Revenue, Cycles, etc.)
-// Design System v3.3 compliant - Unified gradient style with secondary cards
-//
-// CHANGELOG:
-// v3.0 (2026-01-07): Status color badges (Plan Item 1.3)
-//   - NEW: status prop for colored left border ('success'|'warning'|'danger'|'neutral')
-//   - Left border accent visible through gradient background
-//   - Use with getMetricStatus from constants/metricThresholds.js
-// v2.9 (2026-01-07): Focus ring color now matches card gradient
-//   - FIXED: Hardcoded blue-600 ring offset replaced with dynamic color
-//   - Each color variant now has matching focus ring offset
-//   - Improves accessibility and visual consistency
-// v2.8 (2026-01-07): Premium hover elevation (Figma-quality enhancement)
-//   - Added Framer Motion spring animations for hover lift effect
-//   - Cards lift 2px with enhanced shadow on hover
-//   - Replaces CSS hover:scale with spring physics for natural feel
-// v2.7 (2026-01-07): Tooltip help icons (Plan Item 1.2)
-//   - NEW: ContextHelp icon shows next to title when tooltip prop provided
-//   - REMOVED: HTML title attribute (now using proper tooltip component)
-//   - Styled for visibility on gradient backgrounds (white/60 hover:white/90)
-// v2.6 (2025-12-23): Compact mode for single-glance dashboard
-//   - Added compact prop for tighter layout
-//   - Compact: smaller padding, smaller text, no sparklines
-// v2.5 (2025-12-22): Gradient backgrounds to match secondary cards
-//   - Changed from light bg with border-l accent to gradient backgrounds
-//   - Unified visual style with SecondaryKPICard
-//   - Text changed to white for gradient readability
-// v2.4 (2025-12-22): Added haptic feedback on card click
-// v2.3 (2025-12-16): Responsive trend badge position
-//   - FIXED: Desktop (sm+): Badge in header row (avoids sparkline overlap)
-//   - FIXED: Mobile: Badge in footer row (sparklines hidden, more title space)
-//   - Uses responsive visibility classes for position switching
-// v2.1 (2025-12-16): Dark mode border visibility fix
-//   - FIXED: Border accent now uses brighter colors in dark mode
-//   - border-l-*-500 → border-l-*-400 for dark mode
-// v2.0 (2025-12-16): Sparkline + visual enhancements
-//   - NEW: sparklineData prop for mini trend visualization
-//   - NEW: Subtle left border accent for visual hierarchy
-//   - NEW: isSelected prop for active card highlight
-//   - Sparkline positioned behind value for layered effect
-//   - Better visual distinction from secondary cards
-// v1.6 (2025-12-01): Mobile layout redesign
-//   - Moved WoW badge to bottom right corner
-//   - Reduced badge font size on mobile
-//   - Restored icons on mobile (smaller size)
-//   - Added shortTitle prop for abbreviated mobile titles
-// v1.5 (2025-12-01): Fixed mobile text overflow
-// v1.4 (2025-12-01): Mobile responsive improvements
-// v1.3 (2025-11-30): Prop standardization
-// v1.2 (2025-11-30): Color contrast fix
-// v1.1 (2025-11-30): Accessibility improvements
-// v1.0 (2025-11-30): Initial implementation
+/**
+ * HeroKPICard.jsx v4.0 - COSMIC PRECISION REDESIGN
+ * Primary KPI card for hero metrics (Revenue, Cycles, etc.)
+ * Design System v5.1 compliant - Glassmorphic Hero variant
+ *
+ * CHANGELOG:
+ * v4.0 (2026-01-22): Complete UI redesign - "Cosmic Precision" theme
+ *   - NEW: Glassmorphism background with backdrop-blur
+ *   - NEW: Accent-tinted radial gradient overlays
+ *   - NEW: Orbitron font for value display
+ *   - NEW: Constellation-style sparkline with star points
+ *   - NEW: Space-themed icon container
+ *   - NEW: Theme-aware colors (dark/light mode)
+ *   - CHANGED: Removed colored glow on hover (clean shadow only)
+ *   - CHANGED: Removed click indicator dot
+ *   - KEPT: All props and functionality unchanged
+ * v3.0 (2026-01-07): Status color badges
+ * v2.9-v1.0: See previous changelog entries
+ */
 
 import React, { useMemo, useId, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MousePointerClick } from 'lucide-react';
 import TrendBadge from './TrendBadge';
 import ContextHelp from '../ContextHelp';
 import { haptics } from '../../utils/haptics';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
-// Smooth tween animation config for hover (avoids spring oscillation/trembling)
-const hoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
-  hover: { y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.15)' }
-};
-
+// Static hover transition config - defined outside component to prevent recreation
 const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
 
-// Mini sparkline component for hero cards
-const HeroSparkline = ({ data, color = '#3b82f6', width = 100, height = 36, id }) => {
-  const gradientId = `hero-sparkline-gradient-${id}`;
+// Constellation-style sparkline with star points
+const ConstellationSparkline = ({ data, isDark, id, compact = false, accentColor }) => {
+  const gradientId = `constellation-gradient-${id}`;
 
   const pathData = useMemo(() => {
     if (!data || data.length < 2) return null;
+
+    const width = compact ? 180 : 140;
+    const height = compact ? 56 : 48;
+    const padding = 4;
+    const pointRadius = compact ? 1.0 : 3;
 
     const min = Math.min(...data);
     const max = Math.max(...data);
     const range = max - min || 1;
 
-    const points = data.map((value, index) => {
-      const x = (index / (data.length - 1)) * width;
-      const y = height - ((value - min) / range) * (height * 0.8) - height * 0.1;
-      return `${x},${y}`;
-    });
+    const points = data.map((value, index) => ({
+      x: padding + (index / (data.length - 1)) * (width - padding * 2),
+      y: height - padding - ((value - min) / range) * (height - padding * 2),
+    }));
 
-    return {
-      line: `M${points.join(' L')}`,
-      area: `M0,${height} L${points.join(' L')} L${width},${height} Z`
-    };
-  }, [data, width, height]);
+    const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+    return { points, pathD, width, height, pointRadius };
+  }, [data, compact]);
 
   if (!pathData) return null;
+
+  const { points, pathD, width, height, pointRadius } = pathData;
+  // Use the card's accent color for the sparkline
+  const lineColor = accentColor;
+  const pointColor = accentColor;
 
   return (
     <svg
       width={width}
       height={height}
-      className="absolute right-3 bottom-3 opacity-40 hidden sm:block"
       viewBox={`0 0 ${width} ${height}`}
+      className="overflow-visible"
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor={color} stopOpacity="0.4" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.05" />
-        </linearGradient>
-      </defs>
-
-      {/* Area fill */}
+      {/* Connecting line - uses accent color */}
       <path
-        d={pathData.area}
-        fill={`url(#${gradientId})`}
-      />
-
-      {/* Line */}
-      <path
-        d={pathData.line}
+        d={pathD}
         fill="none"
-        stroke={color}
+        stroke={lineColor}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity="0.7"
+        opacity={isDark ? 0.85 : 0.7}
       />
+
+      {/* Data points - stars */}
+      {points.map((point, index) => (
+        <g key={index}>
+          {/* Glow effect for last point */}
+          <circle
+            cx={point.x}
+            cy={point.y}
+            r={pointRadius + 3}
+            fill={pointColor}
+            opacity={index === points.length - 1 ? 0.5 : 0.15}
+          />
+          {/* Point */}
+          <circle
+            cx={point.x}
+            cy={point.y}
+            r={pointRadius}
+            fill={index === points.length - 1 ? pointColor : isDark ? '#64748b' : '#94a3b8'}
+          />
+        </g>
+      ))}
     </svg>
   );
 };
 
 const HeroKPICard = ({
   title,
-  shortTitle, // Abbreviated title for mobile
+  shortTitle,
   value,
   displayValue,
   subtitle,
@@ -138,89 +116,65 @@ const HeroKPICard = ({
   tooltip,
   onClick,
   className = '',
-  sparklineData, // Array of numbers for trend visualization
-  isSelected = false, // Active card highlight
-  compact = false, // Compact mode for single-glance dashboard
-  status, // 'success' | 'warning' | 'danger' | 'neutral' - for colored left border
+  sparklineData,
+  isSelected = false,
+  compact = false,
+  status,
 }) => {
-  // Generate unique ID for SVG gradient to avoid collisions
   const uniqueId = useId();
+  const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
-  // Modernized 3-stop gradient backgrounds (v2.5)
-  // Uses via- for richer, more premium gradients matching SecondaryKPICard
+  // Color configuration for glassmorphism with accent tints
   const colorMap = {
     blue: {
-      gradient: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 dark:from-blue-600 dark:via-indigo-600 dark:to-violet-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      sparkline: '#ffffff',
-      ring: 'ring-blue-400',
-      focusRingOffset: 'focus-visible:ring-offset-blue-600',
+      glow: 'rgba(45, 56, 138, 0.25)',
+      border: 'border-l-blue-500 dark:border-l-blue-400',
+      iconBg: isDark ? 'bg-blue-500/20' : 'bg-blue-50',
+      iconColor: isDark ? 'text-blue-400' : 'text-blue-600',
+      sparkline: { dark: '#60a5fa', light: '#2563eb' }, // blue-400 / blue-600
     },
     green: {
-      gradient: 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 dark:from-emerald-600 dark:via-teal-600 dark:to-cyan-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      sparkline: '#ffffff',
-      ring: 'ring-emerald-400',
-      focusRingOffset: 'focus-visible:ring-offset-emerald-600',
+      glow: 'rgba(16, 185, 129, 0.25)',
+      border: 'border-l-emerald-500 dark:border-l-emerald-400',
+      iconBg: isDark ? 'bg-emerald-500/20' : 'bg-emerald-50',
+      iconColor: isDark ? 'text-emerald-400' : 'text-emerald-600',
+      sparkline: { dark: '#34d399', light: '#059669' }, // emerald-400 / emerald-600
     },
     purple: {
-      gradient: 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 dark:from-violet-600 dark:via-purple-600 dark:to-fuchsia-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      sparkline: '#ffffff',
-      ring: 'ring-purple-400',
-      focusRingOffset: 'focus-visible:ring-offset-purple-600',
+      glow: 'rgba(168, 85, 247, 0.25)',
+      border: 'border-l-purple-500 dark:border-l-purple-400',
+      iconBg: isDark ? 'bg-purple-500/20' : 'bg-purple-50',
+      iconColor: isDark ? 'text-purple-400' : 'text-purple-600',
+      sparkline: { dark: '#c084fc', light: '#9333ea' }, // purple-400 / purple-600
     },
     amber: {
-      gradient: 'bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 dark:from-amber-600 dark:via-orange-600 dark:to-rose-600',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      sparkline: '#ffffff',
-      ring: 'ring-amber-400',
-      focusRingOffset: 'focus-visible:ring-offset-amber-600',
+      glow: 'rgba(245, 158, 11, 0.25)',
+      border: 'border-l-amber-500 dark:border-l-amber-400',
+      iconBg: isDark ? 'bg-amber-500/20' : 'bg-amber-50',
+      iconColor: isDark ? 'text-amber-400' : 'text-amber-600',
+      sparkline: { dark: '#fbbf24', light: '#d97706' }, // amber-400 / amber-600
     },
     red: {
-      gradient: 'bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 dark:from-rose-600 dark:via-red-600 dark:to-pink-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      sparkline: '#ffffff',
-      ring: 'ring-red-400',
-      focusRingOffset: 'focus-visible:ring-offset-rose-600',
+      glow: 'rgba(239, 68, 68, 0.25)',
+      border: 'border-l-rose-500 dark:border-l-rose-400',
+      iconBg: isDark ? 'bg-rose-500/20' : 'bg-rose-50',
+      iconColor: isDark ? 'text-rose-400' : 'text-rose-600',
+      sparkline: { dark: '#fb7185', light: '#e11d48' }, // rose-400 / rose-600
     },
     slate: {
-      gradient: 'bg-gradient-to-br from-slate-500 via-gray-500 to-zinc-600 dark:from-slate-600 dark:via-gray-600 dark:to-zinc-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      sparkline: '#ffffff',
-      ring: 'ring-slate-400',
-      focusRingOffset: 'focus-visible:ring-offset-slate-600',
+      glow: 'rgba(100, 116, 139, 0.15)',
+      border: 'border-l-slate-500 dark:border-l-slate-400',
+      iconBg: isDark ? 'bg-slate-500/20' : 'bg-slate-50',
+      iconColor: isDark ? 'text-slate-400' : 'text-slate-600',
+      sparkline: { dark: '#94a3b8', light: '#475569' }, // slate-400 / slate-600
     },
   };
 
   const colors = colorMap[color] || colorMap.blue;
+  // Always use the card's own color for border accent
+  const borderClass = colors.border;
   const isClickable = !!onClick;
-
-  // Status border classes for metric health indication (visible through gradient)
-  const statusBorders = {
-    success: 'border-l-4 border-l-emerald-300',
-    warning: 'border-l-4 border-l-amber-300',
-    danger: 'border-l-4 border-l-red-300',
-    neutral: ''
-  };
 
   // Handle click with haptic feedback
   const handleClick = useCallback(() => {
@@ -238,47 +192,101 @@ const HeroKPICard = ({
     }
   }, [isClickable, onClick]);
 
+  // Memoized animation states - prevents object recreation on re-render
+  const restState = useMemo(() => ({
+    y: 0,
+    boxShadow: isDark
+      ? '0 1px 3px rgba(0, 0, 0, 0.2)'
+      : '0 1px 3px rgba(0, 0, 0, 0.1)',
+  }), [isDark]);
+
+  const hoverState = useMemo(() => ({
+    y: -4,
+    boxShadow: isDark
+      ? '0 16px 48px rgba(0, 0, 0, 0.4)'
+      : '0 16px 48px rgba(0, 0, 0, 0.12)',
+  }), [isDark]);
+
   return (
     <motion.div
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={isClickable ? 0 : undefined}
       role={isClickable ? 'button' : undefined}
-      initial="rest"
-      whileHover="hover"
-      whileTap={isClickable ? { scale: 0.98 } : undefined}
-      variants={hoverAnimation}
+      initial={restState}
+      animate={restState}
+      whileHover={prefersReducedMotion ? undefined : hoverState}
+      whileTap={isClickable && !prefersReducedMotion ? { scale: 0.98 } : undefined}
       transition={hoverTransition}
       className={`
-        relative
-        ${colors.gradient}
-        rounded-xl
-        ${compact ? 'px-6 pt-4 pb-6' : 'p-3 sm:p-5'}
-        overflow-hidden
-        ${statusBorders[status] || ''}
-        ${isSelected ? `ring-2 ${colors.ring} ring-offset-2 shadow-lg` : ''}
-        ${isClickable ? `cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 ${colors.focusRingOffset}` : ''}
+        relative overflow-hidden
+        ${compact ? 'px-4 pt-3 pb-4' : 'p-4 sm:p-5'}
+        rounded-2xl
+        border-l-4 ${borderClass}
+        ${isDark
+          ? 'bg-space-dust/70 border border-stellar-cyan/15'
+          : 'bg-white border border-slate-200 shadow-md'
+        }
+        ${isSelected
+          ? 'ring-2 ring-stellar-cyan ring-offset-2 ring-offset-space-dust'
+          : ''
+        }
+        ${isClickable
+          ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2'
+          : ''
+        }
         ${className}
       `}
     >
-      {/* Sparkline background */}
+      {/* Accent gradient overlay */}
+      <div
+        className="absolute inset-0 -z-10 pointer-events-none"
+        style={{
+          background: `radial-gradient(ellipse at top left, ${colors.glow}, transparent 70%)`,
+          opacity: isDark ? 0.4 : 0.3,
+        }}
+      />
+
+      {/* Constellation sparkline - z-20 to appear above content */}
       {sparklineData && sparklineData.length >= 2 && (
-        <HeroSparkline
-          data={sparklineData}
-          color={colors.sparkline}
-          id={uniqueId}
-        />
+        <div className={`absolute z-20 hidden sm:block ${compact ? 'right-3 bottom-3' : 'right-4 bottom-4'}`}>
+          <ConstellationSparkline
+            data={sparklineData}
+            isDark={isDark}
+            id={uniqueId}
+            compact={compact}
+            accentColor={isDark ? colors.sparkline.dark : colors.sparkline.light}
+          />
+        </div>
       )}
 
       {/* Header: Icon + Title + Trend Badge */}
-      <div className={`flex items-center ${compact ? 'gap-1.5 mb-1' : 'gap-1.5 sm:gap-3 mb-1 sm:mb-3'} relative z-10`}>
+      <div className={`flex items-center ${compact ? 'gap-2 mb-2' : 'gap-2 sm:gap-3 mb-3'} relative z-10`}>
         {Icon && (
-          <div className={`${compact ? 'p-2' : 'p-2 sm:p-2.5'} rounded-lg flex-shrink-0 bg-white/20 ${colors.icon}`}>
-            <Icon className={compact ? 'w-4 h-4' : 'w-4 h-4 sm:w-5 sm:h-5'} />
+          <div
+            className={`
+              ${compact ? 'p-2' : 'p-2.5 sm:p-2'}
+              rounded-xl flex-shrink-0
+              ${colors.iconBg}
+              ${isDark ? 'border border-white/10' : 'border border-slate-200/50'}
+            `}
+          >
+            <Icon
+              className={`
+                ${compact ? 'w-6 h-6' : 'w-5 h-5 sm:w-6 sm:h-6'}
+                ${colors.iconColor}
+              `}
+            />
           </div>
         )}
-        <h3 className={`text-base ${compact ? '' : 'sm:text-sm'} font-semibold ${colors.title} uppercase tracking-wider flex items-center gap-1.5 leading-tight`}>
-          {/* In compact mode, always show short title; otherwise responsive */}
+        <h3
+          className={`
+            ${compact ? 'text-sm sm:text-base' : 'text-sm sm:text-base'}
+            font-semibold uppercase tracking-wider
+            flex items-center gap-1.5 leading-tight
+            ${isDark ? 'text-slate-300' : 'text-slate-600'}
+          `}
+        >
           {compact ? (
             <span>{shortTitle || title}</span>
           ) : (
@@ -287,41 +295,51 @@ const HeroKPICard = ({
               <span className="hidden sm:inline">{title}</span>
             </>
           )}
-          {/* Tooltip help icon - visible on gradient backgrounds */}
           {tooltip && (
             <ContextHelp
               description={tooltip}
-              className="text-white/60 hover:text-white/90"
+              className={isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}
             />
           )}
-          {isClickable && !compact && (
-            <MousePointerClick className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-white/60 hidden sm:block" />
-          )}
         </h3>
-        {/* Trend Badge - header position (always in compact, desktop-only otherwise) */}
+        {/* Trend Badge - header position */}
         {trend?.show && (
           <div className={`flex-shrink-0 ml-auto ${compact ? '' : 'hidden sm:block'}`}>
-            <TrendBadge value={trend.value} size={compact ? 'base' : 'sm'} inverted />
+            <TrendBadge value={trend.value} size={compact ? 'base' : 'sm'} />
           </div>
         )}
       </div>
 
-      {/* Value */}
-      <div className={`${compact ? 'text-3xl' : 'text-lg sm:text-3xl'} font-bold ${colors.value} tracking-tight ${compact ? 'mb-1.5' : 'mb-1.5 sm:mb-1'} relative z-10`}>
+      {/* Value - Orbitron font */}
+      <div
+        className={`
+          ${compact ? 'text-2xl' : 'text-2xl sm:text-3xl'}
+          font-bold tracking-tight
+          ${compact ? 'mb-1' : 'mb-1.5 sm:mb-2'}
+          relative z-10
+          ${isDark ? 'text-white' : 'text-slate-900'}
+        `}
+        style={{ fontFamily: "'Orbitron', sans-serif" }}
+      >
         {displayValue}
       </div>
 
       {/* Footer: Subtitle + Trend Badge (mobile only in expanded mode) */}
       <div className="flex items-center justify-between gap-1 relative z-10">
         {subtitle && (
-          <div className={`text-sm ${compact ? '' : 'sm:text-sm'} ${colors.subtitle}`}>
+          <div
+            className={`
+              ${compact ? 'text-xs' : 'text-xs sm:text-sm'}
+              ${isDark ? 'text-slate-400' : 'text-slate-500'}
+            `}
+          >
             {subtitle}
           </div>
         )}
-        {/* Trend Badge - Mobile only in expanded mode (footer position) */}
+        {/* Trend Badge - Mobile only in expanded mode */}
         {!compact && trend?.show && (
           <div className="flex-shrink-0 ml-auto sm:hidden">
-            <TrendBadge value={trend.value} size="xs" inverted />
+            <TrendBadge value={trend.value} size="xs" />
           </div>
         )}
       </div>

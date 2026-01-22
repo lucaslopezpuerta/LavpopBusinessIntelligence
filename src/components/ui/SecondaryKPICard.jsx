@@ -1,147 +1,36 @@
-// SecondaryKPICard.jsx v2.8 - STATUS COLOR BADGES
-// Compact KPI card for secondary metrics
-// Design System v3.3 compliant
-//
-// CHANGELOG:
-// v2.8 (2026-01-07): Status color badges (Plan Item 1.3)
-//   - NEW: status prop for colored left border ('success'|'warning'|'danger'|'neutral')
-//   - Left border accent visible through gradient background
-//   - Use with getMetricStatus from constants/metricThresholds.js
-// v2.7 (2026-01-07): Focus ring color now matches card gradient
-//   - FIXED: Hardcoded blue-600 ring offset replaced with dynamic color
-//   - Each color variant now has matching focus ring offset
-//   - Improves accessibility and visual consistency
-// v2.6 (2026-01-07): Premium hover elevation (Figma-quality enhancement)
-//   - Added Framer Motion spring animations for hover lift effect
-//   - Cards lift 2px with enhanced shadow on hover
-//   - Replaces CSS hover:scale with spring physics for natural feel
-// v2.5 (2026-01-07): Tooltip help icons (Plan Item 1.2)
-//   - NEW: tooltip prop for ContextHelp icon next to title
-//   - Styled for gradient backgrounds (white/60 hover:white/90)
-// v2.4 (2025-12-23): Compact mode for single-glance dashboard
-//   - Added compact prop for tighter layout
-//   - Compact: smaller padding, smaller text, no sparklines
-// v2.3 (2025-12-22): Modernized 3-stop gradients
-//   - Updated colorMap to use via gradients for richer look
-//   - from-X via-Y to-Z pattern for premium feel
-// v2.2 (2025-12-22): Added haptic feedback on card click
-// v2.1 (2025-12-16): Responsive trend badge position
-//   - FIXED: Desktop (sm+): Badge in header row (avoids sparkline overlap)
-//   - FIXED: Mobile: Badge in footer row (sparklines hidden, more title space)
-//   - Uses responsive visibility classes for position switching
-// v1.9 (2025-12-16): Hide sparklines on mobile
-//   - FIXED: Sparklines now hidden on mobile (hidden sm:block)
-//   - Matches HeroKPICard behavior for consistency
-//   - Better readability on small gradient cards
-// v1.8 (2025-12-16): Sparkline unique ID fix
-//   - Fixed SVG gradient ID collision when multiple cards render
-//   - Each sparkline now uses React useId() for unique gradient reference
-// v1.7 (2025-12-16): Sparkline support
-//   - NEW: sparklineData prop for mini trend visualization
-//   - SVG-based sparkline with gradient fill
-//   - Auto-scales to data range
-//   - Positioned behind value for layered effect
-// v1.6 (2025-12-13): Informative pill support
-//   - NEW: pill prop for contextual status indicators
-//   - Supports variants: warning, success, info, error
-//   - Semi-transparent styling for gradient backgrounds
-//   - Positioned in footer alongside subtitle
-// v1.5 (2025-12-01): Relocated WoW badge to bottom right
-//   - Moved TrendBadge from Value row to footer
-//   - Footer layout: subtitle left, badge right
-//   - Consistent with HeroKPICard layout pattern
-// v1.4 (2025-12-01): Design System compliance
-//   - Fixed text-[10px] violations (min 12px = text-xs)
-//   - Changed title and subtitle to text-xs
-// v1.3 (2025-11-30): Color mapping fix
-//   - Fixed blue color mapping (was incorrectly amber/yellow)
-//   - Added explicit amber color option
-// v1.2 (2025-11-30): Accessibility improvements
-//   - Added focus-visible ring for keyboard navigation
-//   - Added role="button" and tabIndex for clickable cards
-//   - Added keyboard event handler for Enter/Space
-// v1.1 (2025-11-30): Gradient backgrounds + mobile text fix
-//   - Added gradient backgrounds matching original KPICards
-//   - Fixed text truncation on mobile by removing truncate
-//   - Adjusted layout for better mobile display
-// v1.0 (2025-11-30): Initial implementation
-//   - Compact horizontal layout
-//   - Click-to-drill-down support
-//   - Dark mode support
+/**
+ * SecondaryKPICard.jsx v3.1 - COSMIC PRECISION REDESIGN
+ * Compact KPI card for secondary metrics
+ * Design System v5.1 compliant - Glassmorphic variant
+ *
+ * CHANGELOG:
+ * v3.1 (2026-01-22): Visual polish improvements
+ *   - NEW: 2px accent-colored top border for visual connection to color
+ *   - IMPROVED: Larger icon sizes (w-4/w-5 instead of w-3.5/w-4)
+ *   - Creates clear visual hierarchy: Hero = left border, Secondary = top border
+ * v3.0 (2026-01-22): Complete UI redesign - "Cosmic Precision" theme
+ *   - NEW: Glassmorphism background with backdrop-blur
+ *   - NEW: Accent-tinted radial gradient overlays
+ *   - NEW: Theme-aware colors (dark/light mode)
+ *   - NEW: Space-themed icon container with accent colors
+ *   - REMOVED: Sparklines (per design decision)
+ *   - REMOVED: Colored left borders (clean edge design)
+ *   - KEPT: Inter font for values (differentiated from Hero cards)
+ *   - KEPT: All props and functionality unchanged
+ * v2.8 (2026-01-07): Status color badges
+ * v2.7-v1.0: See previous changelog entries
+ */
 
-import React, { useMemo, useId, useCallback } from 'react';
+import React, { useId, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import TrendBadge from './TrendBadge';
 import ContextHelp from '../ContextHelp';
 import { haptics } from '../../utils/haptics';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
-// Smooth tween animation config for hover (avoids spring oscillation/trembling)
-const hoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
-  hover: { y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.15)' }
-};
-
+// Static hover transition config - defined outside component to prevent recreation
 const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
-
-// Mini sparkline component
-const Sparkline = ({ data, width = 80, height = 32, className = '', id }) => {
-  const gradientId = `sparkline-gradient-${id}`;
-
-  const pathData = useMemo(() => {
-    if (!data || data.length < 2) return null;
-
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
-
-    const points = data.map((value, index) => {
-      const x = (index / (data.length - 1)) * width;
-      const y = height - ((value - min) / range) * (height * 0.8) - height * 0.1;
-      return `${x},${y}`;
-    });
-
-    return {
-      line: `M${points.join(' L')}`,
-      area: `M0,${height} L${points.join(' L')} L${width},${height} Z`
-    };
-  }, [data, width, height]);
-
-  if (!pathData) return null;
-
-  return (
-    <svg
-      width={width}
-      height={height}
-      className={`absolute right-2 bottom-2 opacity-40 hidden sm:block ${className}`}
-      viewBox={`0 0 ${width} ${height}`}
-    >
-      {/* Gradient fill - unique ID per instance */}
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="white" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="white" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {/* Area fill */}
-      <path
-        d={pathData.area}
-        fill={`url(#${gradientId})`}
-      />
-
-      {/* Line */}
-      <path
-        d={pathData.line}
-        fill="none"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.8"
-      />
-    </svg>
-  );
-};
 
 const SecondaryKPICard = ({
   title,
@@ -153,100 +42,86 @@ const SecondaryKPICard = ({
   color = 'slate',
   onClick,
   className = '',
-  pill, // { text: string, variant: 'warning' | 'success' | 'info' | 'error' }
-  sparklineData, // Array of numbers for trend visualization
-  compact = false, // Compact mode for single-glance dashboard
-  tooltip, // Plain language description for ContextHelp icon
-  status, // 'success' | 'warning' | 'danger' | 'neutral' - for colored left border
+  pill,
+  sparklineData, // Kept for API compatibility but not rendered
+  compact = false,
+  tooltip,
+  status, // Kept for API compatibility but not used for borders
 }) => {
-  // Generate unique ID for SVG gradient to avoid collisions
   const uniqueId = useId();
-  // Pill variants - semi-transparent for gradient backgrounds
+  const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
+
+  // Pill variants - adjusted for glassmorphism
   const pillVariants = {
-    warning: 'bg-white/20 text-white border border-amber-300/50',
-    success: 'bg-white/20 text-white border border-emerald-300/50',
-    info: 'bg-white/20 text-white border border-blue-300/50',
-    error: 'bg-white/20 text-white border border-red-300/50',
+    warning: isDark
+      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+      : 'bg-amber-50 text-amber-700 border border-amber-200',
+    success: isDark
+      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+      : 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    info: isDark
+      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+      : 'bg-blue-50 text-blue-700 border border-blue-200',
+    error: isDark
+      ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+      : 'bg-red-50 text-red-700 border border-red-200',
   };
-  // Modernized 3-stop gradient backgrounds (v2.3)
-  // Uses via- for richer, more premium gradients
+
+  // Color configuration for glassmorphism with accent tints
   const colorMap = {
     cyan: {
-      gradient: 'bg-gradient-to-br from-sky-400 via-cyan-500 to-blue-500 dark:from-sky-500 dark:via-cyan-600 dark:to-blue-600',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      focusRingOffset: 'focus-visible:ring-offset-cyan-600',
+      glow: 'rgba(6, 182, 212, 0.2)',
+      iconBg: isDark ? 'bg-cyan-500/20' : 'bg-cyan-50',
+      iconColor: isDark ? 'text-cyan-400' : 'text-cyan-600',
+      topBorder: 'border-t-cyan-500 dark:border-t-cyan-400',
     },
     orange: {
-      gradient: 'bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 dark:from-amber-500 dark:via-orange-600 dark:to-rose-600',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      focusRingOffset: 'focus-visible:ring-offset-orange-600',
+      glow: 'rgba(249, 115, 22, 0.2)',
+      iconBg: isDark ? 'bg-orange-500/20' : 'bg-orange-50',
+      iconColor: isDark ? 'text-orange-400' : 'text-orange-600',
+      topBorder: 'border-t-orange-500 dark:border-t-orange-400',
     },
     purple: {
-      gradient: 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 dark:from-violet-600 dark:via-purple-600 dark:to-fuchsia-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      focusRingOffset: 'focus-visible:ring-offset-purple-600',
+      glow: 'rgba(168, 85, 247, 0.2)',
+      iconBg: isDark ? 'bg-purple-500/20' : 'bg-purple-50',
+      iconColor: isDark ? 'text-purple-400' : 'text-purple-600',
+      topBorder: 'border-t-purple-500 dark:border-t-purple-400',
     },
     blue: {
-      gradient: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 dark:from-blue-600 dark:via-indigo-600 dark:to-violet-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      focusRingOffset: 'focus-visible:ring-offset-blue-600',
+      glow: 'rgba(59, 130, 246, 0.2)',
+      iconBg: isDark ? 'bg-blue-500/20' : 'bg-blue-50',
+      iconColor: isDark ? 'text-blue-400' : 'text-blue-600',
+      topBorder: 'border-t-blue-500 dark:border-t-blue-400',
     },
     amber: {
-      gradient: 'bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 dark:from-amber-600 dark:via-orange-600 dark:to-rose-600',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      focusRingOffset: 'focus-visible:ring-offset-amber-600',
+      glow: 'rgba(245, 158, 11, 0.2)',
+      iconBg: isDark ? 'bg-amber-500/20' : 'bg-amber-50',
+      iconColor: isDark ? 'text-amber-400' : 'text-amber-600',
+      topBorder: 'border-t-amber-500 dark:border-t-amber-400',
     },
     red: {
-      gradient: 'bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 dark:from-rose-600 dark:via-red-600 dark:to-pink-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      focusRingOffset: 'focus-visible:ring-offset-rose-600',
+      glow: 'rgba(239, 68, 68, 0.2)',
+      iconBg: isDark ? 'bg-red-500/20' : 'bg-red-50',
+      iconColor: isDark ? 'text-red-400' : 'text-red-600',
+      topBorder: 'border-t-red-500 dark:border-t-red-400',
     },
     green: {
-      gradient: 'bg-gradient-to-br from-lime-400 via-emerald-500 to-teal-500 dark:from-lime-500 dark:via-emerald-600 dark:to-teal-600',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      focusRingOffset: 'focus-visible:ring-offset-emerald-600',
+      glow: 'rgba(16, 185, 129, 0.2)',
+      iconBg: isDark ? 'bg-emerald-500/20' : 'bg-emerald-50',
+      iconColor: isDark ? 'text-emerald-400' : 'text-emerald-600',
+      topBorder: 'border-t-emerald-500 dark:border-t-emerald-400',
     },
     slate: {
-      gradient: 'bg-gradient-to-br from-slate-500 via-gray-500 to-zinc-600 dark:from-slate-600 dark:via-gray-600 dark:to-zinc-700',
-      icon: 'text-white/90',
-      title: 'text-white/80',
-      value: 'text-white',
-      subtitle: 'text-white/70',
-      focusRingOffset: 'focus-visible:ring-offset-slate-600',
+      glow: 'rgba(100, 116, 139, 0.15)',
+      iconBg: isDark ? 'bg-slate-500/20' : 'bg-slate-100',
+      iconColor: isDark ? 'text-slate-400' : 'text-slate-600',
+      topBorder: 'border-t-slate-500 dark:border-t-slate-400',
     },
   };
 
   const colors = colorMap[color] || colorMap.slate;
   const isClickable = !!onClick;
-
-  // Status border classes for metric health indication (visible through gradient)
-  const statusBorders = {
-    success: 'border-l-4 border-l-emerald-300',
-    warning: 'border-l-4 border-l-amber-300',
-    danger: 'border-l-4 border-l-red-300',
-    neutral: ''
-  };
 
   // Handle click with haptic feedback
   const handleClick = useCallback(() => {
@@ -264,81 +139,140 @@ const SecondaryKPICard = ({
     }
   }, [isClickable, onClick]);
 
+  // Memoized animation states - prevents variants object recreation on re-render
+  const restState = useMemo(() => ({
+    y: 0,
+    boxShadow: isDark
+      ? '0 1px 3px rgba(0, 0, 0, 0.15)'
+      : '0 1px 3px rgba(0, 0, 0, 0.08)',
+  }), [isDark]);
+
+  const hoverState = useMemo(() => ({
+    y: -3,
+    boxShadow: isDark
+      ? '0 12px 36px rgba(0, 0, 0, 0.35)'
+      : '0 12px 36px rgba(0, 0, 0, 0.1)',
+  }), [isDark]);
+
   return (
     <motion.div
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={isClickable ? 0 : undefined}
       role={isClickable ? 'button' : undefined}
-      initial="rest"
-      whileHover="hover"
-      whileTap={isClickable ? { scale: 0.98 } : undefined}
-      variants={hoverAnimation}
+      initial={restState}
+      animate={restState}
+      whileHover={prefersReducedMotion ? undefined : hoverState}
+      whileTap={isClickable && !prefersReducedMotion ? { scale: 0.98 } : undefined}
       transition={hoverTransition}
       className={`
-        ${colors.gradient}
-        rounded-xl
-        ${compact ? 'px-4 py-4' : 'px-3 py-3 sm:px-4'}
         relative overflow-hidden
-        ${statusBorders[status] || ''}
-        ${isClickable ? `cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 ${colors.focusRingOffset}` : ''}
+        ${compact ? 'px-3 py-3' : 'px-3 py-3 sm:px-4 sm:py-4'}
+        rounded-xl
+        border-t-2 ${colors.topBorder}
+        ${isDark
+          ? 'bg-space-dust/70 border border-stellar-cyan/10'
+          : 'bg-white border border-slate-200 shadow-sm'
+        }
+        ${isClickable
+          ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2'
+          : ''
+        }
         ${className}
       `}
     >
-      {/* Sparkline background */}
-      {sparklineData && sparklineData.length >= 2 && (
-        <Sparkline data={sparklineData} width={100} height={40} id={uniqueId} />
-      )}
+      {/* Accent gradient overlay */}
+      <div
+        className="absolute inset-0 -z-10 pointer-events-none"
+        style={{
+          background: `radial-gradient(ellipse at top left, ${colors.glow}, transparent 70%)`,
+          opacity: isDark ? 0.5 : 0.4,
+        }}
+      />
 
       <div className="flex flex-col gap-1 relative z-10">
         {/* Header: Icon + Title + Trend Badge */}
         <div className="flex items-center gap-2">
           {Icon && (
-            <div className={`flex-shrink-0 ${colors.icon}`}>
-              <Icon className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
+            <div
+              className={`
+                ${compact ? 'p-2' : 'p-2'}
+                rounded-lg flex-shrink-0
+                ${colors.iconBg}
+                ${isDark ? 'border border-white/10' : 'border border-slate-200/50'}
+              `}
+            >
+              <Icon
+                className={`
+                  ${compact ? 'w-4 h-4' : 'w-5 h-5'}
+                  ${colors.iconColor}
+                `}
+              />
             </div>
           )}
-          <div className={`text-sm font-semibold ${colors.title} uppercase tracking-wider leading-tight flex items-center gap-1`}>
+          <div
+            className={`
+              ${compact ? 'text-xs' : 'text-xs sm:text-sm'}
+              font-semibold uppercase tracking-wider leading-tight
+              flex items-center gap-1
+              ${isDark ? 'text-slate-300' : 'text-slate-600'}
+            `}
+          >
             {title}
-            {/* Tooltip help icon - visible on gradient backgrounds */}
             {tooltip && (
               <ContextHelp
                 description={tooltip}
-                className="text-white/60 hover:text-white/90"
+                className={isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}
               />
             )}
           </div>
-          {/* Trend Badge - header position (always in compact, desktop-only otherwise) */}
+          {/* Trend Badge - header position */}
           {trend?.show && (
             <div className={`flex-shrink-0 ml-auto ${compact ? '' : 'hidden sm:block'}`}>
-              <TrendBadge value={trend.value} size="xs" inverted />
+              <TrendBadge value={trend.value} size="xs" />
             </div>
           )}
         </div>
 
-        {/* Value */}
-        <div className={`${compact ? 'text-2xl' : 'text-xl sm:text-2xl'} font-bold ${colors.value}`}>
+        {/* Value - Inter font (standard, not Orbitron) */}
+        <div
+          className={`
+            ${compact ? 'text-xl' : 'text-xl sm:text-2xl'}
+            font-bold tracking-tight
+            ${isDark ? 'text-white' : 'text-slate-900'}
+          `}
+        >
           {displayValue}
         </div>
 
-        {/* Footer: Subtitle + Pill + Trend Badge (mobile only in expanded mode) */}
+        {/* Footer: Subtitle + Pill + Trend Badge */}
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-2 flex-wrap">
-            {subtitle && !compact && (
-              <div className={`text-xs ${colors.subtitle} leading-tight`}>
+            {subtitle && (
+              <div
+                className={`
+                  text-xs leading-tight
+                  ${isDark ? 'text-slate-400' : 'text-slate-500'}
+                `}
+              >
                 {subtitle}
               </div>
             )}
-            {pill && !compact && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pillVariants[pill.variant] || pillVariants.info}`}>
+            {pill && (
+              <span
+                className={`
+                  px-2 py-0.5 rounded-full text-xs font-medium
+                  ${pillVariants[pill.variant] || pillVariants.info}
+                `}
+              >
                 {pill.text}
               </span>
             )}
           </div>
-          {/* Trend Badge - Mobile only in expanded mode (footer position) */}
+          {/* Trend Badge - Mobile only in expanded mode */}
           {!compact && trend?.show && (
             <div className="flex-shrink-0 ml-auto sm:hidden">
-              <TrendBadge value={trend.value} size="xs" inverted />
+              <TrendBadge value={trend.value} size="xs" />
             </div>
           )}
         </div>

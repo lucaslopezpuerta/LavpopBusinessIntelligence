@@ -1,12 +1,18 @@
-// OperatingCyclesChart.jsx v5.7 - COMPACT MODE FULL CONTROLS
+// OperatingCyclesChart.jsx v5.8 - DESIGN SYSTEM v5.1 COMPLIANCE
 // ✅ NEW: Split by filter (All/Wash Only/Dry Only)
 // ✅ Same month last year comparison (YoY)
 // ✅ Gradient bars for visual depth
 // ✅ Compact mode for single-glance dashboard
 // ✅ Mobile responsive adjustments
-// ✅ Design System v3.3 compliant
+// ✅ Design System v5.1 compliant (Cosmic Precision)
 //
 // CHANGELOG:
+// v5.8 (2026-01-22): Design System v5.1 compliance
+//   - UPDATED: Title size to text-lg (18px) per Design System
+//   - UPDATED: Icon size to w-5 h-5, color to cyan-600/cyan-400
+//   - UPDATED: Tooltip styling with rounded-xl
+//   - REMOVED: Accent side border (handled by parent container)
+//   - Note: Parent container in Dashboard.jsx uses Variant A styling
 // v5.7 (2025-12-23): Show controls in compact mode
 //   - Chart height increased to 300px in compact mode
 //   - Controls (filters, month selector) now visible in all modes
@@ -241,9 +247,9 @@ const OperatingCyclesChart = ({
       });
 
       return (
-        <div className="bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/10 rounded-lg p-3 shadow-lg z-50">
+        <div className="bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/10 rounded-xl p-3 shadow-lg z-50">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-4 h-4 text-lavpop-blue dark:text-blue-400" />
+            <Calendar className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
             <p className="text-sm font-semibold text-slate-900 dark:text-white">
               Dia {label}
             </p>
@@ -312,10 +318,10 @@ const OperatingCyclesChart = ({
 
   if (!periodInfo || chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 sm:h-64 text-slate-500 dark:text-slate-400">
+      <div className="flex items-center justify-center h-48 sm:h-64 text-slate-400 dark:text-slate-500">
         <div className="text-center">
-          <WashingMachine className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 opacity-50" />
-          <p className="text-xs sm:text-sm font-sans">Sem dados disponíveis</p>
+          <WashingMachine className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 text-cyan-500/50 dark:text-cyan-400/50" />
+          <p className="text-sm font-medium">Sem dados disponíveis</p>
         </div>
       </div>
     );
@@ -328,12 +334,12 @@ const OperatingCyclesChart = ({
         {/* Title row */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="min-w-0">
-            <h3 className={`${compact ? 'text-sm' : 'text-base sm:text-lg'} font-semibold text-slate-900 dark:text-white flex items-center gap-2`}>
-              <WashingMachine className={`${compact ? 'w-4 h-4' : 'w-4 h-4 sm:w-5 sm:h-5'} text-lavpop-blue dark:text-blue-400 flex-shrink-0`} />
+            <h3 className={`${compact ? 'text-base' : 'text-lg'} font-semibold text-slate-900 dark:text-white flex items-center gap-2`}>
+              <WashingMachine className="w-5 h-5 text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
               <span className="truncate">Ciclos de Operação</span>
             </h3>
             {!compact && (
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5 sm:hidden">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 sm:hidden">
                 {periodInfo.month}/{periodInfo.year}
               </p>
             )}

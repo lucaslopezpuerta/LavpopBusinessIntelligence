@@ -66,7 +66,7 @@ import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
   // Get layout preference from ThemeContext
-  const { dashboardLayout } = useTheme();
+  const { dashboardLayout, isDark } = useTheme();
   const isMobile = useIsMobile();
   // Compact mode only on desktop - mobile always shows expanded layout
   const isCompact = dashboardLayout === 'compact' && !isMobile;
@@ -150,29 +150,56 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
       <div className={isCompact ? 'space-y-4' : 'space-y-6 sm:space-y-8'}>
-        {/* SHARED HEADER - DateControl integrated for both layouts */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className={`${isCompact ? 'w-8 h-8' : 'w-10 h-10'} rounded-xl bg-lavpop-blue/10 dark:bg-lavpop-blue/20 flex items-center justify-center border-l-4 border-lavpop-blue`}>
-            <LayoutDashboard className={`${isCompact ? 'w-4 h-4' : 'w-5 h-5'} text-lavpop-blue`} />
-          </div>
-          <div>
-            <h1 className={`${isCompact ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold text-slate-900 dark:text-white`}>
-              Visão Geral
-            </h1>
-            {!isCompact && (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+        {/* SHARED HEADER - Cosmic Precision Design v2.1 */}
+      <header className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {/* Icon Container - Glassmorphism (consistent size) */}
+            <div
+              className={`
+                w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                ${isDark
+                  ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                  : 'bg-white border border-stellar-blue/10 shadow-md'}
+              `}
+              style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+            >
+              <LayoutDashboard className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+            </div>
+            {/* Title & Subtitle */}
+            <div>
+              <h1
+                className="text-lg sm:text-xl font-bold tracking-wider"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                <span className="text-gradient-stellar">VISÃO GERAL</span>
+              </h1>
+              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Métricas principais da sua lavanderia
               </p>
-            )}
+            </div>
           </div>
+          <DashboardDateControl
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            dateRange={dateRange}
+            inline={true}
+          />
         </div>
-        <DashboardDateControl
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          dateRange={dateRange}
-          inline={true}
-        />
+
+        {/* Gradient Divider - desktop only, expanded mode only */}
+        {!isCompact && (
+          <div className="hidden sm:block h-px relative overflow-hidden">
+            <div
+              className="absolute inset-0"
+              style={{
+                background: isDark
+                  ? 'linear-gradient(90deg, transparent, rgba(0, 174, 239, 0.4), rgba(45, 56, 138, 0.4), transparent)'
+                  : 'linear-gradient(90deg, transparent, rgba(45, 56, 138, 0.2), rgba(0, 174, 239, 0.2), transparent)',
+              }}
+            />
+          </div>
+        )}
       </header>
 
       {/* LAYOUT-SPECIFIC CONTENT */}
@@ -195,7 +222,7 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
           {/* Row 2: Chart - Full width */}
           <section aria-labelledby="operations-heading-compact">
             <h2 id="operations-heading-compact" className="sr-only">Operações</h2>
-            <div className="bg-gradient-to-br from-cyan-50/40 via-white to-white dark:from-cyan-900/10 dark:via-space-nebula dark:to-space-nebula rounded-2xl shadow-sm border border-slate-200/80 dark:border-stellar-cyan/10 border-l-4 border-l-cyan-500 dark:border-l-cyan-400 p-4">
+            <div className="bg-white dark:bg-space-dust rounded-2xl shadow-sm border border-slate-200 dark:border-stellar-cyan/10 p-4">
               <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
                 <LazyOperatingCyclesChart salesData={salesData} compact={true} />
               </Suspense>
@@ -220,7 +247,7 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
           {/* Operations Chart */}
           <section aria-labelledby="operations-heading">
             <h2 id="operations-heading" className="sr-only">Operações</h2>
-            <div className="bg-gradient-to-br from-cyan-50/40 via-white to-white dark:from-cyan-900/10 dark:via-space-nebula dark:to-space-nebula rounded-2xl shadow-sm border border-slate-200/80 dark:border-stellar-cyan/10 border-l-4 border-l-cyan-500 dark:border-l-cyan-400 p-6">
+            <div className="bg-white dark:bg-space-dust rounded-2xl shadow-sm border border-slate-200 dark:border-stellar-cyan/10 p-6">
               <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
                 <LazyOperatingCyclesChart salesData={salesData} />
               </Suspense>
