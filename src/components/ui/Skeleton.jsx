@@ -806,7 +806,8 @@ const WeatherLoadingSkeleton = () => (
   </div>
 );
 
-// Operations skeleton - matches Operations.jsx layout
+// Operations skeleton - matches Operations.jsx v6.0 layout (no section headers)
+// Components have their own Premium Glass cards with cyan icon badges
 const OperationsLoadingSkeleton = () => (
   <div className="space-y-6 sm:space-y-8 animate-pulse">
     {/* Header */}
@@ -827,88 +828,167 @@ const OperationsLoadingSkeleton = () => (
       ))}
     </div>
 
-    {/* Section 1: Equipamentos */}
-    <section className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 border-l-4 border-amber-500 flex items-center justify-center">
-          <SkeletonCircle size="w-5 h-5" />
-        </div>
-        <div className="space-y-1">
-          <SkeletonText width="w-28" height="h-4" />
-          <SkeletonText width="w-48" height="h-3" />
+    {/* MachinePerformanceTable - Premium Glass card */}
+    <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+      {/* Header with cyan icon badge */}
+      <div className="flex items-start gap-3 mb-4">
+        <Skeleton className="w-10 h-10 rounded-xl bg-cyan-200 dark:bg-cyan-900/50" />
+        <div className="flex-1 space-y-2">
+          <SkeletonText width="w-48" height="h-5" />
+          <SkeletonText width="w-32" height="h-3" />
         </div>
       </div>
-      {/* Machine table */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-          <div className="flex gap-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <SkeletonText key={i} width="w-20" height="h-4" />
-            ))}
+      {/* Table sections */}
+      <div className="space-y-6">
+        {/* Lavadoras */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <SkeletonCircle size="w-5 h-5" />
+            <SkeletonText width="w-24" height="h-4" />
           </div>
-        </div>
-        <div className="divide-y divide-slate-200 dark:divide-slate-700">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="p-4 flex gap-4">
-              {[1, 2, 3, 4, 5].map((j) => (
-                <SkeletonText key={j} width="w-20" height="h-4" />
+          <div className="rounded-xl ring-1 ring-slate-200/50 dark:ring-white/[0.05] overflow-hidden">
+            <div className="grid grid-cols-5 gap-2 p-3 bg-slate-50/90 dark:bg-slate-700/50">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonText key={i} width="w-full" height="h-3" />
               ))}
             </div>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    {/* Section 2: Utilização */}
-    <section className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 border-l-4 border-amber-500 flex items-center justify-center">
-          <SkeletonCircle size="w-5 h-5" />
-        </div>
-        <div className="space-y-1">
-          <SkeletonText width="w-24" height="h-4" />
-          <SkeletonText width="w-40" height="h-3" />
-        </div>
-      </div>
-      {/* Heatmap */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-        <div className="grid grid-cols-8 gap-2">
-          {[...Array(56)].map((_, i) => (
-            <Skeleton key={i} className="aspect-square rounded" />
-          ))}
-        </div>
-      </div>
-    </section>
-
-    {/* Section 3: Padrões Temporais */}
-    <section className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 border-l-4 border-amber-500 flex items-center justify-center">
-          <SkeletonCircle size="w-5 h-5" />
-        </div>
-        <div className="space-y-1">
-          <SkeletonText width="w-36" height="h-4" />
-          <SkeletonText width="w-52" height="h-3" />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <SkeletonText width="w-32" height="h-5" className="mb-4" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                <SkeletonText width="w-20" height="h-4" />
-                <SkeletonText width="w-16" height="h-5" />
+            {[1, 2, 3].map((row) => (
+              <div key={row} className="grid grid-cols-5 gap-2 p-3 border-t border-slate-100 dark:border-slate-700/50">
+                {[1, 2, 3, 4, 5].map((col) => (
+                  <SkeletonText key={col} width="w-full" height="h-4" />
+                ))}
               </div>
             ))}
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <SkeletonText width="w-32" height="h-5" className="mb-4" />
-          <SkeletonChart height="h-64" />
+        {/* Secadoras */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <SkeletonCircle size="w-5 h-5" />
+            <SkeletonText width="w-24" height="h-4" />
+          </div>
+          <div className="rounded-xl ring-1 ring-slate-200/50 dark:ring-white/[0.05] overflow-hidden">
+            <div className="grid grid-cols-5 gap-2 p-3 bg-slate-50/90 dark:bg-slate-700/50">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonText key={i} width="w-full" height="h-3" />
+              ))}
+            </div>
+            {[1, 2, 3].map((row) => (
+              <div key={row} className="grid grid-cols-5 gap-2 p-3 border-t border-slate-100 dark:border-slate-700/50">
+                {[1, 2, 3, 4, 5].map((col) => (
+                  <SkeletonText key={col} width="w-full" height="h-4" />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </section>
+    </div>
+
+    {/* UtilizationHeatmap - Premium Glass card */}
+    <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+      {/* Header with cyan icon badge + view toggle */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-start gap-3">
+          <Skeleton className="w-10 h-10 rounded-xl bg-cyan-200 dark:bg-cyan-900/50" />
+          <div className="space-y-2">
+            <SkeletonText width="w-36" height="h-5" />
+            <SkeletonText width="w-28" height="h-3" />
+          </div>
+        </div>
+        <div className="flex gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-white/[0.05]">
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-24 rounded-md" />
+        </div>
+      </div>
+      {/* Heatmap grid - 7 days x 15 hours */}
+      <div className="space-y-1">
+        <div className="grid gap-1" style={{ gridTemplateColumns: '36px repeat(7, 1fr)' }}>
+          <div />
+          {[...Array(7)].map((_, i) => (
+            <SkeletonText key={i} width="w-full" height="h-4" />
+          ))}
+        </div>
+        {[...Array(12)].map((_, row) => (
+          <div key={row} className="grid gap-1" style={{ gridTemplateColumns: '36px repeat(7, 1fr)' }}>
+            <SkeletonText width="w-8" height="h-6" />
+            {[...Array(7)].map((_, col) => (
+              <Skeleton key={col} className="h-6 sm:h-7 rounded-md" />
+            ))}
+          </div>
+        ))}
+      </div>
+      {/* Legend */}
+      <div className="mt-4 flex flex-col items-center gap-2">
+        <div className="flex items-center gap-3 w-full max-w-xs">
+          <SkeletonText width="w-10" height="h-4" />
+          <Skeleton className="flex-1 h-2.5 rounded-full" />
+          <SkeletonText width="w-8" height="h-4" />
+        </div>
+      </div>
+    </div>
+
+    {/* PeakHoursSummary + DayOfWeekChart - Side by side */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      {/* PeakHoursSummary - Premium Glass card */}
+      <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+        {/* Header with cyan icon badge */}
+        <div className="flex items-start gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-xl bg-cyan-200 dark:bg-cyan-900/50" />
+          <div className="flex-1 space-y-2">
+            <SkeletonText width="w-48" height="h-5" />
+            <SkeletonText width="w-32" height="h-3" />
+          </div>
+        </div>
+        {/* Peak/Off-peak columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2].map((col) => (
+            <div key={col}>
+              <div className="flex items-center gap-2 mb-4">
+                <SkeletonCircle size="w-4 h-4" />
+                <SkeletonText width="w-28" height="h-4" />
+              </div>
+              {[1, 2, 3].map((row) => (
+                <div key={row} className="flex items-center justify-between p-3 rounded-lg mb-2 bg-slate-50 dark:bg-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-8 h-8 rounded-lg" />
+                    <div className="space-y-1">
+                      <SkeletonText width="w-16" height="h-4" />
+                      <SkeletonText width="w-20" height="h-3" />
+                    </div>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <SkeletonText width="w-12" height="h-5" />
+                    <SkeletonText width="w-16" height="h-3" />
+                  </div>
+                </div>
+              ))}
+              {/* Recommendation box */}
+              <Skeleton className="h-12 w-full rounded-xl mt-4" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* DayOfWeekChart - Premium Glass card */}
+      <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+        {/* Header with cyan icon badge */}
+        <div className="flex items-start gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-xl bg-cyan-200 dark:bg-cyan-900/50" />
+          <div className="flex-1 space-y-2">
+            <SkeletonText width="w-52" height="h-5" />
+            <SkeletonText width="w-32" height="h-3" />
+          </div>
+        </div>
+        {/* Chart area */}
+        <SkeletonChart height="h-56" />
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
+        </div>
+      </div>
+    </div>
   </div>
 );
 

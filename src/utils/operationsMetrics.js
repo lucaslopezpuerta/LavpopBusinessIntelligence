@@ -64,11 +64,11 @@ export const HOURLY_THRESHOLDS = {
 };
 
 // DAILY UTILIZATION THRESHOLDS - For day-of-week analysis
-// Higher thresholds because daily patterns aggregate across all hours
+// Moderate thresholds aligned with business reality
 export const DAILY_THRESHOLDS = {
-  excellent: 60,  // ≥60% = Excelente (green) - very busy day
-  good: 40,       // ≥40% = Bom (blue) - healthy day
-  fair: 25        // ≥25% = Razoável (amber), <25% = Baixo (red)
+  excellent: 35,  // ≥35% = Excelente (green) - very busy day
+  good: 25,       // ≥25% = Bom (blue) - healthy day
+  fair: 15        // ≥15% = Razoável (amber), <15% = Baixo (red)
 };
 
 const DAYS_OF_WEEK = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];

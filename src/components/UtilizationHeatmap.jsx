@@ -1,7 +1,17 @@
-// UtilizationHeatmap Component v4.5.0
+// UtilizationHeatmap Component v5.0.0
 // Hour x Day heatmap showing average service utilization patterns
 //
 // CHANGELOG:
+// v5.0.0 (2026-01-23): Premium Glass styling (consistency with Operations tab components)
+//   - Upgraded to Premium Glass card (backdrop-blur, ring-1, glow shadows)
+//   - Header icon badge: cyan bg with white icon
+//   - Added ContextHelp tooltip to header
+//   - Implemented useTheme() for theme-aware styling
+//   - Loading skeleton animation
+//   - Glassmorphism on selected cell detail panel
+//   - Responsive text sizing with useMediaQuery
+//   - Updated view toggle styling
+//   - Replaced legacy colors (lavpop-blue → cyan)
 // v4.5.0 (2025-12-28): Unified utilization calculation with operationsMetrics.js
 //   - Track wash and dry services separately per cell
 //   - Use weighted utilization formula (37.5% wash, 62.5% dry by machine count)
@@ -39,9 +49,12 @@
 // v1.0 (Previous): Initial implementation
 
 import React, { useMemo, useState, useCallback } from 'react';
-import { Activity, Info, X } from 'lucide-react';
+import { Activity, X } from 'lucide-react';
 import { parseBrDate, formatDate } from '../utils/dateUtils';
 import { BUSINESS_PARAMS } from '../utils/operationsMetrics';
+import { useTheme } from '../contexts/ThemeContext';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import ContextHelp from './ContextHelp';
 
 /**
  * Count machines from transaction string
@@ -58,15 +71,28 @@ function countMachines(str) {
 }
 
 /**
- * Get color based on value intensity
+ * Get color based on value intensity and view mode
+ * Services mode: Blue/Cyan scale
+ * Utilization mode: Green scale
  */
-const getColorFromIntensity = (intensity) => {
+const getColorFromIntensity = (intensity, mode = 'services') => {
   if (intensity === 0) return 'bg-slate-100 dark:bg-slate-700/30';
-  if (intensity > 0.8) return 'bg-green-700 dark:bg-green-600';
-  if (intensity > 0.6) return 'bg-green-600 dark:bg-green-500';
-  if (intensity > 0.4) return 'bg-green-500 dark:bg-green-400';
-  if (intensity > 0.2) return 'bg-green-400 dark:bg-green-300';
-  return 'bg-green-200 dark:bg-green-200';
+
+  if (mode === 'services') {
+    // Blue/Cyan scale for services
+    if (intensity > 0.8) return 'bg-cyan-700 dark:bg-cyan-600';
+    if (intensity > 0.6) return 'bg-cyan-600 dark:bg-cyan-500';
+    if (intensity > 0.4) return 'bg-cyan-500 dark:bg-cyan-400';
+    if (intensity > 0.2) return 'bg-cyan-400 dark:bg-cyan-300';
+    return 'bg-cyan-200 dark:bg-cyan-200';
+  } else {
+    // Green scale for utilization
+    if (intensity > 0.8) return 'bg-emerald-700 dark:bg-emerald-600';
+    if (intensity > 0.6) return 'bg-emerald-600 dark:bg-emerald-500';
+    if (intensity > 0.4) return 'bg-emerald-500 dark:bg-emerald-400';
+    if (intensity > 0.2) return 'bg-emerald-400 dark:bg-emerald-300';
+    return 'bg-emerald-200 dark:bg-emerald-200';
+  }
 };
 
 /**
@@ -82,6 +108,8 @@ const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow }) => {
+  const { isDark } = useTheme();
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
   const [selectedCell, setSelectedCell] = useState(null);
   const [viewMode, setViewMode] = useState('services'); // 'services' or 'utilization'
 
@@ -209,72 +237,128 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
 
   if (!gridData) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl px-2 py-3 sm:p-6 border border-slate-200 dark:border-slate-700 text-center text-slate-600 dark:text-slate-400">
-        Carregando mapa de calor de utilização...
+      <div
+        className={`
+          ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+          backdrop-blur-xl rounded-2xl p-5
+          ${isDark
+            ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+            : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+          }
+          overflow-hidden
+        `}
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-cyan-500 dark:bg-cyan-600 flex items-center justify-center shadow-sm shrink-0">
+            <Activity className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-bold text-slate-800 dark:text-white">
+              Mapa de Calor de Utilização
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Carregando dados...
+            </p>
+          </div>
+        </div>
+        <div className="animate-pulse space-y-2">
+          <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+          {[0, 1, 2, 3, 4, 5].map((row) => (
+            <div key={row} className="grid grid-cols-8 gap-1">
+              <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              {[0, 1, 2, 3, 4, 5, 6].map((col) => (
+                <div key={col} className="h-6 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <div
-      className="bg-white dark:bg-slate-800 rounded-xl px-2 py-3 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm"
+      className={`
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl rounded-2xl p-5
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
+        overflow-hidden
+      `}
       onClick={handleOutsideClick}
     >
-      {/* Header */}
+      {/* Header with Icon Badge */}
       <div className="mb-4">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-          <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
-            <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
-              Mapa de Calor de Utilização
-            </h3>
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500 dark:bg-cyan-600 flex items-center justify-center shadow-sm shrink-0">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h3 className={`${isDesktop ? 'text-lg' : 'text-base'} font-bold text-slate-800 dark:text-white flex items-center gap-1.5`}>
+                Mapa de Calor
+                <ContextHelp
+                  title="Como Interpretar"
+                  description={
+                    <ul className="space-y-1.5 list-none">
+                      <li><strong>Cores:</strong> Verde mais intenso = maior utilização</li>
+                      <li><strong>Serviços:</strong> Média de serviços por hora/dia</li>
+                      <li><strong>Utilização:</strong> % da capacidade operacional</li>
+                      <li><strong>Clique:</strong> Toque em uma célula para detalhes</li>
+                    </ul>
+                  }
+                />
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Período: {dateWindow?.dateRange || 'Carregando...'}
+              </p>
+            </div>
           </div>
 
           {/* View Toggle */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-0.5">
+          <div className={`
+            flex items-center gap-0.5 rounded-lg p-0.5
+            ${isDark ? 'bg-white/[0.05] ring-1 ring-white/[0.05]' : 'bg-slate-100 ring-1 ring-slate-200/50'}
+          `}>
             <button
               onClick={(e) => { e.stopPropagation(); setViewMode('services'); }}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+              className={`px-2.5 py-1.5 ${isDesktop ? 'text-sm' : 'text-xs'} font-medium rounded-md transition-colors ${
                 viewMode === 'services'
-                  ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? isDark
+                    ? 'bg-cyan-500/20 text-cyan-400 ring-1 ring-cyan-500/30'
+                    : 'bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-200'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Serviços
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setViewMode('utilization'); }}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+              className={`px-2.5 py-1.5 ${isDesktop ? 'text-sm' : 'text-xs'} font-medium rounded-md transition-colors ${
                 viewMode === 'utilization'
-                  ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? isDark
+                    ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30'
+                    : 'bg-emerald-50 text-emerald-700 shadow-sm ring-1 ring-emerald-200'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Utilização %
             </button>
           </div>
         </div>
-
-        <p className="text-xs text-slate-600 dark:text-slate-400">
-          Período: {dateWindow?.dateRange || 'Carregando...'}
-        </p>
-        <p className="text-xs text-slate-500 dark:text-slate-500 italic mt-0.5">
-          {viewMode === 'services'
-            ? 'Média de serviços por hora em cada dia da semana'
-            : 'Taxa de utilização da capacidade operacional'
-          }
-        </p>
       </div>
 
       {/* Custom CSS Grid Heatmap - Compact: all hours fit without scroll */}
       <div className="min-w-[280px]">
         {/* Day Headers */}
-        <div className="grid grid-cols-[32px_repeat(7,1fr)] sm:grid-cols-[40px_repeat(7,1fr)] gap-0.5 mb-0.5">
+        <div className="grid grid-cols-[36px_repeat(7,1fr)] sm:grid-cols-[44px_repeat(7,1fr)] gap-1 mb-1">
           <div /> {/* Empty corner */}
           {DAYS.map(day => (
             <div
               key={day}
-              className="text-center text-xs font-medium text-slate-600 dark:text-slate-400 py-0.5"
+              className={`text-center ${isDesktop ? 'text-sm' : 'text-xs'} font-semibold text-slate-600 dark:text-slate-400 py-1`}
             >
               {day}
             </div>
@@ -285,10 +369,10 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
         {gridData.map(row => (
           <div
             key={row.hour}
-            className="grid grid-cols-[32px_repeat(7,1fr)] sm:grid-cols-[40px_repeat(7,1fr)] gap-0.5 mb-0.5"
+            className="grid grid-cols-[36px_repeat(7,1fr)] sm:grid-cols-[44px_repeat(7,1fr)] gap-1 mb-1"
           >
             {/* Hour Label */}
-            <div className="flex items-center justify-end pr-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className={`flex items-center justify-end pr-1.5 ${isDesktop ? 'text-sm' : 'text-xs'} font-medium text-slate-500 dark:text-slate-400`}>
               {row.hour}h
             </div>
 
@@ -307,15 +391,15 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
                     key={cell.day}
                     onClick={(e) => { e.stopPropagation(); handleCellClick(row.hour, cell); }}
                     className={`
-                      h-6 sm:h-7 rounded transition-all
+                      h-6 sm:h-7 lg:h-8 rounded-md transition-all
                       flex items-center justify-center
-                      ${getColorFromIntensity(intensity)}
+                      ${getColorFromIntensity(intensity, viewMode)}
                       ${getTextColorFromIntensity(intensity)}
                       ${isSelected
-                        ? 'ring-2 ring-lavpop-blue dark:ring-blue-400 ring-offset-1 dark:ring-offset-slate-800 z-10'
+                        ? 'ring-2 ring-cyan-500 dark:ring-cyan-400 ring-offset-1 dark:ring-offset-space-dust z-10'
                         : 'hover:ring-1 hover:ring-slate-400 dark:hover:ring-slate-500'
                       }
-                      focus:outline-none focus:ring-2 focus:ring-lavpop-blue dark:focus:ring-blue-400
+                      focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400
                       text-[10px] sm:text-xs font-medium
                     `}
                     aria-label={`${cell.dayNameFull} ${row.hour}h: ${cell.avgServices.toFixed(1)} serviços, ${Math.round(cell.utilization)}% utilização`}
@@ -328,40 +412,46 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
         ))}
       </div>
 
-      {/* Selected Cell Detail - Mobile-friendly panel */}
+      {/* Selected Cell Detail - Glassmorphism panel */}
       {selectedCell && (
         <div
-          className="mt-3 p-2 sm:p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600"
+          className={`
+            mt-4 p-3 rounded-xl backdrop-blur-sm ring-1
+            ${viewMode === 'services'
+              ? isDark ? 'bg-cyan-950/30 ring-cyan-500/20' : 'bg-cyan-50/80 ring-cyan-200'
+              : isDark ? 'bg-emerald-950/30 ring-emerald-500/20' : 'bg-emerald-50/80 ring-emerald-200'
+            }
+          `}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-2 sm:mb-0">
-            <span className="text-sm font-semibold text-slate-900 dark:text-white">
-              {selectedCell.dayNameFull} {selectedCell.hour}h
+          <div className="flex items-center justify-between mb-2">
+            <span className={`${isDesktop ? 'text-base' : 'text-sm'} font-semibold text-slate-900 dark:text-white`}>
+              {selectedCell.dayNameFull} às {selectedCell.hour}h
             </span>
             <button
               onClick={handleOutsideClick}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors"
+              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-200'}`}
               aria-label="Fechar"
             >
               <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             </button>
           </div>
           {/* Metrics row */}
-          <div className="flex items-center gap-4 text-xs">
+          <div className={`flex items-center gap-4 ${isDesktop ? 'text-sm' : 'text-xs'}`}>
             <div>
               <span className="text-slate-500 dark:text-slate-400">Média: </span>
-              <span className="font-semibold text-slate-900 dark:text-white">
-                {selectedCell.avgServices.toFixed(1)}
+              <span className={`font-semibold ${viewMode === 'services' ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-white'}`}>
+                {selectedCell.avgServices.toFixed(1)} serviços
               </span>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400">Util.: </span>
-              <span className="font-semibold text-lavpop-blue dark:text-blue-400">
+              <span className="text-slate-500 dark:text-slate-400">Utilização: </span>
+              <span className={`font-semibold ${viewMode === 'utilization' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                 {Math.round(selectedCell.utilization)}%
               </span>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400">Dias: </span>
+              <span className="text-slate-500 dark:text-slate-400">Dias analisados: </span>
               <span className="font-semibold text-slate-900 dark:text-white">
                 {selectedCell.uniqueDays}
               </span>
@@ -371,20 +461,32 @@ const UtilizationHeatmap = ({ salesData, dateFilter = 'currentWeek', dateWindow 
       )}
 
       {/* Gradient Legend + Capacity Footer */}
-      <div className="mt-3 flex flex-col items-center gap-1">
-        <div className="flex items-center gap-2 w-full max-w-xs">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Baixa</span>
-          <div className="flex-1 h-2 rounded-full flex overflow-hidden border border-slate-200 dark:border-slate-700">
-            <div className="flex-1 bg-green-200" />
-            <div className="flex-1 bg-green-400" />
-            <div className="flex-1 bg-green-500" />
-            <div className="flex-1 bg-green-600" />
-            <div className="flex-1 bg-green-700" />
+      <div className="mt-4 flex flex-col items-center gap-2">
+        <div className="flex items-center gap-3 w-full max-w-xs">
+          <span className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-500 dark:text-slate-400`}>Baixa</span>
+          <div className={`flex-1 h-2.5 rounded-full flex overflow-hidden ${isDark ? 'ring-1 ring-white/[0.05]' : 'ring-1 ring-slate-200'}`}>
+            {viewMode === 'services' ? (
+              <>
+                <div className="flex-1 bg-cyan-200 dark:bg-cyan-200/80" />
+                <div className="flex-1 bg-cyan-400 dark:bg-cyan-400/90" />
+                <div className="flex-1 bg-cyan-500" />
+                <div className="flex-1 bg-cyan-600" />
+                <div className="flex-1 bg-cyan-700 dark:bg-cyan-600" />
+              </>
+            ) : (
+              <>
+                <div className="flex-1 bg-emerald-200 dark:bg-emerald-200/80" />
+                <div className="flex-1 bg-emerald-400 dark:bg-emerald-400/90" />
+                <div className="flex-1 bg-emerald-500" />
+                <div className="flex-1 bg-emerald-600" />
+                <div className="flex-1 bg-emerald-700 dark:bg-emerald-600" />
+              </>
+            )}
           </div>
-          <span className="text-xs text-slate-500 dark:text-slate-400">Alta</span>
+          <span className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-500 dark:text-slate-400`}>Alta</span>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-500">
-          Capacidade: {maxServicesPerHour} serviços/hora
+        <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-500 dark:text-slate-400`}>
+          Capacidade máxima: {maxServicesPerHour} serviços/hora
         </p>
       </div>
     </div>

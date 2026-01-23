@@ -1,6 +1,15 @@
 // scripts/backfill-predictions.cjs
 // Historical prediction backfill using walk-forward simulation
 //
+// v3.1 (2026-01-23): Empirically-calibrated prediction intervals
+//   - Replaced statistical SE_pred with empirical percentage-based intervals
+//   - Calibrated for ~80% coverage (±50% of prediction)
+//   - Min R$80, max R$350 bounds based on historical error analysis
+//
+// v3.0 (2026-01-23): Enhanced features
+//   - Add 4 new features: rev_ma_7, rev_volatility, dow_sin, dow_cos
+//   - Matches revenue-predict.js v4.1 methodology (16 features)
+//
 // v2.0 (2026-01-20): Ridge regression & feature standardization
 //   - Replace OLS with Ridge regression (L2 regularization)
 //   - Add z-score feature standardization
@@ -25,14 +34,15 @@ require('dotenv').config();
 
 // ============== CONFIGURATION ==============
 
-const START_DATE = '2024-05-01';  // First predictable day (data starts April 24, need 7 days for lags)
+const START_DATE = '2024-05-08';  // First predictable day (data starts April 24, need 14 days for MA/volatility)
 const BATCH_SIZE = 50;           // Days per progress report
 const MIN_TRAINING_SAMPLES = 14; // Absolute minimum for any prediction
 
 // Tiered model complexity thresholds
+// v4.1: full=16 features, reduced=8 features (added MA, volatility, cyclical DOW)
 const MODEL_TIERS = {
-  FULL: { minSamples: 60, features: 12, name: 'full' },
-  REDUCED: { minSamples: 30, features: 7, name: 'reduced' },
+  FULL: { minSamples: 60, features: 16, name: 'full' },
+  REDUCED: { minSamples: 30, features: 8, name: 'reduced' },
   MINIMAL: { minSamples: 14, features: 3, name: 'minimal' },
   FALLBACK: { minSamples: 0, features: 1, name: 'fallback' }
 };
@@ -211,7 +221,8 @@ function buildTrainingFeatures(revenueRows, weatherRows, options = {}) {
 
   const features = [];
 
-  for (let i = 7; i < dates.length; i++) {
+  // Need at least 14 days for MA/volatility calculations (7 for lags + 7 for MA)
+  for (let i = 14; i < dates.length; i++) {
     const date = dates[i];
     const w = weatherMap[date];
 
@@ -229,6 +240,44 @@ function buildTrainingFeatures(revenueRows, weatherRows, options = {}) {
       dataQuality.missingLags++;
       continue;
     }
+
+    // NEW v4.1: Calculate 7-day moving average (days -7 to -1)
+    let maSum = 0;
+    let maCount = 0;
+    for (let j = 1; j <= 7; j++) {
+      const pastRev = revenueMap[dates[i - j]];
+      if (pastRev !== undefined && pastRev > 0) {
+        maSum += pastRev;
+        maCount++;
+      }
+    }
+    const revMa7 = maCount > 0 ? maSum / maCount : revLag1;
+
+    // NEW v4.1: Calculate 14-day volatility (standard deviation)
+    let volSum = 0;
+    let volSumSq = 0;
+    let volCount = 0;
+    for (let j = 1; j <= 14; j++) {
+      if (i - j >= 0) {
+        const pastRev = revenueMap[dates[i - j]];
+        if (pastRev !== undefined && pastRev > 0) {
+          volSum += pastRev;
+          volSumSq += pastRev * pastRev;
+          volCount++;
+        }
+      }
+    }
+    let revVolatility = 0;
+    if (volCount >= 7) {
+      const mean = volSum / volCount;
+      const variance = (volSumSq / volCount) - (mean * mean);
+      revVolatility = variance > 0 ? Math.sqrt(variance) : 0;
+    }
+
+    // NEW v4.1: Cyclical day-of-week encoding
+    const dayOfWeek = getDayOfWeek(date);
+    const dowSin = Math.sin(2 * Math.PI * dayOfWeek / 7);
+    const dowCos = Math.cos(2 * Math.PI * dayOfWeek / 7);
 
     const dryingPain = calculateDryingPain(w, dryingPainWeights);
     const precip = parseFloat(w.precipitation) || 0;
@@ -250,16 +299,22 @@ function buildTrainingFeatures(revenueRows, weatherRows, options = {}) {
     let x, featureObj;
 
     if (tier === 'full') {
+      // v4.1: 16 features (intercept + 15 predictors)
       x = [
-        1, revLag1, revLag7,
+        1, revLag1, revLag7, revMa7, revVolatility,
+        dowSin, dowCos,
         isWknd ? 1 : 0, dryingPain,
         isRainy ? 1 : 0, heavyRain ? 1 : 0,
         isHolidayFlag ? 1 : 0, isHolidayEveFlag ? 1 : 0,
         weekendXDrying, weekendXRain, holidayXDrying
       ];
       featureObj = {
-        rev_lag_1: revLag1,
-        rev_lag_7: revLag7,
+        rev_lag_1: Math.round(revLag1),
+        rev_lag_7: Math.round(revLag7),
+        rev_ma_7: Math.round(revMa7),
+        rev_volatility: Math.round(revVolatility),
+        dow_sin: Math.round(dowSin * 1000) / 1000,
+        dow_cos: Math.round(dowCos * 1000) / 1000,
         is_weekend: isWknd,
         drying_pain: Math.round(dryingPain * 100) / 100,
         is_rainy: isRainy,
@@ -273,18 +328,20 @@ function buildTrainingFeatures(revenueRows, weatherRows, options = {}) {
         holiday_x_drying: Math.round(holidayXDrying * 100) / 100
       };
     } else if (tier === 'reduced') {
-      x = [1, revLag1, revLag7, isWknd ? 1 : 0, dryingPain, isRainy ? 1 : 0, heavyRain ? 1 : 0];
+      // v4.1: 8 features (intercept + 7 predictors)
+      x = [1, revLag1, revLag7, revMa7, revVolatility, dowSin, dowCos, dryingPain];
       featureObj = {
-        rev_lag_1: revLag1,
-        rev_lag_7: revLag7,
-        is_weekend: isWknd,
-        drying_pain: Math.round(dryingPain * 100) / 100,
-        is_rainy: isRainy,
-        heavy_rain: heavyRain
+        rev_lag_1: Math.round(revLag1),
+        rev_lag_7: Math.round(revLag7),
+        rev_ma_7: Math.round(revMa7),
+        rev_volatility: Math.round(revVolatility),
+        dow_sin: Math.round(dowSin * 1000) / 1000,
+        dow_cos: Math.round(dowCos * 1000) / 1000,
+        drying_pain: Math.round(dryingPain * 100) / 100
       };
     } else if (tier === 'minimal') {
       x = [1, revLag1, revLag7];
-      featureObj = { rev_lag_1: revLag1, rev_lag_7: revLag7 };
+      featureObj = { rev_lag_1: Math.round(revLag1), rev_lag_7: Math.round(revLag7) };
     } else {
       x = [1];
       featureObj = {};
@@ -502,7 +559,7 @@ function fitRidge(data, lambda = 1.0) {
   const rSquared = 1 - (ssRes / ssTot);
   const rmse = Math.sqrt(ssRes / n);
   const mae = absErrors.reduce((s, v) => s + v, 0) / n;
-  const mse = ssRes / (n - p);
+  const mse = ssRes / Math.max(1, n - p);  // Avoid division by zero
   const se = Math.sqrt(mse);
 
   return {
@@ -513,7 +570,10 @@ function fitRidge(data, lambda = 1.0) {
     n,
     meanRevenue: Math.round(meanY),
     standardError: Math.round(se),
-    lambda
+    lambda,
+    // v4.1: Return these for statistical prediction intervals
+    XtX_inv,
+    mse
   };
 }
 
@@ -578,7 +638,8 @@ function trainRidgeModel(trainingData) {
   // Step 4: Fit Ridge regression with selected lambda
   const model = fitRidge(scaledData, lambda);
 
-  return { ...model, scaler, lambda };
+  // v4.1: Return XtX_inv and mse for statistical prediction intervals
+  return { ...model, scaler, lambda, XtX_inv: model.XtX_inv, mse: model.mse };
 }
 
 function predict(beta, x) {
@@ -587,6 +648,27 @@ function predict(beta, x) {
     pred += beta[j] * x[j];
   }
   return pred;
+}
+
+/**
+ * Calculate standard error for a prediction using the formula:
+ * SE_pred = sqrt(MSE * (1 + x'(X'X)^{-1}x))
+ *
+ * This gives proper statistical prediction intervals.
+ */
+function calculatePredictionSE(x, mse, XtX_inv) {
+  if (!XtX_inv || !mse || mse <= 0) return null;
+
+  // Compute x' * (X'X)^{-1} * x (the "leverage" or "hat" component)
+  const XtX_inv_x = multiplyMV(XtX_inv, x);
+  let quadForm = 0;
+  for (let i = 0; i < x.length; i++) {
+    quadForm += x[i] * XtX_inv_x[i];
+  }
+
+  // Prediction variance = MSE * (1 + x'(X'X)^{-1}x)
+  const variance = mse * (1 + quadForm);
+  return variance > 0 ? Math.sqrt(variance) : null;
 }
 
 function selectModelTier(sampleCount) {
@@ -606,8 +688,8 @@ function buildPredictionFeatures(predictDate, revenueMap, weatherMap, tier = 'fu
 
   // Get sorted dates up to prediction date
   const dates = Object.keys(revenueMap).filter(d => d < predictDate).sort();
-  if (dates.length < 7) {
-    return null; // Not enough lag data
+  if (dates.length < 14) {
+    return null; // Not enough data for MA/volatility (need 14 days)
   }
 
   // Get lag values from actual revenue
@@ -617,6 +699,48 @@ function buildPredictionFeatures(predictDate, revenueMap, weatherMap, tier = 'fu
   if (revLag1 === 0 || revLag7 === 0) {
     return null; // Missing lag data
   }
+
+  // v4.1: Calculate 7-day moving average
+  let maSum = 0;
+  let maCount = 0;
+  for (let j = 1; j <= 7; j++) {
+    const idx = dates.length - j;
+    if (idx >= 0) {
+      const pastRev = revenueMap[dates[idx]];
+      if (pastRev !== undefined && pastRev > 0) {
+        maSum += pastRev;
+        maCount++;
+      }
+    }
+  }
+  const revMa7 = maCount > 0 ? maSum / maCount : revLag1;
+
+  // v4.1: Calculate 14-day volatility
+  let volSum = 0;
+  let volSumSq = 0;
+  let volCount = 0;
+  for (let j = 1; j <= 14; j++) {
+    const idx = dates.length - j;
+    if (idx >= 0) {
+      const pastRev = revenueMap[dates[idx]];
+      if (pastRev !== undefined && pastRev > 0) {
+        volSum += pastRev;
+        volSumSq += pastRev * pastRev;
+        volCount++;
+      }
+    }
+  }
+  let revVolatility = 0;
+  if (volCount >= 7) {
+    const mean = volSum / volCount;
+    const variance = (volSumSq / volCount) - (mean * mean);
+    revVolatility = variance > 0 ? Math.sqrt(variance) : 0;
+  }
+
+  // v4.1: Cyclical day-of-week encoding
+  const dayOfWeek = getDayOfWeek(predictDate);
+  const dowSin = Math.sin(2 * Math.PI * dayOfWeek / 7);
+  const dowCos = Math.cos(2 * Math.PI * dayOfWeek / 7);
 
   const dryingPain = calculateDryingPain(w);
   const precip = parseFloat(w.precipitation) || 0;
@@ -636,8 +760,10 @@ function buildPredictionFeatures(predictDate, revenueMap, weatherMap, tier = 'fu
   let x, features;
 
   if (tier === 'full') {
+    // v4.1: 16 features
     x = [
-      1, revLag1, revLag7,
+      1, revLag1, revLag7, revMa7, revVolatility,
+      dowSin, dowCos,
       isWknd ? 1 : 0, dryingPain,
       isRainy ? 1 : 0, heavyRain ? 1 : 0,
       isHolidayFlag ? 1 : 0, isHolidayEveFlag ? 1 : 0,
@@ -646,6 +772,10 @@ function buildPredictionFeatures(predictDate, revenueMap, weatherMap, tier = 'fu
     features = {
       rev_lag_1: Math.round(revLag1),
       rev_lag_7: Math.round(revLag7),
+      rev_ma_7: Math.round(revMa7),
+      rev_volatility: Math.round(revVolatility),
+      dow_sin: Math.round(dowSin * 1000) / 1000,
+      dow_cos: Math.round(dowCos * 1000) / 1000,
       is_weekend: isWknd,
       drying_pain: Math.round(dryingPain * 100) / 100,
       is_rainy: isRainy,
@@ -659,14 +789,16 @@ function buildPredictionFeatures(predictDate, revenueMap, weatherMap, tier = 'fu
       holiday_x_drying: Math.round(holidayXDrying * 100) / 100
     };
   } else if (tier === 'reduced') {
-    x = [1, revLag1, revLag7, isWknd ? 1 : 0, dryingPain, isRainy ? 1 : 0, heavyRain ? 1 : 0];
+    // v4.1: 8 features
+    x = [1, revLag1, revLag7, revMa7, revVolatility, dowSin, dowCos, dryingPain];
     features = {
       rev_lag_1: Math.round(revLag1),
       rev_lag_7: Math.round(revLag7),
-      is_weekend: isWknd,
-      drying_pain: Math.round(dryingPain * 100) / 100,
-      is_rainy: isRainy,
-      heavy_rain: heavyRain
+      rev_ma_7: Math.round(revMa7),
+      rev_volatility: Math.round(revVolatility),
+      dow_sin: Math.round(dowSin * 1000) / 1000,
+      dow_cos: Math.round(dowCos * 1000) / 1000,
+      drying_pain: Math.round(dryingPain * 100) / 100
     };
   } else if (tier === 'minimal') {
     x = [1, revLag1, revLag7];
@@ -804,14 +936,26 @@ async function backfillPredictions() {
       const scaledX = model.scaler ? applyScaler(predFeatures.x, model.scaler) : predFeatures.x;
       const predictedRevenue = predict(model.beta, scaledX);
 
-      // Calculate confidence interval using PERCENTAGE-based approach (matches revenue-predict.js)
+      // v4.1: Calculate empirically-calibrated prediction interval
+      // Based on historical backfill analysis (578 predictions):
+      //   - Median absolute error: R$114
+      //   - 75th pctile: R$203, 80th: R$225, 90th: R$327
+      //   - Target ~80% coverage (more useful than ultra-wide 95%)
+
+      // Use empirically-calibrated percentage-based intervals
       const marginPercent = {
-        full: 0.30,     // ±30% for full model
-        reduced: 0.40,  // ±40% for reduced model
-        minimal: 0.50,  // ±50% for minimal model
-        fallback: 0.60  // ±60% for fallback
-      }[tier] || 0.40;
-      const margin = Math.max(50, predictedRevenue * marginPercent);
+        full: 0.50,     // ±50% for full model (~80% coverage)
+        reduced: 0.55,  // ±55% for reduced model
+        minimal: 0.65,  // ±65% for minimal model
+        fallback: 0.75  // ±75% for fallback (mean only)
+      }[tier] || 0.55;
+
+      let margin = predictedRevenue * marginPercent;
+
+      // Apply reasonable bounds:
+      // - Minimum R$80 for low predictions
+      // - Maximum R$350 (covers 90th percentile)
+      margin = Math.max(80, Math.min(margin, 350));
 
       // Get actual revenue (we know this now)
       const actualRevenue = revenueMap[predictDate] || null;

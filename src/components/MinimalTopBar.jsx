@@ -1,8 +1,17 @@
-// MinimalTopBar.jsx v4.1 - STELLAR COMMAND CENTER
+// MinimalTopBar.jsx v4.3 - STELLAR COMMAND CENTER
 // Cosmic precision top bar with Horizon Line signature element
 // Design System v5.1 compliant - Space station command bridge viewport
 //
 // CHANGELOG:
+// v4.3 (2026-01-23): Settings button moved to sidebar
+//   - Removed Settings button (moved to IconSidebar)
+//   - Removed IconButton and Settings icon imports
+//   - Removed onOpenSettings prop
+// v4.2 (2026-01-23): Realtime connection status indicator
+//   - Added RealtimeStatusIndicator component to left section
+//   - Shows connection status with breathing dot animation
+//   - Tooltip displays last update time on hover
+//   - Hidden on small screens for space efficiency
 // v4.1 (2026-01-20): Weather capsule simplification
 //   - Removed orbital ring hover effect from CosmicWeatherCapsule
 //   - Changed location text from "Caxias Station" to "Caxias do Sul"
@@ -22,11 +31,11 @@
 // v3.2-v1.x: Previous implementations
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, Settings, FileDown, RefreshCw, Bell, MoreHorizontal, LogOut } from 'lucide-react';
+import { MapPin, FileDown, RefreshCw, Bell, MoreHorizontal, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WeatherWidget from './WeatherWidget_API';
 import ThemeToggle from './ThemeToggle';
-import IconButton from './ui/IconButton';
+import RealtimeStatusIndicator from './ui/RealtimeStatusIndicator';
 import { haptics } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -453,7 +462,7 @@ const CommandPalette = ({ prefersReducedMotion }) => {
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT: MinimalTopBar (Stellar Command Center)
 // ═══════════════════════════════════════════════════════════════════════════
-const MinimalTopBar = ({ refreshing, onRefresh, onOpenSettings, onOpenExport }) => {
+const MinimalTopBar = ({ refreshing, onRefresh, onOpenExport }) => {
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
 
@@ -479,10 +488,14 @@ const MinimalTopBar = ({ refreshing, onRefresh, onOpenSettings, onOpenExport }) 
 
       {/* Main content container */}
       <div className="relative h-14 lg:h-[60px] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-3">
-        {/* Left Section: Weather + Location */}
+        {/* Left Section: Weather + Location + Realtime Status */}
         <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
           <CosmicWeatherCapsule prefersReducedMotion={prefersReducedMotion} />
           <StellarLocationBadge isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
+          {/* Realtime connection status - hidden on small screens */}
+          <div className="hidden sm:block">
+            <RealtimeStatusIndicator />
+          </div>
         </div>
 
         {/* Right Section: Controls */}
@@ -494,19 +507,6 @@ const MinimalTopBar = ({ refreshing, onRefresh, onOpenSettings, onOpenExport }) 
             refreshing={refreshing}
             prefersReducedMotion={prefersReducedMotion}
           />
-
-          {/* Settings Button with hover glow */}
-          <motion.div
-            whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
-            whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-          >
-            <IconButton
-              icon={Settings}
-              label="Configuracoes"
-              onClick={onOpenSettings}
-            />
-          </motion.div>
 
           {/* Theme Toggle with orbital effect - desktop only */}
           <div className="hidden lg:block">

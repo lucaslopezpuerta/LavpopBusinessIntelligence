@@ -1,6 +1,17 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.29 (2025-12-26)
+-- Version: 3.35 (2026-01-23)
+--
+-- v3.35: Schema Sync Update
+--   - Added weather_daily_metrics table (weather data storage)
+--   - Added rate_limits table (API rate limiting)
+--   - Added model_coefficients table (ML model persistence)
+--   - Added model_training_history table (drift detection)
+--   - Added revenue_predictions table (prediction tracking)
+--   - Added weather_comfort_analytics view
+--   - Added prediction_accuracy view (30-day rolling metrics)
+--   - Added prediction_accuracy_weekly view (weekly trends)
+--   - Added weather and prediction helper functions
 --
 -- v3.29: Fix created_at → imported_at bug
 --   - Fixed update_customer_after_transaction() trigger function
@@ -1003,6 +1014,174 @@ ON instagram_daily_metrics(bucket_date);
 
 COMMENT ON TABLE instagram_daily_metrics IS 'Daily Instagram account metrics from Meta Graph API. Enables historical trend analysis.';
 
+-- ==================== WEATHER DAILY METRICS TABLE (v3.23) ====================
+-- Stores historical and daily weather data for Caxias do Sul
+-- Used by revenue prediction model and WeatherDashboard
+
+CREATE TABLE IF NOT EXISTS weather_daily_metrics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  date DATE NOT NULL UNIQUE,
+
+  -- Core metrics (from CSV + Visual Crossing)
+  temp_avg DECIMAL(4,1),              -- Average temperature (°C)
+  temp_min DECIMAL(4,1),              -- Minimum temperature
+  temp_max DECIMAL(4,1),              -- Maximum temperature
+  feels_like DECIMAL(4,1),            -- Feels like temperature
+  humidity_avg DECIMAL(4,1),          -- Average humidity (%)
+  precipitation DECIMAL(6,2),         -- Precipitation (mm)
+  precip_probability INTEGER,         -- Precipitation probability (%)
+
+  -- Extended metrics (Visual Crossing API)
+  wind_speed DECIMAL(4,1),            -- Wind speed (km/h)
+  wind_direction INTEGER,             -- Wind direction (degrees 0-360)
+  pressure DECIMAL(6,1),              -- Atmospheric pressure (hPa)
+  uv_index INTEGER,                   -- UV index (0-11+)
+  visibility DECIMAL(4,1),            -- Visibility (km)
+  cloud_cover INTEGER,                -- Cloud cover (%)
+
+  -- Condition classification
+  conditions TEXT,                    -- e.g., "Parcialmente nublado"
+  icon TEXT,                          -- Visual Crossing icon code (clear-day, rain, etc.)
+  comfort_category TEXT,              -- Computed: abafado, quente, frio, ameno, umido, chuvoso
+
+  -- Solar data
+  sunrise TIME,
+  sunset TIME,
+
+  -- Metadata
+  source TEXT DEFAULT 'visual_crossing', -- 'csv_import' or 'visual_crossing'
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for weather queries
+CREATE INDEX IF NOT EXISTS idx_weather_date ON weather_daily_metrics(date DESC);
+CREATE INDEX IF NOT EXISTS idx_weather_comfort ON weather_daily_metrics(comfort_category);
+CREATE INDEX IF NOT EXISTS idx_weather_source ON weather_daily_metrics(source);
+
+COMMENT ON TABLE weather_daily_metrics IS 'Daily weather data for Caxias do Sul, Brazil. Historical data from INMET CSV, daily updates from Visual Crossing API.';
+COMMENT ON COLUMN weather_daily_metrics.comfort_category IS 'Thermal comfort classification: abafado (feels_like>=27), quente (temp>=23), frio (temp<=10), ameno (10-23), umido (humidity>=80+precip), chuvoso (precip>5mm)';
+
+-- ==================== RATE LIMITS TABLE (v3.30) ====================
+-- Stores rate limit counters for serverless functions
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT PRIMARY KEY,                          -- Format: "endpoint:ip_address"
+  request_count INTEGER NOT NULL DEFAULT 0,      -- Number of requests in current window
+  window_start BIGINT NOT NULL,                  -- Unix timestamp (ms) when window started
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_window_start ON rate_limits(window_start);
+
+COMMENT ON TABLE rate_limits IS 'Rate limiting counters for API endpoints (sliding window)';
+
+-- ==================== MODEL COEFFICIENTS TABLE (v3.26) ====================
+-- Stores trained OLS regression model coefficients for revenue prediction
+
+CREATE TABLE IF NOT EXISTS model_coefficients (
+  id TEXT PRIMARY KEY DEFAULT 'revenue_prediction',
+
+  -- Model coefficients (JSON array: [β₀, β₁, β₂, β₃, β₄, β₅, β₆])
+  beta JSONB NOT NULL DEFAULT '[]',
+  feature_names JSONB NOT NULL DEFAULT '[]',  -- ['intercept', 'rev_lag_1', 'rev_lag_7', ...]
+
+  -- Model metrics
+  r_squared DECIMAL(5,4),             -- e.g., 0.8523
+  mae DECIMAL(10,2),                  -- Mean Absolute Error in R$
+  rmse DECIMAL(10,2),                 -- Root Mean Square Error
+  mean_revenue DECIMAL(10,2),         -- Training data mean (for baseline comparison)
+  n_training_samples INTEGER,         -- Number of samples used
+
+  -- OOS Metrics (v3.35)
+  oos_mae DECIMAL(10,2),
+  oos_mape DECIMAL(5,2),
+  oos_r_squared DECIMAL(5,4),
+  validation_points INTEGER,
+  drift_detected BOOLEAN DEFAULT FALSE,
+  drift_ratio DECIMAL(5,2),
+
+  -- Training metadata
+  trained_at TIMESTAMPTZ DEFAULT NOW(),
+  training_period_start DATE,
+  training_period_end DATE,
+
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE model_coefficients IS 'Stores trained OLS regression model coefficients for revenue prediction. Single-row table like app_settings.';
+
+-- ==================== MODEL TRAINING HISTORY TABLE (v3.26) ====================
+-- Historical training runs for monitoring model drift over time
+
+CREATE TABLE IF NOT EXISTS model_training_history (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  model_id TEXT NOT NULL DEFAULT 'revenue_prediction',
+
+  -- Metrics at time of training
+  r_squared DECIMAL(5,4),
+  mae DECIMAL(10,2),
+  rmse DECIMAL(10,2),
+  n_training_samples INTEGER,
+
+  -- Training details
+  training_period_start DATE,
+  training_period_end DATE,
+  trained_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_model_training_history_date ON model_training_history(trained_at DESC);
+
+COMMENT ON TABLE model_training_history IS 'Historical training runs for monitoring model drift over time.';
+
+-- ==================== REVENUE PREDICTIONS TABLE (v3.35) ====================
+-- Stores daily revenue predictions for comparison with actual outcomes
+
+CREATE TABLE IF NOT EXISTS revenue_predictions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  -- Prediction identification
+  prediction_date DATE NOT NULL,
+  predicted_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Prediction values
+  predicted_revenue DECIMAL(10,2) NOT NULL,
+  confidence_low DECIMAL(10,2),
+  confidence_high DECIMAL(10,2),
+
+  -- Model metadata at prediction time
+  model_tier TEXT,                          -- full, reduced, minimal, fallback
+  in_sample_r_squared DECIMAL(5,4),         -- R² from training (for reference)
+
+  -- Features used (for debugging and analysis)
+  features JSONB,
+
+  -- Actual outcome (populated after the day ends)
+  actual_revenue DECIMAL(10,2),
+  error DECIMAL(10,2),                       -- actual - predicted (signed)
+  abs_error DECIMAL(10,2),                   -- |actual - predicted|
+  pct_error DECIMAL(5,2),                    -- ((actual - predicted) / actual) * 100
+  evaluated_at TIMESTAMPTZ,
+
+  -- Closure day flag (v3.32)
+  is_closure BOOLEAN DEFAULT FALSE,
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- One prediction per day
+  CONSTRAINT unique_daily_prediction UNIQUE (prediction_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_revenue_predictions_date ON revenue_predictions(prediction_date DESC);
+CREATE INDEX IF NOT EXISTS idx_revenue_predictions_pending ON revenue_predictions(prediction_date) WHERE actual_revenue IS NULL;
+CREATE INDEX IF NOT EXISTS idx_revenue_predictions_evaluated ON revenue_predictions(evaluated_at DESC) WHERE evaluated_at IS NOT NULL;
+
+COMMENT ON TABLE revenue_predictions IS 'Daily revenue predictions stored for comparison with actual outcomes. Enables honest out-of-sample accuracy metrics and drift detection.';
+
 -- ==================== VIEWS ====================
 -- Drop existing views first to allow column changes
 -- (CREATE OR REPLACE VIEW cannot rename columns)
@@ -1360,6 +1539,66 @@ FROM instagram_daily_metrics m
 ORDER BY m.bucket_date DESC;
 
 COMMENT ON VIEW instagram_metrics_with_growth IS 'Instagram metrics with day-over-day growth calculations for followers, reach, views, and engagement.';
+
+-- ==================== WEATHER COMFORT ANALYTICS VIEW (v3.23) ====================
+-- Aggregated weather metrics by comfort category for the last 90 days
+
+CREATE OR REPLACE VIEW weather_comfort_analytics AS
+SELECT
+  comfort_category,
+  COUNT(*) AS days_count,
+  ROUND(AVG(temp_avg)::numeric, 1) AS avg_temp,
+  ROUND(AVG(humidity_avg)::numeric, 1) AS avg_humidity,
+  ROUND(AVG(precipitation)::numeric, 2) AS avg_precipitation,
+  MIN(date) AS first_date,
+  MAX(date) AS last_date
+FROM weather_daily_metrics
+WHERE comfort_category IS NOT NULL
+  AND date >= CURRENT_DATE - INTERVAL '90 days'
+GROUP BY comfort_category
+ORDER BY days_count DESC;
+
+COMMENT ON VIEW weather_comfort_analytics IS 'Aggregated weather metrics by comfort category for the last 90 days';
+
+-- ==================== PREDICTION ACCURACY VIEW (v3.35) ====================
+-- Rolling 30-day accuracy metrics for dashboard display (excludes closure days)
+
+CREATE OR REPLACE VIEW prediction_accuracy AS
+SELECT
+  COUNT(*) as total_predictions,
+  ROUND(AVG(abs_error)::NUMERIC, 0) as avg_mae,
+  ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY abs_error)::NUMERIC, 0) as median_ae,
+  ROUND(AVG(ABS(pct_error))::NUMERIC, 1) as avg_mape,
+  ROUND(STDDEV(abs_error)::NUMERIC, 0) as mae_std,
+  MIN(prediction_date) as period_start,
+  MAX(prediction_date) as period_end
+FROM revenue_predictions
+WHERE actual_revenue IS NOT NULL
+  AND (is_closure IS NULL OR is_closure = FALSE)
+  AND prediction_date >= CURRENT_DATE - INTERVAL '30 days';
+
+COMMENT ON VIEW prediction_accuracy IS 'Rolling 30-day prediction accuracy metrics (excludes closure days). MAE = Mean Absolute Error, MAPE = Mean Absolute Percentage Error.';
+
+-- ==================== PREDICTION ACCURACY WEEKLY VIEW (v3.35) ====================
+-- Week-by-week accuracy for trend analysis (excludes closure days)
+
+CREATE OR REPLACE VIEW prediction_accuracy_weekly AS
+SELECT
+  DATE_TRUNC('week', prediction_date)::DATE as week_start,
+  COUNT(*) as predictions,
+  ROUND(AVG(abs_error)::NUMERIC, 0) as avg_mae,
+  ROUND(AVG(ABS(pct_error))::NUMERIC, 1) as avg_mape,
+  ROUND(STDDEV(error)::NUMERIC, 0) as error_std,
+  -- Bias: positive = underpredicting, negative = overpredicting
+  ROUND(AVG(error)::NUMERIC, 0) as avg_bias
+FROM revenue_predictions
+WHERE actual_revenue IS NOT NULL
+  AND (is_closure IS NULL OR is_closure = FALSE)
+  AND prediction_date >= CURRENT_DATE - INTERVAL '90 days'
+GROUP BY DATE_TRUNC('week', prediction_date)
+ORDER BY week_start DESC;
+
+COMMENT ON VIEW prediction_accuracy_weekly IS 'Weekly prediction accuracy trends for drift detection (excludes closure days). Tracks MAE, MAPE, and bias over time.';
 
 -- ==================== HELPER FUNCTIONS ====================
 

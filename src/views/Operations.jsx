@@ -1,4 +1,4 @@
-// OPERATIONS TAB V5.9.0 - PULL TO REFRESH
+// OPERATIONS TAB V6.0.0 - SIMPLIFIED LAYOUT
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
@@ -15,6 +15,10 @@
 // ✅ Loading skeleton fallback for data readiness
 //
 // CHANGELOG:
+// v6.0.0 (2026-01-23): Simplified layout
+//   - Removed section headers (Equipamentos, Utilização, Padrões Temporais)
+//   - Components now have their own headers with icon badges
+//   - Cleaner visual hierarchy with less redundant titles
 // v5.9.0 (2026-01-12): Pull-to-refresh support
 //   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
 //   - Accepts onDataChange prop for refresh callback
@@ -78,13 +82,12 @@
 // v1.0 (Previous): Initial Operations tab
 
 import React, { useMemo, useState, Suspense } from 'react';
-import { Wrench, Gauge, Grid3X3, Clock } from 'lucide-react';
+import { Wrench } from 'lucide-react';
 import OperationsKPICards from '../components/OperationsKPICards';
 import UtilizationHeatmap from '../components/UtilizationHeatmap';
 import PeakHoursSummary from '../components/PeakHoursSummary';
 import MachinePerformanceTable from '../components/MachinePerformanceTable';
 import DateRangeSelector from '../components/DateRangeSelector';
-import SectionHeader from '../components/ui/SectionHeader';
 import { LazyDayOfWeekChart, ChartLoadingFallback } from '../utils/lazyCharts';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
@@ -182,14 +185,7 @@ const Operations = ({ data, onDataChange }) => {
       />
 
       {/* Section 1: Machine Performance (Most Actionable) */}
-      <section id="maquinas-section" aria-labelledby="maquinas-heading" className="mb-6">
-        <SectionHeader
-          title="Equipamentos"
-          subtitle="Análise de máquinas e equipamentos"
-          icon={Gauge}
-          color="amber"
-          id="maquinas-heading"
-        />
+      <section id="maquinas-section" className="mb-6">
         <MachinePerformanceTable
           machinePerformance={operationsMetrics.machinePerformance}
           dateFilter={dateFilter}
@@ -199,14 +195,7 @@ const Operations = ({ data, onDataChange }) => {
       </section>
 
       {/* Section 2: Utilization Heatmap */}
-      <section id="heatmap-section" aria-labelledby="heatmap-heading" className="mb-6">
-        <SectionHeader
-          title="Utilização"
-          subtitle="Ocupação e eficiência operacional"
-          icon={Grid3X3}
-          color="amber"
-          id="heatmap-heading"
-        />
+      <section id="heatmap-section" className="mb-6">
         <UtilizationHeatmap
           salesData={data.sales}
           dateFilter={dateFilter}
@@ -215,14 +204,7 @@ const Operations = ({ data, onDataChange }) => {
       </section>
 
       {/* Section 3: Time Patterns */}
-      <section id="padroes-section" aria-labelledby="padroes-heading">
-        <SectionHeader
-          title="Padrões Temporais"
-          subtitle="Horários de pico e distribuição semanal"
-          icon={Clock}
-          color="amber"
-          id="padroes-heading"
-        />
+      <section id="padroes-section">
         <div className="grid grid-cols-12 gap-4 sm:gap-6">
           <div className="col-span-12 lg:col-span-6">
             <PeakHoursSummary

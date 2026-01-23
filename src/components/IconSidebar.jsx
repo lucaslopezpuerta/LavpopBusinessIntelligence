@@ -1,7 +1,18 @@
-// IconSidebar.jsx v3.7 - HEIGHT ALIGNMENT WITH TOPBAR
+// IconSidebar.jsx v4.0 - SETTINGS BUTTON INTEGRATION
 // Modern sidebar with navigation groups, hero branding, and polished mobile drawer
 //
 // CHANGELOG:
+// v4.0 (2026-01-23): Settings button moved from TopBar
+//   - Added Settings button to desktop sidebar footer
+//   - Added Settings button to mobile drawer footer
+//   - Changed Operations icon from Settings to Wrench (frees gear icon)
+//   - Added onOpenSettings prop
+// v3.9 (2026-01-23): Relocated realtime indicator to header
+//   - Moved RealtimeStatusIndicator from footer to header (next to BILAVNOVA)
+//   - Better visibility and cleaner footer layout
+// v3.8 (2026-01-23): Realtime status indicator
+//   - Added RealtimeStatusIndicator to mobile drawer footer
+//   - Shows connection status for mobile users
 // v3.7 (2026-01-18): Height alignment with TopBar
 //   - Desktop header: 72px → 60px to match TopBar
 //   - Mobile header: 64px → 56px (h-14) to match TopBar mobile
@@ -33,7 +44,7 @@
 // v1.x: Previous implementations
 
 import { useRef, useEffect } from 'react';
-import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2, CloudSun, X, ChevronRight } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2, CloudSun, X, ChevronRight, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import FocusTrap from 'focus-trap-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,6 +52,7 @@ import { useSidebar } from '../contexts/SidebarContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from './ThemeToggle';
+import RealtimeStatusIndicator from './ui/RealtimeStatusIndicator';
 
 // Sidebar logo from public folder
 const BilavnovaLogo = '/pwa-192x192.png';
@@ -70,7 +82,7 @@ const navigationGroups = [
     items: [
       { id: 'weather', label: 'Clima', icon: CloudSun, path: '/weather' },
       { id: 'intelligence', label: 'Planejamento', icon: TrendingUp, path: '/intelligence' },
-      { id: 'operations', label: 'Operacoes', icon: Settings, path: '/operations' },
+      { id: 'operations', label: 'Operações', icon: Wrench, path: '/operations' },
     ]
   }
 ];
@@ -78,7 +90,7 @@ const navigationGroups = [
 // Utility item (separate from main navigation)
 const utilityItem = { id: 'upload', label: 'Importar', icon: Upload, path: '/upload' };
 
-const IconSidebar = ({ activeTab, onNavigate }) => {
+const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
   const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar, isPinned, togglePinned } = useSidebar();
   const prefersReducedMotion = useReducedMotion();
   const { isDark } = useTheme();
@@ -225,9 +237,22 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
         ))}
       </nav>
 
-      {/* Utility Item (Importar) */}
-      <div className={`p-2 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
+      {/* Utility Items (Importar + Settings) */}
+      <div className={`py-2 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0 space-y-1`}>
         <NavItem item={utilityItem} />
+        <button
+          onClick={onOpenSettings}
+          className={`relative flex items-center gap-3 rounded-lg transition-all duration-200 h-10 ${isExpanded ? 'mx-2 px-3' : 'mx-2 justify-center'} ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
+          title={!isExpanded ? 'Configurações' : undefined}
+          aria-label="Configurações"
+        >
+          <Settings className="w-5 h-5 flex-shrink-0" />
+          {isExpanded && (
+            <span className="whitespace-nowrap text-sm font-medium">
+              Configurações
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Expand indicator when collapsed and hovered */}
@@ -297,6 +322,7 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                   <span className="font-display text-lg font-bold tracking-wide" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     <span className={isDark ? 'text-white' : 'text-slate-900'}>BILAV</span><span className="text-stellar-cyan">NOVA</span>
                   </span>
+                  <RealtimeStatusIndicator />
                 </div>
                 <button
                   onClick={toggleMobileSidebar}
@@ -323,12 +349,20 @@ const IconSidebar = ({ activeTab, onNavigate }) => {
                 ))}
               </nav>
 
-              {/* Utility footer with ThemeToggle */}
+              {/* Utility footer with Settings and ThemeToggle */}
               <div className={`p-3 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
                     <NavItem item={utilityItem} isMobile />
                   </div>
+                  <button
+                    onClick={() => { onOpenSettings?.(); toggleMobileSidebar(); }}
+                    className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-stellar-cyan/10 hover:text-stellar-cyan' : 'text-slate-500 hover:bg-stellar-cyan/5 hover:text-stellar-cyan'}`}
+                    aria-label="Configurações"
+                    title="Configurações"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
                   <ThemeToggle />
                 </div>
               </div>

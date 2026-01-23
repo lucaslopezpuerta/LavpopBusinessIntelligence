@@ -1,7 +1,16 @@
-// WeatherBusinessImpact.jsx v3.0 - DESIGN SYSTEM v5.1
+// WeatherBusinessImpact.jsx v3.3 - CONFIDENCE BAR FIX
 // Forward-looking weather business impact with Ridge regression model
 //
 // CHANGELOG:
+// v3.3 (2026-01-23): Confidence bar bugfix
+//   - Fixed hasConfidence check treating 0 as falsy (0 is valid lower bound)
+//   - Fixed getConfidenceBarWidth treating 0 as falsy
+//   - Added tooltip explaining bar meaning ("Barra mais larga = maior confiança")
+// v3.2 (2026-01-23): Enhanced prediction UX
+//   - Added confidence bar visualization on day cards
+//   - Added "Entenda a previsão" explanation panel
+//   - Enhanced ModelBadge tooltip with feature list
+//   - Shows interval method (statistical vs percentage)
 // v3.1 (2026-01-20): Removed left border stripe per user request
 // v3.0 (2026-01-20): Cosmic Precision upgrade
 //   - Applied Variant C: Neutral Dashboard Cosmic (teal tint)
@@ -130,10 +139,29 @@ function formatCurrencyCompact(value) {
  * Format confidence range for display
  */
 function formatConfidenceRange(low, high) {
-  if (!low && !high) return null;
-  const lowStr = formatCurrencyCompact(low);
+  // Use explicit null checks (0 is a valid lower bound)
+  if (low == null && high == null) return null;
+  const lowStr = formatCurrencyCompact(low ?? 0);
   const highStr = formatCurrencyCompact(high);
   return `${lowStr} - ${highStr}`;
+}
+
+/**
+ * Calculate confidence bar width as percentage
+ * Shows relative uncertainty - wider bar = more certain
+ */
+function getConfidenceBarWidth(predicted, low, high) {
+  // Use explicit null/undefined checks (0 is a valid value)
+  if (predicted == null || low == null || high == null || predicted <= 0) return 0;
+
+  // Calculate the relative spread as % of predicted value
+  const spread = high - low;
+  const spreadPct = (spread / predicted) * 100;
+
+  // Invert and scale: narrower spread (more confident) = wider bar
+  // Map 0-100% spread to 100-20% bar width
+  const barWidth = Math.max(20, Math.min(100, 100 - (spreadPct * 0.8)));
+  return barWidth;
 }
 
 /**
@@ -167,10 +195,10 @@ const DayPredictionCard = ({ prediction, forecast, isToday = false }) => {
   // Build tooltip text: "Véspera de X" for eves, just "X" for holidays
   const tooltipText = isHoliday ? holidayName : isHolidayEve ? `Véspera de ${holidayEveName}` : null;
 
-  // Confidence interval
+  // Confidence interval - use explicit null checks (0 is a valid lower bound)
   const confidenceLow = prediction?.confidence_low;
   const confidenceHigh = prediction?.confidence_high;
-  const hasConfidence = confidenceLow && confidenceHigh && !isClosed;
+  const hasConfidence = confidenceLow != null && confidenceHigh != null && !isClosed;
 
   return (
     <div className={`
@@ -224,10 +252,20 @@ const DayPredictionCard = ({ prediction, forecast, isToday = false }) => {
         )}
       </div>
 
-      {/* Confidence range */}
+      {/* Confidence range with visual bar */}
       {hasConfidence && (
-        <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-1">
-          {formatConfidenceRange(confidenceLow, confidenceHigh)}
+        <div className="mb-1" title="Barra mais larga = maior confiança na previsão">
+          {/* Visual confidence bar - wider = more confident */}
+          <div className="relative h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-0.5">
+            <div
+              className="absolute inset-y-0 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-400/60 via-emerald-500 to-emerald-400/60 dark:from-emerald-500/60 dark:via-emerald-400 dark:to-emerald-500/60 rounded-full transition-all duration-300"
+              style={{ width: `${getConfidenceBarWidth(prediction?.predicted_revenue, confidenceLow, confidenceHigh)}%` }}
+            />
+          </div>
+          {/* Text range */}
+          <div className="text-[10px] text-slate-400 dark:text-slate-500">
+            {formatConfidenceRange(confidenceLow, confidenceHigh)}
+          </div>
         </div>
       )}
 
@@ -462,6 +500,8 @@ const ModelBadge = ({ modelInfo, onClick }) => {
   const trackedMAPE = modelInfo.tracked_mape;
   const trackedMAE = modelInfo.tracked_mae;
   const rSquaredPct = Math.round((modelInfo.r_squared || 0) * 100);
+  const intervalMethod = modelInfo.interval_method || 'percentage';
+  const featureCount = modelInfo.feature_names?.length || 0;
 
   return (
     <div className="relative">
@@ -480,16 +520,16 @@ const ModelBadge = ({ modelInfo, onClick }) => {
 
       {/* Tooltip */}
       {showTooltip && (
-        <div className="absolute right-0 top-full mt-2 w-72 p-3 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10">
+        <div className="absolute right-0 top-full mt-2 w-80 p-3 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-10">
           <p className="text-xs font-semibold text-slate-900 dark:text-white mb-2">
-            Precisão do Modelo {modelInfo.regression_type === 'ridge' ? '(Ridge)' : ''}
+            Modelo Ridge {featureCount > 0 && `(${featureCount} variáveis)`}
           </p>
           <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
             {/* OOS metrics (most important) */}
             {hasOOSMetrics && (
               <>
                 <p className="font-medium text-slate-900 dark:text-white">
-                  Métricas Reais (fora da amostra):
+                  Precisão Real (fora da amostra):
                 </p>
                 {trackedMAPE && (
                   <p>
@@ -509,36 +549,183 @@ const ModelBadge = ({ modelInfo, onClick }) => {
               </>
             )}
 
-            {/* In-sample metrics */}
-            <p className={hasOOSMetrics ? 'mt-2 font-medium text-slate-700 dark:text-slate-300' : ''}>
-              {hasOOSMetrics ? 'Métricas de Treinamento:' : ''}
-            </p>
-            <p>
-              <span className="font-medium">R² = {rSquaredPct}%</span> — Ajuste do modelo aos dados
-            </p>
-            <p>
-              <span className="font-medium">MAE = R${modelInfo.mae}</span> — Erro médio (treino)
-            </p>
-            <p>
-              <span className="font-medium">{modelInfo.n_training_samples} dias</span> de treinamento
-            </p>
-
-            {/* Ridge parameters */}
-            {modelInfo.lambda && (
-              <p className="text-slate-500">
-                Regularização: λ = {modelInfo.lambda}
+            {/* Model features highlight */}
+            <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+              <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Variáveis do modelo:
               </p>
-            )}
+              <div className="flex flex-wrap gap-1">
+                {modelInfo.feature_names?.slice(1, 7).map((name, idx) => (
+                  <span key={idx} className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-[10px]">
+                    {name.replace(/_/g, ' ')}
+                  </span>
+                ))}
+                {featureCount > 7 && (
+                  <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded text-[10px]">
+                    +{featureCount - 7} mais
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Interval method */}
+            <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+              <p>
+                <span className="font-medium">Intervalos:</span> {intervalMethod === 'statistical' ? 'Estatísticos (SE)' : 'Baseados em %'}
+              </p>
+              <p>
+                <span className="font-medium">R² = {rSquaredPct}%</span> — Ajuste aos dados
+              </p>
+              <p>
+                <span className="font-medium">{modelInfo.n_training_samples} dias</span> de histórico
+              </p>
+            </div>
 
             {modelInfo.model_tier && modelInfo.model_tier !== 'full' && (
-              <p className="text-amber-600 dark:text-amber-400">
+              <p className="mt-2 text-amber-600 dark:text-amber-400">
                 Modelo simplificado devido a dados limitados
               </p>
             )}
           </div>
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-500 italic">
-            Clique para ver detalhes completos
+            Clique para ver diagnósticos completos
           </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Prediction explanation panel
+ * Shows what factors are driving the predictions
+ */
+const PredictionExplanation = ({ predictions, modelInfo }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!predictions?.length || !modelInfo) return null;
+
+  // Analyze key drivers across predictions
+  const drivers = useMemo(() => {
+    const result = {
+      lagInfluence: 0,
+      weatherInfluence: 0,
+      weekendDays: 0,
+      holidayDays: 0,
+      rainyDays: 0,
+      avgTrend: 0
+    };
+
+    predictions.forEach(pred => {
+      if (pred.is_closed) return;
+
+      // Count special days
+      if (pred.features?.is_weekend) result.weekendDays++;
+      if (pred.features?.is_holiday || pred.features?.is_holiday_eve) result.holidayDays++;
+      if (pred.features?.is_rainy) result.rainyDays++;
+
+      // Estimate trend from MA vs lag7
+      if (pred.features?.rev_ma_7 && pred.features?.rev_lag_7) {
+        const trendPct = ((pred.features.rev_ma_7 - pred.features.rev_lag_7) / pred.features.rev_lag_7) * 100;
+        result.avgTrend += trendPct;
+      }
+
+      // Accumulate weather impact
+      result.weatherInfluence += Math.abs(pred.weather_impact_pct || 0);
+    });
+
+    // Average out trend
+    const activeDays = predictions.filter(p => !p.is_closed).length;
+    if (activeDays > 0) {
+      result.avgTrend = result.avgTrend / activeDays;
+      result.weatherInfluence = result.weatherInfluence / activeDays;
+    }
+
+    return result;
+  }, [predictions]);
+
+  // Generate explanation text
+  const explanations = useMemo(() => {
+    const items = [];
+
+    // Trend explanation
+    if (Math.abs(drivers.avgTrend) > 5) {
+      items.push({
+        icon: drivers.avgTrend > 0 ? TrendingUp : TrendingDown,
+        text: drivers.avgTrend > 0
+          ? `Tendência de alta: receita ~${Math.round(drivers.avgTrend)}% acima da semana anterior`
+          : `Tendência de queda: receita ~${Math.abs(Math.round(drivers.avgTrend))}% abaixo da semana anterior`,
+        color: drivers.avgTrend > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+      });
+    }
+
+    // Weekend influence
+    if (drivers.weekendDays > 0) {
+      items.push({
+        icon: Calendar,
+        text: `${drivers.weekendDays} dia${drivers.weekendDays > 1 ? 's' : ''} de fim de semana (maior movimento)`,
+        color: 'text-blue-600 dark:text-blue-400'
+      });
+    }
+
+    // Holiday influence
+    if (drivers.holidayDays > 0) {
+      items.push({
+        icon: PartyPopper,
+        text: `${drivers.holidayDays} dia${drivers.holidayDays > 1 ? 's' : ''} de feriado/véspera no período`,
+        color: 'text-amber-600 dark:text-amber-400'
+      });
+    }
+
+    // Weather influence
+    if (drivers.rainyDays > 0) {
+      items.push({
+        icon: CloudRain,
+        text: `${drivers.rainyDays} dia${drivers.rainyDays > 1 ? 's' : ''} com chuva prevista (impacto nas secadoras)`,
+        color: 'text-blue-600 dark:text-blue-400'
+      });
+    }
+
+    // Model info
+    if (modelInfo.interval_method === 'statistical') {
+      items.push({
+        icon: FlaskConical,
+        text: 'Intervalos calculados com erro padrão estatístico',
+        color: 'text-slate-500 dark:text-slate-400'
+      });
+    }
+
+    return items;
+  }, [drivers, modelInfo]);
+
+  if (explanations.length === 0) return null;
+
+  return (
+    <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
+      <button
+        onClick={() => { haptics.light(); setIsExpanded(!isExpanded); }}
+        className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors w-full"
+      >
+        <Info className="w-4 h-4" />
+        <span>Entenda a previsão</span>
+        <svg
+          className={`w-4 h-4 ml-auto transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isExpanded && (
+        <div className="mt-3 space-y-2">
+          {explanations.map((item, idx) => (
+            <div key={idx} className="flex items-start gap-2 text-xs">
+              <item.icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${item.color}`} />
+              <span className="text-slate-600 dark:text-slate-400">{item.text}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -762,11 +949,20 @@ const WeatherBusinessImpact = ({
           formatCurrency={formatCurrency}
         />
 
+        {/* Prediction Explanation Panel */}
+        <PredictionExplanation
+          predictions={mergedData}
+          modelInfo={modelInfo}
+        />
+
         {/* Model MAE indicator */}
         {modelInfo?.mae && (
           <div className="mt-3 text-center">
             <p className="text-xs text-slate-400 dark:text-slate-500">
               Margem de erro: ±R$ {modelInfo.mae}/dia
+              {modelInfo.interval_method === 'statistical' && (
+                <span className="ml-1 text-emerald-500">• estatístico</span>
+              )}
             </p>
           </div>
         )}

@@ -562,7 +562,7 @@ function AppContent() {
         )}
 
         {/* Sidebar Navigation */}
-        <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} />
+        <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} onOpenSettings={() => setShowSettings(true)} />
 
         {/* Mobile Backdrop */}
         <Backdrop />
@@ -578,7 +578,6 @@ function AppContent() {
           <MinimalTopBar
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            onOpenSettings={() => setShowSettings(true)}
             onOpenExport={() => setShowExport(true)}
           />
 

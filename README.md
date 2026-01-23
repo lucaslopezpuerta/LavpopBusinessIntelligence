@@ -2,93 +2,93 @@
 
 Modern React-based BI dashboard for Bilavnova laundromat business analytics.
 
-## 🎯 Features
+**Live Site:** https://www.bilavnova.com/
 
-- **Real-time Data Loading**: Automatically loads 7 CSV files from `/data` folder
-- **Brazilian Standards**: DD/MM/YYYY dates, comma decimal separators, Sunday-Saturday weeks
-- **Tab Navigation**: Dashboard, Customers, Analytics, Operations views
-- **Responsive Design**: Mobile-friendly interface
-- **Brand Colors**: Primary blue (#1a5a8e), accent green (#55b03b)
+## Features
 
-## 📊 Data Files
+### Dashboard
+- Real-time KPIs with Hero/Secondary card layouts
+- Operating cycles chart with weather correlation
+- Pull-to-refresh mobile support
+- Compact/Expanded layout toggle
 
-The app expects the following CSV files in `/public/data/`:
+### Customer Intelligence
+- RFM segmentation analysis
+- Churn risk prediction
+- At-risk customer identification
+- Customer lifecycle tracking
 
-1. `sales.csv` - Sales transactions
-2. `rfm.csv` - Customer RFM segmentation
-3. `customer.csv` - Customer records
-4. `blacklist.csv` - Blacklist data
-5. `twilio.csv` - SMS communication records
-6. `weather.csv` - Weather correlations
-7. `campaigns.csv` - Campaign information
+### Revenue Forecasting
+- ML-based revenue predictions (OLS regression)
+- Weather impact analysis
+- Prediction accuracy tracking
+- Contingency recommendations
 
-## 🚀 Deployment to GitHub Pages
+### Campaign Management
+- WhatsApp marketing automation
+- Audience segmentation with filters
+- Template management
+- Delivery tracking and analytics
 
-### Step 1: Create Repository
+### Weather Analytics
+- Weather-to-revenue correlation
+- Business impact predictions
+- Forecast integration
 
-1. Go to https://github.com/lucaslopezpuerta/LavpopBusinessIntelligence
-2. If repository doesn't exist, create it
-3. Clone or copy this project to that repository
+### Social Media
+- WhatsApp analytics
+- Instagram metrics integration
+- Google Business Profile stats
 
-### Step 2: Upload Files
+## Tech Stack
 
-```bash
-cd lavpop-bi
-git init
-git add .
-git commit -m "Initial commit - Bilavnova BI Foundation"
-git branch -M main
-git remote add origin https://github.com/lucaslopezpuerta/LavpopBusinessIntelligence.git
-git push -u origin main
-```
+### Frontend
+- **React 18** with Vite 7
+- **Tailwind CSS** with Cosmic Precision Design System v5.1
+- **Framer Motion** for animations
+- **Recharts** for data visualization
+- **Lucide React** for icons
 
-### Step 3: Copy Data Files
+### Backend
+- **Supabase** - PostgreSQL database + realtime subscriptions
+- **Netlify Functions** - Serverless APIs
+- **Capacitor** - Android native app
+- **Sentry** - Error tracking
 
-Your GitHub Actions workflow already fetches data to `/data`. You need to:
+### Design System
+The app uses the **Cosmic Precision Design System v5.1** featuring:
+- Space-age aesthetics with stellar gradients
+- Full dark mode support via `useTheme()` hook
+- Glassmorphism effects (backdrop-blur)
+- Mobile-first responsive design
+- 5 component variants (A-E) for consistent styling
 
-1. Update the workflow to also copy files to `/public/data/` before building
-2. Or modify the CSV loader to fetch from `/data/` instead of `/public/data/`
+**Color Palette:**
+- Space colors: Void `#050816`, Nebula `#0a0f1e`, Dust `#1a1f35`
+- Stellar accents: Cyan `#00aeef`, Green `#00d68f`, Blue `#2d388a`
 
-**Option A - Update GitHub Actions** (Recommended):
+See `src/Design System.md` for complete documentation.
 
-Add this step before the build in your existing `fetch-data.yml`:
+## Deployment
 
-```yaml
-- name: Copy data for React app
-  run: |
-    mkdir -p public/data
-    cp data/*.csv public/data/
-```
+The application is deployed on **Netlify** with automatic deployments from main branch.
 
-**Option B - Update CSV Loader**:
+- **Production:** https://www.bilavnova.com/
+- **Scheduled Functions:**
+  - `campaign-scheduler` - Every 5 minutes
+  - `weather-sync` - Daily at 06:00 BRT
 
-In `src/utils/csvLoader.js`, change:
-```javascript
-const response = await fetch(`/data/${filename}`);
-```
-
-### Step 4: Enable GitHub Pages
-
-1. Go to repository **Settings** → **Pages**
-2. Under "Build and deployment":
-   - Source: **GitHub Actions**
-3. The workflow will automatically deploy on every push to `main`
-
-### Step 5: Access Your BI Dashboard
-
-After deployment completes (2-3 minutes), visit:
-```
-https://lucaslopezpuerta.github.io/LavpopBusinessIntelligence/
-```
-
-## 💻 Local Development
+## Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Start dev server
+# Start development server
 npm run dev
+
+# Run tests
+npm test
 
 # Build for production
 npm run build
@@ -97,70 +97,41 @@ npm run build
 npm run preview
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-lavpop-bi/
-├── public/
-│   └── data/           # CSV files (for local testing)
 ├── src/
-│   ├── utils/
-│   │   ├── csvLoader.js      # CSV loading and parsing
-│   │   ├── dateUtils.js      # Brazilian date handling
-│   │   ├── numberUtils.js    # Brazilian number formatting
-│   │   └── calculations.js   # Business logic
-│   ├── components/           # React components (to be built)
-│   ├── views/               # View components (to be built)
-│   ├── App.jsx              # Main app with tab navigation
-│   ├── App.css              # Lavpop brand styling
-│   └── main.jsx
-├── .github/
-│   └── workflows/
-│       └── deploy.yml       # Auto-deploy to GitHub Pages
-└── vite.config.js           # Vite configuration
+│   ├── components/          # 97 React components by feature
+│   │   ├── auth/           # Authentication
+│   │   ├── campaigns/      # Campaign management (13)
+│   │   ├── customers/      # Customer analytics
+│   │   ├── drilldowns/     # Detail views (5)
+│   │   ├── intelligence/   # Forecasting (5)
+│   │   ├── modals/         # Modal dialogs
+│   │   ├── navigation/     # Nav components
+│   │   ├── social/         # Social analytics (3)
+│   │   ├── ui/             # UI primitives (23)
+│   │   └── weather/        # Weather widgets (9)
+│   ├── views/              # 9 main page views
+│   ├── contexts/           # React contexts (4)
+│   ├── hooks/              # Custom hooks (13)
+│   ├── utils/              # Utility functions
+│   ├── constants/          # App constants
+│   └── config/             # Configuration
+├── netlify/functions/      # Serverless functions
+├── supabase/migrations/    # Database migrations (51)
+└── android/                # Capacitor native app
 ```
 
-## 🔧 Next Steps (Week 1 Complete!)
+## Documentation
 
-- ✅ Vite + React foundation
-- ✅ CSV loader with PapaParse
-- ✅ Brazilian date/number utilities
-- ✅ Core calculation functions
-- ✅ Tab navigation shell
-- ✅ GitHub Pages deployment config
-- ✅ Loading screens with progress
-- ✅ Brand styling
+- `CLAUDE.md` - AI assistant instructions and project patterns
+- `src/Design System.md` - Cosmic Precision v5.1 design system
+- `docs/` - Technical documentation
 
-**Coming in Week 2:**
-- Dashboard view with KPI cards
-- Revenue trend chart
-- Customer health gauge
-- Risk alerts section
+## Brazilian Localization
 
-## 🎨 Brand Colors
-
-```css
---primary: #1a5a8e;      /* Lavpop Blue */
---accent: #55b03b;       /* Lavpop Green */
---light-blue: #e3f2fd;
---light-green: #e8f5e9;
---dark-blue: #0d3a5c;
-```
-
-## 📝 Notes
-
-- All calculations use Brazilian timezone (America/Sao_Paulo)
-- Business week: Sunday-Saturday
-- Currency formatting: R$ 1.234,56
-- Date parsing handles: DD/MM/YYYY, DD-MM-YYYY, and ISO formats
-- Machine counting: "Lavadora: 1, Secadora: 2"
-
-## 🤝 Integration
-
-This foundation is ready to integrate your existing **CustomerLifecycleTool-V2_1.jsx** as the Customers tab. Simply:
-
-1. Copy the component to `src/views/CustomerLifecycleTool.jsx`
-2. Import in `App.jsx`
-3. Pass the loaded data as props
-
-The utilities already match your existing tool's format, so integration should be seamless.
+- **Dates:** DD/MM/YYYY format
+- **Currency:** R$ 1.234,56
+- **Timezone:** America/Sao_Paulo
+- **Business week:** Sunday-Saturday
