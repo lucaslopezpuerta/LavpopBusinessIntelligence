@@ -1,7 +1,13 @@
-// RFMScatterPlot.jsx v5.1.0 - Premium Glass Effects
+// RFMScatterPlot.jsx v5.2.0 - Legend Simplification
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v5.2.0 (2026-01-23): Legend Simplification & Toggle Controls
+//   - Removed VIP count from legend header
+//   - Removed icons from risk status labels (cleaner look)
+//   - Contacted/Blocked indicators are now toggle buttons
+//   - Toggle buttons show/hide corresponding border styles on chart bubbles
+//   - Blocked customers stay dimmed even when borders hidden
 // v5.1.0 (2026-01-20): Premium Glass Effects
 //   - Upgraded to soft glow border system (ring + layered shadows)
 //   - Added cyan outer glow (dark) / subtle elevation (light)
@@ -182,6 +188,10 @@ const RFMScatterPlot = ({
     // Zoom and view mode state (Phase 1.2 - UX Enhancement)
     const [zoomLevel, setZoomLevel] = useState(1);
     const [isListView, setIsListView] = useState(false);
+
+    // Toggle states for border visibility (hidden by default for cleaner look)
+    const [showContactedBorders, setShowContactedBorders] = useState(false);
+    const [showBlockedBorders, setShowBlockedBorders] = useState(false);
 
     // Zoom handlers
     const handleZoomIn = useCallback(() => {
@@ -381,8 +391,8 @@ const RFMScatterPlot = ({
                 {/* Header row with title and insight pills */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
-                            <Target className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+                        <div className="w-10 h-10 rounded-xl bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-sm shrink-0">
+                            <Target className="w-5 h-5 text-white" />
                         </div>
                         <div>
                             <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
@@ -424,46 +434,54 @@ const RFMScatterPlot = ({
                     ) : null}
                 </div>
 
-                {/* Legend for contact status - WCAG Accessible (icons + colors for colorblind support) */}
+                {/* Legend for risk status */}
                 <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-                    <div className="flex items-center gap-1" title="Clientes saudáveis - visitam regularmente">
-                        <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60"></div>
+                    <div className="flex items-center gap-1.5" title="Clientes saudáveis - visitam regularmente">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
                         <span className="text-slate-600 dark:text-slate-400 hidden sm:inline">Saudável</span>
                         <span className="text-slate-600 dark:text-slate-400 sm:hidden">OK</span>
                     </div>
-                    <div className="flex items-center gap-1" title="Clientes em risco - precisam de atenção">
-                        <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60"></div>
+                    <div className="flex items-center gap-1.5" title="Clientes em risco - precisam de atenção">
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
                         <span className="text-slate-600 dark:text-slate-400">Em Risco</span>
                     </div>
-                    <div className="flex items-center gap-1" title="Clientes críticos - alta probabilidade de perda">
-                        <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" aria-hidden="true" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/60"></div>
+                    <div className="flex items-center gap-1.5" title="Clientes críticos - alta probabilidade de perda">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
                         <span className="text-slate-600 dark:text-slate-400">Crítico</span>
                     </div>
-                    {/* VIP count - moved from header pill */}
-                    {vipCustomers.length > 0 && (
-                        <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
-                            <div className="w-3 h-3 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500"></div>
-                            <span className="text-slate-700 dark:text-slate-300 font-medium">{vipCustomers.length} VIPs</span>
-                        </div>
-                    )}
+                    {/* Contacted toggle */}
                     {totalContacted > 0 && (
-                        <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
-                            <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dashed border-blue-500"></div>
-                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                        <button
+                            onClick={() => setShowContactedBorders(!showContactedBorders)}
+                            className={`flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600 transition-all duration-200 ${
+                                showContactedBorders
+                                    ? 'opacity-100'
+                                    : 'opacity-50 hover:opacity-75'
+                            }`}
+                            title={showContactedBorders ? 'Ocultar bordas de contactados' : 'Mostrar bordas de contactados'}
+                        >
+                            <div className={`w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dashed border-blue-500 ${!showContactedBorders && 'border-slate-400'}`}></div>
+                            <span className={`font-medium ${showContactedBorders ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
                                 <span className="hidden sm:inline">Contactado </span>({totalContacted})
                             </span>
-                        </div>
+                        </button>
                     )}
+                    {/* Blocked toggle */}
                     {totalBlacklisted > 0 && (
-                        <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600">
-                            <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dotted border-slate-900 dark:border-slate-100 opacity-40"></div>
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">
+                        <button
+                            onClick={() => setShowBlockedBorders(!showBlockedBorders)}
+                            className={`flex items-center gap-1.5 pl-2 border-l border-slate-300 dark:border-slate-600 transition-all duration-200 ${
+                                showBlockedBorders
+                                    ? 'opacity-100'
+                                    : 'opacity-50 hover:opacity-75'
+                            }`}
+                            title={showBlockedBorders ? 'Ocultar bordas de bloqueados' : 'Mostrar bordas de bloqueados'}
+                        >
+                            <div className={`w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dotted ${showBlockedBorders ? 'border-slate-900 dark:border-slate-100' : 'border-slate-400'}`}></div>
+                            <span className={`font-medium ${showBlockedBorders ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400 dark:text-slate-500'}`}>
                                 <span className="hidden sm:inline">Bloqueado </span>({totalBlacklisted})
                             </span>
-                        </div>
+                        </button>
                     )}
                 </div>
 
@@ -684,12 +702,15 @@ const RFMScatterPlot = ({
                                     strokeColor = '#ffffff';
                                     strokeWidth = 4;
                                     strokeDash = undefined;
-                                } else if (entry.isBlacklisted) {
+                                } else if (entry.isBlacklisted && showBlockedBorders) {
                                     strokeColor = isDark ? '#f1f5f9' : '#0f172a';
                                     strokeWidth = 3;
                                     strokeDash = '3 3';
                                     fillOpacity = 0.4; // Dim blocked customers significantly
-                                } else if (entry.isContacted) {
+                                } else if (entry.isBlacklisted && !showBlockedBorders) {
+                                    // Still dim blocked customers even when borders hidden
+                                    fillOpacity = 0.4;
+                                } else if (entry.isContacted && showContactedBorders) {
                                     strokeColor = '#3b82f6';
                                     strokeWidth = 3;
                                     strokeDash = '6 3';

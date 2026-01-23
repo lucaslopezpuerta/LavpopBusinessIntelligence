@@ -200,8 +200,8 @@ const ChurnHistogram = ({
             >
                 <div className="mb-4">
                     <div className="flex items-start gap-3 mb-3">
-                        <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg shrink-0">
-                            <Clock className="w-5 h-5 text-red-600 dark:text-red-400" />
+                        <div className="w-10 h-10 rounded-xl bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-sm shrink-0">
+                            <Clock className="w-5 h-5 text-white" />
                         </div>
                         <div className="min-w-0 flex-1">
                             <h3 className="text-base font-bold text-slate-800 dark:text-white">
@@ -386,8 +386,8 @@ const ChurnHistogram = ({
             <div className="mb-4">
                 {/* Title + Subtitle */}
                 <div className="flex items-start gap-3 mb-3">
-                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg shrink-0">
-                        <Clock className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    <div className="w-10 h-10 rounded-xl bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-sm shrink-0">
+                        <Clock className="w-5 h-5 text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
@@ -411,8 +411,8 @@ const ChurnHistogram = ({
                     </div>
                 </div>
 
-                {/* Insight Pills - responsive grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Insight Pill */}
+                <div className="flex">
                     {/* Danger zone status pill */}
                     {stats.notContactedInDanger > 0 ? (
                         <button
@@ -442,29 +442,6 @@ const ChurnHistogram = ({
                             <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                             <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
                                 Nenhum em perigo
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Revenue at risk pill */}
-                    {stats.revenueAtRisk > 0 ? (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg">
-                            <DollarSign className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-                                {formatCurrency(stats.revenueAtRisk)}
-                            </span>
-                            <span className="text-xs text-amber-600 dark:text-amber-400">
-                                em risco
-                            </span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
-                            <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-                            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                                {stats.healthyPct}%
-                            </span>
-                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                                retornam em 20d
                             </span>
                         </div>
                     )}

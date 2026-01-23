@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v10.1 - PREMIUM GLASS CARD
+// AtRiskCustomersTable.jsx v10.6 - PREMIUM GLASS EFFECT
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
@@ -15,6 +15,44 @@
 // ✅ Clickable column headers with chevron sort indicators
 //
 // CHANGELOG:
+// v10.6 (2026-01-23): Premium Glass Effect
+//   - Main container: Applied premium glass effect (bg-space-dust/40 + backdrop-blur-xl)
+//   - Ring shadows: Light/dark variants for glass depth and stellar glow
+//   - Empty state: Updated to glass effect with solid emerald icon
+//   - Header border: Subtle glass-compatible border (white/[0.05] dark)
+//   - Consistent with RFMScatterPlot.jsx glass pattern
+//   - Cosmic compliant: Design System v5.1
+// v10.5 (2026-01-23): Avatar Contrast & Header Layout
+//   - Fixed avatar contrast: Now uses risk-based colors (amber, red, etc.) instead of invisible white
+//   - Moved blocked toggle to header right side for better visibility
+//   - Both mobile and desktop avatars now use consistent risk-colored backgrounds
+//   - Blocked toggle now has proper title tooltip and larger icons
+//
+// v10.4 (2026-01-23): Cosmic Precision - Desktop Table Avatars
+//   - Desktop table: Added customer avatars with cosmic styling
+//   - Contacted customers: Strikethrough on name in both mobile and desktop views
+//   - Avatar states: Checkmark for contacted, ban icon for blacklisted, initials for normal
+//   - Consistent visual language across all views
+//
+// v10.3 (2026-01-23): Cosmic Precision - Internal Elements
+//   - Filter tabs: Cosmic gradients, stellar borders, refined hover states
+//   - Search bar: Stellar focus ring, icon color transition
+//   - Blacklist toggle: Redesigned with "Bloqueados" label, clearer count badge
+//   - Header icon: Solid style (red bg, white icon) - clean and modern
+//   - Pagination: Gradient active state, stellar borders, refined feedback
+//   - Mobile cards: Gradient backgrounds, improved touch feedback
+//   - Batch action button: Gradient with cosmic shadow
+//   - Contacted customers: Green-tinted backgrounds, checkmark badge on avatar
+//   - Blacklisted customers: Red-tinted backgrounds for visual clarity
+//   - No animations abused - subtle transitions only (200ms)
+//   - Cosmic compliant: Design System v5.1
+// v10.2 (2026-01-23): Cosmic Precision upgrade
+//   - Applied Variant C: Neutral Dashboard Cosmic
+//   - Replaced glassmorphism with neutral gradient background
+//   - Standardized borders: border-slate-200/80 dark:border-stellar-cyan/10
+//   - Removed backdrop-blur for main container (kept gradient transparency)
+//   - Updated empty state to use emerald accent-tinted pattern
+//   - Cosmic compliant: Design System v5.1
 // v10.1 (2026-01-20): Premium Glass Effects
 //   - Replaced hard borders with soft glow system
 //   - Added ring-1 for subtle edge definition
@@ -361,9 +399,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
   if (!customerMetrics?.activeCustomers) {
     return (
       <div className={`
-        ${isDark ? 'bg-space-dust/50' : 'bg-white/60'}
-        backdrop-blur-xl rounded-2xl p-4
-        border ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200/50'}
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl
+        rounded-2xl p-4
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
         text-center text-slate-500 dark:text-slate-400
       `}>
         Carregando clientes...
@@ -374,18 +416,23 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
   if (allAtRiskCustomers.length === 0) {
     return (
       <div className={`
-        ${isDark ? 'bg-space-dust/50' : 'bg-white/60'}
-        backdrop-blur-xl rounded-2xl p-8 text-center
-        border ${isDark ? 'border-emerald-500/20' : 'border-emerald-200/60'}
-        shadow-sm dark:shadow-glass-dark
+        relative
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(103,232,249,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
+        border-l-4 border-l-emerald-500 dark:border-l-emerald-400
+        rounded-2xl p-8 text-center
       `}>
-        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+        <div className="w-16 h-16 bg-emerald-500 dark:bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <CheckCircle className="w-8 h-8 text-white" />
         </div>
-        <h3 className="text-lg font-bold text-emerald-900 dark:text-emerald-100 mb-2">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
           Excelente trabalho!
         </h3>
-        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Nenhum cliente em risco no momento
         </p>
       </div>
@@ -499,7 +546,10 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
     return {
       borderColorValue: riskConfig.borderColor,
       dot: `bg-${riskConfig.color}-500`,
-      label: riskConfig.pt
+      label: riskConfig.pt,
+      bgClass: riskConfig.bgClass,
+      textClass: riskConfig.textClass,
+      color: riskConfig.color
     };
   };
 
@@ -511,6 +561,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
   return (
     <>
       <div className={`
+        relative
         ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
         backdrop-blur-xl
         rounded-2xl
@@ -522,38 +573,69 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
         ${className}
       `}>
         {/* Header - fixed height */}
-        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+        <div className={`p-4 sm:p-6 border-b flex-shrink-0 ${isDark ? 'border-white/[0.05]' : 'border-slate-200/60'}`}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center border-l-4 border-red-500">
-                <Users className="w-5 h-5 text-red-600 dark:text-red-400" />
+              {/* Solid icon container */}
+              <div className="w-10 h-10 rounded-xl bg-red-500 dark:bg-red-600 flex items-center justify-center shadow-sm">
+                <Users className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   Clientes em Risco
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {allAtRiskCustomers.length} clientes precisam de atenção
                 </p>
               </div>
             </div>
 
-            {/* Batch action button */}
-            {selectedIds.size > 0 && (
-              <button
-                onClick={handleOpenSegmentModal}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
-              >
-                <Send className="w-4 h-4" />
-                Contatar {selectedIds.size} selecionado{selectedIds.size > 1 ? 's' : ''}
-              </button>
-            )}
+            {/* Header right side - blocked toggle + batch action */}
+            <div className="flex items-center gap-3">
+              {/* Blocked toggle */}
+              {blacklistedInList > 0 && (
+                <button
+                  onClick={() => setShowBlacklisted(!showBlacklisted)}
+                  className={`
+                    flex items-center gap-2 px-3 py-2.5 text-xs font-medium rounded-xl border transition-all duration-200
+                    ${showBlacklisted
+                      ? 'bg-gradient-to-r from-red-500/10 to-red-400/5 dark:from-red-900/40 dark:to-red-900/20 text-red-600 dark:text-red-400 border-red-300/80 dark:border-red-700/50 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 border-slate-200/80 dark:border-stellar-cyan/15 hover:border-red-300 dark:hover:border-red-700/40 hover:bg-red-50/50 dark:hover:bg-red-900/10 hover:text-red-600 dark:hover:text-red-400'
+                    }
+                  `}
+                  title={showBlacklisted ? 'Ocultar bloqueados' : 'Mostrar bloqueados'}
+                >
+                  <Ban className="w-4 h-4" />
+                  <span className="hidden sm:inline">Bloqueados</span>
+                  <span className={`
+                    px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[20px] text-center
+                    ${showBlacklisted
+                      ? 'bg-red-500/20 text-red-600 dark:text-red-300'
+                      : 'bg-slate-200/80 dark:bg-slate-600/50'
+                    }
+                  `}>
+                    {blacklistedInList}
+                  </span>
+                  {showBlacklisted ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+              )}
+              {/* Batch action button */}
+              {selectedIds.size > 0 && (
+                <button
+                  onClick={handleOpenSegmentModal}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:shadow-red-500/25"
+                >
+                  <Send className="w-4 h-4" />
+                  Contatar {selectedIds.size} selecionado{selectedIds.size > 1 ? 's' : ''}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Filter Tabs + Search + Sort */}
           <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Filter Tabs */}
-            <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600">
+            <div className="flex rounded-xl overflow-hidden border border-slate-200/60 dark:border-stellar-cyan/15 bg-slate-100/50 dark:bg-space-dust/30">
               {Object.entries(FILTER_TABS).map(([key, { label, color }]) => {
                 const count = tabCounts[key];
                 const isActive = filterTab === key;
@@ -562,23 +644,23 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                     key={key}
                     onClick={() => setFilterTab(key)}
                     className={`
-                      px-3 py-1.5 text-xs font-medium transition-all flex items-center gap-1.5
+                      px-3 py-2 text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
                       ${isActive
                         ? key === 'notContacted'
-                          ? 'bg-red-600 text-white'
+                          ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm'
                           : key === 'contacted'
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-lavpop-blue text-white'
-                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-sm'
+                            : 'bg-gradient-stellar text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-stellar-cyan/10'
                       }
                     `}
                   >
                     {label}
                     <span className={`
-                      px-1.5 py-0.5 rounded-full text-[10px] font-bold
+                      px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[20px] text-center
                       ${isActive
-                        ? 'bg-white/20'
-                        : 'bg-slate-100 dark:bg-slate-600'
+                        ? 'bg-white/25 text-white'
+                        : 'bg-slate-200/80 dark:bg-slate-600/50 text-slate-600 dark:text-slate-300'
                       }
                     `}>
                       {count}
@@ -589,45 +671,25 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
             </div>
 
             {/* Search */}
-            <div className="relative flex-1 max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+            <div className="relative flex-1 max-w-xs group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 group-focus-within:text-stellar-cyan transition-colors duration-200" />
               <input
                 type="text"
                 placeholder="Buscar por nome..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-1.5 text-sm bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-lavpop-blue/50"
+                className="w-full pl-9 pr-8 py-2 text-sm bg-white/80 dark:bg-space-dust/50 border border-slate-200/80 dark:border-stellar-cyan/15 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-stellar-cyan/40 dark:focus:border-stellar-cyan/30 focus:ring-2 focus:ring-stellar-cyan/20 transition-all duration-200"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-stellar-cyan/10 transition-all duration-200"
                 >
-                  <X className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                  <X className="w-3 h-3" />
                 </button>
               )}
             </div>
 
-            {/* Blacklist control */}
-            <div className="flex items-center gap-2 sm:ml-auto">
-              {blacklistedInList > 0 && (
-                <button
-                  onClick={() => setShowBlacklisted(!showBlacklisted)}
-                  className={`
-                    flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg border transition-colors
-                    ${showBlacklisted
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
-                      : 'text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 hover:text-slate-600'
-                    }
-                  `}
-                  title={showBlacklisted ? 'Ocultar bloqueados' : `Mostrar ${blacklistedInList} bloqueado${blacklistedInList > 1 ? 's' : ''}`}
-                >
-                  {showBlacklisted ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                  <span>{blacklistedInList}</span>
-                  <Ban className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
           </div>
         </div>
 
@@ -671,12 +733,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                   <div
                     className={`
                       relative flex items-center gap-3 p-3
-                      bg-slate-50 dark:bg-slate-700
-                      border-l-4 rounded-xl
-                      ${contacted ? 'opacity-70' : ''}
-                      ${blacklisted ? 'opacity-60' : ''}
-                      ${isSelected ? 'ring-2 ring-lavpop-blue' : ''}
-                      transition-transform duration-150 ease-out touch-pan-y
+                      border border-l-4 rounded-xl
+                      transition-all duration-200 touch-pan-y
+                      active:scale-[0.99]
+                      ${contacted
+                        ? 'bg-gradient-to-r from-emerald-50/80 to-emerald-25/40 dark:from-emerald-900/30 dark:to-emerald-900/10 border-emerald-200/60 dark:border-emerald-700/30'
+                        : blacklisted
+                          ? 'bg-gradient-to-r from-red-50/60 to-slate-50 dark:from-red-900/20 dark:to-space-nebula/40 border-red-200/60 dark:border-red-700/30'
+                          : 'bg-gradient-to-r from-slate-50 to-white dark:from-space-dust/60 dark:to-space-nebula/40 border-slate-200/60 dark:border-stellar-cyan/10'
+                      }
+                      ${isSelected ? 'ring-2 ring-stellar-cyan/50 dark:ring-stellar-cyan/40' : ''}
                     `}
                     style={{
                       borderLeftColor: blacklisted ? '#ef4444' : contacted ? '#10b981' : styles.borderColorValue,
@@ -695,7 +761,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                         checked={isSelected}
                         onChange={(e) => toggleSelect(customerId, e)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-lavpop-blue focus:ring-lavpop-blue flex-shrink-0"
+                        className="w-4 h-4 rounded border-slate-300 dark:border-stellar-cyan/30 text-stellar-cyan focus:ring-stellar-cyan/50 flex-shrink-0"
                       />
                     ) : (
                       <div className="w-4 h-4 flex-shrink-0" /> /* Spacer to maintain layout */
@@ -709,19 +775,26 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                           ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
                           : contacted
                             ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-white dark:bg-slate-600 text-slate-600 dark:text-slate-300'
+                            : `${styles.bgClass} dark:bg-${styles.color}-900/40 ${styles.textClass} dark:text-${styles.color}-400`
                         }
                       `}>
-                        {blacklisted ? <Ban className="w-4 h-4" /> : (customer.name || '?').charAt(0).toUpperCase()}
+                        {blacklisted ? <Ban className="w-4 h-4" /> : contacted ? <CheckCircle className="w-4 h-4" /> : (customer.name || '?').charAt(0).toUpperCase()}
                       </div>
+                      {/* Risk indicator dot for non-contacted */}
                       {!contacted && !blacklisted && (
                         <div className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${styles.dot} border-2 border-slate-50 dark:border-slate-700`} />
+                      )}
+                      {/* Checkmark badge for contacted */}
+                      {contacted && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-600 flex items-center justify-center border-2 border-white dark:border-space-dust shadow-sm">
+                          <CheckCircle className="w-2.5 h-2.5 text-white" />
+                        </div>
                       )}
                     </div>
 
                     {/* Customer info */}
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-semibold truncate ${blacklisted || contacted ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                      <p className={`text-sm font-semibold truncate ${contacted ? 'line-through text-slate-400 dark:text-slate-500' : ''} ${blacklisted && !contacted ? 'text-slate-500 dark:text-slate-400' : ''} ${!blacklisted && !contacted ? 'text-slate-900 dark:text-white' : ''}`}>
                         {customer.name || 'Sem nome'}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
@@ -758,7 +831,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
         {/* Desktop Table View - grows to fill space with sticky headers */}
         <div className="hidden lg:flex lg:flex-col flex-1 overflow-x-auto overflow-y-auto min-h-0" ref={tableRef} onKeyDown={handleKeyDown}>
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-space-dust/80 backdrop-blur-sm shadow-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50/80 dark:bg-space-dust/60 shadow-sm">
               <tr className="border-b-2 border-slate-200 dark:border-slate-700">
                 <th scope="col" className="px-4 py-3 text-left w-10">
                   <input
@@ -867,11 +940,14 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                       className={`
                         group cursor-pointer
                         border-b border-slate-100 dark:border-slate-800
-                        hover:bg-slate-50 dark:hover:bg-slate-800/50
                         transition-all duration-200 border-l-4
-                        focus-visible:outline-none focus-visible:bg-blue-50 dark:focus-visible:bg-blue-900/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
-                        ${contacted ? 'opacity-70' : ''}
-                        ${blacklisted ? 'opacity-60' : ''}
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
+                        ${contacted
+                          ? 'bg-emerald-50/60 dark:bg-emerald-900/20 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30'
+                          : blacklisted
+                            ? 'bg-red-50/40 dark:bg-red-900/10 hover:bg-red-100/40 dark:hover:bg-red-900/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        }
                         ${isSelected ? 'bg-lavpop-blue/5' : ''}
                       `}
                       style={{ borderLeftColor: blacklisted ? '#ef4444' : contacted ? '#10b981' : styles.borderColorValue }}
@@ -899,13 +975,40 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
                       {/* Cliente */}
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${blacklisted || contacted ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
-                            {customer.name || 'Sem nome'}
-                          </span>
-                          {blacklisted && (
-                            <span className="text-red-500 dark:text-red-400 text-xs" title={blacklistInfo?.reason}>Bloqueado</span>
-                          )}
+                        <div className="flex items-center gap-3">
+                          {/* Avatar */}
+                          <div className="relative flex-shrink-0">
+                            <div className={`
+                              w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm
+                              ${blacklisted
+                                ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+                                : contacted
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                                  : `${styles.bgClass} dark:bg-${styles.color}-900/40 ${styles.textClass} dark:text-${styles.color}-400`
+                              }
+                            `}>
+                              {blacklisted ? <Ban className="w-4 h-4" /> : contacted ? <CheckCircle className="w-4 h-4" /> : (customer.name || '?').charAt(0).toUpperCase()}
+                            </div>
+                            {contacted && !blacklisted && (
+                              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-space-nebula flex items-center justify-center">
+                                <CheckCircle className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          {/* Name */}
+                          <div className="flex items-center gap-2">
+                            <span className={`
+                              font-semibold
+                              ${contacted ? 'line-through text-slate-400 dark:text-slate-500' : ''}
+                              ${blacklisted ? 'text-slate-500 dark:text-slate-400' : ''}
+                              ${!contacted && !blacklisted ? 'text-slate-900 dark:text-white' : ''}
+                            `}>
+                              {customer.name || 'Sem nome'}
+                            </span>
+                            {blacklisted && (
+                              <span className="text-red-500 dark:text-red-400 text-xs" title={blacklistInfo?.reason}>Bloqueado</span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -995,7 +1098,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
         {/* Pagination - fixed height */}
         {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
+          <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t flex-shrink-0 ${isDark ? 'border-white/[0.05] bg-space-dust/20' : 'border-slate-200/60 bg-slate-50/50'}`}>
             <div className="text-xs text-slate-500 dark:text-slate-400 order-2 sm:order-1">
               {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredCustomers.length)} de {filteredCustomers.length}
             </div>
@@ -1003,7 +1106,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className={`p-1.5 sm:p-2 rounded-lg transition-all ${currentPage === 1 ? 'bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}
+                className={`p-2 rounded-xl transition-all duration-200 ${currentPage === 1 ? 'bg-slate-100/50 dark:bg-space-dust/30 text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'bg-white/80 dark:bg-space-dust/50 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-stellar-cyan/15 hover:border-stellar-cyan/30 dark:hover:border-stellar-cyan/25 hover:bg-white dark:hover:bg-stellar-cyan/10'}`}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -1018,7 +1121,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                     <button
                       key={pageNum}
                       onClick={() => setCurrentPage(pageNum)}
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all ${pageNum === currentPage ? 'bg-lavpop-blue text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}
+                      className={`w-8 h-8 rounded-xl text-xs font-bold transition-all duration-200 ${pageNum === currentPage ? 'bg-gradient-stellar text-white shadow-md' : 'bg-white/80 dark:bg-space-dust/50 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-stellar-cyan/15 hover:border-stellar-cyan/30 dark:hover:border-stellar-cyan/25 hover:bg-white dark:hover:bg-stellar-cyan/10'}`}
                     >
                       {pageNum}
                     </button>
@@ -1028,7 +1131,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className={`p-1.5 sm:p-2 rounded-lg transition-all ${currentPage === totalPages ? 'bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}
+                className={`p-2 rounded-xl transition-all duration-200 ${currentPage === totalPages ? 'bg-slate-100/50 dark:bg-space-dust/30 text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'bg-white/80 dark:bg-space-dust/50 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-stellar-cyan/15 hover:border-stellar-cyan/30 dark:hover:border-stellar-cyan/25 hover:bg-white dark:hover:bg-stellar-cyan/10'}`}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

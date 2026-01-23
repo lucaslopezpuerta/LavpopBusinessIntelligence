@@ -274,8 +274,8 @@ const FrequencyDegradationAlert = ({
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
-        <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
-          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+        <div className="w-10 h-10 rounded-xl bg-amber-500 dark:bg-amber-600 flex items-center justify-center shadow-sm shrink-0">
+          <AlertTriangle className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">

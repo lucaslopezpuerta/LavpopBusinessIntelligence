@@ -1,8 +1,25 @@
-// Skeleton.jsx v2.1
+// Skeleton.jsx v2.4
 // Skeleton loading components for better UX
-// Design System v3.2 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v2.4 (2026-01-23): Skeleton layout matching actual components
+//   - FirstVisitConversionCard: Added metric box, comparison bars, action buttons, insight
+//   - RetentionCard: Added big metric, status badge, segment bars with re-engage buttons
+//   - Both cards now accurately reflect their loaded state structure
+// v2.3 (2026-01-23): Fixed skeleton dimensions to match actual components
+//   - VisitHeatmap: Fixed grid to 7 rows × 15 columns (was 7×8)
+//   - VisitHeatmap: Uses inline style gridTemplateColumns for proper layout
+//   - VisitHeatmap: Added proper hour header row + day label column
+//   - AcquisitionCard: Fixed chart height to h-[180px] (was h-40)
+// v2.2 (2026-01-23): CustomersLoadingSkeleton layout update
+//   - Updated to match Customers.jsx v5.14 layout
+//   - Section 2: AcquisitionCard + VisitHeatmap (1/2 + 1/2)
+//   - Section 3: FirstVisitConversionCard + RetentionCard (1/2 + 1/2)
+//   - Section 4: ChurnHistogram + FrequencyDegradationAlert + AtRiskCustomersTable
+//   - Section 5: RFMScatterPlot (full width, at bottom)
+//   - Added proper header/icon skeletons for each card
+//   - Added heatmap grid skeleton for VisitHeatmap
 // v2.1 (2025-12-23): Full-width layout fixes
 //   - WeatherLoadingSkeleton: Restructured to match WeatherSection.jsx v1.6
 //     - Row 1: Hero (1/2) + Metrics Grid (1/2)
@@ -276,83 +293,297 @@ const DashboardLoadingSkeleton = () => (
   </div>
 );
 
-// Customers skeleton - matches Customers.jsx layout
+// Customers skeleton - matches Customers.jsx v5.14 layout
 const CustomersLoadingSkeleton = () => (
   <div className="space-y-6 animate-pulse">
-    {/* Header with pills */}
+    {/* Header with HealthPill */}
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <SkeletonHeader color="purple" />
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-8 w-24 rounded-full" />
-        <Skeleton className="h-8 w-32 rounded-full" />
-      </div>
+      <Skeleton className="h-8 w-28 rounded-full" />
     </div>
 
-    {/* Hero KPI Cards - 2 columns */}
-    <div className="grid grid-cols-2 gap-4">
-      <SkeletonHeroCard />
-      <SkeletonHeroCard />
-    </div>
-
-    {/* RFM Scatter Plot - Full Width Hero */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="space-y-1">
-          <SkeletonText width="w-48" height="h-5" />
-          <SkeletonText width="w-64" height="h-3" />
+    {/* Section 2: Acquisition + Visit Patterns (1/2 + 1/2) */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* AcquisitionCard skeleton */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-start gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-xl" />
+          <div className="flex-1 space-y-2">
+            <SkeletonText width="w-32" height="h-5" />
+            <SkeletonText width="w-48" height="h-3" />
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-8 w-20 rounded-lg" />
-          <Skeleton className="h-8 w-20 rounded-lg" />
+        <div className="flex items-center gap-4 mb-4">
+          <SkeletonText width="w-20" height="h-10" />
+          <div className="flex-1 h-12">
+            <div className="flex items-end justify-between gap-1 h-full">
+              {[30, 50, 40, 70, 60, 80, 55].map((h, i) => (
+                <Skeleton key={i} className="flex-1 rounded-t" style={{ height: `${h}%` }} />
+              ))}
+            </div>
+          </div>
         </div>
+        <div className="flex gap-2 mb-4">
+          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+        <SkeletonChart height="h-[180px]" />
       </div>
-      <div className="h-[400px] flex items-center justify-center">
-        {/* Scatter plot dots simulation */}
-        <div className="relative w-full h-full">
-          {[...Array(20)].map((_, i) => (
-            <SkeletonCircle
-              key={i}
-              size="w-3 h-3"
-              className="absolute"
-              style={{
-                left: `${10 + Math.random() * 80}%`,
-                top: `${10 + Math.random() * 80}%`,
-              }}
-            />
+
+      {/* VisitHeatmap skeleton */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-start gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-xl" />
+          <div className="flex-1 space-y-2">
+            <SkeletonText width="w-36" height="h-5" />
+            <SkeletonText width="w-52" height="h-3" />
+          </div>
+        </div>
+        <div className="flex gap-2 mb-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-8 w-20 rounded-lg" />
           ))}
         </div>
-      </div>
-    </div>
-
-    {/* Table + Charts Grid */}
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      {/* Table skeleton - 3/5 width */}
-      <div className="lg:col-span-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-        <SkeletonText width="w-40" height="h-5" className="mb-4" />
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-              <SkeletonCircle size="w-10 h-10" />
-              <div className="flex-1 space-y-2">
-                <SkeletonText width="w-32" height="h-4" />
-                <SkeletonText width="w-24" height="h-3" />
-              </div>
-              <SkeletonText width="w-16" height="h-6" />
+        {/* Heatmap grid skeleton - 7 days × 15 hours (8h-22h) */}
+        <div className="space-y-0.5">
+          {/* Hour headers row */}
+          <div className="grid gap-0.5" style={{ gridTemplateColumns: '32px repeat(15, 1fr)' }}>
+            <div /> {/* Empty corner */}
+            {[...Array(15)].map((_, i) => (
+              <Skeleton key={i} className="h-4 rounded" />
+            ))}
+          </div>
+          {/* 7 day rows */}
+          {[...Array(7)].map((_, row) => (
+            <div key={row} className="grid gap-0.5" style={{ gridTemplateColumns: '32px repeat(15, 1fr)' }}>
+              <Skeleton className="h-6 sm:h-8 w-8 rounded" /> {/* Day label */}
+              {[...Array(15)].map((_, col) => (
+                <div key={col} className="h-6 sm:h-8 flex items-center justify-center">
+                  <Skeleton className="w-3 h-3 sm:w-4 sm:h-4 rounded-lg" />
+                </div>
+              ))}
             </div>
           ))}
         </div>
       </div>
+    </div>
 
-      {/* Charts skeleton - 2/5 width */}
-      <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-          <SkeletonText width="w-32" height="h-4" className="mb-3" />
-          <SkeletonChart height="h-36" />
+    {/* Section 3: Conversion (1/2 + 1/2) */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* FirstVisitConversionCard skeleton */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        {/* Header */}
+        <div className="flex items-start gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-xl" />
+          <div className="flex-1">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <SkeletonText width="w-40" height="h-5" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <SkeletonText width="w-56" height="h-3" />
+          </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-          <SkeletonText width="w-32" height="h-4" className="mb-3" />
-          <SkeletonChart height="h-36" />
+        {/* Primary Metric Box */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg mb-4">
+          <div className="flex items-baseline justify-between mb-2">
+            <div className="flex items-baseline gap-2">
+              <SkeletonText width="w-16" height="h-10" />
+              <SkeletonText width="w-20" height="h-4" />
+            </div>
+            <SkeletonText width="w-12" height="h-4" />
+          </div>
+          <SkeletonText width="w-full" height="h-3" />
         </div>
+        {/* Welcome Comparison */}
+        <div className="mb-4 space-y-3">
+          <SkeletonText width="w-32" height="h-3" />
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SkeletonCircle size="w-4 h-4" />
+                  <SkeletonText width="w-24" height="h-3" />
+                </div>
+                <SkeletonText width="w-8" height="h-4" />
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          ))}
+        </div>
+        {/* Action buttons */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <Skeleton className="h-10 rounded-lg" />
+          <Skeleton className="h-10 rounded-lg" />
+        </div>
+        {/* Insight */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg flex gap-2">
+          <SkeletonCircle size="w-4 h-4" />
+          <div className="flex-1 space-y-1">
+            <SkeletonText width="w-full" height="h-3" />
+            <SkeletonText width="w-3/4" height="h-3" />
+          </div>
+        </div>
+      </div>
+
+      {/* RetentionCard skeleton */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        {/* Header */}
+        <div className="flex items-start gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-xl" />
+          <div className="flex-1">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <SkeletonText width="w-32" height="h-5" />
+              <Skeleton className="w-20 h-8 rounded" /> {/* Sparkline */}
+            </div>
+            <SkeletonText width="w-40" height="h-3" />
+          </div>
+        </div>
+        {/* Primary Metric */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-baseline gap-2">
+            <SkeletonText width="w-16" height="h-10" />
+            <SkeletonText width="w-8" height="h-4" />
+          </div>
+          <Skeleton className="h-6 w-20 rounded-full" /> {/* Status badge */}
+        </div>
+        {/* Segment label */}
+        <SkeletonText width="w-28" height="h-3" className="mb-3" />
+        {/* Segment comparison bars */}
+        <div className="space-y-4 mb-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SkeletonCircle size="w-4 h-4" />
+                  <SkeletonText width="w-24" height="h-4" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <SkeletonText width="w-8" height="h-4" />
+                  <SkeletonText width="w-12" height="h-3" />
+                </div>
+              </div>
+              <Skeleton className="h-2.5 w-full rounded-full" />
+              <Skeleton className="h-9 w-full rounded-lg" /> {/* Re-engage button */}
+            </div>
+          ))}
+        </div>
+        {/* Insight */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg flex gap-2">
+          <SkeletonCircle size="w-4 h-4" />
+          <div className="flex-1 space-y-1">
+            <SkeletonText width="w-full" height="h-3" />
+            <SkeletonText width="w-3/4" height="h-3" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Section 4: Risk Management */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ChurnHistogram skeleton */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-start gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-xl" />
+          <div className="flex-1 space-y-2">
+            <SkeletonText width="w-32" height="h-5" />
+            <SkeletonText width="w-48" height="h-3" />
+          </div>
+        </div>
+        <Skeleton className="h-8 w-48 rounded-lg mb-4" />
+        <SkeletonChart height="h-48" />
+      </div>
+
+      {/* FrequencyDegradationAlert skeleton (optional, shown for layout) */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-start gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-xl" />
+          <div className="flex-1 space-y-2">
+            <SkeletonText width="w-40" height="h-5" />
+            <SkeletonText width="w-56" height="h-3" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <SkeletonCircle size="w-8 h-8" />
+              <div className="flex-1 space-y-1">
+                <SkeletonText width="w-28" height="h-4" />
+                <SkeletonText width="w-20" height="h-3" />
+              </div>
+              <SkeletonText width="w-12" height="h-5" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* AtRiskCustomersTable skeleton */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="p-5 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-10 h-10 rounded-xl" />
+            <div className="space-y-1">
+              <SkeletonText width="w-32" height="h-5" />
+              <SkeletonText width="w-48" height="h-3" />
+            </div>
+          </div>
+          <Skeleton className="h-9 w-28 rounded-xl" />
+        </div>
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-48 rounded-xl" />
+          <Skeleton className="h-9 w-40 rounded-xl" />
+        </div>
+      </div>
+      <div className="p-4 space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+            <Skeleton className="w-4 h-4 rounded" />
+            <SkeletonCircle size="w-9 h-9" />
+            <div className="flex-1 space-y-1">
+              <SkeletonText width="w-32" height="h-4" />
+              <SkeletonText width="w-24" height="h-3" />
+            </div>
+            <SkeletonText width="w-16" height="h-6" className="rounded-md" />
+            <SkeletonText width="w-20" height="h-5" />
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Section 5: RFM Scatter Plot - Full Width */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-10 h-10 rounded-xl" />
+          <div className="space-y-1">
+            <SkeletonText width="w-40" height="h-5" />
+            <SkeletonText width="w-56" height="h-3" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-8 rounded-lg" />
+          <Skeleton className="h-8 w-8 rounded-lg" />
+        </div>
+      </div>
+      <div className="flex gap-2 mb-4">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} className="h-5 w-16 rounded" />
+        ))}
+      </div>
+      <div className="h-[350px] relative">
+        {/* Scatter plot dots simulation */}
+        {[...Array(25)].map((_, i) => (
+          <SkeletonCircle
+            key={i}
+            size={`w-${3 + (i % 3)} h-${3 + (i % 3)}`}
+            className="absolute"
+            style={{
+              left: `${8 + (i * 3.5) % 85}%`,
+              top: `${10 + (i * 7) % 75}%`,
+            }}
+          />
+        ))}
       </div>
     </div>
   </div>

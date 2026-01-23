@@ -203,25 +203,29 @@ const FirstVisitConversionCard = ({
       bg: 'bg-emerald-50 dark:bg-emerald-900/20',
       border: 'border-emerald-200 dark:border-emerald-800/50',
       text: 'text-emerald-600 dark:text-emerald-400',
-      accent: 'border-l-emerald-500 dark:border-l-emerald-400'
+      accent: 'border-l-emerald-500 dark:border-l-emerald-400',
+      iconBg: 'bg-emerald-500 dark:bg-emerald-600'
     },
     good: {
       bg: 'bg-blue-50 dark:bg-blue-900/20',
       border: 'border-blue-200 dark:border-blue-800/50',
       text: 'text-blue-600 dark:text-blue-400',
-      accent: 'border-l-blue-500 dark:border-l-blue-400'
+      accent: 'border-l-blue-500 dark:border-l-blue-400',
+      iconBg: 'bg-blue-500 dark:bg-blue-600'
     },
     attention: {
       bg: 'bg-amber-50 dark:bg-amber-900/20',
       border: 'border-amber-200 dark:border-amber-800/50',
       text: 'text-amber-600 dark:text-amber-400',
-      accent: 'border-l-amber-500 dark:border-l-amber-400'
+      accent: 'border-l-amber-500 dark:border-l-amber-400',
+      iconBg: 'bg-amber-500 dark:bg-amber-600'
     },
     critical: {
       bg: 'bg-red-50 dark:bg-red-900/20',
       border: 'border-red-200 dark:border-red-800/50',
       text: 'text-red-600 dark:text-red-400',
-      accent: 'border-l-red-500 dark:border-l-red-400'
+      accent: 'border-l-red-500 dark:border-l-red-400',
+      iconBg: 'bg-red-500 dark:bg-red-600'
     }
   };
 
@@ -248,8 +252,8 @@ const FirstVisitConversionCard = ({
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
-        <div className={`p-2 rounded-lg ${colors.bg} shrink-0`}>
-          <Users className={`w-5 h-5 ${colors.text}`} />
+        <div className={`w-10 h-10 rounded-xl ${colors.iconBg} flex items-center justify-center shadow-sm shrink-0`}>
+          <Users className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">

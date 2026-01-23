@@ -1,4 +1,4 @@
-// supabaseUploader.js v1.2
+// supabaseUploader.js v1.3
 // Client-side CSV parser and Supabase uploader for manual data imports
 //
 // Usage:
@@ -14,8 +14,13 @@
 //   - Smart customer upsert: Handles full customer list uploads
 //     without regressing computed metrics from transaction triggers
 //   - Upload history logging for transparency (v1.2)
+//   - Auto-refresh trigger after upload (v1.3)
 //
 // CHANGELOG:
+// v1.3 (2026-01-23): Auto-refresh after upload
+//   - Dispatches 'transactionUpdate' event after successful sales upload
+//   - Ensures UI refreshes immediately without waiting for Realtime
+//   - Works even if Realtime subscription misses UPSERT events
 // v1.2 (2025-12-24): Upload history logging
 //   - Logs all uploads to upload_history table
 //   - Tracks: file_type, records_total/inserted/updated, errors, duration
@@ -371,6 +376,20 @@ export async function uploadSalesCSV(csvText, onProgress = () => {}) {
   // Log to upload history
   const durationMs = Date.now() - startTime;
   await logUploadHistory('sales', 'manual_upload', result, durationMs, 'manual');
+
+  // Trigger UI refresh after successful upload
+  // This ensures immediate refresh even if Realtime subscription misses the event
+  if (result.inserted > 0 && typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(new CustomEvent('transactionUpdate', {
+        detail: { type: 'UPLOAD', data: { count: result.inserted } }
+      }));
+      console.log(`[SalesUpload] Dispatched transactionUpdate event for ${result.inserted} records`);
+    } catch (err) {
+      // Don't fail upload if event dispatch fails
+      console.warn('[SalesUpload] Failed to dispatch refresh event:', err);
+    }
+  }
 
   return result;
 }

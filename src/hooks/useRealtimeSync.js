@@ -1,14 +1,15 @@
 /**
  * useRealtimeSync - Supabase Realtime subscription for live updates
- * v1.6 - TRANSACTIONS SUBSCRIPTION
+ * v1.7 - ALL TRANSACTION EVENTS
  *
  * Subscribes to:
  * - contact_tracking: All events (critical for Customers/Campaigns mobile UX)
- * - transactions: INSERT only (triggers cache invalidation for fresh data)
+ * - transactions: All events (INSERT, UPDATE, DELETE for cache invalidation)
  *
  * Benefits:
  * - Near-instant contact status updates (WebSocket, not HTTP polling)
- * - Auto-refresh when new transactions inserted (no manual sync needed)
+ * - Auto-refresh when transactions change (no manual sync needed)
+ * - Catches UPSERT operations (which may be INSERT or UPDATE)
  * - Minimal data transfer (only changed records)
  * - No rate limits (single persistent connection per table)
  * - Works great on mobile (low battery/data usage)
@@ -18,6 +19,11 @@
  * - Auto-reconnects when returning to tab after idle
  *
  * CHANGELOG:
+ * v1.7 (2026-01-23): All transaction events
+ *   - Changed transactions subscription from INSERT-only to '*' (all events)
+ *   - Catches UPSERT operations which may trigger UPDATE instead of INSERT
+ *   - Renamed handleTransactionInsert to handleTransactionChange
+ *   - Event type now included in dispatched event detail
  * v1.6 (2026-01-12): Transactions subscription
  *   - Added second channel for transactions table (INSERT only)
  *   - New callback: onTransactionInsert for cache invalidation
@@ -134,13 +140,15 @@ export function useRealtimeSync({
     flushTimeoutRef.current = setTimeout(flushUpdates, 300);
   }, [flushUpdates]);
 
-  // Handle transaction INSERT - stable callback using ref
-  const handleTransactionInsert = useCallback((payload) => {
-    console.info('[useRealtimeSync] Transaction INSERT detected:', payload.new?.id || 'batch');
+  // Handle transaction changes (INSERT, UPDATE, DELETE) - stable callback using ref
+  const handleTransactionChange = useCallback((payload) => {
+    // Supabase Realtime uses lowercase 'eventType' in the payload
+    const eventType = payload.eventType || payload.event || 'CHANGE';
+    console.info(`[useRealtimeSync] Transaction ${eventType} detected:`, payload.new?.id || payload.old?.id || 'batch');
 
     // Dispatch custom event for App.jsx to invalidate cache
     window.dispatchEvent(new CustomEvent('transactionUpdate', {
-      detail: { type: 'INSERT', data: payload.new }
+      detail: { type: eventType, data: payload.new || payload.old }
     }));
 
     // Call provided callback if any (via ref for stability)
@@ -267,22 +275,22 @@ export function useRealtimeSync({
 
     channelRef.current = contactChannel;
 
-    // Channel 2: transactions (INSERT only)
-    // Triggers cache invalidation when new transactions are inserted
-    // DB trigger auto-updates customer metrics, so we only need INSERT
+    // Channel 2: transactions (all events - INSERT, UPDATE, DELETE)
+    // Triggers cache invalidation when transactions change
+    // Uses '*' to catch UPSERTs (which may be INSERT or UPDATE depending on conflict)
     const transactionChannel = supabase
-      .channel('transaction-inserts')
+      .channel('transaction-changes')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'transactions' },
+        { event: '*', schema: 'public', table: 'transactions' },
         (payload) => {
-          handleTransactionInsert(payload);
+          handleTransactionChange(payload);
         }
       )
       .subscribe(handleStatus('transactions'));
 
     transactionChannelRef.current = transactionChannel;
-  }, [queueUpdate, handleTransactionInsert, cleanupChannels]);
+  }, [queueUpdate, handleTransactionChange, cleanupChannels]);
 
   // Keep setupRealtimeRef in sync with the latest setupRealtime function
   // This allows the retry logic to call the latest version without dependency issues

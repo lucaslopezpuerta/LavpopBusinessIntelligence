@@ -1,7 +1,12 @@
-// VisitHeatmap Component v3.1.0
+// VisitHeatmap Component v3.2.0
 // Size-based density visualization with segment filtering
 //
 // CHANGELOG:
+// v3.2.0 (2026-01-23): Segment Filter Color Consistency
+//   - Filter toggle buttons now use segment-specific colors (blue/amber/purple)
+//   - Active button matches chart palette for visual coherence
+//   - Added activeButton property to segment configuration
+//   - Improved hover states with subtle background transitions
 // v3.1.0 (2026-01-20): Premium Glass Effects
 //   - Replaced hard borders with soft glow system
 //   - Added ring-1 for subtle edge definition
@@ -68,6 +73,7 @@ const SEGMENTS = [
     label: 'Todos',
     icon: Users,
     color: 'lavpop-blue',
+    activeButton: 'bg-blue-500 dark:bg-blue-600 text-white shadow-sm',
     palette: {
       p95: 'bg-lavpop-blue dark:bg-blue-500',
       p90: 'bg-lavpop-blue/80 dark:bg-blue-500/80',
@@ -82,6 +88,7 @@ const SEGMENTS = [
     label: 'Fiéis',
     icon: Crown,
     color: 'amber',
+    activeButton: 'bg-amber-500 dark:bg-amber-500 text-white shadow-sm',
     palette: {
       p95: 'bg-amber-500 dark:bg-amber-400',
       p90: 'bg-amber-500/80 dark:bg-amber-400/80',
@@ -96,6 +103,7 @@ const SEGMENTS = [
     label: 'Novos',
     icon: Sparkles,
     color: 'purple',
+    activeButton: 'bg-purple-500 dark:bg-purple-500 text-white shadow-sm',
     palette: {
       p95: 'bg-purple-500 dark:bg-purple-400',
       p90: 'bg-purple-500/80 dark:bg-purple-400/80',
@@ -554,8 +562,8 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
       <div className="mb-2">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-0.5">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
-              <Clock className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+            <div className="w-10 h-10 rounded-xl bg-blue-500 dark:bg-blue-600 flex items-center justify-center shadow-sm shrink-0">
+              <Clock className="w-5 h-5 text-white" />
             </div>
             <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
               Mapa de Visitas
@@ -578,7 +586,7 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
           </div>
 
           {/* Segment Toggle */}
-          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-700 rounded-lg p-0.5">
+          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-700/50 rounded-lg p-0.5">
             {SEGMENTS.map(seg => {
               const Icon = seg.icon;
               const isActive = selectedSegment === seg.id;
@@ -587,10 +595,10 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
                   key={seg.id}
                   onClick={(e) => { e.stopPropagation(); setSelectedSegment(seg.id); }}
                   className={`
-                    flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors
+                    flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-all duration-200
                     ${isActive
-                      ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      ? seg.activeButton
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-600/50'
                     }
                   `}
                   title={seg.label}
