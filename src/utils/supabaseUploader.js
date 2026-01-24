@@ -297,9 +297,11 @@ export async function uploadSalesCSV(csvText, onProgress = () => {}) {
         parseInt(parsedDate.month) - 1,
         parseInt(parsedDate.day)
       );
+      // Calculate cashback for tracking (as a liability, not deducted from netValue)
+      // netValue = Valor_Pago (coupon discounts only), cashback tracked separately
       if (txDate >= CASHBACK_START_DATE && grossValue > 0) {
         cashbackAmount = Math.round(grossValue * CASHBACK_RATE * 100) / 100;
-        netValue = Math.round((netValue - cashbackAmount) * 100) / 100;
+        // Do NOT deduct cashback from netValue - it's a liability, not an expense
       }
 
       const usouCupom = String(row.Usou_Cupom || '').toLowerCase() === 'sim';

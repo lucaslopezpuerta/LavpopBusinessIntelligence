@@ -91,7 +91,7 @@ export function classifyTransaction(row) {
  * Returns array of transaction objects with:
  * - date, dateStr, hour
  * - type (TYPE_1, TYPE_2, TYPE_3)
- * - grossValue, netValue (after cashback), discountAmount, cashbackAmount
+ * - grossValue, netValue (after coupon discounts only), discountAmount, cashbackAmount
  * - washCount, dryCount, totalServices
  * - isRecarga (boolean flag)
  */
@@ -112,12 +112,13 @@ export function parseSalesRecords(salesData) {
     let discountAmount = grossValue - netValue; // Coupon discount only (at first)
     let cashbackAmount = 0;
     
-    // Apply cashback to Type 1 (machine + card) and Type 3 (Recarga)
+    // Calculate cashback for Type 1 (machine + card) and Type 3 (Recarga)
     // Type 2 (machine + credit) has R$0, so cashback is 0
+    // NOTE: Cashback is tracked as a LIABILITY, not deducted from netValue
+    // netValue = Valor_Pago (coupon discounts only), cashback tracked separately
     if (date >= CASHBACK_START_DATE && grossValue > 0) {
       cashbackAmount = grossValue * CASHBACK_RATE; // Keep full precision!
-      netValue = netValue - cashbackAmount;
-      discountAmount = discountAmount + cashbackAmount;
+      // Do NOT deduct cashback from netValue - it's a liability, not an expense
     }
     
     const machineInfo = countMachines(machineStr);
@@ -141,8 +142,8 @@ export function parseSalesRecords(salesData) {
       isRecarga,
       machineStr,         // Store original machine string
       grossValue,
-      netValue,           // TRUE net after cashback
-      discountAmount,     // Includes coupon + cashback
+      netValue,           // After coupon discounts only (cashback NOT deducted)
+      discountAmount,     // Coupon discount only (grossValue - netValue)
       cashbackAmount,
       washCount: machineInfo.wash,
       dryCount: machineInfo.dry,

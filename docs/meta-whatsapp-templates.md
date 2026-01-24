@@ -17,6 +17,10 @@ Each template includes the exact text to copy/paste into WhatsApp Business Manag
 | Complete com Secagem | `lavpop_complete_secagem` | MARKETING | Upsell |
 | Win-back Urgente (45d) | `lavpop_winback_urgente` | MARKETING | Clientes Criticos |
 | Pos-Visita | `lavpop_pos_visita` | UTILITY | Todos (24h apos) |
+| Cliente VIP | `lavpop_cliente_vip` | MARKETING | VIP/Frequente |
+| Clima Perfeito | `lavpop_clima_perfeito` | MARKETING | Weather-triggered |
+| Aniversário de Cadastro | `lavpop_aniversario_cadastro` | MARKETING | Anniversary |
+| Última Chance | `lavpop_ultima_chance` | MARKETING | Churned (60-120d) |
 
 ---
 
@@ -567,6 +571,258 @@ Lavpop Caxias do Sul - Lavanderia Autosserviço
 
 ---
 
+## Template 11: Cliente VIP (Fidelidade)
+
+**Template Name:** `lavpop_cliente_vip`
+**Category:** MARKETING
+**Language:** Portuguese (BR) - pt_BR
+**Code ID:** `rfm_loyalty_vip`
+
+> **Purpose:** Monthly reward for VIP and Frequente customers. Offers 10% discount, 20% discount, or a Lavpop branded bag.
+
+### Header (TEXT)
+```
+Você é especial para nós!
+```
+
+### Body
+```
+Olá {{1}}!
+
+Você é um dos nossos clientes mais fiéis e queremos agradecer!
+
+🎁 Presente exclusivo para você:
+{{2}}
+
+📅 Válido até {{3}}
+
+Obrigado por fazer parte da família Lavpop! 💙
+```
+
+### Footer
+```
+Lavpop Caxias do Sul - Lavanderia Autosserviço
+```
+
+### Buttons (Quick Reply)
+| Button Text | Button ID |
+|-------------|-----------|
+| Adorei! | `vip_accept` |
+| Não quero receber | `optout` |
+
+### Variable Descriptions
+| Variable | Description | Example Values |
+|----------|-------------|----------------|
+| `{{1}}` | Nome do cliente | Maria |
+| `{{2}}` | Descrição do presente | "10% OFF com cupom VIP10" / "20% OFF com cupom VIP20" / "Bolsa Lavpop exclusiva - retire na loja!" |
+| `{{3}}` | Data de validade | 31/01 |
+
+### POS Coupon Configuration
+| Código | Desconto | Descrição |
+|--------|----------|-----------|
+| `VIP10` | 10% | 10% off all services |
+| `VIP20` | 20% | 20% off all services |
+| `BOLSA` | 0% | Branded bag redemption (tracked manually) |
+
+### Automation Trigger
+- **Trigger Type:** `rfm_segment`
+- **Trigger Value:** `['VIP', 'Frequente']`
+- **Cooldown:** 30 days (monthly)
+- **Priority:** High
+
+---
+
+## Template 12: Clima Perfeito (Weather)
+
+**Template Name:** `lavpop_clima_perfeito`
+**Category:** MARKETING
+**Language:** Portuguese (BR) - pt_BR
+**Code ID:** `weather_promo`
+
+> **Purpose:** Weather-triggered promotion when drying conditions are poor (high humidity, precipitation, or cloud cover).
+
+### Header (TEXT)
+```
+Dia perfeito para lavar!
+```
+
+### Body
+```
+Olá {{1}}!
+
+Com esse tempo, secar roupa em casa é complicado, né?
+
+Aproveite nossa promoção especial de hoje:
+🎁 *{{2}}% OFF* em qualquer serviço
+📋 Cupom: *{{3}}*
+📅 Válido até {{4}}
+
+Venha aproveitar nossas secadoras profissionais! 💙
+```
+
+### Footer
+```
+Lavpop Caxias do Sul - Lavanderia Autosserviço
+```
+
+### Buttons (Quick Reply)
+| Button Text | Button ID |
+|-------------|-----------|
+| Vou aproveitar! | `clima_accept` |
+| Não tenho interesse | `optout` |
+
+### Variable Descriptions
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{1}}` | Nome do cliente | João |
+| `{{2}}` | Desconto (%) | 15 |
+| `{{3}}` | Código do cupom | CLIMA15 |
+| `{{4}}` | Data de validade | 20/01 |
+
+### POS Coupon Configuration
+| Código | Desconto | Descrição |
+|--------|----------|-----------|
+| `CLIMA10` | 10% | Weather promo 10% |
+| `CLIMA15` | 15% | Weather promo 15% |
+| `CLIMA20` | 20% | Weather promo 20% |
+
+### Automation Trigger
+- **Trigger Type:** `weather_drying_pain`
+- **Weather Thresholds:** Humidity ≥75% OR Precipitation ≥5mm OR Cloud cover ≥80%
+- **Cooldown:** 14 days (weather-specific)
+- **Daily Limit:** 50 customers
+- **Priority:** Medium
+
+---
+
+## Template 13: Aniversário de Cadastro
+
+**Template Name:** `lavpop_aniversario_cadastro`
+**Category:** MARKETING
+**Language:** Portuguese (BR) - pt_BR
+**Code ID:** `registration_anniversary`
+
+> **Purpose:** Celebrate customer's registration anniversary using `data_cadastro`. Bypasses global cooldown (special occasion).
+
+### Header (TEXT)
+```
+Feliz Aniversário de Cadastro!
+```
+
+### Body
+```
+Olá {{1}}!
+
+Hoje faz {{2}} que você está com a gente! 🎂
+
+Para comemorar, preparamos um presente especial:
+🎁 *{{3}}% de desconto* no seu próximo ciclo
+📋 Cupom: *{{4}}*
+📅 Válido até {{5}}
+
+Obrigado por confiar na Lavpop! 💙
+```
+
+### Footer
+```
+Lavpop Caxias do Sul - Lavanderia Autosserviço
+```
+
+### Buttons (Quick Reply)
+| Button Text | Button ID |
+|-------------|-----------|
+| Que legal! | `aniver_accept` |
+| Não quero receber | `optout` |
+
+### Variable Descriptions
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{1}}` | Nome do cliente | Ana |
+| `{{2}}` | Tempo de cadastro | "1 ano" / "2 anos" / "3 anos" |
+| `{{3}}` | Desconto (%) | 20 |
+| `{{4}}` | Código do cupom | ANIVER20 |
+| `{{5}}` | Data de validade | 15/02 |
+
+### POS Coupon Configuration (Tiered by Years)
+| Código | Desconto | Anos | Descrição |
+|--------|----------|------|-----------|
+| `ANIVER15` | 15% | 1 ano | Anniversary 15% (1 year) |
+| `ANIVER20` | 20% | 2 anos | Anniversary 20% (2 years) |
+| `ANIVER25` | 25% | 3+ anos | Anniversary 25% (3+ years) |
+
+### Automation Trigger
+- **Trigger Type:** `registration_anniversary`
+- **Window:** ±3 days from anniversary date
+- **Cooldown:** 365 days (annual)
+- **Bypass Global Cooldown:** Yes (special occasion)
+- **Priority:** High
+
+---
+
+## Template 14: Última Chance (Churned Recovery)
+
+**Template Name:** `lavpop_ultima_chance`
+**Category:** MARKETING
+**Language:** Portuguese (BR) - pt_BR
+**Code ID:** `churned_recovery`
+
+> **Purpose:** Aggressive win-back for churned customers (60-120 days inactive). Offers 50% discount or free cycle.
+
+### Header (TEXT)
+```
+Não queremos te perder!
+```
+
+### Body
+```
+Olá {{1}}!
+
+Faz {{2}} dias que não te vemos na Lavpop e sentimos muito sua falta!
+
+Preparamos uma oferta EXCLUSIVA para você voltar:
+🎁 {{3}}
+
+Use o cupom *{{4}}* até {{5}}.
+
+Esta é nossa melhor oferta - não deixe passar! 💙
+```
+
+### Footer
+```
+Lavpop Caxias do Sul - Lavanderia Autosserviço
+```
+
+### Buttons (Quick Reply)
+| Button Text | Button ID |
+|-------------|-----------|
+| Quero voltar! | `ultima_accept` |
+| Não tenho interesse | `optout` |
+
+### Variable Descriptions
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{1}}` | Nome do cliente | Carlos |
+| `{{2}}` | Dias sem visita | 75 |
+| `{{3}}` | Descrição da oferta | "*50% OFF* em qualquer serviço" / "*1 CICLO GRÁTIS* (lavagem ou secagem)" |
+| `{{4}}` | Código do cupom | VOLTA50 / GRATIS |
+| `{{5}}` | Data de validade | 10/02 |
+
+### POS Coupon Configuration
+| Código | Desconto | Descrição |
+|--------|----------|-----------|
+| `VOLTA50` | 50% | 50% off all services |
+| `GRATIS` | 100% | Free cycle (1 wash OR 1 dry, limit 1 per customer) |
+
+### Automation Trigger
+- **Trigger Type:** `churned_days`
+- **Target:** Lost customers (60-120 days since last visit)
+- **Cooldown:** 21 days (aggressive follow-up)
+- **Daily Limit:** 30 customers
+- **Min Total Spent:** R$50 (target valuable customers)
+- **Priority:** Critical
+
+---
+
 ## Button ID Reference
 
 | Template | Button Text | Button ID | Action |
@@ -592,6 +848,14 @@ Lavpop Caxias do Sul - Lavanderia Autosserviço
 | Pós-Visita | Excelente! | `feedback_excellent` | Track positive feedback |
 | Pós-Visita | Precisa melhorar | `feedback_improve` | Track improvement feedback |
 | Pós-Visita | Não quero receber | `optout` | **Add to blacklist** |
+| Cliente VIP | Adorei! | `vip_accept` | Track VIP engagement |
+| Cliente VIP | Não quero receber | `optout` | **Add to blacklist** |
+| Clima Perfeito | Vou aproveitar! | `clima_accept` | Track weather promo engagement |
+| Clima Perfeito | Não tenho interesse | `optout` | **Add to blacklist** |
+| Aniversário | Que legal! | `aniver_accept` | Track anniversary engagement |
+| Aniversário | Não quero receber | `optout` | **Add to blacklist** |
+| Última Chance | Quero voltar! | `ultima_accept` | Track churned recovery engagement |
+| Última Chance | Não tenho interesse | `optout` | **Add to blacklist** |
 
 > **Note**: The `optout` button ID is used across all templates for opt-out functionality. When your webhook receives this ID, automatically add the phone number to the blacklist. This is a **Meta requirement** for marketing messages.
 
@@ -696,6 +960,41 @@ The campaign system supports **dynamic discount selection** for A/B testing effe
 | `SEQUE10` | 10% | Secadoras | Lavou | Upsell 10% secagem |
 | `SEQUE15` | 15% | Secadoras | Lavou | Upsell 15% secagem |
 | `SEQUE20` | 20% | Secadoras | Lavou | Upsell 20% secagem |
+
+#### VIP/Loyalty Coupons (3 total) - NEW v6.3
+*Monthly rewards for VIP and Frequente customers*
+
+| Código | Desconto | Permitido Para | Válido se já | Descrição |
+|--------|----------|----------------|--------------|-----------|
+| `VIP10` | 10% | Lavadoras e Secadoras | - | VIP reward 10% |
+| `VIP20` | 20% | Lavadoras e Secadoras | - | VIP reward 20% |
+| `BOLSA` | 0% (brinde) | N/A | - | Bolsa Lavpop exclusiva (retirar na loja) |
+
+#### Weather Coupons (3 total) - NEW v6.3
+*Weather-triggered promotions for high drying pain days*
+
+| Código | Desconto | Permitido Para | Válido se já | Descrição |
+|--------|----------|----------------|--------------|-----------|
+| `CLIMA10` | 10% | Lavadoras e Secadoras | - | Weather promo 10% |
+| `CLIMA15` | 15% | Lavadoras e Secadoras | - | Weather promo 15% |
+| `CLIMA20` | 20% | Lavadoras e Secadoras | - | Weather promo 20% |
+
+#### Anniversary Coupons (3 total) - NEW v6.3
+*Registration anniversary celebration (tiered by years)*
+
+| Código | Desconto | Permitido Para | Válido se já | Descrição |
+|--------|----------|----------------|--------------|-----------|
+| `ANIVER15` | 15% | Lavadoras e Secadoras | - | Aniversário 15% (1 ano) |
+| `ANIVER20` | 20% | Lavadoras e Secadoras | - | Aniversário 20% (2 anos) |
+| `ANIVER25` | 25% | Lavadoras e Secadoras | - | Aniversário 25% (3+ anos) |
+
+#### Churned Recovery Coupons (2 total) - NEW v6.3
+*Aggressive recovery for lost customers (60-120 days)*
+
+| Código | Desconto | Permitido Para | Válido se já | Descrição |
+|--------|----------|----------------|--------------|-----------|
+| `VOLTA50` | 50% | Lavadoras e Secadoras | - | Recuperação 50% (agressivo) |
+| `GRATIS` | 100% | Lavadoras OU Secadoras | - | 1 ciclo grátis (limite 1 por cliente) |
 
 ---
 

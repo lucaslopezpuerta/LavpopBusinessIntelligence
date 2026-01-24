@@ -87,8 +87,9 @@ const navigationGroups = [
   }
 ];
 
-// Utility item (separate from main navigation)
+// Utility items (separate from main navigation)
 const utilityItem = { id: 'upload', label: 'Importar', icon: Upload, path: '/upload' };
+const settingsItem = { id: 'settings', label: 'Configurações', icon: Settings };
 
 const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
   const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar, isPinned, togglePinned } = useSidebar();
@@ -126,19 +127,16 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
     }
   };
 
-  // Nav item component for reuse
-  const NavItem = ({ item, isMobile = false }) => {
+  // Nav item component for reuse - supports both Link (with path) and button (with onClick)
+  const NavItem = ({ item, isMobile = false, onClick }) => {
     const Icon = item.icon;
     const isActive = activeTab === item.id;
+    const isButton = !item.path;
 
-    return (
-      <Link
-        to={item.path}
-        onClick={isMobile ? handleMobileNavigate : handleDesktopNavigate}
-        aria-current={isActive ? 'page' : undefined}
-        className={`relative flex items-center gap-3 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 ${isMobile ? 'h-11 px-3' : `h-10 ${isExpanded ? 'mx-2 px-3' : 'mx-2 justify-center'}`} ${isActive ? 'bg-gradient-stellar-horizontal text-white shadow-md shadow-bilavnova' : isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
-        title={(!isExpanded && !isMobile) ? item.label : undefined}
-      >
+    const className = `relative w-full flex items-center gap-3 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 ${isMobile ? 'h-11 px-3' : `h-10 ${isExpanded ? 'px-3' : 'justify-center'}`} ${isActive ? 'bg-gradient-stellar-horizontal text-white shadow-md shadow-bilavnova' : isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`;
+
+    const content = (
+      <>
         <Icon className="w-5 h-5 flex-shrink-0" />
         {(isExpanded || isMobile) && (
           <span className="whitespace-nowrap text-sm font-medium">
@@ -150,6 +148,35 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
             <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           </div>
         )}
+      </>
+    );
+
+    if (isButton) {
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            onClick?.();
+            if (isMobile) handleMobileNavigate();
+          }}
+          className={`${className} appearance-none bg-transparent border-0`}
+          title={(!isExpanded && !isMobile) ? item.label : undefined}
+          aria-label={item.label}
+        >
+          {content}
+        </button>
+      );
+    }
+
+    return (
+      <Link
+        to={item.path}
+        onClick={isMobile ? handleMobileNavigate : handleDesktopNavigate}
+        aria-current={isActive ? 'page' : undefined}
+        className={className}
+        title={(!isExpanded && !isMobile) ? item.label : undefined}
+      >
+        {content}
       </Link>
     );
   };
@@ -228,7 +255,7 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
               <div className={`mx-4 mb-2 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}`} />
             )}
             {/* Navigation items */}
-            <div className="space-y-1">
+            <div className="space-y-1 px-2">
               {group.items.map(item => (
                 <NavItem key={item.id} item={item} />
               ))}
@@ -238,21 +265,9 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
       </nav>
 
       {/* Utility Items (Importar + Settings) */}
-      <div className={`py-2 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0 space-y-1`}>
+      <div className={`py-2 px-2 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0 space-y-1`}>
         <NavItem item={utilityItem} />
-        <button
-          onClick={onOpenSettings}
-          className={`relative flex items-center gap-3 rounded-lg transition-all duration-200 h-10 ${isExpanded ? 'mx-2 px-3' : 'mx-2 justify-center'} ${isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
-          title={!isExpanded ? 'Configurações' : undefined}
-          aria-label="Configurações"
-        >
-          <Settings className="w-5 h-5 flex-shrink-0" />
-          {isExpanded && (
-            <span className="whitespace-nowrap text-sm font-medium">
-              Configurações
-            </span>
-          )}
-        </button>
+        <NavItem item={settingsItem} onClick={onOpenSettings} />
       </div>
 
       {/* Expand indicator when collapsed and hovered */}
@@ -350,19 +365,12 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
               </nav>
 
               {/* Utility footer with Settings and ThemeToggle */}
-              <div className={`p-3 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0`}>
+              <div className={`p-3 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-stellar-cyan/5'} flex-shrink-0 space-y-1`}>
+                <NavItem item={utilityItem} isMobile />
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
-                    <NavItem item={utilityItem} isMobile />
+                    <NavItem item={settingsItem} isMobile onClick={onOpenSettings} />
                   </div>
-                  <button
-                    onClick={() => { onOpenSettings?.(); toggleMobileSidebar(); }}
-                    className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-stellar-cyan/10 hover:text-stellar-cyan' : 'text-slate-500 hover:bg-stellar-cyan/5 hover:text-stellar-cyan'}`}
-                    aria-label="Configurações"
-                    title="Configurações"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </button>
                   <ThemeToggle />
                 </div>
               </div>

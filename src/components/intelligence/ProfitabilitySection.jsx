@@ -1,110 +1,75 @@
-// ProfitabilitySection.jsx v3.8
+// ProfitabilitySection.jsx v4.0.0
 // Profitability analysis section for Intelligence tab
-// Design System v4.0 compliant - Refactored with unified components
+// Design System v5.1 compliant - Premium Glass styling
 //
 // CHANGELOG:
+// v4.0.0 (2026-01-24): Premium Glass redesign
+//   - Replaced SectionCard with direct Premium Glass container
+//   - Added useTheme() and useMediaQuery() hooks
+//   - Redesigned break-even section with Premium Glass styling
+//   - Redesigned optimization levers with compact cards
+//   - Removed gradient backgrounds for cleaner look
+//   - Coherent with PriorityMatrix and RevenueForecast
 // v3.8 (2026-01-09): Light background KPI cards (Hybrid Card Design)
-//   - Changed KPICard variant from "gradient" to "default"
-//   - Cards now use light backgrounds (bg-white dark:bg-slate-800)
-//   - Icon containers retain gradient colors for visual accent
 // v3.7 (2026-01-09): Design System v4.0 typography compliance
-//   - Fixed OptimizationLever detail text (text-[10px] → text-xs)
 // v3.6 (2025-12-28): Replaced Manutenção with Custo por Ciclo
-//   - Manutenção was redundant (included in Custos Totais)
-//   - Custo por Ciclo provides better operational insight
-//   - Shows total costs divided by number of services
 // v3.5 (2025-12-28): Mobile 2-column card layout
-//   - KPIGrid columns={6} for 2 cols mobile, 3 cols desktop
-//   - Better mobile card distribution for 6 cards
 // v3.4 (2025-12-28): Card design unified with KPICard component
-//   - Uses unified KPICard component with variant="default" for consistency
-//   - KPIGrid columns={3} for 3-col layout (matches GrowthTrendsSection)
-//   - OptimizationLever uses matching gradient backgrounds
-//   - Consistent design across Intelligence tab sections
 // v3.3 (2025-12-28): Removed redundant elements, improved context
-//   - REMOVED: Bar chart (redundant with KPI cards showing same data)
-//   - REMOVED: Bottom success InsightBox (redundant with top insight)
-//   - IMPROVED: InsightBox now shows specific margin context
-//   - IMPROVED: Break-even section has clearer progress context
 // v3.2 (2025-12-28): Mobile compatibility improvements
-//   - OptimizationLever: horizontal layout on mobile, stacked grid
-//   - Responsive grid: 1 col mobile, 3 cols desktop for levers
-//   - Improved spacing and touch targets on small screens
 // v3.1 (2025-12-28): Optimization levers
-//   - Added optimizationLevers prop for margin improvement guidance
-//   - Shows 3 options: revenue increase, cost reduction, price increase
-//   - Only shows when margin is below target (15%)
 // v3.0 (2025-12-14): Migrated from Nivo to Recharts
-//   - Replaced ResponsiveBar (Nivo) with BarChart (Recharts)
-//   - Custom tooltip matching project patterns
-//   - Better dark mode support via Tailwind classes
-//   - Reduced bundle size by removing Nivo dependency
-// v2.2 (2025-12-02): Fixed Nivo chart NaN crash
-//   - Guard against empty/zero revenue/cost data
-//   - Fixed division by zero in maintenance % calculation
-//   - Conditional render: skip chart when no valid data
-// v2.1 (2025-12-02): Unified section header
-//   - Added color="emerald" for consistent styling with Intelligence tab
-// v2.0 (2025-11-30): Major refactor
-//   - Uses unified KPICard, ChartSection, ProgressBar components
-//   - InsightBox moved to top for visibility
-//   - Fixed accessibility (minimum 12px font)
-//   - Memoized chart data
-//   - Reduced code from 308 to ~200 lines
-// v1.0 (2025-11-30): Initial extraction from Intelligence.jsx
+// v2.x: Previous versions
 
 import React from 'react';
-import { DollarSign, CheckCircle, AlertTriangle, TrendingUp, Scissors, Tag, Lightbulb, Calendar, Gauge } from 'lucide-react';
-import SectionCard from '../ui/SectionCard';
-import KPICard, { KPIGrid } from '../ui/KPICard';
-import InsightBox from '../ui/InsightBox';
+import { DollarSign, CheckCircle, AlertTriangle, TrendingUp, Scissors, Tag, Lightbulb, Calendar, Gauge, ChevronDown } from 'lucide-react';
+import KPICard from '../ui/KPICard';
 import ProgressBar from '../ui/ProgressBar';
-import { useIsMobile } from '../../hooks/useMediaQuery';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useTheme } from '../../contexts/ThemeContext';
 
-// Optimization lever card - matches ServiceSegmentCard style from GrowthTrendsSection
-const OptimizationLever = ({ title, target, detail, icon: Icon, color }) => {
-  const isMobile = useIsMobile();
-
-  // Color variants for icon accent
+// Optimization lever card - compact Premium Glass style
+const OptimizationLever = ({ title, target, detail, icon: Icon, color, isDark, isDesktop }) => {
   const iconColors = {
-    emerald: 'text-emerald-500 dark:text-emerald-400',
-    amber: 'text-amber-500 dark:text-amber-400',
-    blue: 'text-blue-500 dark:text-blue-400',
+    emerald: isDark ? 'text-emerald-400' : 'text-emerald-600',
+    amber: isDark ? 'text-amber-400' : 'text-amber-600',
+    blue: isDark ? 'text-blue-400' : 'text-blue-600',
+  };
+
+  const iconBgColors = {
+    emerald: isDark ? 'bg-emerald-500/20' : 'bg-emerald-100',
+    amber: isDark ? 'bg-amber-500/20' : 'bg-amber-100',
+    blue: isDark ? 'bg-blue-500/20' : 'bg-blue-100',
   };
 
   const iconClass = iconColors[color] || iconColors.emerald;
+  const iconBg = iconBgColors[color] || iconBgColors.emerald;
 
-  // Mobile: horizontal layout (same as ServiceSegmentCard mobile)
-  if (isMobile) {
-    return (
-      <div className="p-3 rounded-xl border transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-200 dark:bg-slate-700">
-          <Icon className={`w-5 h-5 ${iconClass}`} />
+  return (
+    <div className={`
+      p-3 rounded-xl
+      ${isDark ? 'bg-space-dust/60' : 'bg-white'}
+      ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
+      shadow-sm
+    `}>
+      <div className="flex items-center gap-3">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
+          <Icon className={`w-4.5 h-4.5 ${iconClass}`} />
         </div>
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{title}</span>
-          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{detail}</p>
+          <span className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+            {title}
+          </span>
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} truncate`}>
+            {detail}
+          </p>
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-base font-bold text-slate-900 dark:text-white">{target}</p>
+        <div className="text-right shrink-0">
+          <p className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {target}
+          </p>
         </div>
       </div>
-    );
-  }
-
-  // Desktop: vertical layout (same as ServiceSegmentCard desktop)
-  return (
-    <div className="p-3 rounded-xl border transition-all bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className={`w-4 h-4 ${iconClass}`} />
-        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{title}</span>
-      </div>
-      <p className="text-sm font-bold text-slate-900 dark:text-white mb-0.5">
-        {target}
-      </p>
-      <p className="text-xs text-slate-500 dark:text-slate-400">
-        {detail}
-      </p>
     </div>
   );
 };
@@ -114,11 +79,13 @@ const ProfitabilitySection = ({
   optimizationLevers,
   formatCurrency,
   formatPercent,
-  // Collapsible props
   collapsible = false,
   isCollapsed = false,
   onToggle
 }) => {
+  const { isDark } = useTheme();
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+
   if (!profitability) return null;
 
   const {
@@ -131,171 +98,257 @@ const ProfitabilitySection = ({
   } = profitability;
 
   return (
-    <SectionCard
-      title="Rentabilidade"
-      subtitle={`Análise de custos vs receita e ponto de equilíbrio • Mês atual (${profitability.daysInPeriod} dias)`}
-      icon={DollarSign}
+    <div
       id="profitability-section"
-      color="emerald"
-      collapsible={collapsible}
-      isCollapsed={isCollapsed}
-      onToggle={onToggle}
+      className={`
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl rounded-2xl p-5
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(16,185,129,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
+        overflow-hidden
+      `}
     >
-      <div className="space-y-5 sm:space-y-6">
-        {/* Critical Insight First - Most important info at top */}
-        <InsightBox
-          type={isAboveBreakEven ? 'success' : 'warning'}
-          title={isAboveBreakEven ? 'Negocio Lucrativo' : 'Atencao: Abaixo do Break-Even'}
-          message={
-            isAboveBreakEven
-              ? `Lucro de ${formatCurrency(netProfit)} com margem de ${formatPercent(profitMargin)}. Voce tem ${actualServices - breakEvenServices} servicos de folga alem do break-even - isso significa que pode absorver quedas de ate ${formatPercent(Math.abs(breakEvenBuffer))} na receita antes de ter prejuizo.`
-              : `Faltam ${breakEvenServices - actualServices} servicos (~${formatCurrency((breakEvenServices - actualServices) * (profitability.avgServiceValue || 0))}) para cobrir os custos. Acao imediata: foque em aumentar agendamentos ou reduza custos fixos nao essenciais.`
-          }
-        />
-
-        {/* KPI Grid - 6 cards: 2 cols mobile, 3 cols desktop */}
-        <KPIGrid columns={6}>
-          <KPICard
-            label="Receita Bruta"
-            mobileLabel="Receita"
-            value={formatCurrency(profitability.grossRevenue)}
-            subtitle="+ Cashback aplicado"
-            color="revenue"
-            variant="default"
-            icon={DollarSign}
-          />
-          <KPICard
-            label="Custos Fixos"
-            mobileLabel="C. Fixos"
-            value={formatCurrency(profitability.fixedCosts)}
-            subtitle={`${profitability.daysInPeriod} dias`}
-            color="neutral"
-            variant="default"
-            icon={Calendar}
-          />
-          <KPICard
-            label="Custo por Ciclo"
-            mobileLabel="$/Ciclo"
-            value={formatCurrency(actualServices > 0 ? profitability.totalCosts / actualServices : 0)}
-            subtitle={`${actualServices} ciclos no mês`}
-            color="purple"
-            variant="default"
-            icon={Gauge}
-          />
-          <KPICard
-            label="Custos Totais"
-            mobileLabel="Total"
-            value={formatCurrency(profitability.totalCosts)}
-            subtitle={`${profitability.daysInPeriod} dias`}
-            color="cost"
-            variant="default"
-            icon={AlertTriangle}
-          />
-          <KPICard
-            label="Lucro Líquido"
-            mobileLabel="Lucro"
-            value={formatCurrency(netProfit)}
-            subtitle={netProfit > 0 ? 'Positivo' : 'Negativo'}
-            color={netProfit > 0 ? 'positive' : 'negative'}
-            variant="default"
-            icon={netProfit > 0 ? TrendingUp : AlertTriangle}
-          />
-          <KPICard
-            label="Margem"
-            mobileLabel="Margem"
-            value={formatPercent(profitMargin)}
-            subtitle={`${profitability.daysInPeriod} dias`}
-            color="blue"
-            variant="default"
-            icon={CheckCircle}
-          />
-        </KPIGrid>
-
-        {/* Break-even Progress */}
-        <div className="bg-gradient-to-br from-lavpop-blue-50 to-lavpop-blue-100 dark:from-lavpop-blue-900/30 dark:to-lavpop-blue-800/20 rounded-xl border border-lavpop-blue-200 dark:border-lavpop-blue-800 p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-lavpop-blue-900 dark:text-lavpop-blue-100">
-                Ponto de Equilibrio
-              </h3>
-              <p className="text-xs sm:text-sm text-lavpop-blue-700 dark:text-lavpop-blue-400">
-                Servicos necessarios para cobrir custos
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-left sm:text-right">
-                <p className="text-xs text-lavpop-blue-700 dark:text-lavpop-blue-400">
-                  Realizado / Meta
-                </p>
-                <p className="text-xl sm:text-2xl font-bold text-lavpop-blue-900 dark:text-lavpop-blue-100">
-                  {actualServices} / {breakEvenServices}
-                </p>
-              </div>
-              {isAboveBreakEven ? (
-                <CheckCircle className="w-8 h-8 text-emerald-500 flex-shrink-0" aria-hidden="true" />
-              ) : (
-                <AlertTriangle className="w-8 h-8 text-amber-500 flex-shrink-0" aria-hidden="true" />
-              )}
-            </div>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-5">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500 dark:bg-emerald-600 flex items-center justify-center shadow-sm shrink-0">
+            <DollarSign className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
-
-          <ProgressBar
-            value={actualServices}
-            max={breakEvenServices}
-            color={isAboveBreakEven ? 'emerald' : 'amber'}
-            size="md"
-            showLabels
-            minLabel="0 ciclos"
-            maxLabel={`${breakEvenServices} (break-even)`}
-            ariaLabel={`Progresso para break-even: ${actualServices} de ${breakEvenServices} servicos`}
-          />
-        </div>
-
-        {/* Optimization Levers - How to improve margin */}
-        {optimizationLevers && !optimizationLevers.alreadyAtTarget && (
-          <div className="mt-6 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
-            <h4 className="text-sm font-semibold text-indigo-900 dark:text-indigo-100 mb-4 flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-indigo-500" />
-              Como Melhorar a Margem (meta: {optimizationLevers.targetMargin}%)
-            </h4>
-
-            {/* Responsive grid: stacked on mobile, 3 cols on desktop */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-              {/* Option A: Increase Revenue */}
-              <OptimizationLever
-                title="Aumentar Receita"
-                target={`+${formatCurrency(optimizationLevers.revenue.needed)}/mês`}
-                detail={`+${optimizationLevers.revenue.weeklyServicesNeeded} serviços/semana`}
-                icon={TrendingUp}
-                color="emerald"
-              />
-
-              {/* Option B: Reduce Costs */}
-              <OptimizationLever
-                title="Reduzir Custos"
-                target={`-${formatCurrency(optimizationLevers.cost.reduction)}/mês`}
-                detail={`${optimizationLevers.cost.largestCost} é ${optimizationLevers.cost.largestCostPercent}% dos custos`}
-                icon={Scissors}
-                color="amber"
-              />
-
-              {/* Option C: Price Adjustment */}
-              <OptimizationLever
-                title="Ajustar Preços"
-                target={`+${optimizationLevers.price.increasePercent}%`}
-                detail={`Tolerância: -${optimizationLevers.price.volumeDropTolerance}% volume`}
-                icon={Tag}
-                color="blue"
-              />
-            </div>
-
-            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-3">
-              Gap atual: {formatPercent(optimizationLevers.marginGap)} abaixo da meta de {optimizationLevers.targetMargin}%
+          <div>
+            <h3 className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+              Rentabilidade
+            </h3>
+            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Mês atual ({profitability.daysInPeriod} dias)
             </p>
           </div>
+        </div>
+
+        {/* Collapse toggle */}
+        {collapsible && (
+          <button
+            onClick={onToggle}
+            className={`
+              p-2 rounded-lg transition-colors
+              ${isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-slate-100'}
+            `}
+            aria-expanded={!isCollapsed}
+            aria-label={isCollapsed ? 'Expandir seção' : 'Recolher seção'}
+          >
+            <ChevronDown className={`
+              w-5 h-5 transition-transform duration-200
+              ${isDark ? 'text-slate-400' : 'text-slate-500'}
+              ${isCollapsed ? '' : 'rotate-180'}
+            `} />
+          </button>
         )}
       </div>
-    </SectionCard>
+
+      {/* Collapsible content */}
+      {!isCollapsed && (
+        <div className="space-y-5">
+          {/* Critical Insight */}
+          <div className={`
+            p-4 rounded-xl
+            ${isAboveBreakEven
+              ? isDark ? 'bg-emerald-900/20' : 'bg-emerald-50/80'
+              : isDark ? 'bg-amber-900/20' : 'bg-amber-50/80'
+            }
+            ring-1 ${isAboveBreakEven
+              ? isDark ? 'ring-emerald-500/20' : 'ring-emerald-200'
+              : isDark ? 'ring-amber-500/20' : 'ring-amber-200'
+            }
+          `}>
+            <div className="flex items-start gap-3">
+              <div className={`
+                w-9 h-9 rounded-lg flex items-center justify-center shrink-0
+                ${isAboveBreakEven
+                  ? isDark ? 'bg-emerald-500/30' : 'bg-emerald-500/20'
+                  : isDark ? 'bg-amber-500/30' : 'bg-amber-500/20'
+                }
+              `}>
+                {isAboveBreakEven
+                  ? <CheckCircle className={`w-5 h-5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  : <AlertTriangle className={`w-5 h-5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+                }
+              </div>
+              <div>
+                <h4 className={`${isDesktop ? 'text-base' : 'text-sm'} font-semibold ${
+                  isAboveBreakEven
+                    ? isDark ? 'text-emerald-200' : 'text-emerald-800'
+                    : isDark ? 'text-amber-200' : 'text-amber-800'
+                }`}>
+                  {isAboveBreakEven ? 'Negócio Lucrativo' : 'Atenção: Abaixo do Break-Even'}
+                </h4>
+                <p className={`${isDesktop ? 'text-sm' : 'text-xs'} mt-1 ${
+                  isAboveBreakEven
+                    ? isDark ? 'text-emerald-300' : 'text-emerald-700'
+                    : isDark ? 'text-amber-300' : 'text-amber-700'
+                }`}>
+                  {isAboveBreakEven
+                    ? `Lucro de ${formatCurrency(netProfit)} com margem de ${formatPercent(profitMargin)}. Folga de ${actualServices - breakEvenServices} serviços além do break-even.`
+                    : `Faltam ${breakEvenServices - actualServices} serviços (~${formatCurrency((breakEvenServices - actualServices) * (profitability.avgServiceValue || 0))}) para cobrir os custos.`
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* KPI Grid - 2 cols mobile, 6 cols desktop (single row) */}
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+            <KPICard
+              label="Receita Bruta"
+              mobileLabel="Receita"
+              value={formatCurrency(profitability.grossRevenue)}
+              subtitle="+ Cashback"
+              color="revenue"
+              variant="default"
+              icon={DollarSign}
+            />
+            <KPICard
+              label="Custos Fixos"
+              mobileLabel="C. Fixos"
+              value={formatCurrency(profitability.fixedCosts)}
+              subtitle={`${profitability.daysInPeriod}d`}
+              color="neutral"
+              variant="default"
+              icon={Calendar}
+            />
+            <KPICard
+              label="Custo/Ciclo"
+              mobileLabel="$/Ciclo"
+              value={formatCurrency(actualServices > 0 ? profitability.totalCosts / actualServices : 0)}
+              subtitle={`${actualServices} ciclos`}
+              color="purple"
+              variant="default"
+              icon={Gauge}
+            />
+            <KPICard
+              label="Custos Totais"
+              mobileLabel="Total"
+              value={formatCurrency(profitability.totalCosts)}
+              subtitle={`${profitability.daysInPeriod}d`}
+              color="cost"
+              variant="default"
+              icon={AlertTriangle}
+            />
+            <KPICard
+              label="Lucro Líquido"
+              mobileLabel="Lucro"
+              value={formatCurrency(netProfit)}
+              subtitle={netProfit > 0 ? 'Positivo' : 'Negativo'}
+              color={netProfit > 0 ? 'positive' : 'negative'}
+              variant="default"
+              icon={netProfit > 0 ? TrendingUp : AlertTriangle}
+            />
+            <KPICard
+              label="Margem"
+              mobileLabel="Margem"
+              value={formatPercent(profitMargin)}
+              subtitle={`${profitability.daysInPeriod}d`}
+              color="blue"
+              variant="default"
+              icon={CheckCircle}
+            />
+          </div>
+
+          {/* Break-even Progress */}
+          <div className={`
+            p-4 rounded-xl
+            ${isDark ? 'bg-space-dust/60' : 'bg-white'}
+            ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
+            shadow-sm
+          `}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h4 className={`${isDesktop ? 'text-base' : 'text-sm'} font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                  Ponto de Equilíbrio
+                </h4>
+                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Serviços necessários para cobrir custos
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-left sm:text-right">
+                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Realizado / Meta
+                  </p>
+                  <p className={`${isDesktop ? 'text-2xl' : 'text-xl'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    {actualServices} / {breakEvenServices}
+                  </p>
+                </div>
+                {isAboveBreakEven ? (
+                  <CheckCircle className={`w-8 h-8 ${isDark ? 'text-emerald-400' : 'text-emerald-500'}`} aria-hidden="true" />
+                ) : (
+                  <AlertTriangle className={`w-8 h-8 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} aria-hidden="true" />
+                )}
+              </div>
+            </div>
+
+            <ProgressBar
+              value={actualServices}
+              max={breakEvenServices}
+              color={isAboveBreakEven ? 'emerald' : 'amber'}
+              size="md"
+              showLabels
+              minLabel="0 ciclos"
+              maxLabel={`${breakEvenServices} (break-even)`}
+              ariaLabel={`Progresso para break-even: ${actualServices} de ${breakEvenServices} serviços`}
+            />
+          </div>
+
+          {/* Optimization Levers */}
+          {optimizationLevers && !optimizationLevers.alreadyAtTarget && (
+            <div className={`
+              p-4 rounded-xl
+              ${isDark ? 'bg-purple-900/20' : 'bg-purple-50/60'}
+              ring-1 ${isDark ? 'ring-purple-500/20' : 'ring-purple-200'}
+            `}>
+              <h4 className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-purple-200' : 'text-purple-800'}`}>
+                <Lightbulb className={`w-4 h-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
+                Como Melhorar a Margem (meta: {optimizationLevers.targetMargin}%)
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                <OptimizationLever
+                  title="Aumentar Receita"
+                  target={`+${formatCurrency(optimizationLevers.revenue.needed)}/mês`}
+                  detail={`+${optimizationLevers.revenue.weeklyServicesNeeded} serviços/semana`}
+                  icon={TrendingUp}
+                  color="emerald"
+                  isDark={isDark}
+                  isDesktop={isDesktop}
+                />
+                <OptimizationLever
+                  title="Reduzir Custos"
+                  target={`-${formatCurrency(optimizationLevers.cost.reduction)}/mês`}
+                  detail={`${optimizationLevers.cost.largestCost} é ${optimizationLevers.cost.largestCostPercent}% dos custos`}
+                  icon={Scissors}
+                  color="amber"
+                  isDark={isDark}
+                  isDesktop={isDesktop}
+                />
+                <OptimizationLever
+                  title="Ajustar Preços"
+                  target={`+${optimizationLevers.price.increasePercent}%`}
+                  detail={`Tolerância: -${optimizationLevers.price.volumeDropTolerance}% volume`}
+                  icon={Tag}
+                  color="blue"
+                  isDark={isDark}
+                  isDesktop={isDesktop}
+                />
+              </div>
+
+              <p className={`text-xs mt-3 ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
+                Gap atual: {formatPercent(optimizationLevers.marginGap)} abaixo da meta de {optimizationLevers.targetMargin}%
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

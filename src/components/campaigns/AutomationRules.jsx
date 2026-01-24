@@ -1,8 +1,14 @@
-// AutomationRules.jsx v6.2 - SAFE AREA COMPLIANCE
+// AutomationRules.jsx v6.3 - NEW AUTOMATION TYPES
 // Automation rules configuration for campaigns
 // Design System v4.0 compliant - Mobile-first redesign
 //
 // CHANGELOG:
+// v6.3 (2026-01-24): Added 4 new automation types
+//   - RFM Loyalty: Monthly rewards for VIP/Frequente (10%, 20%, or Branded Bag)
+//   - Weather Promo: Weather-triggered promos (high drying pain days)
+//   - Registration Anniversary: Annual membership celebration (15%/20%/25%)
+//   - Churned Recovery: Aggressive recovery for lost customers (50% or FREE)
+//   - Welcome and post_visit now one-time only (enforced via welcome_sent_at/post_visit_sent_at)
 // v6.2 (2026-01-12): Safe area compliance
 //   - Toast notification now uses safe-area-inset for top/right position
 //   - Prevents clipping on iPhone Dynamic Island
@@ -62,7 +68,12 @@ import {
   HelpCircle,
   X,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  // New icons for v6.3 automations
+  Star,
+  CloudRain,
+  Cake,
+  HeartCrack
 } from 'lucide-react';
 import { getBrazilNow } from '../../utils/dateUtils';
 import SectionCard from '../ui/SectionCard';
@@ -72,17 +83,35 @@ import { haptics } from '../../utils/haptics';
 
 // Available coupon codes (must match POS system)
 const COUPON_OPTIONS = [
+  // Win-back coupons
   { code: 'VOLTE15', discount: 15, label: 'VOLTE15 (15%)' },
   { code: 'VOLTE20', discount: 20, label: 'VOLTE20 (20%)' },
   { code: 'VOLTE25', discount: 25, label: 'VOLTE25 (25%)' },
   { code: 'VOLTE30', discount: 30, label: 'VOLTE30 (30%)' },
+  // Welcome coupons
   { code: 'BEM10', discount: 10, label: 'BEM10 (10%)' },
   { code: 'BEM15', discount: 15, label: 'BEM15 (15%)' },
   { code: 'BEM20', discount: 20, label: 'BEM20 (20%)' },
+  // Service-specific coupons
   { code: 'LAVA20', discount: 20, label: 'LAVA20 (20% lavagem)' },
   { code: 'LAVA25', discount: 25, label: 'LAVA25 (25% lavagem)' },
   { code: 'SECA20', discount: 20, label: 'SECA20 (20% secagem)' },
-  { code: 'SECA25', discount: 25, label: 'SECA25 (25% secagem)' }
+  { code: 'SECA25', discount: 25, label: 'SECA25 (25% secagem)' },
+  // VIP/Loyalty coupons (v6.3)
+  { code: 'VIP10', discount: 10, label: 'VIP10 (10%)' },
+  { code: 'VIP20', discount: 20, label: 'VIP20 (20%)' },
+  { code: 'BOLSA', discount: 0, label: 'BOLSA (Bolsa Lavpop)' },
+  // Weather coupons (v6.3)
+  { code: 'CLIMA10', discount: 10, label: 'CLIMA10 (10%)' },
+  { code: 'CLIMA15', discount: 15, label: 'CLIMA15 (15%)' },
+  { code: 'CLIMA20', discount: 20, label: 'CLIMA20 (20%)' },
+  // Anniversary coupons (v6.3)
+  { code: 'ANIVER15', discount: 15, label: 'ANIVER15 (15% - 1 ano)' },
+  { code: 'ANIVER20', discount: 20, label: 'ANIVER20 (20% - 2 anos)' },
+  { code: 'ANIVER25', discount: 25, label: 'ANIVER25 (25% - 3+ anos)' },
+  // Churned recovery coupons (v6.3)
+  { code: 'VOLTA50', discount: 50, label: 'VOLTA50 (50%)' },
+  { code: 'GRATIS', discount: 100, label: 'GRATIS (1 ciclo grátis)' }
 ];
 
 // Predefined automation rules
@@ -191,6 +220,7 @@ const AUTOMATION_RULES = [
     discount_percent: 10,
     coupon_validity_days: 14,
     hasCoupon: true,
+    isOneTime: true, // v6.3: Only send once per customer (enforced via welcome_sent_at column)
     // v6.0: Enhanced controls
     send_window_start: '09:00',
     send_window_end: '20:00',
@@ -268,6 +298,7 @@ const AUTOMATION_RULES = [
     discount_percent: null,
     coupon_validity_days: null,
     hasCoupon: false,
+    isOneTime: true, // v6.3: Only send once per customer (enforced via post_visit_sent_at column)
     // v6.0: Enhanced controls
     send_window_start: '09:00',
     send_window_end: '20:00',
@@ -277,6 +308,202 @@ const AUTOMATION_RULES = [
     min_total_spent: null,
     wallet_balance_max: null,
     supportsExcludeRecent: false // This automation targets recent visitors
+  },
+  // =====================================================
+  // v6.3: NEW AUTOMATION TYPES
+  // =====================================================
+  {
+    id: 'rfm_loyalty',
+    name: 'Fidelidade VIP',
+    shortDesc: 'Recompensa mensal para clientes VIP e Frequentes',
+    icon: Star,
+    color: 'yellow',
+    gradient: 'from-yellow-500 to-amber-500',
+    bgLight: 'bg-yellow-50',
+    bgDark: 'dark:bg-yellow-900/20',
+    trigger: {
+      type: 'rfm_segment',
+      value: ['VIP', 'Frequente'],
+      label: 'Segmentos VIP ou Frequente'
+    },
+    action: {
+      template: 'rfm_loyalty_vip',
+      channel: 'whatsapp',
+      label: 'Presente exclusivo'
+    },
+    enabled: false,
+    cooldown_days: 30,
+    valid_until: null,
+    max_total_sends: null,
+    total_sends_count: 0,
+    coupon_code: 'VIP10',
+    discount_percent: 10,
+    coupon_validity_days: 14,
+    hasCoupon: true,
+    // Reward options: 10%, 20%, or Branded Bag
+    rewardOptions: [
+      { code: 'VIP10', discount: 10, label: '10% de desconto' },
+      { code: 'VIP20', discount: 20, label: '20% de desconto' },
+      { code: 'BOLSA', discount: 0, label: 'Bolsa Lavpop exclusiva' }
+    ],
+    // RFM segment selection
+    targetSegments: ['VIP', 'Frequente'],
+    availableSegments: ['VIP', 'Frequente', 'Promissor', 'Novato'],
+    // v6.0: Enhanced controls
+    send_window_start: '09:00',
+    send_window_end: '20:00',
+    send_days: [1, 2, 3, 4, 5], // Mon-Fri
+    max_daily_sends: 50,
+    exclude_recent_days: null,
+    min_total_spent: 100, // Only reward customers who spent R$100+
+    wallet_balance_max: null,
+    supportsExcludeRecent: false,
+    supportsSegmentSelection: true // UI flag: show segment multi-select
+  },
+  {
+    id: 'weather_promo',
+    name: 'Promoção Clima',
+    shortDesc: 'Promos automáticas em dias de alta umidade',
+    icon: CloudRain,
+    color: 'sky',
+    gradient: 'from-sky-500 to-blue-500',
+    bgLight: 'bg-sky-50',
+    bgDark: 'dark:bg-sky-900/20',
+    trigger: {
+      type: 'weather_drying_pain',
+      value: {
+        humidity_min: 75,
+        precipitation_min: 5,
+        cloud_cover_min: 80
+      },
+      label: 'Dias de alta umidade'
+    },
+    action: {
+      template: 'weather_promo',
+      channel: 'whatsapp',
+      label: 'Desconto por clima'
+    },
+    enabled: false,
+    cooldown_days: 14, // Weather-specific cooldown
+    valid_until: null,
+    max_total_sends: null,
+    total_sends_count: 0,
+    coupon_code: 'CLIMA15',
+    discount_percent: 15,
+    coupon_validity_days: 3, // Short validity for urgency
+    hasCoupon: true,
+    // Weather thresholds (configurable)
+    weatherThresholds: {
+      humidity_min: 75,
+      precipitation_min: 5,
+      cloud_cover_min: 80
+    },
+    // v6.0: Enhanced controls
+    send_window_start: '08:00', // Earlier for weather promos
+    send_window_end: '18:00',
+    send_days: [1, 2, 3, 4, 5, 6], // Mon-Sat
+    max_daily_sends: 50, // Batch limit per day
+    exclude_recent_days: 3, // Don't spam recent visitors
+    min_total_spent: null,
+    wallet_balance_max: null,
+    supportsExcludeRecent: true,
+    supportsWeatherConfig: true // UI flag: show weather threshold config
+  },
+  {
+    id: 'registration_anniversary',
+    name: 'Aniversário de Cadastro',
+    shortDesc: 'Celebra aniversário de cadastro do cliente',
+    icon: Cake,
+    color: 'pink',
+    gradient: 'from-pink-500 to-rose-500',
+    bgLight: 'bg-pink-50',
+    bgDark: 'dark:bg-pink-900/20',
+    trigger: {
+      type: 'registration_anniversary',
+      value: { window_days: 3 },
+      label: 'Aniversário de cadastro (±3 dias)'
+    },
+    action: {
+      template: 'registration_anniversary',
+      channel: 'whatsapp',
+      label: 'Parabéns + desconto'
+    },
+    enabled: false,
+    cooldown_days: 365, // Annual event
+    valid_until: null,
+    max_total_sends: null,
+    total_sends_count: 0,
+    coupon_code: 'ANIVER20',
+    discount_percent: 20,
+    coupon_validity_days: 14,
+    hasCoupon: true,
+    bypass_global_cooldown: true, // Special occasion - ignore 5-day global cooldown
+    // Tiered discounts by anniversary year
+    anniversaryDiscounts: [
+      { years: 1, code: 'ANIVER15', discount: 15, label: '1 ano: 15%' },
+      { years: 2, code: 'ANIVER20', discount: 20, label: '2 anos: 20%' },
+      { years: 3, code: 'ANIVER25', discount: 25, label: '3+ anos: 25%' }
+    ],
+    // v6.0: Enhanced controls
+    send_window_start: '09:00',
+    send_window_end: '20:00',
+    send_days: [1, 2, 3, 4, 5, 6, 7], // All days for celebrations
+    max_daily_sends: null,
+    exclude_recent_days: null, // Don't exclude - it's their special day!
+    min_total_spent: null,
+    wallet_balance_max: null,
+    supportsExcludeRecent: false,
+    supportsAnniversaryTiers: true // UI flag: show tiered discount info
+  },
+  {
+    id: 'churned_recovery',
+    name: 'Recuperação Crítica',
+    shortDesc: 'Última chance para clientes perdidos (60-120 dias)',
+    icon: HeartCrack,
+    color: 'red',
+    gradient: 'from-red-600 to-rose-600',
+    bgLight: 'bg-red-50',
+    bgDark: 'dark:bg-red-900/20',
+    trigger: {
+      type: 'churned_days',
+      value: { min_days: 60, max_days: 120 },
+      label: 'Clientes perdidos (60-120 dias)'
+    },
+    action: {
+      template: 'churned_recovery',
+      channel: 'whatsapp',
+      label: 'Oferta irrecusável'
+    },
+    enabled: false,
+    cooldown_days: 21, // Aggressive follow-up
+    valid_until: null,
+    max_total_sends: null,
+    total_sends_count: 0,
+    coupon_code: 'VOLTA50',
+    discount_percent: 50,
+    coupon_validity_days: 7,
+    hasCoupon: true,
+    // Aggressive offer options
+    offerOptions: [
+      { code: 'VOLTA50', discount: 50, label: '50% de desconto' },
+      { code: 'GRATIS', discount: 100, label: '1 ciclo grátis' }
+    ],
+    // Churned criteria
+    churnedCriteria: {
+      min_days: 60,
+      max_days: 120,
+      risk_level: 'Lost'
+    },
+    // v6.0: Enhanced controls
+    send_window_start: '10:00',
+    send_window_end: '19:00',
+    send_days: [1, 2, 3, 4, 5], // Mon-Fri
+    max_daily_sends: 30, // Limit aggressive campaigns
+    exclude_recent_days: null, // Target based on churned criteria
+    min_total_spent: 50, // Only target customers who spent R$50+
+    wallet_balance_max: null,
+    supportsExcludeRecent: false,
+    supportsChurnedConfig: true // UI flag: show churned criteria config
   }
 ];
 

@@ -2,6 +2,14 @@
 // Scheduled function to execute pending campaigns and automation rules
 // Runs every 5 minutes via Netlify Scheduled Functions
 //
+// v3.2 (2026-01-24): New automation types and one-time sends
+//   - Added 4 new trigger types: rfm_segment, weather_drying_pain, registration_anniversary, churned_days
+//   - Added template SIDs and campaign type mappings for new automations
+//   - Added one-time send enforcement for welcome (welcome_sent_at) and post_visit (post_visit_sent_at)
+//   - Added tracking updates: last_weather_campaign_date, last_anniversary_year
+//   - Added buildContentVariables handlers for new templates
+//   - Anniversary automation bypasses global cooldown (special occasion)
+//
 // v3.1 (2026-01-20): Schema consolidation
 //   - Model storage consolidated to app_settings.revenue_model
 //   - Removed model_coefficients and model_training_history writes
@@ -168,7 +176,12 @@ const AUTOMATION_TEMPLATE_SIDS = {
   winback_critical: 'HXd4e8e8b1588f01c549446c0e157154bb',
   welcome_new: 'HX2ae8ce2a72d92866fd28516aca9d76c3',  // Fixed: was using winback_wash_only SID
   wallet_reminder: 'HXa1f6a3f3c586acd36cb25a2d98a766fc',
-  post_visit_thanks: 'HX62540533ed5cf7f251377cf3b4adbd8a'
+  post_visit_thanks: 'HX62540533ed5cf7f251377cf3b4adbd8a',
+  // v3.2: New automation templates (SIDs updated after Meta approval)
+  rfm_loyalty_vip: 'HX_PLACEHOLDER_RFM_LOYALTY',      // lavpop_cliente_vip
+  weather_promo: 'HX_PLACEHOLDER_WEATHER',            // lavpop_clima_perfeito
+  registration_anniversary: 'HX_PLACEHOLDER_ANIVER', // lavpop_aniversario_cadastro
+  churned_recovery: 'HX_PLACEHOLDER_CHURNED'         // lavpop_ultima_chance
 };
 
 // Map automation templates to campaign types for eligibility checks
@@ -179,7 +192,12 @@ const TEMPLATE_TO_CAMPAIGN_TYPE = {
   welcome_new: 'welcome',
   wallet_reminder: 'wallet',
   post_visit_thanks: 'post_visit',
-  upsell_secagem: 'upsell'
+  upsell_secagem: 'upsell',
+  // v3.2: New automation campaign types
+  rfm_loyalty_vip: 'rfm_loyalty',
+  weather_promo: 'weather',
+  registration_anniversary: 'anniversary',
+  churned_recovery: 'churned'
 };
 
 // Initialize Supabase client
@@ -2477,9 +2495,11 @@ async function findAutomationTargets(supabase, rule) {
     case 'first_purchase':
       // New customers (transaction_count = 1) registered in last X days
       // Also verify risk_level = 'New Customer' for consistency
+      // v3.2: ONE-TIME ONLY - check welcome_sent_at is null
       query = query
         .eq('transaction_count', 1)
         .eq('risk_level', 'New Customer')
+        .is('welcome_sent_at', null) // v3.2: Only send once per customer
         .gte('last_visit', new Date(Date.now() - trigger_value * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
       break;
 
@@ -2498,11 +2518,70 @@ async function findAutomationTargets(supabase, rule) {
 
     case 'hours_after_visit':
       // Customers who visited in the last X hours
+      // v3.2: ONE-TIME ONLY - check post_visit_sent_at is null
       const hoursAgo = new Date();
       hoursAgo.setHours(hoursAgo.getHours() - trigger_value);
       const targetDate = hoursAgo.toISOString().split('T')[0];
       // For simplicity, treat as "visited yesterday" for 24h rule
-      query = query.eq('last_visit', targetDate);
+      query = query
+        .eq('last_visit', targetDate)
+        .is('post_visit_sent_at', null); // v3.2: Only send once per customer
+      break;
+
+    // =====================================================
+    // v3.2: NEW AUTOMATION TRIGGERS
+    // =====================================================
+
+    case 'rfm_segment':
+      // Target customers in specific RFM segments (e.g., VIP, Frequente)
+      // trigger_value is an array of segment names
+      const targetSegments = Array.isArray(trigger_value) ? trigger_value : [trigger_value];
+      query = query
+        .in('rfm_segment', targetSegments)
+        .eq('risk_level', 'Healthy'); // Only healthy customers qualify for VIP rewards
+      console.log(`Rule ${ruleId}: Targeting RFM segments: ${targetSegments.join(', ')}`);
+      break;
+
+    case 'weather_drying_pain':
+      // Triggered by external weather check - target customers who haven't visited recently
+      // Weather conditions are checked separately; this query finds eligible customers
+      // trigger_value contains weather thresholds (not used in customer query)
+      query = query
+        .gte('days_since_last_visit', 7) // Only target customers who haven't visited in 7+ days
+        .is('last_weather_campaign_date', null) // Respect 14-day weather cooldown
+        .or(`last_weather_campaign_date.lt.${new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`);
+      break;
+
+    case 'registration_anniversary':
+      // Target customers whose registration anniversary is today (±window_days)
+      // trigger_value.window_days defines the acceptable window (default ±3 days)
+      const windowDays = trigger_value?.window_days || 3;
+      const today = new Date();
+      const currentMonth = today.getMonth() + 1; // 1-indexed
+      const currentDay = today.getDate();
+
+      // Query customers registered on this day/month (any year)
+      // Uses data_cadastro column
+      query = supabase
+        .from('customers')
+        .select('doc, nome, telefone, saldo_carteira, days_since_last_visit, last_visit, transaction_count, avg_days_between, rfm_segment, risk_level, return_likelihood, total_spent, data_cadastro, last_anniversary_year')
+        .not('telefone', 'is', null)
+        .not('data_cadastro', 'is', null);
+
+      // We'll filter by anniversary date in post-processing
+      // This is because Supabase doesn't support EXTRACT in .filter()
+      console.log(`Rule ${ruleId}: Looking for anniversaries around ${currentMonth}/${currentDay} (±${windowDays} days)`);
+      break;
+
+    case 'churned_days':
+      // Target Lost customers within a specific day range (e.g., 60-120 days)
+      const minDays = trigger_value?.min_days || 60;
+      const maxDays = trigger_value?.max_days || 120;
+      query = query
+        .eq('risk_level', 'Lost')
+        .gte('days_since_last_visit', minDays)
+        .lte('days_since_last_visit', maxDays);
+      console.log(`Rule ${ruleId}: Targeting Lost customers (${minDays}-${maxDays} days)`);
       break;
 
     default:
@@ -2525,16 +2604,17 @@ async function findAutomationTargets(supabase, rule) {
   console.log(`Rule ${ruleId}: Found ${customers.length} matching customers, checking eligibility...`);
 
   // Use unified eligibility system for filtering
-  // This checks global cooldown (7 days) and same-type cooldown (30 days)
+  // v3.2: Updated global cooldown from 7 to 5 days (better for 22-day avg visit cycle)
+  // v3.2: Anniversary automation bypasses global cooldown (special occasion)
   const customerIds = customers.map(c => c.doc);
+  const bypassGlobal = rule.bypass_global_cooldown === true || trigger_type === 'registration_anniversary';
 
   try {
     // Call the batch eligibility check RPC
     const { data: eligibilityResults, error: eligError } = await supabase.rpc('check_customers_eligibility', {
       p_customer_ids: customerIds,
       p_campaign_type: campaignType,
-      p_min_days_global: 7,
-      p_min_days_same_type: 30
+      p_bypass_global: bypassGlobal // v3.2: Pass bypass flag for anniversary
     });
 
     if (eligError) {
@@ -2780,6 +2860,9 @@ async function sendAutomationMessage(supabase, rule, target, contentSid) {
         type: 'automation'
       });
 
+      // v3.2: Update one-time send tracking columns
+      await updateOneTimeTracking(supabase, rule, target);
+
       return { success: true, sid: data.sid };
     } else {
       // Log detailed error for debugging
@@ -2796,6 +2879,76 @@ async function sendAutomationMessage(supabase, rule, target, contentSid) {
   } catch (error) {
     console.error('Send message error:', error);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * v3.2: Update one-time send tracking columns after successful sends
+ * This ensures welcome and post_visit messages are only sent once per customer
+ */
+async function updateOneTimeTracking(supabase, rule, target) {
+  const template = rule.action_template;
+
+  try {
+    // Welcome automation: mark welcome_sent_at
+    if (template === 'welcome_new') {
+      const { error } = await supabase
+        .from('customers')
+        .update({ welcome_sent_at: new Date().toISOString() })
+        .eq('doc', target.doc);
+
+      if (error) {
+        console.error(`Failed to update welcome_sent_at for ${target.doc}:`, error.message);
+      } else {
+        console.log(`Marked welcome_sent_at for customer ${target.doc}`);
+      }
+    }
+
+    // Post-visit automation: mark post_visit_sent_at
+    if (template === 'post_visit_thanks') {
+      const { error } = await supabase
+        .from('customers')
+        .update({ post_visit_sent_at: new Date().toISOString() })
+        .eq('doc', target.doc);
+
+      if (error) {
+        console.error(`Failed to update post_visit_sent_at for ${target.doc}:`, error.message);
+      } else {
+        console.log(`Marked post_visit_sent_at for customer ${target.doc}`);
+      }
+    }
+
+    // Weather promo: update last_weather_campaign_date
+    if (template === 'weather_promo') {
+      const { error } = await supabase
+        .from('customers')
+        .update({ last_weather_campaign_date: new Date().toISOString().split('T')[0] })
+        .eq('doc', target.doc);
+
+      if (error) {
+        console.error(`Failed to update last_weather_campaign_date for ${target.doc}:`, error.message);
+      }
+    }
+
+    // Anniversary: update last_anniversary_year
+    if (template === 'registration_anniversary' && target.data_cadastro) {
+      const registrationDate = new Date(target.data_cadastro);
+      const yearsAsCustomer = Math.floor((Date.now() - registrationDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+
+      const { error } = await supabase
+        .from('customers')
+        .update({ last_anniversary_year: yearsAsCustomer })
+        .eq('doc', target.doc);
+
+      if (error) {
+        console.error(`Failed to update last_anniversary_year for ${target.doc}:`, error.message);
+      } else {
+        console.log(`Marked ${yearsAsCustomer}-year anniversary for customer ${target.doc}`);
+      }
+    }
+  } catch (err) {
+    console.error('One-time tracking update error:', err.message);
+    // Don't fail the send for tracking errors
   }
 }
 
@@ -2848,6 +3001,62 @@ function buildContentVariables(rule, target) {
     case 'post_visit_thanks':
       // Post-visit: only {{1}}=name (single variable template)
       // No additional variables needed
+      break;
+
+    // =====================================================
+    // v3.2: NEW AUTOMATION TEMPLATES
+    // =====================================================
+
+    case 'rfm_loyalty_vip':
+      // VIP Loyalty: {{2}}=gift_description, {{3}}=expiration
+      // Gift can be "10% OFF com cupom VIP10", "20% OFF com cupom VIP20", or "Bolsa Lavpop exclusiva"
+      const vipCoupon = couponCode || 'VIP10';
+      let giftDescription;
+      if (vipCoupon === 'BOLSA') {
+        giftDescription = 'Bolsa Lavpop exclusiva - retire na loja!';
+      } else {
+        giftDescription = `${discountPercent || 10}% OFF com cupom ${vipCoupon}`;
+      }
+      variables['2'] = giftDescription;
+      variables['3'] = formatExpirationDate(validityDays);
+      break;
+
+    case 'weather_promo':
+      // Weather promo: {{2}}=discount, {{3}}=coupon, {{4}}=expiration
+      variables['2'] = String(discountPercent || 15);
+      variables['3'] = couponCode || 'CLIMA15';
+      variables['4'] = formatExpirationDate(validityDays);
+      break;
+
+    case 'registration_anniversary':
+      // Anniversary: {{2}}=years_text, {{3}}=discount, {{4}}=coupon, {{5}}=expiration
+      // Calculate years from data_cadastro
+      let yearsText = '1 ano';
+      if (target.data_cadastro) {
+        const regDate = new Date(target.data_cadastro);
+        const years = Math.floor((Date.now() - regDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        yearsText = years === 1 ? '1 ano' : `${years} anos`;
+      }
+      variables['2'] = yearsText;
+      variables['3'] = String(discountPercent || 20);
+      variables['4'] = couponCode || 'ANIVER20';
+      variables['5'] = formatExpirationDate(validityDays);
+      break;
+
+    case 'churned_recovery':
+      // Churned recovery: {{2}}=days_since_visit, {{3}}=offer_description, {{4}}=coupon, {{5}}=expiration
+      variables['2'] = String(target.days_since_last_visit || 60);
+      // Offer can be "50% OFF em qualquer serviço" or "1 CICLO GRÁTIS (lavagem ou secagem)"
+      const churnedCoupon = couponCode || 'VOLTA50';
+      let offerDescription;
+      if (churnedCoupon === 'GRATIS') {
+        offerDescription = '*1 CICLO GRÁTIS* (lavagem ou secagem)';
+      } else {
+        offerDescription = `*${discountPercent || 50}% OFF* em qualquer serviço`;
+      }
+      variables['3'] = offerDescription;
+      variables['4'] = churnedCoupon;
+      variables['5'] = formatExpirationDate(validityDays);
       break;
   }
 

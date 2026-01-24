@@ -1,6 +1,15 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.35 (2026-01-23)
+-- Version: 3.36 (2026-01-24)
+--
+-- v3.36: New Automation Types & One-Time Sends
+--   - Added welcome_sent_at, post_visit_sent_at columns for one-time send tracking
+--   - Added last_weather_campaign_date for weather promo cooldown
+--   - Added last_anniversary_year for anniversary milestone tracking
+--   - Added bypass_global_cooldown to automation_rules table
+--   - Added indexes for new automation queries (weather, RFM, anniversary, churned)
+--   - Supports 4 new automation types: rfm_loyalty, weather_promo, registration_anniversary, churned_recovery
+--   - See migrations/038_new_automation_triggers.sql
 --
 -- v3.35: Schema Sync Update
 --   - Added weather_daily_metrics table (weather data storage)
@@ -279,7 +288,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   wash_count INTEGER DEFAULT 0,             -- Count of Lavadora machines
   dry_count INTEGER DEFAULT 0,              -- Count of Secadora machines
   total_services INTEGER DEFAULT 0,         -- wash_count + dry_count
-  net_value DECIMAL(10,2) DEFAULT 0,        -- After cashback deduction
+  net_value DECIMAL(10,2) DEFAULT 0,        -- After coupon discounts only (cashback tracked separately)
   cashback_amount DECIMAL(10,2) DEFAULT 0,  -- 7.5% cashback (from June 2024)
 
   -- Deduplication and import tracking
@@ -345,12 +354,56 @@ CREATE TABLE IF NOT EXISTS customers (
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS risk_level TEXT;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS return_likelihood INTEGER;
 
+-- v3.35: One-time automation tracking columns (Migration 038)
+-- Tracks whether one-time campaigns have been sent to each customer
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS welcome_sent_at TIMESTAMPTZ;
+COMMENT ON COLUMN customers.welcome_sent_at IS 'Timestamp when welcome message was sent (one-time only)';
+
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS post_visit_sent_at TIMESTAMPTZ;
+COMMENT ON COLUMN customers.post_visit_sent_at IS 'Timestamp when post-visit feedback request was sent (one-time only)';
+
+-- v3.35: New automation tracking columns (Migration 038)
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS last_weather_campaign_date DATE;
+COMMENT ON COLUMN customers.last_weather_campaign_date IS 'Date of last weather-triggered campaign (14-day cooldown)';
+
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS last_anniversary_year INTEGER DEFAULT 0;
+COMMENT ON COLUMN customers.last_anniversary_year IS 'Last anniversary year celebrated (1, 2, 3, etc.)';
+
 -- Indexes for customer queries
 CREATE INDEX IF NOT EXISTS idx_customers_rfm_segment ON customers(rfm_segment);
 CREATE INDEX IF NOT EXISTS idx_customers_last_visit ON customers(last_visit DESC);
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(telefone) WHERE telefone IS NOT NULL;
 -- v3.6: Index for automation targeting by risk level
 CREATE INDEX IF NOT EXISTS idx_customers_risk_level ON customers(risk_level);
+
+-- v3.35: Indexes for new automation queries (Migration 038)
+-- Weather cooldown queries
+CREATE INDEX IF NOT EXISTS idx_customers_weather_cooldown
+  ON customers(last_weather_campaign_date)
+  WHERE last_weather_campaign_date IS NOT NULL;
+
+-- RFM segment + risk level queries (for rfm_loyalty automation)
+CREATE INDEX IF NOT EXISTS idx_customers_rfm_risk
+  ON customers(rfm_segment, risk_level);
+
+-- Registration date queries (for anniversary automation)
+CREATE INDEX IF NOT EXISTS idx_customers_registration
+  ON customers(data_cadastro)
+  WHERE data_cadastro IS NOT NULL;
+
+-- One-time send queries (find customers who haven't received welcome/post_visit)
+CREATE INDEX IF NOT EXISTS idx_customers_welcome_sent
+  ON customers(welcome_sent_at)
+  WHERE welcome_sent_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_customers_post_visit_sent
+  ON customers(post_visit_sent_at)
+  WHERE post_visit_sent_at IS NULL;
+
+-- Lost customers for churned_recovery (60-120 days)
+CREATE INDEX IF NOT EXISTS idx_customers_churned_recovery
+  ON customers(risk_level, days_since_last_visit)
+  WHERE risk_level = 'Lost';
 
 -- ==================== COUPON REDEMPTIONS TABLE (NEW v3.0) ====================
 -- Links coupon usage in transactions to campaigns for attribution
@@ -676,6 +729,10 @@ ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS last_daily_reset DATE;
 ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS exclude_recent_days INTEGER;
 ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS min_total_spent DECIMAL(10,2);
 ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS wallet_balance_max DECIMAL(10,2);
+
+-- v3.35: Add bypass_global_cooldown for special occasion automations (Migration 038)
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS bypass_global_cooldown BOOLEAN DEFAULT FALSE;
+COMMENT ON COLUMN automation_rules.bypass_global_cooldown IS 'If true, this automation ignores global cooldown (for special occasions like anniversary)';
 
 -- ==================== AUTOMATION SENDS TABLE ====================
 -- Tracks individual automation sends for history and cooldown enforcement

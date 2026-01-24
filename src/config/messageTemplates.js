@@ -1,8 +1,13 @@
-// messageTemplates.js v2.3
+// messageTemplates.js v2.4
 // Centralized WhatsApp message templates configuration
 // Meta Business API compliant with {{1}}, {{2}} placeholder format
 //
 // CHANGELOG:
+// v2.4 (2026-01-24): Added 4 new automation templates
+//   - rfm_loyalty_vip: Monthly rewards for VIP/Frequente (10%, 20%, or Branded Bag)
+//   - weather_promo: Weather-triggered promos (high drying pain days)
+//   - registration_anniversary: Annual membership celebration (15%/20%/25%)
+//   - churned_recovery: Aggressive recovery for lost customers (50% or FREE)
 // v2.3 (2026-01-08): Added customFiltered and custom audience handling
 //   - getTemplatesByAudience now shows all templates for custom audiences
 //   - Supports AudienceFilterBuilder integration
@@ -734,6 +739,302 @@ Qualquer duvida, estamos aqui! 💙
       serviceType: null,
       couponValidityDays: 7 // No coupon but track for return attribution
     }
+  },
+
+  // ============================================================
+  // RFM LOYALTY TEMPLATE (Clientes VIP/Frequente)
+  // ============================================================
+  {
+    id: 'rfm_loyalty_vip',
+    name: 'Cliente VIP',
+    category: 'MARKETING',
+    campaignType: 'rfm_loyalty',
+    icon: 'Star',
+    color: 'amber',
+    description: 'Recompensa mensal para clientes VIP e Frequente',
+    audience: 'vip',
+
+    metaTemplateName: 'lavpop_cliente_vip',
+    twilioContentSid: 'HX_PENDING_META_APPROVAL', // Update after Meta approval
+
+    header: {
+      type: 'TEXT',
+      text: 'Você é especial para nós! ⭐'
+    },
+
+    body: `Olá {{1}}!
+
+Você é um dos nossos clientes mais fiéis e queremos agradecer!
+
+🎁 Presente exclusivo para você:
+{{2}}
+
+📅 Válido até {{3}}
+
+Obrigado por fazer parte da família Lavpop! 💙`,
+
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+
+    variables: [
+      { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
+      { position: 2, key: 'rewardDescription', label: 'Descrição do presente', source: 'campaign.rewardDescription', fallback: '10% OFF com cupom VIP10' },
+      { position: 3, key: 'expirationDate', label: 'Data de validade', source: 'campaign.expirationDate', format: 'DD/MM' }
+    ],
+
+    buttons: [
+      { type: 'QUICK_REPLY', text: 'Adorei!' },
+      { type: 'QUICK_REPLY', text: 'Não quero receber' }
+    ],
+
+    metaSubmission: {
+      header: 'Você é especial para nós! ⭐',
+      body: 'Olá {{1}}!\n\nVocê é um dos nossos clientes mais fiéis e queremos agradecer!\n\n🎁 Presente exclusivo para você:\n{{2}}\n\n📅 Válido até {{3}}\n\nObrigado por fazer parte da família Lavpop! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+      buttons: ['Adorei!', 'Não quero receber']
+    },
+
+    posCouponConfig: {
+      tipo: 'Cupom Desconto',
+      permitidoPara: 'Lavadoras e Secadoras',
+      ciclosPorCliente: 1,
+      validoSomenteSe: null
+    },
+
+    // A/B Testing options: 10%, 20%, or Branded Bag
+    discountDefaults: {
+      discountPercent: 10,
+      couponCode: 'VIP10',
+      serviceType: 'both',
+      couponValidityDays: 14
+    },
+
+    // Available reward options for A/B testing
+    rewardOptions: [
+      { code: 'VIP10', discount: 10, description: '10% OFF com cupom VIP10' },
+      { code: 'VIP20', discount: 20, description: '20% OFF com cupom VIP20' },
+      { code: 'BOLSA', discount: 0, description: 'Bolsa Lavpop exclusiva - retire na loja!' }
+    ]
+  },
+
+  // ============================================================
+  // WEATHER PROMO TEMPLATE (Clima ideal para lavanderia)
+  // ============================================================
+  {
+    id: 'weather_promo',
+    name: 'Promoção Clima',
+    category: 'MARKETING',
+    campaignType: 'weather',
+    icon: 'CloudRain',
+    color: 'blue',
+    description: 'Promoção quando o clima é ideal para lavanderia',
+    audience: 'all',
+
+    metaTemplateName: 'lavpop_clima_perfeito',
+    twilioContentSid: 'HX_PENDING_META_APPROVAL', // Update after Meta approval
+
+    header: {
+      type: 'TEXT',
+      text: 'Dia perfeito para lavar! 🌧️'
+    },
+
+    body: `Olá {{1}}!
+
+Com esse tempo, secar roupa em casa é complicado, né?
+
+Aproveite nossa promoção especial de hoje:
+🎁 *{{2}}% OFF* em qualquer serviço
+📋 Cupom: *{{3}}*
+📅 Válido até {{4}}
+
+Venha aproveitar nossas secadoras profissionais! 💙`,
+
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+
+    variables: [
+      { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
+      { position: 2, key: 'discount', label: 'Desconto (%)', source: 'campaign.discount', fallback: '15' },
+      { position: 3, key: 'couponCode', label: 'Código do cupom', source: 'campaign.couponCode', required: true },
+      { position: 4, key: 'expirationDate', label: 'Data de validade', source: 'campaign.expirationDate', format: 'DD/MM' }
+    ],
+
+    buttons: [
+      { type: 'QUICK_REPLY', text: 'Vou aproveitar!' },
+      { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
+    ],
+
+    metaSubmission: {
+      header: 'Dia perfeito para lavar! 🌧️',
+      body: 'Olá {{1}}!\n\nCom esse tempo, secar roupa em casa é complicado, né?\n\nAproveite nossa promoção especial de hoje:\n🎁 *{{2}}% OFF* em qualquer serviço\n📋 Cupom: *{{3}}*\n📅 Válido até {{4}}\n\nVenha aproveitar nossas secadoras profissionais! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+      buttons: ['Vou aproveitar!', 'Não tenho interesse']
+    },
+
+    posCouponConfig: {
+      tipo: 'Cupom Desconto',
+      permitidoPara: 'Lavadoras e Secadoras',
+      ciclosPorCliente: 1,
+      validoSomenteSe: null
+    },
+
+    discountDefaults: {
+      discountPercent: 15,
+      couponCode: 'CLIMA15',
+      serviceType: 'both',
+      couponValidityDays: 7
+    }
+  },
+
+  // ============================================================
+  // REGISTRATION ANNIVERSARY TEMPLATE (Aniversário de cadastro)
+  // ============================================================
+  {
+    id: 'registration_anniversary',
+    name: 'Aniversário de Cadastro',
+    category: 'MARKETING',
+    campaignType: 'anniversary',
+    icon: 'Cake',
+    color: 'purple',
+    description: 'Comemoração do aniversário de cadastro do cliente',
+    audience: 'all',
+
+    metaTemplateName: 'lavpop_aniversario_cadastro',
+    twilioContentSid: 'HX_PENDING_META_APPROVAL', // Update after Meta approval
+
+    header: {
+      type: 'TEXT',
+      text: 'Feliz Aniversário de Cadastro! 🎉'
+    },
+
+    body: `Olá {{1}}!
+
+Hoje faz {{2}} que você está com a gente! 🎂
+
+Para comemorar, preparamos um presente especial:
+🎁 *{{3}}% de desconto* no seu próximo ciclo
+📋 Cupom: *{{4}}*
+📅 Válido até {{5}}
+
+Obrigado por confiar na Lavpop! 💙`,
+
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+
+    variables: [
+      { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
+      { position: 2, key: 'yearsText', label: 'Tempo de cadastro', source: 'customer.yearsText', fallback: '1 ano' },
+      { position: 3, key: 'discount', label: 'Desconto (%)', source: 'campaign.discount', fallback: '15' },
+      { position: 4, key: 'couponCode', label: 'Código do cupom', source: 'campaign.couponCode', required: true },
+      { position: 5, key: 'expirationDate', label: 'Data de validade', source: 'campaign.expirationDate', format: 'DD/MM' }
+    ],
+
+    buttons: [
+      { type: 'QUICK_REPLY', text: 'Que legal!' },
+      { type: 'QUICK_REPLY', text: 'Não quero receber' }
+    ],
+
+    metaSubmission: {
+      header: 'Feliz Aniversário de Cadastro! 🎉',
+      body: 'Olá {{1}}!\n\nHoje faz {{2}} que você está com a gente! 🎂\n\nPara comemorar, preparamos um presente especial:\n🎁 *{{3}}% de desconto* no seu próximo ciclo\n📋 Cupom: *{{4}}*\n📅 Válido até {{5}}\n\nObrigado por confiar na Lavpop! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+      buttons: ['Que legal!', 'Não quero receber']
+    },
+
+    posCouponConfig: {
+      tipo: 'Cupom Desconto',
+      permitidoPara: 'Lavadoras e Secadoras',
+      ciclosPorCliente: 1,
+      validoSomenteSe: null
+    },
+
+    // Tiered discounts based on anniversary year
+    discountDefaults: {
+      discountPercent: 15,
+      couponCode: 'ANIVER15',
+      serviceType: 'both',
+      couponValidityDays: 14
+    },
+
+    // Tiered discount options
+    anniversaryTiers: [
+      { year: 1, discount: 15, code: 'ANIVER15' },
+      { year: 2, discount: 20, code: 'ANIVER20' },
+      { year: 3, discount: 25, code: 'ANIVER25' }
+    ]
+  },
+
+  // ============================================================
+  // CHURNED RECOVERY TEMPLATE (Recuperação de cliente perdido)
+  // ============================================================
+  {
+    id: 'churned_recovery',
+    name: 'Última Chance',
+    category: 'MARKETING',
+    campaignType: 'churned',
+    icon: 'HeartCrack',
+    color: 'red',
+    description: 'Oferta agressiva para clientes perdidos (60-120 dias)',
+    audience: 'atRisk',
+
+    metaTemplateName: 'lavpop_ultima_chance',
+    twilioContentSid: 'HX_PENDING_META_APPROVAL', // Update after Meta approval
+
+    header: {
+      type: 'TEXT',
+      text: 'Não queremos te perder! 💔'
+    },
+
+    body: `Olá {{1}}!
+
+Faz {{2}} dias que não te vemos na Lavpop e sentimos muito sua falta!
+
+Preparamos uma oferta EXCLUSIVA para você voltar:
+🎁 {{3}}
+
+Use o cupom *{{4}}* até {{5}}.
+
+Esta é nossa melhor oferta - não deixe passar! 💙`,
+
+    footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+
+    variables: [
+      { position: 1, key: 'customerName', label: 'Nome do cliente', source: 'customer.name', fallback: 'Cliente' },
+      { position: 2, key: 'daysAway', label: 'Dias sem visita', source: 'customer.daysSinceLastVisit', fallback: '60' },
+      { position: 3, key: 'offerDescription', label: 'Descrição da oferta', source: 'campaign.offerDescription', fallback: '*50% OFF* em qualquer serviço' },
+      { position: 4, key: 'couponCode', label: 'Código do cupom', source: 'campaign.couponCode', required: true },
+      { position: 5, key: 'expirationDate', label: 'Data de validade', source: 'campaign.expirationDate', format: 'DD/MM' }
+    ],
+
+    buttons: [
+      { type: 'QUICK_REPLY', text: 'Quero voltar!' },
+      { type: 'QUICK_REPLY', text: 'Não tenho interesse' }
+    ],
+
+    metaSubmission: {
+      header: 'Não queremos te perder! 💔',
+      body: 'Olá {{1}}!\n\nFaz {{2}} dias que não te vemos na Lavpop e sentimos muito sua falta!\n\nPreparamos uma oferta EXCLUSIVA para você voltar:\n🎁 {{3}}\n\nUse o cupom *{{4}}* até {{5}}.\n\nEsta é nossa melhor oferta - não deixe passar! 💙',
+      footer: 'Lavpop Caxias do Sul - Lavanderia Autosserviço',
+      buttons: ['Quero voltar!', 'Não tenho interesse']
+    },
+
+    posCouponConfig: {
+      tipo: 'Cupom Desconto',
+      permitidoPara: 'Lavadoras e Secadoras',
+      ciclosPorCliente: 1,
+      validoSomenteSe: null
+    },
+
+    // Aggressive offers for churned customers
+    discountDefaults: {
+      discountPercent: 50,
+      couponCode: 'VOLTA50',
+      serviceType: 'both',
+      couponValidityDays: 14
+    },
+
+    // Aggressive offer options
+    offerOptions: [
+      { code: 'VOLTA50', discount: 50, description: '*50% OFF* em qualquer serviço' },
+      { code: 'GRATIS', discount: 100, description: '*1 CICLO GRÁTIS* (lavagem ou secagem)' }
+    ]
   }
 ];
 

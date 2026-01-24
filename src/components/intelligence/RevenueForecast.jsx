@@ -1,8 +1,33 @@
-// RevenueForecast.jsx v2.5
+// RevenueForecast.jsx v3.0.3
 // Revenue projection card for Intelligence tab
-// Design System v4.0 compliant
+// Design System v5.1 compliant - Premium Glass
 //
 // CHANGELOG:
+// v3.0.3 (2026-01-24): Removed colored left border
+// v3.0.2 (2026-01-24): Mobile layout improvements
+//   - Confidence badge always on right side of header (row layout)
+//   - Shorter mobile label text, compact badge padding
+//   - Progress bar full width on mobile (col-span-2)
+//   - Temperature card full width on mobile (col-span-2)
+// v3.0.1 (2026-01-24): Stats cards contrast and sizing
+//   - Improved stats cards contrast (bg-slate-800/80 dark, bg-white light)
+//   - Stronger ring borders and added shadow-sm
+//   - Increased text sizes (labels: text-sm, values: text-xl on desktop)
+//   - Better label contrast (text-slate-600/text-slate-300)
+//   - Taller progress bar (h-2.5), bigger percentage (text-lg)
+//   - Gap/Success boxes: larger icons (w-9), bigger text (text-base/text-sm)
+// v3.0.0 (2026-01-23): Premium Glass upgrade + UX simplification
+//   - Migrated to Premium Glass styling (backdrop-blur, ring-1, glow shadows)
+//   - Changed accent from indigo/purple to teal (revenue category)
+//   - Added useTheme() hook for theme-aware styling
+//   - Added useMediaQuery() for responsive text sizing
+//   - Modernized icon badge (w-10 h-10 rounded-xl bg-teal-500)
+//   - Upgraded stats cards with Premium Glass depth
+//   - Enhanced progress bar with glow effect
+//   - Improved confidence badge with glassmorphism
+//   - Removed framer-motion hover animation
+//   - Removed static recovery options (ContingencyOption component)
+//   - Kept year-over-year gap indicator and success message
 // v2.5 (2026-01-09): Design System v4.0 Framer Motion compliance
 //   - Added Framer Motion hover to main card container
 //   - Added Framer Motion hover to ContingencyOption cards
@@ -14,76 +39,28 @@
 //   - Uses getBrazilDateParts() for current month/year
 //   - Ensures consistent month display regardless of browser timezone
 // v2.2 (2025-12-02): Improved data distribution layout
-//   - Temperature insight now integrated as stat card (not separate box)
-//   - Cleaner 3-4 column stats grid on desktop
-//   - Progress bar and confidence in footer row
-//   - Better visual balance across all screen sizes
 // v2.1 (2025-12-02): Horizontal layout for desktop
-//   - Two-column layout on lg screens (main | details)
-//   - Better use of horizontal space when full-width
-//   - Temperature insight moved to main column
-//   - Progress + confidence in details column
 // v2.0 (2025-12-02): Weighted projection support
-//   - Now uses weighted projection (day-of-week + temperature)
-//   - Accepts weightedProjection prop from parent
-//   - Shows temperature correlation info when available
-//   - Dynamic methodology note based on data availability
 // v1.2 (2025-12-02): UX clarity improvements
-//   - Added month name to header ("Projeção de Dezembro")
-//   - Removed misleading growth comparison (projected vs actual)
-//   - Added methodology note in footer ("projeção linear")
 // v1.1 (2025-11-30): Accessibility fix
-//   - Changed text-[10px] to text-xs (min 12px font)
 // v1.0 (2025-11-30): Initial implementation
-//   - Projects end-of-month revenue based on daily average
-//   - Confidence indicator based on days elapsed
-//   - Mobile responsive
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Target, AlertCircle, Info, Thermometer, TrendingUp, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Target, AlertCircle, Info, Thermometer, CheckCircle, AlertTriangle } from 'lucide-react';
 import { getBrazilDateParts } from '../../utils/dateUtils';
-
-// Contingency option card
-const ContingencyOption = ({ label, estimate, effort, description, formatCurrency }) => {
-  const effortColors = {
-    low: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-    medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-    high: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-  };
-  const effortLabels = { low: 'Fácil', medium: 'Moderado', high: 'Complexo' };
-
-  return (
-    <motion.div
-      whileHover={{ y: -1, backgroundColor: 'rgba(255,255,255,0.8)' }}
-      transition={{ type: 'tween', duration: 0.15 }}
-      className="flex items-center gap-3 p-2.5 bg-white/60 dark:bg-slate-800/50 rounded-lg">
-      <ArrowRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{label}</p>
-        {description && (
-          <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
-        )}
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-          +{formatCurrency(estimate)}
-        </span>
-        <span className={`text-xs px-1.5 py-0.5 rounded ${effortColors[effort]}`}>
-          {effortLabels[effort]}
-        </span>
-      </div>
-    </motion.div>
-  );
-};
+import { useTheme } from '../../contexts/ThemeContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const RevenueForecast = ({
   currentMonth,
   weightedProjection, // Calculated by parent using calculateWeightedProjection
-  forecastContingency, // NEW: year-over-year comparison from calculateForecastContingency
+  forecastContingency, // Year-over-year comparison from calculateForecastContingency
   formatCurrency,
   className = ''
 }) => {
+  const { isDark } = useTheme();
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+
   if (!currentMonth || !currentMonth.daysElapsed || currentMonth.daysElapsed === 0) {
     return null;
   }
@@ -134,19 +111,22 @@ const RevenueForecast = ({
 
   const confidenceColors = {
     green: {
-      bg: 'bg-green-100 dark:bg-green-900/30',
+      bg: isDark ? 'bg-green-900/40' : 'bg-green-100/80',
       text: 'text-green-700 dark:text-green-300',
-      dot: 'bg-green-500'
+      dot: 'bg-green-500',
+      border: isDark ? 'ring-green-500/20' : 'ring-green-200'
     },
     amber: {
-      bg: 'bg-amber-100 dark:bg-amber-900/30',
+      bg: isDark ? 'bg-amber-900/40' : 'bg-amber-100/80',
       text: 'text-amber-700 dark:text-amber-300',
-      dot: 'bg-amber-500'
+      dot: 'bg-amber-500',
+      border: isDark ? 'ring-amber-500/20' : 'ring-amber-200'
     },
     red: {
-      bg: 'bg-red-100 dark:bg-red-900/30',
+      bg: isDark ? 'bg-red-900/40' : 'bg-red-100/80',
       text: 'text-red-700 dark:text-red-300',
-      dot: 'bg-red-500'
+      dot: 'bg-red-500',
+      border: isDark ? 'ring-red-500/20' : 'ring-red-200'
     }
   };
 
@@ -168,42 +148,46 @@ const RevenueForecast = ({
   };
 
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ type: 'tween', duration: 0.2 }}
+    <div
       className={`
-        bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-50
-        dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-indigo-900/20
-        border border-indigo-200 dark:border-indigo-800
-        rounded-xl p-4 sm:p-6
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl rounded-2xl p-5
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(20,184,166,0.15),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'
+        }
+        overflow-hidden
         ${className}
       `}
     >
       {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-        {/* Left: Title + Projection */}
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-indigo-200 dark:bg-indigo-800/50 rounded-lg flex-shrink-0">
-            <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+      <div className="flex items-start justify-between gap-3 mb-5">
+        {/* Left: Icon Badge + Title + Projection */}
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-teal-500 dark:bg-teal-600 flex items-center justify-center shadow-sm shrink-0">
+            <Target className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
-          <div>
-            <h3 className="text-sm sm:text-base font-semibold text-indigo-900 dark:text-indigo-100">
-              Projeção de {currentMonthName}
+          <div className="min-w-0">
+            <h3 className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold text-slate-800 dark:text-white`}>
+              Projeção de Receita
             </h3>
-            <p className="text-2xl sm:text-3xl font-bold text-indigo-900 dark:text-indigo-100 mt-1">
-              {formatCurrency(projectedRevenue)}
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              {currentMonthName} • {currentMonth.daysElapsed} dias
             </p>
-            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
-              Baseado em {currentMonth.daysElapsed} dias de dados
+            <p className={`${isDesktop ? 'text-3xl' : 'text-2xl'} font-bold text-teal-600 dark:text-teal-400 mt-2`}>
+              {formatCurrency(projectedRevenue)}
             </p>
           </div>
         </div>
 
         {/* Right: Confidence Badge */}
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${confStyle.bg} self-start`}>
+        <div className={`
+          flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0
+          backdrop-blur-sm ring-1 ${confStyle.bg} ${confStyle.border}
+        `}>
           <div className={`w-2 h-2 rounded-full ${confStyle.dot} animate-pulse`} aria-hidden="true" />
-          <span className={`text-xs font-medium ${confStyle.text}`}>
-            {confidence.label}
+          <span className={`text-xs font-medium ${confStyle.text} whitespace-nowrap`}>
+            {isDesktop ? `Confiança ${confidence.label}` : confidence.label}
           </span>
           {confidence.level === 'low' && (
             <AlertCircle className={`w-3.5 h-3.5 ${confStyle.text}`} aria-hidden="true" />
@@ -212,35 +196,54 @@ const RevenueForecast = ({
       </div>
 
       {/* Stats Grid - Adaptive columns */}
-      <div className={`grid gap-3 mb-4 ${showTempInsight ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
+      <div className={`grid gap-3 mb-5 ${showTempInsight ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3'}`}>
         {/* Daily Average */}
-        <div className="p-3 bg-white/60 dark:bg-slate-800/50 rounded-lg">
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-0.5">
+        <div className={`
+          p-3.5 rounded-xl
+          ${isDark ? 'bg-slate-800/80' : 'bg-white'}
+          ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
+          shadow-sm
+        `}>
+          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-600 dark:text-slate-300 mb-1`}>
             Média Diária
           </p>
-          <p className="text-base sm:text-lg font-bold text-indigo-900 dark:text-indigo-100">
+          <p className={`${isDesktop ? 'text-xl' : 'text-lg'} font-bold text-slate-900 dark:text-white`}>
             {formatCurrency(dailyAverage)}
           </p>
         </div>
 
         {/* Days Remaining */}
-        <div className="p-3 bg-white/60 dark:bg-slate-800/50 rounded-lg">
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-0.5">
+        <div className={`
+          p-3.5 rounded-xl
+          ${isDark ? 'bg-slate-800/80' : 'bg-white'}
+          ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
+          shadow-sm
+        `}>
+          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-600 dark:text-slate-300 mb-1`}>
             Dias Restantes
           </p>
-          <p className="text-base sm:text-lg font-bold text-indigo-900 dark:text-indigo-100">
+          <p className={`${isDesktop ? 'text-xl' : 'text-lg'} font-bold text-slate-900 dark:text-white`}>
             {daysRemaining}
           </p>
         </div>
 
-        {/* Month Progress */}
-        <div className="p-3 bg-white/60 dark:bg-slate-800/50 rounded-lg">
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">
-            Progresso
+        {/* Month Progress - Full width on mobile */}
+        <div className={`
+          col-span-2 lg:col-span-1
+          p-3.5 rounded-xl
+          ${isDark ? 'bg-slate-800/80' : 'bg-white'}
+          ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
+          shadow-sm
+        `}>
+          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-600 dark:text-slate-300 mb-2`}>
+            Progresso do Mês
           </p>
           <div className="flex items-center gap-2">
             <div
-              className="flex-1 h-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-full overflow-hidden"
+              className={`
+                flex-1 h-2.5 rounded-full overflow-hidden
+                ${isDark ? 'bg-slate-700' : 'bg-slate-200'}
+              `}
               role="progressbar"
               aria-valuenow={monthProgress}
               aria-valuemin={0}
@@ -248,11 +251,15 @@ const RevenueForecast = ({
               aria-label={`Progresso do mês: ${monthProgress.toFixed(0)}%`}
             >
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                className={`
+                  h-full bg-gradient-to-r from-teal-500 to-cyan-400
+                  transition-all duration-500
+                  ${isDark ? 'shadow-[0_0_8px_rgba(20,184,166,0.4)]' : ''}
+                `}
                 style={{ width: `${monthProgress}%` }}
               />
             </div>
-            <span className="text-sm font-bold text-indigo-900 dark:text-indigo-100 min-w-[2.5rem] text-right">
+            <span className={`${isDesktop ? 'text-lg' : 'text-base'} font-bold text-slate-900 dark:text-white min-w-[3rem] text-right`}>
               {monthProgress.toFixed(0)}%
             </span>
           </div>
@@ -260,72 +267,70 @@ const RevenueForecast = ({
 
         {/* Temperature Effect - Only show if significant correlation */}
         {showTempInsight && (
-          <div className="p-3 bg-blue-50/80 dark:bg-blue-900/20 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
-            <div className="flex items-center gap-1 mb-0.5">
-              <Thermometer className="w-3 h-3 text-blue-500 dark:text-blue-400" aria-hidden="true" />
-              <p className="text-xs text-blue-600 dark:text-blue-400">
+          <div className={`
+            col-span-2 lg:col-span-1
+            p-3.5 rounded-xl
+            ${isDark ? 'bg-blue-900/50' : 'bg-blue-50'}
+            ring-1 ${isDark ? 'ring-blue-400/20' : 'ring-blue-200'}
+            shadow-sm
+          `}>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Thermometer className="w-4 h-4 text-blue-500 dark:text-blue-400" aria-hidden="true" />
+              <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-blue-700 dark:text-blue-300`}>
                 Fator Clima
               </p>
             </div>
-            <p className="text-base sm:text-lg font-bold text-blue-700 dark:text-blue-300">
+            <p className={`${isDesktop ? 'text-xl' : 'text-lg'} font-bold text-blue-800 dark:text-blue-200`}>
               {getTempEffectText()}
             </p>
           </div>
         )}
       </div>
 
-      {/* Contingency Section - Year-over-year comparison */}
+      {/* Year-over-year Comparison Section */}
       {forecastContingency && forecastContingency.lastYearRevenue > 0 && (
         <div className="mb-4">
-          {/* Behind last year - show gap and recovery options */}
+          {/* Behind last year - show gap indicator */}
           {forecastContingency.gap > 0 && (
-            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-              <div className="flex items-start gap-2 mb-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className={`
+              p-4 rounded-xl
+              ${isDark ? 'bg-amber-900/20' : 'bg-amber-50/80'}
+              ring-1 ${isDark ? 'ring-amber-500/20' : 'ring-amber-200'}
+            `}>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-500/20 dark:bg-amber-500/30 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  <h4 className={`${isDesktop ? 'text-base' : 'text-sm'} font-semibold text-amber-800 dark:text-amber-200`}>
                     Gap vs {forecastContingency.lastYearMonthName}: {formatCurrency(forecastContingency.gap)}
                   </h4>
-                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                  <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-amber-700 dark:text-amber-300 mt-1`}>
                     Para igualar o mesmo período do ano passado ({formatCurrency(forecastContingency.lastYearRevenue)}),
                     você precisa de mais {formatCurrency(forecastContingency.gap)}.
                   </p>
                 </div>
               </div>
-
-              {/* Recovery Options */}
-              {forecastContingency.options && forecastContingency.options.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-2">
-                    Opções de recuperação:
-                  </p>
-                  {forecastContingency.options.slice(0, 3).map((option, idx) => (
-                    <ContingencyOption
-                      key={idx}
-                      label={option.label}
-                      estimate={option.estimate}
-                      effort={option.effort}
-                      description={option.description}
-                      formatCurrency={formatCurrency}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
           {/* Ahead of last year - success message */}
           {forecastContingency.gap <= 0 && forecastContingency.surplusPercent > 5 && (
-            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+            <div className={`
+              p-4 rounded-xl
+              ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50/80'}
+              ring-1 ${isDark ? 'ring-emerald-500/20' : 'ring-emerald-200'}
+            `}>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/20 dark:bg-emerald-500/30 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                  <h4 className={`${isDesktop ? 'text-base' : 'text-sm'} font-semibold text-emerald-800 dark:text-emerald-200`}>
                     Acima da meta em {forecastContingency.surplusPercent.toFixed(0)}%
                   </h4>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
+                  <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-emerald-700 dark:text-emerald-300 mt-1`}>
                     Projeção de {formatCurrency(projectedRevenue)} vs {formatCurrency(forecastContingency.lastYearRevenue)} no ano passado.
-                    Considere pausar campanhas de desconto ou reservar excedente para meses mais fracos.
                   </p>
                 </div>
               </div>
@@ -335,13 +340,16 @@ const RevenueForecast = ({
       )}
 
       {/* Methodology Footer */}
-      <div className="flex items-center gap-1.5 pt-3 border-t border-indigo-200/50 dark:border-indigo-700/50">
-        <Info className="w-3 h-3 text-indigo-400 dark:text-indigo-500 flex-shrink-0" aria-hidden="true" />
-        <p className="text-xs text-indigo-500 dark:text-indigo-400">
+      <div className={`
+        flex items-center gap-1.5 pt-3
+        border-t ${isDark ? 'border-white/[0.05]' : 'border-slate-200/50'}
+      `}>
+        <Info className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400 flex-shrink-0" aria-hidden="true" />
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           {methodologyText}
         </p>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
