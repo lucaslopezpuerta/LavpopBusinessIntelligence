@@ -451,58 +451,74 @@ const Directory = ({ data, onDataChange }) => {
     <PullToRefreshWrapper onRefresh={onDataChange}>
       <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
-        {/* Enhanced Header with Stats Pills */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'} flex items-center justify-center border-l-4 border-blue-500`}>
-            <Search className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+        {/* Header - Cosmic Precision Design v2.1 */}
+      <header className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {/* Icon Container - Glassmorphism */}
+            <div
+              className={`
+                w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                ${isDark
+                  ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                  : 'bg-white border border-stellar-blue/10 shadow-md'}
+              `}
+              style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+            >
+              <Search className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+            </div>
+            {/* Title & Subtitle */}
+            <div>
+              <h1
+                className="text-lg sm:text-xl font-bold tracking-wider"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                <span className="text-gradient-stellar">DIRETÓRIO</span>
+              </h1>
+              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Navegue e gerencie sua base de clientes
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Diretório
-            </h1>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Navegue e gerencie sua base de clientes
-            </p>
+
+          {/* Stats Pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <StatsPill
+              icon={UsersIcon}
+              value={headerStats.total}
+              label="Total"
+              color="slate"
+              isDark={isDark}
+            />
+            <StatsPill
+              icon={Activity}
+              value={headerStats.active}
+              label="Ativos"
+              color="blue"
+              isDark={isDark}
+            />
+            {headerStats.atRisk > 0 && (
+              <StatsPill
+                icon={AlertTriangle}
+                value={headerStats.atRisk}
+                label="Em Risco"
+                color="amber"
+                pulse={true}
+                isDark={isDark}
+              />
+            )}
+            {hasActiveFilters && filteredCustomers.length !== headerStats.total && (
+              <StatsPill
+                icon={Filter}
+                value={filteredCustomers.length}
+                label="Filtrados"
+                color="purple"
+                isDark={isDark}
+              />
+            )}
           </div>
         </div>
 
-        {/* Stats Pills */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <StatsPill
-            icon={UsersIcon}
-            value={headerStats.total}
-            label="Total"
-            color="slate"
-            isDark={isDark}
-          />
-          <StatsPill
-            icon={Activity}
-            value={headerStats.active}
-            label="Ativos"
-            color="blue"
-            isDark={isDark}
-          />
-          {headerStats.atRisk > 0 && (
-            <StatsPill
-              icon={AlertTriangle}
-              value={headerStats.atRisk}
-              label="Em Risco"
-              color="amber"
-              pulse={true}
-              isDark={isDark}
-            />
-          )}
-          {hasActiveFilters && filteredCustomers.length !== headerStats.total && (
-            <StatsPill
-              icon={Filter}
-              value={filteredCustomers.length}
-              label="Filtrados"
-              color="purple"
-              isDark={isDark}
-            />
-          )}
-        </div>
       </header>
 
       {/* Main Content Container */}

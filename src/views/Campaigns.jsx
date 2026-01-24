@@ -63,6 +63,7 @@ import {
   MessageSquare,
   Plus
 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Campaign-specific components
 import CampaignList from '../components/campaigns/CampaignList';
@@ -106,6 +107,9 @@ const formatPercent = (value) => {
 // ==================== MAIN COMPONENT ====================
 
 const Campaigns = ({ data, onDataChange }) => {
+  // Theme context for Cosmic Precision styling
+  const { isDark } = useTheme();
+
   const [activeSection, setActiveSection] = useState('overview');
   const [showNewCampaign, setShowNewCampaign] = useState(false);
   const [selectedAudience, setSelectedAudience] = useState(null);
@@ -200,30 +204,46 @@ const Campaigns = ({ data, onDataChange }) => {
     <PullToRefreshWrapper onRefresh={onDataChange}>
       <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
-        {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center border-l-4 border-purple-500">
-            <MessageSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        {/* Header - Cosmic Precision Design v2.1 */}
+      <header className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {/* Icon Container - Glassmorphism */}
+            <div
+              className={`
+                w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                ${isDark
+                  ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                  : 'bg-white border border-stellar-blue/10 shadow-md'}
+              `}
+              style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+            >
+              <MessageSquare className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+            </div>
+            {/* Title & Subtitle */}
+            <div>
+              <h1
+                className="text-lg sm:text-xl font-bold tracking-wider"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                <span className="text-gradient-stellar">CAMPANHAS</span>
+              </h1>
+              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Mensagens, automações e ROI de campanhas
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-              Campanhas
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Mensagens, automações e ROI de campanhas
-            </p>
-          </div>
+
+          {/* Create Campaign Button */}
+          <button
+            onClick={() => setShowNewCampaign(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/25 transition-all active:scale-[0.98]"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nova Campanha</span>
+          </button>
         </div>
 
-        {/* Create Campaign Button */}
-        <button
-          onClick={() => setShowNewCampaign(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/25 transition-all active:scale-[0.98]"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nova Campanha</span>
-        </button>
       </header>
 
       {/* Section Navigation */}

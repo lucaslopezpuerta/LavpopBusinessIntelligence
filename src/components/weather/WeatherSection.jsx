@@ -21,7 +21,8 @@
 // v1.0 (2025-12-20): Initial implementation
 
 import React, { useCallback } from 'react';
-import { AlertCircle, CloudOff, RefreshCw } from 'lucide-react';
+import { AlertCircle, CloudOff, RefreshCw, CloudSun } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 import useWeatherForecast from '../../hooks/useWeatherForecast';
 import WeatherHero from './WeatherHero';
 import HourlyForecast from './HourlyForecast';
@@ -87,19 +88,42 @@ const LoadingSkeleton = () => (
 );
 
 /**
- * Section header component
+ * Section header component - Cosmic Precision Design v2.1
  */
-const SectionHeader = ({ title, subtitle }) => (
-  <div className="mb-6">
-    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
-      {title}
-    </h1>
-    {subtitle && (
-      <p className="text-slate-500 dark:text-slate-400 mt-1">
-        {subtitle}
-      </p>
-    )}
-  </div>
+const SectionHeader = ({ title, subtitle, isDark }) => (
+  <header className="flex flex-col gap-3 sm:gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center gap-3">
+        {/* Icon Container - Glassmorphism */}
+        <div
+          className={`
+            w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+            ${isDark
+              ? 'bg-space-dust/70 border border-stellar-cyan/20'
+              : 'bg-white border border-stellar-blue/10 shadow-md'}
+          `}
+          style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+        >
+          <CloudSun className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+        </div>
+        {/* Title & Subtitle */}
+        <div>
+          <h1
+            className="text-lg sm:text-xl font-bold tracking-wider"
+            style={{ fontFamily: "'Orbitron', sans-serif" }}
+          >
+            <span className="text-gradient-stellar">{title}</span>
+          </h1>
+          {subtitle && (
+            <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+
+  </header>
 );
 
 /**
@@ -120,6 +144,9 @@ const WeatherSection = ({
   refreshInterval = 30 * 60 * 1000, // 30 minutes
   className = ''
 }) => {
+  // Theme context for Cosmic Precision styling
+  const { isDark } = useTheme();
+
   // Real-time forecast data
   const {
     current,
@@ -151,8 +178,9 @@ const WeatherSection = ({
     return (
       <div className={`p-4 md:p-6 ${className}`}>
         <SectionHeader
-          title="Clima"
+          title="CLIMA"
           subtitle="Caxias do Sul, RS"
+          isDark={isDark}
         />
         <ErrorState
           error={forecastError}
@@ -167,8 +195,9 @@ const WeatherSection = ({
     return (
       <div className={`p-4 md:p-6 ${className}`}>
         <SectionHeader
-          title="Clima"
+          title="CLIMA"
           subtitle="Carregando dados..."
+          isDark={isDark}
         />
         <LoadingSkeleton />
       </div>
@@ -179,8 +208,9 @@ const WeatherSection = ({
     <div className={`p-4 md:p-6 space-y-6 ${className}`}>
       {/* Section header */}
       <SectionHeader
-        title="Clima"
+        title="CLIMA"
         subtitle="Previsão e impacto nos negócios"
+        isDark={isDark}
       />
 
       {/* Stale data warning */}

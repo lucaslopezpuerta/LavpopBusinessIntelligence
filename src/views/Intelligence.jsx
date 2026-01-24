@@ -111,6 +111,7 @@
 import React, { useMemo, useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb, RefreshCw, Clock } from 'lucide-react';
 import { useIsMobile } from '../hooks/useMediaQuery';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Business logic
 import { useAppSettings } from '../contexts/AppSettingsContext';
@@ -196,6 +197,7 @@ const StaleDataIndicator = ({ lastUpdated, isRefreshing, onRefresh, isMobile }) 
 const Intelligence = ({ data, onDataChange }) => {
   const { settings } = useAppSettings();
   const isMobile = useIsMobile();
+  const { isDark } = useTheme();
 
   // State for daily revenue data (preloaded from app init, or fetched on demand)
   const [dailyRevenueData, setDailyRevenueData] = useState(data?.dailyRevenue || null);
@@ -468,29 +470,45 @@ const Intelligence = ({ data, onDataChange }) => {
     <PullToRefreshWrapper onRefresh={handleRefresh}>
       <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
-        {/* Header */}
-          <header className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center border-l-4 border-emerald-500">
-                <Lightbulb className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+        {/* Header - Cosmic Precision Design v2.1 */}
+          <header className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                {/* Icon Container - Glassmorphism */}
+                <div
+                  className={`
+                    w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                    ${isDark
+                      ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                      : 'bg-white border border-stellar-blue/10 shadow-md'}
+                  `}
+                  style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+                >
+                  <Lightbulb className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+                </div>
+                {/* Title & Subtitle */}
+                <div>
+                  <h1
+                    className="text-lg sm:text-xl font-bold tracking-wider"
+                    style={{ fontFamily: "'Orbitron', sans-serif" }}
+                  >
+                    <span className="text-gradient-stellar">PLANEJAMENTO</span>
+                  </h1>
+                  <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Análise estratégica de negócio
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                  Planejamento
-                </h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Análise estratégica de negócio
-                </p>
-              </div>
+
+              {/* Stale Data Indicator */}
+              <StaleDataIndicator
+                lastUpdated={lastUpdated}
+                isRefreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                isMobile={isMobile}
+              />
             </div>
 
-            {/* Stale Data Indicator */}
-            <StaleDataIndicator
-              lastUpdated={lastUpdated}
-              isRefreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              isMobile={isMobile}
-            />
           </header>
 
           {/* Quick Stats Overview - Moved to top for immediate visibility */}

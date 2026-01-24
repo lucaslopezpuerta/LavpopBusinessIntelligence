@@ -187,19 +187,6 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
           />
         </div>
 
-        {/* Gradient Divider - desktop only, expanded mode only */}
-        {!isCompact && (
-          <div className="hidden sm:block h-px relative overflow-hidden">
-            <div
-              className="absolute inset-0"
-              style={{
-                background: isDark
-                  ? 'linear-gradient(90deg, transparent, rgba(0, 174, 239, 0.4), rgba(45, 56, 138, 0.4), transparent)'
-                  : 'linear-gradient(90deg, transparent, rgba(45, 56, 138, 0.2), rgba(0, 174, 239, 0.2), transparent)',
-              }}
-            />
-          </div>
-        )}
       </header>
 
       {/* LAYOUT-SPECIFIC CONTENT */}

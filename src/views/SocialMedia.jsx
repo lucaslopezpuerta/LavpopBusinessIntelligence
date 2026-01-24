@@ -19,6 +19,7 @@
 
 import { useState, lazy, Suspense } from 'react';
 import { Share2 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Navigation component
 import SocialMediaNavigation from '../components/social/SocialMediaNavigation';
@@ -58,27 +59,46 @@ const ComingSoonPlaceholder = ({ platform }) => (
 // ==================== MAIN COMPONENT ====================
 
 const SocialMedia = ({ data, onDataChange }) => {
+  // Theme context for Cosmic Precision styling
+  const { isDark } = useTheme();
+
   const [activeSection, setActiveSection] = useState('instagram');
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
       <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
-        {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 via-rose-500 to-orange-500 flex items-center justify-center shadow-lg shadow-pink-500/25">
-            <Share2 className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-              Redes Sociais
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Analytics e desempenho das suas redes sociais
-            </p>
+        {/* Header - Cosmic Precision Design v2.1 */}
+      <header className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {/* Icon Container - Glassmorphism */}
+            <div
+              className={`
+                w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                ${isDark
+                  ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                  : 'bg-white border border-stellar-blue/10 shadow-md'}
+              `}
+              style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+            >
+              <Share2 className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+            </div>
+            {/* Title & Subtitle */}
+            <div>
+              <h1
+                className="text-lg sm:text-xl font-bold tracking-wider"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                <span className="text-gradient-stellar">REDES SOCIAIS</span>
+              </h1>
+              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Analytics e desempenho das suas redes sociais
+              </p>
+            </div>
           </div>
         </div>
+
       </header>
 
       {/* Platform Navigation */}

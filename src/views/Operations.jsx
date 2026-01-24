@@ -83,6 +83,7 @@
 
 import React, { useMemo, useState, Suspense } from 'react';
 import { Wrench } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 import OperationsKPICards from '../components/OperationsKPICards';
 import UtilizationHeatmap from '../components/UtilizationHeatmap';
 import PeakHoursSummary from '../components/PeakHoursSummary';
@@ -96,6 +97,9 @@ import { OperationsLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 const Operations = ({ data, onDataChange }) => {
+  // Theme context for Cosmic Precision styling
+  const { isDark } = useTheme();
+
   // Centralized date filter - single source of truth
   // Default to lastWeek for complete data (currentWeek is partial)
   const [dateFilter, setDateFilter] = useState('lastWeek');
@@ -152,19 +156,37 @@ const Operations = ({ data, onDataChange }) => {
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
       <div className="space-y-6 sm:space-y-8">
-        {/* Header */}
-      <header className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center border-l-4 border-amber-500">
-          <Wrench className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+        {/* Header - Cosmic Precision Design v2.1 */}
+      <header className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {/* Icon Container - Glassmorphism */}
+            <div
+              className={`
+                w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                ${isDark
+                  ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                  : 'bg-white border border-stellar-blue/10 shadow-md'}
+              `}
+              style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+            >
+              <Wrench className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+            </div>
+            {/* Title & Subtitle */}
+            <div>
+              <h1
+                className="text-lg sm:text-xl font-bold tracking-wider"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                <span className="text-gradient-stellar">OPERAÇÕES</span>
+              </h1>
+              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Eficiência e análise operacional
+              </p>
+            </div>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-            Operações
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Eficiência e análise operacional
-          </p>
-        </div>
+
       </header>
 
       {/* Centralized Date Filter - Single Source of Truth */}

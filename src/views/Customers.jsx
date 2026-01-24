@@ -87,6 +87,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
 import { Users as UsersIcon, UserPlus, Crown, Sparkles, AlertTriangle, Mail, UserX, TrendingDown } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionMetrics, getAcquisitionTrend, getHealthTrend, getFirstVisitConversion, getFrequencyDegradation } from '../utils/customerMetrics';
 // Note: CleanKPICard replaced by AcquisitionCard in v5.13
 import HealthPill from '../components/HealthPill';
@@ -110,6 +111,9 @@ import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 
 const Customers = ({ data, onDataChange }) => {
+  // Theme context for Cosmic Precision styling
+  const { isDark } = useTheme();
+
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedKPI, setSelectedKPI] = useState(null); // For KPI drilldown modal
@@ -438,40 +442,56 @@ const Customers = ({ data, onDataChange }) => {
     <PullToRefreshWrapper onRefresh={onDataChange}>
       <div className="space-y-6 animate-fade-in">
 
-        {/* Header with RetentionPulse + HealthPill */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center border-l-4 border-purple-500">
-            <UsersIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        {/* Header - Cosmic Precision Design v2.1 */}
+      <header className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {/* Icon Container - Glassmorphism */}
+            <div
+              className={`
+                w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                ${isDark
+                  ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                  : 'bg-white border border-stellar-blue/10 shadow-md'}
+              `}
+              style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+            >
+              <UsersIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+            </div>
+            {/* Title & Subtitle */}
+            <div>
+              <h1
+                className="text-lg sm:text-xl font-bold tracking-wider"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                <span className="text-gradient-stellar">CLIENTES</span>
+              </h1>
+              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Inteligência e análise comportamental
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-              Clientes
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Inteligência e análise comportamental
-            </p>
+
+          {/* Header Pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <HealthPill
+              healthRate={metrics.healthRate}
+              activeCount={metrics.activeCount}
+              atRiskCount={metrics.needsAttentionCount}
+              trend={healthTrend.trend}
+              breakdown={{
+                healthy: metrics.healthyCount,
+                monitor: metrics.monitorCount,
+                atRisk: metrics.atRiskCount,
+                churning: metrics.churningCount,
+                newCustomer: metrics.newCustomerCount
+              }}
+              atRiskCustomers={atRiskCustomers}
+              onOpenAtRiskModal={handleOpenAtRiskModal}
+            />
           </div>
         </div>
 
-        {/* Header Pills */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <HealthPill
-            healthRate={metrics.healthRate}
-            activeCount={metrics.activeCount}
-            atRiskCount={metrics.needsAttentionCount}
-            trend={healthTrend.trend}
-            breakdown={{
-              healthy: metrics.healthyCount,
-              monitor: metrics.monitorCount,
-              atRisk: metrics.atRiskCount,
-              churning: metrics.churningCount,
-              newCustomer: metrics.newCustomerCount
-            }}
-            atRiskCustomers={atRiskCustomers}
-            onOpenAtRiskModal={handleOpenAtRiskModal}
-          />
-        </div>
       </header>
 
       {/* ═══════════════════════════════════════════════════════════════════
