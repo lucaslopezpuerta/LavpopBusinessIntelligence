@@ -1,8 +1,20 @@
-// animations.js v1.0
+// animations.js v1.5
 // Centralized animation configurations for consistent motion design
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.5 (2026-01-25): Cleanup - restored original page transitions
+//   - Reverted PAGE_TRANSITION to include opacity (original behavior)
+//   - Previous attempts to fix BottomNavBar fade didn't work
+//   - Keeping MODAL constants (beneficial for performance)
+// v1.2 (2026-01-25): Modal animation constants
+//   - Added MODAL variants for backdrop and content animations
+//   - Added MODAL_REDUCED variants for reduced-motion accessibility
+//   - Extracted from inline objects to prevent re-renders
+// v1.1 (2026-01-24): Direction-aware page transitions
+//   - Added PAGE_TRANSITION variants for forward/backward navigation
+//   - Added PAGE_TRANSITION_REDUCED for accessibility
+//   - Uses GPU-accelerated transforms (x, opacity)
 // v1.0 (2026-01-09): Initial implementation (UX Audit Phase 4.2)
 //   - Spring configurations for interactive elements
 //   - Tween configurations for hover/focus states
@@ -98,6 +110,30 @@ export const TWEEN = {
     type: 'tween',
     duration: 0.8,
     ease: 'easeOut'
+  }
+};
+
+// Chart-specific animation configurations for Recharts
+// Used with Bar, Line, Area components
+// NOTE: Recharts uses hyphenated easing names ('ease-out', not 'easeOut')
+export const CHART_ANIMATION = {
+  // Bar charts - quick reveal with subtle delay
+  BAR: {
+    duration: 800,
+    delay: 100,
+    easing: 'ease-out'
+  },
+  // Line/Area charts - smooth draw-in effect
+  LINE: {
+    duration: 1200,
+    delay: 0,
+    easing: 'ease-out'
+  },
+  // Reduced motion - instant render
+  REDUCED: {
+    duration: 0,
+    delay: 0,
+    easing: 'linear'
   }
 };
 
@@ -251,12 +287,78 @@ export const MOBILE_SHEET = {
   }
 };
 
+// Modal animations - extracted for performance (avoids inline object creation)
+export const MODAL = {
+  // Backdrop overlay
+  BACKDROP: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+    transition: TWEEN.FADE
+  },
+
+  // Content panel with scale
+  CONTENT: {
+    initial: { opacity: 0, scale: 0.95 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.95 },
+    transition: SPRING.GENTLE
+  },
+
+  // Reduced motion variants (instant transitions)
+  BACKDROP_REDUCED: {
+    initial: { opacity: 1 },
+    animate: { opacity: 1 },
+    exit: { opacity: 1 },
+    transition: { duration: 0 }
+  },
+
+  CONTENT_REDUCED: {
+    initial: { opacity: 1, scale: 1 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 1, scale: 1 },
+    transition: { duration: 0 }
+  }
+};
+
 // Active bubble visual feedback
 export const BUBBLE_ACTIVE = {
   scale: 1.15,
   ringWidth: 4,
   shadowBlur: 8,
   transitionDuration: 200
+};
+
+// Direction-aware page transitions
+// Uses `custom` prop: 1 (forward), -1 (backward), 0 (initial)
+export const PAGE_TRANSITION = {
+  initial: (direction) => ({
+    x: direction === 0 ? 0 : direction > 0 ? 100 : -100,
+    opacity: 0,
+  }),
+  animate: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      x: { type: 'tween', duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+      opacity: { type: 'tween', duration: 0.2, ease: 'easeOut' }
+    }
+  },
+  exit: (direction) => ({
+    x: direction === 0 ? 0 : direction > 0 ? -100 : 100,
+    opacity: 0,
+    transition: {
+      x: { type: 'tween', duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+      opacity: { type: 'tween', duration: 0.2, ease: 'easeIn' }
+    }
+  })
+};
+
+// Reduced motion - fade only (no slide)
+export const PAGE_TRANSITION_REDUCED = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.15 } },
+  exit: { opacity: 0, transition: { duration: 0.15 } }
 };
 
 // Default export for convenience
@@ -268,5 +370,9 @@ export default {
   STAGGER,
   INTERACTIVE,
   MOBILE_SHEET,
-  BUBBLE_ACTIVE
+  MODAL,
+  BUBBLE_ACTIVE,
+  PAGE_TRANSITION,
+  PAGE_TRANSITION_REDUCED,
+  CHART_ANIMATION
 };

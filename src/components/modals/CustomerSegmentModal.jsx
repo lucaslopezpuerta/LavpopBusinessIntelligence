@@ -386,6 +386,8 @@ const CustomerSegmentModal = ({
             <div className="min-h-full flex items-center justify-center p-0 sm:p-4">
               {/* Modal Container - Full-screen on mobile, constrained on desktop */}
               <motion.div
+                role="dialog"
+                aria-modal="true"
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}

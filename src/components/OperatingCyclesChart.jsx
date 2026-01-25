@@ -54,13 +54,14 @@
 // v4.1 (2025-11-29): Design System v3.0 compliance
 // v4.0: Previous implementation
 import React, { useState, useMemo, useCallback } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart } from 'recharts';
 import { WashingMachine, TrendingUp, Calendar, Droplet, Flame, Layers } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
-
 import { getChartColors } from '../utils/chartColors';
+import { CHART_ANIMATION } from '../constants/animations';
 
 function countMachines(str) {
   if (!str) return { wash: 0, dry: 0 };
@@ -89,6 +90,10 @@ const OperatingCyclesChart = ({
 }) => {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
+
+  // Reduced motion preference for accessibility
+  const prefersReducedMotion = useReducedMotion();
+  const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR;
 
   // Generate last 4 months for selector
   const monthOptions = useMemo(() => {
@@ -525,7 +530,12 @@ const OperatingCyclesChart = ({
       </div>
 
       {/* Chart - Responsive height, reduced in compact mode */}
-      <div className={compact ? 'h-[370px]' : 'h-[280px] sm:h-[350px] lg:h-[400px]'}>
+      <motion.div
+        className={compact ? 'h-[370px]' : 'h-[280px] sm:h-[350px] lg:h-[400px]'}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: 'easeOut' }}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={chartData}
@@ -609,12 +619,16 @@ const OperatingCyclesChart = ({
                 radius={[4, 4, 0, 0]}
                 name="Lavagens"
                 maxBarSize={50}
+                isAnimationActive={!prefersReducedMotion}
+                animationDuration={chartAnim.duration}
+                animationEasing={chartAnim.easing}
+                animationBegin={chartAnim.delay}
               >
                 <LabelList content={renderLabel} />
               </Bar>
             )}
 
-            {/* Dry Bars - conditional on splitBy */}
+            {/* Dry Bars - conditional on splitBy, slightly staggered */}
             {(splitBy === 'all' || splitBy === 'dry') && (
               <Bar
                 dataKey="Secagens"
@@ -622,13 +636,17 @@ const OperatingCyclesChart = ({
                 radius={[4, 4, 0, 0]}
                 name="Secagens"
                 maxBarSize={50}
+                isAnimationActive={!prefersReducedMotion}
+                animationDuration={chartAnim.duration}
+                animationEasing={chartAnim.easing}
+                animationBegin={chartAnim.delay + 100}
               >
                 <LabelList content={renderLabel} />
               </Bar>
             )}
           </ComposedChart>
         </ResponsiveContainer>
-      </div>
+      </motion.div>
 
       {/* Mobile indicator for partial data - hidden in compact mode */}
       {!compact && isMobile && (

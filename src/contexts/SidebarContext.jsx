@@ -1,7 +1,10 @@
-// SidebarContext.jsx v1.2 - DEBOUNCED LOCALSTORAGE
+// SidebarContext.jsx v1.3 - MEMOIZED CONTEXT VALUE
 // Context for managing sidebar expand/collapse and mobile drawer state
 //
 // CHANGELOG:
+// v1.3 (2026-01-25): Performance optimization
+//   - Memoized context value with useMemo (prevents consumer re-renders)
+//   - Memoized toggle callbacks with useCallback
 // v1.2 (2025-12-22): Debounced localStorage writes
 //   - Added 500ms debounce to isPinned localStorage persistence
 //   - Prevents multiple writes on rapid pin toggle clicks
@@ -15,7 +18,7 @@
 //   - Mobile drawer state handling
 //   - Provides context for IconSidebar, Backdrop, and MinimalTopBar
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
 const SidebarContext = createContext();
 
@@ -69,26 +72,36 @@ export const SidebarProvider = ({ children }) => {
     };
   }, [isPinned]);
 
-  const toggleExpanded = () => setIsExpanded(!isExpanded);
-  const toggleMobileSidebar = () => setIsMobileOpen(!isMobileOpen);
-  const togglePinned = () => setIsPinned(!isPinned);
+  // Memoized toggle callbacks to prevent recreation
+  const toggleExpanded = useCallback(() => setIsExpanded(prev => !prev), []);
+  const toggleMobileSidebar = useCallback(() => setIsMobileOpen(prev => !prev), []);
+  const togglePinned = useCallback(() => setIsPinned(prev => !prev), []);
+
+  // Memoized context value - only recreates when state actually changes
+  const value = useMemo(() => ({
+    isExpanded,
+    setIsExpanded,
+    isMobileOpen,
+    setIsMobileOpen,
+    isHovered,
+    setIsHovered,
+    isPinned,
+    setIsPinned,
+    toggleExpanded,
+    toggleMobileSidebar,
+    togglePinned
+  }), [
+    isExpanded,
+    isMobileOpen,
+    isHovered,
+    isPinned,
+    toggleExpanded,
+    toggleMobileSidebar,
+    togglePinned
+  ]);
 
   return (
-    <SidebarContext.Provider
-      value={{
-        isExpanded,
-        setIsExpanded,
-        isMobileOpen,
-        setIsMobileOpen,
-        isHovered,
-        setIsHovered,
-        isPinned,
-        setIsPinned,
-        toggleExpanded,
-        toggleMobileSidebar,
-        togglePinned
-      }}
-    >
+    <SidebarContext.Provider value={value}>
       {children}
     </SidebarContext.Provider>
   );

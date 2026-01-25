@@ -1,4 +1,4 @@
-// DataFreshnessContext.jsx v1.0
+// DataFreshnessContext.jsx v1.1 - MEMOIZED CONTEXT VALUE
 // Provides app-wide data refresh capabilities
 //
 // Features:
@@ -6,12 +6,18 @@
 // - Smart refresh after user actions (campaigns, etc.)
 // - Refresh status indicator for UI feedback
 // - Allows child components to trigger refresh
+// - Memoized context value (prevents unnecessary re-renders)
+//
+// CHANGELOG:
+// v1.1 (2026-01-25): Performance optimization
+//   - Memoized context value with useMemo
+// v1.0: Initial implementation
 //
 // Usage in child components:
 // const { refreshAfterAction } = useDataRefresh();
 // await refreshAfterAction('campaign_sent'); // After sending a campaign
 
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
 
 const DataFreshnessContext = createContext(null);
 
@@ -70,7 +76,8 @@ export function DataFreshnessProvider({ children }) {
     return `${hours}h atrás`;
   }, [lastRefreshed]);
 
-  const value = {
+  // Memoized context value - only recreates when dependencies change
+  const value = useMemo(() => ({
     // State
     lastRefreshed,
     refreshing,
@@ -83,7 +90,15 @@ export function DataFreshnessProvider({ children }) {
 
     // Helpers
     getLastRefreshedText,
-  };
+  }), [
+    lastRefreshed,
+    refreshing,
+    triggerRefresh,
+    markFresh,
+    refreshAfterAction,
+    registerRefreshCallback,
+    getLastRefreshedText
+  ]);
 
   return (
     <DataFreshnessContext.Provider value={value}>

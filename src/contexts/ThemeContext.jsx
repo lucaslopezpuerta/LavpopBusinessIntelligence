@@ -1,4 +1,4 @@
-// ThemeContext.jsx v1.2
+// ThemeContext.jsx v1.4 - GRACEFUL FALLBACK FOR PORTALS
 // Manages dark/light theme and UI preferences with persistence
 //
 // FEATURES:
@@ -8,14 +8,22 @@
 // - System preference detection
 // - Context provider for global access
 // - Native status bar style sync
+// - Memoized context value (prevents unnecessary re-renders)
 //
 // CHANGELOG:
+// v1.4 (2026-01-25): Graceful fallback for portals
+//   - useTheme now returns defaults instead of throwing when outside provider
+//   - Fixes crash on Android/Capacitor when portal renders before provider ready
+//   - BottomNavBar uses createPortal which can race during initial render
+// v1.3 (2026-01-25): Performance optimization
+//   - Memoized context value with useMemo (prevents 82 consumers from re-rendering)
+//   - Memoized toggleTheme callback with useCallback
 // v1.2 (2025-12-26): Native status bar sync
 //   - Updates status bar style when theme changes (light icons for dark, dark icons for light)
 // v1.1 (2025-12-23): Added dashboardLayout preference for compact/expanded views
 // v1.0 (2025-11-20): Initial theme context implementation
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { updateStatusBarForTheme } from '../utils/nativeStatusBar';
 
 const ThemeContext = createContext();
@@ -23,7 +31,18 @@ const ThemeContext = createContext();
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+    // Graceful fallback for portals that render before provider is ready
+    // This happens on Android/Capacitor when BottomNavBar's createPortal
+    // mounts to document.body before ThemeProvider initializes
+    return {
+      theme: 'light',
+      setTheme: () => {},
+      toggleTheme: () => {},
+      isDark: false,
+      isLight: true,
+      dashboardLayout: 'compact',
+      setDashboardLayout: () => {},
+    };
   }
   return context;
 };
@@ -89,11 +108,14 @@ export const ThemeProvider = ({ children }) => {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  const toggleTheme = () => {
+  // Memoized toggle to prevent callback recreation
+  const toggleTheme = useCallback(() => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
+  }, []);
 
-  const value = {
+  // Memoized context value - only recreates when dependencies actually change
+  // This prevents all 82 useTheme() consumers from re-rendering unnecessarily
+  const value = useMemo(() => ({
     theme,
     setTheme,
     toggleTheme,
@@ -101,7 +123,7 @@ export const ThemeProvider = ({ children }) => {
     isLight: theme === 'light',
     dashboardLayout,
     setDashboardLayout,
-  };
+  }), [theme, toggleTheme, dashboardLayout]);
 
   return (
     <ThemeContext.Provider value={value}>

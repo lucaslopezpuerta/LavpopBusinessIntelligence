@@ -99,6 +99,8 @@ const KPIDetailModal = ({
                     >
                         {/* Modal Container - Cosmic Tier 2 */}
                         <motion.div
+                            role="dialog"
+                            aria-modal="true"
                             initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.95, y: 20 }}

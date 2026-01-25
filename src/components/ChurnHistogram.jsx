@@ -73,7 +73,7 @@
 // v1.0 (2025-11-23): Initial implementation
 
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { AlertCircle, AlertTriangle, CheckCircle, ChevronRight, DollarSign, Clock } from 'lucide-react';
 import ContextHelp from './ContextHelp';
@@ -84,6 +84,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useBlacklist } from '../hooks/useBlacklist';
 import { haptics } from '../utils/haptics';
 import { DAY_THRESHOLDS } from '../utils/customerMetrics';
+import { CHART_ANIMATION } from '../constants/animations';
 
 // Premium glass hover - subtle lift (no boxShadow to preserve CSS glow)
 const cardHoverAnimation = {
@@ -108,6 +109,10 @@ const ChurnHistogram = ({
     // Theme-aware chart colors (Design System v3.2)
     const { isDark } = useTheme();
     const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
+
+    // Reduced motion preference for accessibility
+    const prefersReducedMotion = useReducedMotion();
+    const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR;
 
     // Blacklist check for tooltip display
     const { isBlacklisted } = useBlacklist();
@@ -448,9 +453,12 @@ const ChurnHistogram = ({
                 </div>
             </div>
 
-            <div
+            <motion.div
                 ref={chartContainerRef}
                 className="flex-1 min-h-[250px]"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: 'easeOut' }}
                 {...chartContainerHandlers}
             >
                 <ResponsiveContainer width="100%" height="100%">
@@ -477,6 +485,10 @@ const ChurnHistogram = ({
                             radius={[4, 4, 0, 0]}
                             onClick={(barData) => handleBarClick(barData)}
                             cursor="pointer"
+                            isAnimationActive={!prefersReducedMotion}
+                            animationDuration={chartAnim.duration}
+                            animationEasing={chartAnim.easing}
+                            animationBegin={chartAnim.delay}
                         >
                             {data.map((entry, index) => (
                                 <Cell
@@ -491,7 +503,7 @@ const ChurnHistogram = ({
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
-            </div>
+            </motion.div>
 
             {/* Customer Segment Modal */}
             <CustomerSegmentModal

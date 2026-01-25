@@ -44,12 +44,14 @@
 // v1.0 (Previous): Initial implementation with local period control
 
 import React, { useMemo, useCallback } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ComposedChart, Bar, Cell, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Calendar, Droplet, Flame, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { DAILY_THRESHOLDS } from '../utils/operationsMetrics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { CHART_ANIMATION } from '../constants/animations';
 
 // Pure function using unified DAILY_THRESHOLDS
 const getColor = (utilization) => {
@@ -62,6 +64,11 @@ const getColor = (utilization) => {
 const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow }) => {
   const { isDark } = useTheme();
   const isMobile = useMediaQuery('(max-width: 640px)');
+
+  // Reduced motion preference for accessibility
+  const prefersReducedMotion = useReducedMotion();
+  const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR;
+  const lineAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.LINE;
 
   // Theme-aware chart colors
   const chartColors = useMemo(() => ({
@@ -204,7 +211,12 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
       </div>
 
       {/* Dual-Axis Chart: Revenue (bars) + Utilization (line) */}
-      <div className="flex-1 min-h-[240px] mb-4">
+      <motion.div
+        className="flex-1 min-h-[240px] mb-4"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: 'easeOut' }}
+      >
         <ResponsiveContainer width="100%" height={chartHeight}>
           <ComposedChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
@@ -251,6 +263,10 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
               dataKey="revenue"
               name="Receita"
               radius={[8, 8, 0, 0]}
+              isAnimationActive={!prefersReducedMotion}
+              animationDuration={chartAnim.duration}
+              animationEasing={chartAnim.easing}
+              animationBegin={chartAnim.delay}
             >
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
@@ -264,10 +280,14 @@ const DayOfWeekChart = ({ dayPatterns, dateFilter = 'currentWeek', dateWindow })
               stroke={isDark ? '#22d3ee' : '#0891b2'}
               strokeWidth={isMobile ? 2 : 3}
               dot={{ r: isMobile ? 4 : 5, fill: isDark ? '#22d3ee' : '#0891b2' }}
+              isAnimationActive={!prefersReducedMotion}
+              animationDuration={lineAnim.duration}
+              animationEasing={lineAnim.easing}
+              animationBegin={lineAnim.delay}
             />
           </ComposedChart>
         </ResponsiveContainer>
-      </div>
+      </motion.div>
 
       {/* Summary Stats - Premium Glass Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

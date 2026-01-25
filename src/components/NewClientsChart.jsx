@@ -56,6 +56,7 @@
 // v2.0 (2025-11-23): Redesign for Customer Intelligence Hub
 
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { UserPlus, AlertTriangle, CheckCircle, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
@@ -63,6 +64,7 @@ import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { getChartColors, getSeriesColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
 import { haptics } from '../utils/haptics';
+import { CHART_ANIMATION } from '../constants/animations';
 
 const NewClientsChart = ({
   data,
@@ -78,6 +80,10 @@ const NewClientsChart = ({
   const { isDark } = useTheme();
   const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
   const seriesColors = useMemo(() => getSeriesColors(isDark), [isDark]);
+
+  // Reduced motion preference for accessibility
+  const prefersReducedMotion = useReducedMotion();
+  const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR;
 
   // Handle both old format (array) and new format ({ daily, newCustomerIds })
   const dailyData = useMemo(() => {
@@ -388,9 +394,12 @@ const NewClientsChart = ({
         </div>
       </div>
 
-      <div
+      <motion.div
         ref={chartContainerRef}
         className="flex-1 min-h-[200px]"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: 'easeOut' }}
         {...chartContainerHandlers}
       >
         <ResponsiveContainer width="100%" height="100%">
@@ -421,6 +430,10 @@ const NewClientsChart = ({
               radius={[4, 4, 0, 0]}
               onClick={(barData) => handleBarClick(barData)}
               cursor="pointer"
+              isAnimationActive={!prefersReducedMotion}
+              animationDuration={chartAnim.duration}
+              animationEasing={chartAnim.easing}
+              animationBegin={chartAnim.delay}
             >
               {dailyData.map((entry, index) => (
                 <Cell
@@ -432,7 +445,7 @@ const NewClientsChart = ({
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </motion.div>
 
       {/* Bottom stats - centered */}
       <div className="flex justify-center items-center gap-6 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">

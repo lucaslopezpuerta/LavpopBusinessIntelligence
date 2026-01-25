@@ -1,4 +1,4 @@
-// App.jsx v8.16.0 - THEME-AWARE COLORS FIX
+// App.jsx v8.18.0 - TRANSITIONING FLAG FOR BOTTOMNAVBAR
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -24,6 +24,12 @@
 // ✅ Realtime transaction updates - auto-refresh when new data inserted
 //
 // CHANGELOG:
+// v8.18.0 (2026-01-25): Transitioning flag for BottomNavBar fade fix
+//   - Sets isTransitioning=true when activeTab changes (via useEffect)
+//   - Sets isTransitioning=false when page animation completes (onAnimationComplete)
+//   - BottomNavItem reads flag to disable CSS transitions during page animation
+//   - Root cause: React reconciliation timing - nav re-renders before animation starts
+// v8.17.2 (2026-01-25): Cleanup - reverted unsuccessful BottomNavBar fix attempts
 // v8.16.0 (2026-01-16): Theme-aware colors fix
 //   - Converted Tailwind dark: prefixes to JavaScript conditionals
 //   - Uses useTheme hook for reliable dark mode detection
@@ -150,6 +156,7 @@ import { Upload, Clock, Code } from 'lucide-react';
 const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : null;
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { useReducedMotion } from './hooks/useReducedMotion';
+import { PAGE_TRANSITION, PAGE_TRANSITION_REDUCED } from './constants/animations';
 
 // Loading and Error screens
 import LoadingScreen from './components/ui/LoadingScreen';
@@ -166,7 +173,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { loadAllData } from './utils/supabaseLoader';
 import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
-import Backdrop from './components/Backdrop';
+// Backdrop removed - IconSidebar has its own backdrop in MobileDrawer
 import MinimalTopBar from './components/MinimalTopBar';
 import BottomNavBar from './components/navigation/BottomNavBar';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -267,10 +274,11 @@ const getLoadingFallback = (tabId) => {
 };
 
 function AppContent() {
-  const { activeTab, navigateTo } = useNavigation();
+  const { activeTab, navigateTo, getNavigationDirection, setIsTransitioning } = useNavigation();
   const { isPinned } = useSidebar();
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
+  const pageVariants = prefersReducedMotion ? PAGE_TRANSITION_REDUCED : PAGE_TRANSITION;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -500,6 +508,13 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [activeTab]);
 
+  // Set transitioning flag when activeTab changes
+  // This disables BottomNavItem CSS transitions during page animation
+  // Flag is cleared in motion.div onAnimationComplete callback
+  useEffect(() => {
+    setIsTransitioning(true);
+  }, [activeTab, setIsTransitioning]);
+
   // Note: Realtime sync for contact_tracking is handled by useContactTracking hook
   // which listens to 'contactTrackingUpdate' events dispatched by RealtimeSyncProvider
   // This provides instant contact status updates on mobile without full data refresh
@@ -562,10 +577,8 @@ function AppContent() {
         )}
 
         {/* Sidebar Navigation */}
+        {/* Note: IconSidebar has its own backdrop inside MobileDrawer - no separate Backdrop needed */}
         <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} onOpenSettings={() => setShowSettings(true)} />
-
-        {/* Mobile Backdrop */}
-        <Backdrop />
 
         {/* Offline Indicator */}
         <OfflineIndicator lastSyncTime={lastRefreshed} />
@@ -584,13 +597,15 @@ function AppContent() {
           {/* Main Content - Full width with edge-to-edge support */}
           {/* pb-24 on mobile for bottom nav clearance (64px nav + 16px breathing room) */}
           <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 pb-24 lg:pb-6">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={false} custom={getNavigationDirection()}>
               <motion.div
                 key={activeTab}
-                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
-                transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
+                custom={getNavigationDirection()}
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                onAnimationComplete={() => setIsTransitioning(false)}
               >
                 <Suspense fallback={getLoadingFallback(activeTab)}>
                   {/* Defensive check: show skeleton if data is missing/invalid */}

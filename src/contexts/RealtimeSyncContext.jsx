@@ -1,4 +1,4 @@
-// RealtimeSyncContext.jsx v1.2 - TRANSACTIONS SUBSCRIPTION
+// RealtimeSyncContext.jsx v1.3 - MEMOIZED + REF-BASED COUNTERS
 // Provides app-wide Supabase Realtime subscriptions
 //
 // Subscribed tables:
@@ -13,6 +13,10 @@
 // - Free tier compatible (uses ~2 connections)
 //
 // CHANGELOG:
+// v1.3 (2026-01-25): Performance optimization
+//   - Moved debug counters from state to refs (prevents re-renders on every event)
+//   - Memoized context value with useMemo
+//   - Exposed getter functions instead of raw counter values
 // v1.2 (2026-01-12): Added transactions subscription
 //   - Passes onTransactionInsert callback to hook
 //   - Tracks transactionCount for debugging
@@ -22,20 +26,22 @@
 // Usage:
 // const { isConnected, lastUpdate } = useRealtimeSyncContext();
 
-import React, { createContext, useContext, useCallback, useRef, useState } from 'react';
+import React, { createContext, useContext, useCallback, useRef, useMemo } from 'react';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 
 const RealtimeSyncContext = createContext(null);
 
 export function RealtimeSyncProvider({ children }) {
-  const [contactUpdateCount, setContactUpdateCount] = useState(0);
-  const [transactionCount, setTransactionCount] = useState(0);
+  // Use refs for debug counters to prevent re-renders on every realtime event
+  // These are only for debugging/logging, not UI display
+  const contactUpdateCountRef = useRef(0);
+  const transactionCountRef = useRef(0);
 
   // Handle contact tracking changes (critical for Customers/Campaigns views)
   const handleContactChange = useCallback((payloads) => {
     console.log('[RealtimeSync] Contact updates:', payloads.length);
 
-    setContactUpdateCount(prev => prev + payloads.length);
+    contactUpdateCountRef.current += payloads.length;
 
     // Dispatch custom event for useContactTracking to listen and refresh
     // This is the key integration - the hook already listens for this event
@@ -46,7 +52,7 @@ export function RealtimeSyncProvider({ children }) {
   // Note: The hook already dispatches 'transactionUpdate' event
   const handleTransactionInsert = useCallback((payload) => {
     console.log('[RealtimeSync] Transaction INSERT:', payload.new?.id);
-    setTransactionCount(prev => prev + 1);
+    transactionCountRef.current += 1;
   }, []);
 
   // Initialize realtime sync (contact_tracking + transactions)
@@ -64,16 +70,23 @@ export function RealtimeSyncProvider({ children }) {
     return 'Conectando...';
   }, [isConnected]);
 
-  const value = {
+  // Getter functions for debug counters (stable refs, no re-renders)
+  const getContactUpdateCount = useCallback(() => contactUpdateCountRef.current, []);
+  const getTransactionCount = useCallback(() => transactionCountRef.current, []);
+
+  // Memoized context value - only recreates when connection state changes
+  const value = useMemo(() => ({
     // Connection state
     isConnected,
     lastUpdate,
-    contactUpdateCount,
-    transactionCount,
+
+    // Debug counter getters (functions instead of values to avoid re-renders)
+    getContactUpdateCount,
+    getTransactionCount,
 
     // Helpers
     getConnectionStatusText
-  };
+  }), [isConnected, lastUpdate, getContactUpdateCount, getTransactionCount, getConnectionStatusText]);
 
   return (
     <RealtimeSyncContext.Provider value={value}>
@@ -89,9 +102,9 @@ export function useRealtimeSyncContext() {
     return {
       isConnected: false,
       lastUpdate: null,
-      updateCounts: { transactions: 0, customers: 0, contacts: 0 },
+      getContactUpdateCount: () => 0,
+      getTransactionCount: () => 0,
       getConnectionStatusText: () => 'Não disponível',
-      subscribe: () => () => {}
     };
   }
   return context;

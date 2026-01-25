@@ -321,7 +321,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl w-full max-w-full sm:max-w-xl lg:max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl w-full max-w-full sm:max-w-xl lg:max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
 
         {/* Header with Refresh */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">

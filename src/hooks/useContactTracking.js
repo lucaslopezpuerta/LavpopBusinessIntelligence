@@ -1,8 +1,18 @@
-// useContactTracking.js v3.0
+// useContactTracking.js v3.3 - REF ORDER FIX
 // Backend-only contact tracking hook
 // No localStorage - single source of truth is contact_tracking table
 //
 // CHANGELOG:
+// v3.3 (2026-01-25): Fix ref/state order race condition
+//   - Set isLoadingRef BEFORE setIsLoading (ref mutation is immediate, state is batched)
+//   - Ensures guard check in customer length effect sees correct value
+// v3.2 (2026-01-25): Fix isLoading dependency bug
+//   - Removed isLoading from effect deps (was causing extra API call on load complete)
+//   - Use isLoadingRef for guard check instead of reactive dependency
+// v3.1 (2026-01-25): Performance optimization
+//   - Stabilized effect dependencies to prevent duplicate API calls
+//   - Use ref for loadPendingContacts to avoid effect re-runs
+//   - Compare customers.length instead of customers array reference
 // v3.0 (2025-12-13): Backend-only architecture
 //   - Removed all localStorage logic
 //   - Checkmark state = contact_tracking.status === 'pending'
@@ -35,6 +45,9 @@ export function useContactTracking(options = {}) {
   const [error, setError] = useState(null);
   const lastFetchRef = useRef(0);
   const isMountedRef = useRef(true);
+  const prevCustomersLengthRef = useRef(0);
+  const loadPendingContactsRef = useRef(null);
+  const isLoadingRef = useRef(true); // Stable ref for guard checks (not reactive)
 
   // Load pending contacts from backend
   const loadPendingContacts = useCallback(async (force = false) => {
@@ -65,39 +78,53 @@ export function useContactTracking(options = {}) {
       }
     } finally {
       if (isMountedRef.current) {
+        // Set ref BEFORE state - ref mutation is immediate, state update is batched
+        // This ensures effect guard checks see the correct value
+        isLoadingRef.current = false;
         setIsLoading(false);
       }
     }
   }, []);
 
-  // Initial load
+  // Keep ref in sync with latest callback (stable reference for effects)
+  useEffect(() => {
+    loadPendingContactsRef.current = loadPendingContacts;
+  }, [loadPendingContacts]);
+
+  // Initial load - runs once on mount
   useEffect(() => {
     isMountedRef.current = true;
-    loadPendingContacts(true);
+    loadPendingContactsRef.current?.(true);
 
     return () => {
       isMountedRef.current = false;
     };
-  }, [loadPendingContacts]);
+  }, []); // Empty deps - only runs on mount
 
-  // Reload when customers change (to detect returns)
+  // Reload when customers array length changes (to detect returns)
+  // Uses length comparison instead of array reference to avoid extra API calls
   useEffect(() => {
-    if (customers && customers.length > 0 && !isLoading) {
+    const currentLength = customers?.length || 0;
+
+    // Only reload if customers length actually changed and we're not in initial load
+    // Uses isLoadingRef (not isLoading state) to avoid effect re-running on load complete
+    if (currentLength > 0 && currentLength !== prevCustomersLengthRef.current && !isLoadingRef.current) {
+      prevCustomersLengthRef.current = currentLength;
       // Backend auto-detects returns via detect_customer_returns()
       // We just need to refresh our local state
-      loadPendingContacts();
+      loadPendingContactsRef.current?.();
     }
-  }, [customers, isLoading, loadPendingContacts]);
+  }, [customers?.length]); // Only react to customers length changes
 
   // Listen for cross-component updates
   useEffect(() => {
     const handleUpdate = () => {
-      loadPendingContacts(true);
+      loadPendingContactsRef.current?.(true);
     };
 
     window.addEventListener(CUSTOM_EVENT, handleUpdate);
     return () => window.removeEventListener(CUSTOM_EVENT, handleUpdate);
-  }, [loadPendingContacts]);
+  }, []); // Empty deps - stable event listener
 
   // Set of pending contact IDs for quick lookup
   const contactedIds = useMemo(() => {

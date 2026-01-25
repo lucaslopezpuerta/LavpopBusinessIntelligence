@@ -1,7 +1,7 @@
 /**
  * AppSettingsContext - Centralized settings management
  *
- * VERSION: 1.0
+ * VERSION: 1.1
  *
  * Replaces the localStorage-based useBusinessSettings hook with Supabase persistence.
  * Provides app-wide settings for business configuration (pricing, costs, maintenance).
@@ -12,13 +12,19 @@
  * - Falls back to defaults if Supabase unavailable
  * - One-time migration from localStorage to Supabase
  * - Same field names as old hook for backward compatibility
+ * - Memoized context value (prevents unnecessary re-renders)
+ *
+ * CHANGELOG:
+ * v1.1 (2026-01-25): Performance optimization
+ *   - Memoized context value with useMemo
+ * v1.0: Initial implementation
  *
  * Usage:
  *   import { useAppSettings } from '../contexts/AppSettingsContext';
  *   const { settings, updateSettings, isLoading, error } = useAppSettings();
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getSupabaseClient } from '../utils/supabaseClient';
 
 // Default settings (matching previous BusinessSettingsModal defaults)
@@ -258,7 +264,8 @@ export const AppSettingsProvider = ({ children }) => {
     loadSettings();
   }, []);
 
-  const value = {
+  // Memoized context value - only recreates when dependencies change
+  const value = useMemo(() => ({
     settings,
     updateSettings,
     resetToDefaults,
@@ -266,7 +273,7 @@ export const AppSettingsProvider = ({ children }) => {
     isLoading,
     isSaving,
     error,
-  };
+  }), [settings, updateSettings, resetToDefaults, reloadSettings, isLoading, isSaving, error]);
 
   return (
     <AppSettingsContext.Provider value={value}>

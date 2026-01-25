@@ -17,6 +17,7 @@
 // v5.12-v5.0: Previous versions (chart improvements, service breakdown, etc.)
 
 import { useMemo, useCallback, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Clock, Droplet, Wind, CreditCard, Info, Calendar, ChevronDown } from 'lucide-react';
 import KPICard from '../ui/KPICard';
@@ -24,6 +25,7 @@ import ContextHelp from '../ContextHelp';
 import { useIsMobile, useMediaQuery } from '../../hooks/useMediaQuery';
 import { useTheme } from '../../contexts/ThemeContext';
 import { formatMonthKey, getBrazilDateParts } from '../../utils/dateUtils';
+import { CHART_ANIMATION } from '../../constants/animations';
 
 // Service segment card - Premium Glass style
 const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, formatCurrency, isDark, isDesktop }) => {
@@ -105,6 +107,10 @@ const GrowthTrendsSection = ({
   const isMobile = useIsMobile();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const { isDark } = useTheme();
+
+  // Reduced motion preference for accessibility
+  const prefersReducedMotion = useReducedMotion();
+  const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.LINE;
 
   // Chart period selector state
   const [chartPeriod, setChartPeriod] = useState(12);
@@ -416,7 +422,12 @@ const GrowthTrendsSection = ({
                 </div>
               </div>
 
-              <div className="h-64 sm:h-80 lg:h-96 w-full -mx-2">
+              <motion.div
+                className="h-64 sm:h-80 lg:h-96 w-full -mx-2"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: 'easeOut' }}
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={chartData}
@@ -484,9 +495,10 @@ const GrowthTrendsSection = ({
                       stroke="#3b82f6"
                       strokeWidth={isMobile ? 2 : 2.5}
                       fill="url(#revenueGradient)"
-                      isAnimationActive={true}
-                      animationDuration={1200}
-                      animationEasing="ease-out"
+                      isAnimationActive={!prefersReducedMotion}
+                      animationDuration={chartAnim.duration}
+                      animationEasing={chartAnim.easing}
+                      animationBegin={chartAnim.delay}
                       dot={isMobile ? false : {
                         fill: '#3b82f6',
                         stroke: isDark ? '#1e293b' : '#ffffff',
@@ -502,7 +514,7 @@ const GrowthTrendsSection = ({
                     />
                   </AreaChart>
                 </ResponsiveContainer>
-              </div>
+              </motion.div>
             </div>
           )}
 

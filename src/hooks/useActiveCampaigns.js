@@ -1,8 +1,12 @@
-// useActiveCampaigns.js v1.2
+// useActiveCampaigns.js v1.3 - CACHE INVALIDATION
 // Hook for fetching and filtering active campaigns by audience type
 // Separates automated campaigns from manual campaigns
 //
 // CHANGELOG:
+// v1.3 (2026-01-25): Cache invalidation on campaign changes
+//   - Export invalidateCampaignCache() for external cache clearing
+//   - Listen for campaignCreated/Updated/Deleted events
+//   - Prevents stale data after campaign operations
 // v1.2 (2025-12-15): Fixed manual campaigns filter
 //   - Excludes automation-generated campaigns (is_automated, AUTO_ prefix, Auto: name)
 //   - Manual dropdown now only shows actual manual campaigns
@@ -23,6 +27,19 @@ let cachedCampaigns = null;
 let cachedAutomationRules = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Custom events for cache invalidation
+const CAMPAIGN_EVENTS = ['campaignCreated', 'campaignUpdated', 'campaignDeleted'];
+
+/**
+ * Invalidate the campaign cache
+ * Call this after creating, updating, or deleting campaigns
+ */
+export function invalidateCampaignCache() {
+  cachedCampaigns = null;
+  cachedAutomationRules = null;
+  cacheTimestamp = 0;
+}
 
 // Mapping from customer segment type to matching automation rule IDs
 const AUTOMATION_MAPPINGS = {
@@ -128,6 +145,25 @@ export function useActiveCampaigns() {
 
     return () => {
       isMountedRef.current = false;
+    };
+  }, [fetchData]);
+
+  // Listen for campaign change events (invalidate cache and refetch)
+  useEffect(() => {
+    const handleCampaignChange = () => {
+      invalidateCampaignCache();
+      fetchData(true);
+    };
+
+    // Add listeners for all campaign events
+    CAMPAIGN_EVENTS.forEach(event => {
+      window.addEventListener(event, handleCampaignChange);
+    });
+
+    return () => {
+      CAMPAIGN_EVENTS.forEach(event => {
+        window.removeEventListener(event, handleCampaignChange);
+      });
     };
   }, [fetchData]);
 

@@ -634,6 +634,9 @@ const NewCampaignModal = ({
         serviceType: effectiveServiceType
       });
 
+      // Notify listeners that a campaign was created (invalidates useActiveCampaigns cache)
+      window.dispatchEvent(new CustomEvent('campaignCreated'));
+
       // Prepare recipients with customerId for effectiveness tracking
       const recipientsForTracking = validationStats.ready.map(c => ({
         customerId: c.doc || c.cpf || c.id,
@@ -768,7 +771,7 @@ const NewCampaignModal = ({
   // (avoids issues with parent transforms/filters affecting backdrop)
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 dark:backdrop-blur-sm">
-      <div className="w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-stellar-cyan/15 animate-fade-in flex flex-col">
+      <div role="dialog" aria-modal="true" className="w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-stellar-cyan/15 animate-fade-in flex flex-col">
         {/* Header wrapper with safe area - extends background into notch/Dynamic Island */}
         <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl">
           {/* Header content */}

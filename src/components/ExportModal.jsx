@@ -1,7 +1,10 @@
-// ExportModal.jsx v1.4 - iOS SCROLL LOCK
+// ExportModal.jsx v1.5 - ANIMATION PERFORMANCE
 // Modal for exporting data to CSV or PDF with charts
 //
 // CHANGELOG:
+// v1.5 (2026-01-25): Animation performance optimization
+//   - Extracted inline animation objects to constants (prevents re-renders)
+//   - Uses MODAL variants from animations.js for consistency
 // v1.4 (2026-01-12): iOS-compatible scroll lock
 //   - Added body scroll lock to prevent background scrolling
 //   - Preserves scroll position when modal closes
@@ -22,6 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileSpreadsheet, FileText, Download, Loader2, Check, AlertCircle, BookOpen, BarChart3 } from 'lucide-react';
 import { exportToCSV, exportToPDF, exportCompleteReport, exportExecutiveSummary } from '../utils/exportUtils';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import { MODAL } from '../constants/animations';
 
 // Export configurations with correct field mappings from Supabase
 const EXPORT_CONFIGS = {
@@ -452,19 +456,15 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
-          initial={prefersReducedMotion ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={prefersReducedMotion ? undefined : { opacity: 0 }}
-          transition={prefersReducedMotion ? { duration: 0 } : undefined}
+          {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         />
 
         <motion.div
-          initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.95 }}
-          transition={prefersReducedMotion ? { duration: 0 } : undefined}
+          role="dialog"
+          aria-modal="true"
+          {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
           className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
         >
           <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">

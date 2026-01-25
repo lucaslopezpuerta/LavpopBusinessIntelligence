@@ -43,7 +43,7 @@
 // v2.0 (2025-12-22): Focus trap & collapse delay
 // v1.x: Previous implementations
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2, CloudSun, X, ChevronRight, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import FocusTrap from 'focus-trap-react';
@@ -92,7 +92,7 @@ const utilityItem = { id: 'upload', label: 'Importar', icon: Upload, path: '/upl
 const settingsItem = { id: 'settings', label: 'Configurações', icon: Settings };
 
 const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
-  const { isHovered, setIsHovered, isMobileOpen, toggleMobileSidebar, isPinned, togglePinned } = useSidebar();
+  const { isHovered, setIsHovered, isMobileOpen, setIsMobileOpen, toggleMobileSidebar, isPinned, togglePinned } = useSidebar();
   const prefersReducedMotion = useReducedMotion();
   const { isDark } = useTheme();
   const collapseTimeoutRef = useRef(null);
@@ -109,9 +109,14 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
   // Sidebar is expanded when pinned OR hovered
   const isExpanded = isPinned || isHovered;
 
+  // Close sidebar (not toggle) - prevents double-toggle issues with FocusTrap
+  const closeMobileSidebar = useCallback(() => {
+    setIsMobileOpen(false);
+  }, [setIsMobileOpen]);
+
   const handleMobileNavigate = () => {
     if (isMobileOpen) {
-      toggleMobileSidebar();
+      closeMobileSidebar();
     }
   };
 
@@ -298,7 +303,7 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={toggleMobileSidebar}
+            onClick={closeMobileSidebar}
             aria-hidden="true"
           />
 
@@ -308,7 +313,7 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
             focusTrapOptions={{
               allowOutsideClick: true,
               escapeDeactivates: true,
-              onDeactivate: toggleMobileSidebar,
+              onDeactivate: closeMobileSidebar,
               initialFocus: false,
               returnFocusOnDeactivate: true,
             }}
@@ -340,7 +345,7 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
                   <RealtimeStatusIndicator />
                 </div>
                 <button
-                  onClick={toggleMobileSidebar}
+                  onClick={closeMobileSidebar}
                   className="p-2 -mr-2 rounded-lg text-slate-500 hover:bg-stellar-cyan/10 hover:text-stellar-cyan transition-colors"
                   aria-label="Fechar menu"
                 >

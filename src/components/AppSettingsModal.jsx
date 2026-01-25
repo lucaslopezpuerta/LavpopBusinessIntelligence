@@ -181,6 +181,8 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm">
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
         className="w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl animate-fade-in flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
         onClick={(e) => e.stopPropagation()}
       >
