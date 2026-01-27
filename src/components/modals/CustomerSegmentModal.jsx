@@ -1,8 +1,12 @@
-// CustomerSegmentModal.jsx v2.8 - REFACTORED TO useScrollLock HOOK
+// CustomerSegmentModal.jsx v2.9 - Toast Notifications
 // Clean modal for displaying filtered customer lists with campaign integration
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.9 (2026-01-27): Toast notifications
+//   - Replaced browser alert() with useToast() for user feedback
+//   - Success/warning/error toasts for automation and campaign actions
+//   - Removed emoji prefixes (toast icons handle visual feedback)
 // v2.8 (2026-01-12): Refactored to useScrollLock hook
 //   - Replaced inline scroll lock useEffect with shared useScrollLock hook
 //   - Reduces code duplication across modals
@@ -85,6 +89,7 @@ import { normalizePhone } from '../../utils/phoneUtils';
 import { api } from '../../utils/apiService';
 import { haptics } from '../../utils/haptics';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useToast } from '../../contexts/ToastContext';
 
 // Items per page for pagination
 const ITEMS_PER_PAGE = 10;
@@ -129,6 +134,7 @@ const CustomerSegmentModal = ({
   // Hooks
   const { isBlacklisted, getBlacklistReason } = useBlacklist();
   const { getCampaignsForAudience, isLoading: campaignsLoading } = useActiveCampaigns();
+  const { success, warning, error: showError } = useToast();
 
   // Swipe-to-close for mobile (threshold lowered for easier mobile dismiss)
   const { handlers: swipeHandlers, style: swipeStyle, isDragging, progress } = useSwipeToClose({
@@ -271,7 +277,7 @@ const CustomerSegmentModal = ({
 
       if (successCount > 0) {
         haptics.success();
-        alert(`✅ ${successCount} clientes incluídos na fila de "${automationName}"${failedCount > 0 ? ` (${failedCount} falharam)` : ''}`);
+        success(`${successCount} clientes incluídos na fila de "${automationName}"${failedCount > 0 ? ` (${failedCount} falharam)` : ''}`);
         setSelectedIds(new Set());
         // Note: Don't call onMarkContacted here - it creates a duplicate record!
         // The contact_tracking entry was already created by api.contacts.create above.
@@ -279,11 +285,11 @@ const CustomerSegmentModal = ({
         window.dispatchEvent(new CustomEvent('contact-tracking-changed'));
       } else {
         haptics.warning();
-        alert('❌ Não foi possível incluir os clientes na automação');
+        warning('Não foi possível incluir os clientes na automação');
       }
-    } catch (error) {
-      console.error('Failed to add to automation:', error);
-      alert('Erro ao incluir clientes na automação: ' + error.message);
+    } catch (err) {
+      console.error('Failed to add to automation:', err);
+      showError('Erro ao incluir clientes na automação: ' + err.message);
     } finally {
       setIsAddingToAutomation(false);
     }
@@ -319,17 +325,17 @@ const CustomerSegmentModal = ({
 
       if (successCount > 0) {
         haptics.success();
-        alert(`✅ ${successCount} clientes adicionados à campanha "${campaignName}"${failedCount > 0 ? ` (${failedCount} falharam)` : ''}`);
+        success(`${successCount} clientes adicionados à campanha "${campaignName}"${failedCount > 0 ? ` (${failedCount} falharam)` : ''}`);
         setSelectedIds(new Set());
         setSelectedManualCampaign('');
         onMarkContacted?.(customerIds[0], 'campaign');
       } else {
         haptics.warning();
-        alert('❌ Não foi possível adicionar os clientes à campanha');
+        warning('Não foi possível adicionar os clientes à campanha');
       }
-    } catch (error) {
-      console.error('Failed to add to campaign:', error);
-      alert('Erro ao adicionar clientes à campanha: ' + error.message);
+    } catch (err) {
+      console.error('Failed to add to campaign:', err);
+      showError('Erro ao adicionar clientes à campanha: ' + err.message);
     } finally {
       setIsAddingToAutomation(false);
     }

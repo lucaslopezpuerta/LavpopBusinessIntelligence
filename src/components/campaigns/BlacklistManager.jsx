@@ -1,8 +1,11 @@
-// BlacklistManager.jsx v4.0 - Light Background KPI Cards
+// BlacklistManager.jsx v4.1 - Toast Notifications
 // WhatsApp blacklist management UI component
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v4.1 (2026-01-27): Toast notifications
+//   - Replaced browser alert() with useToast() for import feedback
+//   - Success/error toasts for CSV import operations
 // v4.0 (2026-01-09): Light background KPI cards (Hybrid Card Design)
 //   - Migrated stats cards to Design System KPICard with variant="default"
 //   - Card bodies now use light backgrounds (bg-white dark:bg-slate-800)
@@ -123,6 +126,7 @@ import {
   getLastSyncTime
 } from '../../utils/blacklistService';
 import { api } from '../../utils/apiService';
+import { useToast } from '../../contexts/ToastContext';
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25];
 
@@ -286,6 +290,9 @@ const BlacklistManager = ({ customerData }) => {
 
   // Reason filter state
   const [reasonFilter, setReasonFilter] = useState('all');
+
+  // Toast notifications
+  const { success, error } = useToast();
 
   // Refresh blacklist data (async)
   const refreshData = useCallback(async () => {
@@ -502,16 +509,16 @@ const BlacklistManager = ({ customerData }) => {
         }
 
         const result = await importBlacklistAsync(entries, true);
-        alert(`Importado: ${result.imported || entries.length} entradas`);
+        success(`Importado: ${result.imported || entries.length} entradas`);
         await refreshData();
-      } catch (error) {
-        alert('Erro ao importar: ' + error.message);
+      } catch (err) {
+        error('Erro ao importar: ' + err.message);
       } finally {
         setIsImporting(false);
       }
     };
     reader.onerror = () => {
-      alert('Erro ao ler arquivo');
+      error('Erro ao ler arquivo');
       setIsImporting(false);
     };
     reader.readAsText(file);

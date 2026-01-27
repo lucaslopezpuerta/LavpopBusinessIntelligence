@@ -1,8 +1,12 @@
-// animations.js v1.8 - MICRO-INTERACTION ANIMATIONS
+// animations.js v1.9 - MICRO-INTERACTION ANIMATIONS
 // Centralized animation configurations for consistent motion design
-// Design System v4.0 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v1.9 (2026-01-27): Bottom navigation animations
+//   - Added BOTTOM_NAV for glassmorphism floating pill design
+//   - Container entrance, indicator slide, icon micro-interactions
+//   - Reduced motion support
 // v1.8 (2026-01-27): Micro-interaction animations
 //   - Added TOAST animations for notification system
 //   - Added SUCCESS_ANIMATION for checkmark path drawing
@@ -468,6 +472,34 @@ export const ERROR_ANIMATION = {
   }
 };
 
+// Bottom Navigation animations (v1.9)
+// Used by BottomNavBarV2 for glassmorphism floating pill design
+export const BOTTOM_NAV = {
+  // Container entrance (slide up from bottom) - runs ONCE on mount
+  CONTAINER: {
+    initial: { y: 100, opacity: 0 },
+    animate: { y: 0, opacity: 1 },
+    transition: { type: 'spring', stiffness: 400, damping: 30 }
+  },
+
+  // Active indicator sliding pill - spring physics
+  INDICATOR: {
+    transition: { type: 'spring', stiffness: 500, damping: 30 }
+  },
+
+  // Icon micro-interactions
+  ICON_TAP: { scale: 0.9 },
+  ICON_ACTIVE: { scale: 1.1 },
+  ICON_INACTIVE: { scale: 1, opacity: 0.6 },
+  ICON_HOVER: { scale: 1.05 },
+
+  // Reduced motion variants (instant transitions)
+  CONTAINER_REDUCED: {
+    initial: { opacity: 1 },
+    animate: { opacity: 1 }
+  }
+};
+
 // Default export for convenience
 export default {
   SPRING,
@@ -484,5 +516,6 @@ export default {
   CHART_ANIMATION,
   TOAST,
   SUCCESS_ANIMATION,
-  ERROR_ANIMATION
+  ERROR_ANIMATION,
+  BOTTOM_NAV
 };

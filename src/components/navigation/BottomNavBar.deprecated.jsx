@@ -1,3 +1,6 @@
+// @deprecated - Use BottomNavBarV2.jsx instead
+// This file is kept for reference only and should be deleted after v5.0 is stable
+//
 // BottomNavBar.jsx v4.2 - PURE COMPONENT (NO CONTEXT USAGE)
 // Mobile bottom navigation bar with 5 tabs
 //

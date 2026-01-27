@@ -195,7 +195,7 @@ import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
 // Backdrop removed - IconSidebar has its own backdrop in MobileDrawer
 import MinimalTopBar from './components/MinimalTopBar';
-import BottomNavBar from './components/navigation/BottomNavBar';
+import BottomNavBar from './components/navigation/BottomNavBarV2';
 import OfflineIndicator from './components/OfflineIndicator';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppSettingsModal from './components/AppSettingsModal';
@@ -593,9 +593,9 @@ function AppContent() {
         {/* Note: IconSidebar has its own backdrop inside MobileDrawer - no separate Backdrop needed */}
         <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} onOpenSettings={() => setShowSettings(true)} />
 
-        {/* Bottom Navigation Bar - PURE COMPONENT (no context usage) */}
-        {/* v8.23.0: Pass all values as props - isDark and onMoreClick extracted from contexts here */}
-        <BottomNavBar activeTab={activeTab} isDark={isDark} onMoreClick={toggleMobileSidebar} />
+        {/* Bottom Navigation Bar - Glassmorphism floating pill (v1.0) */}
+        {/* Uses useTheme() internally - safe because ThemeContext is memoized */}
+        <BottomNavBar activeTab={activeTab} onMoreClick={toggleMobileSidebar} />
 
         {/* Offline Indicator */}
         <OfflineIndicator lastSyncTime={lastRefreshed} />

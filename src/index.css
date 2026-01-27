@@ -305,6 +305,31 @@ body {
   }
 }
 
+/* Bottom navigation slide-up entrance */
+@keyframes bottomNavSlideUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Bottom navigation - visible state (default, after animation, or reduced motion) */
+.bottom-nav-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Bottom navigation - animating state (plays once on mount) */
+.bottom-nav-animating {
+  opacity: 0;
+  transform: translateY(100px);
+  animation: bottomNavSlideUp 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 /* ============================================
    COSMIC PRECISION UTILITIES (v4.0)
    ============================================ */
