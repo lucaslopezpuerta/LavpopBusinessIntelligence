@@ -1,4 +1,4 @@
-// Bilavnova BI - Tailwind Configuration v4.6
+// Bilavnova BI - Tailwind Configuration v4.7
 // "Cosmic Precision" design system - Space-age futurist aesthetic
 //
 // BRAND COLORS:
@@ -8,9 +8,8 @@
 // - Space Void: #050816 (Deep space background)
 //
 // CHANGELOG:
-// v4.6 (2026-01-27): Bottom nav glassmorphism safelist
-//   - Added bg-space-dust/80, bg-white/90 for floating pill background
-//   - Added border-stellar-cyan/25, bg-stellar-cyan/20 for active indicator
+// v4.7 (2026-01-27): Minimalist Stellar navigation safelist
+//   - Added bg-space-void/90, bg-white/95 for bottom nav background
 // v4.5 (2026-01-20): Cosmic Glass Card safelist for Customers view
 //   - Added bg-space-dust/40, /60 and bg-white/50, /60, /70
 //   - Added bg-space-nebula/50, /60 for glass card backgrounds
@@ -141,9 +140,8 @@ export default {
     'dark:bg-space-dust/40', 'dark:bg-space-dust/50', 'dark:bg-space-dust/60',
     'dark:bg-space-nebula/50',
     'dark:border-amber-500/20',
-    // Bottom nav glassmorphism (v4.6 - BottomNavBarV2)
-    'bg-space-dust/80', 'bg-white/90',
-    'border-stellar-cyan/25', 'bg-stellar-cyan/20',
+    // Minimalist Stellar navigation (v4.7)
+    'bg-space-void/90', 'bg-white/95',
   ],
 
   theme: {

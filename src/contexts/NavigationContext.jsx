@@ -1,40 +1,22 @@
-// NavigationContext.jsx v3.0 - URL-BASED NAVIGATION
+// NavigationContext.jsx v3.1 - URL-BASED NAVIGATION (SIMPLIFIED)
 // Provides navigation state synced with React Router
 //
 // FEATURES:
 // - URL-based tab navigation with React Router
-// - Direction-aware transitions (forward/backward) via ref
 // - Memoized context value for performance
 // - 404 handling with redirect to dashboard
 //
 // CHANGELOG:
-// v3.0 (2026-01-27): Simplified after BottomNavBarV2 migration
-//   - Removed historical flicker-fix changelog entries
-//   - Context value and callbacks remain optimized
+// v3.1 (2026-01-27): Simplified for navigation refactoring
+//   - Removed direction-aware navigation (TAB_ORDER, getTabIndex, getNavigationDirection)
+//   - Page transitions now use "Cosmic Emergence" fade animation
 // v2.7 (2026-01-25): Stable navigateTo callback via ref
-// v2.2 (2026-01-24): Direction-aware navigation
 // v2.1 (2025-12-22): 404 route handling
 // v2.0 (2025-12-16): URL routing integration
 // v1.0 (2025-11-27): Initial implementation
 
 import React, { createContext, useContext, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-
-// Tab order determines navigation direction
-// Forward = higher index, Backward = lower index
-const TAB_ORDER = [
-  'dashboard',    // 0
-  'customers',    // 1
-  'diretorio',    // 2
-  'campaigns',    // 3
-  'social',       // 4
-  'weather',      // 5
-  'intelligence', // 6
-  'operations',   // 7
-  'upload'        // 8
-];
-
-const getTabIndex = (tabId) => TAB_ORDER.indexOf(tabId);
 
 const NavigationContext = createContext();
 
@@ -78,7 +60,6 @@ export const NavigationProvider = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const hasShownToast = useRef(false);
-  const previousTabRef = useRef(null);
   const locationRef = useRef(location.pathname);
 
   // Keep locationRef current (used by navigateTo to avoid recreating callback)
@@ -93,30 +74,6 @@ export const NavigationProvider = ({ children }) => {
       isUnknownRoute: !tab && path !== '/',
     };
   }, [location.pathname]);
-
-  // Store direction in ref - calculated once per activeTab change
-  // This ensures stable value for context memoization
-  const directionRef = useRef(0);
-
-  // Calculate direction when activeTab changes
-  // Uses previousTabRef (old value) before it's updated in the effect below
-  const prevTab = previousTabRef.current;
-  if (prevTab !== null && prevTab !== activeTab) {
-    const prevIndex = getTabIndex(prevTab);
-    const currIndex = getTabIndex(activeTab);
-    if (prevIndex !== -1 && currIndex !== -1) {
-      directionRef.current = currIndex > prevIndex ? 1 : -1;
-    }
-  }
-
-  // Getter function - stable reference for page transition animations
-  // Returns: 1 (forward), -1 (backward), 0 (initial)
-  const getNavigationDirection = useCallback(() => directionRef.current, []);
-
-  // Update previousTab after render (direction already calculated above)
-  useEffect(() => {
-    previousTabRef.current = activeTab;
-  }, [activeTab]);
 
   // Handle 404: log warning and redirect to dashboard
   useEffect(() => {
@@ -147,14 +104,11 @@ export const NavigationProvider = ({ children }) => {
   }, [navigate]);
 
   // Memoize context value to prevent unnecessary re-renders during page transitions
-  // NOTE: getNavigationDirection is a stable function ref - direction changes
-  // don't cause context value to change
   const contextValue = useMemo(() => ({
     activeTab,
     navigateTo,
     isUnknownRoute,
-    getNavigationDirection
-  }), [activeTab, navigateTo, isUnknownRoute, getNavigationDirection]);
+  }), [activeTab, navigateTo, isUnknownRoute]);
 
   return (
     <NavigationContext.Provider value={contextValue}>

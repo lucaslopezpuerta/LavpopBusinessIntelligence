@@ -1,4 +1,4 @@
-// App.jsx v8.24.0 - TOAST NOTIFICATION SYSTEM
+// App.jsx v8.25.0 - NAVIGATION REFACTORING
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -24,31 +24,16 @@
 // ✅ Realtime transaction updates - auto-refresh when new data inserted
 //
 // CHANGELOG:
+// v8.25.0 (2026-01-27): Navigation refactoring
+//   - Removed direction-aware page transitions (getNavigationDirection)
+//   - New page transition: "Cosmic Emergence" (fade + scale + blur)
+//   - New bottom navigation: Minimalist Stellar design (v3.0)
+//   - Cleaned up NavigationContext, animations.js, index.css
 // v8.24.0 (2026-01-27): Toast notification system
 //   - Added ToastProvider context for global toast state management
 //   - Added ToastContainer for rendering toast notifications
 //   - Replaces browser alert() calls with animated toasts
-// v8.23.0 (2026-01-27): BottomNavBar is now a pure component (no context)
-//   - BottomNavBar v4.2 has ZERO context usage (no useSidebar, no useTheme)
-//   - All values passed as props: activeTab, isDark, onMoreClick
-//   - Context re-renders during navigation cannot trigger BottomNavBar re-renders
-//   - Added CSS containment (contain: layout style paint) for isolation
-// v8.22.0 (2026-01-27): Pass activeTab as prop to BottomNavBar
-//   - Root cause: useLocation() in BottomNavBar triggers re-render on URL change
-//   - Fix: Pass activeTab as prop like IconSidebar (no useLocation re-renders)
-//   - BottomNavBar v4.0 now matches IconSidebar's prop-based pattern
-// v8.21.0 (2026-01-25): BottomNavBar same position as IconSidebar
-//   - Moved BottomNavBar inside AppContent (same level as IconSidebar)
-//   - IconSidebar works without flicker because it's a sibling to AnimatePresence
-//   - BottomNavBar now follows the same pattern
-//   - Also removed createPortal from BottomNavBar (v3.6)
-// v8.20.0 (2026-01-25): BottomNavBar isolation (didn't fix flicker)
-//   - Moved BottomNavBar to App level (sibling to AppContent)
-// v8.19.0 (2026-01-25): Removed transitioning flag
-// v8.18.1 (2026-01-25): Animation complete timing fix (REVERTED)
-// v8.18.0 (2026-01-25): Transitioning flag restored (REVERTED)
-// v8.17.2 (2026-01-25): Cleanup - reverted unsuccessful BottomNavBar fix attempts
-// v8.16.0 (2026-01-16): Theme-aware colors fix
+// v8.17.0 (2026-01-16): Theme-aware colors fix
 //   - Converted Tailwind dark: prefixes to JavaScript conditionals
 //   - Uses useTheme hook for reliable dark mode detection
 //   - Matches proven LoadingScreen pattern for consistent theming
@@ -195,7 +180,7 @@ import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
 // Backdrop removed - IconSidebar has its own backdrop in MobileDrawer
 import MinimalTopBar from './components/MinimalTopBar';
-import BottomNavBar from './components/navigation/BottomNavBarV2';
+import BottomNavBar from './components/navigation/BottomNavBar';
 import OfflineIndicator from './components/OfflineIndicator';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppSettingsModal from './components/AppSettingsModal';
@@ -294,7 +279,7 @@ const getLoadingFallback = (tabId) => {
 };
 
 function AppContent() {
-  const { activeTab, navigateTo, getNavigationDirection } = useNavigation();
+  const { activeTab, navigateTo } = useNavigation();
   const { isPinned, toggleMobileSidebar } = useSidebar();
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
@@ -614,10 +599,9 @@ function AppContent() {
           {/* Main Content - Full width with edge-to-edge support */}
           {/* pb-24 on mobile for bottom nav clearance (64px nav + 16px breathing room) */}
           <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 pb-24 lg:pb-6">
-            <AnimatePresence mode="wait" initial={false} custom={getNavigationDirection()}>
+            <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={activeTab}
-                custom={getNavigationDirection()}
                 variants={pageVariants}
                 initial="initial"
                 animate="animate"

@@ -1,12 +1,13 @@
-// animations.js v1.9 - MICRO-INTERACTION ANIMATIONS
+// animations.js v2.0 - MICRO-INTERACTION ANIMATIONS
 // Centralized animation configurations for consistent motion design
 // Design System v5.1 compliant
 //
 // CHANGELOG:
-// v1.9 (2026-01-27): Bottom navigation animations
-//   - Added BOTTOM_NAV for glassmorphism floating pill design
-//   - Container entrance, indicator slide, icon micro-interactions
-//   - Reduced motion support
+// v2.0 (2026-01-27): Navigation refactoring
+//   - Replaced PAGE_TRANSITION with "Cosmic Emergence" (fade + scale + blur)
+//   - Removed direction-aware slide animations
+//   - Removed BOTTOM_NAV (now uses CSS-only animations)
+// v1.9 (2026-01-27): Bottom navigation animations (now removed)
 // v1.8 (2026-01-27): Micro-interaction animations
 //   - Added TOAST animations for notification system
 //   - Added SUCCESS_ANIMATION for checkmark path drawing
@@ -359,41 +360,40 @@ export const BUBBLE_ACTIVE = {
   transitionDuration: 200
 };
 
-// Direction-aware page transitions
-// Uses `custom` prop: 1 (forward), -1 (backward), 0 (initial)
+// Page transitions - "Cosmic Emergence"
+// Elegant fade with subtle scale and blur effect
+// No directional slide - feels refined and cosmic
 export const PAGE_TRANSITION = {
-  initial: (direction) => ({
-    x: direction === 0 ? 0 : direction > 0 ? 100 : -100,
+  initial: {
     opacity: 0,
-  }),
+    scale: 0.98,
+    filter: 'blur(4px)'
+  },
   animate: {
-    x: 0,
     opacity: 1,
+    scale: 1,
+    filter: 'blur(0px)',
     transition: {
-      x: { type: 'tween', duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
-      opacity: { type: 'tween', duration: 0.2, ease: 'easeOut' }
+      duration: 0.25,
+      ease: [0.25, 0.1, 0.25, 1] // Custom cubic-bezier for smooth emergence
     }
   },
-  exit: (direction) => ({
-    x: direction === 0 ? 0 : direction > 0 ? -100 : 100,
+  exit: {
     opacity: 0,
+    scale: 0.98,
+    filter: 'blur(4px)',
     transition: {
-      x: { type: 'tween', duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
-      // DIRECTION-AWARE: Forward uses easeOut (fast exit), Backward uses easeIn (natural)
-      opacity: {
-        type: 'tween',
-        duration: 0.2,
-        ease: direction > 0 ? 'easeOut' : 'easeIn'
-      }
+      duration: 0.2,
+      ease: 'easeIn'
     }
-  })
+  }
 };
 
-// Reduced motion - fade only (no slide)
+// Reduced motion - simple fade only
 export const PAGE_TRANSITION_REDUCED = {
   initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.15 } },
-  exit: { opacity: 0, transition: { duration: 0.15 } }
+  animate: { opacity: 1, transition: { duration: 0.1 } },
+  exit: { opacity: 0, transition: { duration: 0.1 } }
 };
 
 // Toast notification animations
@@ -472,34 +472,6 @@ export const ERROR_ANIMATION = {
   }
 };
 
-// Bottom Navigation animations (v1.9)
-// Used by BottomNavBarV2 for glassmorphism floating pill design
-export const BOTTOM_NAV = {
-  // Container entrance (slide up from bottom) - runs ONCE on mount
-  CONTAINER: {
-    initial: { y: 100, opacity: 0 },
-    animate: { y: 0, opacity: 1 },
-    transition: { type: 'spring', stiffness: 400, damping: 30 }
-  },
-
-  // Active indicator sliding pill - spring physics
-  INDICATOR: {
-    transition: { type: 'spring', stiffness: 500, damping: 30 }
-  },
-
-  // Icon micro-interactions
-  ICON_TAP: { scale: 0.9 },
-  ICON_ACTIVE: { scale: 1.1 },
-  ICON_INACTIVE: { scale: 1, opacity: 0.6 },
-  ICON_HOVER: { scale: 1.05 },
-
-  // Reduced motion variants (instant transitions)
-  CONTAINER_REDUCED: {
-    initial: { opacity: 1 },
-    animate: { opacity: 1 }
-  }
-};
-
 // Default export for convenience
 export default {
   SPRING,
@@ -516,6 +488,5 @@ export default {
   CHART_ANIMATION,
   TOAST,
   SUCCESS_ANIMATION,
-  ERROR_ANIMATION,
-  BOTTOM_NAV
+  ERROR_ANIMATION
 };

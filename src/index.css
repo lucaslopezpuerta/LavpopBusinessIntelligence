@@ -1,9 +1,12 @@
-/* Bilavnova BI - Base Styles v4.1 (Cosmic Effects)
+/* Bilavnova BI - Base Styles v4.2 (Minimalist Stellar Navigation)
  * Space-age futurist design system
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
  *
  * CHANGELOG:
+ * v4.2 (2026-01-27): Minimalist Stellar Navigation
+ *   - Removed old bottom-nav animation classes
+ *   - Added stellar-glow, nav-top-fade, nav-entrance utilities
  * v4.1 (2026-01-16): Cosmic Effects - animated borders, dividers, hover effects, backgrounds
  * v4.0 (2025-01-16): Cosmic Precision - Orbitron font, starfield, glassmorphism
  * v3.0 (2025-11-23): Google Fonts (Inter, JetBrains Mono), enhanced animations
@@ -305,29 +308,66 @@ body {
   }
 }
 
-/* Bottom navigation slide-up entrance */
-@keyframes bottomNavSlideUp {
+/* ============================================
+   MINIMALIST STELLAR NAVIGATION (v4.2)
+   ============================================ */
+
+/* Active icon glow effect */
+.stellar-glow {
+  filter: drop-shadow(0 0 8px rgba(0, 174, 239, 0.5));
+}
+
+/* Dark mode - stronger glow */
+.dark .stellar-glow {
+  filter: drop-shadow(0 0 12px rgba(0, 174, 239, 0.6));
+}
+
+/* Top edge gradient fade (instead of border) */
+.nav-top-fade {
+  position: relative;
+}
+
+.nav-top-fade::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0, 174, 239, 0.3),
+    transparent
+  );
+}
+
+.dark .nav-top-fade::before {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0, 174, 239, 0.5),
+    transparent
+  );
+}
+
+/* Entrance animation - simple fade-up */
+@keyframes nav-fade-up {
   from {
-    transform: translateY(100px);
     opacity: 0;
+    transform: translateY(16px);
   }
   to {
-    transform: translateY(0);
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* Bottom navigation - visible state (default, after animation, or reduced motion) */
-.bottom-nav-visible {
-  opacity: 1;
-  transform: translateY(0);
+.nav-entrance {
+  animation: nav-fade-up 300ms ease-out forwards;
 }
 
-/* Bottom navigation - animating state (plays once on mount) */
-.bottom-nav-animating {
-  opacity: 0;
-  transform: translateY(100px);
-  animation: bottomNavSlideUp 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+/* Safe area padding for bottom nav */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 8px);
 }
 
 /* ============================================
