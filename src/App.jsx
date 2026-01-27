@@ -1,4 +1,4 @@
-// App.jsx v8.18.0 - TRANSITIONING FLAG FOR BOTTOMNAVBAR
+// App.jsx v8.24.0 - TOAST NOTIFICATION SYSTEM
 // ✅ Premium loading screen with animated data source indicators
 // ✅ Smart error categorization with user-friendly messages
 // ✅ Minimalist icon sidebar with hover expansion
@@ -24,11 +24,29 @@
 // ✅ Realtime transaction updates - auto-refresh when new data inserted
 //
 // CHANGELOG:
-// v8.18.0 (2026-01-25): Transitioning flag for BottomNavBar fade fix
-//   - Sets isTransitioning=true when activeTab changes (via useEffect)
-//   - Sets isTransitioning=false when page animation completes (onAnimationComplete)
-//   - BottomNavItem reads flag to disable CSS transitions during page animation
-//   - Root cause: React reconciliation timing - nav re-renders before animation starts
+// v8.24.0 (2026-01-27): Toast notification system
+//   - Added ToastProvider context for global toast state management
+//   - Added ToastContainer for rendering toast notifications
+//   - Replaces browser alert() calls with animated toasts
+// v8.23.0 (2026-01-27): BottomNavBar is now a pure component (no context)
+//   - BottomNavBar v4.2 has ZERO context usage (no useSidebar, no useTheme)
+//   - All values passed as props: activeTab, isDark, onMoreClick
+//   - Context re-renders during navigation cannot trigger BottomNavBar re-renders
+//   - Added CSS containment (contain: layout style paint) for isolation
+// v8.22.0 (2026-01-27): Pass activeTab as prop to BottomNavBar
+//   - Root cause: useLocation() in BottomNavBar triggers re-render on URL change
+//   - Fix: Pass activeTab as prop like IconSidebar (no useLocation re-renders)
+//   - BottomNavBar v4.0 now matches IconSidebar's prop-based pattern
+// v8.21.0 (2026-01-25): BottomNavBar same position as IconSidebar
+//   - Moved BottomNavBar inside AppContent (same level as IconSidebar)
+//   - IconSidebar works without flicker because it's a sibling to AnimatePresence
+//   - BottomNavBar now follows the same pattern
+//   - Also removed createPortal from BottomNavBar (v3.6)
+// v8.20.0 (2026-01-25): BottomNavBar isolation (didn't fix flicker)
+//   - Moved BottomNavBar to App level (sibling to AppContent)
+// v8.19.0 (2026-01-25): Removed transitioning flag
+// v8.18.1 (2026-01-25): Animation complete timing fix (REVERTED)
+// v8.18.0 (2026-01-25): Transitioning flag restored (REVERTED)
 // v8.17.2 (2026-01-25): Cleanup - reverted unsuccessful BottomNavBar fix attempts
 // v8.16.0 (2026-01-16): Theme-aware colors fix
 //   - Converted Tailwind dark: prefixes to JavaScript conditionals
@@ -168,6 +186,8 @@ import { DataFreshnessProvider } from './contexts/DataFreshnessContext';
 import { RealtimeSyncProvider } from './contexts/RealtimeSyncContext';
 import { AppSettingsProvider } from './contexts/AppSettingsContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
+import ToastContainer from './components/ui/ToastContainer';
 import LoginPage from './components/auth/LoginPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { loadAllData } from './utils/supabaseLoader';
@@ -274,8 +294,8 @@ const getLoadingFallback = (tabId) => {
 };
 
 function AppContent() {
-  const { activeTab, navigateTo, getNavigationDirection, setIsTransitioning } = useNavigation();
-  const { isPinned } = useSidebar();
+  const { activeTab, navigateTo, getNavigationDirection } = useNavigation();
+  const { isPinned, toggleMobileSidebar } = useSidebar();
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
   const pageVariants = prefersReducedMotion ? PAGE_TRANSITION_REDUCED : PAGE_TRANSITION;
@@ -508,13 +528,6 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [activeTab]);
 
-  // Set transitioning flag when activeTab changes
-  // This disables BottomNavItem CSS transitions during page animation
-  // Flag is cleared in motion.div onAnimationComplete callback
-  useEffect(() => {
-    setIsTransitioning(true);
-  }, [activeTab, setIsTransitioning]);
-
   // Note: Realtime sync for contact_tracking is handled by useContactTracking hook
   // which listens to 'contactTrackingUpdate' events dispatched by RealtimeSyncProvider
   // This provides instant contact status updates on mobile without full data refresh
@@ -580,6 +593,10 @@ function AppContent() {
         {/* Note: IconSidebar has its own backdrop inside MobileDrawer - no separate Backdrop needed */}
         <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} onOpenSettings={() => setShowSettings(true)} />
 
+        {/* Bottom Navigation Bar - PURE COMPONENT (no context usage) */}
+        {/* v8.23.0: Pass all values as props - isDark and onMoreClick extracted from contexts here */}
+        <BottomNavBar activeTab={activeTab} isDark={isDark} onMoreClick={toggleMobileSidebar} />
+
         {/* Offline Indicator */}
         <OfflineIndicator lastSyncTime={lastRefreshed} />
 
@@ -605,7 +622,6 @@ function AppContent() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                onAnimationComplete={() => setIsTransitioning(false)}
               >
                 <Suspense fallback={getLoadingFallback(activeTab)}>
                   {/* Defensive check: show skeleton if data is missing/invalid */}
@@ -664,8 +680,7 @@ function AppContent() {
         </footer>
       </div>
 
-        {/* Bottom Navigation Bar (mobile only) - MUST be outside content wrapper for proper fixed positioning */}
-        <BottomNavBar />
+        {/* Bottom Navigation Bar moved to App level - see route element above */}
 
         {/* Settings Modal */}
         <AppSettingsModal
@@ -709,7 +724,10 @@ function App() {
                         <DataFreshnessProvider>
                           <RealtimeSyncProvider>
                             <AppSettingsProvider>
-                              <AppContent />
+                              <ToastProvider>
+                                <AppContent />
+                                <ToastContainer />
+                              </ToastProvider>
                             </AppSettingsProvider>
                           </RealtimeSyncProvider>
                         </DataFreshnessProvider>

@@ -1,11 +1,11 @@
-// CosmicDatePicker.jsx v1.2
+// CosmicDatePicker.jsx v1.3
 // Custom date picker with cosmic Design System styling
 // Replaces native <input type="date"> for consistent theming
 //
 // FEATURES:
 // - Full calendar popup with month navigation
 // - Glassmorphism panel with stellar-cyan accents
-// - Framer Motion animations
+// - Framer Motion animations with day button micro-interactions
 // - Keyboard navigation (Arrow keys, Enter, Escape)
 // - Click outside to close
 // - Touch-friendly
@@ -23,6 +23,11 @@
 // />
 //
 // CHANGELOG:
+// v1.3 (2026-01-27): Micro-interaction animations
+//   - Day buttons now have hover/tap animations with motion.button
+//   - Navigation buttons have scale feedback
+//   - Uses SPRING constants from animations.js
+//   - Respects useReducedMotion for accessibility
 // v1.2 (2026-01-18): Compact layout
 //   - Reduced calendar width: w-72 → w-64
 //   - Smaller day cells: w-9 h-9 → w-8 h-8
@@ -37,7 +42,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { haptics } from '../../utils/haptics';
+import { SPRING } from '../../constants/animations';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MONTHS = [
@@ -60,6 +67,7 @@ const CosmicDatePicker = ({
   const [focusedDate, setFocusedDate] = useState(null);
   const containerRef = useRef(null);
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   // View state for calendar navigation
   const [viewMonth, setViewMonth] = useState(() => {
@@ -324,9 +332,12 @@ const CosmicDatePicker = ({
           >
             {/* Month/Year header with navigation */}
             <div className="flex items-center justify-between mb-2">
-              <button
+              <motion.button
                 type="button"
                 onClick={goToPrevMonth}
+                whileHover={!prefersReducedMotion ? { scale: 1.1 } : undefined}
+                whileTap={!prefersReducedMotion ? { scale: 0.9 } : undefined}
+                transition={SPRING.QUICK}
                 className={`
                   p-1 rounded-md transition-colors duration-150
                   ${isDark
@@ -336,15 +347,18 @@ const CosmicDatePicker = ({
                 aria-label="Mês anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
-              </button>
+              </motion.button>
 
               <span className={`font-semibold text-xs ${isDark ? 'text-white' : 'text-slate-800'}`}>
                 {MONTHS[viewMonth.month]} {viewMonth.year}
               </span>
 
-              <button
+              <motion.button
                 type="button"
                 onClick={goToNextMonth}
+                whileHover={!prefersReducedMotion ? { scale: 1.1 } : undefined}
+                whileTap={!prefersReducedMotion ? { scale: 0.9 } : undefined}
+                transition={SPRING.QUICK}
                 className={`
                   p-1 rounded-md transition-colors duration-150
                   ${isDark
@@ -354,7 +368,7 @@ const CosmicDatePicker = ({
                 aria-label="Próximo mês"
               >
                 <ChevronRight className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
 
             {/* Weekday headers */}
@@ -391,7 +405,7 @@ const CosmicDatePicker = ({
                 const isFocused = focusedDate && focusedDate.day === dayObj.day;
 
                 return (
-                  <button
+                  <motion.button
                     key={dayObj.day}
                     type="button"
                     role="gridcell"
@@ -399,6 +413,9 @@ const CosmicDatePicker = ({
                     disabled={dayObj.disabled}
                     onClick={() => handleSelectDate(dayObj.day)}
                     onMouseEnter={() => setFocusedDate({ day: dayObj.day })}
+                    whileHover={!prefersReducedMotion && !dayObj.disabled ? { scale: 1.15 } : undefined}
+                    whileTap={!prefersReducedMotion && !dayObj.disabled ? { scale: 0.9 } : undefined}
+                    transition={SPRING.QUICK}
                     className={`
                       w-8 h-8 rounded-md flex items-center justify-center text-xs
                       transition-colors duration-100
@@ -422,7 +439,7 @@ const CosmicDatePicker = ({
                     `}
                   >
                     {dayObj.day}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>

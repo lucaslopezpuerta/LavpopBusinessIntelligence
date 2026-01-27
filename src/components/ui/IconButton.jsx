@@ -1,7 +1,12 @@
-// IconButton.jsx v1.0 - Shared icon button component
+// IconButton.jsx v2.0 - Shared icon button component with Framer Motion
 // Reusable icon button with consistent sizing and accessibility
 //
 // CHANGELOG:
+// v2.0 (2026-01-27): Framer Motion upgrade
+//   - Converted to motion.button for smooth animations
+//   - Added whileHover and whileTap with INTERACTIVE constants
+//   - Added haptic feedback on tap
+//   - Respects useReducedMotion for accessibility
 // v1.0 (2025-12-22): Initial implementation
 //   - 44px minimum touch target for accessibility
 //   - Active state support
@@ -9,6 +14,10 @@
 //   - Press feedback with scale animation
 
 import React from 'react';
+import { motion } from 'framer-motion';
+import { SPRING, INTERACTIVE } from '../../constants/animations';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { haptics } from '../../utils/haptics';
 
 const IconButton = ({
   icon: Icon,
@@ -19,23 +28,40 @@ const IconButton = ({
   className = '',
   size = 'default', // 'small' | 'default'
 }) => {
+  const prefersReducedMotion = useReducedMotion();
+
   const sizeClasses = size === 'small'
     ? 'min-h-[36px] min-w-[36px] p-1.5'
     : 'min-h-[44px] min-w-[44px] p-2';
 
   const iconSize = size === 'small' ? 'w-4 h-4' : 'w-5 h-5';
 
+  const handleClick = (e) => {
+    if (!disabled) {
+      haptics.light();
+      onClick?.(e);
+    }
+  };
+
+  // Animation props - disabled when reduced motion is preferred or button is disabled
+  const animationProps = (!prefersReducedMotion && !disabled) ? {
+    whileHover: INTERACTIVE.ICON_HOVER,
+    whileTap: INTERACTIVE.ICON_TAP,
+    transition: SPRING.SNAPPY
+  } : {};
+
   return (
-    <button
-      onClick={onClick}
+    <motion.button
+      onClick={handleClick}
       disabled={disabled}
       title={label}
       aria-label={label}
+      {...animationProps}
       className={`
         flex items-center justify-center rounded-lg
-        transition-all duration-200 active:scale-95
+        transition-colors duration-200
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
-        disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
+        disabled:opacity-50 disabled:cursor-not-allowed
         ${sizeClasses}
         ${active
           ? 'bg-lavpop-blue/10 text-lavpop-blue dark:bg-blue-500/20 dark:text-blue-400'
@@ -45,7 +71,7 @@ const IconButton = ({
       `}
     >
       <Icon className={iconSize} />
-    </button>
+    </motion.button>
   );
 };
 

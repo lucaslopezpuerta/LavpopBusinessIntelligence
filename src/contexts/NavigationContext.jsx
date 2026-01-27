@@ -1,12 +1,16 @@
-// NavigationContext.jsx v2.5 - TRANSITIONING FLAG
+// NavigationContext.jsx v2.7 - STABLE CONTEXT VALUE
 // Provides navigation state synced with React Router
 //
 // CHANGELOG:
-// v2.5 (2026-01-25): Transitioning flag for BottomNavBar fade fix
-//   - Added isTransitioning state and setIsTransitioning function
-//   - App.jsx sets true on navigation, false on animation complete
-//   - BottomNavItem disables CSS transitions when isTransitioning=true
-//   - Fixes BottomNavBar fade during page transitions
+// v2.7 (2026-01-25): Stable navigateTo callback via ref
+//   - navigateTo now uses locationRef instead of location.pathname dependency
+//   - Callback reference stays stable across URL changes
+//   - Combined with v2.6, context now only changes when activeTab changes
+// v2.6 (2026-01-25): Removed isTransitioning flag
+//   - REMOVED: isTransitioning state (caused double re-renders during navigation)
+//   - Context value now only changes when activeTab changes
+//   - Fixes BottomNavBar flicker during page transitions
+// v2.5 (2026-01-25): Transitioning flag for BottomNavBar fade fix (REVERTED)
 // v2.4 (2026-01-25): Ref-based direction getter
 //   - Direction exposed via getNavigationDirection() function instead of value
 //   - Prevents BottomNavBar/IconSidebar re-renders during page transitions
@@ -30,7 +34,7 @@
 // v1.0 (2025-11-27): Initial implementation
 //   - State-based navigation
 
-import React, { createContext, useContext, useCallback, useMemo, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 // Tab order determines navigation direction
@@ -92,10 +96,10 @@ export const NavigationProvider = ({ children }) => {
   const navigate = useNavigate();
   const hasShownToast = useRef(false);
   const previousTabRef = useRef(null);
+  const locationRef = useRef(location.pathname);
 
-  // Transitioning flag - true during page transition animations
-  // Used by BottomNavItem to disable CSS transitions during page navigation
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  // Keep locationRef current (used by navigateTo to avoid recreating callback)
+  locationRef.current = location.pathname;
 
   // Derive activeTab from URL path
   const { activeTab, isUnknownRoute } = useMemo(() => {
@@ -120,16 +124,13 @@ export const NavigationProvider = ({ children }) => {
     if (prevIndex !== -1 && currIndex !== -1) {
       directionRef.current = currIndex > prevIndex ? 1 : -1;
     }
-  } else if (prevTab === activeTab) {
-    // Reset direction when staying on same tab
-    directionRef.current = 0;
   }
 
   // Getter function - stable reference, doesn't trigger re-renders in consumers
   // Only App.jsx needs this for page transition animations
   const getNavigationDirection = useCallback(() => directionRef.current, []);
 
-  // Update previousTab after render (direction already calculated)
+  // Update previousTab after render (direction already calculated above)
   useEffect(() => {
     previousTabRef.current = activeTab;
   }, [activeTab]);
@@ -154,26 +155,24 @@ export const NavigationProvider = ({ children }) => {
   }, [isUnknownRoute]);
 
   // Navigate by changing URL
+  // Uses ref for pathname to keep callback stable (prevents context re-renders)
   const navigateTo = useCallback((tabId) => {
     const route = TAB_TO_ROUTE[tabId];
-    if (route && route !== location.pathname) {
+    if (route && route !== locationRef.current) {
       navigate(route);
     }
-  }, [navigate, location.pathname]);
+  }, [navigate]);
 
   // Memoize context value to prevent unnecessary re-renders of consumers
   // (BottomNavBar, IconSidebar, etc.) during page transitions
   // NOTE: getNavigationDirection is a stable function ref - direction changes
   // don't cause context value to change, so consumers don't re-render
-  // NOTE: setIsTransitioning is stable (from useState), doesn't cause re-renders
   const contextValue = useMemo(() => ({
     activeTab,
     navigateTo,
     isUnknownRoute,
-    getNavigationDirection,
-    isTransitioning,
-    setIsTransitioning
-  }), [activeTab, navigateTo, isUnknownRoute, getNavigationDirection, isTransitioning]);
+    getNavigationDirection
+  }), [activeTab, navigateTo, isUnknownRoute, getNavigationDirection]);
 
   return (
     <NavigationContext.Provider value={contextValue}>

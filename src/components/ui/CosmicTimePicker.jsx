@@ -1,11 +1,11 @@
-// CosmicTimePicker.jsx v1.1
+// CosmicTimePicker.jsx v1.2
 // Custom time picker with cosmic Design System styling
 // Replaces native <input type="time"> for consistent theming
 //
 // FEATURES:
 // - Hour/minute scroll columns with 24h format
 // - Glassmorphism panel with stellar-cyan accents
-// - Framer Motion animations
+// - Framer Motion animations with micro-interactions
 // - Keyboard navigation (Arrow keys, Enter, Escape)
 // - Click outside to close
 // - Touch-friendly with haptic feedback
@@ -23,6 +23,11 @@
 // />
 //
 // CHANGELOG:
+// v1.2 (2026-01-27): Micro-interaction animations
+//   - Hour/minute buttons now have hover/tap animations
+//   - Confirm button has scale feedback
+//   - Uses SPRING constants from animations.js
+//   - Respects useReducedMotion for accessibility
 // v1.1 (2026-01-18): Right-align support
 //   - Added rightAlign prop to prevent popup from going off-screen
 //   - Popup aligns to right edge of trigger when rightAlign is true
@@ -35,7 +40,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { haptics } from '../../utils/haptics';
+import { SPRING } from '../../constants/animations';
 
 // Generate hour options (00-23)
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
@@ -58,6 +65,7 @@ const CosmicTimePicker = ({
   const hourListRef = useRef(null);
   const minuteListRef = useRef(null);
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   // Parse value to get hour and minute
   const parsedTime = useMemo(() => {
@@ -231,10 +239,13 @@ const CosmicTimePicker = ({
                   className="h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600"
                 >
                   {HOURS.map((hour) => (
-                    <button
+                    <motion.button
                       key={hour}
                       type="button"
                       onClick={() => handleHourSelect(hour)}
+                      whileHover={!prefersReducedMotion ? { scale: 1.05 } : undefined}
+                      whileTap={!prefersReducedMotion ? { scale: 0.95 } : undefined}
+                      transition={SPRING.QUICK}
                       className={`
                         w-full h-9 rounded-md flex items-center justify-center text-sm
                         transition-colors duration-100 cursor-pointer
@@ -246,7 +257,7 @@ const CosmicTimePicker = ({
                       `}
                     >
                       {hour}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
@@ -266,10 +277,13 @@ const CosmicTimePicker = ({
                   className="h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600"
                 >
                   {minuteOptions.map((minute) => (
-                    <button
+                    <motion.button
                       key={minute}
                       type="button"
                       onClick={() => handleMinuteSelect(minute)}
+                      whileHover={!prefersReducedMotion ? { scale: 1.05 } : undefined}
+                      whileTap={!prefersReducedMotion ? { scale: 0.95 } : undefined}
+                      transition={SPRING.QUICK}
                       className={`
                         w-full h-9 rounded-md flex items-center justify-center text-sm
                         transition-colors duration-100 cursor-pointer
@@ -281,7 +295,7 @@ const CosmicTimePicker = ({
                       `}
                     >
                       {minute}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
@@ -289,9 +303,12 @@ const CosmicTimePicker = ({
 
             {/* Confirm button */}
             <div className="mt-2 pt-2 border-t border-slate-200 dark:border-stellar-cyan/10">
-              <button
+              <motion.button
                 type="button"
                 onClick={handleConfirm}
+                whileHover={!prefersReducedMotion ? { scale: 1.02 } : undefined}
+                whileTap={!prefersReducedMotion ? { scale: 0.98 } : undefined}
+                transition={SPRING.SNAPPY}
                 className={`
                   w-full py-1.5 text-xs font-medium rounded-md
                   transition-colors duration-150
@@ -300,7 +317,7 @@ const CosmicTimePicker = ({
                 `}
               >
                 Confirmar {selectedHour}:{selectedMinute}
-              </button>
+              </motion.button>
             </div>
           </motion.div>
         )}

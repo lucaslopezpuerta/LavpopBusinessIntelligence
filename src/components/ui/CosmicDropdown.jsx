@@ -1,15 +1,16 @@
-// CosmicDropdown.jsx v1.1.0
+// CosmicDropdown.jsx v1.2.0
 // Custom dropdown component with cosmic Design System styling
 // Replaces native <select> elements for consistent theming
 //
 // FEATURES:
 // - Glassmorphism panel with stellar-cyan accents
-// - Framer Motion animations
+// - Framer Motion animations with staggered options
 // - Keyboard navigation (Arrow keys, Enter, Escape)
 // - Click outside to close
 // - Touch-friendly with haptic feedback
 // - Accessible with ARIA attributes
 // - Drop-up support for bottom-positioned dropdowns
+// - Animated checkmark for selected option
 //
 // USAGE:
 // <CosmicDropdown
@@ -20,6 +21,11 @@
 // />
 //
 // CHANGELOG:
+// v1.2.0 (2026-01-27): Micro-interaction animations
+//   - Added staggered option entrance animations
+//   - Animated checkmark with spring physics
+//   - Option hover animations with motion.div
+//   - Uses SPRING and STAGGER constants from animations.js
 // v1.1.0 (2026-01-18): Drop-up support
 //   - Added dropUp prop to open menu above the trigger
 //   - Adjusted animation direction for drop-up mode
@@ -32,7 +38,42 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { haptics } from '../../utils/haptics';
+import { SPRING, STAGGER } from '../../constants/animations';
+
+// Staggered list container variants
+const listVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      ...STAGGER.FAST,
+      when: 'beforeChildren'
+    }
+  },
+  exit: { opacity: 0 }
+};
+
+// Individual option variants
+const optionVariants = {
+  hidden: { opacity: 0, x: -8 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: SPRING.QUICK
+  }
+};
+
+// Checkmark animation
+const checkVariants = {
+  hidden: { scale: 0, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: SPRING.BOUNCY
+  }
+};
 
 const CosmicDropdown = ({
   value,
@@ -47,6 +88,7 @@ const CosmicDropdown = ({
   const containerRef = useRef(null);
   const listRef = useRef(null);
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   // Find current selected option
   const selectedOption = options.find(opt => opt.value === value);
@@ -171,7 +213,7 @@ const CosmicDropdown = ({
             initial={{ opacity: 0, y: dropUp ? 4 : -4, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: dropUp ? 4 : -4, scale: 0.95 }}
-            transition={{ duration: 0.12 }}
+            transition={SPRING.SMOOTH}
             className={`
               absolute z-50 w-full min-w-[160px]
               ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}
@@ -187,41 +229,58 @@ const CosmicDropdown = ({
             role="listbox"
             ref={listRef}
           >
-            {options.map((option, index) => {
-              const isSelected = option.value === value;
-              const isHighlighted = index === highlightedIndex;
+            <motion.div
+              variants={prefersReducedMotion ? undefined : listVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              {options.map((option, index) => {
+                const isSelected = option.value === value;
+                const isHighlighted = index === highlightedIndex;
 
-              return (
-                <div
-                  key={option.value}
-                  role="option"
-                  aria-selected={isSelected}
-                  onClick={() => handleSelect(option.value)}
-                  onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`
-                    flex items-center justify-between gap-2
-                    px-3 py-2 cursor-pointer
-                    text-sm font-medium
-                    transition-colors duration-100
-                    ${isHighlighted
-                      ? isDark
-                        ? 'bg-stellar-cyan/15 text-white'
-                        : 'bg-stellar-cyan/10 text-slate-900'
-                      : isDark
-                        ? 'text-slate-300 hover:bg-white/5'
-                        : 'text-slate-700 hover:bg-slate-50'}
-                    ${isSelected
-                      ? 'text-stellar-cyan'
-                      : ''}
-                  `}
-                >
-                  <span className="truncate">{option.label}</span>
-                  {isSelected && (
-                    <Check className="w-4 h-4 flex-shrink-0 text-stellar-cyan" />
-                  )}
-                </div>
-              );
-            })}
+                return (
+                  <motion.div
+                    key={option.value}
+                    variants={prefersReducedMotion ? undefined : optionVariants}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => handleSelect(option.value)}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                    className={`
+                      flex items-center justify-between gap-2
+                      px-3 py-2 cursor-pointer
+                      text-sm font-medium
+                      transition-colors duration-100
+                      ${isHighlighted
+                        ? isDark
+                          ? 'bg-stellar-cyan/15 text-white'
+                          : 'bg-stellar-cyan/10 text-slate-900'
+                        : isDark
+                          ? 'text-slate-300 hover:bg-white/5'
+                          : 'text-slate-700 hover:bg-slate-50'}
+                      ${isSelected
+                        ? 'text-stellar-cyan'
+                        : ''}
+                    `}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    <AnimatePresence>
+                      {isSelected && (
+                        <motion.div
+                          variants={prefersReducedMotion ? undefined : checkVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit="hidden"
+                        >
+                          <Check className="w-4 h-4 flex-shrink-0 text-stellar-cyan" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

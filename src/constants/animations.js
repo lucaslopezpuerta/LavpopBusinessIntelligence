@@ -1,8 +1,22 @@
-// animations.js v1.5
+// animations.js v1.8 - MICRO-INTERACTION ANIMATIONS
 // Centralized animation configurations for consistent motion design
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.8 (2026-01-27): Micro-interaction animations
+//   - Added TOAST animations for notification system
+//   - Added SUCCESS_ANIMATION for checkmark path drawing
+//   - Added ERROR_ANIMATION for shake effects
+//   - Added INTERACTIVE.FIELD_FOCUS and OPTION_HOVER
+// v1.7 (2026-01-27): Direction-aware exit easing for page transitions
+//   - Forward navigation: exit opacity uses easeOut (fast exit, no lingering)
+//   - Backward navigation: exit opacity uses easeIn (natural deceleration)
+//   - Reduced exit opacity duration from 0.3s to 0.2s
+//   - Fixes BottomNavBar flicker during forward navigation
+// v1.6 (2026-01-25): Opacity duration sync for page transitions
+//   - Changed opacity duration from 0.2s to 0.3s (matches slide duration)
+//   - Fixes page becoming invisible before slide animation completes
+//   - Both animate and exit now have synchronized x/opacity timing
 // v1.5 (2026-01-25): Cleanup - restored original page transitions
 //   - Reverted PAGE_TRANSITION to include opacity (original behavior)
 //   - Previous attempts to fix BottomNavBar fade didn't work
@@ -261,7 +275,19 @@ export const INTERACTIVE = {
 
   // Icon button
   ICON_TAP: { scale: 0.9 },
-  ICON_HOVER: { scale: 1.1 }
+  ICON_HOVER: { scale: 1.1 },
+
+  // Form field focus
+  FIELD_FOCUS: {
+    scale: 1.01,
+    transition: SPRING.QUICK
+  },
+
+  // Dropdown option hover
+  OPTION_HOVER: {
+    backgroundColor: 'rgba(0, 174, 239, 0.1)', // stellar-cyan at 10%
+    transition: { duration: 0.15 }
+  }
 };
 
 // Mobile bottom sheet animations
@@ -349,7 +375,12 @@ export const PAGE_TRANSITION = {
     opacity: 0,
     transition: {
       x: { type: 'tween', duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
-      opacity: { type: 'tween', duration: 0.2, ease: 'easeIn' }
+      // DIRECTION-AWARE: Forward uses easeOut (fast exit), Backward uses easeIn (natural)
+      opacity: {
+        type: 'tween',
+        duration: 0.2,
+        ease: direction > 0 ? 'easeOut' : 'easeIn'
+      }
     }
   })
 };
@@ -359,6 +390,82 @@ export const PAGE_TRANSITION_REDUCED = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.15 } },
   exit: { opacity: 0, transition: { duration: 0.15 } }
+};
+
+// Toast notification animations
+export const TOAST = {
+  // Entry from top
+  ENTER: {
+    initial: { opacity: 0, y: -20, scale: 0.95 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    transition: SPRING.SNAPPY
+  },
+  // Exit animation
+  EXIT: {
+    opacity: 0,
+    y: -20,
+    scale: 0.95,
+    transition: { type: 'tween', duration: 0.15, ease: 'easeIn' }
+  },
+  // Reduced motion variants
+  ENTER_REDUCED: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    transition: { duration: 0.1 }
+  },
+  EXIT_REDUCED: {
+    opacity: 0,
+    transition: { duration: 0.1 }
+  }
+};
+
+// Success animation (SVG checkmark)
+export const SUCCESS_ANIMATION = {
+  // Container scale-up
+  CONTAINER: {
+    initial: { scale: 0 },
+    animate: { scale: 1 },
+    transition: SPRING.BOUNCY
+  },
+  // Circle path drawing
+  CIRCLE: {
+    initial: { pathLength: 0 },
+    animate: { pathLength: 1 },
+    transition: { duration: 0.5, ease: 'easeOut' }
+  },
+  // Checkmark path drawing
+  CHECK: {
+    initial: { pathLength: 0 },
+    animate: { pathLength: 1 },
+    transition: { duration: 0.4, delay: 0.3, ease: 'easeOut' }
+  }
+};
+
+// Error animation (SVG X with shake)
+export const ERROR_ANIMATION = {
+  // Container with shake
+  CONTAINER: {
+    initial: { scale: 0 },
+    animate: { scale: 1 },
+    transition: SPRING.BOUNCY
+  },
+  // Circle path drawing
+  CIRCLE: {
+    initial: { pathLength: 0 },
+    animate: { pathLength: 1 },
+    transition: { duration: 0.5, ease: 'easeOut' }
+  },
+  // X path drawing
+  X_LINE: {
+    initial: { pathLength: 0 },
+    animate: { pathLength: 1 },
+    transition: { duration: 0.3, delay: 0.3, ease: 'easeOut' }
+  },
+  // Shake effect keyframes
+  SHAKE: {
+    x: [0, -10, 10, -10, 10, 0],
+    transition: { duration: 0.5, delay: 0.6 }
+  }
 };
 
 // Default export for convenience
@@ -374,5 +481,8 @@ export default {
   BUBBLE_ACTIVE,
   PAGE_TRANSITION,
   PAGE_TRANSITION_REDUCED,
-  CHART_ANIMATION
+  CHART_ANIMATION,
+  TOAST,
+  SUCCESS_ANIMATION,
+  ERROR_ANIMATION
 };
