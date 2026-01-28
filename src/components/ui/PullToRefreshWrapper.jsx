@@ -1,4 +1,4 @@
-// PullToRefreshWrapper.jsx v2.1 - REFINED ANIMATIONS
+// PullToRefreshWrapper.jsx v2.2 - ACCESSIBILITY
 // Reusable pull-to-refresh container for mobile views
 //
 // FEATURES:
@@ -17,6 +17,9 @@
 // </PullToRefreshWrapper>
 //
 // CHANGELOG:
+// v2.2 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Animations disabled/simplified when user prefers reduced motion
 // v2.1 (2026-01-27): Animation refinements
 //   - Smoothed icon rotation during pull (spring interpolation)
 //   - Faster exit animation for snappy dismiss
@@ -35,6 +38,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
 import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { PULL_REFRESH } from '../../constants/animations';
+import useReducedMotion from '../../hooks/useReducedMotion';
 
 const PullToRefreshWrapper = ({
   children,
@@ -42,6 +46,8 @@ const PullToRefreshWrapper = ({
   className = '',
   disabled = false
 }) => {
+  const prefersReducedMotion = useReducedMotion();
+
   const handleRefresh = useCallback(async () => {
     if (disabled || !onRefresh) return;
     await onRefresh();
@@ -88,10 +94,10 @@ const PullToRefreshWrapper = ({
               top: `calc(env(safe-area-inset-top, 0px) + ${indicatorTop}px)`,
               x: '-50%', // Framer Motion handles centering
             }}
-            initial={PULL_REFRESH.INDICATOR.initial}
-            animate={PULL_REFRESH.INDICATOR.animate}
-            exit={PULL_REFRESH.INDICATOR.exit}
-            transition={isPulling ? PULL_REFRESH.INDICATOR.transition : PULL_REFRESH.EXIT_TRANSITION}
+            initial={prefersReducedMotion ? { opacity: 1, scale: 1 } : PULL_REFRESH.INDICATOR.initial}
+            animate={prefersReducedMotion ? { opacity: 1, scale: 1 } : PULL_REFRESH.INDICATOR.animate}
+            exit={prefersReducedMotion ? { opacity: 0 } : PULL_REFRESH.INDICATOR.exit}
+            transition={prefersReducedMotion ? { duration: 0.1 } : (isPulling ? PULL_REFRESH.INDICATOR.transition : PULL_REFRESH.EXIT_TRANSITION)}
           >
             {/* Indicator bubble with ready state styling */}
             <motion.div
@@ -103,15 +109,18 @@ const PullToRefreshWrapper = ({
                 transition-shadow duration-200
                 ${isRefreshing ? 'shadow-xl' : isReady ? 'shadow-xl' : 'shadow-lg'}
               `}
-              animate={isReady ? PULL_REFRESH.READY_PULSE : {}}
+              animate={isReady && !prefersReducedMotion ? PULL_REFRESH.READY_PULSE : {}}
               style={isReady ? PULL_REFRESH.READY_SHADOW : {}}
             >
               {/* Rotating icon */}
               <motion.div
-                animate={{ rotate: isRefreshing ? [0, 360] : iconRotation }}
-                transition={isRefreshing
-                  ? PULL_REFRESH.ICON_SPIN
-                  : PULL_REFRESH.ICON_PULL
+                animate={prefersReducedMotion
+                  ? {}
+                  : { rotate: isRefreshing ? [0, 360] : iconRotation }
+                }
+                transition={prefersReducedMotion
+                  ? { duration: 0 }
+                  : (isRefreshing ? PULL_REFRESH.ICON_SPIN : PULL_REFRESH.ICON_PULL)
                 }
               >
                 <RefreshCw

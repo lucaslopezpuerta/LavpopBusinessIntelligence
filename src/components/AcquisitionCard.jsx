@@ -1,9 +1,13 @@
-// AcquisitionCard.jsx v2.1 - PREMIUM GLASS CARD
+// AcquisitionCard.jsx v2.2 - PREMIUM GLASS CARD
 // Unified acquisition metrics + daily chart
 // Replaces: CleanKPICard (Novos) + NewClientsChart
 // Design System v5.1 compliant - Cosmic Glass Cards
 //
 // CHANGELOG:
+// v2.2 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Replaced inline cardHoverTransition with TWEEN.HOVER constant
+//   - SVG animations respect reduced motion preference
 // v2.1 (2026-01-20): Enhanced Premium Glass Effects
 //   - CHANGED: Replaced hard CSS borders with soft inner glow
 //   - ADDED: Subtle outer cyan glow in dark mode (layered depth)
@@ -65,6 +69,8 @@ import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { getChartColors } from '../utils/chartColors';
 import { useTheme } from '../contexts/ThemeContext';
 import { haptics } from '../utils/haptics';
+import useReducedMotion from '../hooks/useReducedMotion';
+import { TWEEN } from '../constants/animations';
 
 // ============================================================================
 // ANIMATIONS
@@ -80,6 +86,12 @@ const heroVariants = {
   }
 };
 
+// Reduced motion variant - instant visibility
+const heroVariantsReduced = {
+  hidden: { opacity: 1 },
+  visible: { opacity: 1 }
+};
+
 const pillVariants = {
   hidden: { opacity: 0, x: 20 },
   visible: (i) => ({
@@ -89,19 +101,29 @@ const pillVariants = {
   })
 };
 
+// Reduced motion variant - instant visibility
+const pillVariantsReduced = {
+  hidden: { opacity: 1 },
+  visible: { opacity: 1 }
+};
+
 // Premium glass hover - subtle lift with enhanced glow
 const cardHoverAnimation = {
   rest: { y: 0, scale: 1 },
   hover: { y: -3, scale: 1.005 }
 };
 
-const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
+// Reduced motion variant - no movement
+const cardHoverAnimationReduced = {
+  rest: { opacity: 1 },
+  hover: { opacity: 0.95 }
+};
 
 // ============================================================================
 // ANIMATED SPARKLINE
 // ============================================================================
 
-const AnimatedSparkline = ({ data, color = '#8b5cf6', height = 60 }) => {
+const AnimatedSparkline = ({ data, color = '#8b5cf6', height = 60, prefersReducedMotion = false }) => {
   if (!data || data.length < 2) return null;
 
   const min = Math.min(...data);
@@ -138,9 +160,9 @@ const AnimatedSparkline = ({ data, color = '#8b5cf6', height = 60 }) => {
       <motion.path
         d={areaPath}
         fill="url(#sparklineGradient)"
-        initial={{ opacity: 0 }}
+        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.3 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.8, delay: 0.3 }}
       />
 
       {/* Line */}
@@ -152,9 +174,9 @@ const AnimatedSparkline = ({ data, color = '#8b5cf6', height = 60 }) => {
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
-        initial={{ pathLength: 0, opacity: 0 }}
+        initial={prefersReducedMotion ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 1, ease: 'easeInOut', delay: 0.2 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 1, ease: 'easeInOut', delay: 0.2 }}
       />
 
       {/* End dot */}
@@ -163,9 +185,9 @@ const AnimatedSparkline = ({ data, color = '#8b5cf6', height = 60 }) => {
         cy={100 - normalized[normalized.length - 1]}
         r="3"
         fill={color}
-        initial={{ scale: 0, opacity: 0 }}
+        initial={prefersReducedMotion ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.3 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { delay: 1.2, duration: 0.3 }}
       />
     </svg>
   );
@@ -175,7 +197,7 @@ const AnimatedSparkline = ({ data, color = '#8b5cf6', height = 60 }) => {
 // STATUS PILL
 // ============================================================================
 
-const StatusPill = ({ icon: Icon, label, value, variant = 'default', index = 0 }) => {
+const StatusPill = ({ icon: Icon, label, value, variant = 'default', index = 0, prefersReducedMotion = false }) => {
   const variants = {
     success: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
     warning: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50',
@@ -193,7 +215,7 @@ const StatusPill = ({ icon: Icon, label, value, variant = 'default', index = 0 }
   return (
     <motion.div
       custom={index}
-      variants={pillVariants}
+      variants={prefersReducedMotion ? pillVariantsReduced : pillVariants}
       initial="hidden"
       animate="visible"
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${variants[variant]}`}
@@ -225,6 +247,7 @@ const AcquisitionCard = ({
   // Theme-aware chart colors
   const { isDark } = useTheme();
   const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
+  const prefersReducedMotion = useReducedMotion();
 
   // Handle both old format (array) and new format ({ daily, newCustomerIds })
   const dailyData = useMemo(() => {
@@ -492,8 +515,8 @@ const AcquisitionCard = ({
     <motion.div
       initial="rest"
       whileHover="hover"
-      variants={cardHoverAnimation}
-      transition={cardHoverTransition}
+      variants={prefersReducedMotion ? cardHoverAnimationReduced : cardHoverAnimation}
+      transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
       className={`
         ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
         backdrop-blur-xl
@@ -513,7 +536,7 @@ const AcquisitionCard = ({
         <div className="flex items-start justify-between gap-3">
           {/* Left: Hero Metric */}
           <motion.div
-            variants={heroVariants}
+            variants={prefersReducedMotion ? heroVariantsReduced : heroVariants}
             initial="hidden"
             animate="visible"
             className="flex-1 min-w-0"
@@ -556,6 +579,7 @@ const AcquisitionCard = ({
                     data={sparklineData}
                     color={isDark ? '#a78bfa' : '#8b5cf6'}
                     height={36}
+                    prefersReducedMotion={prefersReducedMotion}
                   />
                 </div>
               )}
@@ -572,6 +596,7 @@ const AcquisitionCard = ({
                 label="welcome"
                 variant="success"
                 index={0}
+                prefersReducedMotion={prefersReducedMotion}
               />
             )}
 
@@ -583,6 +608,7 @@ const AcquisitionCard = ({
                 label="semana"
                 variant={stats.weekChange > 0 ? 'success' : 'default'}
                 index={1}
+                prefersReducedMotion={prefersReducedMotion}
               />
             )}
 
@@ -594,6 +620,7 @@ const AcquisitionCard = ({
                 label="retorno"
                 variant={stats.returnPct >= 30 ? 'success' : 'info'}
                 index={2}
+                prefersReducedMotion={prefersReducedMotion}
               />
             )}
           </div>

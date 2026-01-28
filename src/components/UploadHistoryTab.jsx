@@ -1,4 +1,4 @@
-// UploadHistoryTab.jsx v2.1 - MOBILE-OPTIMIZED DESIGN
+// UploadHistoryTab.jsx v2.2 - ACCESSIBILITY
 // Display upload history from Supabase upload_history table
 //
 // Features:
@@ -11,6 +11,9 @@
 //   - Cosmic Precision Design System v5.1 compliant
 //
 // CHANGELOG:
+// v2.2 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Staggered list animations respect reduced motion preference
 // v2.1 (2026-01-24): Mobile-optimized design
 //   - Larger touch targets (min 44px) for all buttons
 //   - Better typography scaling on small screens
@@ -48,9 +51,11 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getSupabaseClient } from '../utils/supabaseClient';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 const UploadHistoryTab = ({ refreshTrigger }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -343,10 +348,10 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
           return (
             <motion.div
               key={record.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ delay: index * 0.03 }}
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+              transition={prefersReducedMotion ? { duration: 0.1 } : { delay: index * 0.03 }}
               className={`
                 relative overflow-hidden rounded-xl border
                 ${isDark

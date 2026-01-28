@@ -1,8 +1,11 @@
-// PriorityMatrix.jsx v3.3.0
+// PriorityMatrix.jsx v3.4.0 - ACCESSIBILITY
 // Matriz de Prioridades - Visual Command Center com Gauges Radiais
 // Design System v5.1 compliant - Premium Glass with Radial Gauges
 //
 // CHANGELOG:
+// v3.4.0 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Radial gauge, mini arc, and card animations disabled when user prefers reduced motion
 // v3.3.1 (2026-01-24): Removed colored left border
 // v3.3.0 (2026-01-24): Compact dimension cards
 //   - Reduced card padding (p-3/p-2.5 from p-5/p-4)
@@ -36,9 +39,10 @@ import { motion } from 'framer-motion';
 import { Target, TrendingUp, TrendingDown, CheckCircle, AlertTriangle, Activity, HelpCircle, X } from 'lucide-react';
 import { useMediaQuery, useIsMobile } from '../../hooks/useMediaQuery';
 import { useTheme } from '../../contexts/ThemeContext';
+import useReducedMotion from '../../hooks/useReducedMotion';
 
 // Radial Gauge Component for Overall Score
-const RadialGauge = ({ score, maxScore = 10, size = 180, strokeWidth = 14, isDark }) => {
+const RadialGauge = ({ score, maxScore = 10, size = 180, strokeWidth = 14, isDark, prefersReducedMotion = false }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / maxScore) * circumference;
@@ -77,9 +81,9 @@ const RadialGauge = ({ score, maxScore = 10, size = 180, strokeWidth = 14, isDar
           fill="none"
           strokeLinecap="round"
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
+          initial={prefersReducedMotion ? false : { strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference - progress }}
-          transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 1.5, ease: "easeOut", delay: 0.3 }}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
           filter="url(#glow)"
         />
@@ -93,9 +97,9 @@ const RadialGauge = ({ score, maxScore = 10, size = 180, strokeWidth = 14, isDar
       `}>
         <motion.span
           className={`text-4xl lg:text-5xl font-bold ${scoreColors.text}`}
-          initial={{ scale: 0.5, opacity: 0 }}
+          initial={prefersReducedMotion ? false : { scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.5, delay: 0.8 }}
         >
           {score.toFixed(1)}
         </motion.span>
@@ -108,7 +112,7 @@ const RadialGauge = ({ score, maxScore = 10, size = 180, strokeWidth = 14, isDar
 };
 
 // Mini Arc Component for Dimension Cards
-const MiniArc = ({ score, isDark, size = 70 }) => {
+const MiniArc = ({ score, isDark, size = 70, prefersReducedMotion = false }) => {
   const scoreColors = getScoreColorEnhanced(score, isDark);
   const arcRadius = size * 0.35;
   const startX = size * 0.15;
@@ -142,9 +146,9 @@ const MiniArc = ({ score, isDark, size = 70 }) => {
         strokeWidth="5"
         fill="none"
         strokeLinecap="round"
-        initial={{ pathLength: 0 }}
+        initial={prefersReducedMotion ? false : { pathLength: 0 }}
         animate={{ pathLength: score / 10 }}
-        transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 1, delay: 0.4, ease: "easeOut" }}
         filter="url(#miniGlow)"
       />
     </svg>
@@ -302,16 +306,16 @@ const Tooltip = ({ children, content, howToRead, dataRange }) => {
 };
 
 // Dimension card component with mini arc
-const DimensionCard = ({ dimKey, dimension, isPriority, isDark, isDesktop, index }) => {
+const DimensionCard = ({ dimKey, dimension, isPriority, isDark, isDesktop, index, prefersReducedMotion = false }) => {
   const label = DIMENSION_LABELS[dimKey];
   const scoreColors = getScoreColorEnhanced(dimension.score, isDark);
   const statusColor = getStatusColor(dimension.color, isDark);
 
   return (
     <motion.div
-      initial={{ y: 20, opacity: 0 }}
+      initial={prefersReducedMotion ? false : { y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, delay: 0.2 + (index * 0.1), ease: "easeOut" }}
+      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.5, delay: 0.2 + (index * 0.1), ease: "easeOut" }}
       className={`
         relative rounded-xl ${isDesktop ? 'p-3' : 'p-2.5'} flex flex-col items-center text-center
         ${isPriority
@@ -350,7 +354,7 @@ const DimensionCard = ({ dimKey, dimension, isPriority, isDark, isDesktop, index
 
       {/* Mini arc */}
       <div className="mt-1">
-        <MiniArc score={dimension.score} isDark={isDark} size={isDesktop ? 70 : 60} />
+        <MiniArc score={dimension.score} isDark={isDark} size={isDesktop ? 70 : 60} prefersReducedMotion={prefersReducedMotion} />
       </div>
 
       {/* Score */}
@@ -385,6 +389,7 @@ const PriorityMatrix = ({
   className = ''
 }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   if (!dimensions || !priority) return null;
@@ -422,9 +427,9 @@ const PriorityMatrix = ({
 
       {/* Hero Section - Overall Score */}
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={prefersReducedMotion ? false : { scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.6, ease: "easeOut" }}
         className={`
           relative rounded-2xl p-6 lg:p-8 mb-5
           ${isDark ? 'bg-space-dust/60' : 'bg-white'}
@@ -443,6 +448,7 @@ const PriorityMatrix = ({
             size={isDesktop ? 200 : 160}
             strokeWidth={isDesktop ? 16 : 12}
             isDark={isDark}
+            prefersReducedMotion={prefersReducedMotion}
           />
 
           <div className="flex items-center gap-1.5 mt-4">
@@ -466,6 +472,7 @@ const PriorityMatrix = ({
           isDark={isDark}
           isDesktop={isDesktop}
           index={0}
+          prefersReducedMotion={prefersReducedMotion}
         />
         <DimensionCard
           dimKey="growth"
@@ -474,6 +481,7 @@ const PriorityMatrix = ({
           isDark={isDark}
           isDesktop={isDesktop}
           index={1}
+          prefersReducedMotion={prefersReducedMotion}
         />
         <DimensionCard
           dimKey="breakEven"
@@ -482,6 +490,7 @@ const PriorityMatrix = ({
           isDark={isDark}
           isDesktop={isDesktop}
           index={2}
+          prefersReducedMotion={prefersReducedMotion}
         />
         <DimensionCard
           dimKey="momentum"
@@ -490,14 +499,15 @@ const PriorityMatrix = ({
           isDark={isDark}
           isDesktop={isDesktop}
           index={3}
+          prefersReducedMotion={prefersReducedMotion}
         />
       </div>
 
       {/* Priority Focus Alert */}
       <motion.div
-        initial={{ y: 10, opacity: 0 }}
+        initial={prefersReducedMotion ? false : { y: 10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.6 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.5, delay: 0.6 }}
         className={`
           p-4 rounded-xl relative overflow-hidden
           ${isDark ? 'bg-red-900/20' : 'bg-red-50/80'}

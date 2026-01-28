@@ -1,8 +1,11 @@
-// FrequencyDegradationAlert.jsx v2.1
+// FrequencyDegradationAlert.jsx v2.2 - ACCESSIBILITY
 // Early warning for customers with growing visit intervals
 // Design System v5.1 compliant - Premium Glass Card pattern
 //
 // CHANGELOG:
+// v2.2 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Replaced inline hoverTransition with TWEEN.HOVER constant
 // v2.1 (2026-01-20): Premium Glass Effects
 //   - Replaced hard borders with soft amber glow system
 //   - Added ring-1 with amber tint for warning semantic
@@ -56,6 +59,8 @@ import {
 import { haptics } from '../utils/haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import ContextHelp from './ContextHelp';
+import useReducedMotion from '../hooks/useReducedMotion';
+import { TWEEN } from '../constants/animations';
 
 // Premium glass hover - subtle lift (no boxShadow to preserve CSS glow)
 const hoverAnimation = {
@@ -63,7 +68,11 @@ const hoverAnimation = {
   hover: { y: -3, scale: 1.005 }
 };
 
-const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
+// Reduced motion variant - no movement
+const hoverAnimationReduced = {
+  rest: { opacity: 1 },
+  hover: { opacity: 0.95 }
+};
 
 // Format currency in Brazilian Real
 const formatCurrency = (value) => {
@@ -190,6 +199,7 @@ const FrequencyDegradationAlert = ({
   className = ''
 }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
   const [currentPage, setCurrentPage] = useState(0);
 
   // Handle missing data
@@ -257,8 +267,8 @@ const FrequencyDegradationAlert = ({
     <motion.div
       initial="rest"
       whileHover="hover"
-      variants={hoverAnimation}
-      transition={hoverTransition}
+      variants={prefersReducedMotion ? hoverAnimationReduced : hoverAnimation}
+      transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
       className={`
         ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
         backdrop-blur-xl

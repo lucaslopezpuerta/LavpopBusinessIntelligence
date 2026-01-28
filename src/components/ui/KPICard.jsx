@@ -1,8 +1,13 @@
-// KPICard.jsx v1.14 - DOM NESTING FIX
+// KPICard.jsx v1.15 - ACCESSIBILITY & CONSISTENCY
 // Unified KPI card component for Intelligence dashboard
 // Design System v5.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.15 (2026-01-27): Accessibility & consistency improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - KPICard and KPIGrid animations disabled when user prefers reduced motion
+//   - Replaced inline hoverTransition with TWEEN.HOVER constant
+//   - Uses centralized STAGGER constants
 // v1.14 (2026-01-27): Fixed DOM nesting warning
 //   - Changed label wrapper from <p> to <div> to allow ContextHelp tooltip (contains <div>)
 //   - Fixes: "validateDOMNesting(...): <div> cannot appear as a descendant of <p>"
@@ -69,6 +74,8 @@ import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { getSemanticColor } from '../../utils/colorMapping';
 import ContextHelp from '../ContextHelp';
+import useReducedMotion from '../../hooks/useReducedMotion';
+import { TWEEN, STAGGER, SPRING } from '../../constants/animations';
 
 // Smooth tween animation config for hover (avoids spring oscillation/trembling)
 const hoverAnimation = {
@@ -76,7 +83,11 @@ const hoverAnimation = {
   hover: { y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }
 };
 
-const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
+// Reduced motion variants - no movement, just subtle opacity
+const hoverAnimationReduced = {
+  rest: { opacity: 1 },
+  hover: { opacity: 0.9 }
+};
 
 /**
  * Unified KPI Card Component
@@ -113,6 +124,7 @@ const KPICard = ({
   status,
 }) => {
   const colors = getSemanticColor(color);
+  const prefersReducedMotion = useReducedMotion();
 
   // Variant-specific styling - Cosmic Precision (v4.3)
   // Uses space-dust for dark backgrounds (Tier 1 Essential)
@@ -218,8 +230,8 @@ const KPICard = ({
       aria-label={onClick ? `${label}: ${value}` : undefined}
       initial="rest"
       whileHover="hover"
-      variants={hoverAnimation}
-      transition={hoverTransition}
+      variants={prefersReducedMotion ? hoverAnimationReduced : hoverAnimation}
+      transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
     >
       <div className="flex items-start justify-between gap-2 sm:gap-3">
           {/* Content */}
@@ -327,6 +339,7 @@ const gridContainerVariants = {
   visible: {
     opacity: 1,
     transition: {
+      ...STAGGER.FAST,
       staggerChildren: 0.035,  // Reduced from 0.05 for snappier cascade
       delayChildren: 0         // Parent AnimatedSection handles delay
     }
@@ -339,8 +352,19 @@ const gridItemVariants = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: 'spring', stiffness: 450, damping: 28 }  // Increased stiffness for snap
+    transition: { ...SPRING.QUICK, stiffness: 450, damping: 28 }  // Increased stiffness for snap
   }
+};
+
+// Reduced motion variants - instant transitions
+const gridContainerVariantsReduced = {
+  hidden: { opacity: 1 },
+  visible: { opacity: 1 }
+};
+
+const gridItemVariantsReduced = {
+  hidden: { opacity: 1 },
+  visible: { opacity: 1 }
 };
 
 /**
@@ -354,6 +378,8 @@ export const KPIGrid = ({
   className = '',
   animate = true
 }) => {
+  const prefersReducedMotion = useReducedMotion();
+
   const gridClasses = {
     2: 'grid-cols-2',
     3: 'grid-cols-1 sm:grid-cols-3',
@@ -362,7 +388,8 @@ export const KPIGrid = ({
     6: 'grid-cols-2 sm:grid-cols-3', // 6 cards: 2 cols mobile, 3 cols desktop
   };
 
-  if (!animate) {
+  // Disable animation if user prefers reduced motion
+  if (!animate || prefersReducedMotion) {
     return (
       <div className={`grid ${gridClasses[columns] || gridClasses[4]} gap-3 sm:gap-4 ${className}`}>
         {children}

@@ -1,9 +1,16 @@
-/* Bilavnova BI - Base Styles v4.3 (Modal-Aware Navigation)
+/* Bilavnova BI - Base Styles v4.4 (Cosmic Shimmer Skeletons)
  * Space-age futurist design system
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
  *
  * CHANGELOG:
+ * v4.4 (2026-01-27): Cosmic Shimmer Skeletons
+ *   - Added cosmic-shimmer keyframe with gradient wave sweep
+ *   - Added skeleton-reveal for staggered cascade effect
+ *   - Added stale-breathe animation for data freshness indicator
+ *   - Added skeleton-bar-wave for animated chart loading
+ *   - Added content-reveal for blur-to-sharp transitions
+ *   - Dark mode: stellar cyan glow on skeleton elements
  * v4.3 (2026-01-27): Modal-Aware Navigation
  *   - Added .bottom-nav-container slide-out animation when body.modal-open
  *   - Prevents nav interaction behind modals on mobile
@@ -256,23 +263,232 @@ body {
    ANIMATION HELPERS
    ============================================ */
 
+/* Shimmer animation - GPU accelerated via transform
+   Uses pseudo-element with translateX instead of background-position */
 @keyframes shimmer {
   0% {
-    background-position: -1000px 0;
+    transform: translateX(-100%);
   }
-
   100% {
-    background-position: 1000px 0;
+    transform: translateX(100%);
   }
 }
 
 .skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-surface-hover) 50%,
+    transparent 100%
+  );
   animation: shimmer 2s infinite;
-  background: linear-gradient(to right,
-      var(--color-border) 4%,
-      var(--color-surface-hover) 25%,
-      var(--color-border) 36%);
-  background-size: 1000px 100%;
+}
+
+/* ============================================
+   COSMIC SHIMMER SKELETON SYSTEM (v4.4)
+   Premium loading experience with stellar glow
+   ============================================ */
+
+/* Cosmic shimmer - gradient wave sweep */
+@keyframes cosmic-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Staggered reveal - cascade in with subtle motion */
+@keyframes skeleton-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stale data indicator - amber breathing glow */
+@keyframes stale-breathe {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+  }
+}
+
+/* Refresh spinner with stellar glow */
+@keyframes refresh-spin-glow {
+  0% {
+    transform: rotate(0deg);
+    filter: drop-shadow(0 0 4px rgba(0, 174, 239, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(0, 174, 239, 0.5));
+  }
+  100% {
+    transform: rotate(360deg);
+    filter: drop-shadow(0 0 4px rgba(0, 174, 239, 0.3));
+  }
+}
+
+/* Skeleton bar wave - for chart loading */
+@keyframes skeleton-bar-wave {
+  0%, 100% {
+    transform: scaleY(0.6);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Light mode cosmic skeleton - silver shimmer */
+.skeleton-cosmic {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.9) 0%,
+    rgba(248, 250, 252, 1) 20%,
+    rgba(241, 245, 249, 0.95) 40%,
+    rgba(226, 232, 240, 0.9) 100%
+  );
+  background-size: 200% 100%;
+  animation: cosmic-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Dark mode cosmic skeleton - stellar cyan glow */
+.dark .skeleton-cosmic {
+  background: linear-gradient(
+    90deg,
+    rgba(26, 31, 53, 0.95) 0%,
+    rgba(0, 174, 239, 0.12) 20%,
+    rgba(30, 41, 59, 0.9) 40%,
+    rgba(26, 31, 53, 0.95) 100%
+  );
+  background-size: 200% 100%;
+  box-shadow: inset 0 0 0 1px rgba(0, 174, 239, 0.08);
+}
+
+/* Staggered reveal animation class */
+.skeleton-stagger {
+  animation: skeleton-reveal 0.3s ease-out forwards, cosmic-shimmer 1.8s ease-in-out infinite;
+  opacity: 0;
+}
+
+/* Stagger delay classes */
+.skeleton-stagger-1 { animation-delay: 0ms, 0ms; }
+.skeleton-stagger-2 { animation-delay: 50ms, 0ms; }
+.skeleton-stagger-3 { animation-delay: 100ms, 0ms; }
+.skeleton-stagger-4 { animation-delay: 150ms, 0ms; }
+.skeleton-stagger-5 { animation-delay: 200ms, 0ms; }
+.skeleton-stagger-6 { animation-delay: 250ms, 0ms; }
+.skeleton-stagger-7 { animation-delay: 300ms, 0ms; }
+.skeleton-stagger-8 { animation-delay: 350ms, 0ms; }
+
+/* Stale data indicator amber breathing */
+.stale-indicator {
+  animation: stale-breathe 2s ease-in-out infinite;
+}
+
+/* Refresh spinner with glow */
+.refresh-spin-glow {
+  animation: refresh-spin-glow 1s linear infinite;
+}
+
+/* Chart bar skeleton with wave animation */
+.skeleton-bar-wave {
+  transform-origin: bottom;
+  animation: skeleton-bar-wave 1.5s ease-in-out infinite;
+}
+
+/* Delayed bar waves for staggered effect */
+.skeleton-bar-wave:nth-child(1) { animation-delay: 0ms; }
+.skeleton-bar-wave:nth-child(2) { animation-delay: 80ms; }
+.skeleton-bar-wave:nth-child(3) { animation-delay: 160ms; }
+.skeleton-bar-wave:nth-child(4) { animation-delay: 240ms; }
+.skeleton-bar-wave:nth-child(5) { animation-delay: 320ms; }
+.skeleton-bar-wave:nth-child(6) { animation-delay: 400ms; }
+.skeleton-bar-wave:nth-child(7) { animation-delay: 480ms; }
+.skeleton-bar-wave:nth-child(8) { animation-delay: 560ms; }
+.skeleton-bar-wave:nth-child(9) { animation-delay: 640ms; }
+.skeleton-bar-wave:nth-child(10) { animation-delay: 720ms; }
+.skeleton-bar-wave:nth-child(11) { animation-delay: 800ms; }
+.skeleton-bar-wave:nth-child(12) { animation-delay: 880ms; }
+
+/* Content reveal transition - blur to sharp */
+@keyframes content-reveal {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+.content-reveal {
+  animation: content-reveal 0.3s ease-out forwards;
+}
+
+/* Skeleton fade out before content reveal */
+@keyframes skeleton-fade-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+    filter: blur(4px);
+  }
+}
+
+.skeleton-fade-out {
+  animation: skeleton-fade-out 0.2s ease-out forwards;
+}
+
+/* Reduced motion: simplify animations */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-cosmic,
+  .skeleton-stagger,
+  .skeleton-bar-wave {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .stale-indicator {
+    animation: none;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+
+  .refresh-spin-glow {
+    animation: spin 1s linear infinite;
+    filter: none;
+  }
+
+  .content-reveal,
+  .skeleton-fade-out {
+    animation: none;
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
 }
 
 /* Premium transition utilities */
@@ -446,17 +662,22 @@ body.modal-open .bottom-nav-container {
 }
 
 /* Orbital glow animation */
+/* Orbital glow - uses box-shadow instead of filter: drop-shadow for better performance
+   box-shadow is still paint-triggering but less CPU-intensive than filter */
 @keyframes orbital-glow {
   0%, 100% {
-    filter: drop-shadow(0 0 20px rgba(0, 174, 239, 0.3));
+    box-shadow: 0 0 20px rgba(0, 174, 239, 0.3),
+                0 0 40px rgba(0, 174, 239, 0.1);
   }
   50% {
-    filter: drop-shadow(0 0 40px rgba(0, 174, 239, 0.5));
+    box-shadow: 0 0 30px rgba(0, 174, 239, 0.5),
+                0 0 60px rgba(0, 174, 239, 0.2);
   }
 }
 
 .animate-orbital-glow {
   animation: orbital-glow 2.5s ease-in-out infinite;
+  border-radius: inherit; /* Ensures box-shadow follows element shape */
 }
 
 /* Orbital ring rotation */
@@ -571,14 +792,27 @@ body.modal-open .bottom-nav-container {
   50% { background-position: 100% 50%; }
 }
 
-/* Pulse glow border for active/focus states */
+/* Pulse glow border for active/focus states
+   Optimized: uses opacity animation on pseudo-element (GPU accelerated)
+   instead of animating box-shadow directly (triggers paint) */
 .border-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+  position: relative;
 }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(0, 174, 239, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(0, 174, 239, 0.6), 0 0 30px rgba(0, 174, 239, 0.3); }
+.border-pulse-glow::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  box-shadow: 0 0 20px rgba(0, 174, 239, 0.6), 0 0 30px rgba(0, 174, 239, 0.3);
+  opacity: 0.3;
+  animation: pulse-glow-opacity 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse-glow-opacity {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 
 /* Nebula border - purple/violet gradient */

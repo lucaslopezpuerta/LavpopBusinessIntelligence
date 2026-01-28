@@ -36,11 +36,26 @@ const GoogleBusinessAnalytics = lazy(() => import('../components/social/GoogleBu
 // Pull-to-refresh wrapper
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
+import { Skeleton, SkeletonText, SkeletonChartAnimated } from '../components/ui/Skeleton';
 
-// Loading fallback for lazy components
+// Loading fallback for lazy components - cosmic shimmer skeleton
 const LoadingFallback = () => (
-  <div className="flex justify-center py-12">
-    <div className="w-8 h-8 border-3 border-pink-500 border-t-transparent rounded-full animate-spin" />
+  <div className="space-y-6 py-4">
+    {/* KPI Grid skeleton */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+          <Skeleton className="h-3 w-16 rounded mb-2" stagger staggerIndex={i} />
+          <Skeleton className="h-7 w-20 rounded mb-1" stagger staggerIndex={i} />
+          <Skeleton className="h-3 w-12 rounded" stagger staggerIndex={i} />
+        </div>
+      ))}
+    </div>
+    {/* Chart skeleton */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <Skeleton className="h-5 w-40 rounded mb-4" stagger staggerIndex={4} />
+      <SkeletonChartAnimated height="h-64" />
+    </div>
   </div>
 );
 

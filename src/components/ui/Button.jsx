@@ -1,8 +1,12 @@
-// Button.jsx v1.1 - COSMIC PRECISION UPDATE
+// Button.jsx v1.2 - COSMIC PRECISION UPDATE
 // Reusable button component with Framer Motion animations
 // Design System v4.3 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.2 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Animations disabled when user prefers reduced motion
+//   - Uses centralized SPRING.SNAPPY constant
 // v1.1 (2026-01-17): Cosmic Precision upgrade
 //   - NEW: 'cosmic' variant using stellar gradient (bg-gradient-stellar)
 //   - Updated secondary variant to use space-dust background
@@ -20,14 +24,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-
-// Animation configs
-const buttonAnimation = {
-  tap: { scale: 0.98 },
-  hover: { scale: 1.02 }
-};
-
-const springConfig = { type: 'spring', stiffness: 400, damping: 25 };
+import useReducedMotion from '../../hooks/useReducedMotion';
+import { SPRING, INTERACTIVE } from '../../constants/animations';
 
 /**
  * Premium Button Component
@@ -55,6 +53,7 @@ const Button = ({
   ...props
 }) => {
   const isDisabled = disabled || loading;
+  const prefersReducedMotion = useReducedMotion();
 
   // Variant styles - Cosmic Precision (v4.3)
   const variants = {
@@ -86,9 +85,9 @@ const Button = ({
     <motion.button
       className={`${baseClasses} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${fullWidth ? 'w-full' : ''} ${className}`}
       disabled={isDisabled}
-      whileHover={!isDisabled ? buttonAnimation.hover : undefined}
-      whileTap={!isDisabled ? buttonAnimation.tap : undefined}
-      transition={springConfig}
+      whileHover={!isDisabled && !prefersReducedMotion ? INTERACTIVE.HOVER : undefined}
+      whileTap={!isDisabled && !prefersReducedMotion ? INTERACTIVE.TAP : undefined}
+      transition={prefersReducedMotion ? { duration: 0 } : SPRING.SNAPPY}
       {...props}
     >
       {loading ? (
@@ -118,6 +117,8 @@ export const IconButton = ({
   className = '',
   ...props
 }) => {
+  const prefersReducedMotion = useReducedMotion();
+
   const sizes = {
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
@@ -139,9 +140,9 @@ export const IconButton = ({
   return (
     <motion.button
       className={`inline-flex items-center justify-center rounded-xl transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${sizes[size]} ${variants[variant] || variants.ghost} ${className}`}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      transition={springConfig}
+      whileHover={prefersReducedMotion ? undefined : INTERACTIVE.ICON_HOVER}
+      whileTap={prefersReducedMotion ? undefined : INTERACTIVE.ICON_TAP}
+      transition={prefersReducedMotion ? { duration: 0 } : SPRING.SNAPPY}
       aria-label={label}
       {...props}
     >

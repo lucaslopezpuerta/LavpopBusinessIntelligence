@@ -1,8 +1,11 @@
-// SearchInput.jsx v1.0 - SEARCH INPUT COMPONENT
+// SearchInput.jsx v1.1 - ACCESSIBILITY
 // Reusable search input with consistent styling and debounced onChange
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.1 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Clear button animation disabled when user prefers reduced motion
 // v1.0 (2026-01-09): Initial implementation (UX Audit Phase 3.2)
 //   - Search icon prefix
 //   - Clear button when value present
@@ -14,6 +17,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X } from 'lucide-react';
+import useReducedMotion from '../../hooks/useReducedMotion';
 
 // Animation configs
 const clearButtonAnimation = {
@@ -21,6 +25,14 @@ const clearButtonAnimation = {
   animate: { opacity: 1, scale: 1 },
   exit: { opacity: 0, scale: 0.8 },
   transition: { type: 'spring', stiffness: 400, damping: 25 }
+};
+
+// Reduced motion variant - instant visibility change
+const clearButtonAnimationReduced = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.1 }
 };
 
 /**
@@ -51,6 +63,7 @@ const SearchInput = ({
   const [internalValue, setInternalValue] = useState(value);
   const inputRef = useRef(null);
   const debounceRef = useRef(null);
+  const prefersReducedMotion = useReducedMotion();
 
   // Size configurations
   const sizes = {
@@ -169,7 +182,7 @@ const SearchInput = ({
       <AnimatePresence>
         {internalValue && !disabled && (
           <motion.button
-            {...clearButtonAnimation}
+            {...(prefersReducedMotion ? clearButtonAnimationReduced : clearButtonAnimation)}
             type="button"
             onClick={handleClear}
             className={`

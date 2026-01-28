@@ -1,4 +1,4 @@
-// CleanKPICard.jsx v1.1
+// CleanKPICard.jsx v1.2
 // Minimal white-background KPI card with accent color sparkline
 // Based on modern dashboard design patterns
 //
@@ -10,6 +10,9 @@
 // - Compact footprint for secondary metrics
 //
 // CHANGELOG:
+// v1.2 (2026-01-27): Accessibility & consistency improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Replaced inline hoverTransition with TWEEN.HOVER constant
 // v1.1 (2026-01-13): Full-width sparkline + accent left border
 // v1.0 (2026-01-13): Initial implementation
 
@@ -17,6 +20,8 @@ import React, { useMemo, useId, useCallback, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { haptics } from '../../utils/haptics';
+import useReducedMotion from '../../hooks/useReducedMotion';
+import { TWEEN } from '../../constants/animations';
 
 // Hook to detect dark mode
 const useDarkMode = () => {
@@ -47,7 +52,11 @@ const hoverAnimation = {
   hover: { y: -2, boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }
 };
 
-const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
+// Reduced motion variant - no movement
+const hoverAnimationReduced = {
+  rest: { opacity: 1 },
+  hover: { opacity: 0.95 }
+};
 
 // Full-width sparkline that covers entire card bottom
 const FullSparkline = ({ data, color = '#6366f1', id }) => {
@@ -138,6 +147,7 @@ const CleanKPICard = ({
 }) => {
   const uniqueId = useId();
   const isDark = useDarkMode();
+  const prefersReducedMotion = useReducedMotion();
 
   // Color mapping for accent colors (includes left border with dark mode support)
   const colorMap = {
@@ -217,9 +227,9 @@ const CleanKPICard = ({
       role={isClickable ? 'button' : undefined}
       initial="rest"
       whileHover="hover"
-      whileTap={isClickable ? { scale: 0.98 } : undefined}
-      variants={hoverAnimation}
-      transition={hoverTransition}
+      whileTap={isClickable && !prefersReducedMotion ? { scale: 0.98 } : undefined}
+      variants={prefersReducedMotion ? hoverAnimationReduced : hoverAnimation}
+      transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
       className={`
         relative
         bg-white dark:bg-slate-800

@@ -1,7 +1,11 @@
-// RetentionCard.jsx v2.1
+// RetentionCard.jsx v2.2
 // Full retention analytics card with segment comparison and re-engage actions
 //
 // CHANGELOG:
+// v2.2 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Replaced inline cardHoverTransition with TWEEN.HOVER constant
+//   - SegmentBar progress bar respects reduced motion preference
 // v2.1 (2026-01-20): Premium Glass Effects
 //   - Replaced hard borders with soft glow system
 //   - Added ring-1 for subtle edge definition
@@ -56,6 +60,8 @@ import {
   Info
 } from 'lucide-react';
 import ContextHelp from './ContextHelp';
+import useReducedMotion from '../hooks/useReducedMotion';
+import { TWEEN } from '../constants/animations';
 
 // Status thresholds for retention rate
 const STATUS_THRESHOLDS = {
@@ -69,7 +75,12 @@ const cardHoverAnimation = {
   rest: { y: 0, scale: 1 },
   hover: { y: -3, scale: 1.005 }
 };
-const cardHoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
+
+// Reduced motion variant - no movement
+const cardHoverAnimationReduced = {
+  rest: { opacity: 1 },
+  hover: { opacity: 0.95 }
+};
 
 /**
  * Get status color classes based on retention rate
@@ -195,7 +206,8 @@ const SegmentBar = ({
   trend,
   overdueCount,
   onReengage,
-  iconColor = 'text-slate-600 dark:text-slate-400'
+  iconColor = 'text-slate-600 dark:text-slate-400',
+  prefersReducedMotion = false
 }) => {
   const status = getStatusClasses(rate);
 
@@ -220,9 +232,9 @@ const SegmentBar = ({
       <div className="relative h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
         <motion.div
           className={`absolute inset-y-0 left-0 ${status.barColor} rounded-full`}
-          initial={{ width: 0 }}
+          initial={prefersReducedMotion ? { width: `${rate}%` } : { width: 0 }}
           animate={{ width: `${rate}%` }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.6, ease: 'easeOut' }}
         />
       </div>
 
@@ -307,6 +319,7 @@ const RetentionCard = ({
   className = ''
 }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   // Generate insight based on data
   const insight = useMemo(() => {
@@ -387,8 +400,8 @@ const RetentionCard = ({
     <motion.div
       initial="rest"
       whileHover="hover"
-      variants={cardHoverAnimation}
-      transition={cardHoverTransition}
+      variants={prefersReducedMotion ? cardHoverAnimationReduced : cardHoverAnimation}
+      transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
       className={`
         ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
         backdrop-blur-xl rounded-2xl p-5
@@ -477,6 +490,7 @@ const RetentionCard = ({
           trend={trend.loyalists || 0}
           overdueCount={segments.loyalists?.overdueCount || 0}
           onReengage={handleReengageLoyalists}
+          prefersReducedMotion={prefersReducedMotion}
         />
 
         <SegmentBar
@@ -489,6 +503,7 @@ const RetentionCard = ({
           trend={trend.new || 0}
           overdueCount={segments.new?.overdueCount || 0}
           onReengage={handleReengageNew}
+          prefersReducedMotion={prefersReducedMotion}
         />
       </div>
 

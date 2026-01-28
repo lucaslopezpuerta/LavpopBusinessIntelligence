@@ -97,12 +97,16 @@ import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { getDateWindows } from '../utils/dateWindows';
 import { OperationsLoadingSkeleton } from '../components/ui/Skeleton';
+import StaleDataIndicator from '../components/ui/StaleDataIndicator';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
+import { useDataRefresh } from '../contexts/DataFreshnessContext';
 
 const Operations = ({ data, onDataChange }) => {
   // Theme context for Cosmic Precision styling
   const { isDark } = useTheme();
+  // Data freshness for stale indicator
+  const { lastRefreshed, refreshing, triggerRefresh } = useDataRefresh();
 
   // Centralized date filter - single source of truth
   // Default to lastWeek for complete data (currentWeek is partial)
@@ -189,6 +193,11 @@ const Operations = ({ data, onDataChange }) => {
               </p>
             </div>
           </div>
+          <StaleDataIndicator
+            lastUpdated={lastRefreshed}
+            isRefreshing={refreshing}
+            onRefresh={() => triggerRefresh({ reason: 'manual' })}
+          />
         </div>
 
         </AnimatedHeader>

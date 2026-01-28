@@ -1,6 +1,11 @@
-// AudienceFilterBuilder.jsx v2.1 - INPUT OVERFLOW FIX
+// AudienceFilterBuilder.jsx v2.2 - ACCESSIBILITY
 // Custom audience filtering for campaign creation
 // Design System v5.0 compliant - Variant D (Glassmorphism Cosmic)
+//
+// CHANGELOG:
+// v2.2 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Section expand/collapse animations disabled when user prefers reduced motion
 //
 // FEATURES:
 // - Accordion behavior: only one section expanded at a time
@@ -51,6 +56,7 @@ import {
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptics } from '../../utils/haptics';
+import useReducedMotion from '../../hooks/useReducedMotion';
 
 // RFM Segments with cosmic color mapping
 const RFM_SEGMENTS = [
@@ -97,6 +103,20 @@ const sectionVariants = {
   }
 };
 
+// Reduced motion variant - instant visibility change
+const sectionVariantsReduced = {
+  collapsed: {
+    height: 0,
+    opacity: 0,
+    transition: { duration: 0 }
+  },
+  expanded: {
+    height: 'auto',
+    opacity: 1,
+    transition: { duration: 0 }
+  }
+};
+
 const AudienceFilterBuilder = ({
   allCustomers = [],
   onFilteredCustomers,
@@ -104,6 +124,7 @@ const AudienceFilterBuilder = ({
   className = ''
 }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -371,7 +392,7 @@ const AudienceFilterBuilder = ({
               initial="collapsed"
               animate="expanded"
               exit="collapsed"
-              variants={sectionVariants}
+              variants={prefersReducedMotion ? sectionVariantsReduced : sectionVariants}
               className="overflow-hidden"
             >
               <div className="pt-3 pb-1 px-1 space-y-3">
@@ -453,7 +474,7 @@ const AudienceFilterBuilder = ({
               initial="collapsed"
               animate="expanded"
               exit="collapsed"
-              variants={sectionVariants}
+              variants={prefersReducedMotion ? sectionVariantsReduced : sectionVariants}
               className="overflow-hidden"
             >
               <div className="pt-3 pb-1 px-1 space-y-4">
@@ -525,7 +546,7 @@ const AudienceFilterBuilder = ({
               initial="collapsed"
               animate="expanded"
               exit="collapsed"
-              variants={sectionVariants}
+              variants={prefersReducedMotion ? sectionVariantsReduced : sectionVariants}
               className="overflow-hidden"
             >
               <div className="pt-3 pb-1 px-1 space-y-4">

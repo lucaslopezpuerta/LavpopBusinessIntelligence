@@ -1,8 +1,11 @@
-// Directory.jsx v2.10 - STELLAR CASCADE TRANSITIONS
+// Directory.jsx v2.11 - ACCESSIBILITY
 // Dedicated view for browsing and searching customers
 // Design System v5.0 compliant - Cosmic Precision theme
 //
 // CHANGELOG:
+// v2.11 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Filter panel, card grid, and FAB animations respect reduced motion
 // v2.10 (2026-01-27): Stellar Cascade transitions
 //   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
 //   - Content cascades in layered sequence (~250ms total)
@@ -95,6 +98,7 @@ import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import CosmicDropdown from '../components/ui/CosmicDropdown';
 import { useTheme } from '../contexts/ThemeContext';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 // Lazy-load heavy modals
 const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
@@ -113,6 +117,12 @@ const filterPanelVariants = {
   }
 };
 
+// Reduced motion variants for filter panel
+const filterPanelVariantsReduced = {
+  hidden: { height: 0, opacity: 0, transition: { duration: 0 } },
+  visible: { height: 'auto', opacity: 1, transition: { duration: 0 } }
+};
+
 // Animation variants for card grid stagger effect
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -125,6 +135,12 @@ const containerVariants = {
   }
 };
 
+// Reduced motion variants for card container
+const containerVariantsReduced = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.1 } }
+};
+
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -132,6 +148,12 @@ const cardVariants = {
     y: 0,
     transition: { duration: 0.3, ease: 'easeOut' }
   }
+};
+
+// Reduced motion variants for cards
+const cardVariantsReduced = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.1 } }
 };
 
 // Stats Pill Component - Design System v5.0
@@ -228,6 +250,7 @@ const FILTER_PRESETS = [
 const Directory = ({ data, onDataChange }) => {
   // Theme for reliable dark mode
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   // Navigation for FAB
   const navigate = useNavigate();
@@ -660,7 +683,7 @@ const Directory = ({ data, onDataChange }) => {
           {filtersExpanded && (
             <motion.div
               id="advanced-filters-panel"
-              variants={filterPanelVariants}
+              variants={prefersReducedMotion ? filterPanelVariantsReduced : filterPanelVariants}
               initial="hidden"
               animate="visible"
               exit="hidden"
@@ -863,13 +886,13 @@ const Directory = ({ data, onDataChange }) => {
             <>
               <motion.div
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5"
-                variants={containerVariants}
+                variants={prefersReducedMotion ? containerVariantsReduced : containerVariants}
                 initial="hidden"
                 animate="visible"
                 key={`${currentPage}-${sortBy}-${selectedRisk}-${selectedSegment}`}
               >
                 {paginatedCustomers.map(customer => (
-                  <motion.div key={customer.doc} variants={cardVariants}>
+                  <motion.div key={customer.doc} variants={prefersReducedMotion ? cardVariantsReduced : cardVariants}>
                     <CustomerCard
                       customer={customer}
                       onClick={() => setSelectedCustomer(customer)}
@@ -1015,10 +1038,10 @@ const Directory = ({ data, onDataChange }) => {
       <AnimatePresence>
         {hasActiveFilters && filteredCustomers.length > 0 && (
           <motion.button
-            initial={{ y: 100, opacity: 0, scale: 0.8 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 100, opacity: 0, scale: 0.8 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { y: 100, opacity: 0, scale: 0.8 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { y: 0, opacity: 1, scale: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { y: 100, opacity: 0, scale: 0.8 }}
+            transition={prefersReducedMotion ? { duration: 0.1 } : { type: 'spring', stiffness: 300, damping: 25 }}
             onClick={() => navigate('/campaigns', {
               state: { prefilledCustomers: filteredCustomers.map(c => c.doc) }
             })}

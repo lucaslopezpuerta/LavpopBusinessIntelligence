@@ -1,11 +1,15 @@
-// Tooltip.jsx v2.4 - GLASS MORPHISM
+// Tooltip.jsx v2.5 - ACCESSIBILITY
 // ✅ Position-aware (top, bottom, left, right)
 // ✅ Dark mode support
 // ✅ Spring animations via Framer Motion
 // ✅ Keyboard accessible
 // ✅ Mobile touch support (tap-to-toggle)
+// ✅ Reduced motion support
 //
 // CHANGELOG:
+// v2.5 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Tooltip animations disabled when user prefers reduced motion
 // v2.4 (2026-01-07): Glass morphism enhancement
 //   - Added backdrop-blur-md for premium frosted glass effect
 //   - Semi-transparent background (95% opacity)
@@ -63,6 +67,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle } from 'lucide-react';
 import ReactDOM from 'react-dom';
 import { useIsMobile } from '../hooks/useMediaQuery';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 // Spring animation config for tooltip entrance
 const tooltipAnimation = {
@@ -71,7 +76,15 @@ const tooltipAnimation = {
     exit: { opacity: 0, scale: 0.95 }
 };
 
+// Reduced motion variant - instant visibility change
+const tooltipAnimationReduced = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 }
+};
+
 const springConfig = { type: 'spring', damping: 20, stiffness: 300 };
+const reducedConfig = { duration: 0.1 };
 
 // Safe area constants for mobile - generous estimates for modern devices
 const SAFE_AREA = {
@@ -95,6 +108,7 @@ const Tooltip = ({
     const tooltipRef = useRef(null);
     const triggerRef = useRef(null);
     const isMobile = useIsMobile();
+    const prefersReducedMotion = useReducedMotion();
 
     // Update coords from trigger element
     const updateCoords = useCallback((element) => {
@@ -395,10 +409,10 @@ const Tooltip = ({
                 overflowWrap: 'break-word',
             }}
             role="tooltip"
-            initial={tooltipAnimation.initial}
-            animate={tooltipAnimation.animate}
-            exit={tooltipAnimation.exit}
-            transition={springConfig}
+            initial={prefersReducedMotion ? tooltipAnimationReduced.initial : tooltipAnimation.initial}
+            animate={prefersReducedMotion ? tooltipAnimationReduced.animate : tooltipAnimation.animate}
+            exit={prefersReducedMotion ? tooltipAnimationReduced.exit : tooltipAnimation.exit}
+            transition={prefersReducedMotion ? reducedConfig : springConfig}
         >
             {content}
             {/* Arrow */}

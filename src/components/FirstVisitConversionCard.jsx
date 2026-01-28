@@ -1,8 +1,11 @@
-// FirstVisitConversionCard.jsx v2.1
+// FirstVisitConversionCard.jsx v2.2
 // Tracks critical 1st→2nd visit conversion rate
 // Design System v5.1 compliant - Premium Glass Card pattern
 //
 // CHANGELOG:
+// v2.2 (2026-01-27): Accessibility & consistency improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Replaced inline hoverTransition with TWEEN.HOVER constant
 // v2.1 (2026-01-20): Premium Glass Effects
 //   - Replaced hard borders with soft glow system
 //   - Added ring-1 for subtle edge definition
@@ -37,6 +40,8 @@ import {
 import { haptics } from '../utils/haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import ContextHelp from './ContextHelp';
+import useReducedMotion from '../hooks/useReducedMotion';
+import { TWEEN } from '../constants/animations';
 
 // Premium glass hover - subtle lift (no boxShadow to preserve CSS glow)
 const hoverAnimation = {
@@ -44,7 +49,11 @@ const hoverAnimation = {
   hover: { y: -3, scale: 1.005 }
 };
 
-const hoverTransition = { type: 'tween', duration: 0.2, ease: 'easeOut' };
+// Reduced motion variant
+const hoverAnimationReduced = {
+  rest: { opacity: 1 },
+  hover: { opacity: 0.95 }
+};
 
 // Status thresholds for conversion rate
 const getConversionStatus = (rate) => {
@@ -115,6 +124,7 @@ const FirstVisitConversionCard = ({
   className = ''
 }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   // Handle missing data gracefully
   const metrics = useMemo(() => {
@@ -235,8 +245,8 @@ const FirstVisitConversionCard = ({
     <motion.div
       initial="rest"
       whileHover="hover"
-      variants={hoverAnimation}
-      transition={hoverTransition}
+      variants={prefersReducedMotion ? hoverAnimationReduced : hoverAnimation}
+      transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
       className={`
         ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
         backdrop-blur-xl

@@ -1,8 +1,11 @@
-// HealthPill.jsx v3.0
+// HealthPill.jsx v3.1 - ACCESSIBILITY
 // Enhanced health rate indicator for header integration
 // Now includes trend, full risk breakdown, and action button
 //
 // CHANGELOG:
+// v3.1 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Dropdown animations disabled/simplified when user prefers reduced motion
 // v3.0 (2026-01-20): Cosmic Glass Card refactor for dropdown
 //   - Dropdown now uses glassmorphism (bg-space-dust/90 + backdrop-blur-xl)
 //   - Softer borders with stellar-cyan accent
@@ -21,6 +24,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
+import useReducedMotion from '../hooks/useReducedMotion';
 import {
   Heart,
   TrendingUp,
@@ -95,6 +99,7 @@ const HealthPill = ({
   className = ''
 }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (healthRate === null || healthRate === undefined) return null;
@@ -233,10 +238,10 @@ const HealthPill = ({
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.95 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.95 }}
+            transition={prefersReducedMotion ? { duration: 0.1 } : { duration: 0.15 }}
             className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50"
           >
             <div className={`

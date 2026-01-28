@@ -1,8 +1,12 @@
-// animations.js v3.0 - MICRO-INTERACTION ANIMATIONS
+// animations.js v3.1 - MICRO-INTERACTION ANIMATIONS
 // Centralized animation configurations for consistent motion design
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.1 (2026-01-27): Performance & consistency improvements
+//   - Removed blur filter from PAGE_TRANSITION (non-GPU accelerated)
+//   - Added SPRING.MEDIUM for intermediate stiffness (350, damping: 22)
+//   - Performance: blur filter caused expensive CPU calculations
 // v3.0 (2026-01-27): Stellar Cascade page transitions
 //   - Added PAGE_TRANSITION_STELLAR with orchestrated container/header/section/item variants
 //   - Added PAGE_TRANSITION_STELLAR_REDUCED for accessibility
@@ -95,6 +99,14 @@ export const SPRING = {
     type: 'spring',
     stiffness: 500,
     damping: 30
+  },
+
+  // Medium response - balanced between SMOOTH and SNAPPY
+  // Use for general-purpose interactive elements
+  MEDIUM: {
+    type: 'spring',
+    stiffness: 350,
+    damping: 22
   }
 };
 
@@ -365,18 +377,16 @@ export const BUBBLE_ACTIVE = {
 };
 
 // Page transitions - "Cosmic Emergence"
-// Elegant fade with subtle scale and blur effect
-// No directional slide - feels refined and cosmic
+// Elegant fade with subtle scale effect (GPU-accelerated only)
+// Note: blur filter removed in v3.1 for performance (was CPU-intensive)
 export const PAGE_TRANSITION = {
   initial: {
     opacity: 0,
-    scale: 0.98,
-    filter: 'blur(4px)'
+    scale: 0.98
   },
   animate: {
     opacity: 1,
     scale: 1,
-    filter: 'blur(0px)',
     transition: {
       duration: 0.25,
       ease: [0.25, 0.1, 0.25, 1] // Custom cubic-bezier for smooth emergence
@@ -385,7 +395,6 @@ export const PAGE_TRANSITION = {
   exit: {
     opacity: 0,
     scale: 0.98,
-    filter: 'blur(4px)',
     transition: {
       duration: 0.2,
       ease: 'easeIn'

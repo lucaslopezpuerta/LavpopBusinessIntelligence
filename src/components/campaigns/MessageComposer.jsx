@@ -1,6 +1,11 @@
-// MessageComposer.jsx v5.3
+// MessageComposer.jsx v5.4 - ACCESSIBILITY
 // WhatsApp message template browser and preview
 // Design System v4.0 compliant - Hybrid Card Design
+//
+// CHANGELOG:
+// v5.4 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Template card hover/tap animations disabled when user prefers reduced motion
 //
 // Meta WhatsApp Business API Template Rules:
 // - Templates must be pre-approved by Meta
@@ -73,6 +78,8 @@ import SectionCard from '../ui/SectionCard';
 import KPICard from '../ui/KPICard';
 import { MESSAGE_TEMPLATES, getTemplatesByAudience } from '../../config/messageTemplates';
 import { haptics } from '../../utils/haptics';
+import useReducedMotion from '../../hooks/useReducedMotion';
+import { TWEEN } from '../../constants/animations';
 
 // Icon mapping for templates
 const ICON_MAP = {
@@ -100,6 +107,7 @@ const CATEGORY_STYLES = {
 };
 
 const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) => {
+  const prefersReducedMotion = useReducedMotion();
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [sampleCustomerIndex, setSampleCustomerIndex] = useState(0);
@@ -296,9 +304,9 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
             return (
               <motion.div
                 key={template.id}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: 'tween', duration: 0.2 }}
+                whileHover={prefersReducedMotion ? {} : { y: -2 }}
+                whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
+                transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
                 className={`
                   relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group shadow-sm
                   ${isSelected

@@ -66,13 +66,17 @@ import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { DashboardLoadingSkeleton } from '../components/ui/Skeleton';
+import StaleDataIndicator from '../components/ui/StaleDataIndicator';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
+import { useDataRefresh } from '../contexts/DataFreshnessContext';
 
 const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
   // Get layout preference from ThemeContext
   const { dashboardLayout, isDark } = useTheme();
   const isMobile = useIsMobile();
+  // Data freshness for stale indicator
+  const { lastRefreshed, refreshing, triggerRefresh } = useDataRefresh();
   // Compact mode only on desktop - mobile always shows expanded layout
   const isCompact = dashboardLayout === 'compact' && !isMobile;
 
@@ -184,12 +188,19 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
                 </p>
               </div>
             </div>
-            <DashboardDateControl
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-              dateRange={dateRange}
-              inline={true}
-            />
+            <div className="flex items-center gap-2">
+              <StaleDataIndicator
+                lastUpdated={lastRefreshed}
+                isRefreshing={refreshing}
+                onRefresh={() => triggerRefresh({ reason: 'manual' })}
+              />
+              <DashboardDateControl
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                dateRange={dateRange}
+                inline={true}
+              />
+            </div>
           </div>
         </AnimatedHeader>
 

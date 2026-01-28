@@ -90,7 +90,7 @@ const LoadingSkeleton = () => (
 /**
  * Section header component - Cosmic Precision Design v2.1
  */
-const SectionHeader = ({ title, subtitle, isDark }) => (
+const SectionHeader = ({ title, subtitle, isDark, headerRight }) => (
   <header className="flex flex-col gap-3 sm:gap-4">
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div className="flex items-center gap-3">
@@ -121,6 +121,7 @@ const SectionHeader = ({ title, subtitle, isDark }) => (
           )}
         </div>
       </div>
+      {headerRight}
     </div>
 
   </header>
@@ -142,7 +143,8 @@ const WeatherSection = ({
   showAnalytics = true,
   showMetrics = true,
   refreshInterval = 30 * 60 * 1000, // 30 minutes
-  className = ''
+  className = '',
+  headerRight = null // Optional element to render in header (e.g., StaleDataIndicator)
 }) => {
   // Theme context for Cosmic Precision styling
   const { isDark } = useTheme();
@@ -211,6 +213,7 @@ const WeatherSection = ({
         title="CLIMA"
         subtitle="Previsão e impacto nos negócios"
         isDark={isDark}
+        headerRight={headerRight}
       />
 
       {/* Stale data warning */}

@@ -1,5 +1,10 @@
-// OfflineIndicator.jsx v2.0
+// OfflineIndicator.jsx v2.1 - ACCESSIBILITY
 // Banner component that shows when the user is offline
+//
+// CHANGELOG:
+// v2.1 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Banner slide and spin animations disabled when user prefers reduced motion
 //
 // FEATURES:
 // - Detects online/offline status via navigator.onLine
@@ -27,6 +32,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
 import { BilavnovaIcon } from './ui/BilavnovaLogo';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 /**
  * Format time for display (e.g., "há 5 minutos")
@@ -54,6 +60,7 @@ const OfflineIndicator = ({ lastSyncTime }) => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showBanner, setShowBanner] = useState(false);
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const handleOnline = () => {
@@ -85,10 +92,10 @@ const OfflineIndicator = ({ lastSyncTime }) => {
     <AnimatePresence>
       {showBanner && (
         <motion.div
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -100, opacity: 0 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+          initial={prefersReducedMotion ? { opacity: 0 } : { y: -100, opacity: 0 }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
+          exit={prefersReducedMotion ? { opacity: 0 } : { y: -100, opacity: 0 }}
+          transition={prefersReducedMotion ? { duration: 0.1 } : { type: 'spring', damping: 20, stiffness: 300 }}
           className={`
             fixed top-0 inset-x-0 z-50
             safe-area-top
@@ -141,8 +148,8 @@ const OfflineIndicator = ({ lastSyncTime }) => {
                       ? 'bg-emerald-500/20 border border-emerald-400/30'
                       : 'bg-emerald-100 border border-emerald-300'}
                   `}
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                  animate={prefersReducedMotion ? {} : { rotate: 360 }}
+                  transition={prefersReducedMotion ? { duration: 0 } : { duration: 2, repeat: Infinity, ease: 'linear' }}
                 >
                   <BilavnovaIcon
                     className="w-4 h-4"

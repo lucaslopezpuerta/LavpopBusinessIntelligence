@@ -1,4 +1,4 @@
-// OPERATIONS KPI CARDS V6.4.0 - DESIGN SYSTEM V4.0 COMPLIANCE
+// OPERATIONS KPI CARDS V6.5.0 - ACCESSIBILITY
 // ✅ Math: Absolute pp trend change (not relative %)
 // ✅ Math: Capacity adapts to date window (partial week support)
 // ✅ Math: Service diff hidden for currentWeek (partial vs full unfair)
@@ -11,6 +11,10 @@
 // ✅ Accessibility: Proper color contrast and touch targets
 //
 // CHANGELOG:
+// v6.5.0 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - KPICard hover animation conditional on reduced motion preference
+//   - Replaced inline transition with TWEEN.HOVER constant
 // v6.4.0 (2026-01-09): Design System v4.0 Framer Motion compliance
 //   - Added Framer Motion hover animation to KPICard (y: -2)
 //   - Consistent with Design System v4.0 card patterns
@@ -46,6 +50,8 @@ import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Droplet, Flame, Gauge, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { BUSINESS_PARAMS, UTILIZATION_THRESHOLDS } from '../utils/operationsMetrics';
+import useReducedMotion from '../hooks/useReducedMotion';
+import { TWEEN } from '../constants/animations';
 
 // Use shared thresholds from operationsMetrics.js
 const THRESHOLDS = UTILIZATION_THRESHOLDS;
@@ -83,6 +89,8 @@ const OperationsKPICards = ({
   previousWeekMetrics,
   dateWindow = 'currentWeek'
 }) => {
+  const prefersReducedMotion = useReducedMotion();
+
   // Get adaptive labels and comparison text based on date filter
   const periodConfig = useMemo(() => {
     switch(dateWindow) {
@@ -314,8 +322,8 @@ const OperationsKPICards = ({
 
     return (
       <motion.div
-        whileHover={{ y: -2 }}
-        transition={{ type: 'tween', duration: 0.2 }}
+        whileHover={prefersReducedMotion ? {} : { y: -2 }}
+        transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
         className={`
           bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5
           border-2 ${status.borderClass}

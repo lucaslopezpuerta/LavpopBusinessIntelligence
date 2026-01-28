@@ -17,8 +17,10 @@
 import React from 'react';
 // Direct import to avoid barrel file overhead (tree-shaking optimization)
 import WeatherSection from '../components/weather/WeatherSection';
+import StaleDataIndicator from '../components/ui/StaleDataIndicator';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedSection } from '../components/ui/AnimatedView';
+import { useDataRefresh } from '../contexts/DataFreshnessContext';
 
 /**
  * Weather View
@@ -31,6 +33,9 @@ import { AnimatedView, AnimatedSection } from '../components/ui/AnimatedView';
  * - Business impact predictions using backend OLS regression model
  */
 const Weather = ({ onDataChange }) => {
+  // Data freshness for stale indicator
+  const { lastRefreshed, refreshing, triggerRefresh } = useDataRefresh();
+
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
       <AnimatedView>
@@ -39,6 +44,13 @@ const Weather = ({ onDataChange }) => {
             showAnalytics={true}
             showMetrics={true}
             refreshInterval={30 * 60 * 1000} // 30 minutes
+            headerRight={
+              <StaleDataIndicator
+                lastUpdated={lastRefreshed}
+                isRefreshing={refreshing}
+                onRefresh={() => triggerRefresh({ reason: 'manual' })}
+              />
+            }
           />
         </AnimatedSection>
       </AnimatedView>

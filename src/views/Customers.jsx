@@ -112,11 +112,15 @@ import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, LazyVisitH
 import { useContactTracking } from '../hooks/useContactTracking';
 import { api } from '../utils/apiService';
 import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
+import StaleDataIndicator from '../components/ui/StaleDataIndicator';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
+import { useDataRefresh } from '../contexts/DataFreshnessContext';
 
 const Customers = ({ data, onDataChange }) => {
   // Theme context for Cosmic Precision styling
   const { isDark } = useTheme();
+  // Data freshness for stale indicator
+  const { lastRefreshed, refreshing, triggerRefresh } = useDataRefresh();
 
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -477,21 +481,28 @@ const Customers = ({ data, onDataChange }) => {
 
           {/* Header Pills */}
           <div className="flex items-center gap-2 flex-wrap">
-            <HealthPill
-              healthRate={metrics.healthRate}
-              activeCount={metrics.activeCount}
-              atRiskCount={metrics.needsAttentionCount}
-              trend={healthTrend.trend}
-              breakdown={{
-                healthy: metrics.healthyCount,
-                monitor: metrics.monitorCount,
-                atRisk: metrics.atRiskCount,
-                churning: metrics.churningCount,
-                newCustomer: metrics.newCustomerCount
-              }}
-              atRiskCustomers={atRiskCustomers}
-              onOpenAtRiskModal={handleOpenAtRiskModal}
-            />
+            <div className="flex items-center gap-2">
+              <StaleDataIndicator
+                lastUpdated={lastRefreshed}
+                isRefreshing={refreshing}
+                onRefresh={() => triggerRefresh({ reason: 'manual' })}
+              />
+              <HealthPill
+                healthRate={metrics.healthRate}
+                activeCount={metrics.activeCount}
+                atRiskCount={metrics.needsAttentionCount}
+                trend={healthTrend.trend}
+                breakdown={{
+                  healthy: metrics.healthyCount,
+                  monitor: metrics.monitorCount,
+                  atRisk: metrics.atRiskCount,
+                  churning: metrics.churningCount,
+                  newCustomer: metrics.newCustomerCount
+                }}
+                atRiskCustomers={atRiskCustomers}
+                onOpenAtRiskModal={handleOpenAtRiskModal}
+              />
+            </div>
           </div>
         </div>
 

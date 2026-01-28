@@ -1,4 +1,4 @@
-// DataUpload.jsx v2.2 - MOBILE-OPTIMIZED DESIGN
+// DataUpload.jsx v2.3 - ACCESSIBILITY
 // Upload component for manual CSV data imports
 //
 // Features:
@@ -13,6 +13,9 @@
 //   - Cosmic Precision Design System v5.1 compliant
 //
 // CHANGELOG:
+// v2.3 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - AnimatePresence transitions respect reduced motion preference
 // v2.2 (2026-01-24): Mobile-optimized design
 //   - Mobile-visible down arrows between step flow items
 //   - Larger touch targets (min 44px) for all buttons
@@ -72,9 +75,11 @@ import {
   uploadCustomerCSV,
   refreshCustomerMetrics
 } from '../utils/supabaseUploader';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 const DataUpload = ({ onDataChange, hideHeader = false }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
@@ -313,9 +318,10 @@ const DataUpload = ({ onDataChange, hideHeader = false }) => {
             // Empty state - ready for upload
             <motion.div
               key="empty"
-              initial={{ opacity: 0 }}
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={prefersReducedMotion ? { duration: 0.1 } : undefined}
               className="text-center py-2 sm:py-0"
             >
               <div className={`
@@ -346,9 +352,10 @@ const DataUpload = ({ onDataChange, hideHeader = false }) => {
             // File selected
             <motion.div
               key="file"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+              transition={prefersReducedMotion ? { duration: 0.1 } : undefined}
             >
               {/* File info */}
               <div className="flex items-start justify-between mb-5 sm:mb-6">
@@ -416,7 +423,7 @@ const DataUpload = ({ onDataChange, hideHeader = false }) => {
                       className="h-full bg-gradient-stellar"
                       initial={{ width: 0 }}
                       animate={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
-                      transition={{ duration: 0.3 }}
+                      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
                     />
                   </div>
                 </div>
@@ -475,9 +482,10 @@ const DataUpload = ({ onDataChange, hideHeader = false }) => {
       <AnimatePresence>
         {result && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -20 }}
+            transition={prefersReducedMotion ? { duration: 0.1 } : undefined}
             className={`
               p-6 rounded-2xl border
               ${result.success
@@ -601,9 +609,10 @@ const DataUpload = ({ onDataChange, hideHeader = false }) => {
       <AnimatePresence>
         {refreshResult && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
+            transition={prefersReducedMotion ? { duration: 0.1 } : undefined}
             className={`
               p-4 rounded-xl border
               ${refreshResult.success

@@ -1,8 +1,11 @@
-// CampaignList.jsx v3.8 - REALTIME REFRESH
+// CampaignList.jsx v3.9 - ACCESSIBILITY
 // Campaign list and history display - Backend only
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v3.9 (2026-01-27): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Card hover animations disabled when user prefers reduced motion
 // v3.8 (2026-01-12): Removed manual sync button
 //   - Data now refreshes via realtime Supabase subscription
 //   - Kept lastSync timestamp display for user reference
@@ -62,6 +65,8 @@ import ProgressBar from '../ui/ProgressBar';
 import { getCampaignPerformance } from '../../utils/campaignService';
 import CampaignDetailsModal from './CampaignDetailsModal';
 import { haptics } from '../../utils/haptics';
+import useReducedMotion from '../../hooks/useReducedMotion';
+import { TWEEN } from '../../constants/animations';
 
 // Helper: Relative time in Portuguese (for campaign dates)
 const getRelativeTime = (date) => {
@@ -98,6 +103,7 @@ const formatTimeAgo = (timestamp) => {
 };
 
 const CampaignList = ({ formatCurrency, formatPercent }) => {
+  const prefersReducedMotion = useReducedMotion();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all'); // v3.3: Campaign type filter
@@ -350,8 +356,8 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
             {filteredCampaigns.map((campaign) => (
               <motion.div
                 key={campaign.id}
-                whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}
-                transition={{ type: 'tween', duration: 0.2 }}
+                whileHover={prefersReducedMotion ? {} : { y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}
+                transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
                 onClick={() => { haptics.light(); setSelectedCampaign(campaign); }}
                 className={`p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm cursor-pointer border-l-4 ${getReturnRateBorder(campaign.returnRate)}`}
               >
