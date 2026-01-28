@@ -191,6 +191,7 @@ import {
   CustomersLoadingSkeleton,
   DirectoryLoadingSkeleton,
   CampaignsLoadingSkeleton,
+  SocialMediaLoadingSkeleton,
   WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
   IntelligenceLoadingSkeleton
@@ -251,7 +252,7 @@ const VIEW_SKELETONS = {
   customers: CustomersLoadingSkeleton,
   diretorio: DirectoryLoadingSkeleton,
   campaigns: CampaignsLoadingSkeleton,
-  social: CampaignsLoadingSkeleton, // Reuse campaigns skeleton (similar layout)
+  social: SocialMediaLoadingSkeleton,
   weather: WeatherLoadingSkeleton,
   intelligence: IntelligenceLoadingSkeleton,
   operations: OperationsLoadingSkeleton,

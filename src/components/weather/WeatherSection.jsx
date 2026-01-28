@@ -1,7 +1,10 @@
-// WeatherSection.jsx v1.6
+// WeatherSection.jsx v1.7
 // Main Weather Intelligence Section orchestrator
 // Combines real-time forecast with backend revenue predictions
 //
+// v1.7 (2026-01-28): Cosmic shimmer skeleton migration
+//   - Replaced animate-pulse inline skeleton with Skeleton component (cosmic-shimmer)
+//   - Added stagger props for cascading reveal animation
 // v1.6 (2025-12-21): Balanced Hero + Metrics layout
 //   - Hero 1/2 + MetricsGrid 1/2 (side by side, fills space)
 //   - HourlyForecast full width (horizontal scroll UX)
@@ -29,6 +32,7 @@ import HourlyForecast from './HourlyForecast';
 import DailyForecast from './DailyForecast';
 import WeatherMetricsGrid from './WeatherMetricsGrid';
 import WeatherBusinessImpact from './WeatherBusinessImpact';
+import { Skeleton } from '../ui/Skeleton';
 
 // Currency formatter for WeatherBusinessImpact
 const formatCurrency = (value) => {
@@ -69,21 +73,21 @@ const ErrorState = ({ error, onRetry }) => (
  * Loading skeleton component
  */
 const LoadingSkeleton = () => (
-  <div className="space-y-6 animate-pulse">
+  <div className="space-y-6">
     {/* Hero + Metrics row skeleton */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="rounded-2xl bg-slate-200 dark:bg-slate-700 h-48 sm:h-56" />
-      <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-48 sm:h-56" />
+      <Skeleton className="rounded-2xl h-48 sm:h-56" stagger staggerIndex={0} />
+      <Skeleton className="rounded-xl h-48 sm:h-56" stagger staggerIndex={1} />
     </div>
 
     {/* Hourly forecast skeleton - full width */}
-    <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-32 sm:h-40" />
+    <Skeleton className="rounded-xl h-32 sm:h-40" stagger staggerIndex={2} />
 
     {/* Daily forecast skeleton - full width */}
-    <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-64 sm:h-72" />
+    <Skeleton className="rounded-xl h-64 sm:h-72" stagger staggerIndex={3} />
 
     {/* Business impact skeleton */}
-    <div className="rounded-xl bg-slate-200 dark:bg-slate-700 h-48" />
+    <Skeleton className="rounded-xl h-48" stagger staggerIndex={4} />
   </div>
 );
 

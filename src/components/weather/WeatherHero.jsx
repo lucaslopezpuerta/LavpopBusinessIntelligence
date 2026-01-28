@@ -1,7 +1,10 @@
-// WeatherHero.jsx v1.5 - HAPTIC FEEDBACK
+// WeatherHero.jsx v1.6 - COSMIC SHIMMER SKELETON
 // Hero section displaying current weather conditions with animated elements
 // Dynamic gradient backgrounds based on weather condition and temperature
 //
+// v1.6 (2026-01-28): Cosmic shimmer skeleton migration
+//   - Replaced animate-pulse wrapper with skeleton-hero-shimmer CSS class
+//   - Translucent shimmer gradient on gradient background context
 // v1.5 (2025-12-22): Added haptic feedback on refresh button
 // v1.4 (2025-12-21): Larger desktop content
 //   - Increased font sizes on lg breakpoint (temp 8xl, condition 4xl, high/low 2xl)
@@ -55,30 +58,28 @@ const getRelativeTime = (date) => {
  */
 const WeatherHeroSkeleton = () => (
   <div className="rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-400 to-slate-500 p-4 sm:p-6 md:p-8">
-    <div className="animate-pulse">
-      {/* Header skeleton */}
-      <div className="flex justify-between mb-4 sm:mb-6">
-        <div className="space-y-2">
-          <div className="h-5 sm:h-6 w-28 sm:w-36 bg-white/20 rounded" />
-          <div className="h-3 sm:h-4 w-24 sm:w-28 bg-white/20 rounded" />
-        </div>
-        <div className="h-8 sm:h-9 w-10 sm:w-24 bg-white/20 rounded-full" />
+    {/* Header skeleton */}
+    <div className="flex justify-between mb-4 sm:mb-6">
+      <div className="space-y-2">
+        <div className="h-5 sm:h-6 w-28 sm:w-36 rounded skeleton-hero-shimmer" />
+        <div className="h-3 sm:h-4 w-24 sm:w-28 rounded skeleton-hero-shimmer" />
       </div>
+      <div className="h-8 sm:h-9 w-10 sm:w-24 rounded-full skeleton-hero-shimmer" />
+    </div>
 
-      {/* Main content skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-center">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="w-14 h-14 sm:w-20 sm:h-20 bg-white/20 rounded-full" />
-          <div className="space-y-2">
-            <div className="h-12 sm:h-16 w-20 sm:w-28 bg-white/20 rounded" />
-            <div className="h-4 sm:h-5 w-28 sm:w-36 bg-white/20 rounded" />
-          </div>
-        </div>
+    {/* Main content skeleton */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-center">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full skeleton-hero-shimmer" />
         <div className="space-y-2">
-          <div className="h-6 sm:h-8 w-36 sm:w-48 bg-white/20 rounded" />
-          <div className="h-4 w-32 bg-white/20 rounded" />
-          <div className="h-4 w-28 bg-white/20 rounded" />
+          <div className="h-12 sm:h-16 w-20 sm:w-28 rounded skeleton-hero-shimmer" />
+          <div className="h-4 sm:h-5 w-28 sm:w-36 rounded skeleton-hero-shimmer" />
         </div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-6 sm:h-8 w-36 sm:w-48 rounded skeleton-hero-shimmer" />
+        <div className="h-4 w-32 rounded skeleton-hero-shimmer" />
+        <div className="h-4 w-28 rounded skeleton-hero-shimmer" />
       </div>
     </div>
   </div>

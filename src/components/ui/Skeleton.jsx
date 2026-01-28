@@ -1,8 +1,15 @@
-// Skeleton.jsx v3.2 - Responsive Layout Fixes
+// Skeleton.jsx v3.3 - Skeleton Component Type Audit
 // Premium skeleton loading with stellar glow effects
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.3 (2026-01-28): Skeleton Component Type Audit
+//   - SkeletonHeader: Redesigned to match Cosmic Precision v2.1 glassmorphism header
+//     - Icon container: w-11 h-11 sm:w-12 sm:h-12 (was w-10 h-10 with border-l-4)
+//     - Removed color prop (all views use unified glassmorphism pattern)
+//     - Added responsive title/subtitle sizing and right-side pill placeholder
+//   - NEW: SocialMediaLoadingSkeleton with platform tab navigation
+//   - Updated App.jsx VIEW_SKELETONS: social now uses dedicated skeleton
 // v3.2 (2026-01-27): Responsive layout verification fixes
 //   - Fixed dynamic Tailwind class purge issue in CustomersLoadingSkeleton (RFM dots)
 //   - DashboardLoadingSkeleton: Responsive chart height (h-56 sm:h-80)
@@ -213,7 +220,7 @@ const SkeletonTableRow = ({ columns = 5, staggerBase = 0 }) => (
 const IntelligenceLoadingSkeleton = () => (
   <div className="space-y-6 sm:space-y-8">
     {/* Header */}
-    <SkeletonHeader color="green" />
+    <SkeletonHeader />
 
     {/* Health Score Hero Card */}
     <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
@@ -267,26 +274,23 @@ const IntelligenceLoadingSkeleton = () => (
 // ==================== VIEW-SPECIFIC SKELETONS ====================
 
 // Shared header skeleton component (icon box + title + subtitle)
-const SkeletonHeader = ({ color = 'blue' }) => {
-  const colorClasses = {
-    blue: 'bg-blue-100 dark:bg-blue-900/30 border-blue-500',
-    purple: 'bg-purple-100 dark:bg-purple-900/30 border-purple-500',
-    amber: 'bg-amber-100 dark:bg-amber-900/30 border-amber-500',
-    green: 'bg-green-100 dark:bg-green-900/30 border-green-500',
-  };
-
-  return (
+const SkeletonHeader = () => (
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
     <div className="flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-l-4 ${colorClasses[color]}`}>
-        <SkeletonCircle size="w-5 h-5" />
-      </div>
+      {/* Glassmorphism icon — matches Cosmic Precision v2.1 */}
+      <Skeleton
+        className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex-shrink-0"
+        stagger staggerIndex={0}
+      />
       <div className="space-y-1.5">
-        <SkeletonText width="w-32" height="h-6" />
-        <SkeletonText width="w-48" height="h-3" />
+        <SkeletonText width="w-32 sm:w-40" height="h-5 sm:h-6" stagger staggerIndex={0} />
+        <SkeletonText width="w-44 sm:w-56" height="h-2.5 sm:h-3" stagger staggerIndex={0} />
       </div>
     </div>
-  );
-};
+    {/* Right side placeholder for StaleDataIndicator */}
+    <SkeletonText width="w-20" height="h-6" className="rounded-full hidden sm:block" stagger staggerIndex={1} />
+  </div>
+);
 
 // Hero KPI Card skeleton (larger, with sparkline area)
 const SkeletonHeroCard = ({ staggerIndex = 0 }) => (
@@ -315,7 +319,7 @@ const SkeletonHeroCard = ({ staggerIndex = 0 }) => (
 const DashboardLoadingSkeleton = () => (
   <div className="space-y-6 sm:space-y-8">
     {/* Header */}
-    <SkeletonHeader color="blue" />
+    <SkeletonHeader />
 
     {/* Date Control */}
     <div className="flex items-center gap-3">
@@ -359,7 +363,7 @@ const CustomersLoadingSkeleton = () => (
   <div className="space-y-6">
     {/* Header with HealthPill */}
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <SkeletonHeader color="purple" />
+      <SkeletonHeader />
       <Skeleton className="h-8 w-28 rounded-full" stagger staggerIndex={0} />
     </div>
 
@@ -661,7 +665,7 @@ const DirectoryLoadingSkeleton = () => (
   <div className="space-y-6 sm:space-y-8">
     {/* Header with stats */}
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <SkeletonHeader color="blue" />
+      <SkeletonHeader />
       <div className="flex items-center gap-4">
         <Skeleton className="h-8 w-32 rounded-lg" stagger staggerIndex={0} />
         <Skeleton className="h-8 w-28 rounded-lg" stagger staggerIndex={1} />
@@ -733,7 +737,7 @@ const CampaignsLoadingSkeleton = () => (
   <div className="space-y-6 sm:space-y-8">
     {/* Header with button */}
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <SkeletonHeader color="purple" />
+      <SkeletonHeader />
       <Skeleton className="h-10 w-36 rounded-xl" stagger staggerIndex={0} />
     </div>
 
@@ -881,7 +885,7 @@ const WeatherLoadingSkeleton = () => (
 const OperationsLoadingSkeleton = () => (
   <div className="space-y-6 sm:space-y-8">
     {/* Header */}
-    <SkeletonHeader color="amber" />
+    <SkeletonHeader />
 
     {/* Date Range Selector */}
     <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -1062,6 +1066,58 @@ const OperationsLoadingSkeleton = () => (
   </div>
 );
 
+// Social Media skeleton - matches SocialMedia.jsx v1.4 layout
+// Platform tab navigation + Instagram-like default content
+const SocialMediaLoadingSkeleton = () => {
+  // Static tab widths to avoid dynamic Tailwind class purge issues
+  const tabClasses = [
+    'h-9 sm:h-10 w-20 rounded-lg flex-shrink-0',       // Instagram
+    'h-9 sm:h-10 w-24 rounded-lg flex-shrink-0',       // WhatsApp
+    'h-9 sm:h-10 w-20 rounded-lg flex-shrink-0',       // Blacklist
+    'h-9 sm:h-10 w-32 rounded-lg flex-shrink-0',       // Google Business
+    'h-9 sm:h-10 w-24 rounded-lg flex-shrink-0',       // Facebook
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header - glassmorphism */}
+      <SkeletonHeader />
+
+      {/* Platform tab navigation - matches SocialMediaNavigation */}
+      <div className="-mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 sm:py-3 bg-slate-50/95 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex gap-1.5 sm:gap-2 overflow-x-auto">
+          {tabClasses.map((cls, i) => (
+            <Skeleton key={i} className={cls} stagger staggerIndex={i} />
+          ))}
+        </div>
+      </div>
+
+      {/* Default content skeleton (Instagram-like: KPI grid + charts) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <SkeletonCard key={i} staggerIndex={i + 2} />
+        ))}
+      </div>
+
+      {/* Primary chart section */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+        <div className="mb-4">
+          <SkeletonText width="w-40" height="h-5" stagger staggerIndex={6} />
+        </div>
+        <SkeletonChartAnimated height="h-64" />
+      </div>
+
+      {/* Secondary chart section */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+        <div className="mb-4">
+          <SkeletonText width="w-36" height="h-5" stagger staggerIndex={7} />
+        </div>
+        <SkeletonChartAnimated height="h-48" />
+      </div>
+    </div>
+  );
+};
+
 export {
   Skeleton,
   SkeletonText,
@@ -1079,6 +1135,7 @@ export {
   CustomersLoadingSkeleton,
   DirectoryLoadingSkeleton,
   CampaignsLoadingSkeleton,
+  SocialMediaLoadingSkeleton,
   WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
 };

@@ -1,7 +1,10 @@
-// WeatherBusinessImpact.jsx v3.3 - CONFIDENCE BAR FIX
+// WeatherBusinessImpact.jsx v3.4 - COSMIC SHIMMER SKELETON
 // Forward-looking weather business impact with Ridge regression model
 //
 // CHANGELOG:
+// v3.4 (2026-01-28): Cosmic shimmer skeleton migration
+//   - Replaced animate-pulse inline skeleton with Skeleton component (cosmic-shimmer)
+//   - Added stagger props for cascading reveal animation
 // v3.3 (2026-01-23): Confidence bar bugfix
 //   - Fixed hasConfidence check treating 0 as falsy (0 is valid lower bound)
 //   - Fixed getConfidenceBarWidth treating 0 as falsy
@@ -68,6 +71,7 @@ import useRevenuePrediction, { calculateWeeklySummary } from '../../hooks/useRev
 import { formatDateShort, getDayNamePt } from '../../utils/weatherUtils';
 import { haptics } from '../../utils/haptics';
 import { useTheme } from '../../contexts/ThemeContext';
+import { Skeleton } from '../ui/Skeleton';
 
 // ============== SUB-COMPONENTS ==============
 
@@ -765,11 +769,11 @@ const WeeklySummary = ({ predictions, formatCurrency }) => {
  * Loading skeleton
  */
 const LoadingSkeleton = () => (
-  <div className="animate-pulse">
-    <div className="h-16 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4" />
+  <div className="space-y-4">
+    <Skeleton className="h-16 rounded-lg" stagger staggerIndex={0} />
     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
       {[...Array(7)].map((_, i) => (
-        <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded-lg" />
+        <Skeleton key={i} className="h-32 rounded-lg" stagger staggerIndex={Math.min(1 + i, 7)} />
       ))}
     </div>
   </div>
