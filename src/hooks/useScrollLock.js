@@ -1,6 +1,6 @@
 /**
  * useScrollLock - iOS-compatible scroll lock hook
- * v1.0
+ * v1.1
  *
  * Prevents body scroll while a modal/sheet is open.
  * Uses fixed position method to work on iOS Safari which ignores overflow:hidden.
@@ -15,7 +15,13 @@
  * 2. Set body to position: fixed with negative top offset
  * 3. On cleanup, restore original styles and scroll back to saved position
  *
+ * MODAL-AWARE NAVIGATION:
+ * Adds 'modal-open' class to body when locked. BottomNavBar uses this
+ * to slide out of view, preventing accidental taps behind modals.
+ *
  * CHANGELOG:
+ * v1.1 (2026-01-27): Modal-aware navigation
+ *   - Add 'modal-open' class to body for BottomNavBar hiding
  * v1.0 (2026-01-12): Initial implementation
  *   - Extracted from 8 modal components to reduce code duplication
  *   - Consistent scroll lock behavior across all modals
@@ -44,8 +50,12 @@ export function useScrollLock(isLocked) {
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = '100%';
 
+    // Add modal-open class for BottomNavBar hiding
+    document.body.classList.add('modal-open');
+
     // Cleanup: restore original styles and scroll position
     return () => {
+      document.body.classList.remove('modal-open');
       document.body.style.overflow = originalStyles.overflow;
       document.body.style.position = originalStyles.position;
       document.body.style.top = originalStyles.top;

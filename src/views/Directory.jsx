@@ -1,8 +1,11 @@
-// Directory.jsx v2.9 - COSMIC DROPDOWN PAGINATION
+// Directory.jsx v2.10 - STELLAR CASCADE TRANSITIONS
 // Dedicated view for browsing and searching customers
 // Design System v5.0 compliant - Cosmic Precision theme
 //
 // CHANGELOG:
+// v2.10 (2026-01-27): Stellar Cascade transitions
+//   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
+//   - Content cascades in layered sequence (~250ms total)
 // v2.9 (2026-01-18): CosmicDropdown for pagination
 //   - Replaced native <select> with CosmicDropdown component
 //   - Consistent cosmic styling with glassmorphism panel
@@ -91,6 +94,7 @@ import { DirectoryLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import CosmicDropdown from '../components/ui/CosmicDropdown';
 import { useTheme } from '../contexts/ThemeContext';
+import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 
 // Lazy-load heavy modals
 const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
@@ -449,10 +453,9 @@ const Directory = ({ data, onDataChange }) => {
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
-      <div className="space-y-6 sm:space-y-8 animate-fade-in">
-
+      <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
-      <header className="flex flex-col gap-3 sm:gap-4">
+        <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {/* Icon Container - Glassmorphism */}
@@ -519,10 +522,11 @@ const Directory = ({ data, onDataChange }) => {
           </div>
         </div>
 
-      </header>
+        </AnimatedHeader>
 
-      {/* Main Content Container */}
-      <div className={`${isDark ? 'bg-space-dust' : 'bg-white'} rounded-2xl border ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'} shadow-sm overflow-hidden`}>
+        {/* Main Content Container */}
+        <AnimatedSection>
+          <div className={`${isDark ? 'bg-space-dust' : 'bg-white'} rounded-2xl border ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'} shadow-sm overflow-hidden`}>
 
         {/* Primary Search Row - Always Visible */}
         <div className={`p-4 sm:p-6 border-b ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}`}>
@@ -993,9 +997,10 @@ const Directory = ({ data, onDataChange }) => {
             </div>
           )}
         </div>
-      </div>
+          </div>
+        </AnimatedSection>
 
-      {/* Customer Profile Modal */}
+        {/* Customer Profile Modal */}
       {selectedCustomer && (
         <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className={`${isDark ? 'bg-space-dust' : 'bg-white'} rounded-2xl p-8 shadow-xl`}><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerProfileModal
@@ -1039,7 +1044,7 @@ const Directory = ({ data, onDataChange }) => {
           </motion.button>
         )}
       </AnimatePresence>
-      </div>
+      </AnimatedView>
     </PullToRefreshWrapper>
   );
 };

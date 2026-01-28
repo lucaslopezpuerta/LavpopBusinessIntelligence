@@ -606,7 +606,7 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
             )}
           </div>
 
-          <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
+          <div className="flex justify-end gap-2 p-4 pb-safe border-t border-slate-200 dark:border-slate-700">
             <button onClick={onClose} className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
               Cancelar
             </button>

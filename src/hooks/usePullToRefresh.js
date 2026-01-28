@@ -1,193 +1,166 @@
-// usePullToRefresh.js v1.5 - RAF BATCHING OPTIMIZATION
+// usePullToRefresh.js v2.0 - STATE-DRIVEN ARCHITECTURE
 // Hook for pull-to-refresh functionality on mobile
 //
 // FEATURES:
 // - Pull down gesture triggers refresh callback
 // - Visual feedback during pull (progress indicator)
-// - Configurable pull threshold
+// - Configurable pull threshold and resistance
 // - Only active at top of scroll area
-// - Works with touch events
-// - Haptic feedback when threshold reached (v1.1)
-// - Disabled when modals are open (v1.2)
-// - Non-passive touchmove for preventDefault support (v1.3)
-// - RAF-batched UI updates (v1.5)
+// - Haptic feedback when threshold reached
+// - Disabled when modals are open
+// - State-driven (matches useSwipeToClose pattern)
 //
 // USAGE:
-// const { ref, pullDistance, isPulling, isRefreshing, handlers } = usePullToRefresh(onRefresh);
+// const { ref, pullDistance, progress, isPulling, isRefreshing, showIndicator, handlers } = usePullToRefresh(onRefresh);
 // <div ref={ref} {...handlers}>...</div>
 //
 // CHANGELOG:
-// v1.5 (2026-01-25): Performance optimization
-//   - Use ref for pullDistance to avoid 60+ setState/sec during touch
-//   - Batch UI updates with requestAnimationFrame
-//   - Only trigger state updates for threshold crossing (showIndicator)
-//   - Prevents frame drops on mid-range Android devices
-// v1.4 (2026-01-25): Reduce sensitivity
-//   - Increased threshold from 80px to 100px
-//   - Increased resistance from 2.5 to 3.0
-// v1.3 (2026-01-24): Fix passive event listener error
-//   - Use useEffect to attach touchmove with { passive: false }
-//   - Return containerRef for wrapper to attach
-//   - Check e.cancelable before preventDefault to avoid errors when scrolling started
-//   - Fixes "Unable to preventDefault inside passive event listener" error
-// v1.2 (2026-01-24): Modal awareness - disabled when modals open
-//   - Detects modals via role="dialog" or body scroll lock
-//   - Prevents gesture conflict with useSwipeToClose
-// v1.1 (2025-12-22): Added haptic feedback when pull threshold reached
-// v1.0 (2025-12-18): Initial implementation
+// v2.0 (2026-01-27): Complete rewrite - State-driven architecture
+//   - Removed RAF-based DOM manipulation (caused conflicts with Framer Motion)
+//   - Uses state for pullDistance (React 18 batching handles frequent updates)
+//   - Matches useSwipeToClose pattern for consistency
+//   - Simpler reset logic: just set state to 0
+//   - No more race conditions or transform conflicts
+// v1.6 (2026-01-27): Touch cancel fix (superseded by v2.0)
+// v1.5 (2026-01-25): RAF batching optimization (superseded by v2.0)
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useMediaQuery } from './useMediaQuery';
 import { haptics } from '../utils/haptics';
 
 // Pull configuration
-const PULL_THRESHOLD = 100;   // Distance in pixels to trigger refresh (increased from 80)
-const RESISTANCE = 3.0;       // Pull resistance factor (increased from 2.5)
+const PULL_THRESHOLD = 100;   // Distance in pixels to trigger refresh
+const RESISTANCE = 3.0;       // Pull resistance factor (higher = more resistance)
 
 /**
  * Hook for pull-to-refresh functionality
- * @param {Function} onRefresh - Callback to execute on refresh
+ * @param {Function} onRefresh - Async callback to execute on refresh
  * @returns {Object} Pull state, ref, and touch handlers
  */
 export function usePullToRefresh(onRefresh) {
-  // Use ref for pull distance to avoid 60+ setState/sec during touch gestures
-  // This prevents frame drops on mid-range Android devices
-  const pullDistanceRef = useRef(0);
-  const rafIdRef = useRef(null);
-
-  // State only for values that need to trigger re-renders
-  const [showIndicator, setShowIndicator] = useState(false);
+  // State - drives all rendering (React 18 batches efficiently)
+  const [pullDistance, setPullDistance] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Refs for touch tracking (don't need re-renders)
   const containerRef = useRef(null);
-  const startY = useRef(0);
-  const currentY = useRef(0);
-  const hasTriggeredHaptic = useRef(false);
-  const isPullingRef = useRef(false); // For use in event listener
+  const startYRef = useRef(0);
+  const hasTriggeredHapticRef = useRef(false);
+
   const isMobile = useMediaQuery('(max-width: 1023px)');
 
-  // Keep ref in sync with state for event listener
-  useEffect(() => {
-    isPullingRef.current = isPulling;
-  }, [isPulling]);
+  // Derived values
+  const progress = useMemo(() =>
+    Math.min(pullDistance / PULL_THRESHOLD, 1),
+    [pullDistance]
+  );
 
-  // Cleanup RAF on unmount
-  useEffect(() => {
-    return () => {
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
-    };
-  }, []);
+  const showIndicator = useMemo(() =>
+    pullDistance > 10 || isRefreshing,
+    [pullDistance, isRefreshing]
+  );
 
+  // Touch start - begin tracking
   const handleTouchStart = useCallback((e) => {
     if (!isMobile || isRefreshing) return;
 
-    // Don't activate when modal is open (detected via scroll lock or dialog role)
+    // Don't activate when modal is open
     const isModalOpen = document.body.style.position === 'fixed' ||
                         !!document.querySelector('[role="dialog"]');
     if (isModalOpen) return;
 
     // Only start if at top of scroll
     if (window.scrollY <= 0) {
-      startY.current = e.touches[0].clientY;
-      hasTriggeredHaptic.current = false;
+      startYRef.current = e.touches[0].clientY;
+      hasTriggeredHapticRef.current = false;
       setIsPulling(true);
     }
   }, [isMobile, isRefreshing]);
 
+  // Touch move - update pull distance
+  const handleTouchMove = useCallback((e) => {
+    if (!isPulling || isRefreshing) return;
+
+    const currentY = e.touches[0].clientY;
+    const rawDistance = currentY - startYRef.current;
+    const distance = Math.max(0, rawDistance / RESISTANCE);
+
+    // Only pull if scrolled to top and pulling down
+    if (window.scrollY <= 0 && distance > 0) {
+      setPullDistance(distance);
+
+      // Haptic feedback when crossing threshold
+      if (distance >= PULL_THRESHOLD && !hasTriggeredHapticRef.current) {
+        hasTriggeredHapticRef.current = true;
+        haptics.tick();
+      }
+
+      // Prevent default scroll when pulling
+      if (distance > 10 && e.cancelable) {
+        e.preventDefault();
+      }
+    }
+  }, [isPulling, isRefreshing]);
+
+  // Touch end - trigger refresh or reset
   const handleTouchEnd = useCallback(async () => {
-    if (!isPullingRef.current) return;
+    if (!isPulling) return;
 
-    const distance = pullDistanceRef.current;
-
-    if (distance >= PULL_THRESHOLD && !isRefreshing) {
+    if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
+      // Trigger refresh
       setIsRefreshing(true);
+      setPullDistance(0);
+      setIsPulling(false);
 
       try {
         await onRefresh?.();
       } finally {
         setIsRefreshing(false);
       }
+    } else {
+      // Cancelled pull - just reset
+      setPullDistance(0);
+      setIsPulling(false);
     }
+  }, [isPulling, pullDistance, isRefreshing, onRefresh]);
 
-    // Reset pull state
-    pullDistanceRef.current = 0;
-    setShowIndicator(false);
+  // Touch cancel - reset (gesture interrupted by system)
+  const handleTouchCancel = useCallback(() => {
+    setPullDistance(0);
     setIsPulling(false);
-  }, [isRefreshing, onRefresh]);
+  }, []);
 
   // Attach touchmove with { passive: false } to allow preventDefault
-  // Uses RAF batching to prevent 60+ setState/sec
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !isMobile) return;
 
-    const handleTouchMove = (e) => {
-      if (!isPullingRef.current || isRefreshing) return;
-
-      currentY.current = e.touches[0].clientY;
-      const distance = Math.max(0, (currentY.current - startY.current) / RESISTANCE);
-
-      // Only pull if scrolled to top
-      if (window.scrollY <= 0 && distance > 0) {
-        // Update ref immediately (no re-render)
-        pullDistanceRef.current = distance;
-
-        // Batch UI update with RAF - only one update per frame
-        if (!rafIdRef.current) {
-          rafIdRef.current = requestAnimationFrame(() => {
-            rafIdRef.current = null;
-            // Trigger re-render only when crossing indicator threshold
-            const shouldShow = pullDistanceRef.current > 10;
-            setShowIndicator(prev => prev !== shouldShow ? shouldShow : prev);
-          });
-        }
-
-        // Haptic feedback when crossing threshold
-        if (distance >= PULL_THRESHOLD && !hasTriggeredHaptic.current) {
-          hasTriggeredHaptic.current = true;
-          haptics.tick();
-        }
-
-        // Prevent default scroll when pulling (only if event is cancelable)
-        if (distance > 10 && e.cancelable) {
-          e.preventDefault();
-        }
-      }
+    const touchMoveHandler = (e) => {
+      handleTouchMove(e);
     };
 
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchmove', touchMoveHandler, { passive: false });
+
     return () => {
-      container.removeEventListener('touchmove', handleTouchMove);
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
+      container.removeEventListener('touchmove', touchMoveHandler);
     };
-  }, [isMobile, isRefreshing]);
+  }, [isMobile, handleTouchMove]);
 
-  // Getter for pull distance (avoids exposing mutable ref directly)
-  const getPullDistance = useCallback(() => pullDistanceRef.current, []);
-
-  // Calculate progress (0 to 1) - uses ref value
-  const getProgress = useCallback(() => Math.min(pullDistanceRef.current / PULL_THRESHOLD, 1), []);
-
-  const handlers = isMobile ? {
+  // Handlers for React events (touchstart, touchend, touchcancel)
+  const handlers = useMemo(() => isMobile ? {
     onTouchStart: handleTouchStart,
     onTouchEnd: handleTouchEnd,
-  } : {};
+    onTouchCancel: handleTouchCancel,
+  } : {}, [isMobile, handleTouchStart, handleTouchEnd, handleTouchCancel]);
 
   return {
     ref: containerRef,
-    // Expose getter function for pull distance (avoids re-renders)
-    getPullDistance,
-    getProgress,
-    // For backward compatibility, also expose ref for direct DOM manipulation
-    pullDistanceRef,
+    pullDistance,
+    progress,
     isPulling,
     isRefreshing,
-    showIndicator: showIndicator || isRefreshing,
+    showIndicator,
     handlers,
     threshold: PULL_THRESHOLD,
   };

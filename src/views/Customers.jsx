@@ -1,8 +1,11 @@
-// Customers View v5.14 - Layout Optimization
+// Customers View v5.15 - Stellar Cascade Transitions
 // Customer analytics and insights dashboard
 // Clean, focused design with logical information flow
 //
 // CHANGELOG:
+// v5.15 (2026-01-27): Stellar Cascade transitions
+//   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
+//   - Content cascades in layered sequence (~250ms total)
 // v5.14 (2026-01-15): Layout optimization
 //   - MOVED: VisitHeatmap relocated to Section 2, paired with AcquisitionCard
 //   - CHANGED: AcquisitionCard + VisitHeatmap now side-by-side (1/2 + 1/2)
@@ -86,6 +89,7 @@
 // v4.0 (2025-12-16): Intelligence Hub Redesign
 
 import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
+import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 import { Users as UsersIcon, UserPlus, Crown, Sparkles, AlertTriangle, Mail, UserX, TrendingDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { calculateCustomerMetrics, getRFMCoordinates, getChurnHistogramData, getRetentionMetrics, getAcquisitionTrend, getHealthTrend, getFirstVisitConversion, getFrequencyDegradation } from '../utils/customerMetrics';
@@ -440,10 +444,9 @@ const Customers = ({ data, onDataChange }) => {
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
-      <div className="space-y-6 animate-fade-in">
-
+      <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
-      <header className="flex flex-col gap-3 sm:gap-4">
+        <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {/* Icon Container - Glassmorphism */}
@@ -492,14 +495,14 @@ const Customers = ({ data, onDataChange }) => {
           </div>
         </div>
 
-      </header>
+        </AnimatedHeader>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 2: ACQUISITION + VISIT PATTERNS
-          "How are we getting new customers?" + "When do they visit?"
-          Side-by-side: AcquisitionCard + VisitHeatmap
-          ═══════════════════════════════════════════════════════════════════ */}
-      <section aria-label="Aquisição e Padrões de Visita">
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 2: ACQUISITION + VISIT PATTERNS
+            "How are we getting new customers?" + "When do they visit?"
+            Side-by-side: AcquisitionCard + VisitHeatmap
+            ═══════════════════════════════════════════════════════════════════ */}
+        <AnimatedSection ariaLabel="Aquisição e Padrões de Visita">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Acquisition Card - New customer metrics + daily chart */}
           <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
@@ -525,13 +528,13 @@ const Customers = ({ data, onDataChange }) => {
             />
           </Suspense>
         </div>
-      </section>
+        </AnimatedSection>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3: NEW CUSTOMER CONVERSION
-          "Are new customers becoming regulars?"
-          ═══════════════════════════════════════════════════════════════════ */}
-      <section aria-label="Conversão de Novos Clientes">
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 3: NEW CUSTOMER CONVERSION
+            "Are new customers becoming regulars?"
+            ═══════════════════════════════════════════════════════════════════ */}
+        <AnimatedSection ariaLabel="Conversão de Novos Clientes">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Stage 1: Initial conversion (1st → 2nd visit) */}
           <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
@@ -548,13 +551,13 @@ const Customers = ({ data, onDataChange }) => {
             onOpenSegmentModal={handleOpenRetentionSegment}
           />
         </div>
-      </section>
+        </AnimatedSection>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 4: RISK MANAGEMENT
-          "Who needs attention right now?"
-          ═══════════════════════════════════════════════════════════════════ */}
-      <section aria-label="Gestão de Risco">
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 4: RISK MANAGEMENT
+            "Who needs attention right now?"
+            ═══════════════════════════════════════════════════════════════════ */}
+        <AnimatedSection ariaLabel="Gestão de Risco">
         {/* Early warning alerts + distribution chart */}
         {(() => {
           const showDegradationAlert = intelligence.frequencyDegradation?.count >= 3 || intelligence.frequencyDegradation?.priorityCount >= 1;
@@ -595,13 +598,13 @@ const Customers = ({ data, onDataChange }) => {
             salesData={data.sales}
           />
         )}
-      </section>
+        </AnimatedSection>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 5: DEEP DIVE ANALYTICS
-          "Customer segmentation for power users"
-          ═══════════════════════════════════════════════════════════════════ */}
-      <section aria-label="Análise Detalhada">
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 5: DEEP DIVE ANALYTICS
+            "Customer segmentation for power users"
+            ═══════════════════════════════════════════════════════════════════ */}
+        <AnimatedSection ariaLabel="Análise Detalhada">
         {/* RFM Scatter Plot - Full width customer segmentation */}
         <Suspense fallback={<ChartLoadingFallback height="h-[400px]" />}>
           <LazyRFMScatterPlot
@@ -613,9 +616,9 @@ const Customers = ({ data, onDataChange }) => {
             onCreateCampaign={handleCreateCampaign}
           />
         </Suspense>
-      </section>
+        </AnimatedSection>
 
-      {/* KPI Drilldown Modal */}
+        {/* KPI Drilldown Modal */}
       {selectedKPI && (
         <Suspense fallback={null}>
           <KPIDetailModal
@@ -772,7 +775,7 @@ const Customers = ({ data, onDataChange }) => {
           />
         </Suspense>
       )}
-      </div>
+      </AnimatedView>
     </PullToRefreshWrapper>
   );
 };

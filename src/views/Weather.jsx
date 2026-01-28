@@ -1,7 +1,10 @@
-// Weather.jsx v1.3 - PULL TO REFRESH
+// Weather.jsx v1.4 - STELLAR CASCADE TRANSITIONS
 // Weather Intelligence view - combines real-time forecast with business impact analytics
 //
 // CHANGELOG:
+// v1.4 (2026-01-27): Stellar Cascade transitions
+//   - Added AnimatedView, AnimatedSection wrappers
+//   - Content cascades in layered sequence (~250ms total)
 // v1.3 (2026-01-12): Pull-to-refresh support
 //   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
 //   - Accepts onDataChange prop for refresh callback
@@ -15,6 +18,7 @@ import React from 'react';
 // Direct import to avoid barrel file overhead (tree-shaking optimization)
 import WeatherSection from '../components/weather/WeatherSection';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
+import { AnimatedView, AnimatedSection } from '../components/ui/AnimatedView';
 
 /**
  * Weather View
@@ -29,11 +33,15 @@ import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 const Weather = ({ onDataChange }) => {
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
-      <WeatherSection
-        showAnalytics={true}
-        showMetrics={true}
-        refreshInterval={30 * 60 * 1000} // 30 minutes
-      />
+      <AnimatedView>
+        <AnimatedSection>
+          <WeatherSection
+            showAnalytics={true}
+            showMetrics={true}
+            refreshInterval={30 * 60 * 1000} // 30 minutes
+          />
+        </AnimatedSection>
+      </AnimatedView>
     </PullToRefreshWrapper>
   );
 };

@@ -1,4 +1,4 @@
-// Dashboard.jsx v10.3 - PULL TO REFRESH
+// Dashboard.jsx v10.4 - STELLAR CASCADE TRANSITIONS
 // ✅ Compact (stacked rows) and Expanded (vertical) layouts
 // ✅ DateControl integrated in header for both layouts
 // ✅ Layout preference from ThemeContext (localStorage)
@@ -7,8 +7,12 @@
 // ✅ Optimized layout spacing
 // ✅ Consistent header matching all views
 // ✅ Data readiness check with skeleton fallback
+// ✅ Orchestrated entrance animations with AnimatedView
 //
 // CHANGELOG:
+// v10.4 (2026-01-27): Stellar Cascade transitions
+//   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
+//   - Content cascades in layered sequence (~250ms total)
 // v10.3 (2026-01-12): Pull-to-refresh support
 //   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
 //   - Accepts onDataChange prop for refresh callback
@@ -63,6 +67,7 @@ import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { DashboardLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
+import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 
 const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
   // Get layout preference from ThemeContext
@@ -149,100 +154,95 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
-      <div className={isCompact ? 'space-y-4' : 'space-y-6 sm:space-y-8'}>
+      <AnimatedView className={isCompact ? '!space-y-4' : ''}>
         {/* SHARED HEADER - Cosmic Precision Design v2.1 */}
-      <header className="flex flex-col gap-3 sm:gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {/* Icon Container - Glassmorphism (consistent size) */}
-            <div
-              className={`
-                w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
-                ${isDark
-                  ? 'bg-space-dust/70 border border-stellar-cyan/20'
-                  : 'bg-white border border-stellar-blue/10 shadow-md'}
-              `}
-              style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
-            >
-              <LayoutDashboard className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
-            </div>
-            {/* Title & Subtitle */}
-            <div>
-              <h1
-                className="text-lg sm:text-xl font-bold tracking-wider"
-                style={{ fontFamily: "'Orbitron', sans-serif" }}
+        <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              {/* Icon Container - Glassmorphism (consistent size) */}
+              <div
+                className={`
+                  w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
+                  ${isDark
+                    ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                    : 'bg-white border border-stellar-blue/10 shadow-md'}
+                `}
+                style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
               >
-                <span className="text-gradient-stellar">VISÃO GERAL</span>
-              </h1>
-              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Métricas principais da sua lavanderia
-              </p>
+                <LayoutDashboard className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+              </div>
+              {/* Title & Subtitle */}
+              <div>
+                <h1
+                  className="text-lg sm:text-xl font-bold tracking-wider"
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}
+                >
+                  <span className="text-gradient-stellar">VISÃO GERAL</span>
+                </h1>
+                <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Métricas principais da sua lavanderia
+                </p>
+              </div>
             </div>
+            <DashboardDateControl
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              dateRange={dateRange}
+              inline={true}
+            />
           </div>
-          <DashboardDateControl
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            dateRange={dateRange}
-            inline={true}
-          />
-        </div>
+        </AnimatedHeader>
 
-      </header>
+        {/* LAYOUT-SPECIFIC CONTENT */}
+        {isCompact ? (
+          /* COMPACT LAYOUT: Stacked rows - KPIs full width, then chart full width */
+          <>
+            {/* Row 1: KPIs - Full width */}
+            <AnimatedSection ariaLabel="Indicadores Principais de Performance">
+              <KPICardsGrid
+                businessMetrics={businessMetrics}
+                customerMetrics={customerMetrics}
+                operationsMetrics={operationsMetrics}
+                salesData={salesData}
+                viewMode={viewMode}
+                compact={true}
+              />
+            </AnimatedSection>
 
-      {/* LAYOUT-SPECIFIC CONTENT */}
-      {isCompact ? (
-        /* COMPACT LAYOUT: Stacked rows - KPIs full width, then chart full width */
-        <div className="space-y-4">
-          {/* Row 1: KPIs - Full width */}
-          <section aria-labelledby="kpi-heading-compact">
-            <h2 id="kpi-heading-compact" className="sr-only">Indicadores Principais de Performance</h2>
-            <KPICardsGrid
-              businessMetrics={businessMetrics}
-              customerMetrics={customerMetrics}
-              operationsMetrics={operationsMetrics}
-              salesData={salesData}
-              viewMode={viewMode}
-              compact={true}
-            />
-          </section>
+            {/* Row 2: Chart - Full width */}
+            <AnimatedSection ariaLabel="Operações">
+              <div className="bg-white dark:bg-space-dust rounded-2xl shadow-sm border border-slate-200 dark:border-stellar-cyan/10 p-4">
+                <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
+                  <LazyOperatingCyclesChart salesData={salesData} compact={true} />
+                </Suspense>
+              </div>
+            </AnimatedSection>
+          </>
+        ) : (
+          /* EXPANDED LAYOUT: Vertical stacked (original) */
+          <>
+            {/* KPI Cards Section - Hero + Secondary Grid */}
+            <AnimatedSection ariaLabel="Indicadores Principais de Performance">
+              <KPICardsGrid
+                businessMetrics={businessMetrics}
+                customerMetrics={customerMetrics}
+                operationsMetrics={operationsMetrics}
+                salesData={salesData}
+                viewMode={viewMode}
+              />
+            </AnimatedSection>
 
-          {/* Row 2: Chart - Full width */}
-          <section aria-labelledby="operations-heading-compact">
-            <h2 id="operations-heading-compact" className="sr-only">Operações</h2>
-            <div className="bg-white dark:bg-space-dust rounded-2xl shadow-sm border border-slate-200 dark:border-stellar-cyan/10 p-4">
-              <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
-                <LazyOperatingCyclesChart salesData={salesData} compact={true} />
-              </Suspense>
-            </div>
-          </section>
-        </div>
-      ) : (
-        /* EXPANDED LAYOUT: Vertical stacked (original) */
-        <>
-          {/* KPI Cards Section - Hero + Secondary Grid */}
-          <section aria-labelledby="kpi-heading">
-            <h2 id="kpi-heading" className="sr-only">Indicadores Principais de Performance</h2>
-            <KPICardsGrid
-              businessMetrics={businessMetrics}
-              customerMetrics={customerMetrics}
-              operationsMetrics={operationsMetrics}
-              salesData={salesData}
-              viewMode={viewMode}
-            />
-          </section>
-
-          {/* Operations Chart */}
-          <section aria-labelledby="operations-heading">
-            <h2 id="operations-heading" className="sr-only">Operações</h2>
-            <div className="bg-white dark:bg-space-dust rounded-2xl shadow-sm border border-slate-200 dark:border-stellar-cyan/10 p-6">
-              <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
-                <LazyOperatingCyclesChart salesData={salesData} />
-              </Suspense>
-            </div>
-          </section>
-        </>
-      )}
-      </div>
+            {/* Operations Chart */}
+            <AnimatedSection ariaLabel="Operações">
+              <div className="bg-white dark:bg-space-dust rounded-2xl shadow-sm border border-slate-200 dark:border-stellar-cyan/10 p-6">
+                <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
+                  <LazyOperatingCyclesChart salesData={salesData} />
+                </Suspense>
+              </div>
+            </AnimatedSection>
+          </>
+        )}
+      </AnimatedView>
     </PullToRefreshWrapper>
   );
 };

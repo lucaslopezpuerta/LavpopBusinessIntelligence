@@ -283,7 +283,15 @@ function AppContent() {
   const { isPinned, toggleMobileSidebar } = useSidebar();
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
-  const pageVariants = prefersReducedMotion ? PAGE_TRANSITION_REDUCED : PAGE_TRANSITION;
+  // Fast fade-only page transition - content stagger handles the entrance feel
+  // Removed blur/scale for snappier 180ms total (vs previous 450ms)
+  const pageVariants = prefersReducedMotion
+    ? { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 1 } }
+    : {
+        initial: { opacity: 0 },
+        animate: { opacity: 1, transition: { duration: 0.1, ease: 'easeOut' } },
+        exit: { opacity: 0, transition: { duration: 0.08, ease: 'easeIn' } }
+      };
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

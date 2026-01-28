@@ -1,7 +1,7 @@
 /**
  * AppSettingsModal - App-wide settings modal
  *
- * VERSION: 2.3
+ * VERSION: 2.4
  *
  * Replaces BusinessSettingsModal with improved UX:
  * - Dark mode support
@@ -14,8 +14,14 @@
  * - Styled confirmation dialogs
  * - iOS-compatible scroll lock (v1.9 - refactored to useScrollLock hook)
  * - Safe area bottom padding for notch devices (v1.8)
+ * - Framer Motion animations with reduced motion support (v2.4)
  *
  * CHANGELOG:
+ * v2.4 (2026-01-27): Animation standardization
+ *   - Added Framer Motion animations using MODAL constants
+ *   - Added AnimatePresence for proper enter/exit animations
+ *   - Added useReducedMotion hook for accessibility
+ *   - Removed CSS animate-fade-in class
  * v2.3 (2026-01-18): Full-screen mobile + Portal rendering
  *   - Added createPortal for proper backdrop coverage
  *   - Full-screen on mobile (h-full), centered modal on desktop
@@ -87,11 +93,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, DollarSign, Wrench, Settings, Palette, Sun, Moon, Monitor, AlertCircle, LayoutGrid, Rows3, Bot, Globe, Zap } from 'lucide-react';
+import { MODAL } from '../constants/animations';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useScrollLock } from '../hooks/useScrollLock';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import CosmicDatePicker from './ui/CosmicDatePicker';
 
 // Tab configuration
@@ -104,6 +113,7 @@ const TABS = [
 const AppSettingsModal = ({ isOpen, onClose }) => {
   const { settings, updateSettings, isSaving, error } = useAppSettings();
   const { theme, setTheme } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   const [activeTab, setActiveTab] = useState('business');
   const [localSettings, setLocalSettings] = useState(settings);
@@ -174,18 +184,25 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
     (localSettings.internetCost || 0) +
     (localSettings.otherFixedCosts || 0);
 
-  if (!isOpen) return null;
-
   // Portal rendering ensures fixed positioning works correctly
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm">
-      {/* Modal */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl animate-fade-in flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+          {/* Backdrop */}
+          <motion.div
+            {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
+            className="absolute inset-0 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm"
+            onClick={onClose}
+          />
+          {/* Modal */}
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
+            className="relative w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
+            onClick={(e) => e.stopPropagation()}
+          >
         {/* Header wrapper with safe area - extends background into notch/Dynamic Island */}
         <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl flex-shrink-0">
           {/* Header content */}
@@ -278,20 +295,22 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
             {isSaving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
-      </div>
+          </motion.div>
 
-      {/* Discard Changes Confirmation Dialog */}
-      {showDiscardConfirm && (
-        <ConfirmDialog
-          title="Descartar Alterações"
-          message="Você tem alterações não salvas. Deseja descartar?"
-          confirmLabel="Descartar"
-          confirmVariant="danger"
-          onConfirm={handleDiscardAndClose}
-          onCancel={() => setShowDiscardConfirm(false)}
-        />
+          {/* Discard Changes Confirmation Dialog */}
+          {showDiscardConfirm && (
+            <ConfirmDialog
+              title="Descartar Alterações"
+              message="Você tem alterações não salvas. Deseja descartar?"
+              confirmLabel="Descartar"
+              confirmVariant="danger"
+              onConfirm={handleDiscardAndClose}
+              onCancel={() => setShowDiscardConfirm(false)}
+            />
+          )}
+        </div>
       )}
-    </div>,
+    </AnimatePresence>,
     document.body
   );
 };

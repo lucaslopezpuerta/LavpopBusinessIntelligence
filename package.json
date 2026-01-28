@@ -28,7 +28,7 @@
     "embla-carousel-react": "^8.3.0",
     "focus-trap-react": "^11.0.4",
     "framer-motion": "^11.11.17",
-    "jspdf": "^3.0.4",
+    "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.553.0",
     "papaparse": "^5.5.3",
@@ -36,7 +36,8 @@
     "react-countup": "^6.5.3",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.10.1",
-    "recharts": "^2.14.1"
+    "recharts": "^2.14.1",
+    "tailwind-animations": "^1.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

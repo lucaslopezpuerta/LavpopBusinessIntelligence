@@ -319,7 +319,7 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
             }}
           >
             <motion.aside
-              className={`lg:hidden fixed left-0 top-0 bottom-0 w-[280px] ${isDark ? 'bg-space-nebula' : 'bg-white/95'} backdrop-blur-xl z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-top safe-area-left safe-area-right`}
+              className={`lg:hidden fixed left-0 top-0 bottom-0 w-[280px] ${isDark ? 'bg-space-nebula' : 'bg-white/95'} backdrop-blur-xl z-50 rounded-r-2xl shadow-2xl flex flex-col safe-area-top safe-area-bottom safe-area-left safe-area-right`}
               initial={prefersReducedMotion ? false : { x: -300 }}
               animate={{ x: 0 }}
               exit={prefersReducedMotion ? undefined : { x: -300 }}

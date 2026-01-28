@@ -1,8 +1,12 @@
-// KPIDetailModal.jsx v2.8 - COSMIC PRECISION UPDATE
+// KPIDetailModal.jsx v2.9 - ANIMATION STANDARDIZATION
 // Enhanced modal with metric-aware header and cosmic glassmorphism
-// Design System v4.3 compliant - Tier 2 Enhanced
+// Design System v5.1 compliant - Tier 2 Enhanced
 //
 // CHANGELOG:
+// v2.9 (2026-01-27): Animation standardization
+//   - Uses MODAL constants from animations.js
+//   - Consistent animation timing with other modals
+//   - Proper reduced motion support via spread pattern
 // v2.8 (2026-01-17): Cosmic Precision upgrade
 //   - Added useTheme hook for reliable dark mode
 //   - Updated to space-dust background (from slate-800)
@@ -37,6 +41,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { MODAL } from '../../constants/animations';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useScrollLock } from '../../hooks/useScrollLock';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -90,10 +95,7 @@ const KPIDetailModal = ({
                 <>
                     {/* Backdrop */}
                     <motion.div
-                        initial={prefersReducedMotion ? false : { opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={prefersReducedMotion ? undefined : { opacity: 0 }}
-                        transition={prefersReducedMotion ? { duration: 0 } : undefined}
+                        {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
                         onClick={onClose}
                         className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
                     >
@@ -101,10 +103,7 @@ const KPIDetailModal = ({
                         <motion.div
                             role="dialog"
                             aria-modal="true"
-                            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.95, y: 20 }}
-                            transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", duration: 0.5, bounce: 0.3 }}
+                            {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
                             onClick={(e) => e.stopPropagation()}
                             className={`
                                 relative w-full ${maxWidth}

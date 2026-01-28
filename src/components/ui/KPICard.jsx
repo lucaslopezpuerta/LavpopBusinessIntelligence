@@ -1,8 +1,16 @@
-// KPICard.jsx v1.12 - COSMIC PRECISION UPDATE
+// KPICard.jsx v1.14 - DOM NESTING FIX
 // Unified KPI card component for Intelligence dashboard
 // Design System v5.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.14 (2026-01-27): Fixed DOM nesting warning
+//   - Changed label wrapper from <p> to <div> to allow ContextHelp tooltip (contains <div>)
+//   - Fixes: "validateDOMNesting(...): <div> cannot appear as a descendant of <p>"
+// v1.13 (2026-01-27): Stellar Cascade timing optimization
+//   - Reduced staggerChildren from 0.05 to 0.035 for snappier cascade
+//   - Removed delayChildren (parent AnimatedSection handles orchestration)
+//   - Increased spring stiffness from 300 to 450 for faster settle
+//   - Added subtle scale (0.98→1) to gridItemVariants
 // v1.12 (2026-01-18): Dark mode status border colors
 //   - Added brighter dark mode variants for status borders
 //   - success: dark:border-l-emerald-400, warning: dark:border-l-amber-400, danger: dark:border-l-red-400
@@ -217,7 +225,8 @@ const KPICard = ({
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Responsive label: show mobileLabel on small screens, full label on larger */}
-            <p className={`
+            {/* Using div instead of p to allow ContextHelp tooltip (contains div) as child */}
+            <div className={`
               ${v.label} font-medium uppercase tracking-wide mb-0.5 sm:mb-1 leading-tight flex items-center gap-1
               ${isGradient ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}
             `}>
@@ -234,7 +243,7 @@ const KPICard = ({
                   className={isGradient ? 'text-white/60 hover:text-white/90' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'}
                 />
               )}
-            </p>
+            </div>
             <p className={`
               ${v.value} font-bold mb-0.5 leading-tight break-words
               ${isGradient ? 'text-white' : 'text-slate-900 dark:text-white'}
@@ -312,23 +321,25 @@ const KPICard = ({
 };
 
 // Staggered animation variants for grid items
+// Tuned for snappier feel with Stellar Cascade transitions
 const gridContainerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.1
+      staggerChildren: 0.035,  // Reduced from 0.05 for snappier cascade
+      delayChildren: 0         // Parent AnimatedSection handles delay
     }
   }
 };
 
 const gridItemVariants = {
-  hidden: { opacity: 0, y: 15 },
+  hidden: { opacity: 0, y: 10, scale: 0.98 },  // Added subtle scale
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 300, damping: 24 }
+    scale: 1,
+    transition: { type: 'spring', stiffness: 450, damping: 28 }  // Increased stiffness for snap
   }
 };
 

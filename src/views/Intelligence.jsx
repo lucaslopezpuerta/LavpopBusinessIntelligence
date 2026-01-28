@@ -1,8 +1,11 @@
-// Intelligence.jsx v3.18.0 - COSMIC PRECISION UPDATE
+// Intelligence.jsx v3.19.0 - STELLAR CASCADE TRANSITIONS
 // Refactored with Priority Matrix, auto-refresh, collapsible sections
 // Design System v5.0 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v3.19.0 (2026-01-27): Stellar Cascade transitions
+//   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
+//   - Content cascades in layered sequence (~250ms total)
 // v3.18.0 (2026-01-17): Cosmic Precision upgrade
 //   - Updated StaleDataIndicator: dark:bg-space-dust, dark:border-stellar-cyan/10
 //   - Cosmic compliant: Design System v5.0
@@ -134,6 +137,7 @@ import KPICard, { KPIGrid } from '../components/ui/KPICard';
 import { METRIC_TOOLTIPS } from '../constants/metricTooltips';
 import { IntelligenceLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
+import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 
 // Lazy-loaded section components (contain charts)
 import {
@@ -468,10 +472,9 @@ const Intelligence = ({ data, onDataChange }) => {
 
   return (
     <PullToRefreshWrapper onRefresh={handleRefresh}>
-      <div className="space-y-6 sm:space-y-8 animate-fade-in">
-
+      <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
-          <header className="flex flex-col gap-3 sm:gap-4">
+        <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
                 {/* Icon Container - Glassmorphism */}
@@ -509,10 +512,10 @@ const Intelligence = ({ data, onDataChange }) => {
               />
             </div>
 
-          </header>
+        </AnimatedHeader>
 
-          {/* Quick Stats Overview - Moved to top for immediate visibility */}
-          <section aria-labelledby="quick-stats-heading">
+        {/* Quick Stats Overview - Moved to top for immediate visibility */}
+        <AnimatedSection ariaLabel="Resumo rápido de métricas">
             <h2 id="quick-stats-heading" className="sr-only">Resumo rápido de métricas</h2>
             <KPIGrid columns={4}>
               <KPICard
@@ -550,9 +553,10 @@ const Intelligence = ({ data, onDataChange }) => {
                 tooltip={METRIC_TOOLTIPS.cyclesPerDay}
               />
             </KPIGrid>
-          </section>
+        </AnimatedSection>
 
-          {/* Priority Matrix - Replaces Health Score with actionable 4-dimension analysis */}
+        {/* Priority Matrix - Replaces Health Score with actionable 4-dimension analysis */}
+        <AnimatedSection>
           {priorityMatrix && (
             <PriorityMatrix
               dimensions={priorityMatrix.dimensions}
@@ -596,8 +600,9 @@ const Intelligence = ({ data, onDataChange }) => {
               onToggle={() => handleToggleSection('growth')}
             />
           </Suspense>
+        </AnimatedSection>
 
-      </div>
+      </AnimatedView>
     </PullToRefreshWrapper>
   );
 };

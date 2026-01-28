@@ -1,9 +1,14 @@
-// CampaignDetailsModal.jsx v2.3 - REFACTORED TO useScrollLock HOOK
+// CampaignDetailsModal.jsx v2.4 - ANIMATION STANDARDIZATION
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
-// Design System v4.0 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v2.4 (2026-01-27): Animation standardization
+//   - Added Framer Motion animations using MODAL constants
+//   - Added AnimatePresence for proper enter/exit animations
+//   - Added useReducedMotion hook for accessibility
+//   - Added pt-safe to header for notch devices
 // v2.3 (2026-01-12): Refactored to useScrollLock hook
 //   - Replaced inline scroll lock useEffect with shared useScrollLock hook
 //   - Reduces code duplication across modals
@@ -36,6 +41,7 @@
 // v1.0 (2025-12-08): Initial implementation
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Target,
@@ -59,8 +65,10 @@ import {
   Search
 } from 'lucide-react';
 import { getCampaignContacts, getCampaignPerformance } from '../../utils/campaignService';
+import { MODAL } from '../../constants/animations';
 import { haptics } from '../../utils/haptics';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // Pagination config
 const CONTACTS_PER_PAGE = 20;
@@ -88,6 +96,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
 
   // iOS-compatible scroll lock - prevents body scroll while modal is open
   useScrollLock(true);
+
+  // Reduced motion accessibility
+  const prefersReducedMotion = useReducedMotion();
 
   // Fetch campaign contacts on mount
   useEffect(() => {
@@ -320,11 +331,26 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
-      <div role="dialog" aria-modal="true" className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl w-full max-w-full sm:max-w-xl lg:max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+        {/* Backdrop */}
+        <motion.div
+          {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
+        />
+
+        {/* Modal Content */}
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
+          className="relative bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl w-full max-w-full sm:max-w-xl lg:max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
 
         {/* Header with Refresh */}
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+        <div className="flex items-center justify-between p-3 sm:p-4 pt-safe border-b border-slate-200 dark:border-slate-700 shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg shrink-0">
               <Target className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
@@ -700,8 +726,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
             </div>
           </div>
         )}
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 };
 

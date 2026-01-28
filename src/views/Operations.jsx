@@ -1,4 +1,4 @@
-// OPERATIONS TAB V6.0.0 - SIMPLIFIED LAYOUT
+// OPERATIONS TAB V6.1.0 - STELLAR CASCADE TRANSITIONS
 // ✅ Centralized week-based date filtering
 // ✅ Explicit date ranges in UI
 // ✅ Single source of truth for all components
@@ -15,6 +15,9 @@
 // ✅ Loading skeleton fallback for data readiness
 //
 // CHANGELOG:
+// v6.1.0 (2026-01-27): Stellar Cascade transitions
+//   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
+//   - Content cascades in layered sequence (~250ms total)
 // v6.0.0 (2026-01-23): Simplified layout
 //   - Removed section headers (Equipamentos, Utilização, Padrões Temporais)
 //   - Components now have their own headers with icon badges
@@ -95,6 +98,7 @@ import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { getDateWindows } from '../utils/dateWindows';
 import { OperationsLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
+import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 
 const Operations = ({ data, onDataChange }) => {
   // Theme context for Cosmic Precision styling
@@ -155,9 +159,9 @@ const Operations = ({ data, onDataChange }) => {
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
-      <div className="space-y-6 sm:space-y-8">
+      <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
-      <header className="flex flex-col gap-3 sm:gap-4">
+        <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {/* Icon Container - Glassmorphism */}
@@ -187,10 +191,11 @@ const Operations = ({ data, onDataChange }) => {
           </div>
         </div>
 
-      </header>
+        </AnimatedHeader>
 
-      {/* Centralized Date Filter - Single Source of Truth */}
-      <DateRangeSelector
+        {/* Centralized Date Filter - Single Source of Truth */}
+        <AnimatedSection>
+          <DateRangeSelector
         value={dateFilter}
         onChange={setDateFilter}
         dateWindow={dateWindow}
@@ -244,8 +249,9 @@ const Operations = ({ data, onDataChange }) => {
             </Suspense>
           </div>
         </div>
-      </section>
-      </div>
+        </section>
+        </AnimatedSection>
+      </AnimatedView>
     </PullToRefreshWrapper>
   );
 };

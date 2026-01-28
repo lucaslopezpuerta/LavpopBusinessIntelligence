@@ -1,8 +1,11 @@
-// SocialMedia.jsx v1.3 - PULL TO REFRESH
+// SocialMedia.jsx v1.4 - STELLAR CASCADE TRANSITIONS
 // Social Media Analytics Tab
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.4 (2026-01-27): Stellar Cascade transitions
+//   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
+//   - Content cascades in layered sequence (~250ms total)
 // v1.3 (2026-01-12): Pull-to-refresh support
 //   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
 //   - Accepts onDataChange prop for refresh callback
@@ -32,6 +35,7 @@ const GoogleBusinessAnalytics = lazy(() => import('../components/social/GoogleBu
 
 // Pull-to-refresh wrapper
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
+import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 
 // Loading fallback for lazy components
 const LoadingFallback = () => (
@@ -66,10 +70,9 @@ const SocialMedia = ({ data, onDataChange }) => {
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
-      <div className="space-y-6 sm:space-y-8 animate-fade-in">
-
+      <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
-      <header className="flex flex-col gap-3 sm:gap-4">
+        <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {/* Icon Container - Glassmorphism */}
@@ -99,10 +102,11 @@ const SocialMedia = ({ data, onDataChange }) => {
           </div>
         </div>
 
-      </header>
+        </AnimatedHeader>
 
-      {/* Platform Navigation */}
-      <SocialMediaNavigation
+        {/* Platform Navigation */}
+        <AnimatedSection>
+          <SocialMediaNavigation
         activeSection={activeSection}
         onSectionChange={setActiveSection}
       />
@@ -135,12 +139,13 @@ const SocialMedia = ({ data, onDataChange }) => {
         </Suspense>
       )}
 
-      {/* Facebook Section (Coming Soon) */}
-      {activeSection === 'facebook' && (
-        <ComingSoonPlaceholder platform="Facebook" />
-      )}
+        {/* Facebook Section (Coming Soon) */}
+        {activeSection === 'facebook' && (
+          <ComingSoonPlaceholder platform="Facebook" />
+        )}
+        </AnimatedSection>
 
-      </div>
+      </AnimatedView>
     </PullToRefreshWrapper>
   );
 };

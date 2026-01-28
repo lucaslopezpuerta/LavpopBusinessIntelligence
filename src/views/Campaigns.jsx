@@ -1,8 +1,11 @@
-// Campaigns.jsx v2.7.0 - PULL TO REFRESH
+// Campaigns.jsx v2.8.0 - STELLAR CASCADE TRANSITIONS
 // Customer Messaging & Campaign Management Tab
 // Design System v3.2 compliant
 //
 // CHANGELOG:
+// v2.8.0 (2026-01-27): Stellar Cascade transitions
+//   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
+//   - Content cascades in layered sequence (~250ms total)
 // v2.7.0 (2026-01-12): Pull-to-refresh support
 //   - Added PullToRefreshWrapper for mobile swipe-to-refresh gesture
 //   - Accepts onDataChange prop for refresh callback
@@ -88,6 +91,7 @@ const ModalLoadingFallback = () => (
 // Business logic
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
+import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -202,10 +206,9 @@ const Campaigns = ({ data, onDataChange }) => {
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
-      <div className="space-y-6 sm:space-y-8 animate-fade-in">
-
+      <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
-      <header className="flex flex-col gap-3 sm:gap-4">
+        <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             {/* Icon Container - Glassmorphism */}
@@ -244,10 +247,11 @@ const Campaigns = ({ data, onDataChange }) => {
           </button>
         </div>
 
-      </header>
+        </AnimatedHeader>
 
-      {/* Section Navigation */}
-      <CampaignSectionNavigation
+        {/* Section Navigation */}
+        <AnimatedSection>
+          <CampaignSectionNavigation
         activeSection={activeSection}
         onSectionChange={setActiveSection}
       />
@@ -286,15 +290,16 @@ const Campaigns = ({ data, onDataChange }) => {
         />
       )}
 
-      {/* Campaign List Section */}
-      {activeSection === 'history' && (
-        <CampaignList
-          formatCurrency={formatCurrency}
-          formatPercent={formatPercent}
-        />
-      )}
+        {/* Campaign List Section */}
+        {activeSection === 'history' && (
+          <CampaignList
+            formatCurrency={formatCurrency}
+            formatPercent={formatPercent}
+          />
+        )}
+        </AnimatedSection>
 
-      {/* New Campaign Modal */}
+        {/* New Campaign Modal */}
       {showNewCampaign && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <NewCampaignModal
@@ -307,7 +312,7 @@ const Campaigns = ({ data, onDataChange }) => {
         </Suspense>
       )}
 
-      </div>
+      </AnimatedView>
     </PullToRefreshWrapper>
   );
 };

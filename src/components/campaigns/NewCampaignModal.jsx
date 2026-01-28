@@ -1,8 +1,13 @@
-// NewCampaignModal.jsx v6.6 - COMPACT SCHEDULING UX
+// NewCampaignModal.jsx v6.7 - ANIMATION STANDARDIZATION
 // Campaign creation wizard modal
-// Design System v5.0 compliant - Variant D (Glassmorphism Cosmic)
+// Design System v5.1 compliant - Variant D (Glassmorphism Cosmic)
 //
 // CHANGELOG:
+// v6.7 (2026-01-27): Animation standardization
+//   - Added Framer Motion animations using MODAL constants
+//   - Added AnimatePresence for proper enter/exit animations
+//   - Added useReducedMotion hook for accessibility
+//   - Removed CSS animate-fade-in class
 // v6.6 (2026-01-18): Compact scheduling step
 //   - Removed pb-48 padding from scheduling inputs (was 192px of empty space)
 //   - Added dropUp prop to CosmicDatePicker and CosmicTimePicker
@@ -133,6 +138,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   ChevronLeft,
@@ -184,8 +190,10 @@ import {
   getTemplatesByAudience
 } from '../../config/messageTemplates';
 import { TEMPLATE_CAMPAIGN_TYPE_MAP } from '../../config/couponConfig';
+import { MODAL } from '../../constants/animations';
 import { haptics } from '../../utils/haptics';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import CosmicDatePicker from '../ui/CosmicDatePicker';
 import CosmicTimePicker from '../ui/CosmicTimePicker';
 
@@ -374,6 +382,7 @@ const NewCampaignModal = ({
 
   // iOS-compatible scroll lock - prevents body scroll while modal is open
   useScrollLock(isOpen);
+  const prefersReducedMotion = useReducedMotion();
 
   // Get audience customers with valid phones
   // v5.1: Added support for 'customFiltered' from AudienceFilterBuilder
@@ -765,13 +774,26 @@ const NewCampaignModal = ({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   // Portal rendering ensures fixed positioning works correctly
   // (avoids issues with parent transforms/filters affecting backdrop)
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 dark:backdrop-blur-sm">
-      <div role="dialog" aria-modal="true" className="w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-stellar-cyan/15 animate-fade-in flex flex-col">
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+          {/* Backdrop */}
+          <motion.div
+            {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
+            className="absolute inset-0 bg-black/60 dark:backdrop-blur-sm"
+            onClick={handleClose}
+          />
+          {/* Modal */}
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
+            className="relative w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-stellar-cyan/15 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
         {/* Header wrapper with safe area - extends background into notch/Dynamic Island */}
         <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl">
           {/* Header content */}
@@ -1589,8 +1611,10 @@ const NewCampaignModal = ({
             </button>
           ) : null}
         </div>
-      </div>
-    </div>,
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 };

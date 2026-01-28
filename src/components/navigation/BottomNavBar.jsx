@@ -1,4 +1,4 @@
-// BottomNavBar.jsx v3.0 - MINIMALIST STELLAR NAVIGATION
+// BottomNavBar.jsx v3.1 - MINIMALIST STELLAR NAVIGATION
 // Clean implementation following React Navigation best practices
 // https://reactnavigation.org/docs/bottom-tab-navigator/
 //
@@ -15,8 +15,13 @@
 // - Safe area support for notched devices
 // - Reduced motion support
 // - Dark/light mode via useTheme()
+// - Modal-aware: slides out when modals open (via body.modal-open class)
 //
 // CHANGELOG:
+// v3.1 (2026-01-27): Modal-aware navigation
+//   - Added bottom-nav-container class for CSS-based hiding
+//   - Smooth slide-out transition when modals open
+//   - Prevents accidental taps behind modal backdrop
 // v3.0 (2026-01-27): Clean start - Minimalist Stellar design
 //   - Built from scratch following industry best practices
 //   - Removed all legacy code and workarounds
@@ -173,7 +178,9 @@ const BottomNavBar = ({ activeTab, onMoreClick }) => {
   return (
     <nav
       className={`
+        bottom-nav-container
         lg:hidden fixed bottom-0 inset-x-0 z-40
+        transition-all duration-200 ease-out
         ${showEntrance ? 'nav-entrance' : ''}
       `}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}

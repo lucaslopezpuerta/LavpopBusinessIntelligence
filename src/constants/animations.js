@@ -1,8 +1,12 @@
-// animations.js v2.0 - MICRO-INTERACTION ANIMATIONS
+// animations.js v3.0 - MICRO-INTERACTION ANIMATIONS
 // Centralized animation configurations for consistent motion design
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.0 (2026-01-27): Stellar Cascade page transitions
+//   - Added PAGE_TRANSITION_STELLAR with orchestrated container/header/section/item variants
+//   - Added PAGE_TRANSITION_STELLAR_REDUCED for accessibility
+//   - Enables layered content entrance with stagger timing (~250ms total)
 // v2.0 (2026-01-27): Navigation refactoring
 //   - Replaced PAGE_TRANSITION with "Cosmic Emergence" (fade + scale + blur)
 //   - Removed direction-aware slide animations
@@ -396,6 +400,100 @@ export const PAGE_TRANSITION_REDUCED = {
   exit: { opacity: 0, transition: { duration: 0.1 } }
 };
 
+// Page transitions - "Stellar Cascade" (v3.0)
+// Content materializes in layered sequence creating visual hierarchy through timing
+// Header appears first, then sections cascade in sequence
+// Fast, modern, and stylish - total perceived time ~250ms
+export const PAGE_TRANSITION_STELLAR = {
+  // Container orchestrates children with stagger
+  container: {
+    initial: { opacity: 0 },
+    animate: {
+      opacity: 1,
+      transition: {
+        duration: 0.12,
+        ease: [0.32, 0, 0.67, 0], // ease-out-cubic
+        when: 'beforeChildren',
+        staggerChildren: 0.04,
+        delayChildren: 0.03
+      }
+    },
+    exit: {
+      opacity: 0,
+      transition: {
+        duration: 0.08,
+        ease: [0.33, 1, 0.68, 1] // ease-in-cubic
+      }
+    }
+  },
+
+  // Header section - first to appear, subtle upward motion
+  header: {
+    initial: { opacity: 0, y: -8 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        stiffness: 400,
+        damping: 30,
+        mass: 0.8
+      }
+    }
+  },
+
+  // Primary content sections - staggered with upward motion
+  section: {
+    initial: { opacity: 0, y: 12 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        stiffness: 350,
+        damping: 28,
+        mass: 0.9
+      }
+    }
+  },
+
+  // Cards/grid items - fastest stagger with subtle scale
+  item: {
+    initial: { opacity: 0, y: 8, scale: 0.98 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 500,
+        damping: 32
+      }
+    }
+  }
+};
+
+// Stellar Cascade - Reduced motion variant (instant transitions)
+export const PAGE_TRANSITION_STELLAR_REDUCED = {
+  container: {
+    initial: { opacity: 1 },
+    animate: { opacity: 1 },
+    exit: { opacity: 1 }
+  },
+  header: {
+    initial: {},
+    animate: {}
+  },
+  section: {
+    initial: {},
+    animate: {}
+  },
+  item: {
+    initial: {},
+    animate: {}
+  }
+};
+
 // Toast notification animations
 export const TOAST = {
   // Entry from top
@@ -472,6 +570,49 @@ export const ERROR_ANIMATION = {
   }
 };
 
+// Pull-to-refresh animations (v2.1)
+// Refined timing for smooth, responsive feel
+export const PULL_REFRESH = {
+  // Indicator bubble enter/exit
+  INDICATOR: {
+    initial: { opacity: 0, scale: 0.6 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.8 },
+    transition: SPRING.SNAPPY
+  },
+  // Faster exit for snappy dismiss
+  EXIT_TRANSITION: {
+    type: 'spring',
+    stiffness: 500,
+    damping: 30
+  },
+  // Icon rotation during pull (smoothed)
+  ICON_PULL: {
+    type: 'spring',
+    stiffness: 300,
+    damping: 20,
+    mass: 0.5
+  },
+  // Icon rotation during refresh (continuous spin)
+  ICON_SPIN: {
+    repeat: Infinity,
+    duration: 1,
+    ease: 'linear'
+  },
+  // "Ready to refresh" pulse effect
+  READY_PULSE: {
+    scale: [1, 1.08, 1],
+    transition: {
+      duration: 0.4,
+      ease: 'easeInOut'
+    }
+  },
+  // Shadow intensification when ready
+  READY_SHADOW: {
+    boxShadow: '0 8px 25px -5px rgba(0, 174, 239, 0.4), 0 4px 10px -6px rgba(0, 174, 239, 0.3)'
+  }
+};
+
 // Default export for convenience
 export default {
   SPRING,
@@ -485,8 +626,11 @@ export default {
   BUBBLE_ACTIVE,
   PAGE_TRANSITION,
   PAGE_TRANSITION_REDUCED,
+  PAGE_TRANSITION_STELLAR,
+  PAGE_TRANSITION_STELLAR_REDUCED,
   CHART_ANIMATION,
   TOAST,
   SUCCESS_ANIMATION,
-  ERROR_ANIMATION
+  ERROR_ANIMATION,
+  PULL_REFRESH
 };

@@ -1,9 +1,12 @@
-/* Bilavnova BI - Base Styles v4.2 (Minimalist Stellar Navigation)
+/* Bilavnova BI - Base Styles v4.3 (Modal-Aware Navigation)
  * Space-age futurist design system
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
  *
  * CHANGELOG:
+ * v4.3 (2026-01-27): Modal-Aware Navigation
+ *   - Added .bottom-nav-container slide-out animation when body.modal-open
+ *   - Prevents nav interaction behind modals on mobile
  * v4.2 (2026-01-27): Minimalist Stellar Navigation
  *   - Removed old bottom-nav animation classes
  *   - Added stellar-glow, nav-top-fade, nav-entrance utilities
@@ -368,6 +371,26 @@ body {
 /* Safe area padding for bottom nav */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 8px);
+}
+
+/* ============================================
+   MODAL-AWARE NAVIGATION (v4.3)
+   Hides BottomNavBar when modals are open
+   ============================================ */
+
+/* Slide nav down when modal is open */
+body.modal-open .bottom-nav-container {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Reduced motion: instant hide instead of slide */
+@media (prefers-reduced-motion: reduce) {
+  body.modal-open .bottom-nav-container {
+    transform: none;
+    visibility: hidden;
+  }
 }
 
 /* ============================================

@@ -1,8 +1,13 @@
-// CustomerProfileModal.jsx v4.6 - CARD LABEL CONTRAST FIX
+// CustomerProfileModal.jsx v4.7 - ANIMATION STANDARDIZATION
 // Comprehensive customer profile modal for Customer Directory
 // Design System v5.1 compliant - Variant D (Glassmorphism Cosmic)
 //
 // CHANGELOG:
+// v4.7 (2026-01-27): Animation standardization
+//   - Added Framer Motion entrance animations using MODAL constants
+//   - Replaced CSS animate-fade-in with motion.div for backdrop
+//   - Added proper exit animations via AnimatePresence
+//   - Uses existing useReducedMotion hook for accessibility
 // v4.6 (2026-01-18): Improved card label contrast in dark mode
 //   - Changed all card titles from dark:text-slate-400 to dark:text-slate-300
 //   - Better readability for CPF, Telefone, Email, Desde, Segmento RFM, etc.
@@ -175,6 +180,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Z_INDEX } from '../constants/zIndex';
+import { MODAL } from '../constants/animations';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import CustomerCyclesTrend from './drilldowns/CustomerCyclesTrend';
 import {
@@ -634,19 +640,28 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
 
     // Portal rendering for proper z-index stacking
     return createPortal(
-        <div
-            className="fixed inset-0 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center sm:p-4 animate-fade-in"
-            onClick={handleBackdropClick}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="customer-profile-title"
-        >
+        <AnimatePresence>
             <div
-                className="bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl max-w-2xl w-full h-full sm:h-auto max-h-full sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
-                onClick={(e) => e.stopPropagation()}
-                style={swipeStyle}
-                {...swipeHandlers}
+                className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="customer-profile-title"
             >
+                {/* Backdrop */}
+                <motion.div
+                    {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
+                    className="absolute inset-0 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm"
+                    onClick={handleBackdropClick}
+                />
+
+                {/* Modal Content */}
+                <motion.div
+                    {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
+                    className="relative bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl max-w-2xl w-full h-full sm:h-auto max-h-full sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
+                    onClick={(e) => e.stopPropagation()}
+                    style={swipeStyle}
+                    {...swipeHandlers}
+                >
                 {/* Header wrapper with safe area - cosmic gradient background */}
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-space-nebula dark:to-space-dust pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl">
                     {/* Swipe handle indicator (mobile only) */}
@@ -1263,8 +1278,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         )}
                     </div>
                 )}
+                </motion.div>
             </div>
-        </div>,
+        </AnimatePresence>,
         document.body
     );
 };

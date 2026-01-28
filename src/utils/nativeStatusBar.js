@@ -2,7 +2,22 @@
  * Native Status Bar Utility
  * Handles status bar styling for Capacitor native apps
  *
- * @version 1.1.0
+ * @version 1.2.0
+ *
+ * ANDROID SAFE AREA NOTE:
+ * Android doesn't reliably expose status bar height to WebViews via CSS env().
+ * Unlike iOS which provides env(safe-area-inset-top) automatically, Android WebViews
+ * require manual calculation. This utility uses the standard 24dp status bar height
+ * which works for most Android devices (90%+). For devices with custom status bars
+ * (e.g., some gaming phones with larger notches), EdgeToEdge mode with CSS env()
+ * would be preferred, but this requires API level 30+ and additional configuration.
+ *
+ * The current 24dp fallback provides acceptable results for the target user base.
+ * If issues arise on specific devices, consider using WindowInsetsCompat in the
+ * native Android layer to pass accurate insets to the WebView.
+ *
+ * CHANGELOG:
+ * v1.2.0 (2026-01-27): Added Android limitations documentation
  * v1.1.0 (2025-12-26): Detect initial theme for correct status bar style
  */
 
@@ -61,15 +76,22 @@ export async function initializeStatusBar() {
 
 /**
  * Set Android-specific safe area CSS variables
- * Since env(safe-area-inset-top) doesn't work on Android
+ * Since env(safe-area-inset-top) doesn't work reliably on Android WebViews.
+ *
+ * NOTE: This uses a hardcoded 24dp value which is the standard Android status bar
+ * height. This works for ~90% of Android devices. Some edge cases include:
+ * - Devices with larger notches may have taller status bars (up to 48dp)
+ * - Some OEM skins modify the status bar height
+ * - Foldable devices may have different heights in different states
+ *
+ * For production apps requiring pixel-perfect accuracy on all devices, consider
+ * using WindowInsetsCompat in the native layer to pass actual inset values.
  */
 function setAndroidSafeAreaInsets() {
-  // Get device pixel ratio for density-independent pixels
-  const density = window.devicePixelRatio || 1;
-
-  // Calculate status bar height in CSS pixels
   // Standard Android status bar is 24dp
-  const statusBarHeight = Math.round(ANDROID_STATUS_BAR_HEIGHT * (density / density)); // Keep as dp
+  // We keep this as dp (density-independent pixels) because CSS pixels map 1:1
+  // with dp on Android WebViews when using viewport meta tag with device-width
+  const statusBarHeight = ANDROID_STATUS_BAR_HEIGHT;
 
   // Set CSS custom property
   document.documentElement.style.setProperty(

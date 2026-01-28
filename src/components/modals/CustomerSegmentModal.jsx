@@ -1,8 +1,12 @@
-// CustomerSegmentModal.jsx v2.9 - Toast Notifications
+// CustomerSegmentModal.jsx v3.0 - ANIMATION STANDARDIZATION
 // Clean modal for displaying filtered customer lists with campaign integration
-// Design System v4.0 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.0 (2026-01-27): Animation standardization
+//   - Uses MODAL constants from animations.js
+//   - Added useReducedMotion hook for accessibility
+//   - Consistent animation timing with other modals
 // v2.9 (2026-01-27): Toast notifications
 //   - Replaced browser alert() with useToast() for user feedback
 //   - Success/warning/error toasts for automation and campaign actions
@@ -82,9 +86,11 @@ import {
   X, Users, Check, ChevronRight, ChevronDown,
   Plus, RefreshCw
 } from 'lucide-react';
+import { MODAL } from '../../constants/animations';
 import { useBlacklist } from '../../hooks/useBlacklist';
 import { useActiveCampaigns } from '../../hooks/useActiveCampaigns';
 import { useSwipeToClose } from '../../hooks/useSwipeToClose';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { normalizePhone } from '../../utils/phoneUtils';
 import { api } from '../../utils/apiService';
 import { haptics } from '../../utils/haptics';
@@ -135,6 +141,7 @@ const CustomerSegmentModal = ({
   const { isBlacklisted, getBlacklistReason } = useBlacklist();
   const { getCampaignsForAudience, isLoading: campaignsLoading } = useActiveCampaigns();
   const { success, warning, error: showError } = useToast();
+  const prefersReducedMotion = useReducedMotion();
 
   // Swipe-to-close for mobile (threshold lowered for easier mobile dismiss)
   const { handlers: swipeHandlers, style: swipeStyle, isDragging, progress } = useSwipeToClose({
@@ -382,9 +389,7 @@ const CustomerSegmentModal = ({
         <>
           {/* Backdrop - scrollable to ensure modal can always be closed */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
             onClick={onClose}
             className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
           >
@@ -394,10 +399,7 @@ const CustomerSegmentModal = ({
               <motion.div
                 role="dialog"
                 aria-modal="true"
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full sm:max-w-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl
                            rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-white/20 dark:border-slate-700/50
