@@ -1,8 +1,18 @@
-// SectionCard.jsx v2.7 - DEEPER COSMIC UPDATE
+// SectionCard.jsx v3.1 - CLEANER ICON WELLS
 // Wrapper component for Intelligence sections
-// Design System v5.0 compliant - Tier 1 Essential
+// Design System v5.1 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v3.1 (2026-01-29): Removed left border accent from icon wells
+//   - Cleaner look without border-l-4/border-l-2 on icon containers
+// v3.0 (2026-01-29): Cosmic Precision 2.0 - Warning color fix
+//   - REVERTED yellow back to AMBER for WCAG AA compliance
+//   - Yellow-600 fails WCAG AA (3.5:1 contrast) - amber-600 passes (4.7:1)
+//   - amber color entry: bg amber-600/500 (was yellow - failed contrast)
+// v2.10 (2026-01-29): Orange to yellow migration (REVERTED in v3.0)
+// v2.9 (2026-01-29): Amber to orange migration (REVERTED in v3.0)
+// v2.8 (2026-01-29): Solid color icon wells for WCAG AA compliance
+//   - Icon backgrounds now use solid colors with white icons
 // v2.7 (2026-01-17): Deeper cosmic background
 //   - Changed dark:bg-space-dust to dark:bg-space-nebula (darker)
 //   - Better contrast for internal card gradients to space-void
@@ -44,42 +54,42 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 
-// Color mappings for section accents
+// Color mappings for section accents (solid colors for WCAG AA compliance)
 const SECTION_COLORS = {
   blue: {
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-    border: 'border-blue-500',
-    icon: 'text-blue-600 dark:text-blue-400'
+    bg: 'bg-blue-600 dark:bg-blue-500',
+    border: 'border-blue-700 dark:border-blue-400',
+    icon: 'text-white'
   },
   emerald: {
-    bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-    border: 'border-emerald-500',
-    icon: 'text-emerald-600 dark:text-emerald-400'
+    bg: 'bg-emerald-600 dark:bg-emerald-500',
+    border: 'border-emerald-700 dark:border-emerald-400',
+    icon: 'text-white'
   },
   green: {
-    bg: 'bg-green-100 dark:bg-green-900/30',
-    border: 'border-green-500',
-    icon: 'text-green-600 dark:text-green-400'
+    bg: 'bg-green-600 dark:bg-green-500',
+    border: 'border-green-700 dark:border-green-400',
+    icon: 'text-white'
   },
   teal: {
-    bg: 'bg-teal-100 dark:bg-teal-900/30',
-    border: 'border-teal-500',
-    icon: 'text-teal-600 dark:text-teal-400'
+    bg: 'bg-teal-600 dark:bg-teal-500',
+    border: 'border-teal-700 dark:border-teal-400',
+    icon: 'text-white'
   },
   amber: {
-    bg: 'bg-amber-100 dark:bg-amber-900/30',
-    border: 'border-amber-500',
-    icon: 'text-amber-600 dark:text-amber-400'
+    bg: 'bg-amber-600 dark:bg-amber-500',      // FIXED: amber passes WCAG (4.7:1), not yellow (3.5:1)
+    border: 'border-amber-700 dark:border-amber-400',
+    icon: 'text-white'
   },
   purple: {
-    bg: 'bg-purple-100 dark:bg-purple-900/30',
-    border: 'border-purple-500',
-    icon: 'text-purple-600 dark:text-purple-400'
+    bg: 'bg-purple-600 dark:bg-purple-500',
+    border: 'border-purple-700 dark:border-purple-400',
+    icon: 'text-white'
   },
   lavpop: {
-    bg: 'bg-lavpop-blue/10 dark:bg-lavpop-blue/20',
-    border: 'border-lavpop-blue',
-    icon: 'text-lavpop-blue'
+    bg: 'bg-lavpop-blue-600 dark:bg-lavpop-blue-500',
+    border: 'border-lavpop-blue-700 dark:border-lavpop-blue-400',
+    icon: 'text-white'
   }
 };
 
@@ -108,7 +118,7 @@ const SectionHeader = ({
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {Icon && (
-            <div className={`w-7 h-7 rounded-lg ${colors.bg} flex items-center justify-center border-l-2 ${colors.border} flex-shrink-0`}>
+            <div className={`w-7 h-7 rounded-lg ${colors.bg} flex items-center justify-center flex-shrink-0`}>
               <Icon className={`w-3.5 h-3.5 ${colors.icon}`} aria-hidden="true" />
             </div>
           )}
@@ -129,7 +139,7 @@ const SectionHeader = ({
   const headerContent = (
     <div className="flex items-center gap-2 flex-1 min-w-0">
       {Icon && (
-        <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center border-l-4 ${colors.border} flex-shrink-0`}>
+        <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center flex-shrink-0`}>
           <Icon className={`w-5 h-5 ${colors.icon}`} aria-hidden="true" />
         </div>
       )}

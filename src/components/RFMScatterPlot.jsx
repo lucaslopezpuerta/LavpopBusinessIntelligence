@@ -1,7 +1,30 @@
-// RFMScatterPlot.jsx v5.2.0 - Legend Simplification
+// RFMScatterPlot.jsx v5.6.0 - MODE-AWARE AMBER BADGES
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v5.6.0 (2026-01-29): Yellow to amber color migration with mode-aware badges
+//   - CHANGED: "At Risk" tooltip badge from yellow-600/500 solid to mode-aware amber styling
+//   - CHANGED: At Risk pill button to amber-600/500 with amber-700/600 hover
+//   - CHANGED: At Risk pill focus ring from yellow to amber
+//   - CHANGED: At Risk list view badge from yellow-600/500 solid to mode-aware amber
+//   - Mode-aware badges: bg-amber-50 text-amber-800 border border-amber-200 (light)
+//                        bg-amber-500 text-white border-amber-400 (dark)
+// v5.5.0 (2026-01-29): Orange to yellow color migration for At Risk badges
+//   - CHANGED: "At Risk" tooltip badge from orange-600/500 to yellow-600/500
+//   - CHANGED: At Risk pill button from orange-600/500 to yellow-600/500
+//   - CHANGED: At Risk pill border from orange-700/400 to yellow-700/400
+//   - CHANGED: At Risk list view badge from orange-600/500 to yellow-600/500
+//   - Improves visual distinction from other semantic colors
+// v5.4.0 (2026-01-29): Amber to orange color migration for At Risk badges
+//   - CHANGED: "At Risk" tooltip badge from amber-600/500 to orange-600/500
+//   - CHANGED: At Risk pill button from amber-600/500 to orange-600/500
+//   - CHANGED: At Risk pill border from amber-700/400 to orange-700/400
+//   - CHANGED: At Risk list view badge from amber-600/500 to orange-600/500
+//   - Improves visual distinction from other semantic colors
+// v5.3.0 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - Risk status badges now use solid colors with white text
+//   - Updated tooltip, list view, and button badges
+//   - Consistent with Design System v5.1 solid color palette
 // v5.2.0 (2026-01-23): Legend Simplification & Toggle Controls
 //   - Removed VIP count from legend header
 //   - Removed icons from risk status labels (cleaner look)
@@ -334,15 +357,15 @@ const RFMScatterPlot = ({
                     <p className="text-slate-600 dark:text-slate-300">Última visita: <span className="font-semibold text-red-500 dark:text-red-400">{d.x} dias atrás</span></p>
                     <p className="text-slate-600 dark:text-slate-300">Frequência: <span className="font-semibold text-lavpop-green dark:text-emerald-400">{d.r} visitas</span></p>
 
-                    {/* Risk Status Badge - WCAG Accessible with icon + text + color */}
+                    {/* Risk Status Badge - Mode-aware styling for WCAG AA compliance */}
                     <div className={`mt-2 text-xs font-bold uppercase px-2 py-0.5 rounded-full w-fit flex items-center gap-1 ${
-                        d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                        d.status === 'Monitor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-                        d.status === 'At Risk' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
-                        d.status === 'Churning' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                        d.status === 'New Customer' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
-                        d.status === 'Lost' ? 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300' :
-                        'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                        d.status === 'Healthy' ? 'bg-emerald-600 dark:bg-emerald-500 text-white' :
+                        d.status === 'Monitor' ? 'bg-blue-600 dark:bg-blue-500 text-white' :
+                        d.status === 'At Risk' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400' :
+                        d.status === 'Churning' ? 'bg-red-600 dark:bg-red-500 text-white' :
+                        d.status === 'New Customer' ? 'bg-violet-600 dark:bg-violet-500 text-white' :
+                        d.status === 'Lost' ? 'bg-slate-500 dark:bg-slate-600 text-white' :
+                        'bg-slate-500 dark:bg-slate-600 text-white'
                     }`}>
                         <StatusIcon status={d.status} />
                         {getRiskLabel(d.status)}
@@ -410,24 +433,24 @@ const RFMScatterPlot = ({
                         </div>
                     </div>
 
-                    {/* At-Risk Pill - discrete on mobile, full on desktop */}
+                    {/* At-Risk Pill - solid amber button with hover states */}
                     {notContactedHighValue > 0 ? (
                         <button
                             onClick={() => { haptics.light(); handleHighValueAtRiskClick(); }}
-                            className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2.5 sm:min-h-[44px] bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto"
+                            className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2.5 sm:min-h-[44px] bg-amber-600 dark:bg-amber-500 border border-amber-700 dark:border-amber-400 rounded-full hover:bg-amber-700 dark:hover:bg-amber-600 hover:shadow-md hover:scale-[1.02] transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto"
                             aria-label={`${notContactedHighValue} clientes de alto valor em risco sem contato. Clique para ver detalhes.`}
                         >
-                            <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-600 dark:text-amber-400" />
-                            <span className="text-[10px] sm:text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                            <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
+                            <span className="text-[10px] sm:text-xs font-medium text-white whitespace-nowrap">
                                 {notContactedHighValue}
                                 <span className="hidden sm:inline"> em risco</span>
                             </span>
-                            <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-500 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+                            <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/80 group-hover:translate-x-0.5 transition-transform" />
                         </button>
                     ) : highValueAtRiskCustomers.length > 0 ? (
-                        <div className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-2 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto">
-                            <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400" />
-                            <span className="text-[10px] sm:text-xs font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap hidden sm:inline">
+                        <div className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-2 bg-emerald-600 dark:bg-emerald-500 border border-emerald-700 dark:border-emerald-400 rounded-full absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto">
+                            <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
+                            <span className="text-[10px] sm:text-xs font-medium text-white whitespace-nowrap hidden sm:inline">
                                 Todos contactados
                             </span>
                         </div>
@@ -575,14 +598,15 @@ const RFMScatterPlot = ({
                                             {d.name}
                                         </td>
                                         <td className="py-2 px-3">
+                                            {/* Risk Status Badge - Mode-aware styling for WCAG AA */}
                                             <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                d.status === 'Healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                                                d.status === 'Monitor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-                                                d.status === 'At Risk' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
-                                                d.status === 'Churning' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                                                d.status === 'New Customer' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
-                                                d.status === 'Lost' ? 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300' :
-                                                'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                                d.status === 'Healthy' ? 'bg-emerald-600 dark:bg-emerald-500 text-white' :
+                                                d.status === 'Monitor' ? 'bg-blue-600 dark:bg-blue-500 text-white' :
+                                                d.status === 'At Risk' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400' :
+                                                d.status === 'Churning' ? 'bg-red-600 dark:bg-red-500 text-white' :
+                                                d.status === 'New Customer' ? 'bg-violet-600 dark:bg-violet-500 text-white' :
+                                                d.status === 'Lost' ? 'bg-slate-500 dark:bg-slate-600 text-white' :
+                                                'bg-slate-500 dark:bg-slate-600 text-white'
                                             }`}>
                                                 <StatusIcon status={d.status} />
                                                 {RISK_LABELS[d.status]?.pt || d.status}

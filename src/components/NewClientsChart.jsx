@@ -1,7 +1,21 @@
-// NewClientsChart.jsx v4.0 - LONG-PRESS DIRECT ACTION
+// NewClientsChart.jsx v4.4 - MODE-AWARE AMBER BADGES
 // New customer acquisition with campaign integration
 //
 // CHANGELOG:
+// v4.4 (2026-01-29): Yellow to amber color migration with mode-aware badges
+//   - Warning pills: yellow-600/yellow-500 solid → amber-600/amber-500 solid button
+//   - Hover states: yellow-700/yellow-600 → amber-700/amber-600
+//   - Focus ring: yellow → amber
+// v4.3 (2026-01-29): Migrated orange colors to yellow
+//   - Warning pills: orange-600/orange-500 → yellow-600/yellow-500
+//   - Hover states: orange-700/orange-600 → yellow-700/yellow-600
+// v4.2 (2026-01-29): Migrated amber colors to orange
+//   - Warning pills: amber-600/amber-500 → orange-600/orange-500
+//   - Hover states: amber-700/amber-600 → orange-700/orange-600
+// v4.1 (2026-01-29): Solid colors for badges and icon wells
+//   - UPDATED: Icon well uses solid bg-blue-600 with text-white
+//   - UPDATED: All status pills use solid colors instead of opacity-based
+//   - UPDATED: Amber, emerald, blue, slate pills migrated to solid pattern
 // v4.0 (2026-01-15): Long-press opens modal directly
 //   - NEW: onLongPressHitTest callback for bar hit-testing
 //   - Long-press on bar → opens modal directly (skips tooltip preview)
@@ -295,8 +309,8 @@ const NewClientsChart = ({
       <div className="mb-4">
         {/* Title + Subtitle */}
         <div className="flex items-start gap-3 mb-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
-            <UserPlus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <div className="p-2 bg-blue-600 dark:bg-blue-500 rounded-lg shrink-0">
+            <UserPlus className="w-5 h-5 text-white" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
@@ -318,30 +332,30 @@ const NewClientsChart = ({
 
         {/* Insight Pills - responsive grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {/* Welcome status pill */}
+          {/* Welcome status pill - solid amber button with hover states */}
           {stats.notWelcomed > 0 ? (
             <button
               onClick={() => { haptics.light(); handleNewCustomersClick(); }}
-              className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group"
+              className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-600 dark:bg-amber-500 rounded-lg hover:bg-amber-700 dark:hover:bg-amber-600 transition-colors group focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
             >
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="w-4 h-4 text-white" />
+                <span className="text-sm font-semibold text-white">
                   {stats.notWelcomed}
                 </span>
-                <span className="text-xs text-amber-600 dark:text-amber-400">
+                <span className="text-xs text-white/90">
                   sem boas-vindas
                 </span>
               </div>
-              <ChevronRight className="w-4 h-4 text-amber-400 dark:text-amber-500 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-white/70 group-hover:translate-x-0.5 transition-transform" />
             </button>
           ) : stats.welcomeCount > 0 ? (
-            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-600 dark:bg-emerald-500 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-white" />
+              <span className="text-sm font-semibold text-white">
                 {stats.welcomePct}%
               </span>
-              <span className="text-xs text-emerald-600 dark:text-emerald-400">
+              <span className="text-xs text-white/90">
                 com boas-vindas
               </span>
             </div>
@@ -349,44 +363,34 @@ const NewClientsChart = ({
 
           {/* Return/trend pill */}
           {stats.returnedCount > 0 ? (
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
               stats.returnPct >= 50
-                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'
-                : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50'
+                ? 'bg-emerald-600 dark:bg-emerald-500'
+                : 'bg-blue-600 dark:bg-blue-500'
             }`}>
-              <CheckCircle className={`w-4 h-4 ${
-                stats.returnPct >= 50 ? 'text-emerald-500 dark:text-emerald-400' : 'text-blue-500 dark:text-blue-400'
-              }`} />
-              <span className={`text-sm font-semibold ${
-                stats.returnPct >= 50 ? 'text-emerald-700 dark:text-emerald-300' : 'text-blue-700 dark:text-blue-300'
-              }`}>
+              <CheckCircle className="w-4 h-4 text-white" />
+              <span className="text-sm font-semibold text-white">
                 {stats.returnPct}%
               </span>
-              <span className={`text-xs ${
-                stats.returnPct >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'
-              }`}>
+              <span className="text-xs text-white/90">
                 retornaram
               </span>
             </div>
           ) : stats.weekChange !== 0 ? (
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
               stats.weekChange > 0
-                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'
-                : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-600/50'
+                ? 'bg-emerald-600 dark:bg-emerald-500'
+                : 'bg-slate-600 dark:bg-slate-500'
             }`}>
               {stats.weekChange > 0 ? (
-                <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                <TrendingUp className="w-4 h-4 text-white" />
               ) : (
-                <TrendingDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                <TrendingDown className="w-4 h-4 text-white" />
               )}
-              <span className={`text-sm font-semibold ${
-                stats.weekChange > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400'
-              }`}>
+              <span className="text-sm font-semibold text-white">
                 {stats.weekChange > 0 ? '+' : ''}{stats.weekChange}%
               </span>
-              <span className={`text-xs ${
-                stats.weekChange > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'
-              }`}>
+              <span className="text-xs text-white/90">
                 vs semana
               </span>
             </div>

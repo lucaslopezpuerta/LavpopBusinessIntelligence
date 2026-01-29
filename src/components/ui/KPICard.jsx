@@ -1,8 +1,11 @@
-// KPICard.jsx v1.16 - HAPTIC FEEDBACK UPDATE
+// KPICard.jsx v1.17 - SOLID COLOR TREND BADGES
 // Unified KPI card component for Intelligence dashboard
 // Design System v5.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.17 (2026-01-28): Solid color trend badges for WCAG AA compliance
+//   - WoW trend badges now use solid colors with white text
+//   - Positive: emerald-600/500, Negative: red-600/500
 // v1.16 (2026-01-28): Haptic feedback integration
 //   - Added haptics.light() on clickable card press
 //   - Native Capacitor haptics on Android/iOS, web fallback
@@ -201,9 +204,10 @@ const KPICard = ({
     }
 
     const TrendIcon = isPositive ? TrendingUp : TrendingDown;
+    // Solid colors for WCAG AA compliance (4.5:1+ contrast)
     const trendClasses = isPositive
-      ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-      : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300';
+      ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
+      : 'bg-red-600 dark:bg-red-500 text-white';
 
     return (
       <span

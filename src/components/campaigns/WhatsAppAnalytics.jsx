@@ -1,8 +1,41 @@
-// WhatsAppAnalytics.jsx v3.5 - Light Background KPI Cards
+// WhatsAppAnalytics.jsx v4.1 - DESIGN ENHANCEMENTS
 // WhatsApp Business API Analytics Dashboard
-// Design System v4.0 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v4.1 (2026-01-29): Design enhancements
+//   - Micro-interactions: active:scale-[0.98] on filter/sort buttons
+//   - Visual hierarchy: divider above Engajamento section
+//   - Focus states: focus:ring-stellar-cyan on filter buttons
+//   - Code quality: extracted getMessageCardClasses() helper function
+//   - Opt-out badge: solid amber for consistency
+// v4.0 (2026-01-29): Design System v5.1 compliance fixes
+//   - Chart axis font size: 11px → 12px (accessibility minimum)
+//   - DateFilter touch targets: 28px → 44px (accessibility)
+//   - ProfileHeader: dark:bg-slate-800 → dark:bg-space-dust (cosmic pattern)
+//   - Tooltip: dark:bg-slate-800 → dark:bg-space-dust (cosmic pattern)
+//   - Select: dark:bg-slate-800 → dark:bg-space-dust, focus:ring-stellar-cyan
+//   - Pagination buttons: added 44px touch targets, dark:hover:bg-space-dust
+//   - Page numbers: 32px → 44px touch targets
+//   - Table row hover: dark:hover:bg-space-dust/50
+// v3.9 (2026-01-29): Mode-aware amber badges for better light mode visibility
+//   - QualityBadge YELLOW: now uses bg-amber-50 text-amber-800 border in light, solid amber in dark
+//   - Opt-out message icon wells: kept solid bg-amber-600 dark:bg-amber-500 for proper icon contrast
+//   - Opt-out badges: now use bg-amber-50 text-amber-800 border in light, solid amber in dark
+// v3.8 (2026-01-29): Migrated orange colors to yellow
+//   - QualityBadge YELLOW: orange-600/orange-500 → yellow-600/yellow-500
+//   - Opt-out message icon wells: orange-600/orange-500 → yellow-600/yellow-500
+//   - Opt-out badges: orange-600/orange-500 → yellow-600/yellow-500
+// v3.7 (2026-01-29): Migrated amber colors to orange
+//   - QualityBadge YELLOW: amber-600/amber-500 → orange-600/orange-500
+//   - Opt-out message icon wells: amber-600/amber-500 → orange-600/orange-500
+//   - Opt-out badges: amber-600/amber-500 → orange-600/orange-500
+// v3.6 (2026-01-29): Solid color badges for WCAG AA compliance
+//   - QualityBadge and TierBadge now use solid colors with white text
+//   - Summary stat pills now use solid colors with white text
+//   - Template category badges now use solid colors with white text
+//   - Message type icon wells now use solid colors with white icons
+//   - Message type badges now use solid colors with white text
 // v3.5 (2026-01-09): Light background KPI cards (Hybrid Card Design)
 //   - Changed KPICard variant from "gradient" to "default"
 //   - Cards now use light backgrounds (bg-white dark:bg-slate-800)
@@ -218,6 +251,17 @@ const getDateRange = (filter) => {
   return { from, to };
 };
 
+// Get message card styling based on engagement type
+const getMessageCardClasses = (engagementType) => {
+  const baseClasses = 'flex items-start gap-3 p-3 rounded-lg border';
+  const variants = {
+    button_positive: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+    button_optout: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+    other: 'bg-slate-50 dark:bg-space-dust border-slate-200 dark:border-stellar-cyan/10'
+  };
+  return `${baseClasses} ${variants[engagementType] || variants.other}`;
+};
+
 // ==================== DATE FILTER COMPONENT ====================
 
 const DateFilter = ({ value, onChange }) => {
@@ -238,7 +282,7 @@ const DateFilter = ({ value, onChange }) => {
         <button
           key={option.id}
           onClick={() => handleChange(option.id)}
-          className={`px-3 py-1 text-xs font-semibold rounded-full transition-all min-h-[28px] ${
+          className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all min-h-[44px] flex items-center ${
             value === option.id
               ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -255,14 +299,14 @@ const DateFilter = ({ value, onChange }) => {
 
 const QualityBadge = ({ rating }) => {
   const config = {
-    GREEN: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', label: 'Alta' },
-    YELLOW: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', label: 'Média' },
-    RED: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', label: 'Baixa' }
+    GREEN: { className: 'bg-emerald-600 dark:bg-emerald-500 text-white', label: 'Alta' },
+    YELLOW: { className: 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400', label: 'Média' },
+    RED: { className: 'bg-red-600 dark:bg-red-500 text-white', label: 'Baixa' }
   };
-  const { bg, text, label } = config[rating] || config.GREEN;
+  const { className, label } = config[rating] || config.GREEN;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${bg} ${text}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${className}`}>
       <Shield className="w-3 h-3" />
       {label}
     </span>
@@ -282,7 +326,7 @@ const TierBadge = ({ tier }) => {
   const label = tierMap[tier] || tier || 'N/A';
 
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-600 dark:bg-blue-500 text-white">
       <Zap className="w-3 h-3" />
       {label}
     </span>
@@ -305,7 +349,7 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5">
+    <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-stellar-cyan/10 p-4 sm:p-5">
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="sm:hidden">
         {/* Row 1: Avatar + Name + Refresh */}
@@ -401,13 +445,13 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
             </div>
           ) : summary ? (
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 font-medium text-xs sm:text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-green-600 dark:bg-green-500 text-white font-medium text-xs sm:text-xs">
                 Enviadas: {formatNumber(summary.totalSent || 0)}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium text-xs sm:text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-teal-600 dark:bg-teal-500 text-white font-medium text-xs sm:text-xs">
                 Entregues: {formatNumber(summary.totalDelivered || 0)}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 font-medium text-xs sm:text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-cyan-600 dark:bg-cyan-500 text-white font-medium text-xs sm:text-xs">
                 Lidas: {formatNumber(summary.totalRead || 0)}
               </span>
             </div>
@@ -465,7 +509,7 @@ const MessageTrendChart = ({ data, isLoading }) => {
     if (!active || !payload || !payload.length) return null;
 
     return (
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3 text-sm">
+      <div className="bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/10 rounded-lg shadow-lg p-3 text-sm">
         <p className="font-medium text-slate-900 dark:text-white mb-1">{label}</p>
         <p style={{ color: COLORS.sent }}>
           Enviadas: {formatNumber(payload[0]?.payload?.sent)}
@@ -483,12 +527,12 @@ const MessageTrendChart = ({ data, isLoading }) => {
         <CartesianGrid strokeDasharray="3 3" stroke={COLORS.lightGray} opacity={0.3} />
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 11, fill: COLORS.gray }}
+          tick={{ fontSize: 12, fill: COLORS.gray }}
           tickLine={false}
           axisLine={{ stroke: COLORS.lightGray }}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: COLORS.gray }}
+          tick={{ fontSize: 12, fill: COLORS.gray }}
           tickLine={false}
           axisLine={false}
         />
@@ -672,14 +716,14 @@ const TemplateAnalyticsTable = ({ templates, isLoading }) => {
           {templates.map((template, idx) => (
             <tr
               key={template.templateId || idx}
-              className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              className="border-b border-slate-100 dark:border-stellar-cyan/5 hover:bg-slate-50 dark:hover:bg-space-dust/50 transition-colors"
             >
               <td className="py-3 px-2">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                   <span className="font-medium text-slate-900 dark:text-white truncate text-sm" title={template.templateName}>
                     {formatTemplateName(template.templateName)}
                   </span>
-                  <span className="self-start flex-shrink-0 px-1.5 py-0.5 text-xs font-semibold rounded bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400 uppercase">
+                  <span className="self-start flex-shrink-0 px-1.5 py-0.5 text-xs font-semibold rounded bg-fuchsia-600 dark:bg-fuchsia-500 text-white uppercase">
                     {template.category === 'MARKETING' ? 'MKT' : template.category === 'UTILITY' ? 'UTIL' : template.category || 'N/A'}
                   </span>
                 </div>
@@ -1101,7 +1145,7 @@ const WhatsAppAnalytics = () => {
       {(hasEngagementData || engagementLoading) && (
         <>
           {/* Engagement KPI Cards */}
-          <div className="mt-6">
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-stellar-cyan/10">
             <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
               Engajamento & Custos (Twilio)
@@ -1168,7 +1212,7 @@ const WhatsAppAnalytics = () => {
                       <button
                         key={value}
                         onClick={() => { haptics.tick(); setInboundFilter(value); }}
-                        className={`flex-1 px-2 py-1.5 text-xs font-semibold rounded-full transition-all text-center ${
+                        className={`flex-1 px-2 py-1.5 text-xs font-semibold rounded-full transition-all text-center active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-1 ${
                           inboundFilter === value
                             ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -1185,7 +1229,7 @@ const WhatsAppAnalytics = () => {
                         field: prev.field === 'dateSent' ? 'type' : 'dateSent',
                         direction: 'desc'
                       })); }}
-                      className="px-2.5 py-1 text-xs font-semibold rounded-full text-slate-600 dark:text-slate-300"
+                      className="px-2.5 py-1 text-xs font-semibold rounded-full text-slate-600 dark:text-slate-300 transition-all active:scale-[0.98]"
                     >
                       {inboundSort.field === 'dateSent' ? 'Data' : 'Tipo'}
                     </button>
@@ -1194,7 +1238,7 @@ const WhatsAppAnalytics = () => {
                         ...prev,
                         direction: prev.direction === 'desc' ? 'asc' : 'desc'
                       })); }}
-                      className="p-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                      className="p-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white transition-all active:scale-[0.98]"
                     >
                       {inboundSort.direction === 'desc' ? (
                         <ChevronDown className="w-3.5 h-3.5" />
@@ -1218,7 +1262,7 @@ const WhatsAppAnalytics = () => {
                       <button
                         key={value}
                         onClick={() => { haptics.tick(); setInboundFilter(value); }}
-                        className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
+                        className={`px-3 py-1 text-xs font-semibold rounded-full transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-1 ${
                           inboundFilter === value
                             ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -1243,7 +1287,7 @@ const WhatsAppAnalytics = () => {
                             field,
                             direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
                           })); }}
-                          className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full transition-all ${
+                          className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-1 ${
                             inboundSort.field === field
                               ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm'
                               : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -1274,28 +1318,22 @@ const WhatsAppAnalytics = () => {
                   processedInboundMessages.messages.map((msg, idx) => (
                     <div
                       key={msg.messageSid || idx}
-                      className={`flex items-start gap-3 p-3 rounded-lg ${
-                        msg.engagementType === 'button_positive'
-                          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                          : msg.engagementType === 'button_optout'
-                          ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
-                          : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
-                      }`}
+                      className={getMessageCardClasses(msg.engagementType)}
                     >
                       {/* Icon */}
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                         msg.engagementType === 'button_positive'
-                          ? 'bg-green-100 dark:bg-green-800'
+                          ? 'bg-green-600 dark:bg-green-500'
                           : msg.engagementType === 'button_optout'
-                          ? 'bg-amber-100 dark:bg-amber-800'
-                          : 'bg-slate-200 dark:bg-slate-700'
+                          ? 'bg-amber-600 dark:bg-amber-500'
+                          : 'bg-slate-500 dark:bg-slate-600'
                       }`}>
                         {msg.engagementType === 'button_positive' ? (
-                          <ThumbsUp className="w-4 h-4 text-green-600 dark:text-green-300" />
+                          <ThumbsUp className="w-4 h-4 text-white" />
                         ) : msg.engagementType === 'button_optout' ? (
-                          <ThumbsDown className="w-4 h-4 text-amber-600 dark:text-amber-300" />
+                          <ThumbsDown className="w-4 h-4 text-white" />
                         ) : (
-                          <MessageCircle className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                          <MessageCircle className="w-4 h-4 text-white" />
                         )}
                       </div>
 
@@ -1317,10 +1355,10 @@ const WhatsAppAnalytics = () => {
                           {/* Badge */}
                           <span className={`px-2 py-0.5 text-xs font-semibold rounded-full flex-shrink-0 ${
                             msg.engagementType === 'button_positive'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200'
+                              ? 'bg-green-600 dark:bg-green-500 text-white'
                               : msg.engagementType === 'button_optout'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-200'
-                              : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                              ? 'bg-amber-600 dark:bg-amber-500 text-white'
+                              : 'bg-slate-500 dark:bg-slate-600 text-white'
                           }`}>
                             {msg.engagementType === 'button_positive' ? 'Interessado' :
                              msg.engagementType === 'button_optout' ? 'Opt-out' : 'Outro'}
@@ -1355,7 +1393,7 @@ const WhatsAppAnalytics = () => {
                         setInboundPageSize(Number(e.target.value));
                         setInboundPage(1);
                       }}
-                      className="px-2 py-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="px-2 py-1 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/10 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-stellar-cyan"
                     >
                       {INBOUND_PAGE_SIZE_OPTIONS.map(option => (
                         <option key={option} value={option}>{option}</option>
@@ -1378,7 +1416,7 @@ const WhatsAppAnalytics = () => {
                       <button
                         onClick={() => setInboundPage(1)}
                         disabled={inboundPage === 1}
-                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         title="Primeira página"
                       >
                         <ChevronsLeft className="w-4 h-4" />
@@ -1386,7 +1424,7 @@ const WhatsAppAnalytics = () => {
                       <button
                         onClick={() => setInboundPage(p => Math.max(1, p - 1))}
                         disabled={inboundPage === 1}
-                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         title="Página anterior"
                       >
                         <ChevronLeft className="w-4 h-4" />
@@ -1413,10 +1451,10 @@ const WhatsAppAnalytics = () => {
                             <button
                               key={pageNum}
                               onClick={() => setInboundPage(pageNum)}
-                              className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                              className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
                                 pageNum === current
                                   ? 'bg-green-600 text-white'
-                                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust'
                               }`}
                             >
                               {pageNum}
@@ -1428,7 +1466,7 @@ const WhatsAppAnalytics = () => {
                       <button
                         onClick={() => setInboundPage(p => Math.min(processedInboundMessages.totalPages, p + 1))}
                         disabled={inboundPage === processedInboundMessages.totalPages}
-                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         title="Próxima página"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -1436,7 +1474,7 @@ const WhatsAppAnalytics = () => {
                       <button
                         onClick={() => setInboundPage(processedInboundMessages.totalPages)}
                         disabled={inboundPage === processedInboundMessages.totalPages}
-                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         title="Última página"
                       >
                         <ChevronsRight className="w-4 h-4" />

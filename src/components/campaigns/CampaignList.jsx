@@ -1,8 +1,13 @@
-// CampaignList.jsx v3.9 - ACCESSIBILITY
+// CampaignList.jsx v3.10 - SOLID COLOR BADGES
 // Campaign list and history display - Backend only
-// Design System v4.0 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.10 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - Status badges now use solid colors with white text
+//   - Campaign type badges now solid with white text/icons
+//   - Type filter toggle buttons now solid when active
+//   - Tracking health alert kept opacity (container, not badge)
 // v3.9 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Card hover animations disabled when user prefers reduced motion
@@ -193,13 +198,14 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
     return matchesSearch && matchesStatus && matchesType;
   });
 
+  // Solid color status badges (WCAG AA compliant)
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
-      case 'completed': return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
-      case 'draft': return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
-      case 'scheduled': return 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
-      default: return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300';
+      case 'active': return 'bg-emerald-600 dark:bg-emerald-500 text-white';
+      case 'completed': return 'bg-blue-600 dark:bg-blue-500 text-white';
+      case 'draft': return 'bg-slate-500 dark:bg-slate-600 text-white';
+      case 'scheduled': return 'bg-purple-600 dark:bg-purple-500 text-white';
+      default: return 'bg-slate-500 dark:bg-slate-600 text-white';
     }
   };
 
@@ -304,8 +310,8 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
                   className={`flex items-center gap-1 min-h-[36px] px-2.5 sm:px-3 rounded-lg text-xs font-medium transition-all ${
                     filterType === key
                       ? key === 'automated'
-                        ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
-                        : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                        ? 'bg-purple-600 dark:bg-purple-500 text-white'
+                        : 'bg-blue-600 dark:bg-blue-500 text-white'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
@@ -368,11 +374,11 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
                       <h3 className="text-base font-bold text-slate-900 dark:text-white">
                         {campaign.name || campaign.code}
                       </h3>
-                      {/* v3.3: Campaign Type Badge */}
-                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      {/* v3.3: Campaign Type Badge (solid colors) */}
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white ${
                         campaign.isAutomated
-                          ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                          : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                          ? 'bg-purple-600 dark:bg-purple-500'
+                          : 'bg-blue-600 dark:bg-blue-500'
                       }`}>
                         {campaign.isAutomated ? <Bot className="w-3 h-3" /> : <User className="w-3 h-3" />}
                         {campaign.isAutomated ? 'Auto' : 'Manual'}

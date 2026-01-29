@@ -1,8 +1,23 @@
-// NewCampaignModal.jsx v6.7 - ANIMATION STANDARDIZATION
+// NewCampaignModal.jsx v7.1 - MODE-AWARE WARNING BADGES
 // Campaign creation wizard modal
 // Design System v5.1 compliant - Variant D (Glassmorphism Cosmic)
 //
 // CHANGELOG:
+// v7.1 (2026-01-29): Mode-aware warning badges
+//   - Replaced bg-yellow-600 dark:bg-yellow-500 with mode-aware amber badges
+//   - Audience/template icon wells now use bg-amber-50 text-amber-800 border-amber-200 in light mode
+//   - Dark mode uses bg-amber-500 text-white border-amber-400
+//   - Improved readability and WCAG compliance in both modes
+// v7.0 (2026-01-29): Orange to yellow color migration
+//   - Replaced bg-orange-600 dark:bg-orange-500 with bg-yellow-600 dark:bg-yellow-500 in audience/template colors
+//   - Consistent with campaign color scheme updates
+// v6.9 (2026-01-29): Amber to orange color migration
+//   - Replaced bg-amber-600 dark:bg-amber-500 with bg-orange-600 dark:bg-orange-500 in audience/template colors
+//   - Consistent with campaign color scheme updates
+// v6.8 (2026-01-29): Solid color badges for WCAG AA compliance
+//   - Audience icon wells now use solid colors with white icons
+//   - Template icon wells now use solid colors with white icons
+//   - Category badges now use solid colors with white text
 // v6.7 (2026-01-27): Animation standardization
 //   - Added Framer Motion animations using MODAL constants
 //   - Added AnimatePresence for proper enter/exit animations
@@ -957,32 +972,19 @@ const NewCampaignModal = ({
                       <div className="flex items-start gap-2 sm:block">
                         <div className={`
                           w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center sm:mb-2 flex-shrink-0
-                          ${audience.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40' :
-                            audience.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/40' :
-                            audience.color === 'emerald' ? 'bg-emerald-100 dark:bg-emerald-900/40' :
-                            audience.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40' :
-                            audience.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/40' :
-                            audience.color === 'cyan' ? 'bg-cyan-100 dark:bg-cyan-900/40' :
-                            audience.color === 'green' ? 'bg-green-100 dark:bg-green-900/40' :
-                            audience.color === 'gray' ? 'bg-gray-100 dark:bg-gray-700' :
-                            audience.color === 'indigo' ? 'bg-indigo-100 dark:bg-indigo-900/40' :
-                            'bg-slate-100 dark:bg-slate-700'
+                          ${audience.color === 'amber' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400' :
+                            audience.color === 'purple' ? 'bg-purple-600 dark:bg-purple-500' :
+                            audience.color === 'emerald' ? 'bg-emerald-600 dark:bg-emerald-500' :
+                            audience.color === 'blue' ? 'bg-blue-600 dark:bg-blue-500' :
+                            audience.color === 'yellow' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400' :
+                            audience.color === 'cyan' ? 'bg-cyan-600 dark:bg-cyan-500' :
+                            audience.color === 'green' ? 'bg-green-600 dark:bg-green-500' :
+                            audience.color === 'gray' ? 'bg-gray-500 dark:bg-gray-600' :
+                            audience.color === 'indigo' ? 'bg-indigo-600 dark:bg-indigo-500' :
+                            'bg-slate-500 dark:bg-slate-600'
                           }
                         `}>
-                          <Icon className={`
-                            w-3.5 h-3.5 sm:w-4 sm:h-4
-                            ${audience.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
-                              audience.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
-                              audience.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
-                              audience.color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' :
-                              audience.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                              audience.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
-                              audience.color === 'cyan' ? 'text-cyan-600 dark:text-cyan-400' :
-                              audience.color === 'green' ? 'text-green-600 dark:text-green-400' :
-                              audience.color === 'gray' ? 'text-gray-600 dark:text-gray-400' :
-                              'text-slate-600 dark:text-slate-400'
-                            }
-                          `} />
+                          <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1">
@@ -1048,20 +1050,13 @@ const NewCampaignModal = ({
                       <div className="flex items-start gap-2.5 sm:gap-3">
                         <div className={`
                           w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0
-                          ${template.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/30' :
-                            template.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/30' :
-                            template.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                            'bg-emerald-100 dark:bg-emerald-900/30'
+                          ${template.color === 'amber' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400' :
+                            template.color === 'purple' ? 'bg-purple-600 dark:bg-purple-500' :
+                            template.color === 'blue' ? 'bg-blue-600 dark:bg-blue-500' :
+                            'bg-emerald-600 dark:bg-emerald-500'
                           }
                         `}>
-                          <Icon className={`
-                            w-4 h-4 sm:w-5 sm:h-5
-                            ${template.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
-                              template.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
-                              template.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                              'text-emerald-600 dark:text-emerald-400'
-                            }
-                          `} />
+                          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
@@ -1071,8 +1066,8 @@ const NewCampaignModal = ({
                             <span className={`
                               px-1.5 py-0.5 text-[10px] sm:text-xs font-medium rounded flex-shrink-0
                               ${template.category === 'MARKETING'
-                                ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                ? 'bg-purple-600 dark:bg-purple-500 text-white'
+                                : 'bg-blue-600 dark:bg-blue-500 text-white'
                               }
                             `}>
                               {template.category === 'MARKETING' ? 'MKT' : 'UTIL'}

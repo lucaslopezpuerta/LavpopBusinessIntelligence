@@ -1,8 +1,18 @@
-// GrowthTrendsSection.jsx v6.2.0
+// GrowthTrendsSection.jsx v6.4.0 - MODE-AWARE WARNING BADGES
 // Growth & trends analysis section for Intelligence tab
 // Design System v5.1 compliant - Premium Glass styling
 //
 // CHANGELOG:
+// v6.4.0 (2026-01-29): Mode-aware warning badges - soft tinted in light mode
+// v6.3.2 (2026-01-29): Orange→Yellow color migration
+//   - Partial month badges now use yellow-600/yellow-500 instead of orange
+// v6.3.1 (2026-01-29): Amber→Orange color migration
+//   - Partial month badges now use orange-600/orange-500 instead of amber
+// v6.3.0 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - ServiceSegmentCard icon wells now solid with white icons
+//   - Foco badge now solid red with white text
+//   - MoM growth badges now solid with white text
+//   - Partial month badges now solid amber with white text
 // v6.2.0 (2026-01-28): Mobile chart improvements
 //   - Increased mobile chart height (h-64 → h-72, +32px)
 //   - Smart X-axis interval: shows ~5 labels on mobile instead of all
@@ -46,13 +56,10 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
         ? isDark ? 'text-red-400' : 'text-red-600'
         : isDark ? 'text-amber-400' : 'text-amber-600';
 
-  const iconColor = isMainDriver
-    ? isDark ? 'text-red-400' : 'text-red-500'
-    : isDark ? 'text-slate-400' : 'text-slate-500';
-
+  // Solid icon wells with white icons (WCAG AA compliant)
   const iconBg = isMainDriver
-    ? isDark ? 'bg-red-500/20' : 'bg-red-100'
-    : isDark ? 'bg-slate-700' : 'bg-slate-100';
+    ? 'bg-red-600 dark:bg-red-500'
+    : isDark ? 'bg-slate-600' : 'bg-slate-500';
 
   return (
     <div className={`
@@ -69,7 +76,7 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
     `}>
       <div className="flex items-center gap-3">
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
-          <Icon className={`w-4.5 h-4.5 ${iconColor}`} />
+          <Icon className="w-4.5 h-4.5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -77,7 +84,7 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
               {label}
             </span>
             {isMainDriver && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'}`}>
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-red-600 dark:bg-red-500 text-white">
                 Foco
               </span>
             )}
@@ -583,7 +590,7 @@ const GrowthTrendsSection = ({
                           {formatMonthKey(month.month, 'long')}
                         </span>
                         {month.isPartial && (
-                          <span className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
+                          <span className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400`}>
                             <Clock className="w-2.5 h-2.5" />
                             Parcial
                           </span>
@@ -592,12 +599,12 @@ const GrowthTrendsSection = ({
 
                       {month.momGrowth !== null ? (
                         <span className={`
-                          inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold
+                          inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-white
                           ${month.momGrowth > 0
-                            ? isDark ? 'bg-emerald-900/40 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-emerald-600 dark:bg-emerald-500'
                             : month.momGrowth < 0
-                              ? isDark ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-700'
-                              : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                              ? 'bg-red-600 dark:bg-red-500'
+                              : 'bg-slate-500 dark:bg-slate-600'
                           }
                         `}>
                           {month.momGrowth > 0 && <TrendingUp className="w-3 h-3" />}
@@ -666,7 +673,7 @@ const GrowthTrendsSection = ({
                       <div className="flex items-center justify-center gap-2">
                         {formatMonthKey(month.month, 'long')}
                         {month.isPartial && (
-                          <span className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
+                          <span className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400`}>
                             <Clock className="w-2.5 h-2.5" />
                             Parcial
                           </span>

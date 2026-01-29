@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v10.9 - SWIPE GESTURE SENSITIVITY FIX
+// AtRiskCustomersTable.jsx v10.10 - SOLID COLOR BADGES
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
@@ -17,6 +17,9 @@
 // ✅ Virtualized "Show All" mode for large lists (react-window)
 //
 // CHANGELOG:
+// v10.10 (2026-01-29): Solid Color Badges for WCAG AA
+//   - Action buttons now use solid colors (blue-600/green-600 with white text)
+//   - Improved contrast for call/WhatsApp buttons
 // v10.9 (2026-01-28): Swipe Gesture Sensitivity Fix
 //   - Fixed overly sensitive swipe triggering (was 20px, now 50px)
 //   - Added deadzone (8px) to filter micro-movements
@@ -303,9 +306,9 @@ const MobileCustomerCard = memo(({
           <div className={`
             w-9 h-9 rounded-full flex items-center justify-center shadow-sm font-semibold text-xs
             ${blacklisted
-              ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+              ? 'bg-red-600 dark:bg-red-500 text-white'
               : contacted
-                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
                 : `${styles.bgClass} dark:bg-${styles.color}-900/40 ${styles.textClass} dark:text-${styles.color}-400`
             }
           `}>
@@ -429,9 +432,9 @@ const DesktopCustomerRow = memo(({
             <div className={`
               w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm
               ${blacklisted
-                ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+                ? 'bg-red-600 dark:bg-red-500 text-white'
                 : contacted
-                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                  ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
                   : `${styles.bgClass} dark:bg-${styles.color}-900/40 ${styles.textClass} dark:text-${styles.color}-400`
               }
             `}>
@@ -507,7 +510,7 @@ const DesktopCustomerRow = memo(({
               <>
                 <button
                   onClick={onCall}
-                  className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 hover:scale-105 transition-all font-medium text-xs flex items-center gap-1.5"
+                  className="p-2.5 rounded-lg bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 hover:scale-105 transition-all font-medium text-xs flex items-center gap-1.5 shadow-sm"
                   title="Ligar"
                 >
                   <Phone className="w-4 h-4" />
@@ -516,7 +519,7 @@ const DesktopCustomerRow = memo(({
                 {canWhatsApp ? (
                   <button
                     onClick={onWhatsApp}
-                    className="p-2.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 hover:scale-105 transition-all font-medium text-xs flex items-center gap-1.5"
+                    className="p-2.5 rounded-lg bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600 hover:scale-105 transition-all font-medium text-xs flex items-center gap-1.5 shadow-sm"
                     title="WhatsApp"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -525,7 +528,7 @@ const DesktopCustomerRow = memo(({
                 ) : (
                   <button
                     disabled
-                    className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
+                    className="p-2.5 rounded-lg bg-slate-400 dark:bg-slate-600 text-white/60 cursor-not-allowed"
                     title="Número inválido"
                   >
                     <MessageCircle className="w-4 h-4" />

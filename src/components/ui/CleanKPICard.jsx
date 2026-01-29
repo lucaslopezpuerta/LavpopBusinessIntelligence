@@ -1,4 +1,4 @@
-// CleanKPICard.jsx v1.2
+// CleanKPICard.jsx v1.6
 // Minimal white-background KPI card with accent color sparkline
 // Based on modern dashboard design patterns
 //
@@ -10,6 +10,17 @@
 // - Compact footprint for secondary metrics
 //
 // CHANGELOG:
+// v1.6 (2026-01-29): Amber color standardization for icon wells
+//   - Icon well 'amber' key now uses bg-amber-600/500 for consistency
+// v1.5 (2026-01-29): Orange to yellow migration
+//   - bg-orange-600/500 replaced with bg-yellow-600/500
+//   - border-l-orange-500/400 replaced with border-l-yellow-500/400
+// v1.4 (2026-01-29): Migrated amber color variant to orange
+//   - bg-amber-600/500 replaced with bg-orange-600/500
+//   - border-l-amber-500/400 replaced with border-l-orange-500/400
+// v1.3 (2026-01-29): Solid color migration for icon wells
+//   - Icon backgrounds now use solid colors (bg-{color}-600/500) instead of opacity-based
+//   - Icons now use text-white instead of colored text for better contrast
 // v1.2 (2026-01-27): Accessibility & consistency improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Replaced inline hoverTransition with TWEEN.HOVER constant
@@ -152,48 +163,48 @@ const CleanKPICard = ({
   // Color mapping for accent colors (includes left border with dark mode support)
   const colorMap = {
     indigo: {
-      icon: 'text-indigo-600 dark:text-indigo-400',
-      iconBg: 'bg-indigo-100 dark:bg-indigo-900/30',
+      icon: 'text-white',
+      iconBg: 'bg-indigo-600 dark:bg-indigo-500',
       border: 'border-l-4 border-l-indigo-500 dark:border-l-indigo-400',
       sparkline: '#6366f1',
       sparklineDark: '#818cf8',
       trend: '#6366f1',
     },
     purple: {
-      icon: 'text-purple-600 dark:text-purple-400',
-      iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+      icon: 'text-white',
+      iconBg: 'bg-purple-600 dark:bg-purple-500',
       border: 'border-l-4 border-l-purple-500 dark:border-l-purple-400',
       sparkline: '#9333ea',
       sparklineDark: '#a855f7',
       trend: '#9333ea',
     },
     blue: {
-      icon: 'text-blue-600 dark:text-blue-400',
-      iconBg: 'bg-blue-100 dark:bg-blue-900/30',
+      icon: 'text-white',
+      iconBg: 'bg-blue-600 dark:bg-blue-500',
       border: 'border-l-4 border-l-blue-500 dark:border-l-blue-400',
       sparkline: '#3b82f6',
       sparklineDark: '#60a5fa',
       trend: '#3b82f6',
     },
     emerald: {
-      icon: 'text-emerald-600 dark:text-emerald-400',
-      iconBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+      icon: 'text-white',
+      iconBg: 'bg-emerald-600 dark:bg-emerald-500',
       border: 'border-l-4 border-l-emerald-500 dark:border-l-emerald-400',
       sparkline: '#10b981',
       sparklineDark: '#34d399',
       trend: '#10b981',
     },
     amber: {
-      icon: 'text-amber-600 dark:text-amber-400',
-      iconBg: 'bg-amber-100 dark:bg-amber-900/30',
+      icon: 'text-white',
+      iconBg: 'bg-amber-600 dark:bg-amber-500',
       border: 'border-l-4 border-l-amber-500 dark:border-l-amber-400',
       sparkline: '#f59e0b',
       sparklineDark: '#fbbf24',
       trend: '#f59e0b',
     },
     rose: {
-      icon: 'text-rose-600 dark:text-rose-400',
-      iconBg: 'bg-rose-100 dark:bg-rose-900/30',
+      icon: 'text-white',
+      iconBg: 'bg-rose-600 dark:bg-rose-500',
       border: 'border-l-4 border-l-rose-500 dark:border-l-rose-400',
       sparkline: '#f43f5e',
       sparklineDark: '#fb7185',

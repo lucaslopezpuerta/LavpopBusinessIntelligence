@@ -1,8 +1,20 @@
-// ProfitabilitySection.jsx v4.0.0
+// ProfitabilitySection.jsx v4.2.0 - YELLOW→AMBER REVERT
 // Profitability analysis section for Intelligence tab
 // Design System v5.1 compliant - Premium Glass styling
 //
 // CHANGELOG:
+// v4.2.0 (2026-01-29): Yellow→Amber revert for icon wells
+//   - OptimizationLever amber icon wells now use amber-600/amber-500 (solid)
+//   - Critical Insight warning icon wells now use amber-600/amber-500 (solid)
+// v4.1.2 (2026-01-29): Orange→Yellow color migration
+//   - OptimizationLever amber icon wells now use yellow-600/yellow-500
+//   - Critical Insight warning icon wells now use yellow-600/yellow-500
+// v4.1.1 (2026-01-29): Amber→Orange color migration
+//   - OptimizationLever amber icon wells now use orange-600/orange-500
+//   - Critical Insight warning icon wells now use orange-600/orange-500
+// v4.1.0 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - OptimizationLever icon wells now solid with white icons
+//   - Critical Insight icon wells now solid with white icons
 // v4.0.0 (2026-01-24): Premium Glass redesign
 //   - Replaced SectionCard with direct Premium Glass container
 //   - Added useTheme() and useMediaQuery() hooks
@@ -30,19 +42,13 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 // Optimization lever card - compact Premium Glass style
 const OptimizationLever = ({ title, target, detail, icon: Icon, color, isDark, isDesktop }) => {
-  const iconColors = {
-    emerald: isDark ? 'text-emerald-400' : 'text-emerald-600',
-    amber: isDark ? 'text-amber-400' : 'text-amber-600',
-    blue: isDark ? 'text-blue-400' : 'text-blue-600',
-  };
-
+  // Solid icon wells with white icons (WCAG AA compliant)
   const iconBgColors = {
-    emerald: isDark ? 'bg-emerald-500/20' : 'bg-emerald-100',
-    amber: isDark ? 'bg-amber-500/20' : 'bg-amber-100',
-    blue: isDark ? 'bg-blue-500/20' : 'bg-blue-100',
+    emerald: 'bg-emerald-600 dark:bg-emerald-500',
+    amber: 'bg-amber-600 dark:bg-amber-500',
+    blue: 'bg-blue-600 dark:bg-blue-500',
   };
 
-  const iconClass = iconColors[color] || iconColors.emerald;
   const iconBg = iconBgColors[color] || iconBgColors.emerald;
 
   return (
@@ -54,7 +60,7 @@ const OptimizationLever = ({ title, target, detail, icon: Icon, color, isDark, i
     `}>
       <div className="flex items-center gap-3">
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
-          <Icon className={`w-4.5 h-4.5 ${iconClass}`} />
+          <Icon className="w-4.5 h-4.5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
           <span className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
@@ -165,13 +171,13 @@ const ProfitabilitySection = ({
               <div className={`
                 w-9 h-9 rounded-lg flex items-center justify-center shrink-0
                 ${isAboveBreakEven
-                  ? isDark ? 'bg-emerald-500/30' : 'bg-emerald-500/20'
-                  : isDark ? 'bg-amber-500/30' : 'bg-amber-500/20'
+                  ? 'bg-emerald-600 dark:bg-emerald-500'
+                  : 'bg-amber-600 dark:bg-amber-500'
                 }
               `}>
                 {isAboveBreakEven
-                  ? <CheckCircle className={`w-5 h-5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                  : <AlertTriangle className={`w-5 h-5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+                  ? <CheckCircle className="w-5 h-5 text-white" />
+                  : <AlertTriangle className="w-5 h-5 text-white" />
                 }
               </div>
               <div>

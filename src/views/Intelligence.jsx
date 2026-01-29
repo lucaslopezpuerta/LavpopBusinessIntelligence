@@ -1,8 +1,19 @@
-// Intelligence.jsx v3.19.0 - STELLAR CASCADE TRANSITIONS
+// Intelligence.jsx v3.21.1 - SECTION SPACING FIX
 // Refactored with Priority Matrix, auto-refresh, collapsible sections
-// Design System v5.0 compliant - Cosmic Precision
+// Design System v5.1 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v3.21.1 (2026-01-29): Section spacing fix
+//   - Added space-y-6 to main AnimatedSection for proper card separation
+// v3.21.0 (2026-01-29): Mode-aware warning badges
+//   - StaleDataIndicator: Soft tinted amber in light mode
+//   - StaleDataIndicator: Solid amber in dark mode
+// v3.20.2 (2026-01-29): Orange→Yellow color migration (superseded by v3.21.0)
+// v3.20.1 (2026-01-29): Amber→Orange color migration
+//   - StaleDataIndicator stale state now uses orange-600/orange-500
+//   - StaleDataIndicator stale border now uses orange-700/orange-400
+// v3.20.0 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - StaleDataIndicator stale state now uses solid amber with white text
 // v3.19.0 (2026-01-27): Stellar Cascade transitions
 //   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
 //   - Content cascades in layered sequence (~250ms total)
@@ -181,7 +192,7 @@ const StaleDataIndicator = ({ lastUpdated, isRefreshing, onRefresh, isMobile }) 
         flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
         transition-all duration-200
         ${isStale
-          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60'
+          ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400'
           : 'bg-slate-100 dark:bg-space-dust text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-stellar-cyan/10'
         }
         hover:bg-slate-200 dark:hover:bg-space-nebula
@@ -556,7 +567,7 @@ const Intelligence = ({ data, onDataChange }) => {
         </AnimatedSection>
 
         {/* Priority Matrix - Replaces Health Score with actionable 4-dimension analysis */}
-        <AnimatedSection>
+        <AnimatedSection className="space-y-6">
           {priorityMatrix && (
             <PriorityMatrix
               dimensions={priorityMatrix.dimensions}

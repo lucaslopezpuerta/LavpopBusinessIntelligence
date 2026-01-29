@@ -1,7 +1,10 @@
-// WeatherSection.jsx v1.7
+// WeatherSection.jsx v1.8 - SOLID COLOR BADGES
 // Main Weather Intelligence Section orchestrator
 // Combines real-time forecast with backend revenue predictions
 //
+// v1.8 (2026-01-29): Solid color badge migration
+//   - Updated ErrorState icon-well from opacity-based to solid colors
+//   - Icon-well pattern: bg-red-600 dark:bg-red-500 text-white
 // v1.7 (2026-01-28): Cosmic shimmer skeleton migration
 //   - Replaced animate-pulse inline skeleton with Skeleton component (cosmic-shimmer)
 //   - Added stagger props for cascading reveal animation
@@ -50,8 +53,8 @@ const formatCurrency = (value) => {
  */
 const ErrorState = ({ error, onRetry }) => (
   <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-6 text-center">
-    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
-      <CloudOff className="w-6 h-6 text-red-600 dark:text-red-400" />
+    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-600 dark:bg-red-500 mb-4">
+      <CloudOff className="w-6 h-6 text-white" />
     </div>
     <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
       Erro ao carregar dados do clima

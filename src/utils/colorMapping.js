@@ -1,8 +1,26 @@
-// colorMapping.js v1.0
+// colorMapping.js v2.1 - MODE-AWARE WARNING PALETTE
 // Unified semantic color mapping for Intelligence components
-// Design System v3.1 compliant
+// Design System v5.1 compliant - Eye-strain optimized
 //
 // CHANGELOG:
+// v2.1 (2026-01-29): Mode-aware warning colors for light mode refinement
+//   - Light mode warnings: Soft tinted amber (bg-amber-50, text-amber-800)
+//   - Dark mode warnings: Solid amber (bg-amber-500, text-white)
+//   - medium confidence: Mode-aware (soft light, solid dark)
+//   - fair badge: Mode-aware (soft light, solid dark)
+//   - Icon wells remain solid for visual consistency
+// v2.0 (2026-01-29): Cosmic Precision 2.0 - Warning color unification
+//   - REVERTED yellow back to AMBER for WCAG AA compliance (4.7:1 contrast)
+//   - Yellow-600 fails WCAG AA (3.5:1 contrast) - DO NOT USE for warnings
+// v1.4 (2026-01-29): Orange to yellow migration (REVERTED in v2.0)
+// v1.3 (2026-01-29): Amber to orange migration (REVERTED in v2.0)
+// v1.2 (2026-01-29): Complete solid color migration for WCAG AA
+//   - Confidence levels (high/medium/low) now solid with white text
+//   - Campaign status badges now solid with white text
+//   - Comfort category badges now solid with badgeText property
+// v1.1 (2026-01-29): Solid color icon wells for WCAG AA compliance
+//   - All iconBg entries now use solid colors
+//   - Icon colors now white for proper contrast
 // v1.0 (2025-11-30): Initial implementation
 //   - Semantic color roles for business metrics
 //   - Weather-specific colors
@@ -22,8 +40,8 @@ export const semanticColors = {
     text: 'text-emerald-900 dark:text-emerald-100',
     textMuted: 'text-emerald-700 dark:text-emerald-300',
     textSubtle: 'text-emerald-600 dark:text-emerald-400',
-    icon: 'text-emerald-600 dark:text-emerald-400',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-emerald-600 dark:bg-emerald-500',
     gradient: 'from-emerald-500 to-emerald-600',
     ring: 'ring-emerald-500',
     solidGradient: 'bg-gradient-to-br from-emerald-500 to-teal-600',
@@ -35,8 +53,8 @@ export const semanticColors = {
     text: 'text-red-900 dark:text-red-100',
     textMuted: 'text-red-700 dark:text-red-300',
     textSubtle: 'text-red-600 dark:text-red-400',
-    icon: 'text-red-600 dark:text-red-400',
-    iconBg: 'bg-red-100 dark:bg-red-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-red-600 dark:bg-red-500',
     gradient: 'from-red-500 to-red-600',
     ring: 'ring-red-500',
     solidGradient: 'bg-gradient-to-br from-red-500 to-rose-600',
@@ -48,8 +66,8 @@ export const semanticColors = {
     text: 'text-purple-900 dark:text-purple-100',
     textMuted: 'text-purple-700 dark:text-purple-300',
     textSubtle: 'text-purple-600 dark:text-purple-400',
-    icon: 'text-purple-600 dark:text-purple-400',
-    iconBg: 'bg-purple-100 dark:bg-purple-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-purple-600 dark:bg-purple-500',
     gradient: 'from-purple-500 to-purple-600',
     ring: 'ring-purple-500',
     solidGradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
@@ -63,8 +81,8 @@ export const semanticColors = {
     text: 'text-emerald-900 dark:text-emerald-100',
     textMuted: 'text-emerald-700 dark:text-emerald-300',
     textSubtle: 'text-emerald-600 dark:text-emerald-400',
-    icon: 'text-emerald-600 dark:text-emerald-400',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-emerald-600 dark:bg-emerald-500',
     gradient: 'from-emerald-500 to-emerald-600',
     ring: 'ring-emerald-500',
     solidGradient: 'bg-gradient-to-br from-emerald-500 to-green-600',
@@ -76,8 +94,8 @@ export const semanticColors = {
     text: 'text-red-900 dark:text-red-100',
     textMuted: 'text-red-700 dark:text-red-300',
     textSubtle: 'text-red-600 dark:text-red-400',
-    icon: 'text-red-600 dark:text-red-400',
-    iconBg: 'bg-red-100 dark:bg-red-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-red-600 dark:bg-red-500',
     gradient: 'from-red-500 to-red-600',
     ring: 'ring-red-500',
     solidGradient: 'bg-gradient-to-br from-red-500 to-rose-600',
@@ -89,7 +107,7 @@ export const semanticColors = {
     text: 'text-slate-900 dark:text-white',
     textMuted: 'text-slate-700 dark:text-slate-300',
     textSubtle: 'text-slate-600 dark:text-slate-400',
-    icon: 'text-slate-600 dark:text-slate-400',
+    icon: 'text-white',
     iconBg: 'bg-slate-100 dark:bg-slate-700',
     gradient: 'from-slate-500 to-slate-600',
     ring: 'ring-slate-500',
@@ -102,11 +120,11 @@ export const semanticColors = {
     text: 'text-amber-900 dark:text-amber-100',
     textMuted: 'text-amber-700 dark:text-amber-300',
     textSubtle: 'text-amber-600 dark:text-amber-400',
-    icon: 'text-amber-600 dark:text-amber-400',
-    iconBg: 'bg-amber-100 dark:bg-amber-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-amber-600 dark:bg-amber-500',  // FIXED: amber (WCAG 4.7:1), not yellow (3.5:1)
     gradient: 'from-amber-500 to-amber-600',
     ring: 'ring-amber-500',
-    solidGradient: 'bg-gradient-to-br from-amber-500 to-orange-600',
+    solidGradient: 'bg-gradient-to-br from-amber-500 to-amber-600',
   },
 
   // Weather-specific (semantic colors for weather conditions)
@@ -225,8 +243,8 @@ export const semanticColors = {
     text: 'text-blue-900 dark:text-blue-100',
     textMuted: 'text-blue-700 dark:text-blue-300',
     textSubtle: 'text-blue-600 dark:text-blue-400',
-    icon: 'text-blue-600 dark:text-blue-400',
-    iconBg: 'bg-blue-100 dark:bg-blue-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-blue-600 dark:bg-blue-500',
     gradient: 'from-blue-500 to-blue-600',
     ring: 'ring-blue-500',
     solidGradient: 'bg-gradient-to-br from-blue-500 to-indigo-600',
@@ -240,8 +258,8 @@ export const semanticColors = {
     text: 'text-green-900 dark:text-green-100',
     textMuted: 'text-green-700 dark:text-green-300',
     textSubtle: 'text-green-600 dark:text-green-400',
-    icon: 'text-green-600 dark:text-green-400',
-    iconBg: 'bg-green-100 dark:bg-green-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-green-600 dark:bg-green-500',
     gradient: 'from-green-500 to-emerald-600',
     ring: 'ring-green-500',
     solidGradient: 'bg-gradient-to-br from-green-500 to-emerald-600',
@@ -253,8 +271,8 @@ export const semanticColors = {
     text: 'text-emerald-900 dark:text-emerald-100',
     textMuted: 'text-emerald-700 dark:text-emerald-300',
     textSubtle: 'text-emerald-600 dark:text-emerald-400',
-    icon: 'text-emerald-600 dark:text-emerald-400',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-emerald-600 dark:bg-emerald-500',
     gradient: 'from-emerald-500 to-teal-600',
     ring: 'ring-emerald-500',
     solidGradient: 'bg-gradient-to-br from-emerald-500 to-teal-600',
@@ -266,8 +284,8 @@ export const semanticColors = {
     text: 'text-teal-900 dark:text-teal-100',
     textMuted: 'text-teal-700 dark:text-teal-300',
     textSubtle: 'text-teal-600 dark:text-teal-400',
-    icon: 'text-teal-600 dark:text-teal-400',
-    iconBg: 'bg-teal-100 dark:bg-teal-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-teal-600 dark:bg-teal-500',
     gradient: 'from-teal-500 to-cyan-600',
     ring: 'ring-teal-500',
     solidGradient: 'bg-gradient-to-br from-teal-500 to-cyan-600',
@@ -279,8 +297,8 @@ export const semanticColors = {
     text: 'text-cyan-900 dark:text-cyan-100',
     textMuted: 'text-cyan-700 dark:text-cyan-300',
     textSubtle: 'text-cyan-600 dark:text-cyan-400',
-    icon: 'text-cyan-600 dark:text-cyan-400',
-    iconBg: 'bg-cyan-100 dark:bg-cyan-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-cyan-600 dark:bg-cyan-500',
     gradient: 'from-cyan-500 to-sky-600',
     ring: 'ring-cyan-500',
     solidGradient: 'bg-gradient-to-br from-cyan-500 to-sky-600',
@@ -293,7 +311,7 @@ export const semanticColors = {
     textMuted: 'text-lavpop-blue-700 dark:text-lavpop-blue-300',
     textSubtle: 'text-lavpop-blue-600 dark:text-lavpop-blue-400',
     icon: 'text-lavpop-blue dark:text-blue-400',
-    iconBg: 'bg-lavpop-blue-100 dark:bg-lavpop-blue-900/40',
+    iconBg: 'bg-lavpop-blue-600 dark:bg-lavpop-blue-500',
     gradient: 'from-lavpop-blue to-blue-600',
     ring: 'ring-lavpop-blue',
   },
@@ -304,8 +322,8 @@ export const semanticColors = {
     text: 'text-indigo-900 dark:text-indigo-100',
     textMuted: 'text-indigo-700 dark:text-indigo-300',
     textSubtle: 'text-indigo-600 dark:text-indigo-400',
-    icon: 'text-indigo-600 dark:text-indigo-400',
-    iconBg: 'bg-indigo-100 dark:bg-indigo-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-indigo-600 dark:bg-indigo-500',
     gradient: 'from-indigo-500 to-indigo-600',
     ring: 'ring-indigo-500',
     // Solid gradient for hero cards (white text)
@@ -318,64 +336,68 @@ export const semanticColors = {
     text: 'text-purple-900 dark:text-purple-100',
     textMuted: 'text-purple-700 dark:text-purple-300',
     textSubtle: 'text-purple-600 dark:text-purple-400',
-    icon: 'text-purple-600 dark:text-purple-400',
-    iconBg: 'bg-purple-100 dark:bg-purple-900/40',
+    icon: 'text-white',
+    iconBg: 'bg-purple-600 dark:bg-purple-500',
     gradient: 'from-purple-500 to-purple-600',
     ring: 'ring-purple-500',
     // Solid gradient for hero cards (white text)
     solidGradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
   },
 
-  // Confidence levels
+  // Confidence levels - Mode-aware for WCAG AA compliance
+  // Light mode: Soft tinted (refined) | Dark mode: Solid (confident)
   high: {
-    bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-    border: 'border-emerald-200 dark:border-emerald-800',
-    text: 'text-emerald-700 dark:text-emerald-300',
+    bg: 'bg-emerald-600 dark:bg-emerald-500',
+    border: 'border-emerald-700 dark:border-emerald-400',
+    text: 'text-white',
     dot: 'bg-emerald-500',
   },
   medium: {
-    bg: 'bg-amber-100 dark:bg-amber-900/30',
-    border: 'border-amber-200 dark:border-amber-800',
-    text: 'text-amber-700 dark:text-amber-300',
+    // MODE-AWARE: Soft tinted in light, solid in dark
+    bg: 'bg-amber-50 dark:bg-amber-500',
+    border: 'border-amber-200 dark:border-amber-400',
+    text: 'text-amber-800 dark:text-white',
     dot: 'bg-amber-500',
   },
   low: {
-    bg: 'bg-red-100 dark:bg-red-900/30',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-700 dark:text-red-300',
+    bg: 'bg-red-600 dark:bg-red-500',
+    border: 'border-red-700 dark:border-red-400',
+    text: 'text-white',
     dot: 'bg-red-500',
   },
 
-  // Campaign status colors
+  // Campaign status colors - Solid colors for WCAG AA compliance
   excellent: {
     bg: 'bg-emerald-50 dark:bg-emerald-900/20',
     border: 'border-emerald-200 dark:border-emerald-800',
-    text: 'text-emerald-800 dark:text-emerald-300',
-    badge: 'bg-emerald-100 dark:bg-emerald-900/30',
+    text: 'text-white',
+    badge: 'bg-emerald-600 dark:bg-emerald-500',
     gradient: 'from-emerald-500 to-emerald-600',
     label: 'Excelente',
   },
   good: {
     bg: 'bg-blue-50 dark:bg-blue-900/20',
     border: 'border-blue-200 dark:border-blue-800',
-    text: 'text-blue-800 dark:text-blue-300',
-    badge: 'bg-blue-100 dark:bg-blue-900/30',
+    text: 'text-white',
+    badge: 'bg-blue-600 dark:bg-blue-500',
     gradient: 'from-blue-500 to-blue-600',
     label: 'Bom',
   },
   fair: {
     bg: 'bg-amber-50 dark:bg-amber-900/20',
     border: 'border-amber-200 dark:border-amber-800',
-    text: 'text-amber-800 dark:text-amber-300',
-    badge: 'bg-amber-100 dark:bg-amber-900/30',
+    // MODE-AWARE badge: Soft tinted in light, solid in dark
+    text: 'text-amber-800 dark:text-white',
+    badge: 'bg-amber-50 dark:bg-amber-500',
+    badgeBorder: 'border border-amber-200 dark:border-amber-400',
     gradient: 'from-amber-500 to-amber-600',
     label: 'Razoavel',
   },
   poor: {
     bg: 'bg-red-50 dark:bg-red-900/20',
     border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-800 dark:text-red-300',
-    badge: 'bg-red-100 dark:bg-red-900/30',
+    text: 'text-white',
+    badge: 'bg-red-600 dark:bg-red-500',
     gradient: 'from-red-500 to-red-600',
     label: 'Fraco',
   },
@@ -582,7 +604,10 @@ export const comfortCategoryColors = {
     border: 'border-orange-200 dark:border-orange-800',
     text: 'text-orange-700 dark:text-orange-300',
     icon: 'text-orange-500 dark:text-orange-400',
-    badge: 'bg-orange-100 dark:bg-orange-900/40',
+    // MODE-AWARE: Soft tinted in light, solid in dark
+    badge: 'bg-amber-50 dark:bg-amber-500',
+    badgeBorder: 'border border-amber-200 dark:border-amber-400',
+    badgeText: 'text-amber-800 dark:text-white',
     chart: '#f97316', // orange-500
   },
   quente: {
@@ -590,7 +615,10 @@ export const comfortCategoryColors = {
     border: 'border-amber-200 dark:border-amber-800',
     text: 'text-amber-700 dark:text-amber-300',
     icon: 'text-amber-500 dark:text-amber-400',
-    badge: 'bg-amber-100 dark:bg-amber-900/40',
+    // MODE-AWARE: Soft tinted in light, solid in dark
+    badge: 'bg-amber-50 dark:bg-amber-500',
+    badgeBorder: 'border border-amber-200 dark:border-amber-400',
+    badgeText: 'text-amber-800 dark:text-white',
     chart: '#f59e0b', // amber-500
   },
   ameno: {
@@ -598,7 +626,8 @@ export const comfortCategoryColors = {
     border: 'border-emerald-200 dark:border-emerald-800',
     text: 'text-emerald-700 dark:text-emerald-300',
     icon: 'text-emerald-500 dark:text-emerald-400',
-    badge: 'bg-emerald-100 dark:bg-emerald-900/40',
+    badge: 'bg-emerald-600 dark:bg-emerald-500',
+    badgeText: 'text-white',
     chart: '#10b981', // emerald-500
   },
   frio: {
@@ -606,7 +635,8 @@ export const comfortCategoryColors = {
     border: 'border-cyan-200 dark:border-cyan-800',
     text: 'text-cyan-700 dark:text-cyan-300',
     icon: 'text-cyan-500 dark:text-cyan-400',
-    badge: 'bg-cyan-100 dark:bg-cyan-900/40',
+    badge: 'bg-cyan-600 dark:bg-cyan-500',
+    badgeText: 'text-white',
     chart: '#06b6d4', // cyan-500
   },
   umido: {
@@ -614,7 +644,8 @@ export const comfortCategoryColors = {
     border: 'border-teal-200 dark:border-teal-800',
     text: 'text-teal-700 dark:text-teal-300',
     icon: 'text-teal-500 dark:text-teal-400',
-    badge: 'bg-teal-100 dark:bg-teal-900/40',
+    badge: 'bg-teal-600 dark:bg-teal-500',
+    badgeText: 'text-white',
     chart: '#14b8a6', // teal-500
   },
   chuvoso: {
@@ -622,7 +653,8 @@ export const comfortCategoryColors = {
     border: 'border-blue-200 dark:border-blue-800',
     text: 'text-blue-700 dark:text-blue-300',
     icon: 'text-blue-500 dark:text-blue-400',
-    badge: 'bg-blue-100 dark:bg-blue-900/40',
+    badge: 'bg-blue-600 dark:bg-blue-500',
+    badgeText: 'text-white',
     chart: '#3b82f6', // blue-500
   },
 };

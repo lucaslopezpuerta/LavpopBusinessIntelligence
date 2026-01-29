@@ -1,9 +1,21 @@
-// CampaignDetailsModal.jsx v2.4 - ANIMATION STANDARDIZATION
+// CampaignDetailsModal.jsx v2.8 - MODE-AWARE PENDING STATUS
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v2.8 (2026-01-29): Mode-aware pending status badge
+// v2.7 (2026-01-29): Orange to yellow color migration
+//   - Replaced bg-orange-600 dark:bg-orange-500 with bg-yellow-600 dark:bg-yellow-500
+//   - Consistent with campaign color scheme updates
+// v2.6 (2026-01-29): Amber to orange color migration
+//   - Replaced bg-amber-600 dark:bg-amber-500 with bg-orange-600 dark:bg-orange-500
+//   - Consistent with campaign color scheme updates
+// v2.5 (2026-01-29): Solid Color Badges for WCAG AA
+//   - Status badges now use solid colors with white text
+//   - Filter pills use solid colors when active
+//   - Header icon uses solid background
+//   - Improved contrast throughout modal
 // v2.4 (2026-01-27): Animation standardization
 //   - Added Framer Motion animations using MODAL constants
 //   - Added AnimatePresence for proper enter/exit animations
@@ -235,10 +247,10 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'returned': return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
-      case 'expired': return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
-      case 'cleared': return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
-      default: return 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
+      case 'returned': return 'bg-emerald-600 dark:bg-emerald-500 text-white';
+      case 'expired': return 'bg-slate-500 dark:bg-slate-600 text-white';
+      case 'cleared': return 'bg-blue-600 dark:bg-blue-500 text-white';
+      default: return 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400';
     }
   };
 
@@ -304,11 +316,11 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
   };
 
   // Filter pill component
-  const FilterPill = ({ active, onClick, children, activeColor = 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' }) => (
+  const FilterPill = ({ active, onClick, children, activeColor = 'bg-purple-600 dark:bg-purple-500 text-white' }) => (
     <button
       onClick={() => { haptics.tick(); onClick(); }}
       className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-        active ? activeColor : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+        active ? activeColor : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
       }`}
     >
       {children}
@@ -352,8 +364,8 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
         {/* Header with Refresh */}
         <div className="flex items-center justify-between p-3 sm:p-4 pt-safe border-b border-slate-200 dark:border-slate-700 shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg shrink-0">
-              <Target className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-1.5 sm:p-2 bg-purple-600 dark:bg-purple-500 rounded-lg shrink-0 shadow-sm">
+              <Target className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div className="min-w-0">
               <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
@@ -463,7 +475,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
               <SlidersHorizontal className="w-4 h-4" />
               <span>Filtros</span>
               {activeFilterCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-600 dark:bg-purple-500 text-white">
                   {activeFilterCount}
                 </span>
               )}
@@ -510,7 +522,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                 <FilterPill
                   active={filterDelivery === 'delivered'}
                   onClick={() => setFilterDelivery('delivered')}
-                  activeColor="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                  activeColor="bg-green-600 dark:bg-green-500 text-white"
                 >
                   <CheckCircle2 className="w-3 h-3 inline mr-0.5" />
                   {deliveryCounts.delivered || 0}
@@ -518,7 +530,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                 <FilterPill
                   active={filterDelivery === 'read'}
                   onClick={() => setFilterDelivery('read')}
-                  activeColor="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                  activeColor="bg-blue-600 dark:bg-blue-500 text-white"
                 >
                   <BookOpen className="w-3 h-3 inline mr-0.5" />
                   {deliveryCounts.read || 0}
@@ -526,7 +538,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                 <FilterPill
                   active={filterDelivery === 'failed'}
                   onClick={() => setFilterDelivery('failed')}
-                  activeColor="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300"
+                  activeColor="bg-red-600 dark:bg-red-500 text-white"
                 >
                   <AlertCircle className="w-3 h-3 inline mr-0.5" />
                   {deliveryCounts.failed || 0}

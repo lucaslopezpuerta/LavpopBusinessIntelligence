@@ -1,7 +1,18 @@
-// AnimatedWeatherIcon.jsx v1.0
+// AnimatedWeatherIcon.jsx v1.4 - MODE-AWARE AMBER BADGE MIGRATION
 // SVG animated weather icons with CSS animations
 // Respects prefers-reduced-motion for accessibility
 //
+// CHANGELOG:
+// v1.4 (2026-01-29): Mode-aware amber badge migration
+//   - Replaced bg-yellow-600 dark:bg-yellow-500 with mode-aware amber badge styling
+//   - New pattern: bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400
+// v1.3 (2026-01-29): Orange to yellow color migration
+//   - Updated orange-600/orange-500 to yellow-600/yellow-500 in bgColorMap
+// v1.2 (2026-01-29): Amber to orange color migration
+//   - Updated amber-600/amber-500 to orange-600/orange-500 in bgColorMap
+// v1.1 (2026-01-29): Solid color icon-well migration
+//   - Updated WeatherIconWithBackground bgColorMap from opacity-based to solid
+//   - Icon-well pattern: bg-{color}-600 dark:bg-{color}-500 (icon uses text-white)
 // v1.0 (2025-12-20): Initial implementation
 //   - 12 weather icon variants
 //   - Size variants: sm, md, lg, xl
@@ -120,23 +131,23 @@ export const WeatherIconWithBackground = ({
 }) => {
   const { color } = ICON_MAP[icon] || DEFAULT_ICON;
 
-  // Map text color to background color
+  // Map text color to solid background color
   const bgColorMap = {
-    'text-amber-500': 'bg-amber-100 dark:bg-amber-900/30',
-    'text-indigo-400': 'bg-indigo-100 dark:bg-indigo-900/30',
-    'text-sky-500': 'bg-sky-100 dark:bg-sky-900/30',
-    'text-slate-500': 'bg-slate-100 dark:bg-slate-800',
-    'text-blue-500': 'bg-blue-100 dark:bg-blue-900/30',
-    'text-blue-600': 'bg-blue-100 dark:bg-blue-900/30',
-    'text-purple-500': 'bg-purple-100 dark:bg-purple-900/30',
-    'text-purple-600': 'bg-purple-100 dark:bg-purple-900/30',
-    'text-cyan-400': 'bg-cyan-100 dark:bg-cyan-900/30',
-    'text-cyan-500': 'bg-cyan-100 dark:bg-cyan-900/30',
-    'text-slate-400': 'bg-slate-100 dark:bg-slate-800',
-    'text-teal-500': 'bg-teal-100 dark:bg-teal-900/30'
+    'text-amber-500': 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400',
+    'text-indigo-400': 'bg-indigo-600 dark:bg-indigo-500',
+    'text-sky-500': 'bg-sky-600 dark:bg-sky-500',
+    'text-slate-500': 'bg-slate-600 dark:bg-slate-500',
+    'text-blue-500': 'bg-blue-600 dark:bg-blue-500',
+    'text-blue-600': 'bg-blue-600 dark:bg-blue-500',
+    'text-purple-500': 'bg-purple-600 dark:bg-purple-500',
+    'text-purple-600': 'bg-purple-600 dark:bg-purple-500',
+    'text-cyan-400': 'bg-cyan-600 dark:bg-cyan-500',
+    'text-cyan-500': 'bg-cyan-600 dark:bg-cyan-500',
+    'text-slate-400': 'bg-slate-600 dark:bg-slate-500',
+    'text-teal-500': 'bg-teal-600 dark:bg-teal-500'
   };
 
-  const bgColor = bgColorMap[color] || 'bg-slate-100 dark:bg-slate-800';
+  const bgColor = bgColorMap[color] || 'bg-slate-600 dark:bg-slate-500';
 
   return (
     <div
@@ -145,7 +156,7 @@ export const WeatherIconWithBackground = ({
         ${className}
       `}
     >
-      <AnimatedWeatherIcon icon={icon} size={size} />
+      <AnimatedWeatherIcon icon={icon} size={size} colorOverride="text-white" />
     </div>
   );
 };

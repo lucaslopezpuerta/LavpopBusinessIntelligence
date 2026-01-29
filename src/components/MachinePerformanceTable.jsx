@@ -1,7 +1,9 @@
-// MachinePerformanceTable Component v5.0.0
+// MachinePerformanceTable Component v5.1.0
 // Machine-level performance tracking with revenue reconciliation
 //
 // CHANGELOG:
+// v5.1.0 (2026-01-28): Solid color trend badges for WCAG AA compliance
+//   - WoW percentage badges now use solid colors with white text
 // v5.0.1 (2026-01-23): Replaced collapsible help panel with header tooltip
 //   - Removed "Como Interpretar" collapsible panel (reduces visual clutter)
 //   - Added ContextHelp tooltip to header title
@@ -201,8 +203,8 @@ const MachinePerformanceTable = ({ machinePerformance, dateFilter = 'currentWeek
         <td className="hidden sm:table-cell py-2 px-3 lg:py-2.5 lg:px-4 text-center">
           <span className={`inline-block px-2 py-0.5 rounded-full ${isDesktop ? 'text-sm' : 'text-xs'} font-semibold ${
             percentDiff >= 0
-              ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+              ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
+              : 'bg-red-600 dark:bg-red-500 text-white'
           }`}>
             {percentDiff > 0 ? '+' : ''}{percentDiff.toFixed(0)}%
           </span>

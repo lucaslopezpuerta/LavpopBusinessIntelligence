@@ -1,8 +1,11 @@
-// PriorityMatrix.jsx v3.4.0 - ACCESSIBILITY
+// PriorityMatrix.jsx v3.5.0 - SOLID COLOR BADGES
 // Matriz de Prioridades - Visual Command Center com Gauges Radiais
 // Design System v5.1 compliant - Premium Glass with Radial Gauges
 //
 // CHANGELOG:
+// v3.5.0 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - Priority score badge now uses solid colors
+//   - Removed unused bg property from getScoreColorEnhanced (dead code)
 // v3.4.0 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Radial gauge, mini arc, and card animations disabled when user prefers reduced motion
@@ -155,29 +158,25 @@ const MiniArc = ({ score, isDark, size = 70, prefersReducedMotion = false }) => 
   );
 };
 
-// Enhanced score colors with glow
+// Enhanced score colors with glow (bg property removed - was unused dead code)
 const getScoreColorEnhanced = (score, isDark) => {
   if (score >= 8) return {
     ring: '#10b981',
-    bg: isDark ? 'bg-emerald-900/40' : 'bg-emerald-100',
     text: isDark ? 'text-emerald-400' : 'text-emerald-600',
     glow: 'shadow-[0_0_20px_rgba(16,185,129,0.4)]'
   };
   if (score >= 6) return {
     ring: '#3b82f6',
-    bg: isDark ? 'bg-blue-900/40' : 'bg-blue-100',
     text: isDark ? 'text-blue-400' : 'text-blue-600',
     glow: 'shadow-[0_0_20px_rgba(59,130,246,0.4)]'
   };
   if (score >= 4) return {
     ring: '#f59e0b',
-    bg: isDark ? 'bg-amber-900/40' : 'bg-amber-100',
     text: isDark ? 'text-amber-400' : 'text-amber-600',
     glow: 'shadow-[0_0_20px_rgba(245,158,11,0.4)]'
   };
   return {
     ring: '#ef4444',
-    bg: isDark ? 'bg-red-900/40' : 'bg-red-100',
     text: isDark ? 'text-red-400' : 'text-red-600',
     glow: 'shadow-[0_0_20px_rgba(239,68,68,0.4)]'
   };
@@ -532,12 +531,12 @@ const PriorityMatrix = ({
 
           <div className={`
             px-3 py-1.5 rounded-lg shrink-0
-            ${isDark ? 'bg-red-500/20' : 'bg-red-100'}
+            bg-red-600 dark:bg-red-500
           `}>
-            <span className={`text-sm font-bold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+            <span className="text-sm font-bold text-white">
               {dimensions[priority.key].score.toFixed(1)}
             </span>
-            <span className={`text-xs ${isDark ? 'text-red-400' : 'text-red-600'}`}>/10</span>
+            <span className="text-xs text-white/80">/10</span>
           </div>
         </div>
       </motion.div>

@@ -1,8 +1,11 @@
-// TrendBadge.jsx v1.4
+// TrendBadge.jsx v1.5 - SOLID COLOR BADGES
 // Reusable trend indicator badge
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.5 (2026-01-28): Solid colors for WCAG AA compliance
+//   - Positive/negative trends now use solid colors with white text
+//   - Inverted variant unchanged (designed for gradient backgrounds)
 // v1.4 (2025-12-01): Added xs size for compact mobile displays
 //   - New xs size: smaller padding, same text-xs (min 12px compliant)
 //   - Added className prop for responsive visibility control
@@ -124,6 +127,7 @@ const TrendBadge = ({
 
   const Icon = isPositive ? TrendingUp : TrendingDown;
 
+  // Solid colors for standard styling (WCAG AA compliant)
   return (
     <span
       className={`
@@ -131,8 +135,8 @@ const TrendBadge = ({
         ${sizeClasses[size]}
         rounded-md font-bold
         ${isPositive
-          ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-          : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+          ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
+          : 'bg-red-600 dark:bg-red-500 text-white'
         }
         ${className}
       `}

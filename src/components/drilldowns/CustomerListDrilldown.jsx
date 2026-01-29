@@ -1,4 +1,4 @@
-// CustomerListDrilldown.jsx v3.14 - SWIPE GESTURE SENSITIVITY FIX
+// CustomerListDrilldown.jsx v3.15 - SOLID BADGE COLORS
 // ✅ Pagination with "Ver mais" button
 // ✅ WhatsApp and Call actions
 // ✅ Dynamic sorting with controls
@@ -14,6 +14,12 @@
 // ✅ Blacklist indicator with toggle to show/hide
 //
 // CHANGELOG:
+// v3.15 (2026-01-29): Solid Badge Colors
+//   - Migrated badge/pill colors from opacity-based to solid colors
+//   - Empty state icon: emerald-600/500 with white icon
+//   - Blacklist toggle: red-600/500 with white text
+//   - Avatar states: solid emerald/red backgrounds with white icons
+//   - Contacted button: solid emerald background with white icon
 // v3.14 (2026-01-28): Swipe Gesture Sensitivity Fix
 //   - Fixed overly sensitive swipe triggering (was 20px, now 50px)
 //   - Added deadzone (8px) to filter micro-movements
@@ -414,8 +420,8 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
     if (customers.length === 0 && type === 'atrisk') {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mb-4">
-                    <PartyPopper className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                <div className="w-16 h-16 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center mb-4">
+                    <PartyPopper className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
                     Parabéns!
@@ -459,7 +465,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                             className={`
                                 flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors
                                 ${showBlacklisted
-                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                                    ? 'bg-red-600 dark:bg-red-500 text-white'
                                     : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                                 }
                             `}
@@ -522,9 +528,9 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                     <div className={`
                                         w-9 h-9 rounded-full flex items-center justify-center
                                         ${blacklisted
-                                            ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+                                            ? 'bg-red-600 dark:bg-red-500 text-white'
                                             : contacted
-                                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                                                ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
                                                 : 'bg-white dark:bg-slate-600 text-slate-600 dark:text-slate-300'
                                         }
                                         shadow-sm font-semibold text-xs
@@ -572,7 +578,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                                 w-11 h-11 flex items-center justify-center
                                                 rounded-lg border transition-colors
                                                 ${contacted
-                                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                                                    ? 'bg-emerald-600 dark:bg-emerald-500 text-white border-emerald-600 dark:border-emerald-500'
                                                     : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
                                                 }
                                             `}

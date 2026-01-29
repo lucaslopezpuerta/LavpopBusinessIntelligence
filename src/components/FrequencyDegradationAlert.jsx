@@ -1,8 +1,26 @@
-// FrequencyDegradationAlert.jsx v2.2 - ACCESSIBILITY
+// FrequencyDegradationAlert.jsx v3.1 - COSMIC PRECISION 2.0
 // Early warning for customers with growing visit intervals
-// Design System v5.1 compliant - Premium Glass Card pattern
+// Design System v5.0 compliant - Premium Glass Card pattern
 //
 // CHANGELOG:
+// v3.1 (2026-01-29): Soft stat boxes for reduced eye strain
+//   - VIP stat box: solid amber → soft amber-50/amber-500/15 with border
+//   - Revenue at risk box: solid red → soft red-50/red-500/15 with border
+//   - Insight box: solid blue → soft blue-50/blue-500/15 with border
+//   - Maintains semantic color meaning while reducing visual fatigue
+// v3.0 (2026-01-29): Cosmic Precision 2.0 - Warning color fix
+//   - REVERTED yellow back to AMBER for WCAG AA compliance
+//   - Yellow-600 fails WCAG AA (3.5:1 contrast) - amber-600 passes (4.7:1)
+//   - All warning elements now use amber-600/500 consistently
+// v2.6 (2026-01-29): Migrated orange colors to yellow (REVERTED in v3.0)
+// v2.5 (2026-01-29): Migrated amber colors to orange (REVERTED in v3.0)
+// v2.4 (2026-01-29): Complete solid color migration for all badges/pills
+//   - Segment icon wells: solid amber/slate with white icons
+//   - Summary stat boxes: solid fills for VIP and revenue sections
+//   - Insight box: solid blue with white icon
+// v2.3 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - IntervalBadge: solid red with white text
+//   - Alert badge: solid amber with white text
 // v2.2 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Replaced inline hoverTransition with TWEEN.HOVER constant
@@ -102,11 +120,11 @@ const GapHistory = ({ gaps }) => (
   </div>
 );
 
-// Interval badge component
+// Interval badge component (solid colors for WCAG AA compliance)
 const IntervalBadge = ({ historicalAvg, recentAvg }) => (
-  <div className="shrink-0 flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900/30 rounded-full">
-    <TrendingDown className="w-3 h-3 text-red-500" />
-    <span className="text-xs font-bold text-red-600 dark:text-red-400">
+  <div className="shrink-0 flex items-center gap-1 px-2 py-1 bg-red-600 dark:bg-red-500 rounded-full">
+    <TrendingDown className="w-3 h-3 text-white" />
+    <span className="text-xs font-bold text-white">
       {historicalAvg}d → {recentAvg}d
     </span>
   </div>
@@ -133,14 +151,10 @@ const CustomerPreviewRow = ({ customer, onOpenProfile }) => {
         {/* Segment icon */}
         <div className={`p-1.5 rounded-lg shrink-0 ${
           customer.isPriority
-            ? 'bg-amber-100 dark:bg-amber-900/30'
-            : 'bg-slate-100 dark:bg-slate-700'
+            ? 'bg-amber-600 dark:bg-amber-500'      // FIXED: amber passes WCAG (4.7:1)
+            : 'bg-slate-600 dark:bg-slate-500'
         }`}>
-          <SegmentIcon className={`w-3.5 h-3.5 ${
-            customer.isPriority
-              ? 'text-amber-600 dark:text-amber-400'
-              : 'text-slate-500 dark:text-slate-400'
-          }`} />
+          <SegmentIcon className="w-3.5 h-3.5 text-white" />
         </div>
 
         {/* Desktop: Name + gap history inline */}
@@ -284,7 +298,7 @@ const FrequencyDegradationAlert = ({
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-amber-500 dark:bg-amber-600 flex items-center justify-center shadow-sm shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-amber-600 dark:bg-amber-500 flex items-center justify-center shadow-sm shrink-0">
           <AlertTriangle className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0 flex-1">
@@ -296,7 +310,7 @@ const FrequencyDegradationAlert = ({
                 description="Detecta clientes ATIVOS cujos intervalos entre visitas estão aumentando. Se um cliente que vinha a cada 10 dias passa a vir a cada 20 dias, ele aparece aqui ANTES de entrar em risco. É um sistema de alerta precoce."
               />
             </h3>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-600 dark:bg-amber-500 text-white">
               Alerta
             </span>
           </div>
@@ -306,7 +320,7 @@ const FrequencyDegradationAlert = ({
         </div>
       </div>
 
-      {/* Summary stats */}
+      {/* Summary stats - Soft backgrounds for reduced eye strain */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 text-center">
           <div className="flex items-center justify-center gap-1.5 mb-1">
@@ -318,24 +332,24 @@ const FrequencyDegradationAlert = ({
           <p className="text-xs text-slate-500 dark:text-slate-400">clientes</p>
         </div>
 
-        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2.5 text-center">
+        <div className="bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 rounded-lg p-2.5 text-center">
           <div className="flex items-center justify-center gap-1.5 mb-1">
-            <Crown className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-            <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
+            <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="text-lg font-bold text-amber-700 dark:text-amber-300">
               {metrics.priorityCount}
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">VIPs</p>
+          <p className="text-xs text-amber-600 dark:text-amber-400">VIPs</p>
         </div>
 
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-2.5 text-center">
+        <div className="bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/30 rounded-lg p-2.5 text-center">
           <div className="flex items-center justify-center gap-1.5 mb-1">
-            <DollarSign className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
-            <span className="text-sm font-bold text-red-600 dark:text-red-400">
+            <DollarSign className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+            <span className="text-sm font-bold text-red-700 dark:text-red-300">
               {formatCurrency(metrics.totalRevenue)}
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">em risco</p>
+          <p className="text-xs text-red-600 dark:text-red-400">em risco</p>
         </div>
       </div>
 
@@ -379,21 +393,21 @@ const FrequencyDegradationAlert = ({
       {onContactCustomers && (
         <button
           onClick={handleContactAll}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors mb-4"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition-colors mb-4"
         >
           <Phone className="w-4 h-4" />
           Contatar antes que virem "Em Risco"
         </button>
       )}
 
-      {/* Insight */}
-      <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <Lightbulb className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" />
+      {/* Insight - Soft background for reduced eye strain */}
+      <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 rounded-lg">
+        <Lightbulb className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400 shrink-0" />
         <div>
-          <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
             {insight.text}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
             {insight.subtext}
           </p>
         </div>

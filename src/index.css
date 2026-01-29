@@ -1,9 +1,13 @@
-/* Bilavnova BI - Base Styles v4.5 (Smooth Modal Nav Transitions)
- * Space-age futurist design system
+/* Bilavnova BI - Base Styles v5.0 (Cosmic Precision 2.0)
+ * Space-age futurist design system - Eye-strain optimized
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
  *
  * CHANGELOG:
+ * v5.0 (2026-01-29): Cosmic Precision 2.0 - Color harmony overhaul
+ *   - Refined stellar-cyan from #00aeef to #5BA3D9 (42% less saturated)
+ *   - Reduced glow intensities for softer appearance
+ *   - Added stellar-cyan-bright for legacy gradient support
  * v4.5 (2026-01-28): Smooth Modal Navigation Transitions
  *   - Enhanced BottomNavBar hide/show with slide-fade animation
  *   - Uses CSS `translate` property to avoid Framer Motion conflicts
@@ -113,10 +117,12 @@
    ============================================ */
 
 :root {
-  /* Cosmic Precision - Stellar Colors (v4.0) */
+  /* Cosmic Precision 2.0 - Stellar Colors (v5.0 - eye-strain optimized) */
   --stellar-blue: #2d388a;
-  --stellar-cyan: #00aeef;
-  --stellar-gradient: linear-gradient(135deg, #2d388a 0%, #00aeef 100%);
+  --stellar-cyan: #5BA3D9;          /* Refined: 58% saturation (was 100%) */
+  --stellar-cyan-bright: #00aeef;   /* Legacy: for gradients needing vibrancy */
+  --stellar-gradient: linear-gradient(135deg, #2d388a 0%, #5BA3D9 100%);
+  --stellar-gradient-vibrant: linear-gradient(135deg, #2d388a 0%, #00aeef 100%);
   --space-void: #050816;
   --space-nebula: #0a0f1e;
   --space-dust: #1a1f35;
@@ -151,14 +157,16 @@
   --glass-border: rgba(45, 56, 138, 0.1);
   --glass-blur: 12px;
 
-  /* Shadows */
+  /* Shadows - v5.0: Reduced glow intensity for softer appearance */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --shadow-lavpop: 0 4px 14px 0 rgba(26, 90, 142, 0.15);
   --shadow-bilavnova: 0 4px 24px rgba(45, 56, 138, 0.15);
-  --shadow-bilavnova-glow: 0 4px 32px rgba(0, 174, 239, 0.25);
-  --shadow-stellar: 0 0 20px rgba(45, 56, 138, 0.2), 0 0 40px rgba(0, 174, 239, 0.1);
+  --shadow-bilavnova-glow: 0 4px 32px rgba(91, 163, 217, 0.2);  /* Softer with new cyan */
+  --shadow-stellar: 0 0 20px rgba(45, 56, 138, 0.15), 0 0 40px rgba(91, 163, 217, 0.08);
+  --stellar-glow: 0 0 20px rgba(91, 163, 217, 0.3);  /* New softer glow */
+  --stellar-glow-soft: 0 0 12px rgba(91, 163, 217, 0.2);
 }
 
 .dark {
@@ -183,14 +191,16 @@
   --glass-border: rgba(0, 174, 239, 0.15);
   --glass-blur: 16px;
 
-  /* Darker shadows with stellar glow */
+  /* Darker shadows with stellar glow - v5.0: Softer intensities */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
   --shadow-lavpop: 0 4px 14px 0 rgba(26, 90, 142, 0.3);
   --shadow-bilavnova: 0 4px 24px rgba(45, 56, 138, 0.3);
-  --shadow-bilavnova-glow: 0 4px 32px rgba(0, 174, 239, 0.4);
-  --shadow-stellar: 0 0 30px rgba(0, 174, 239, 0.3), 0 0 60px rgba(45, 56, 138, 0.2);
+  --shadow-bilavnova-glow: 0 4px 32px rgba(91, 163, 217, 0.3);  /* Softer with new cyan */
+  --shadow-stellar: 0 0 30px rgba(91, 163, 217, 0.25), 0 0 60px rgba(45, 56, 138, 0.15);
+  --stellar-glow: 0 0 20px rgba(91, 163, 217, 0.4);
+  --stellar-glow-soft: 0 0 12px rgba(91, 163, 217, 0.25);
 }
 
 /* ============================================
@@ -1249,5 +1259,84 @@ a:focus-visible {
   [style*="transform"],
   [style*="opacity"] {
     transition: none !important;
+  }
+}
+
+/* ============================================
+   SOLID BADGE UTILITIES (v4.7)
+   Mode-aware colors for badges, pills, and indicators
+   Light mode: Soft tinted for refined appearance
+   Dark mode: Solid for clear visual hierarchy
+   WCAG AA compliant in both modes
+   ============================================ */
+
+@layer utilities {
+  /* Base badge structure */
+  .badge-solid {
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold;
+  }
+
+  .badge-pill {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  /* Solid Color Variants - Success (Active, Healthy, Completed) */
+  .badge-success {
+    @apply bg-emerald-600 text-white;
+  }
+  .dark .badge-success {
+    @apply bg-emerald-500;
+  }
+
+  /* Warning (Attention, At Risk, Pending) - MODE-AWARE
+     Light: Soft tinted amber (refined, warm honey)
+     Dark: Solid amber (confident, prominent) */
+  .badge-warning {
+    @apply bg-amber-50 text-amber-800 border border-amber-200;
+  }
+  .dark .badge-warning {
+    @apply bg-amber-500 text-white border-amber-400;
+  }
+
+  /* Error (Critical, Churning, Failed) */
+  .badge-error {
+    @apply bg-red-600 text-white;
+  }
+  .dark .badge-error {
+    @apply bg-red-500;
+  }
+
+  /* Info (Monitor, Contacted, Info) */
+  .badge-info {
+    @apply bg-blue-600 text-white;
+  }
+  .dark .badge-info {
+    @apply bg-blue-500;
+  }
+
+  /* Neutral (Inactive, Lost, Default) */
+  .badge-neutral {
+    @apply bg-slate-500 text-white;
+  }
+  .dark .badge-neutral {
+    @apply bg-slate-600;
+  }
+
+  /* Accent (New, Featured, Acquisition) */
+  .badge-accent {
+    @apply bg-violet-600 text-white;
+  }
+  .dark .badge-accent {
+    @apply bg-violet-500;
+  }
+
+  /* Brand: Stellar Cyan */
+  .badge-stellar {
+    @apply bg-stellar-cyan text-space-void;
+  }
+
+  /* Brand: Cosmic Green (WhatsApp, Success actions) */
+  .badge-cosmic {
+    @apply bg-cosmic-green text-space-void;
   }
 }

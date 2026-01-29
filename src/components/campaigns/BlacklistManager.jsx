@@ -1,8 +1,23 @@
-// BlacklistManager.jsx v4.1 - Toast Notifications
+// BlacklistManager.jsx v4.6 - COSMIC FILTER ENHANCEMENTS
 // WhatsApp blacklist management UI component
-// Design System v4.0 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v4.6 (2026-01-29): Cosmic filter enhancements and solid amber badges
+//   - Solid amber badges for undelivered/number-blocked (WCAG AA consistent)
+//   - Filter buttons: added active:scale-[0.98] micro-interactions
+//   - Filter buttons: added focus:ring-stellar-cyan focus states
+//   - Filter container: updated dark:bg-slate-800 → dark:bg-space-dust
+// v4.5 (2026-01-29): Mode-aware amber badges for better light mode visibility
+//   - Reason badges (undelivered, number-blocked): now use bg-amber-50 text-amber-800 border in light, solid amber in dark
+// v4.4 (2026-01-29): Orange to yellow color migration
+//   - Replaced bg-orange-600 dark:bg-orange-500 with bg-yellow-600 dark:bg-yellow-500 in reason badges
+//   - Consistent with campaign color scheme updates
+// v4.3 (2026-01-29): Amber to orange color migration
+//   - Replaced bg-amber-600 dark:bg-amber-500 with bg-orange-600 dark:bg-orange-500 in reason badges
+//   - Consistent with campaign color scheme updates
+// v4.2 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - Updated reason badges to use solid colors with white text
 // v4.1 (2026-01-27): Toast notifications
 //   - Replaced browser alert() with useToast() for import feedback
 //   - Success/error toasts for CSV import operations
@@ -150,12 +165,12 @@ const ReasonFilter = ({ value, onChange }) => {
   return (
   <>
     {/* Mobile: Grid layout */}
-    <div className="sm:hidden grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+    <div className="sm:hidden grid grid-cols-5 gap-1 bg-slate-100 dark:bg-space-dust rounded-xl p-1">
       {REASON_FILTERS.map((option) => (
         <button
           key={option.id}
           onClick={() => handleChange(option.id)}
-          className={`px-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-center ${
+          className={`px-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-center active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-1 ${
             value === option.id
               ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -166,12 +181,12 @@ const ReasonFilter = ({ value, onChange }) => {
       ))}
     </div>
     {/* Desktop: Pill layout */}
-    <div className="hidden sm:inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 gap-0.5">
+    <div className="hidden sm:inline-flex bg-slate-100 dark:bg-space-dust rounded-full p-0.5 gap-0.5">
       {REASON_FILTERS.map((option) => (
         <button
           key={option.id}
           onClick={() => handleChange(option.id)}
-          className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
+          className={`px-3 py-1 text-xs font-semibold rounded-full transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-1 ${
             value === option.id
               ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -543,32 +558,32 @@ const BlacklistManager = ({ customerData }) => {
   // Get effective last sync time (prefer scheduled over manual)
   const lastSync = scheduledSyncTime || getLastSyncTime();
 
-  // Get reason badge style
+  // Get reason badge style (solid colors for WCAG AA compliance)
   const getReasonBadge = (reason) => {
     switch (reason) {
       case 'opt-out':
         return {
           label: 'Opt-out',
-          className: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
+          className: 'bg-red-600 dark:bg-red-500 text-white',
           icon: MessageSquareOff
         };
       case 'undelivered':
         return {
           label: 'Não entregue',
-          className: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+          className: 'bg-amber-600 dark:bg-amber-500 text-white',
           icon: AlertTriangle
         };
       case 'number-blocked':
         return {
           label: 'Bloqueado',
-          className: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300',
+          className: 'bg-amber-600 dark:bg-amber-500 text-white',
           icon: XCircle
         };
       case 'manual':
       default:
         return {
           label: 'Manual',
-          className: 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300',
+          className: 'bg-slate-500 dark:bg-slate-600 text-white',
           icon: UserX
         };
     }

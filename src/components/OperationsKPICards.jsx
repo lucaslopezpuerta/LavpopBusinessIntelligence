@@ -1,4 +1,4 @@
-// OPERATIONS KPI CARDS V6.5.0 - ACCESSIBILITY
+// OPERATIONS KPI CARDS V6.9.0 - MODE-AWARE AMBER BADGES
 // ✅ Math: Absolute pp trend change (not relative %)
 // ✅ Math: Capacity adapts to date window (partial week support)
 // ✅ Math: Service diff hidden for currentWeek (partial vs full unfair)
@@ -9,8 +9,23 @@
 // ✅ Design System: Minimum 12px fonts (no text-[9px] or text-[10px])
 // ✅ Mobile: Responsive text sizing with sm: breakpoints
 // ✅ Accessibility: Proper color contrast and touch targets
+// ✅ WCAG AA: Mode-aware badges with proper contrast
 //
 // CHANGELOG:
+// v6.9.0 (2026-01-29): Yellow to amber color migration with mode-aware badges
+//   - Razoavel status: yellow-600/yellow-500 → mode-aware amber styling
+//   - Mode-aware badges: bg-amber-50 text-amber-800 border border-amber-200 (light)
+//                        bg-amber-500 text-white border-amber-400 (dark)
+//   - Border colors: yellow-400/yellow-500 → amber-400/amber-500
+// v6.8.0 (2026-01-29): Migrated orange colors to yellow
+//   - Razoavel status: orange-600/orange-500 → yellow-600/yellow-500
+//   - Border colors: orange-400/orange-500 → yellow-400/yellow-500
+// v6.7.0 (2026-01-29): Migrated amber colors to orange
+//   - Razoavel status: amber-600/amber-500 → orange-600/orange-500
+//   - Border colors: amber-400/amber-500 → orange-400/orange-500
+// v6.6.0 (2026-01-28): Solid icon backgrounds for WCAG AA compliance
+//   - Icon wells now use solid colors (emerald/teal/amber/red)
+//   - White icons on solid backgrounds for 4.5:1+ contrast
 // v6.5.0 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - KPICard hover animation conditional on reduced motion preference
@@ -218,11 +233,13 @@ const OperationsKPICards = ({
   }
 
   // Status determination with threshold-based styling
+  // Uses solid backgrounds for icon wells (WCAG AA compliance)
   const getStatus = (utilization) => {
     if (utilization >= THRESHOLDS.excellent) return {
       label: 'Excelente',
       colorClass: 'text-emerald-600 dark:text-emerald-400',
-      bgClass: 'bg-emerald-100 dark:bg-emerald-900/30',
+      bgClass: 'bg-emerald-600 dark:bg-emerald-500',
+      iconColorClass: 'text-white',
       gradientFrom: 'from-emerald-500',
       gradientTo: 'to-green-500',
       borderClass: 'border-emerald-400 dark:border-emerald-500'
@@ -230,7 +247,8 @@ const OperationsKPICards = ({
     if (utilization >= THRESHOLDS.good) return {
       label: 'Bom',
       colorClass: 'text-teal-600 dark:text-teal-400',
-      bgClass: 'bg-teal-100 dark:bg-teal-900/30',
+      bgClass: 'bg-teal-600 dark:bg-teal-500',
+      iconColorClass: 'text-white',
       gradientFrom: 'from-teal-500',
       gradientTo: 'to-cyan-500',
       borderClass: 'border-teal-400 dark:border-teal-500'
@@ -238,15 +256,17 @@ const OperationsKPICards = ({
     if (utilization >= THRESHOLDS.fair) return {
       label: 'Razoável',
       colorClass: 'text-amber-600 dark:text-amber-400',
-      bgClass: 'bg-amber-100 dark:bg-amber-900/30',
+      bgClass: 'bg-amber-600 dark:bg-amber-500',
+      iconColorClass: 'text-white',
       gradientFrom: 'from-amber-500',
-      gradientTo: 'to-orange-500',
+      gradientTo: 'to-amber-600',
       borderClass: 'border-amber-400 dark:border-amber-500'
     };
     return {
       label: 'Baixo',
       colorClass: 'text-red-600 dark:text-red-400',
-      bgClass: 'bg-red-100 dark:bg-red-900/30',
+      bgClass: 'bg-red-600 dark:bg-red-500',
+      iconColorClass: 'text-white',
       gradientFrom: 'from-red-500',
       gradientTo: 'to-rose-500',
       borderClass: 'border-red-400 dark:border-red-500'
@@ -337,7 +357,7 @@ const OperationsKPICards = ({
             w-10 h-10 sm:w-11 sm:h-11 rounded-lg ${status.bgClass}
             flex items-center justify-center flex-shrink-0
           `}>
-            <CardIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${status.colorClass}`} />
+            <CardIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${status.iconColorClass}`} />
           </div>
           <div className="min-w-0">
             <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">

@@ -1,9 +1,24 @@
-// AcquisitionCard.jsx v2.2 - PREMIUM GLASS CARD
+// AcquisitionCard.jsx v2.6 - MODE-AWARE AMBER BADGES
 // Unified acquisition metrics + daily chart
 // Replaces: CleanKPICard (Novos) + NewClientsChart
 // Design System v5.1 compliant - Cosmic Glass Cards
 //
 // CHANGELOG:
+// v2.6 (2026-01-29): Yellow to amber color migration with mode-aware badges
+//   - CHANGED: Warning StatusPill variant from yellow-600/500 solid to mode-aware amber
+//   - Mode-aware badges: bg-amber-50 text-amber-800 border border-amber-200 (light)
+//                        bg-amber-500 text-white border-amber-400 (dark)
+// v2.5 (2026-01-29): Orange to yellow color migration for badges
+//   - CHANGED: Warning StatusPill variant from orange-600/500 to yellow-600/500
+//   - Improves visual distinction from other semantic colors
+// v2.4 (2026-01-29): Amber to orange color migration for badges
+//   - CHANGED: Warning StatusPill variant from amber-600/500 to orange-600/500
+//   - Improves visual distinction from other semantic colors
+// v2.3 (2026-01-29): Solid color migration for badges and pills
+//   - CHANGED: StatusPill variants now use solid bg-{color}-600/500 with text-white
+//   - CHANGED: Removed opacity-based backgrounds (bg-{color}-900/XX)
+//   - CHANGED: Icon colors now use text-white for consistency
+//   - Improved contrast and visual clarity across light/dark modes
 // v2.2 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Replaced inline cardHoverTransition with TWEEN.HOVER constant
@@ -199,17 +214,17 @@ const AnimatedSparkline = ({ data, color = '#8b5cf6', height = 60, prefersReduce
 
 const StatusPill = ({ icon: Icon, label, value, variant = 'default', index = 0, prefersReducedMotion = false }) => {
   const variants = {
-    success: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
-    warning: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50',
-    info: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
-    default: 'bg-slate-50 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600/50'
+    success: 'bg-emerald-600 dark:bg-emerald-500 text-white border-transparent',
+    warning: 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400',
+    info: 'bg-blue-600 dark:bg-blue-500 text-white border-transparent',
+    default: 'bg-slate-600 dark:bg-slate-500 text-white border-transparent'
   };
 
   const iconColors = {
-    success: 'text-emerald-500 dark:text-emerald-400',
-    warning: 'text-amber-500 dark:text-amber-400',
-    info: 'text-blue-500 dark:text-blue-400',
-    default: 'text-slate-500 dark:text-slate-400'
+    success: 'text-white',
+    warning: 'text-amber-600 dark:text-white',
+    info: 'text-white',
+    default: 'text-white'
   };
 
   return (
@@ -645,8 +660,8 @@ const AcquisitionCard = ({
             onClick={() => setViewMode('daily')}
             className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
               viewMode === 'daily'
-                ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                ? 'bg-purple-600 dark:bg-purple-500 text-white'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
             }`}
           >
             Diário
@@ -655,8 +670,8 @@ const AcquisitionCard = ({
             onClick={() => setViewMode('weekly')}
             className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
               viewMode === 'weekly'
-                ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                ? 'bg-purple-600 dark:bg-purple-500 text-white'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
             }`}
           >
             Semanal

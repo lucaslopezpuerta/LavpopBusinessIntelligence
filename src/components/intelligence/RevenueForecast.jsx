@@ -1,8 +1,25 @@
-// RevenueForecast.jsx v3.0.3
+// RevenueForecast.jsx v3.2.0 - MODE-AWARE WARNING BADGES
 // Revenue projection card for Intelligence tab
 // Design System v5.1 compliant - Premium Glass
 //
 // CHANGELOG:
+// v3.2.0 (2026-01-29): Mode-aware warning badges
+//   - Confidence badge amber state now light-friendly (amber-50/amber-500)
+//   - Amber text now mode-aware (amber-800 light, white dark)
+//   - Amber dot now mode-aware (amber-500 light, white/80 dark)
+//   - Amber border now mode-aware (amber-200 light, amber-400 dark)
+//   - Gap alert icon well changed to amber-600/amber-500
+// v3.1.2 (2026-01-29): Orange→Yellow color migration
+//   - Confidence badge amber state now uses yellow-600/yellow-500
+//   - Confidence badge amber border now uses yellow-700/yellow-400
+//   - Gap alert icon well now uses yellow-600/yellow-500
+// v3.1.1 (2026-01-29): Amber→Orange color migration
+//   - Confidence badge amber state now uses orange-600/orange-500
+//   - Confidence badge amber border now uses orange-700/orange-400
+//   - Gap alert icon well now uses orange-600/orange-500
+// v3.1.0 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - Confidence badge now uses solid colors with white text
+//   - Alert icon wells updated to solid colors with white icons
 // v3.0.3 (2026-01-24): Removed colored left border
 // v3.0.2 (2026-01-24): Mobile layout improvements
 //   - Confidence badge always on right side of header (row layout)
@@ -109,24 +126,25 @@ const RevenueForecast = ({
   const hasTemperatureData = tempCorr?.hasEnoughData;
   const showTempInsight = hasTemperatureData && Math.abs(tempCorr.correlation) > 0.1;
 
+  // Solid colors for confidence badges (WCAG AA compliant)
   const confidenceColors = {
     green: {
-      bg: isDark ? 'bg-green-900/40' : 'bg-green-100/80',
-      text: 'text-green-700 dark:text-green-300',
-      dot: 'bg-green-500',
-      border: isDark ? 'ring-green-500/20' : 'ring-green-200'
+      bg: 'bg-emerald-600 dark:bg-emerald-500',
+      text: 'text-white',
+      dot: 'bg-white/80',
+      border: 'ring-emerald-700 dark:ring-emerald-400'
     },
     amber: {
-      bg: isDark ? 'bg-amber-900/40' : 'bg-amber-100/80',
-      text: 'text-amber-700 dark:text-amber-300',
-      dot: 'bg-amber-500',
-      border: isDark ? 'ring-amber-500/20' : 'ring-amber-200'
+      bg: 'bg-amber-50 dark:bg-amber-500',
+      text: 'text-amber-800 dark:text-white',
+      dot: 'bg-amber-500 dark:bg-white/80',
+      border: 'ring-amber-200 dark:ring-amber-400'
     },
     red: {
-      bg: isDark ? 'bg-red-900/40' : 'bg-red-100/80',
-      text: 'text-red-700 dark:text-red-300',
-      dot: 'bg-red-500',
-      border: isDark ? 'ring-red-500/20' : 'ring-red-200'
+      bg: 'bg-red-600 dark:bg-red-500',
+      text: 'text-white',
+      dot: 'bg-white/80',
+      border: 'ring-red-700 dark:ring-red-400'
     }
   };
 
@@ -298,8 +316,8 @@ const RevenueForecast = ({
               ring-1 ${isDark ? 'ring-amber-500/20' : 'ring-amber-200'}
             `}>
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-amber-500/20 dark:bg-amber-500/30 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <div className="w-9 h-9 rounded-lg bg-amber-600 dark:bg-amber-500 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-white" aria-hidden="true" />
                 </div>
                 <div>
                   <h4 className={`${isDesktop ? 'text-base' : 'text-sm'} font-semibold text-amber-800 dark:text-amber-200`}>
@@ -322,8 +340,8 @@ const RevenueForecast = ({
               ring-1 ${isDark ? 'ring-emerald-500/20' : 'ring-emerald-200'}
             `}>
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/20 dark:bg-emerald-500/30 flex items-center justify-center shrink-0">
-                  <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <div className="w-9 h-9 rounded-lg bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-5 h-5 text-white" aria-hidden="true" />
                 </div>
                 <div>
                   <h4 className={`${isDesktop ? 'text-base' : 'text-sm'} font-semibold text-emerald-800 dark:text-emerald-200`}>

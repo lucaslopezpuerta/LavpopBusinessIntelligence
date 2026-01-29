@@ -1,13 +1,29 @@
-// Bilavnova BI - Tailwind Configuration v4.7
-// "Cosmic Precision" design system - Space-age futurist aesthetic
+// Bilavnova BI - Tailwind Configuration v5.0
+// "Cosmic Precision 2.0" design system - Refined space-age aesthetic
 //
-// BRAND COLORS:
+// BRAND COLORS (v5.0 - eye-strain optimized):
 // - Stellar Blue: #2d388a (Gradient start - deep indigo)
-// - Stellar Cyan: #00aeef (Gradient end - bright cyan)
-// - Cosmic Green: #00d68f (Aurora green - success/WhatsApp actions)
+// - Stellar Cyan: #5BA3D9 (Refined accent - 58% saturation for extended use)
+// - Stellar Cyan Bright: #00aeef (Original vibrant - gradients only)
+// - Cosmic Green: #00d68f (Aurora green - WhatsApp actions only)
 // - Space Void: #050816 (Deep space background)
 //
+// SEMANTIC COLORS:
+// - Success: emerald-600/500
+// - Warning: amber-600/500 (NOT yellow - WCAG compliance)
+// - Error: red-600/500
+// - Accent: violet-600/500 (consolidated from cosmic-purple/nebula-violet)
+//
 // CHANGELOG:
+// v5.0 (2026-01-29): Cosmic Precision 2.0 - Color harmony overhaul
+//   - Redefined stellar-cyan from #00aeef to #5BA3D9 (42% less saturated)
+//   - Removed duplicate purple tokens (cosmic-purple, nebula-violet, stellar-indigo)
+//   - Consolidated to standard Tailwind violet-* for purple accents
+//   - Reduced glow intensity for softer appearance
+// v4.8 (2026-01-28): Solid Badge Utilities safelist
+//   - Added badge-solid, badge-pill base classes
+//   - Added badge-success, badge-warning, badge-error, badge-info, badge-neutral, badge-accent
+//   - Added badge-stellar, badge-cosmic for brand colors
 // v4.7 (2026-01-27): Minimalist Stellar navigation safelist
 //   - Added bg-space-void/90, bg-white/95 for bottom nav background
 // v4.5 (2026-01-20): Cosmic Glass Card safelist for Customers view
@@ -114,8 +130,13 @@ export default {
     // Cosmic purple (v4.2 - CampaignFunnel outcomes)
     'text-cosmic-purple', 'bg-cosmic-purple', 'border-cosmic-purple',
     'bg-cosmic-purple/20', 'bg-cosmic-purple/30', 'border-cosmic-purple/30',
-    // Nebula violet
-    'text-nebula-violet', 'bg-nebula-violet/20', 'border-nebula-violet/30',
+    // Violet (consolidated - replaces cosmic-purple and nebula-violet)
+    'text-violet-500', 'text-violet-600', 'bg-violet-500', 'bg-violet-600',
+    'bg-violet-500/20', 'bg-violet-600/20', 'border-violet-500/30', 'border-violet-600/30',
+    // Amber warning colors (WCAG compliant - NOT yellow)
+    'bg-amber-600', 'bg-amber-500', 'text-amber-600', 'text-amber-500',
+    'border-amber-600', 'border-amber-500', 'border-amber-700', 'border-amber-400',
+    'dark:bg-amber-500', 'dark:border-amber-400',
     // Cosmic green (v4.4 - Aurora green for WhatsApp/success actions)
     'text-cosmic-green', 'bg-cosmic-green', 'border-cosmic-green',
     'bg-cosmic-green/10', 'bg-cosmic-green/15', 'bg-cosmic-green/20', 'bg-cosmic-green/25', 'bg-cosmic-green/30',
@@ -142,6 +163,10 @@ export default {
     'dark:border-amber-500/20',
     // Minimalist Stellar navigation (v4.7)
     'bg-space-void/90', 'bg-white/95',
+    // Solid Badge Utilities (v4.8)
+    'badge-solid', 'badge-pill',
+    'badge-success', 'badge-warning', 'badge-error', 'badge-info', 'badge-neutral', 'badge-accent',
+    'badge-stellar', 'badge-cosmic',
   ],
 
   theme: {
@@ -164,23 +189,22 @@ export default {
           'light-card': '#ffffff', // Light mode card
         },
         // Stellar Gradient Colors (v4.0 - from brand logo)
+        // v5.0 (2026-01-29): Refined stellar-cyan for reduced eye strain
+        // - Changed from #00aeef (100% saturation) to #5BA3D9 (58% saturation)
+        // - Kept original as 'cyan-bright' for gradients where vibrancy is needed
         'stellar': {
           'blue': '#2d388a',      // Gradient start (deep indigo)
-          'cyan': '#00aeef',      // Gradient end (bright cyan)
-          'glow': 'rgba(0, 174, 239, 0.5)',
-          'glow-subtle': 'rgba(0, 174, 239, 0.2)',
-          'indigo': '#4f46e5',    // Deep stellar indigo
+          'cyan': '#5BA3D9',      // Refined accent (58% sat, easier on eyes)
+          'cyan-bright': '#00aeef', // Original vibrant cyan (for gradients only)
+          'glow': 'rgba(91, 163, 217, 0.3)', // Softer glow with new cyan
+          'glow-subtle': 'rgba(91, 163, 217, 0.15)',
           'gold': '#fbbf24',      // Star gold accent
         },
-        // Cosmic Accent Colors (v4.1 - expanded palette)
+        // Cosmic Accent Colors (v5.0 - consolidated palette)
+        // Note: cosmic-purple and nebula-violet removed - use violet-* instead
+        // These were duplicates of Tailwind's indigo-500 and violet-500
         'cosmic': {
-          'purple': '#6366f1',    // Nebula purple
-          'pink': '#ec4899',      // Supernova pink
-          'orange': '#f97316',    // Solar flare orange
-          'green': '#00d68f',     // Aurora green (v4.4)
-        },
-        'nebula': {
-          'violet': '#8b5cf6',    // Nebula violet
+          'green': '#00d68f',     // Aurora green - WhatsApp/success only
         },
         // Bilavnova Brand Gradient Colors (from logo SVG)
         'bilavnova': {

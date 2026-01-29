@@ -1,7 +1,15 @@
-// GoogleBusinessAnalytics.jsx v1.0
+// GoogleBusinessAnalytics.jsx v1.3 - MODE-AWARE BADGE COLORS
 // Google Business Profile Analytics Dashboard
 // Design System v4.0 compliant - Google-branded design
 //
+// CHANGELOG:
+// v1.3 (2026-01-29): Mode-aware badge colors for better light mode contrast
+//   - Summary stat badges now use amber-50/amber-800 in light mode
+//   - Dark mode retains solid amber-500 with white text
+// v1.2 (2026-01-29): Orange to yellow color migration
+//   - Updated orange-600/orange-500 to yellow-600/yellow-500 in summary stat pills
+// v1.1 (2026-01-29): Solid color badges for WCAG AA compliance
+//   - Summary stat pills now use solid colors with white text
 // v1.0 (2025-12-19): Initial implementation
 //   - OAuth flow integration
 //   - Rating display with star visualization
@@ -315,13 +323,13 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
           </div>
         ) : summary ? (
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium text-[11px] sm:text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-blue-600 dark:bg-blue-500 text-white font-medium text-[11px] sm:text-xs">
               Buscas: {formatNumber(summary.totalSearches)}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 font-medium text-[11px] sm:text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-green-600 dark:bg-green-500 text-white font-medium text-[11px] sm:text-xs">
               Visualizações: {formatNumber(summary.totalViews)}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 font-medium text-[11px] sm:text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400 font-medium text-[11px] sm:text-xs">
               Ações: {formatNumber(summary.totalActions)}
             </span>
           </div>

@@ -1,8 +1,11 @@
-// DiscountComparisonCard.jsx v1.0
+// DiscountComparisonCard.jsx v1.1
 // A/B Testing visualization for discount and service comparison
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.1 (2026-01-29): Migrate badges and icon wells to solid colors
+//   - Badges now use solid bg-{color}-600/500 with white text
+//   - Icon wells use solid colors instead of opacity-based
 // v1.0 (2025-12-10): Initial implementation
 //   - Horizontal bar charts for discount % comparison
 //   - Service type comparison (Todos, Lavagem, Secagem)
@@ -37,17 +40,17 @@ const ComparisonBar = ({
     purple: {
       bar: 'from-purple-500 to-violet-600',
       text: 'text-purple-600 dark:text-purple-400',
-      badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+      badge: 'bg-purple-600 dark:bg-purple-500 text-white'
     },
     blue: {
       bar: 'from-blue-500 to-indigo-600',
       text: 'text-blue-600 dark:text-blue-400',
-      badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+      badge: 'bg-blue-600 dark:bg-blue-500 text-white'
     },
     emerald: {
       bar: 'from-emerald-500 to-green-600',
       text: 'text-emerald-600 dark:text-emerald-400',
-      badge: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+      badge: 'bg-emerald-600 dark:bg-emerald-500 text-white'
     }
   };
 
@@ -171,8 +174,8 @@ const DiscountComparisonCard = ({
         color="purple"
       >
         <div className="text-center py-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-            <Sparkles className="w-8 h-8 text-purple-500" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-600 dark:bg-purple-500 flex items-center justify-center">
+            <Sparkles className="w-8 h-8 text-white" />
           </div>
           <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-2">
             Pronto para A/B Testing

@@ -1,8 +1,24 @@
-// CampaignDashboard.jsx v3.13
+// CampaignDashboard.jsx v3.17 - MODE-AWARE WARNING BADGES
 // Unified Campaign Analytics Dashboard
-// Design System v4.0 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.17 (2026-01-29): Mode-aware warning badges
+//   - Replaced bg-yellow-600 dark:bg-yellow-500 with mode-aware amber badges
+//   - Warning badges now use bg-amber-50 text-amber-800 border-amber-200 in light mode
+//   - Warning badges use bg-amber-500 text-white border-amber-400 in dark mode
+//   - Improved readability and WCAG compliance in both modes
+// v3.16 (2026-01-29): Orange to yellow color migration
+//   - Replaced bg-orange-600 dark:bg-orange-500 with bg-yellow-600 dark:bg-yellow-500 in return rate badges
+//   - Consistent with campaign color scheme updates
+// v3.15 (2026-01-29): Amber to orange color migration
+//   - Replaced bg-amber-600 dark:bg-amber-500 with bg-orange-600 dark:bg-orange-500 in return rate badges
+//   - Consistent with campaign color scheme updates
+// v3.14 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - Status badges now use solid colors with white text
+//   - Campaign type icon wells now solid with white icons
+//   - Discount, failed, return rate badges now solid
+//   - Dynamic insights pills now solid
 // v3.13 (2026-01-12): Removed manual sync button
 //   - Data now refreshes via realtime Supabase subscription
 //   - Kept lastSync timestamp display for user reference
@@ -177,14 +193,14 @@ const formatTimeAgo = (timestamp) => {
   return 'agora';
 };
 
-// v2.6: Status badge helpers
+// v2.6: Status badge helpers (solid colors for WCAG AA compliance)
 const getStatusColor = (status) => {
   switch (status) {
-    case 'active': return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
-    case 'completed': return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
-    case 'draft': return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
-    case 'scheduled': return 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
-    default: return 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
+    case 'active': return 'bg-emerald-600 dark:bg-emerald-500 text-white';
+    case 'completed': return 'bg-blue-600 dark:bg-blue-500 text-white';
+    case 'draft': return 'bg-slate-500 dark:bg-slate-600 text-white';
+    case 'scheduled': return 'bg-purple-600 dark:bg-purple-500 text-white';
+    default: return 'bg-slate-500 dark:bg-slate-600 text-white';
   }
 };
 
@@ -302,15 +318,15 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                     </p>
                     {/* Row 2: Type indicator + Status badge + Warning */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Campaign type indicator */}
+                      {/* Campaign type indicator (solid colors) */}
                       <div className={`flex w-4 h-4 sm:w-5 sm:h-5 rounded-full flex-shrink-0 items-center justify-center ${
                         isAutomated(campaign)
-                          ? 'bg-purple-100 dark:bg-purple-900/40'
-                          : 'bg-blue-100 dark:bg-blue-900/40'
+                          ? 'bg-purple-600 dark:bg-purple-500'
+                          : 'bg-blue-600 dark:bg-blue-500'
                       }`} title={isAutomated(campaign) ? 'Automação' : 'Manual'}>
                         {isAutomated(campaign)
-                          ? <Bot className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-600 dark:text-purple-400" />
-                          : <User className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-600 dark:text-blue-400" />
+                          ? <Bot className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                          : <User className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
                         }
                       </div>
                       {/* Status badge */}
@@ -338,7 +354,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                 <td className="hidden lg:table-cell py-3 px-3 text-center">
                   {campaign.discount_percent ? (
                     <div className="flex flex-col items-center gap-1">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold bg-purple-600 dark:bg-purple-500 text-white">
                         {campaign.discount_percent}%
                       </span>
                       {campaign.coupon_code && (
@@ -360,7 +376,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                     </span>
                     {hasFailed && (
                       <span
-                        className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                        className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-xs font-medium bg-red-600 dark:bg-red-500 text-white"
                         title={`${campaign.failed} falharam`}
                       >
                         <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
@@ -398,15 +414,15 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                     }`}>
                       {returned}
                     </span>
-                    {/* Return rate badge */}
+                    {/* Return rate badge (mode-aware colors) */}
                     <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-xs font-semibold ${
                       returnRate >= 25
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                        ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
                         : returnRate >= 15
-                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                          ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400'
                           : returnRate > 0
-                            ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-400'
+                            ? 'bg-slate-500 dark:bg-slate-600 text-white'
+                            : 'bg-slate-400 dark:bg-slate-700 text-white'
                     }`}>
                       {formatPercent(returnRate)}
                     </span>
@@ -672,16 +688,16 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
           />
         </KPIGrid>
 
-        {/* Dynamic Insights - Discrete inline hints */}
+        {/* Dynamic Insights - Discrete inline hints (mode-aware colors) */}
         {insights.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {insights.slice(0, 2).map((insight, idx) => (
               <p key={idx} className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
                 insight.type === 'warning'
-                  ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
+                  ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400'
                   : insight.type === 'success'
-                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                    ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
+                    : 'bg-purple-600 dark:bg-purple-500 text-white'
               }`}>
                 <Lightbulb className="w-3 h-3" />
                 {insight.title}

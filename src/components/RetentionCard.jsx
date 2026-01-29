@@ -1,7 +1,24 @@
-// RetentionCard.jsx v2.2
+// RetentionCard.jsx v2.6
 // Full retention analytics card with segment comparison and re-engage actions
 //
 // CHANGELOG:
+// v2.6 (2026-01-29): Yellow to amber color migration with mode-aware badges
+//   - CHANGED: "Em Risco" status bgColor from yellow-600/500 solid to mode-aware amber
+//   - CHANGED: "Em Risco" status barColor from yellow-500 to amber-500
+//   - Mode-aware badges: bg-amber-50 text-amber-800 border border-amber-200 (light)
+//                        bg-amber-500 text-white border-amber-400 (dark)
+// v2.5 (2026-01-29): Orange to yellow color migration for status badges
+//   - CHANGED: "Em Risco" status bgColor from orange-600/500 to yellow-600/500
+//   - CHANGED: "Em Risco" status barColor from orange-500 to yellow-500
+//   - Improves visual distinction from other semantic colors
+// v2.4 (2026-01-29): Amber to orange color migration for status badges
+//   - CHANGED: "Em Risco" status bgColor from amber-600/500 to orange-600/500
+//   - CHANGED: "Em Risco" status barColor from amber-500 to orange-500
+//   - Improves visual distinction from other semantic colors
+// v2.3 (2026-01-29): Solid color migration for badges and status pills
+//   - Updated getStatusClasses bgColor from opacity-based to solid colors
+//   - Status badges now use bg-{color}-600 dark:bg-{color}-500 with text-white
+//   - Updated textColor to white for status badges
 // v2.2 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Replaced inline cardHoverTransition with TWEEN.HOVER constant
@@ -89,8 +106,8 @@ const getStatusClasses = (rate) => {
   if (rate >= STATUS_THRESHOLDS.HEALTHY) {
     return {
       label: 'Saudável',
-      textColor: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
+      textColor: 'text-white',
+      bgColor: 'bg-emerald-600 dark:bg-emerald-500',
       barColor: 'bg-emerald-500',
       icon: CheckCircle
     };
@@ -98,8 +115,8 @@ const getStatusClasses = (rate) => {
   if (rate >= STATUS_THRESHOLDS.MODERATE) {
     return {
       label: 'Moderado',
-      textColor: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+      textColor: 'text-white',
+      bgColor: 'bg-blue-600 dark:bg-blue-500',
       barColor: 'bg-blue-500',
       icon: Info
     };
@@ -107,16 +124,16 @@ const getStatusClasses = (rate) => {
   if (rate >= STATUS_THRESHOLDS.AT_RISK) {
     return {
       label: 'Em Risco',
-      textColor: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-100 dark:bg-amber-900/30',
+      textColor: 'text-amber-800 dark:text-white',
+      bgColor: 'bg-amber-50 border border-amber-200 dark:bg-amber-500 dark:border-amber-400',
       barColor: 'bg-amber-500',
       icon: AlertCircle
     };
   }
   return {
     label: 'Crítico',
-    textColor: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-100 dark:bg-red-900/30',
+    textColor: 'text-white',
+    bgColor: 'bg-red-600 dark:bg-red-500',
     barColor: 'bg-red-500',
     icon: AlertCircle
   };

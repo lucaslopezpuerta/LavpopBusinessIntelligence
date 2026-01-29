@@ -1,8 +1,10 @@
-// IconSidebar.jsx v5.0 - ORBITAL COMMAND CENTER
+// IconSidebar.jsx v5.1 - ORBITAL COMMAND CENTER (Brand Home)
 // Bold, distinctive sidebar with cosmic mission control aesthetics
+// SIDEBAR OWNS THE BRAND - full logo when expanded, icon when collapsed
 //
 // DESIGN CONCEPT: "Orbital Command Center"
-// - Aurora header with animated gradient mesh
+// - Full horizontal logo in header (theme-aware SVG)
+// - Orbital icon when collapsed for brand recognition
 // - Orbital active indicator with layoutId animations
 // - Constellation dividers between nav groups
 // - Gravitational hover effects with glow bloom
@@ -10,17 +12,18 @@
 // - Noise texture for depth and sophistication
 //
 // CHANGELOG:
+// v5.1 (2026-01-29): Brand consolidation - sidebar is now brand home
+//   - NEW: Full SVG logos (Color/White based on theme) when expanded
+//   - NEW: Orbital icon only when collapsed
+//   - REMOVED: "BILAV" + "NOVA" text (logo has wordmark)
+//   - REMOVED: "Business Intelligence" subtitle (cleaner look)
+//   - Breathing glow animation behind logo
 // v5.0 (2026-01-28): Complete redesign with Orbital Command aesthetics
-//   - Aurora gradient header with slow color shift
 //   - Orbital active indicator with pulse dot
 //   - Constellation dot dividers that twinkle
-//   - Gravitational scale + glow on hover
 //   - Geometric section headers with gradient lines
-//   - Mobile drawer with blur-to-sharp entrance
-//   - Staggered nav item animations
-//   - Noise texture overlay for depth
+//   - Mobile drawer with staggered animations
 // v4.0 (2026-01-23): Settings button integration
-// v3.9 (2026-01-23): Relocated realtime indicator
 // v3.x: Previous implementations
 
 import { useRef, useEffect, useCallback, memo } from 'react';
@@ -35,8 +38,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from './ThemeToggle';
 import RealtimeStatusIndicator from './ui/RealtimeStatusIndicator';
 
-// Sidebar logo from public folder
-const BilavnovaLogo = '/pwa-192x192.png';
+// Brand logos - Full horizontal SVG for expanded state
+import ColorLogo from '../assets/Logo Files/svg/Color logo - no background.svg';
+import WhiteLogo from '../assets/Logo Files/svg/White logo - no background.svg';
+
+// Orbital icon for collapsed state (works on any background)
+const OrbitalIcon = '/pwa-192x192.png';
 
 // Navigation grouped by section
 const navigationGroups = [
@@ -368,34 +375,45 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
       } flex-shrink-0`}>
 
         <div className="flex items-center gap-2.5 min-w-0">
-          {/* Logo with enhanced glow */}
-          <div className="relative flex-shrink-0">
-            <div className={`absolute inset-0 rounded-full scale-150 blur-xl ${
-              isDark ? 'bg-stellar-cyan/30' : 'bg-stellar-blue/20'
-            }`} />
-            <img
-              src={BilavnovaLogo}
-              alt="Bilavnova"
-              className="relative w-8 h-8 object-contain"
-            />
-          </div>
-          {isExpanded && (
+          {/* Brand Logo - Full SVG when expanded, Orbital icon when collapsed */}
+          {isExpanded ? (
             <motion.div
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2, delay: 0.1 }}
-              className="flex flex-col min-w-0"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="relative py-1"
             >
-              <span className="font-display text-lg font-bold leading-tight tracking-wide" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                <span className={isDark ? 'text-white' : 'text-slate-900'}>BILAV</span>
-                <span className="text-stellar-cyan">NOVA</span>
-              </span>
-              <span className={`text-[10px] leading-tight uppercase tracking-widest ${
-                isDark ? 'text-slate-500' : 'text-slate-400'
-              }`}>
-                Business Intelligence
-              </span>
+              {/* Enhanced breathing glow behind logo */}
+              <motion.div
+                className={`absolute -inset-3 rounded-2xl blur-2xl ${
+                  isDark ? 'bg-stellar-cyan/30' : 'bg-stellar-blue/20'
+                }`}
+                animate={prefersReducedMotion ? {} : {
+                  opacity: [0.4, 0.7, 0.4],
+                  scale: [0.92, 1.05, 0.92]
+                }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              {/* Full horizontal logo - larger and more prominent */}
+              <img
+                src={isDark ? WhiteLogo : ColorLogo}
+                alt="Bilavnova"
+                className="relative h-9 w-auto max-w-[185px] object-contain"
+              />
             </motion.div>
+          ) : (
+            <div className="relative flex-shrink-0">
+              {/* Glow behind orbital icon */}
+              <div className={`absolute inset-0 rounded-full scale-150 blur-xl ${
+                isDark ? 'bg-stellar-cyan/30' : 'bg-stellar-blue/20'
+              }`} />
+              {/* Orbital icon only */}
+              <img
+                src={OrbitalIcon}
+                alt="Bilavnova"
+                className="relative w-8 h-8 object-contain"
+              />
+            </div>
           )}
         </div>
 
@@ -502,26 +520,28 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
                 }}
               />
 
-              {/* Header */}
-              <div className={`relative h-16 px-4 flex items-center justify-between border-b ${
+              {/* Header - taller to showcase the brand */}
+              <div className={`relative h-[72px] px-4 flex items-center justify-between border-b ${
                 isDark ? 'border-stellar-cyan/10' : 'border-slate-200/50'
               } flex-shrink-0`}>
                 <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className={`absolute inset-0 rounded-full scale-150 blur-lg ${
-                      isDark ? 'bg-stellar-cyan/30' : 'bg-stellar-blue/20'
-                    }`} />
-                    <img
-                      src={BilavnovaLogo}
-                      alt="Bilavnova"
-                      className="relative w-9 h-9 object-contain"
+                  {/* Full horizontal logo with enhanced glow */}
+                  <div className="relative py-1">
+                    <motion.div
+                      className={`absolute -inset-3 rounded-2xl blur-2xl ${
+                        isDark ? 'bg-stellar-cyan/30' : 'bg-stellar-blue/20'
+                      }`}
+                      animate={prefersReducedMotion ? {} : {
+                        opacity: [0.4, 0.7, 0.4],
+                        scale: [0.92, 1.05, 0.92]
+                      }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
                     />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-display text-lg font-bold tracking-wide" style={{ fontFamily: "'Orbitron', sans-serif" }}>
-                      <span className={isDark ? 'text-white' : 'text-slate-900'}>BILAV</span>
-                      <span className="text-stellar-cyan">NOVA</span>
-                    </span>
+                    <img
+                      src={isDark ? WhiteLogo : ColorLogo}
+                      alt="Bilavnova"
+                      className="relative h-9 w-auto max-w-[160px] object-contain"
+                    />
                   </div>
                   <RealtimeStatusIndicator />
                 </div>

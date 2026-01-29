@@ -1,8 +1,26 @@
-// HealthPill.jsx v3.1 - ACCESSIBILITY
+// HealthPill.jsx v4.2 - CONTEXT-AWARE TREND INDICATOR
 // Enhanced health rate indicator for header integration
 // Now includes trend, full risk breakdown, and action button
 //
 // CHANGELOG:
+// v4.2 (2026-01-29): Context-aware trend indicator design
+//   - Trend in pill: white text with subtle badge (arrows provide direction)
+//   - Trend in dropdown: semantic green/red colors on neutral background
+//   - Added variant prop to TrendIndicator ("pill" | "default")
+//   - Improved visual harmony on colored pill backgrounds
+// v4.1 (2026-01-29): Fixed invisible status label in dropdown
+//   - Added labelColor property for text on glassmorphism backgrounds
+//   - Status label in dropdown now uses semantic colors (not text-white)
+//   - text-white was invisible on bg-white/95 in light mode
+// v4.0 (2026-01-29): Cosmic Precision 2.0 - Warning color fix
+//   - REVERTED yellow back to AMBER for WCAG AA compliance
+//   - Yellow-600 fails WCAG AA (3.5:1 contrast) - amber-600 passes (4.7:1)
+//   - "Atenção" status: amber-600/500 (was yellow - failed contrast)
+// v3.4 (2026-01-29): Migrated "Atenção" status from orange to yellow (REVERTED in v4.0)
+// v3.3 (2026-01-29): Migrated "Atenção" status from amber to orange (REVERTED in v4.0)
+// v3.2 (2026-01-28): Solid color badges for WCAG AA compliance
+//   - Changed status pills from opacity-based to solid colors
+//   - White text on solid backgrounds for 4.5:1+ contrast
 // v3.1 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Dropdown animations disabled/simplified when user prefers reduced motion
@@ -40,12 +58,32 @@ import {
 
 /**
  * Trend Indicator Component
+ * @param {number} value - The trend percentage value
+ * @param {string} variant - "pill" for colored backgrounds, "default" for neutral backgrounds
+ * @param {string} className - Additional classes
  */
-const TrendIndicator = ({ value, className = '' }) => {
+const TrendIndicator = ({ value, variant = 'default', className = '' }) => {
   if (value === 0 || value === null || value === undefined) return null;
 
   const isPositive = value > 0;
   const Icon = isPositive ? TrendingUp : TrendingDown;
+
+  // Pill variant: white text with subtle badge (on colored backgrounds)
+  // Default variant: semantic green/red colors (on neutral backgrounds)
+  if (variant === 'pill') {
+    return (
+      <span className={`
+        inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full
+        bg-white/20 text-white text-xs font-semibold
+        ${className}
+      `}>
+        <Icon className="w-3 h-3" />
+        {isPositive ? '+' : ''}{value}%
+      </span>
+    );
+  }
+
+  // Default variant: semantic colors for neutral backgrounds
   const colorClass = isPositive
     ? 'text-emerald-600 dark:text-emerald-400'
     : 'text-red-600 dark:text-red-400';
@@ -104,37 +142,43 @@ const HealthPill = ({
 
   if (healthRate === null || healthRate === undefined) return null;
 
-  // Determine status based on health rate
+  // Determine status based on health rate (solid colors for WCAG AA compliance)
+  // - color: for text on colored backgrounds (pill, icon wells)
+  // - labelColor: for status label text on glassmorphism dropdown
   const getStatus = (rate) => {
     if (rate >= 80) return {
       label: 'Excelente',
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-      border: 'border-emerald-200 dark:border-emerald-800',
+      color: 'text-white',
+      labelColor: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-emerald-600 dark:bg-emerald-500',
+      border: 'border-emerald-700 dark:border-emerald-400',
       pulse: 'bg-emerald-500',
       icon: TrendingUp
     };
     if (rate >= 60) return {
       label: 'Bom',
-      color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      border: 'border-blue-200 dark:border-blue-800',
+      color: 'text-white',
+      labelColor: 'text-blue-600 dark:text-blue-400',
+      bg: 'bg-blue-600 dark:bg-blue-500',
+      border: 'border-blue-700 dark:border-blue-400',
       pulse: 'bg-blue-500',
       icon: Heart
     };
     if (rate >= 40) return {
       label: 'Atenção',
-      color: 'text-amber-600 dark:text-amber-400',
-      bg: 'bg-amber-100 dark:bg-amber-900/30',
-      border: 'border-amber-200 dark:border-amber-800',
+      color: 'text-white',
+      labelColor: 'text-amber-600 dark:text-amber-400',
+      bg: 'bg-amber-600 dark:bg-amber-500',      // FIXED: amber passes WCAG (4.7:1), not yellow (3.5:1)
+      border: 'border-amber-700 dark:border-amber-400',
       pulse: 'bg-amber-500',
       icon: AlertTriangle
     };
     return {
       label: 'Crítico',
-      color: 'text-red-600 dark:text-red-400',
-      bg: 'bg-red-100 dark:bg-red-900/30',
-      border: 'border-red-200 dark:border-red-800',
+      color: 'text-white',
+      labelColor: 'text-red-600 dark:text-red-400',
+      bg: 'bg-red-600 dark:bg-red-500',
+      border: 'border-red-700 dark:border-red-400',
       pulse: 'bg-red-500',
       icon: TrendingDown
     };
@@ -218,9 +262,9 @@ const HealthPill = ({
           Saúde: {Math.round(healthRate)}%
         </span>
 
-        {/* Trend Indicator - Inline in pill */}
+        {/* Trend Indicator - Inline in pill (white on colored bg) */}
         {trend !== 0 && (
-          <TrendIndicator value={trend} />
+          <TrendIndicator value={trend} variant="pill" />
         )}
 
         {/* Status Badge - Hidden on mobile to save space */}
@@ -262,7 +306,7 @@ const HealthPill = ({
                     <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
                       Taxa de Saúde
                     </p>
-                    <p className={`text-xs font-semibold ${status.color} uppercase`}>
+                    <p className={`text-xs font-semibold ${status.labelColor} uppercase`}>
                       {status.label}
                     </p>
                   </div>

@@ -1,4 +1,4 @@
-// StaleDataIndicator.jsx v1.0
+// StaleDataIndicator.jsx v1.1 - SOLID COLOR BADGES
 // Unified component for showing data freshness status
 // Design System v5.1 compliant
 //
@@ -11,10 +11,12 @@
 //
 // States:
 //   - Fresh: Slate badge, subtle appearance
-//   - Stale: Amber badge with breathing glow animation
+//   - Stale: Solid amber badge with white text (WCAG AA)
 //   - Refreshing: Cyan badge with spinning icon
 //
 // CHANGELOG:
+// v1.1 (2026-01-28): Solid color for stale state
+//   - Stale state now uses solid amber with white text
 // v1.0 (2026-01-27): Initial implementation
 //   - Extracted from Intelligence.jsx StaleDataIndicator
 //   - Added cosmic styling with stale-breathe animation
@@ -69,14 +71,14 @@ const StaleDataIndicator = ({
       ? `${minutes}min`
       : `${Math.floor(minutes / 60)}h`;
 
-  // State-based styling
+  // State-based styling (stale uses solid colors for WCAG AA compliance)
   const stateStyles = {
     fresh: isDark
       ? 'bg-space-dust text-slate-400 border-stellar-cyan/10 hover:bg-space-nebula hover:border-stellar-cyan/20'
       : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200',
     stale: isDark
-      ? 'bg-amber-900/30 text-amber-400 border-amber-800/60 stale-indicator hover:bg-amber-900/40'
-      : 'bg-amber-100 text-amber-700 border-amber-200 stale-indicator hover:bg-amber-200',
+      ? 'bg-amber-500 text-white border-amber-400 stale-indicator hover:bg-amber-600'
+      : 'bg-amber-600 text-white border-amber-700 stale-indicator hover:bg-amber-700',
     refreshing: isDark
       ? 'bg-stellar-cyan/10 text-stellar-cyan border-stellar-cyan/20'
       : 'bg-blue-50 text-blue-600 border-blue-200'

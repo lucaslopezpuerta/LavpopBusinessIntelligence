@@ -1,8 +1,16 @@
-// KPIDetailModal.jsx v2.9 - ANIMATION STANDARDIZATION
+// KPIDetailModal.jsx v2.12 - AMBER ICON WELL COLORS
 // Enhanced modal with metric-aware header and cosmic glassmorphism
 // Design System v5.1 compliant - Tier 2 Enhanced
 //
 // CHANGELOG:
+// v2.12 (2026-01-29): Amber color standardization for icon wells
+//   - Icon well 'orange' key now uses bg-amber-600/500 for consistency
+// v2.11 (2026-01-29): Orange to yellow color migration
+//   - Updated orange-600/orange-500 to yellow-600/yellow-500 in colorMap
+// v2.10 (2026-01-29): Solid color migration
+//   - Updated colorMap icon wells to solid colors (bg-{color}-600/500)
+//   - All icon wells now use text-white instead of colored text
+//   - Better contrast and visual consistency across themes
 // v2.9 (2026-01-27): Animation standardization
 //   - Uses MODAL constants from animations.js
 //   - Consistent animation timing with other modals
@@ -46,15 +54,15 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useScrollLock } from '../../hooks/useScrollLock';
 import { useTheme } from '../../contexts/ThemeContext';
 
-// Color mapping for accent backgrounds
+// Color mapping for accent backgrounds (solid colors)
 const colorMap = {
-    green: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
-    blue: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400',
-    purple: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
-    cyan: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400',
-    orange: 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400',
-    red: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400',
-    slate: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400',
+    green: 'bg-emerald-600 dark:bg-emerald-500 text-white',
+    blue: 'bg-blue-600 dark:bg-blue-500 text-white',
+    purple: 'bg-purple-600 dark:bg-purple-500 text-white',
+    cyan: 'bg-cyan-600 dark:bg-cyan-500 text-white',
+    orange: 'bg-amber-600 dark:bg-amber-500 text-white',
+    red: 'bg-red-600 dark:bg-red-500 text-white',
+    slate: 'bg-slate-600 dark:bg-slate-500 text-white',
 };
 
 const KPIDetailModal = ({

@@ -1,8 +1,19 @@
-// SectionHeader.jsx v1.0
+// SectionHeader.jsx v1.4 - SOLID COLOR ICON WELLS
 // Reusable section header component with icon box and border accent
-// Design System v3.4 compliant
+// Design System v5.1 compliant
 //
 // CHANGELOG:
+// v1.4 (2026-01-29): Yellow→Amber revert for icon wells
+//   - Changed amber color entry: bg from yellow-600/500 to amber-600/500
+//   - Changed amber color entry: border from yellow-700/400 to amber-700/400
+// v1.3 (2026-01-29): Orange to yellow migration
+//   - Changed amber color entry: bg from orange-600/500 to yellow-600/500
+//   - Changed amber color entry: border from orange-700/400 to yellow-700/400
+// v1.2 (2026-01-29): Amber to orange migration
+//   - Changed amber color entry: bg from amber-600/500 to orange-600/500
+//   - Changed amber color entry: border from amber-700/400 to orange-700/400
+// v1.1 (2026-01-29): Solid color icon wells for WCAG AA compliance
+//   - Icon backgrounds now use solid colors with white icons
 // v1.0 (2026-01-07): Initial implementation
 //   - Extracted from repeated patterns in Operations.jsx, Intelligence.jsx
 //   - Supports multiple color themes
@@ -16,54 +27,54 @@ import React from 'react';
  */
 const SECTION_COLORS = {
   amber: {
-    bg: 'bg-amber-100 dark:bg-amber-900/30',
-    border: 'border-amber-500',
-    icon: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-600 dark:bg-amber-500',
+    border: 'border-amber-700 dark:border-amber-400',
+    icon: 'text-white',
   },
   emerald: {
-    bg: 'bg-emerald-100 dark:bg-emerald-900/30',
-    border: 'border-emerald-500',
-    icon: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-600 dark:bg-emerald-500',
+    border: 'border-emerald-700 dark:border-emerald-400',
+    icon: 'text-white',
   },
   blue: {
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-    border: 'border-blue-500',
-    icon: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-blue-600 dark:bg-blue-500',
+    border: 'border-blue-700 dark:border-blue-400',
+    icon: 'text-white',
   },
   lavpop: {
-    bg: 'bg-lavpop-blue-100 dark:bg-lavpop-blue-900/30',
-    border: 'border-lavpop-blue-500',
-    icon: 'text-lavpop-blue-600 dark:text-lavpop-blue-400',
+    bg: 'bg-lavpop-blue-600 dark:bg-lavpop-blue-500',
+    border: 'border-lavpop-blue-700 dark:border-lavpop-blue-400',
+    icon: 'text-white',
   },
   purple: {
-    bg: 'bg-purple-100 dark:bg-purple-900/30',
-    border: 'border-purple-500',
-    icon: 'text-purple-600 dark:text-purple-400',
+    bg: 'bg-purple-600 dark:bg-purple-500',
+    border: 'border-purple-700 dark:border-purple-400',
+    icon: 'text-white',
   },
   red: {
-    bg: 'bg-red-100 dark:bg-red-900/30',
-    border: 'border-red-500',
-    icon: 'text-red-600 dark:text-red-400',
+    bg: 'bg-red-600 dark:bg-red-500',
+    border: 'border-red-700 dark:border-red-400',
+    icon: 'text-white',
   },
   slate: {
-    bg: 'bg-slate-100 dark:bg-slate-800',
-    border: 'border-slate-500',
-    icon: 'text-slate-600 dark:text-slate-400',
+    bg: 'bg-slate-500 dark:bg-slate-600',
+    border: 'border-slate-600 dark:border-slate-500',
+    icon: 'text-white',
   },
   teal: {
-    bg: 'bg-teal-100 dark:bg-teal-900/30',
-    border: 'border-teal-500',
-    icon: 'text-teal-600 dark:text-teal-400',
+    bg: 'bg-teal-600 dark:bg-teal-500',
+    border: 'border-teal-700 dark:border-teal-400',
+    icon: 'text-white',
   },
   cyan: {
-    bg: 'bg-cyan-100 dark:bg-cyan-900/30',
-    border: 'border-cyan-500',
-    icon: 'text-cyan-600 dark:text-cyan-400',
+    bg: 'bg-cyan-600 dark:bg-cyan-500',
+    border: 'border-cyan-700 dark:border-cyan-400',
+    icon: 'text-white',
   },
   indigo: {
-    bg: 'bg-indigo-100 dark:bg-indigo-900/30',
-    border: 'border-indigo-500',
-    icon: 'text-indigo-600 dark:text-indigo-400',
+    bg: 'bg-indigo-600 dark:bg-indigo-500',
+    border: 'border-indigo-700 dark:border-indigo-400',
+    icon: 'text-white',
   },
 };
 

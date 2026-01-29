@@ -1,8 +1,12 @@
-// MessageComposer.jsx v5.4 - ACCESSIBILITY
+// MessageComposer.jsx v5.6 - SOLID COLOR BADGES
 // WhatsApp message template browser and preview
 // Design System v4.0 compliant - Hybrid Card Design
 //
 // CHANGELOG:
+// v5.6 (2026-01-29): Solid color button preview pills for WCAG AA compliance
+//   - Button preview badges now use solid emerald backgrounds with white text
+// v5.5 (2026-01-29): Solid color category badges for WCAG AA compliance
+//   - CATEGORY_STYLES now use solid backgrounds with white text
 // v5.4 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Template card hover/tap animations disabled when user prefers reduced motion
@@ -90,19 +94,19 @@ const ICON_MAP = {
   Sun
 };
 
-// Template category colors
+// Template category colors (solid for WCAG AA compliance)
 const CATEGORY_STYLES = {
   MARKETING: {
     gradient: 'from-purple-500 to-indigo-500',
-    bg: 'bg-purple-100 dark:bg-purple-900/40',
-    text: 'text-purple-700 dark:text-purple-300',
-    border: 'border-purple-200 dark:border-purple-800'
+    bg: 'bg-purple-600 dark:bg-purple-500',
+    text: 'text-white',
+    border: 'border-purple-700 dark:border-purple-400'
   },
   UTILITY: {
     gradient: 'from-blue-500 to-cyan-500',
-    bg: 'bg-blue-100 dark:bg-blue-900/40',
-    text: 'text-blue-700 dark:text-blue-300',
-    border: 'border-blue-200 dark:border-blue-800'
+    bg: 'bg-blue-600 dark:bg-blue-500',
+    text: 'text-white',
+    border: 'border-blue-700 dark:border-blue-400'
   }
 };
 
@@ -367,7 +371,7 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
                     {template.buttons.map((btn, idx) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-medium text-emerald-700 dark:text-emerald-300"
+                        className="px-2.5 py-1 bg-emerald-600 dark:bg-emerald-500 rounded-lg text-xs font-medium text-white"
                       >
                         {btn.text}
                       </span>
@@ -404,8 +408,8 @@ const MessageComposer = ({ selectedAudience, audienceSegments, onUseTemplate }) 
                 className={`
                   flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                   ${showPreview
-                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-purple-600 dark:bg-purple-500 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                   }
                 `}
               >

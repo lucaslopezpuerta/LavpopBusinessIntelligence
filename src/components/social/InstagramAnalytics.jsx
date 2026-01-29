@@ -1,7 +1,15 @@
-// InstagramAnalytics.jsx v3.6 - Light Background KPI Cards
+// InstagramAnalytics.jsx v3.9 - MODE-AWARE BADGE COLORS
 // Instagram Business Analytics Dashboard
 //
 // CHANGELOG:
+// v3.9 (2026-01-29): Mode-aware badge colors for better light mode contrast
+//   - Summary stat badges now use amber-50/amber-800 in light mode
+//   - Dark mode retains solid amber-500 with white text
+// v3.8 (2026-01-29): Orange to yellow color migration
+//   - Updated orange-600/orange-500 to yellow-600/yellow-500 in summary stat pills
+// v3.7 (2026-01-29): Solid color badges for WCAG AA compliance
+//   - Summary stat pills now use solid colors with white text
+//   - Follower growth badge now uses solid colors with white text
 // v3.6 (2026-01-09): Light background KPI cards (Hybrid Card Design)
 //   - Migrated to Design System KPICard with variant="default"
 //   - Card bodies now use light backgrounds (bg-white dark:bg-slate-800)
@@ -298,13 +306,13 @@ const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh,
           </div>
         ) : summary ? (
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-purple-600 dark:bg-purple-500 text-white font-medium text-xs">
               Alcance: {formatNumber(summary.totalReach)}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-blue-600 dark:bg-blue-500 text-white font-medium text-xs">
               Views: {formatNumber(summary.totalViews)}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 font-medium text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400 font-medium text-xs">
               Interações: {formatNumber(summary.totalInteractions)}
             </span>
           </div>
@@ -499,8 +507,8 @@ const FollowerChart = ({ data, isLoading }) => {
 
   return (
     <div>
-      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold mb-2 ${
-        growth >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold mb-2 text-white ${
+        growth >= 0 ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-red-600 dark:bg-red-500'
       }`}>
         {growth >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
         {growth >= 0 ? '+' : ''}{formatNumber(growth)} no período

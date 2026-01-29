@@ -1,7 +1,21 @@
-// WeatherBusinessImpact.jsx v3.4 - COSMIC SHIMMER SKELETON
+// WeatherBusinessImpact.jsx v3.8 - MODE-AWARE AMBER BADGE MIGRATION
 // Forward-looking weather business impact with Ridge regression model
 //
 // CHANGELOG:
+// v3.8 (2026-01-29): Mode-aware amber badge migration
+//   - Replaced bg-yellow-600 dark:bg-yellow-500 with mode-aware amber badge styling
+//   - Updated getIconStyle (holiday) and getConfidenceQuality (Razoavel badge)
+//   - New pattern: bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400
+// v3.7 (2026-01-29): Orange to yellow color migration
+//   - Updated orange-600/orange-500 to yellow-600/yellow-500 in getIconStyle (holiday)
+//   - Updated orange-600/orange-500 to yellow-600/yellow-500 in getConfidenceQuality (Razoavel badge)
+// v3.6 (2026-01-29): Amber to orange color migration
+//   - Updated amber-600/amber-500 to orange-600/orange-500 in getIconStyle (holiday)
+//   - Updated amber-600/amber-500 to orange-600/orange-500 in getConfidenceQuality (Razoavel badge)
+// v3.5 (2026-01-29): Solid color badge migration
+//   - Updated getConfidenceQuality badge colors from opacity-based to solid
+//   - Updated getIconStyle icon-well colors from opacity-based to solid
+//   - Badge pattern: bg-{color}-600 dark:bg-{color}-500 text-white
 // v3.4 (2026-01-28): Cosmic shimmer skeleton migration
 //   - Replaced animate-pulse inline skeleton with Skeleton component (cosmic-shimmer)
 //   - Added stagger props for cascading reveal animation
@@ -435,8 +449,8 @@ const InsightCard = ({ predictions, modelInfo }) => {
 
   // Icon background and color based on type
   const getIconStyle = () => {
-    if (insight.type === 'closed') return { bg: 'bg-red-100 dark:bg-red-900/30', color: 'text-red-600 dark:text-red-400' };
-    if (insight.type === 'holiday') return { bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400' };
+    if (insight.type === 'closed') return { bg: 'bg-red-600 dark:bg-red-500', color: 'text-white' };
+    if (insight.type === 'holiday') return { bg: 'bg-amber-50 border border-amber-200 dark:bg-amber-500 dark:border-amber-400', color: 'text-amber-800 dark:text-white' };
     return { bg: 'bg-white dark:bg-slate-700', color: 'text-slate-600 dark:text-slate-300' };
   };
   const iconStyle = getIconStyle();
@@ -476,19 +490,19 @@ function getConfidenceQuality(modelInfo) {
     // Thresholds adjusted for revenue prediction domain where:
     // - Daily revenue has high variance (closures, holidays, weather)
     // - 45-50% MAPE is a good result given inherent unpredictability
-    if (mape <= 25) return { label: 'Excelente', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20', metric: `MAPE ${Math.round(mape)}%` };
-    if (mape <= 40) return { label: 'Bom', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', metric: `MAPE ${Math.round(mape)}%` };
-    if (mape <= 55) return { label: 'Razoável', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20', metric: `MAPE ${Math.round(mape)}%` };
-    return { label: 'Baixa', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', metric: `MAPE ${Math.round(mape)}%` };
+    if (mape <= 25) return { label: 'Excelente', color: 'text-white', bg: 'bg-emerald-600 dark:bg-emerald-500', metric: `MAPE ${Math.round(mape)}%` };
+    if (mape <= 40) return { label: 'Bom', color: 'text-white', bg: 'bg-blue-600 dark:bg-blue-500', metric: `MAPE ${Math.round(mape)}%` };
+    if (mape <= 55) return { label: 'Razoável', color: 'text-amber-800 dark:text-white', bg: 'bg-amber-50 border border-amber-200 dark:bg-amber-500 dark:border-amber-400', metric: `MAPE ${Math.round(mape)}%` };
+    return { label: 'Baixa', color: 'text-white', bg: 'bg-red-600 dark:bg-red-500', metric: `MAPE ${Math.round(mape)}%` };
   }
 
   // Fallback to R² if no OOS metrics
   const rSquared = modelInfo?.r_squared || 0;
   const rSquaredPct = Math.round(rSquared * 100);
-  if (rSquared >= 0.85) return { label: 'Excelente', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20', metric: `R² ${rSquaredPct}%` };
-  if (rSquared >= 0.75) return { label: 'Bom', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', metric: `R² ${rSquaredPct}%` };
-  if (rSquared >= 0.60) return { label: 'Razoável', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20', metric: `R² ${rSquaredPct}%` };
-  return { label: 'Baixa', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', metric: `R² ${rSquaredPct}%` };
+  if (rSquared >= 0.85) return { label: 'Excelente', color: 'text-white', bg: 'bg-emerald-600 dark:bg-emerald-500', metric: `R² ${rSquaredPct}%` };
+  if (rSquared >= 0.75) return { label: 'Bom', color: 'text-white', bg: 'bg-blue-600 dark:bg-blue-500', metric: `R² ${rSquaredPct}%` };
+  if (rSquared >= 0.60) return { label: 'Razoável', color: 'text-amber-800 dark:text-white', bg: 'bg-amber-50 border border-amber-200 dark:bg-amber-500 dark:border-amber-400', metric: `R² ${rSquaredPct}%` };
+  return { label: 'Baixa', color: 'text-white', bg: 'bg-red-600 dark:bg-red-500', metric: `R² ${rSquaredPct}%` };
 }
 
 /**

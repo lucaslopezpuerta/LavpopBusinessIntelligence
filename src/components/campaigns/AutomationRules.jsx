@@ -1,8 +1,20 @@
-// AutomationRules.jsx v6.3 - NEW AUTOMATION TYPES
+// AutomationRules.jsx v6.7 - MODE-AWARE AMBER BADGES
 // Automation rules configuration for campaigns
 // Design System v4.0 compliant - Mobile-first redesign
 //
 // CHANGELOG:
+// v6.7 (2026-01-29): Mode-aware amber badges for better light mode visibility
+//   - StatusPill "Limite atingido": now uses bg-amber-50 text-amber-800 border in light, solid amber in dark
+//   - Dialog icon well: kept solid bg-amber-600 dark:bg-amber-500 for proper icon contrast
+// v6.6 (2026-01-29): Orange to yellow color migration
+//   - Replaced bg-orange-600 dark:bg-orange-500 with bg-yellow-600 dark:bg-yellow-500 in StatusPill and dialog
+//   - Consistent with campaign color scheme updates
+// v6.5 (2026-01-29): Amber to orange color migration
+//   - Replaced bg-amber-600 dark:bg-amber-500 with bg-orange-600 dark:bg-orange-500 in StatusPill and dialog
+//   - Consistent with campaign color scheme updates
+// v6.4 (2026-01-29): Solid color badges for WCAG AA compliance
+//   - StatusPill (Ativa, Limite atingido) now use solid colors with white text
+//   - Confirmation dialog icon well now solid with white icon
 // v6.3 (2026-01-24): Added 4 new automation types
 //   - RFM Loyalty: Monthly rewards for VIP/Frequente (10%, 20%, or Branded Bag)
 //   - Weather Promo: Weather-triggered promos (high drying pain days)
@@ -559,7 +571,7 @@ const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {
 
   if (isAtLimit) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400">
         Limite atingido
       </span>
     );
@@ -567,8 +579,8 @@ const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {
 
   if (enabled) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-600 dark:bg-emerald-500 text-white">
+        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
         Ativa
       </span>
     );
@@ -1442,8 +1454,8 @@ const AutomationRules = ({ audienceSegments }) => {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-900/20">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <div className="w-10 h-10 rounded-full bg-amber-600 dark:bg-amber-500 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                   Automação Ativa

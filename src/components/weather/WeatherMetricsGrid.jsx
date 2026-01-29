@@ -1,7 +1,16 @@
-// WeatherMetricsGrid.jsx v2.0
+// WeatherMetricsGrid.jsx v2.4 - MODE-AWARE AMBER BADGE MIGRATION
 // Detailed weather metrics display grid
 //
 // CHANGELOG:
+// v2.4 (2026-01-29): Mode-aware amber badge migration
+//   - Replaced bg-yellow-600 dark:bg-yellow-500 with mode-aware amber badge styling
+//   - New pattern: bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400
+// v2.3 (2026-01-29): Orange to yellow color migration
+//   - Updated orange-600/orange-500 to yellow-600/yellow-500 in UVCard getSolidBadgeClass
+// v2.2 (2026-01-29): Solid color badge migration
+//   - Updated UVCard icon-well and badge from opacity-based to solid colors
+//   - Updated WindCard icon-well from opacity-based to solid colors
+//   - Badge/icon-well pattern: bg-{color}-600 dark:bg-{color}-500 text-white
 // v2.1 (2026-01-20): Removed left border stripe per user request
 // v2.0 (2026-01-20): Cosmic Precision upgrade
 //   - Applied Variant C: Neutral Dashboard Cosmic (blue tint)
@@ -93,16 +102,30 @@ const UVCard = ({ uvIndex }) => {
   const { label, color } = getUVLevel(uvIndex);
   const colorClass = getUVColorClass(uvIndex);
 
+  // Map UV color classes to solid badge colors
+  const getSolidBadgeClass = () => {
+    // colorClass from getUVColorClass returns patterns like "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+    // We need to extract the base color and return solid version
+    if (colorClass.includes('green')) return 'bg-green-600 dark:bg-green-500 text-white';
+    if (colorClass.includes('yellow')) return 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400';
+    if (colorClass.includes('orange')) return 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400';
+    if (colorClass.includes('red')) return 'bg-red-600 dark:bg-red-500 text-white';
+    if (colorClass.includes('purple')) return 'bg-purple-600 dark:bg-purple-500 text-white';
+    return 'bg-slate-600 dark:bg-slate-500 text-white';
+  };
+
+  const solidBadgeClass = getSolidBadgeClass();
+
   // UV level bar
   const uvPercent = Math.min((uvIndex / 11) * 100, 100);
 
   return (
     <div className="p-3 sm:p-4 rounded-lg sm:rounded-xl bg-slate-50 dark:bg-slate-800/50">
       <div className="flex items-start justify-between mb-1.5 sm:mb-2">
-        <div className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg ${colorClass}`}>
+        <div className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg ${solidBadgeClass}`}>
           <Sun className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
-        <span className={`text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${colorClass}`}>
+        <span className={`text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${solidBadgeClass}`}>
           {label}
         </span>
       </div>
@@ -141,7 +164,7 @@ const WindCard = ({ speed, direction }) => {
   return (
     <div className="p-3 sm:p-4 rounded-lg sm:rounded-xl bg-slate-50 dark:bg-slate-800/50">
       <div className="flex items-start justify-between mb-1.5 sm:mb-2">
-        <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400">
+        <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-teal-600 dark:bg-teal-500 text-white">
           <Wind className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
         <div
