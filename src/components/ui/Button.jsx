@@ -1,8 +1,11 @@
-// Button.jsx v1.2 - COSMIC PRECISION UPDATE
+// Button.jsx v1.3 - HAPTIC FEEDBACK UPDATE
 // Reusable button component with Framer Motion animations
 // Design System v4.3 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.3 (2026-01-28): Haptic feedback integration
+//   - Added haptics.light() on button press for tactile feedback
+//   - Native Capacitor haptics on Android/iOS, web fallback
 // v1.2 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Animations disabled when user prefers reduced motion
@@ -21,11 +24,12 @@
 //   - Icon support (left and right positions)
 //   - Full accessibility support
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import useReducedMotion from '../../hooks/useReducedMotion';
 import { SPRING, INTERACTIVE } from '../../constants/animations';
+import { haptics } from '../../utils/haptics';
 
 /**
  * Premium Button Component
@@ -50,10 +54,19 @@ const Button = ({
   rightIcon: RightIcon,
   className = '',
   children,
+  onClick,
   ...props
 }) => {
   const isDisabled = disabled || loading;
   const prefersReducedMotion = useReducedMotion();
+
+  // Wrap onClick with haptic feedback
+  const handleClick = useCallback((e) => {
+    if (!isDisabled) {
+      haptics.light();
+    }
+    onClick?.(e);
+  }, [onClick, isDisabled]);
 
   // Variant styles - Cosmic Precision (v4.3)
   const variants = {
@@ -85,6 +98,7 @@ const Button = ({
     <motion.button
       className={`${baseClasses} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${fullWidth ? 'w-full' : ''} ${className}`}
       disabled={isDisabled}
+      onClick={handleClick}
       whileHover={!isDisabled && !prefersReducedMotion ? INTERACTIVE.HOVER : undefined}
       whileTap={!isDisabled && !prefersReducedMotion ? INTERACTIVE.TAP : undefined}
       transition={prefersReducedMotion ? { duration: 0 } : SPRING.SNAPPY}
@@ -115,9 +129,19 @@ export const IconButton = ({
   variant = 'ghost',
   label,
   className = '',
+  onClick,
+  disabled = false,
   ...props
 }) => {
   const prefersReducedMotion = useReducedMotion();
+
+  // Wrap onClick with haptic feedback
+  const handleClick = useCallback((e) => {
+    if (!disabled) {
+      haptics.light();
+    }
+    onClick?.(e);
+  }, [onClick, disabled]);
 
   const sizes = {
     sm: 'w-8 h-8',
@@ -140,6 +164,8 @@ export const IconButton = ({
   return (
     <motion.button
       className={`inline-flex items-center justify-center rounded-xl transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${sizes[size]} ${variants[variant] || variants.ghost} ${className}`}
+      onClick={handleClick}
+      disabled={disabled}
       whileHover={prefersReducedMotion ? undefined : INTERACTIVE.ICON_HOVER}
       whileTap={prefersReducedMotion ? undefined : INTERACTIVE.ICON_TAP}
       transition={prefersReducedMotion ? { duration: 0 } : SPRING.SNAPPY}

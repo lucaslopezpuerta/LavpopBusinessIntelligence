@@ -1,8 +1,11 @@
-// EmptyState.jsx v1.0 - EMPTY STATE COMPONENT
+// EmptyState.jsx v1.1 - ACCESSIBILITY
 // Reusable component for displaying helpful messages when no data is available
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.1 (2026-01-28): Accessibility improvements
+//   - Added useReducedMotion hook for prefers-reduced-motion support
+//   - Animations disabled when user prefers reduced motion
 // v1.0 (2026-01-09): Initial implementation (UX Audit Phase 3.1)
 //   - Configurable icon, title, description
 //   - Optional action button with callback
@@ -15,6 +18,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Inbox } from 'lucide-react';
 import Button from './Button';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 // Animation configs
 const containerAnimation = {
@@ -57,6 +61,8 @@ const EmptyState = ({
   size = 'md',
   className = ''
 }) => {
+  const prefersReducedMotion = useReducedMotion();
+
   // Size configurations
   const sizes = {
     sm: {
@@ -90,15 +96,15 @@ const EmptyState = ({
   return (
     <motion.div
       className={`flex flex-col items-center justify-center text-center ${sizeConfig.container} ${className}`}
-      initial="hidden"
+      initial={prefersReducedMotion ? false : "hidden"}
       animate="visible"
-      variants={containerAnimation}
+      variants={prefersReducedMotion ? {} : containerAnimation}
       role="status"
       aria-label={title}
     >
       {/* Icon Container */}
       <motion.div
-        variants={itemAnimation}
+        variants={prefersReducedMotion ? {} : itemAnimation}
         className={`${sizeConfig.iconWrapper} rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center`}
       >
         <Icon
@@ -109,7 +115,7 @@ const EmptyState = ({
 
       {/* Title */}
       <motion.h3
-        variants={itemAnimation}
+        variants={prefersReducedMotion ? {} : itemAnimation}
         className={`${sizeConfig.title} text-slate-700 dark:text-slate-200`}
       >
         {title}
@@ -118,7 +124,7 @@ const EmptyState = ({
       {/* Description */}
       {description && (
         <motion.p
-          variants={itemAnimation}
+          variants={prefersReducedMotion ? {} : itemAnimation}
           className={`${sizeConfig.description} text-slate-500 dark:text-slate-400 max-w-sm`}
         >
           {description}
@@ -127,7 +133,7 @@ const EmptyState = ({
 
       {/* Action Button */}
       {action && actionLabel && (
-        <motion.div variants={itemAnimation} className="mt-4">
+        <motion.div variants={prefersReducedMotion ? {} : itemAnimation} className="mt-4">
           <Button
             variant="secondary"
             size={sizeConfig.button}

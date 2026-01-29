@@ -1,8 +1,11 @@
-// Directory.jsx v2.11 - ACCESSIBILITY
+// Directory.jsx v2.12 - ANDROID SAFE AREA FIX
 // Dedicated view for browsing and searching customers
 // Design System v5.0 compliant - Cosmic Precision theme
 //
 // CHANGELOG:
+// v2.12 (2026-01-28): Android safe area fix for FAB
+//   - FAB now uses max(env(), var(--native-safe-area-bottom)) for Android compatibility
+//   - Fixes FAB overlapping with Android gesture/button navigation bar
 // v2.11 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Filter panel, card grid, and FAB animations respect reduced motion
@@ -1054,7 +1057,8 @@ const Directory = ({ data, onDataChange }) => {
               focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-lavpop-blue
             "
             style={{
-              bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+              // Mobile: 64px (nav) + 1rem (spacing) + safe area; Desktop: just 1.5rem + safe area
+              bottom: 'calc(5rem + max(env(safe-area-inset-bottom, 0px), var(--native-safe-area-bottom, 0px)))',
               right: 'calc(1.5rem + env(safe-area-inset-right, 0px))'
             }}
             aria-label={`Enviar campanha para ${filteredCustomers.length} clientes`}

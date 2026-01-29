@@ -1,8 +1,17 @@
-// GrowthTrendsSection.jsx v6.0.0
+// GrowthTrendsSection.jsx v6.2.0
 // Growth & trends analysis section for Intelligence tab
 // Design System v5.1 compliant - Premium Glass styling
 //
 // CHANGELOG:
+// v6.2.0 (2026-01-28): Mobile chart improvements
+//   - Increased mobile chart height (h-64 → h-72, +32px)
+//   - Smart X-axis interval: shows ~5 labels on mobile instead of all
+// v6.1.0 (2026-01-28): Chart tooltip edge truncation fix
+//   - Edge-aware positioning: flips tooltip left when near right edge (>75% of chart width)
+//   - Responsive tooltip: compact on mobile (smaller text, padding, short labels)
+//   - Enabled allowEscapeViewBox on both axes for proper positioning
+//   - Enhanced tooltip with Cosmic glassmorphism styling (stellar-cyan accent)
+//   - Added partial month indicator to tooltip
 // v6.0.0 (2026-01-24): Premium Glass redesign
 //   - Replaced SectionCard with direct Premium Glass container
 //   - Added useMediaQuery() for isDesktop responsive sizing
@@ -135,6 +144,12 @@ const GrowthTrendsSection = ({
     return Math.round(sum / chartData.length);
   }, [chartData]);
 
+  // Smart X-axis interval: show ~5-6 labels on mobile, all on desktop
+  const xAxisInterval = useMemo(() => {
+    if (!chartData?.length) return 0;
+    return isMobile ? Math.max(0, Math.ceil(chartData.length / 5) - 1) : 0;
+  }, [chartData?.length, isMobile]);
+
   // Currency formatter for tooltips and Y-axis
   const currencyFormatter = useCallback((value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -156,26 +171,43 @@ const GrowthTrendsSection = ({
     return currencyFormatter(value);
   }, [isMobile, currencyFormatter]);
 
-  // Custom tooltip for Recharts
-  const CustomTooltip = useCallback(({ active, payload }) => {
+  // Custom tooltip for Recharts - Cosmic design with edge-aware positioning
+  const CustomTooltip = useCallback(({ active, payload, coordinate, viewBox }) => {
     if (!active || !payload?.length) return null;
     const data = payload[0]?.payload;
     if (!data) return null;
 
+    // Detect if tooltip is near right edge and should flip to the left
+    const isNearRightEdge = coordinate && viewBox &&
+      (coordinate.x > viewBox.width * 0.75);
+
     return (
-      <div className={`
-        px-3 py-2 rounded-lg shadow-xl pointer-events-none
-        ${isDark ? 'bg-space-dust ring-1 ring-white/[0.1]' : 'bg-white ring-1 ring-slate-200'}
-      `}>
-        <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          {data.fullMonth || data.month}
+      <div
+        className={`
+          ${isMobile ? 'px-2 py-1.5 rounded-lg' : 'px-3 py-2.5 rounded-xl'}
+          shadow-xl pointer-events-none
+          backdrop-blur-md
+          ${isDark
+            ? 'bg-space-dust/95 ring-1 ring-stellar-cyan/20'
+            : 'bg-white/95 ring-1 ring-slate-200 shadow-lg'
+          }
+        `}
+        style={isNearRightEdge ? { transform: 'translateX(-100%)' } : undefined}
+      >
+        <p className={`${isMobile ? 'text-[10px]' : 'text-xs'} font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {isMobile ? data.month : (data.fullMonth || data.month)}
         </p>
-        <p className={`text-base font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+        <p className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold tracking-tight ${isDark ? 'text-stellar-cyan' : 'text-blue-600'}`}>
           {currencyFormatter(data.Receita)}
         </p>
+        {data.isPartial && (
+          <p className={`${isMobile ? 'text-[9px]' : 'text-xs'} ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+            {isMobile ? 'Parcial' : 'Mês parcial'}
+          </p>
+        )}
       </div>
     );
-  }, [isDark, currencyFormatter]);
+  }, [isDark, isMobile, currencyFormatter]);
 
   // Memoize monthly data for table/cards
   const monthlyData = useMemo(() =>
@@ -423,7 +455,7 @@ const GrowthTrendsSection = ({
               </div>
 
               <motion.div
-                className="h-64 sm:h-80 lg:h-96 w-full -mx-2"
+                className="h-72 sm:h-80 lg:h-96 w-full -mx-2"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: 'easeOut' }}
@@ -468,7 +500,7 @@ const GrowthTrendsSection = ({
                       axisLine={{ stroke: isDark ? '#475569' : '#cbd5e1' }}
                       tickLine={false}
                       dy={isMobile ? 5 : 8}
-                      interval={0}
+                      interval={xAxisInterval}
                       angle={isMobile ? -45 : 0}
                       textAnchor={isMobile ? 'end' : 'middle'}
                       height={isMobile ? 50 : 30}
@@ -485,9 +517,10 @@ const GrowthTrendsSection = ({
                     <Tooltip
                       content={<CustomTooltip />}
                       cursor={{ stroke: isDark ? '#475569' : '#cbd5e1', strokeDasharray: '3 3' }}
-                      allowEscapeViewBox={{ x: isMobile, y: isMobile }}
-                      offset={15}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      offset={isMobile ? 10 : 15}
                       isAnimationActive={false}
+                      wrapperStyle={{ zIndex: 50 }}
                     />
                     <Area
                       type="monotone"

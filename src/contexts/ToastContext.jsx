@@ -1,7 +1,14 @@
-// ToastContext.jsx v1.0 - Global toast notification state management
+// ToastContext.jsx v1.1 - Global toast notification state management
 // Provides toast API for showing success, error, warning, and info notifications
 //
 // CHANGELOG:
+// v1.1 (2026-01-28): Haptic feedback integration
+//   - Added haptic feedback when toast appears
+//   - Different haptic patterns for each toast type:
+//     - success: haptics.success()
+//     - error: haptics.error()
+//     - warning: haptics.warning()
+//     - info: haptics.notification()
 // v1.0 (2026-01-27): Initial implementation
 //   - Global toast state with auto-incrementing IDs
 //   - Auto-dismiss with configurable duration
@@ -9,6 +16,7 @@
 //   - Queue management for multiple toasts (max 5)
 
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { haptics } from '../utils/haptics';
 
 const ToastContext = createContext(null);
 
@@ -52,6 +60,25 @@ export function ToastProvider({ children }) {
     setToasts([]);
   }, []);
 
+  // Haptic feedback map for toast types
+  const triggerHaptic = useCallback((type) => {
+    switch (type) {
+      case TOAST_TYPES.SUCCESS:
+        haptics.success();
+        break;
+      case TOAST_TYPES.ERROR:
+        haptics.error();
+        break;
+      case TOAST_TYPES.WARNING:
+        haptics.warning();
+        break;
+      case TOAST_TYPES.INFO:
+      default:
+        haptics.notification();
+        break;
+    }
+  }, []);
+
   // Show a new toast
   const showToast = useCallback(({
     type = TOAST_TYPES.INFO,
@@ -68,6 +95,9 @@ export function ToastProvider({ children }) {
       action,
       createdAt: Date.now()
     };
+
+    // Trigger haptic feedback based on toast type
+    triggerHaptic(type);
 
     setToasts(prev => {
       // Remove oldest toasts if we exceed max
@@ -89,7 +119,7 @@ export function ToastProvider({ children }) {
     }
 
     return id;
-  }, [dismissToast, clearTimer]);
+  }, [dismissToast, clearTimer, triggerHaptic]);
 
   // Convenience methods
   const success = useCallback((message, options = {}) => {

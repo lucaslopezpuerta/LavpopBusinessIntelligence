@@ -178,7 +178,7 @@ const CosmicDropdown = ({
         onClick={handleToggle}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-labelledby="dropdown-label"
+        aria-label={selectedOption ? selectedOption.label : placeholder}
         className={`
           h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer
           flex items-center justify-between gap-2 min-w-[140px]

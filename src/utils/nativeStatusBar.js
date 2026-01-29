@@ -2,21 +2,23 @@
  * Native Status Bar Utility
  * Handles status bar styling for Capacitor native apps
  *
- * @version 1.2.0
+ * @version 1.3.0
  *
  * ANDROID SAFE AREA NOTE:
  * Android doesn't reliably expose status bar height to WebViews via CSS env().
  * Unlike iOS which provides env(safe-area-inset-top) automatically, Android WebViews
- * require manual calculation. This utility uses the standard 24dp status bar height
- * which works for most Android devices (90%+). For devices with custom status bars
- * (e.g., some gaming phones with larger notches), EdgeToEdge mode with CSS env()
- * would be preferred, but this requires API level 30+ and additional configuration.
+ * require manual calculation. This utility uses standard values:
+ * - Status bar: 24dp (works for ~90% of devices)
+ * - Navigation bar: 48dp (gesture nav and 3-button nav)
  *
- * The current 24dp fallback provides acceptable results for the target user base.
+ * The current fallback values provide acceptable results for the target user base.
  * If issues arise on specific devices, consider using WindowInsetsCompat in the
  * native Android layer to pass accurate insets to the WebView.
  *
  * CHANGELOG:
+ * v1.3.0 (2026-01-28): Added bottom safe area for Android navigation bar
+ *   - Sets --native-safe-area-bottom: 48px for Android gesture/button nav
+ *   - Fixes modals and FAB overlapping with Android nav bar
  * v1.2.0 (2026-01-27): Added Android limitations documentation
  * v1.1.0 (2025-12-26): Detect initial theme for correct status bar style
  */
@@ -25,6 +27,9 @@ import { isNative, isAndroid } from './platform';
 
 // Default Android status bar height in pixels (24dp * density)
 const ANDROID_STATUS_BAR_HEIGHT = 24;
+
+// Default Android navigation bar height (gesture nav = 48dp, button nav = 48dp)
+const ANDROID_NAV_BAR_HEIGHT = 48;
 
 /**
  * Get the current theme from localStorage or system preference
@@ -76,13 +81,11 @@ export async function initializeStatusBar() {
 
 /**
  * Set Android-specific safe area CSS variables
- * Since env(safe-area-inset-top) doesn't work reliably on Android WebViews.
+ * Since env(safe-area-inset-*) doesn't work reliably on Android WebViews.
  *
- * NOTE: This uses a hardcoded 24dp value which is the standard Android status bar
- * height. This works for ~90% of Android devices. Some edge cases include:
- * - Devices with larger notches may have taller status bars (up to 48dp)
- * - Some OEM skins modify the status bar height
- * - Foldable devices may have different heights in different states
+ * NOTE: This uses hardcoded values which work for ~90% of Android devices:
+ * - Status bar: 24dp (standard height, some notched devices may be taller)
+ * - Navigation bar: 48dp (gesture navigation, also covers 3-button nav)
  *
  * For production apps requiring pixel-perfect accuracy on all devices, consider
  * using WindowInsetsCompat in the native layer to pass actual inset values.
@@ -92,17 +95,22 @@ function setAndroidSafeAreaInsets() {
   // We keep this as dp (density-independent pixels) because CSS pixels map 1:1
   // with dp on Android WebViews when using viewport meta tag with device-width
   const statusBarHeight = ANDROID_STATUS_BAR_HEIGHT;
+  const navBarHeight = ANDROID_NAV_BAR_HEIGHT;
 
-  // Set CSS custom property
+  // Set CSS custom properties for status bar
   document.documentElement.style.setProperty(
     '--android-status-bar-height',
     `${statusBarHeight}px`
   );
 
-  // Also set a general native safe area variable
+  // Set native safe area variables (used by .pt-safe and .pb-safe)
   document.documentElement.style.setProperty(
     '--native-safe-area-top',
     `${statusBarHeight}px`
+  );
+  document.documentElement.style.setProperty(
+    '--native-safe-area-bottom',
+    `${navBarHeight}px`
   );
 }
 

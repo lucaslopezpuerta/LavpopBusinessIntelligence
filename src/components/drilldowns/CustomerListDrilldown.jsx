@@ -1,4 +1,4 @@
-// CustomerListDrilldown.jsx v3.13 - REMOVED SWIPE VIEW NAVIGATION CALLBACKS
+// CustomerListDrilldown.jsx v3.14 - SWIPE GESTURE SENSITIVITY FIX
 // ✅ Pagination with "Ver mais" button
 // ✅ WhatsApp and Call actions
 // ✅ Dynamic sorting with controls
@@ -14,6 +14,12 @@
 // ✅ Blacklist indicator with toggle to show/hide
 //
 // CHANGELOG:
+// v3.14 (2026-01-28): Swipe Gesture Sensitivity Fix
+//   - Fixed overly sensitive swipe triggering (was 20px, now 50px)
+//   - Added deadzone (8px) to filter micro-movements
+//   - Added velocity checking for fast flick support (0.3 px/ms)
+//   - Stricter vertical tolerance (0.35 ratio vs 0.5)
+//   - Uses centralized SWIPE_ACTION.THRESHOLDS from animations.js
 // v3.13 (2026-01-12): Removed swipe view navigation callbacks
 //   - REMOVED: onSwipeStart/End props (no longer needed)
 //   - Swipe view navigation removed from App.jsx entirely
@@ -66,14 +72,64 @@
 // v2.1 (2025-12-01): Fixed date formatting bug
 // v2.0: Initial SMART LISTS implementation
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { motion, useSpring, useTransform } from 'framer-motion';
 import { Phone, MessageCircle, Check, ChevronDown, ArrowUpDown, PartyPopper, Ban, EyeOff, Eye } from 'lucide-react';
 import { useContactTracking } from '../../hooks/useContactTracking';
 import { useBlacklist } from '../../hooks/useBlacklist';
 import { addCommunicationEntry, getDefaultNotes } from '../../utils/communicationLog';
 import { isValidBrazilianMobile, normalizePhone } from '../../utils/phoneUtils';
+import { SWIPE_ACTION } from '../../constants/animations';
 
 const ITEMS_PER_PAGE = 5;
+
+// Swipeable card wrapper with spring physics
+const SwipeableCard = ({ isSwipingThis, swipeOffset, canWhatsApp, hasPhone, contacted, canContact, children, ...touchHandlers }) => {
+    // Spring-animated card position for smooth swipe physics
+    const x = useSpring(0, SWIPE_ACTION.CARD_SPRING);
+
+    // Update spring when swipeOffset changes
+    useEffect(() => {
+        x.set(isSwipingThis ? swipeOffset : 0);
+    }, [x, isSwipingThis, swipeOffset]);
+
+    // Transform swipe offset to icon scale/opacity for reveal effect
+    const leftIconScale = useTransform(x, [0, 40, 64], [0.6, 0.9, 1]);
+    const leftIconOpacity = useTransform(x, [0, 30, 64], [0, 0.7, 1]);
+    const rightIconScale = useTransform(x, [-64, -40, 0], [1, 0.9, 0.6]);
+    const rightIconOpacity = useTransform(x, [-64, -30, 0], [1, 0.7, 0]);
+
+    return (
+        <div className="relative overflow-hidden rounded-xl">
+            {/* Swipe action backgrounds with animated icons (mobile only) */}
+            {hasPhone && !contacted && canContact && (
+                <>
+                    {canWhatsApp && (
+                        <div className="md:hidden absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
+                            <motion.div style={{ scale: leftIconScale, opacity: leftIconOpacity }}>
+                                <MessageCircle className="w-5 h-5 text-white" />
+                            </motion.div>
+                        </div>
+                    )}
+                    <div className="md:hidden absolute inset-y-0 right-0 w-16 bg-blue-500 flex items-center justify-center">
+                        <motion.div style={{ scale: rightIconScale, opacity: rightIconOpacity }}>
+                            <Phone className="w-5 h-5 text-white" />
+                        </motion.div>
+                    </div>
+                </>
+            )}
+
+            {/* Card content with spring physics */}
+            <motion.div
+                style={{ x }}
+                className="relative"
+                {...touchHandlers}
+            >
+                {children}
+            </motion.div>
+        </div>
+    );
+};
 
 // Sort options
 const SORT_OPTIONS = {
@@ -242,9 +298,14 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
     }, [isContacted, toggleContacted, markContacted, getCustomerContext]);
 
     // Touch handlers for swipe (mobile row actions)
+    // v3.14: Improved sensitivity with THRESHOLDS (deadzone, velocity, stricter direction)
     const handleTouchStart = useCallback((e, customerId) => {
         const touch = e.touches[0];
-        touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+        touchStartRef.current = {
+            x: touch.clientX,
+            y: touch.clientY,
+            time: Date.now()  // Track start time for velocity calculation
+        };
         setSwipeState({ id: customerId, direction: null, offset: 0 });
     }, []);
 
@@ -254,22 +315,40 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         const touch = e.touches[0];
         const deltaX = touch.clientX - touchStartRef.current.x;
         const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+        const absX = Math.abs(deltaX);
 
-        // If more vertical than horizontal, reset and allow normal scroll
-        if (deltaY > Math.abs(deltaX) * 0.5) {
+        const { THRESHOLDS } = SWIPE_ACTION;
+
+        // Deadzone: ignore micro-movements (prevents accidental triggers)
+        if (absX < THRESHOLDS.DEADZONE) return;
+
+        // Stricter vertical tolerance - cancel if too vertical
+        if (deltaY > absX * THRESHOLDS.VERTICAL_RATIO) {
             setSwipeState({ id: null, direction: null, offset: 0 });
             return;
         }
 
-        const maxOffset = 64;
-        const offset = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
-        const direction = offset > 20 ? 'right' : offset < -20 ? 'left' : null;
+        const offset = Math.max(-THRESHOLDS.MAX_OFFSET, Math.min(THRESHOLDS.MAX_OFFSET, deltaX));
+        const direction = offset > THRESHOLDS.DIRECTION_MIN ? 'right'
+                        : offset < -THRESHOLDS.DIRECTION_MIN ? 'left'
+                        : null;
 
         setSwipeState({ id: customerId, direction, offset });
     }, [swipeState.id]);
 
     const handleTouchEnd = useCallback((customer, customerId) => {
-        if (!swipeState.direction || !customer.phone) {
+        const { THRESHOLDS } = SWIPE_ACTION;
+        const absOffset = Math.abs(swipeState.offset);
+
+        // Calculate velocity (px per ms) for fast flick detection
+        const elapsed = Date.now() - touchStartRef.current.time;
+        const velocity = elapsed > 0 ? absOffset / elapsed : 0;
+
+        // Must meet threshold OR have high velocity (for quick flicks)
+        const meetsThreshold = absOffset >= THRESHOLDS.ACTION_TRIGGER;
+        const hasHighVelocity = velocity >= THRESHOLDS.MIN_VELOCITY && absOffset > THRESHOLDS.DIRECTION_MIN;
+
+        if (!swipeState.direction || !customer.phone || (!meetsThreshold && !hasHighVelocity)) {
             setSwipeState({ id: null, direction: null, offset: 0 });
             return;
         }
@@ -283,7 +362,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         }
 
         setSwipeState({ id: null, direction: null, offset: 0 });
-    }, [swipeState.direction, handleWhatsApp, handleCall]);
+    }, [swipeState.direction, swipeState.offset, handleWhatsApp, handleCall]);
 
     // Handle touch cancel (e.g., if user moves finger off screen)
     const handleTouchCancel = useCallback(() => {
@@ -414,44 +493,29 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                     const canContact = !blacklisted;
 
                     return (
-                        <div
+                        <SwipeableCard
                             key={customer.doc || index}
-                            className="relative overflow-hidden rounded-xl"
+                            isSwipingThis={isSwipingThis}
+                            swipeOffset={swipeState.offset}
+                            canWhatsApp={canWhatsApp}
+                            hasPhone={hasPhone}
+                            contacted={contacted}
+                            canContact={canContact}
+                            onTouchStart={(e) => hasPhone && !contacted && canContact && handleTouchStart(e, customerId)}
+                            onTouchMove={(e) => hasPhone && !contacted && canContact && handleTouchMove(e, customerId)}
+                            onTouchEnd={() => !contacted && canContact && handleTouchEnd(customer, customerId)}
+                            onTouchCancel={handleTouchCancel}
                         >
-                            {/* Swipe action backgrounds (mobile only, hide when contacted or blacklisted) */}
-                            {hasPhone && !contacted && canContact && (
-                                <>
-                                    {/* WhatsApp (swipe right) - only for valid Brazilian mobiles */}
-                                    {canWhatsApp && (
-                                        <div className="md:hidden absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
-                                            <MessageCircle className="w-5 h-5 text-white" />
-                                        </div>
-                                    )}
-                                    {/* Call (swipe left) */}
-                                    <div className="md:hidden absolute inset-y-0 right-0 w-16 bg-blue-500 flex items-center justify-center">
-                                        <Phone className="w-5 h-5 text-white" />
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Card content - uses preventDefault in touch handlers to prevent view navigation conflict */}
+                            {/* Card content */}
                             <div
                                 className={`
-                                    relative flex items-center gap-2 p-2.5
+                                    flex items-center gap-2 p-2.5
                                     bg-slate-50 dark:bg-slate-700
                                     border border-slate-200 dark:border-slate-700 rounded-xl
                                     ${contacted ? 'opacity-60' : ''}
                                     ${blacklisted ? 'opacity-70 border-red-200 dark:border-red-900/50' : ''}
-                                    transition-transform duration-150 ease-out
                                     touch-pan-y
                                 `}
-                                style={{
-                                    transform: isSwipingThis ? `translateX(${swipeState.offset}px)` : 'translateX(0)'
-                                }}
-                                onTouchStart={(e) => hasPhone && !contacted && canContact && handleTouchStart(e, customerId)}
-                                onTouchMove={(e) => hasPhone && !contacted && canContact && handleTouchMove(e, customerId)}
-                                onTouchEnd={() => !contacted && canContact && handleTouchEnd(customer, customerId)}
-                                onTouchCancel={handleTouchCancel}
                             >
                                 {/* Avatar with initials */}
                                 <div className="relative flex-shrink-0">
@@ -545,7 +609,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </SwipeableCard>
                     );
                 })}
 

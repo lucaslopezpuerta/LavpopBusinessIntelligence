@@ -1,8 +1,18 @@
-// animations.js v3.1 - MICRO-INTERACTION ANIMATIONS
+// animations.js v3.4 - MICRO-INTERACTION ANIMATIONS
 // Centralized animation configurations for consistent motion design
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.4 (2026-01-28): Bottom navigation modal transitions
+//   - Added BOTTOM_NAV_MODAL for smooth slide-fade when modals open
+//   - Uses CSS `translate` property to avoid Framer Motion conflicts
+//   - Easing: ease-out-quart for hide, ease-out for show
+// v3.3 (2026-01-28): Swipe gesture sensitivity improvements
+//   - Added SWIPE_ACTION.THRESHOLDS for configurable gesture detection
+//   - Increased direction threshold from 20px to 50px (industry standard)
+//   - Added deadzone (8px) to filter micro-movements
+//   - Added velocity checking (0.3 px/ms) for fast flick support
+//   - Reduced vertical tolerance ratio from 0.5 to 0.35
 // v3.1 (2026-01-27): Performance & consistency improvements
 //   - Removed blur filter from PAGE_TRANSITION (non-GPU accelerated)
 //   - Added SPRING.MEDIUM for intermediate stiffness (350, damping: 22)
@@ -579,6 +589,150 @@ export const ERROR_ANIMATION = {
   }
 };
 
+// Card swipe actions (v3.3)
+// Spring physics for smooth swipe-to-reveal actions
+// v3.3: Added THRESHOLDS for improved gesture recognition
+export const SWIPE_ACTION = {
+  // Spring for card sliding
+  CARD_SPRING: {
+    type: 'spring',
+    stiffness: 400,
+    damping: 30,
+    mass: 0.8
+  },
+  // Snap back to center
+  SNAP_BACK: {
+    type: 'spring',
+    stiffness: 500,
+    damping: 35
+  },
+  // Action button reveal
+  ACTION_REVEAL: {
+    initial: { opacity: 0, scale: 0.8 },
+    animate: { opacity: 1, scale: 1 },
+    transition: {
+      type: 'spring',
+      stiffness: 400,
+      damping: 25,
+      delay: 0.05
+    }
+  },
+  // Swipe gesture thresholds (v3.3)
+  // Tuned for intentional actions, not accidental triggers
+  THRESHOLDS: {
+    DIRECTION_MIN: 50,      // Minimum px to set a direction (was 20)
+    ACTION_TRIGGER: 56,     // Minimum px to trigger action on release
+    MAX_OFFSET: 72,         // Maximum swipe distance (was 64)
+    DEADZONE: 8,            // Initial pixels ignored (prevents accidental)
+    VERTICAL_RATIO: 0.35,   // Max vertical/horizontal ratio (was 0.5)
+    MIN_VELOCITY: 0.3       // Minimum px/ms velocity to trigger action
+  }
+};
+
+// Tab content transitions (v3.2)
+// Smooth crossfade with subtle slide for tab content
+export const TAB_CONTENT = {
+  // Default transition (fade + slide up)
+  FADE_SLIDE: {
+    initial: { opacity: 0, y: 8 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.2,
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: -8,
+      transition: {
+        duration: 0.15,
+        ease: 'easeIn'
+      }
+    }
+  },
+  // Simple crossfade (lighter)
+  CROSSFADE: {
+    initial: { opacity: 0 },
+    animate: {
+      opacity: 1,
+      transition: { duration: 0.2, ease: 'easeOut' }
+    },
+    exit: {
+      opacity: 0,
+      transition: { duration: 0.15, ease: 'easeIn' }
+    }
+  },
+  // Reduced motion variant
+  REDUCED: {
+    initial: { opacity: 1 },
+    animate: { opacity: 1 },
+    exit: { opacity: 1 }
+  }
+};
+
+// Alert notification animations (v3.2)
+// Slide in from top with attention-grabbing entrance
+export const ALERT = {
+  // Default entrance (slide + scale)
+  ENTER: {
+    initial: { opacity: 0, y: -12, scale: 0.96 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: SPRING.SNAPPY
+    }
+  },
+  // Exit animation
+  EXIT: {
+    opacity: 0,
+    y: -8,
+    scale: 0.96,
+    transition: { type: 'tween', duration: 0.15, ease: 'easeIn' }
+  },
+  // Shake for error emphasis
+  SHAKE: {
+    x: [0, -6, 6, -6, 6, 0],
+    transition: { duration: 0.4 }
+  },
+  // Reduced motion
+  ENTER_REDUCED: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.1 } }
+  },
+  EXIT_REDUCED: {
+    opacity: 0,
+    transition: { duration: 0.1 }
+  }
+};
+
+// Bottom Navigation Modal Transitions (v3.4)
+// Smooth slide-fade for when modals/drawers open
+// Uses CSS `translate` property to avoid Framer Motion transform conflicts
+export const BOTTOM_NAV_MODAL = {
+  // Hide transition (modal opens)
+  HIDE: {
+    duration: 0.25,
+    ease: [0.4, 0, 0.2, 1], // ease-out-quart (fast start, gentle end)
+    translate: '0 100%',
+    opacity: 0
+  },
+  // Show transition (modal closes)
+  SHOW: {
+    duration: 0.3,
+    ease: [0.0, 0, 0.2, 1], // ease-out (decelerate)
+    translate: '0 0',
+    opacity: 1
+  },
+  // Reduced motion variant
+  REDUCED: {
+    duration: 0.1,
+    ease: 'linear'
+  }
+};
+
 // Pull-to-refresh animations (v2.1)
 // Refined timing for smooth, responsive feel
 export const PULL_REFRESH = {
@@ -641,5 +795,9 @@ export default {
   TOAST,
   SUCCESS_ANIMATION,
   ERROR_ANIMATION,
+  SWIPE_ACTION,
+  TAB_CONTENT,
+  ALERT,
+  BOTTOM_NAV_MODAL,
   PULL_REFRESH
 };

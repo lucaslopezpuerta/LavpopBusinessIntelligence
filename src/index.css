@@ -1,9 +1,14 @@
-/* Bilavnova BI - Base Styles v4.4 (Cosmic Shimmer Skeletons)
+/* Bilavnova BI - Base Styles v4.5 (Smooth Modal Nav Transitions)
  * Space-age futurist design system
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
  *
  * CHANGELOG:
+ * v4.5 (2026-01-28): Smooth Modal Navigation Transitions
+ *   - Enhanced BottomNavBar hide/show with slide-fade animation
+ *   - Uses CSS `translate` property to avoid Framer Motion conflicts
+ *   - Asymmetric timing: 0.25s hide (snappy), 0.3s show (smooth)
+ *   - Easing: ease-out-quart for hide, ease-out for show
  * v4.4 (2026-01-27): Cosmic Shimmer Skeletons
  *   - Added cosmic-shimmer keyframe with gradient wave sweep
  *   - Added skeleton-reveal for staggered cascade effect
@@ -34,6 +39,74 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================
+   SHADCN/UI CSS VARIABLES (Cosmic Precision Mapping)
+   Maps shadcn tokens to Cosmic Design System colors
+   ============================================ */
+
+@layer base {
+  :root {
+    /* shadcn tokens - Light Theme */
+    --background: 248 250 252;        /* space-light #f8fafc */
+    --foreground: 15 23 42;           /* slate-900 */
+    --card: 255 255 255;
+    --card-foreground: 15 23 42;
+    --popover: 255 255 255;
+    --popover-foreground: 15 23 42;
+    --primary: 45 56 138;             /* stellar-blue #2d388a */
+    --primary-foreground: 248 250 252;
+    --secondary: 241 245 249;         /* slate-100 */
+    --secondary-foreground: 15 23 42;
+    --muted: 241 245 249;
+    --muted-foreground: 100 116 139;  /* slate-500 */
+    --accent: 241 245 249;
+    --accent-foreground: 15 23 42;
+    --destructive: 239 68 68;         /* red-500 */
+    --destructive-foreground: 255 255 255;
+    --border: 226 232 240;            /* slate-200 */
+    --input: 226 232 240;
+    --ring: 0 174 239;                /* stellar-cyan #00aeef */
+    --radius: 0.5rem;
+
+    /* Chart colors for shadcn charts */
+    --chart-1: 45 56 138;             /* stellar-blue */
+    --chart-2: 0 174 239;             /* stellar-cyan */
+    --chart-3: 0 214 143;             /* cosmic-green */
+    --chart-4: 139 92 246;            /* violet-500 */
+    --chart-5: 249 115 22;            /* orange-500 */
+  }
+
+  .dark {
+    /* shadcn tokens - Dark Theme (Cosmic Precision) */
+    --background: 5 8 22;             /* space-void #050816 */
+    --foreground: 248 250 252;        /* slate-50 */
+    --card: 26 31 53;                 /* space-dust #1a1f35 */
+    --card-foreground: 248 250 252;
+    --popover: 26 31 53;              /* space-dust */
+    --popover-foreground: 248 250 252;
+    --primary: 0 174 239;             /* stellar-cyan #00aeef */
+    --primary-foreground: 5 8 22;     /* space-void */
+    --secondary: 10 15 30;            /* space-nebula #0a0f1e */
+    --secondary-foreground: 248 250 252;
+    --muted: 10 15 30;                /* space-nebula */
+    --muted-foreground: 148 163 184;  /* slate-400 */
+    --accent: 10 15 30;               /* space-nebula */
+    --accent-foreground: 248 250 252;
+    --destructive: 239 68 68;         /* red-500 */
+    --destructive-foreground: 248 250 252;
+    --border: 30 41 59;               /* slate-800 */
+    --input: 30 41 59;
+    --ring: 0 174 239;                /* stellar-cyan */
+
+    /* Chart colors for shadcn charts - dark mode */
+    --chart-1: 0 174 239;             /* stellar-cyan */
+    --chart-2: 45 56 138;             /* stellar-blue */
+    --chart-3: 0 214 143;             /* cosmic-green */
+    --chart-4: 167 139 250;           /* violet-400 */
+    --chart-5: 251 146 60;            /* orange-400 */
+  }
+}
 
 /* ============================================
    CSS VARIABLES FOR THEME SWITCHING
@@ -262,6 +335,60 @@ body {
 /* ============================================
    ANIMATION HELPERS
    ============================================ */
+
+/* Aurora gradient animation for sidebar headers
+   Slow, mesmerizing color shift for cosmic ambiance */
+@keyframes aurora-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 50% 100%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  75% {
+    background-position: 50% 0%;
+  }
+}
+
+.aurora-glow {
+  background: linear-gradient(
+    135deg,
+    rgba(45, 56, 138, 0.3) 0%,
+    rgba(0, 174, 239, 0.2) 20%,
+    rgba(139, 92, 246, 0.25) 40%,
+    rgba(0, 214, 143, 0.15) 60%,
+    rgba(0, 174, 239, 0.2) 80%,
+    rgba(45, 56, 138, 0.3) 100%
+  );
+  background-size: 300% 300%;
+  animation: aurora-shift 12s ease-in-out infinite;
+}
+
+/* Light mode aurora - more subtle */
+:root:not(.dark) .aurora-glow {
+  background: linear-gradient(
+    135deg,
+    rgba(45, 56, 138, 0.12) 0%,
+    rgba(0, 174, 239, 0.08) 20%,
+    rgba(139, 92, 246, 0.1) 40%,
+    rgba(0, 214, 143, 0.06) 60%,
+    rgba(0, 174, 239, 0.08) 80%,
+    rgba(45, 56, 138, 0.12) 100%
+  );
+  background-size: 300% 300%;
+  animation: aurora-shift 12s ease-in-out infinite;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-glow {
+    animation: none;
+    background-position: 50% 50%;
+  }
+}
 
 /* Shimmer animation - GPU accelerated via transform
    Uses pseudo-element with translateX instead of background-position */
@@ -598,29 +725,43 @@ body {
   animation: nav-fade-up 300ms ease-out forwards;
 }
 
-/* Safe area padding for bottom nav */
+/* Safe area padding utilities for modals and fixed elements */
+/* Uses max() to prefer larger of iOS env() or Android native variables */
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 8px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-safe-area-bottom, 0px));
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), var(--native-safe-area-top, 0px));
 }
 
 /* ============================================
-   MODAL-AWARE NAVIGATION (v4.3)
-   Hides BottomNavBar when modals are open
+   MODAL-AWARE NAVIGATION (v4.4)
+   Smooth slide-fade for BottomNavBar when modals open
+   Uses CSS `translate` property to avoid Framer Motion transform conflicts
    ============================================ */
 
-/* Slide nav down when modal is open */
-body.modal-open .bottom-nav-container {
-  transform: translateY(100%);
-  opacity: 0;
-  pointer-events: none;
+/* Base transition for smooth hide/show */
+.bottom-nav-container {
+  /* translate property is separate from transform, won't conflict with Framer Motion */
+  translate: 0 0;
+  transition:
+    opacity 0.3s cubic-bezier(0.0, 0, 0.2, 1),
+    translate 0.3s cubic-bezier(0.0, 0, 0.2, 1),
+    visibility 0.3s cubic-bezier(0.0, 0, 0.2, 1);
 }
 
-/* Reduced motion: instant hide instead of slide */
-@media (prefers-reduced-motion: reduce) {
-  body.modal-open .bottom-nav-container {
-    transform: none;
-    visibility: hidden;
-  }
+/* Slide down + fade out when modal is open */
+body.modal-open .bottom-nav-container {
+  opacity: 0;
+  translate: 0 100%;
+  visibility: hidden;
+  pointer-events: none;
+  /* Faster hide transition for snappy feel */
+  transition:
+    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    translate 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================
@@ -984,6 +1125,7 @@ a:focus-visible {
 /* Native safe area variables (set by JS for Android) */
 :root {
   --native-safe-area-top: 0px;
+  --native-safe-area-bottom: 0px;
   --android-status-bar-height: 0px;
 }
 

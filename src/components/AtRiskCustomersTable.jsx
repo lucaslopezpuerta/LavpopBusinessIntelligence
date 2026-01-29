@@ -1,4 +1,4 @@
-// AtRiskCustomersTable.jsx v10.6 - PREMIUM GLASS EFFECT
+// AtRiskCustomersTable.jsx v10.9 - SWIPE GESTURE SENSITIVITY FIX
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
@@ -13,8 +13,29 @@
 // ✅ Responsive pagination (10 desktop, 5 mobile)
 // ✅ Fills container height when used with flex layout
 // ✅ Clickable column headers with chevron sort indicators
+// ✅ Memoized row components for mobile performance (React Native pattern)
+// ✅ Virtualized "Show All" mode for large lists (react-window)
 //
 // CHANGELOG:
+// v10.9 (2026-01-28): Swipe Gesture Sensitivity Fix
+//   - Fixed overly sensitive swipe triggering (was 20px, now 50px)
+//   - Added deadzone (8px) to filter micro-movements
+//   - Added velocity checking for fast flick support (0.3 px/ms)
+//   - Stricter vertical tolerance (0.35 ratio vs 0.5) to prevent diagonal triggers
+//   - Uses centralized SWIPE_ACTION.THRESHOLDS from animations.js
+// v10.8 (2026-01-28): Virtualized "Show All" Mode
+//   - Added react-window FixedSizeList for mobile "Show All" mode
+//   - Toggle button shows when >20 customers (mobile only)
+//   - Virtualization renders only visible rows (~60fps scroll)
+//   - Pagination hidden in "Show All" mode
+//   - Applies React Native list-performance-virtualize pattern
+// v10.7 (2026-01-28): Mobile Performance Optimization
+//   - Extracted MobileCustomerCard as memoized component (React.memo)
+//   - Extracted DesktopCustomerRow as memoized component (React.memo)
+//   - Custom comparison functions prevent unnecessary re-renders
+//   - Memoized inline style objects with useMemo
+//   - Moved getRiskStyles outside component (prevents recreation)
+//   - Applies React Native list-performance best practices
 // v10.6 (2026-01-23): Premium Glass Effect
 //   - Main container: Applied premium glass effect (bg-space-dust/40 + backdrop-blur-xl)
 //   - Ring shadows: Light/dark variants for glass depth and stellar glow
@@ -103,8 +124,12 @@
 // v8.5 (2025-12-08): Campaign context tracking
 // v8.4 (2025-12-03): Phone validation for WhatsApp
 
-import React, { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
-import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Users, Ban, EyeOff, Eye, Search, X, Send } from 'lucide-react';
+import React, { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense, memo } from 'react';
+import { motion, useSpring, useTransform } from 'framer-motion';
+import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Users, Ban, EyeOff, Eye, Search, X, Send, List, LayoutGrid } from 'lucide-react';
+import { HapticCheckbox } from './ui/HapticCheckbox';
+import { List as FixedSizeList } from 'react-window';
+import { SWIPE_ACTION } from '../constants/animations';
 // Note: ArrowUpDown removed in v9.10 - replaced by clickable column headers with chevrons
 import { RISK_LABELS, DAY_THRESHOLDS } from '../utils/customerMetrics';
 
@@ -166,6 +191,368 @@ const getDaysUrgencyColor = (days) => {
   return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'; // 0-29 days: Normal
 };
 
+// Helper to get risk styles (moved outside component to prevent recreation)
+const getRiskStyles = (riskLevel) => {
+  const riskConfig = RISK_LABELS[riskLevel] || RISK_LABELS['Lost'];
+  return {
+    borderColorValue: riskConfig.borderColor,
+    dot: `bg-${riskConfig.color}-500`,
+    label: riskConfig.pt,
+    bgClass: riskConfig.bgClass,
+    textClass: riskConfig.textClass,
+    color: riskConfig.color
+  };
+};
+
+// Memoized Mobile Card Component - prevents re-renders when other rows change
+const MobileCustomerCard = memo(({
+  customer,
+  customerId,
+  contacted,
+  contactInfo,
+  blacklisted,
+  hasPhone,
+  canWhatsApp,
+  isSwipingThis,
+  canContact,
+  isSelected,
+  swipeOffset,
+  styles,
+  onCardClick,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
+  onTouchCancel,
+  onToggleSelect
+}) => {
+  // Spring-animated card position for smooth swipe physics
+  const x = useSpring(0, SWIPE_ACTION.CARD_SPRING);
+
+  // Update spring when swipeOffset changes
+  useEffect(() => {
+    x.set(isSwipingThis ? swipeOffset : 0);
+  }, [x, isSwipingThis, swipeOffset]);
+
+  // Transform swipe offset to icon scale/opacity for reveal effect
+  const leftIconScale = useTransform(x, [0, 40, 64], [0.6, 0.9, 1]);
+  const leftIconOpacity = useTransform(x, [0, 30, 64], [0, 0.7, 1]);
+  const rightIconScale = useTransform(x, [-64, -40, 0], [1, 0.9, 0.6]);
+  const rightIconOpacity = useTransform(x, [-64, -30, 0], [1, 0.7, 0]);
+
+  // Memoize the border color style
+  const borderStyle = useMemo(() => ({
+    borderLeftColor: blacklisted ? '#ef4444' : contacted ? '#10b981' : styles.borderColorValue
+  }), [blacklisted, contacted, styles.borderColorValue]);
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Swipe backgrounds with animated icons */}
+      {hasPhone && !contacted && canContact && (
+        <>
+          {canWhatsApp && (
+            <div className="absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
+              <motion.div style={{ scale: leftIconScale, opacity: leftIconOpacity }}>
+                <MessageCircle className="w-5 h-5 text-white" />
+              </motion.div>
+            </div>
+          )}
+          <div className="absolute inset-y-0 right-0 w-16 bg-blue-500 flex items-center justify-center">
+            <motion.div style={{ scale: rightIconScale, opacity: rightIconOpacity }}>
+              <Phone className="w-5 h-5 text-white" />
+            </motion.div>
+          </div>
+        </>
+      )}
+
+      {/* Card content with spring physics */}
+      <motion.div
+        className={`
+          relative flex items-center gap-3 p-3
+          border border-l-4 rounded-xl
+          touch-pan-y
+          ${contacted
+            ? 'bg-gradient-to-r from-emerald-50/80 to-emerald-25/40 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200/60 dark:border-emerald-700/30'
+            : blacklisted
+              ? 'bg-gradient-to-r from-red-50/60 to-slate-50 dark:from-red-950 dark:to-red-900 border-red-200/60 dark:border-red-700/30'
+              : 'bg-gradient-to-r from-slate-50 to-white dark:from-space-dust dark:to-space-nebula border-slate-200/60 dark:border-stellar-cyan/10'
+          }
+          ${isSelected ? 'ring-2 ring-stellar-cyan/50 dark:ring-stellar-cyan/40' : ''}
+        `}
+        style={{ ...borderStyle, x }}
+        whileTap={{ scale: 0.99 }}
+        onClick={onCardClick}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
+      >
+        {/* Checkbox - hidden if contacted, needs opaque bg to hide swipe action buttons */}
+        {!contacted ? (
+          <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 bg-white dark:bg-space-dust rounded-md p-1 -m-1">
+            <HapticCheckbox
+              checked={isSelected}
+              onCheckedChange={onToggleSelect}
+            />
+          </div>
+        ) : (
+          <div className="w-4 h-4 flex-shrink-0" />
+        )}
+
+        {/* Avatar/Initial */}
+        <div className="relative flex-shrink-0">
+          <div className={`
+            w-9 h-9 rounded-full flex items-center justify-center shadow-sm font-semibold text-xs
+            ${blacklisted
+              ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+              : contacted
+                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                : `${styles.bgClass} dark:bg-${styles.color}-900/40 ${styles.textClass} dark:text-${styles.color}-400`
+            }
+          `}>
+            {blacklisted ? <Ban className="w-4 h-4" /> : contacted ? <CheckCircle className="w-4 h-4" /> : (customer.name || '?').charAt(0).toUpperCase()}
+          </div>
+          {/* Risk indicator dot for non-contacted */}
+          {!contacted && !blacklisted && (
+            <div className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${styles.dot} border-2 border-slate-50 dark:border-slate-700`} />
+          )}
+          {/* Checkmark badge for contacted */}
+          {contacted && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-600 flex items-center justify-center border-2 border-white dark:border-space-dust shadow-sm">
+              <CheckCircle className="w-2.5 h-2.5 text-white" />
+            </div>
+          )}
+        </div>
+
+        {/* Customer info */}
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-semibold truncate ${contacted ? 'line-through text-slate-400 dark:text-slate-500' : ''} ${blacklisted && !contacted ? 'text-slate-500 dark:text-slate-400' : ''} ${!blacklisted && !contacted ? 'text-slate-900 dark:text-white' : ''}`}>
+            {customer.name || 'Sem nome'}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+            {contacted && contactInfo ? (
+              <span className="text-emerald-600 dark:text-emerald-400">
+                {contactInfo.method} há {contactInfo.timeAgo}
+              </span>
+            ) : (
+              <>
+                <span className={`font-medium ${getDaysUrgencyColor(customer.daysSinceLastVisit || 0).includes('text-white') ? 'text-red-600 dark:text-red-400' : ''}`}>
+                  {customer.daysSinceLastVisit || 0}d
+                </span>
+                <span>·</span>
+                <span className="font-medium">{formatCurrency(customer.netTotal || 0)}</span>
+              </>
+            )}
+          </p>
+        </div>
+
+        <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+      </motion.div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render when relevant props change
+  return (
+    prevProps.customerId === nextProps.customerId &&
+    prevProps.contacted === nextProps.contacted &&
+    prevProps.blacklisted === nextProps.blacklisted &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isSwipingThis === nextProps.isSwipingThis &&
+    prevProps.swipeOffset === nextProps.swipeOffset &&
+    prevProps.customer.name === nextProps.customer.name &&
+    prevProps.customer.daysSinceLastVisit === nextProps.customer.daysSinceLastVisit &&
+    prevProps.customer.netTotal === nextProps.customer.netTotal &&
+    prevProps.contactInfo?.timeAgo === nextProps.contactInfo?.timeAgo
+  );
+});
+
+// Memoized Desktop Table Row Component
+const DesktopCustomerRow = memo(({
+  customer,
+  customerId,
+  contacted,
+  contactInfo,
+  blacklisted,
+  blacklistInfo,
+  isSelected,
+  styles,
+  daysUrgency,
+  hasPhone,
+  canWhatsApp,
+  onRowClick,
+  onRowKeyDown,
+  onToggleSelect,
+  onCall,
+  onWhatsApp
+}) => {
+  // Memoize the border style
+  const borderStyle = useMemo(() => ({
+    borderLeftColor: blacklisted ? '#ef4444' : contacted ? '#10b981' : styles.borderColorValue
+  }), [blacklisted, contacted, styles.borderColorValue]);
+
+  return (
+    <tr
+      tabIndex={0}
+      className={`
+        group cursor-pointer
+        border-b border-slate-100 dark:border-slate-800
+        transition-all duration-200 border-l-4
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
+        ${contacted
+          ? 'bg-emerald-50/60 dark:bg-emerald-900/20 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30'
+          : blacklisted
+            ? 'bg-red-50/40 dark:bg-red-900/10 hover:bg-red-100/40 dark:hover:bg-red-900/20'
+            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+        }
+        ${isSelected ? 'bg-lavpop-blue/5' : ''}
+      `}
+      style={borderStyle}
+      onClick={onRowClick}
+      onKeyDown={onRowKeyDown}
+    >
+      {/* Checkbox - hidden if contacted */}
+      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+        {!contacted ? (
+          <HapticCheckbox
+            checked={isSelected}
+            onCheckedChange={onToggleSelect}
+          />
+        ) : (
+          <div className="w-4 h-4" />
+        )}
+      </td>
+
+      {/* Cliente */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          {/* Avatar */}
+          <div className="relative flex-shrink-0">
+            <div className={`
+              w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm
+              ${blacklisted
+                ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+                : contacted
+                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                  : `${styles.bgClass} dark:bg-${styles.color}-900/40 ${styles.textClass} dark:text-${styles.color}-400`
+              }
+            `}>
+              {blacklisted ? <Ban className="w-4 h-4" /> : contacted ? <CheckCircle className="w-4 h-4" /> : (customer.name || '?').charAt(0).toUpperCase()}
+            </div>
+            {contacted && !blacklisted && (
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-space-nebula flex items-center justify-center">
+                <CheckCircle className="w-2.5 h-2.5 text-white" />
+              </div>
+            )}
+          </div>
+          {/* Name */}
+          <div className="flex items-center gap-2">
+            <span className={`
+              font-semibold
+              ${contacted ? 'line-through text-slate-400 dark:text-slate-500' : ''}
+              ${blacklisted ? 'text-slate-500 dark:text-slate-400' : ''}
+              ${!contacted && !blacklisted ? 'text-slate-900 dark:text-white' : ''}
+            `}>
+              {customer.name || 'Sem nome'}
+            </span>
+            {blacklisted && (
+              <span className="text-red-500 dark:text-red-400 text-xs" title={blacklistInfo?.reason}>Bloqueado</span>
+            )}
+          </div>
+        </div>
+      </td>
+
+      {/* Risco */}
+      <td className="px-4 py-3 text-center">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md">
+          <div className={`w-2 h-2 rounded-full ${styles.dot}`} />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            {styles.label}
+          </span>
+        </div>
+      </td>
+
+      {/* Valor */}
+      <td className="px-4 py-3 text-center font-bold text-blue-600 dark:text-blue-400">
+        {formatCurrency(customer.netTotal || 0)}
+      </td>
+
+      {/* Dias - with urgency color */}
+      <td className="px-4 py-3 text-center">
+        <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold ${daysUrgency}`}>
+          {customer.daysSinceLastVisit || 0} dias
+        </span>
+      </td>
+
+      {/* Último Contato */}
+      <td className="px-4 py-3 text-center">
+        {contactInfo ? (
+          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+            {contactInfo.method} há {contactInfo.timeAgo}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-400 dark:text-slate-500">
+            Sem contato
+          </span>
+        )}
+      </td>
+
+      {/* Ações */}
+      <td className="px-4 py-3">
+        {blacklisted ? (
+          <div className="flex items-center justify-center">
+            <span className="text-xs text-slate-500 dark:text-slate-400 italic">Bloqueado</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-1">
+            {hasPhone && (
+              <>
+                <button
+                  onClick={onCall}
+                  className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 hover:scale-105 transition-all font-medium text-xs flex items-center gap-1.5"
+                  title="Ligar"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span className="hidden xl:inline">Ligar</span>
+                </button>
+                {canWhatsApp ? (
+                  <button
+                    onClick={onWhatsApp}
+                    className="p-2.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 hover:scale-105 transition-all font-medium text-xs flex items-center gap-1.5"
+                    title="WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="hidden xl:inline">WhatsApp</span>
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
+                    title="Número inválido"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render when relevant props change
+  return (
+    prevProps.customerId === nextProps.customerId &&
+    prevProps.contacted === nextProps.contacted &&
+    prevProps.blacklisted === nextProps.blacklisted &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.customer.name === nextProps.customer.name &&
+    prevProps.customer.daysSinceLastVisit === nextProps.customer.daysSinceLastVisit &&
+    prevProps.customer.netTotal === nextProps.customer.netTotal &&
+    prevProps.customer.riskLevel === nextProps.customer.riskLevel &&
+    prevProps.contactInfo?.timeAgo === nextProps.contactInfo?.timeAgo
+  );
+});
+
 const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) => {
   const { isDark } = useTheme();
 
@@ -194,10 +581,12 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [segmentModalOpen, setSegmentModalOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false); // Toggle for virtualized "show all" mode
 
   // Refs for keyboard navigation
   const tableRef = useRef(null);
   const focusedRowRef = useRef(0);
+  const virtualListRef = useRef(null); // Ref for virtualized list container
 
   // Swipe state for mobile
   const [swipeState, setSwipeState] = useState({ id: null, direction: null, offset: 0 });
@@ -359,8 +748,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
     }
   }, [filteredCustomers, selectedIds.size]);
 
-  const toggleSelect = useCallback((customerId, e) => {
-    e?.stopPropagation();
+  const toggleSelect = useCallback((customerId) => {
+    // Note: stopPropagation is handled by parent element (div/td onClick)
     setSelectedIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(customerId)) {
@@ -495,9 +884,14 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
   }, [isContacted, markContacted, getCustomerContext]);
 
   // Touch handlers for swipe (mobile row actions)
+  // v10.9: Improved sensitivity with THRESHOLDS (deadzone, velocity, stricter direction)
   const handleTouchStart = useCallback((e, customerId) => {
     const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()  // Track start time for velocity calculation
+    };
     setSwipeState({ id: customerId, direction: null, offset: 0 });
   }, []);
 
@@ -507,22 +901,40 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartRef.current.x;
     const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+    const absX = Math.abs(deltaX);
 
-    // If more vertical than horizontal, reset and allow normal scroll
-    if (deltaY > Math.abs(deltaX) * 0.5) {
+    const { THRESHOLDS } = SWIPE_ACTION;
+
+    // Deadzone: ignore micro-movements (prevents accidental triggers)
+    if (absX < THRESHOLDS.DEADZONE) return;
+
+    // Stricter vertical tolerance - cancel if too vertical
+    if (deltaY > absX * THRESHOLDS.VERTICAL_RATIO) {
       setSwipeState({ id: null, direction: null, offset: 0 });
       return;
     }
 
-    const maxOffset = 64;
-    const offset = Math.max(-maxOffset, Math.min(maxOffset, deltaX));
-    const direction = offset > 20 ? 'right' : offset < -20 ? 'left' : null;
+    const offset = Math.max(-THRESHOLDS.MAX_OFFSET, Math.min(THRESHOLDS.MAX_OFFSET, deltaX));
+    const direction = offset > THRESHOLDS.DIRECTION_MIN ? 'right'
+                    : offset < -THRESHOLDS.DIRECTION_MIN ? 'left'
+                    : null;
 
     setSwipeState({ id: customerId, direction, offset });
   }, [swipeState.id]);
 
   const handleTouchEnd = useCallback((customer, customerId) => {
-    if (!swipeState.direction || !customer.phone) {
+    const { THRESHOLDS } = SWIPE_ACTION;
+    const absOffset = Math.abs(swipeState.offset);
+
+    // Calculate velocity (px per ms) for fast flick detection
+    const elapsed = Date.now() - touchStartRef.current.time;
+    const velocity = elapsed > 0 ? absOffset / elapsed : 0;
+
+    // Must meet threshold OR have high velocity (for quick flicks)
+    const meetsThreshold = absOffset >= THRESHOLDS.ACTION_TRIGGER;
+    const hasHighVelocity = velocity >= THRESHOLDS.MIN_VELOCITY && absOffset > THRESHOLDS.DIRECTION_MIN;
+
+    if (!swipeState.direction || !customer.phone || (!meetsThreshold && !hasHighVelocity)) {
       setSwipeState({ id: null, direction: null, offset: 0 });
       return;
     }
@@ -534,24 +946,12 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
     }
 
     setSwipeState({ id: null, direction: null, offset: 0 });
-  }, [swipeState.direction, handleWhatsApp, handleCall]);
+  }, [swipeState.direction, swipeState.offset, handleWhatsApp, handleCall]);
 
   // Handle touch cancel (e.g., if user moves finger off screen)
   const handleTouchCancel = useCallback(() => {
     setSwipeState({ id: null, direction: null, offset: 0 });
   }, []);
-
-  const getRiskStyles = (riskLevel) => {
-    const riskConfig = RISK_LABELS[riskLevel] || RISK_LABELS['Lost'];
-    return {
-      borderColorValue: riskConfig.borderColor,
-      dot: `bg-${riskConfig.color}-500`,
-      label: riskConfig.pt,
-      bgClass: riskConfig.bgClass,
-      textClass: riskConfig.textClass,
-      color: riskConfig.color
-    };
-  };
 
   // Get selected customers for modal
   const selectedCustomers = useMemo(() => {
@@ -590,8 +990,28 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
               </div>
             </div>
 
-            {/* Header right side - blocked toggle + batch action */}
+            {/* Header right side - show all toggle + blocked toggle + batch action */}
             <div className="flex items-center gap-3">
+              {/* Show All toggle (mobile only, for 20+ customers) */}
+              {filteredCustomers.length > 20 && (
+                <button
+                  onClick={() => {
+                    setShowAll(!showAll);
+                    setCurrentPage(1); // Reset pagination when toggling
+                  }}
+                  className={`
+                    lg:hidden flex items-center gap-2 px-3 py-2.5 text-xs font-medium rounded-xl border transition-all duration-200
+                    ${showAll
+                      ? 'bg-gradient-to-r from-stellar-cyan/10 to-stellar-cyan/5 dark:from-stellar-cyan/20 dark:to-stellar-cyan/10 text-stellar-cyan border-stellar-cyan/50 dark:border-stellar-cyan/40 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 border-slate-200/80 dark:border-stellar-cyan/15 hover:border-stellar-cyan/30 dark:hover:border-stellar-cyan/25 hover:bg-stellar-cyan/5 dark:hover:bg-stellar-cyan/10 hover:text-stellar-cyan'
+                    }
+                  `}
+                  title={showAll ? 'Ver paginado' : 'Ver todos'}
+                >
+                  {showAll ? <LayoutGrid className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{showAll ? 'Paginado' : 'Ver Todos'}</span>
+                </button>
+              )}
               {/* Blocked toggle */}
               {blacklistedInList > 0 && (
                 <button
@@ -694,137 +1114,100 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
         </div>
 
         {/* Mobile Card View - grows to fill space */}
-        <div className="lg:hidden p-4 space-y-2 flex-1 overflow-y-auto">
-          {paginatedCustomers.length === 0 ? (
-            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+        <div className="lg:hidden flex-1 overflow-hidden" ref={virtualListRef}>
+          {(showAll ? filteredCustomers : paginatedCustomers).length === 0 ? (
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400 p-4">
               Nenhum cliente encontrado
             </div>
-          ) : (
-            paginatedCustomers.map((customer, index) => {
-              const styles = getRiskStyles(customer.riskLevel);
-              const customerId = customer.doc || `idx-${index}`;
-              const contacted = isContacted(customerId);
-              const contactInfo = contacted ? getContactInfo(customerId) : null;
-              const blacklisted = isBlacklisted(customer.phone);
-              const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
-              const hasPhone = customer.phone && formatPhone(customer.phone);
-              const canWhatsApp = hasValidWhatsApp(customer.phone);
-              const isSwipingThis = swipeState.id === customerId;
-              const canContact = !blacklisted;
-              const isSelected = selectedIds.has(customerId);
+          ) : showAll ? (
+            /* Virtualized "Show All" mode - renders only visible items */
+            <FixedSizeList
+              height={virtualListRef.current?.clientHeight || 400}
+              itemCount={filteredCustomers.length}
+              itemSize={88} // Card height (76px) + gap (8px) + padding (4px)
+              width="100%"
+              className="p-4"
+              style={{ paddingLeft: '1rem', paddingRight: '1rem' }}
+            >
+              {({ index, style }) => {
+                const customer = filteredCustomers[index];
+                const customerId = customer.doc || `idx-${index}`;
+                const contacted = isContacted(customerId);
+                const blacklisted = isBlacklisted(customer.phone);
+                const hasPhone = customer.phone && formatPhone(customer.phone);
+                const canWhatsApp = hasValidWhatsApp(customer.phone);
+                const isSwipingThis = swipeState.id === customerId;
+                const canContact = !blacklisted;
 
-              return (
-                <div key={customerId} className="relative overflow-hidden rounded-xl">
-                  {/* Swipe backgrounds */}
-                  {hasPhone && !contacted && canContact && (
-                    <>
-                      {canWhatsApp && (
-                        <div className="absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
-                          <MessageCircle className="w-5 h-5 text-white" />
-                        </div>
-                      )}
-                      <div className="absolute inset-y-0 right-0 w-16 bg-blue-500 flex items-center justify-center">
-                        <Phone className="w-5 h-5 text-white" />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Card content - uses preventDefault in touch handlers to prevent view navigation conflict */}
-                  <div
-                    className={`
-                      relative flex items-center gap-3 p-3
-                      border border-l-4 rounded-xl
-                      transition-all duration-200 touch-pan-y
-                      active:scale-[0.99]
-                      ${contacted
-                        ? 'bg-gradient-to-r from-emerald-50/80 to-emerald-25/40 dark:from-emerald-900/30 dark:to-emerald-900/10 border-emerald-200/60 dark:border-emerald-700/30'
-                        : blacklisted
-                          ? 'bg-gradient-to-r from-red-50/60 to-slate-50 dark:from-red-900/20 dark:to-space-nebula/40 border-red-200/60 dark:border-red-700/30'
-                          : 'bg-gradient-to-r from-slate-50 to-white dark:from-space-dust/60 dark:to-space-nebula/40 border-slate-200/60 dark:border-stellar-cyan/10'
-                      }
-                      ${isSelected ? 'ring-2 ring-stellar-cyan/50 dark:ring-stellar-cyan/40' : ''}
-                    `}
-                    style={{
-                      borderLeftColor: blacklisted ? '#ef4444' : contacted ? '#10b981' : styles.borderColorValue,
-                      transform: isSwipingThis ? `translateX(${swipeState.offset}px)` : 'translateX(0)'
-                    }}
-                    onClick={() => setSelectedCustomer(customer)}
-                    onTouchStart={(e) => hasPhone && !contacted && canContact && handleTouchStart(e, customerId)}
-                    onTouchMove={(e) => hasPhone && !contacted && canContact && handleTouchMove(e, customerId)}
-                    onTouchEnd={() => !contacted && canContact && handleTouchEnd(customer, customerId)}
-                    onTouchCancel={handleTouchCancel}
-                  >
-                    {/* Checkbox - hidden if contacted */}
-                    {!contacted ? (
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={(e) => toggleSelect(customerId, e)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-4 h-4 rounded border-slate-300 dark:border-stellar-cyan/30 text-stellar-cyan focus:ring-stellar-cyan/50 flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-4 h-4 flex-shrink-0" /> /* Spacer to maintain layout */
-                    )}
-
-                    {/* Avatar/Initial */}
-                    <div className="relative flex-shrink-0">
-                      <div className={`
-                        w-9 h-9 rounded-full flex items-center justify-center shadow-sm font-semibold text-xs
-                        ${blacklisted
-                          ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
-                          : contacted
-                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
-                            : `${styles.bgClass} dark:bg-${styles.color}-900/40 ${styles.textClass} dark:text-${styles.color}-400`
-                        }
-                      `}>
-                        {blacklisted ? <Ban className="w-4 h-4" /> : contacted ? <CheckCircle className="w-4 h-4" /> : (customer.name || '?').charAt(0).toUpperCase()}
-                      </div>
-                      {/* Risk indicator dot for non-contacted */}
-                      {!contacted && !blacklisted && (
-                        <div className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${styles.dot} border-2 border-slate-50 dark:border-slate-700`} />
-                      )}
-                      {/* Checkmark badge for contacted */}
-                      {contacted && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 dark:bg-emerald-600 flex items-center justify-center border-2 border-white dark:border-space-dust shadow-sm">
-                          <CheckCircle className="w-2.5 h-2.5 text-white" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Customer info */}
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-semibold truncate ${contacted ? 'line-through text-slate-400 dark:text-slate-500' : ''} ${blacklisted && !contacted ? 'text-slate-500 dark:text-slate-400' : ''} ${!blacklisted && !contacted ? 'text-slate-900 dark:text-white' : ''}`}>
-                        {customer.name || 'Sem nome'}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
-                        {contacted && contactInfo ? (
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            {contactInfo.method} há {contactInfo.timeAgo}
-                          </span>
-                        ) : (
-                          <>
-                            <span className={`font-medium ${getDaysUrgencyColor(customer.daysSinceLastVisit || 0).includes('text-white') ? 'text-red-600 dark:text-red-400' : ''}`}>
-                              {customer.daysSinceLastVisit || 0}d
-                            </span>
-                            <span>·</span>
-                            <span className="font-medium">{formatCurrency(customer.netTotal || 0)}</span>
-                          </>
-                        )}
-                      </p>
-                    </div>
-
-                    <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                return (
+                  <div style={{ ...style, paddingBottom: '8px' }}>
+                    <MobileCustomerCard
+                      customer={customer}
+                      customerId={customerId}
+                      contacted={contacted}
+                      contactInfo={contacted ? getContactInfo(customerId) : null}
+                      blacklisted={blacklisted}
+                      hasPhone={hasPhone}
+                      canWhatsApp={canWhatsApp}
+                      isSwipingThis={isSwipingThis}
+                      canContact={canContact}
+                      isSelected={selectedIds.has(customerId)}
+                      swipeOffset={swipeState.offset}
+                      styles={getRiskStyles(customer.riskLevel)}
+                      onCardClick={() => setSelectedCustomer(customer)}
+                      onTouchStart={hasPhone && !contacted && canContact ? (e) => handleTouchStart(e, customerId) : undefined}
+                      onTouchMove={hasPhone && !contacted && canContact ? (e) => handleTouchMove(e, customerId) : undefined}
+                      onTouchEnd={!contacted && canContact ? () => handleTouchEnd(customer, customerId) : undefined}
+                      onTouchCancel={handleTouchCancel}
+                      onToggleSelect={() => toggleSelect(customerId)}
+                    />
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              }}
+            </FixedSizeList>
+          ) : (
+            /* Paginated mode - current behavior */
+            <div className="p-4 space-y-2 overflow-y-auto h-full">
+              {paginatedCustomers.map((customer, index) => {
+                const customerId = customer.doc || `idx-${index}`;
+                const contacted = isContacted(customerId);
+                const blacklisted = isBlacklisted(customer.phone);
+                const hasPhone = customer.phone && formatPhone(customer.phone);
+                const canWhatsApp = hasValidWhatsApp(customer.phone);
+                const isSwipingThis = swipeState.id === customerId;
+                const canContact = !blacklisted;
 
-          {paginatedCustomers.some(c => c.phone && formatPhone(c.phone)) && (
-            <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1">
-              Deslize ← para ligar{paginatedCustomers.some(c => hasValidWhatsApp(c.phone)) ? ' ou → para WhatsApp' : ''}
-            </p>
+                return (
+                  <MobileCustomerCard
+                    key={customerId}
+                    customer={customer}
+                    customerId={customerId}
+                    contacted={contacted}
+                    contactInfo={contacted ? getContactInfo(customerId) : null}
+                    blacklisted={blacklisted}
+                    hasPhone={hasPhone}
+                    canWhatsApp={canWhatsApp}
+                    isSwipingThis={isSwipingThis}
+                    canContact={canContact}
+                    isSelected={selectedIds.has(customerId)}
+                    swipeOffset={swipeState.offset}
+                    styles={getRiskStyles(customer.riskLevel)}
+                    onCardClick={() => setSelectedCustomer(customer)}
+                    onTouchStart={hasPhone && !contacted && canContact ? (e) => handleTouchStart(e, customerId) : undefined}
+                    onTouchMove={hasPhone && !contacted && canContact ? (e) => handleTouchMove(e, customerId) : undefined}
+                    onTouchEnd={!contacted && canContact ? () => handleTouchEnd(customer, customerId) : undefined}
+                    onTouchCancel={handleTouchCancel}
+                    onToggleSelect={() => toggleSelect(customerId)}
+                  />
+                );
+              })}
+
+              {paginatedCustomers.some(c => c.phone && formatPhone(c.phone)) && (
+                <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1">
+                  Deslize ← para ligar{paginatedCustomers.some(c => hasValidWhatsApp(c.phone)) ? ' ou → para WhatsApp' : ''}
+                </p>
+              )}
+            </div>
           )}
         </div>
 
@@ -834,11 +1217,9 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
             <thead className="sticky top-0 z-10 bg-slate-50/80 dark:bg-space-dust/60 shadow-sm">
               <tr className="border-b-2 border-slate-200 dark:border-slate-700">
                 <th scope="col" className="px-4 py-3 text-left w-10">
-                  <input
-                    type="checkbox"
+                  <HapticCheckbox
                     checked={selectedIds.size === filteredCustomers.length && filteredCustomers.length > 0}
-                    onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-lavpop-blue focus:ring-lavpop-blue"
+                    onCheckedChange={toggleSelectAll}
                   />
                 </th>
                 <th scope="col" className="px-4 py-3 text-left">
@@ -924,171 +1305,36 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                 </tr>
               ) : (
                 paginatedCustomers.map((customer, index) => {
-                  const styles = getRiskStyles(customer.riskLevel);
                   const customerId = customer.doc || `idx-${index}`;
                   const contacted = isContacted(customerId);
-                  const contactInfo = contacted ? getContactInfo(customerId) : null;
                   const blacklisted = isBlacklisted(customer.phone);
-                  const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
-                  const isSelected = selectedIds.has(customerId);
-                  const daysUrgency = getDaysUrgencyColor(customer.daysSinceLastVisit || 0);
+                  const hasPhone = customer.phone && formatPhone(customer.phone);
 
                   return (
-                    <tr
+                    <DesktopCustomerRow
                       key={customerId}
-                      tabIndex={0}
-                      className={`
-                        group cursor-pointer
-                        border-b border-slate-100 dark:border-slate-800
-                        transition-all duration-200 border-l-4
-                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
-                        ${contacted
-                          ? 'bg-emerald-50/60 dark:bg-emerald-900/20 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30'
-                          : blacklisted
-                            ? 'bg-red-50/40 dark:bg-red-900/10 hover:bg-red-100/40 dark:hover:bg-red-900/20'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                        }
-                        ${isSelected ? 'bg-lavpop-blue/5' : ''}
-                      `}
-                      style={{ borderLeftColor: blacklisted ? '#ef4444' : contacted ? '#10b981' : styles.borderColorValue }}
-                      onClick={() => setSelectedCustomer(customer)}
-                      onKeyDown={(e) => {
+                      customer={customer}
+                      customerId={customerId}
+                      contacted={contacted}
+                      contactInfo={contacted ? getContactInfo(customerId) : null}
+                      blacklisted={blacklisted}
+                      blacklistInfo={blacklisted ? getBlacklistReason(customer.phone) : null}
+                      isSelected={selectedIds.has(customerId)}
+                      styles={getRiskStyles(customer.riskLevel)}
+                      daysUrgency={getDaysUrgencyColor(customer.daysSinceLastVisit || 0)}
+                      hasPhone={hasPhone}
+                      canWhatsApp={hasValidWhatsApp(customer.phone)}
+                      onRowClick={() => setSelectedCustomer(customer)}
+                      onRowKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           setSelectedCustomer(customer);
                         }
                       }}
-                    >
-                      {/* Checkbox - hidden if contacted */}
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        {!contacted ? (
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={(e) => toggleSelect(customerId, e)}
-                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-lavpop-blue focus:ring-lavpop-blue"
-                          />
-                        ) : (
-                          <div className="w-4 h-4" /> /* Spacer to maintain layout */
-                        )}
-                      </td>
-
-                      {/* Cliente */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {/* Avatar */}
-                          <div className="relative flex-shrink-0">
-                            <div className={`
-                              w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm
-                              ${blacklisted
-                                ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
-                                : contacted
-                                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
-                                  : `${styles.bgClass} dark:bg-${styles.color}-900/40 ${styles.textClass} dark:text-${styles.color}-400`
-                              }
-                            `}>
-                              {blacklisted ? <Ban className="w-4 h-4" /> : contacted ? <CheckCircle className="w-4 h-4" /> : (customer.name || '?').charAt(0).toUpperCase()}
-                            </div>
-                            {contacted && !blacklisted && (
-                              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-space-nebula flex items-center justify-center">
-                                <CheckCircle className="w-2.5 h-2.5 text-white" />
-                              </div>
-                            )}
-                          </div>
-                          {/* Name */}
-                          <div className="flex items-center gap-2">
-                            <span className={`
-                              font-semibold
-                              ${contacted ? 'line-through text-slate-400 dark:text-slate-500' : ''}
-                              ${blacklisted ? 'text-slate-500 dark:text-slate-400' : ''}
-                              ${!contacted && !blacklisted ? 'text-slate-900 dark:text-white' : ''}
-                            `}>
-                              {customer.name || 'Sem nome'}
-                            </span>
-                            {blacklisted && (
-                              <span className="text-red-500 dark:text-red-400 text-xs" title={blacklistInfo?.reason}>Bloqueado</span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Risco */}
-                      <td className="px-4 py-3 text-center">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md">
-                          <div className={`w-2 h-2 rounded-full ${styles.dot}`} />
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                            {styles.label}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Valor */}
-                      <td className="px-4 py-3 text-center font-bold text-blue-600 dark:text-blue-400">
-                        {formatCurrency(customer.netTotal || 0)}
-                      </td>
-
-                      {/* Dias - with urgency color */}
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold ${daysUrgency}`}>
-                          {customer.daysSinceLastVisit || 0} dias
-                        </span>
-                      </td>
-
-                      {/* Último Contato */}
-                      <td className="px-4 py-3 text-center">
-                        {contactInfo ? (
-                          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                            {contactInfo.method} há {contactInfo.timeAgo}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400 dark:text-slate-500">
-                            Sem contato
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Ações */}
-                      <td className="px-4 py-3">
-                        {blacklisted ? (
-                          <div className="flex items-center justify-center">
-                            <span className="text-xs text-slate-500 dark:text-slate-400 italic">Bloqueado</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-1">
-                            {customer.phone && formatPhone(customer.phone) && (
-                              <>
-                                <button
-                                  onClick={(e) => handleCall(e, customer.phone, customerId)}
-                                  className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 hover:scale-105 transition-all font-medium text-xs flex items-center gap-1.5"
-                                  title="Ligar"
-                                >
-                                  <Phone className="w-4 h-4" />
-                                  <span className="hidden xl:inline">Ligar</span>
-                                </button>
-                                {hasValidWhatsApp(customer.phone) ? (
-                                  <button
-                                    onClick={(e) => handleWhatsApp(e, customer.phone, customerId)}
-                                    className="p-2.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 hover:scale-105 transition-all font-medium text-xs flex items-center gap-1.5"
-                                    title="WhatsApp"
-                                  >
-                                    <MessageCircle className="w-4 h-4" />
-                                    <span className="hidden xl:inline">WhatsApp</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    disabled
-                                    className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
-                                    title="Número inválido"
-                                  >
-                                    <MessageCircle className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                      onToggleSelect={() => toggleSelect(customerId)}
+                      onCall={(e) => handleCall(e, customer.phone, customerId)}
+                      onWhatsApp={(e) => handleWhatsApp(e, customer.phone, customerId)}
+                    />
                   );
                 })
               )}
@@ -1096,8 +1342,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
           </table>
         </div>
 
-        {/* Pagination - fixed height */}
-        {totalPages > 1 && (
+        {/* Pagination - fixed height (hidden in "Show All" mode) */}
+        {totalPages > 1 && !showAll && (
           <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t flex-shrink-0 ${isDark ? 'border-white/[0.05] bg-space-dust/20' : 'border-slate-200/60 bg-slate-50/50'}`}>
             <div className="text-xs text-slate-500 dark:text-slate-400 order-2 sm:order-1">
               {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredCustomers.length)} de {filteredCustomers.length}

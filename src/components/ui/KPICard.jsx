@@ -1,8 +1,11 @@
-// KPICard.jsx v1.15 - ACCESSIBILITY & CONSISTENCY
+// KPICard.jsx v1.16 - HAPTIC FEEDBACK UPDATE
 // Unified KPI card component for Intelligence dashboard
 // Design System v5.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.16 (2026-01-28): Haptic feedback integration
+//   - Added haptics.light() on clickable card press
+//   - Native Capacitor haptics on Android/iOS, web fallback
 // v1.15 (2026-01-27): Accessibility & consistency improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - KPICard and KPIGrid animations disabled when user prefers reduced motion
@@ -69,13 +72,14 @@
 //   - Dark mode support
 //   - Optional click handler with proper a11y
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { getSemanticColor } from '../../utils/colorMapping';
 import ContextHelp from '../ContextHelp';
 import useReducedMotion from '../../hooks/useReducedMotion';
 import { TWEEN, STAGGER, SPRING } from '../../constants/animations';
+import { haptics } from '../../utils/haptics';
 
 // Smooth tween animation config for hover (avoids spring oscillation/trembling)
 const hoverAnimation = {
@@ -125,6 +129,14 @@ const KPICard = ({
 }) => {
   const colors = getSemanticColor(color);
   const prefersReducedMotion = useReducedMotion();
+
+  // Wrap onClick with haptic feedback for clickable cards
+  const handleClick = useCallback((e) => {
+    if (onClick) {
+      haptics.light();
+      onClick(e);
+    }
+  }, [onClick]);
 
   // Variant-specific styling - Cosmic Precision (v4.3)
   // Uses space-dust for dark backgrounds (Tier 1 Essential)
@@ -225,7 +237,7 @@ const KPICard = ({
   return (
     <MotionCard
       className={cardClasses}
-      onClick={onClick}
+      onClick={onClick ? handleClick : undefined}
       type={onClick ? 'button' : undefined}
       aria-label={onClick ? `${label}: ${value}` : undefined}
       initial="rest"

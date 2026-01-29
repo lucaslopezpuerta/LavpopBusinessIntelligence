@@ -1,7 +1,7 @@
 /**
  * AppSettingsModal - App-wide settings modal
  *
- * VERSION: 2.4
+ * VERSION: 2.5
  *
  * Replaces BusinessSettingsModal with improved UX:
  * - Dark mode support
@@ -17,6 +17,10 @@
  * - Framer Motion animations with reduced motion support (v2.4)
  *
  * CHANGELOG:
+ * v2.5 (2026-01-28): Mobile full-screen fix
+ *   - Uses h-[100dvh] for proper full-screen on mobile (dynamic viewport height)
+ *   - Changed rounded-none to rounded-t-2xl for bottom-sheet style
+ *   - pt-safe now works with new CSS definition (max with Android fallback)
  * v2.4 (2026-01-27): Animation standardization
  *   - Added Framer Motion animations using MODAL constants
  *   - Added AnimatePresence for proper enter/exit animations
@@ -102,20 +106,14 @@ import { useIsMobile } from '../hooks/useMediaQuery';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import CosmicDatePicker from './ui/CosmicDatePicker';
-
-// Tab configuration
-const TABS = [
-  { id: 'business', label: 'Negócio', icon: DollarSign },
-  { id: 'automation', label: 'Automação', icon: Bot },
-  { id: 'appearance', label: 'Aparência', icon: Palette },
-];
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { haptics } from '../utils/haptics';
 
 const AppSettingsModal = ({ isOpen, onClose }) => {
   const { settings, updateSettings, isSaving, error } = useAppSettings();
   const { theme, setTheme } = useTheme();
   const prefersReducedMotion = useReducedMotion();
 
-  const [activeTab, setActiveTab] = useState('business');
   const [localSettings, setLocalSettings] = useState(settings);
   const [hasChanges, setHasChanges] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -200,11 +198,11 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
             role="dialog"
             aria-modal="true"
             {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
-            className="relative w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
+            className="relative w-full sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
             onClick={(e) => e.stopPropagation()}
           >
         {/* Header wrapper with safe area - extends background into notch/Dynamic Island */}
-        <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl flex-shrink-0">
+        <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-2xl flex-shrink-0">
           {/* Header content */}
           <div className="flex items-center justify-between px-4 sm:px-5 py-3">
             <div className="flex items-center gap-2.5">
@@ -225,30 +223,6 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* Tab Navigation - Compact */}
-        <div className="flex border-b border-slate-200 dark:border-stellar-cyan/10 px-4 sm:px-5 flex-shrink-0">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`
-                  flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors
-                  ${isActive
-                    ? 'border-stellar-cyan text-stellar-cyan'
-                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }
-                `}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Error Banner - Compact */}
         {error && (
           <div className="mx-4 sm:mx-5 mt-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 flex-shrink-0">
@@ -257,26 +231,56 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {/* Content - Scrollable */}
-        <div className="px-4 sm:px-5 py-3 sm:py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
-          {activeTab === 'business' && (
-            <BusinessTab
-              settings={localSettings}
-              onChange={handleChange}
-              onNumberChange={handleNumberChange}
-              totalFixedCosts={totalFixedCosts}
-            />
-          )}
-          {activeTab === 'automation' && (
-            <AutomationTab
-              settings={localSettings}
-              onChange={handleChange}
-            />
-          )}
-          {activeTab === 'appearance' && (
-            <AppearanceTab theme={theme} setTheme={setTheme} />
-          )}
-        </div>
+        {/* Tabs - shadcn with cosmic styling */}
+        <Tabs defaultValue="business" className="flex flex-col flex-1 min-h-0">
+          <TabsList className="flex-shrink-0 w-full justify-start rounded-none border-b border-slate-200 dark:border-stellar-cyan/10 bg-transparent h-auto p-0 px-4 sm:px-5">
+            <TabsTrigger
+              value="business"
+              onClick={() => haptics.tick()}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-stellar-cyan data-[state=active]:text-stellar-cyan data-[state=active]:bg-transparent data-[state=active]:shadow-none text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              <DollarSign className="w-4 h-4" />
+              Negócio
+            </TabsTrigger>
+            <TabsTrigger
+              value="automation"
+              onClick={() => haptics.tick()}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-stellar-cyan data-[state=active]:text-stellar-cyan data-[state=active]:bg-transparent data-[state=active]:shadow-none text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              <Bot className="w-4 h-4" />
+              Automação
+            </TabsTrigger>
+            <TabsTrigger
+              value="appearance"
+              onClick={() => haptics.tick()}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-none border-b-2 border-transparent data-[state=active]:border-stellar-cyan data-[state=active]:text-stellar-cyan data-[state=active]:bg-transparent data-[state=active]:shadow-none text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              <Palette className="w-4 h-4" />
+              Aparência
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Content - Scrollable */}
+          <div className="px-4 sm:px-5 py-3 sm:py-4 overflow-y-auto flex-1 min-h-0">
+            <TabsContent value="business" className="mt-0 space-y-4">
+              <BusinessTab
+                settings={localSettings}
+                onChange={handleChange}
+                onNumberChange={handleNumberChange}
+                totalFixedCosts={totalFixedCosts}
+              />
+            </TabsContent>
+            <TabsContent value="automation" className="mt-0 space-y-4">
+              <AutomationTab
+                settings={localSettings}
+                onChange={handleChange}
+              />
+            </TabsContent>
+            <TabsContent value="appearance" className="mt-0 space-y-4">
+              <AppearanceTab theme={theme} setTheme={setTheme} />
+            </TabsContent>
+          </div>
+        </Tabs>
 
         {/* Footer - Compact with glass morphism + safe area */}
         <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 pb-safe border-t border-slate-200 dark:border-stellar-cyan/10 bg-slate-50 dark:bg-space-nebula/30 dark:backdrop-blur-sm rounded-b-none sm:rounded-b-2xl flex-shrink-0">

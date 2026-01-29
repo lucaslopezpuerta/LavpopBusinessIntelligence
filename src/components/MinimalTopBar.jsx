@@ -81,10 +81,11 @@ const HorizonLine = ({ isDark, prefersReducedMotion }) => {
       <motion.div
         className="w-full h-full"
         style={{
-          background: isDark
+          backgroundImage: isDark
             ? 'linear-gradient(90deg, transparent, #2d388a, #00aeef, #2d388a, transparent)'
             : 'linear-gradient(90deg, transparent, rgba(45,56,138,0.4), rgba(0,174,239,0.6), rgba(45,56,138,0.4), transparent)',
-          backgroundSize: '200% 100%'
+          backgroundSize: '200% 100%',
+          backgroundRepeat: 'no-repeat'
         }}
         animate={{
           backgroundPosition: ['100% 0', '-100% 0'],

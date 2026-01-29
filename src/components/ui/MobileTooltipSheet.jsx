@@ -1,9 +1,14 @@
-// MobileTooltipSheet.jsx v2.3 - iOS SCROLL LOCK
+// MobileTooltipSheet.jsx v2.4 - NATIVE ACTION SHEET
 // Slide-up bottom sheet for displaying customer data on mobile touch devices
 // Replaces floating tooltip for better mobile UX
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v2.4 (2026-01-28): Native Action Sheet integration
+//   - Long-press now shows native action sheet on Android/iOS (Capacitor)
+//   - Options: Ver Perfil, WhatsApp, Ligar
+//   - Web fallback maintains original "Ver Perfil" behavior
+//   - Uses @capacitor/action-sheet for native feel
 // v2.3 (2026-01-12): iOS-compatible scroll lock
 //   - Added body scroll lock to prevent background scrolling
 //   - Preserves scroll position when sheet closes
@@ -76,6 +81,7 @@ import { useSwipeToClose } from '../../hooks/useSwipeToClose';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { MOBILE_SHEET, TWEEN } from '../../constants/animations';
 import { haptics } from '../../utils/haptics';
+import { showCustomerActions, isActionSheetSupported } from '../../utils/nativeActionSheet';
 
 /**
  * Status icon mapping for WCAG accessibility
@@ -144,7 +150,7 @@ const MobileTooltipSheet = ({
   // Only apply swipe style when actually dragging to prevent Framer Motion animation conflict
   const swipeStyle = dragY > 0 ? style : undefined;
 
-  // Long-press handlers - triggers "Ver Perfil" action
+  // Long-press handlers - triggers action menu (native) or "Ver Perfil" (web)
   const handleLongPressStart = useCallback((e) => {
     // Don't start long-press if touch is on a button
     if (e.target.closest('button')) return;
@@ -156,21 +162,42 @@ const MobileTooltipSheet = ({
     }
 
     longPressTriggeredRef.current = false;
-    longPressTimerRef.current = setTimeout(() => {
+    longPressTimerRef.current = setTimeout(async () => {
       longPressTriggeredRef.current = true;
       haptics.medium();
 
       const customerId = data?.id;
 
-      // Call action FIRST (before closing) to ensure callback fires while component is mounted
-      if (customerId && onViewProfile) {
-        onViewProfile(customerId);
-      }
+      // On native platforms, show action sheet with options
+      if (isActionSheetSupported() && customerId) {
+        const action = await showCustomerActions(
+          { name: data?.name },
+          {
+            canWhatsApp: data?.phone && onWhatsApp,
+            canCall: data?.phone,
+            isBlacklisted: false
+          }
+        );
 
-      // Then close the sheet
-      onClose();
+        if (action === 'profile' && onViewProfile) {
+          onViewProfile(customerId);
+        } else if (action === 'whatsapp' && data?.phone && onWhatsApp) {
+          onWhatsApp(data.phone, data.name);
+        } else if (action === 'call' && data?.phone) {
+          // Open phone dialer
+          window.location.href = `tel:${data.phone}`;
+        }
+
+        onClose();
+      } else {
+        // Web fallback: directly open profile
+        if (customerId && onViewProfile) {
+          onViewProfile(customerId);
+        }
+        onClose();
+      }
     }, LONG_PRESS_DURATION);
-  }, [data?.id, onViewProfile, onClose]);
+  }, [data?.id, data?.name, data?.phone, onViewProfile, onWhatsApp, onClose]);
 
   const handleLongPressEnd = useCallback(() => {
     if (longPressTimerRef.current) {

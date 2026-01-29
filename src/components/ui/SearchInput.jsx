@@ -155,7 +155,9 @@ const SearchInput = ({
       {/* Input Field */}
       <input
         ref={inputRef}
-        type="text"
+        type="search"
+        name="search"
+        autoComplete="off"
         value={internalValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}

@@ -1,8 +1,25 @@
-// CustomerSegmentModal.jsx v3.0 - ANIMATION STANDARDIZATION
-// Clean modal for displaying filtered customer lists with campaign integration
-// Design System v5.1 compliant
+// CustomerSegmentModal.jsx v4.0 - COSMIC PRECISION UPGRADE
+// Premium modal with glassmorphism, staggered animations, and cosmic theming
+// Design System v5.1 compliant - Variant D (Glassmorphism)
 //
 // CHANGELOG:
+// v4.0 (2026-01-28): Cosmic Precision Design System upgrade
+//   - Applied Variant D glassmorphism (space-dust/95, stellar-cyan borders)
+//   - Added useTheme() for reliable dark mode theming
+//   - Premium header with gradient icon box and glow effects
+//   - Campaign sections with cosmic card styling
+//   - Filter controls converted to animated toggle pills
+//   - Customer list with staggered entrance animations (STAGGER.FAST)
+//   - Gradient avatars and animated checkmarks (SPRING.BOUNCY)
+//   - Enhanced swipe handle with drag feedback (moved to handle area only)
+//   - EmptyState component integration
+//   - All animations respect prefers-reduced-motion
+//   - Premium hover states with lift/shadow effects
+//   - Fixed: daysSinceFirstVisit now displays for FirstVisitConversion customers
+// v3.1 (2026-01-28): Mobile full-screen and safe area fix
+//   - Changed to bottom-sheet style on mobile (items-end, rounded-t-2xl)
+//   - Uses h-[100dvh] for proper full-screen on mobile (dynamic viewport height)
+//   - pt-safe now works with new CSS definition (max with Android fallback)
 // v3.0 (2026-01-27): Animation standardization
 //   - Uses MODAL constants from animations.js
 //   - Added useReducedMotion hook for accessibility
@@ -86,7 +103,7 @@ import {
   X, Users, Check, ChevronRight, ChevronDown,
   Plus, RefreshCw
 } from 'lucide-react';
-import { MODAL } from '../../constants/animations';
+import { MODAL, SPRING, STAGGER } from '../../constants/animations';
 import { useBlacklist } from '../../hooks/useBlacklist';
 import { useActiveCampaigns } from '../../hooks/useActiveCampaigns';
 import { useSwipeToClose } from '../../hooks/useSwipeToClose';
@@ -96,19 +113,78 @@ import { api } from '../../utils/apiService';
 import { haptics } from '../../utils/haptics';
 import { useScrollLock } from '../../hooks/useScrollLock';
 import { useToast } from '../../contexts/ToastContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import { HapticCheckbox } from '../ui/HapticCheckbox';
+import { Badge } from '../ui/badge';
+import CosmicDropdown from '../ui/CosmicDropdown';
+import EmptyState from '../ui/EmptyState';
 
 // Items per page for pagination
 const ITEMS_PER_PAGE = 10;
 
-// Color mapping for accent backgrounds
-const colorMap = {
-  green: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
-  blue: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400',
-  purple: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
-  cyan: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400',
-  amber: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
-  red: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400',
-  slate: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400',
+// Cosmic color mapping for gradient icon boxes
+const colorMapCosmic = {
+  green: {
+    light: 'bg-gradient-to-br from-emerald-400 to-emerald-600',
+    dark: 'bg-gradient-to-br from-emerald-500/90 to-emerald-700/90'
+  },
+  blue: {
+    light: 'bg-gradient-to-br from-blue-400 to-blue-600',
+    dark: 'bg-gradient-to-br from-stellar-cyan/90 to-blue-600/90'
+  },
+  purple: {
+    light: 'bg-gradient-to-br from-purple-400 to-purple-600',
+    dark: 'bg-gradient-to-br from-purple-500/90 to-purple-700/90'
+  },
+  cyan: {
+    light: 'bg-gradient-to-br from-cyan-400 to-cyan-600',
+    dark: 'bg-gradient-to-br from-stellar-cyan/90 to-cyan-600/90'
+  },
+  amber: {
+    light: 'bg-gradient-to-br from-amber-400 to-amber-600',
+    dark: 'bg-gradient-to-br from-amber-500/90 to-amber-700/90'
+  },
+  red: {
+    light: 'bg-gradient-to-br from-red-400 to-red-600',
+    dark: 'bg-gradient-to-br from-red-500/90 to-red-700/90'
+  },
+  slate: {
+    light: 'bg-gradient-to-br from-slate-400 to-slate-600',
+    dark: 'bg-gradient-to-br from-slate-500/90 to-slate-700/90'
+  }
+};
+
+// Customer list stagger animation variants
+const customerListVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      ...STAGGER.FAST,
+      when: 'beforeChildren'
+    }
+  }
+};
+
+// Individual customer card animation
+const customerCardVariants = {
+  hidden: { opacity: 0, y: 8, scale: 0.98 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: SPRING.QUICK
+  }
+};
+
+// Checkmark animation for selections
+const checkmarkVariants = {
+  hidden: { scale: 0, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: SPRING.BOUNCY
+  }
 };
 
 /**
@@ -142,6 +218,7 @@ const CustomerSegmentModal = ({
   const { getCampaignsForAudience, isLoading: campaignsLoading } = useActiveCampaigns();
   const { success, warning, error: showError } = useToast();
   const prefersReducedMotion = useReducedMotion();
+  const { isDark } = useTheme();
 
   // Swipe-to-close for mobile (threshold lowered for easier mobile dismiss)
   const { handlers: swipeHandlers, style: swipeStyle, isDragging, progress } = useSwipeToClose({
@@ -394,41 +471,68 @@ const CustomerSegmentModal = ({
             className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
           >
             {/* Centering wrapper - full-screen on mobile, centered on desktop */}
-            <div className="min-h-full flex items-center justify-center p-0 sm:p-4">
+            <div className="min-h-full flex items-end sm:items-center justify-center p-0 sm:p-4">
               {/* Modal Container - Full-screen on mobile, constrained on desktop */}
               <motion.div
                 role="dialog"
                 aria-modal="true"
                 {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
                 onClick={(e) => e.stopPropagation()}
-                className="relative w-full sm:max-w-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl
-                           rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-white/20 dark:border-slate-700/50
-                           flex flex-col h-full sm:h-auto max-h-full sm:max-h-[85vh] sm:my-4
-                           pt-safe sm:pt-0"
+                className={`
+                  relative w-full sm:max-w-2xl
+                  ${isDark ? 'bg-space-dust/95' : 'bg-white/95'}
+                  backdrop-blur-xl
+                  rounded-t-2xl sm:rounded-2xl
+                  shadow-2xl
+                  border-0 sm:border
+                  ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200'}
+                  flex flex-col h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:my-4
+                  pt-safe sm:pt-0
+                `}
                 style={swipeStyle}
-                {...swipeHandlers}
               >
-              {/* Swipe handle indicator (mobile only) */}
-              <div className="lg:hidden flex justify-center pt-2 pb-1">
-                <div
-                  className={`w-10 h-1 rounded-full transition-colors ${
-                    isDragging ? 'bg-slate-400 dark:bg-slate-500' : 'bg-slate-300 dark:bg-slate-600'
+              {/* Swipe handle area - only this region triggers swipe-to-close (prevents conflict with list scrolling) */}
+              <div
+                {...swipeHandlers}
+                className="lg:hidden flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-pan-x"
+              >
+                <motion.div
+                  className={`h-1.5 rounded-full transition-colors ${
+                    isDragging
+                      ? isDark ? 'bg-stellar-cyan/60' : 'bg-slate-400'
+                      : isDark ? 'bg-stellar-cyan/20' : 'bg-slate-300'
                   }`}
+                  animate={{
+                    width: isDragging ? 64 : 48,
+                    opacity: isDragging ? 1 : 0.8
+                  }}
+                  transition={prefersReducedMotion ? { duration: 0 } : SPRING.QUICK}
                 />
               </div>
 
               {/* Header */}
-              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700">
+              <div className={`
+                flex items-center justify-between p-4 sm:p-5
+                border-b ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+                bg-gradient-to-r ${isDark ? 'from-space-nebula to-space-dust' : 'from-slate-50 to-white'}
+              `}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorMap[color] || colorMap.slate}`}>
-                    <Icon className="w-5 h-5" />
+                  <div className={`
+                    w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center
+                    ${isDark
+                      ? `${colorMapCosmic[color]?.dark || colorMapCosmic.slate.dark} shadow-lg`
+                      : colorMapCosmic[color]?.light || colorMapCosmic.slate.light
+                    }
+                    transition-all duration-200
+                  `}>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                    <h2 className={`text-lg sm:text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {title}
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {subtitle || `${stats.total} clientes • ${stats.notContacted} sem contato`}
+                    <p className={`text-xs sm:text-sm mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {subtitle || `${stats.total} clientes | ${stats.notContacted} sem contato`}
                     </p>
                   </div>
                 </div>
@@ -437,7 +541,15 @@ const CustomerSegmentModal = ({
                     haptics.light();
                     onClose();
                   }}
-                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                  className={`
+                    p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full
+                    transition-all duration-200
+                    ${isDark
+                      ? 'text-slate-400 hover:bg-stellar-cyan/10 hover:text-stellar-cyan'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                    }
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40
+                  `}
                   aria-label="Fechar"
                 >
                   <X className="w-5 h-5" />
@@ -445,19 +557,25 @@ const CustomerSegmentModal = ({
               </div>
 
               {/* Campaign Integration Section - Collapsible on mobile */}
-              <div className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+              <div className={`
+                border-b ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+                ${isDark ? 'bg-space-nebula/50' : 'bg-slate-50/80'}
+              `}>
                 {/* Collapse toggle - mobile only */}
                 <button
                   onClick={() => setCampaignSectionCollapsed(!campaignSectionCollapsed)}
-                  className="sm:hidden w-full px-4 py-3 flex items-center justify-between text-left"
+                  className={`
+                    sm:hidden w-full px-4 py-3 flex items-center justify-between text-left
+                    ${isDark ? 'text-slate-400' : 'text-slate-500'}
+                  `}
                 >
-                  <span className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
+                  <span className={`text-xs font-bold uppercase ${isDark ? 'text-stellar-cyan/70' : 'text-slate-500'}`}>
                     Campanhas & Automações
                   </span>
                   <ChevronDown
-                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                    className={`w-4 h-4 transition-transform ${
                       campaignSectionCollapsed ? '' : 'rotate-180'
-                    }`}
+                    } ${isDark ? 'text-stellar-cyan/50' : 'text-slate-400'}`}
                   />
                 </button>
 
@@ -468,28 +586,50 @@ const CustomerSegmentModal = ({
                   {/* Automated Campaigns */}
                   {automated.length > 0 && (
                     <div>
-                      <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">
+                      <p className={`text-xs font-bold uppercase mb-2 ${isDark ? 'text-purple-400' : 'text-slate-500'}`}>
                         Automações
                       </p>
                       <div className="space-y-2">
                         {automated.map(rule => (
                           <div
                             key={rule.id}
-                            className="flex items-center justify-between bg-white dark:bg-slate-700 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-600"
+                            className={`
+                              flex items-center justify-between rounded-xl px-4 py-3 border
+                              transition-all duration-200
+                              ${isDark
+                                ? 'bg-space-dust/60 border-purple-500/20 hover:border-purple-500/40'
+                                : 'bg-white border-slate-200 hover:border-purple-300'
+                              }
+                            `}
                           >
                             <div className="flex items-center gap-2">
-                              <RefreshCw className="w-4 h-4 text-purple-500" />
-                              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                              <div className={`p-2 rounded-lg ${isDark ? 'bg-purple-500/15' : 'bg-purple-100'}`}>
+                                <RefreshCw className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+                              </div>
+                              <span className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                                 {rule.name}
                               </span>
-                              <span className="text-xs bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">
+                              <span className={`
+                                text-xs px-2 py-0.5 rounded-full
+                                ${isDark
+                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                  : 'bg-emerald-100 text-emerald-700'
+                                }
+                              `}>
                                 Ativa
                               </span>
                             </div>
                             <button
                               onClick={() => handleIncludeInAutomation(rule.id)}
                               disabled={selectedIds.size === 0 || isAddingToAutomation}
-                              className="text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 min-h-[44px] px-3 -mr-3 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                              className={`
+                                text-xs font-medium flex items-center gap-1 min-h-[44px] px-3 -mr-3 rounded-lg
+                                transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                                ${isDark
+                                  ? 'text-purple-400 hover:text-purple-300 hover:bg-purple-500/15'
+                                  : 'text-purple-600 hover:text-purple-700 hover:bg-purple-50'
+                                }
+                              `}
                             >
                               {isAddingToAutomation ? (
                                 <RefreshCw className="w-3 h-3 animate-spin" />
@@ -504,164 +644,234 @@ const CustomerSegmentModal = ({
                     </div>
                   )}
 
-                  {/* Manual Campaigns - Modern card layout with blue accent */}
-                  <div className="bg-blue-50/50 dark:bg-blue-900/20 rounded-xl p-3 border border-blue-100 dark:border-blue-900/50">
-                    <p className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 mb-2.5 flex items-center gap-1.5">
+                  {/* Manual Campaigns - Cosmic card layout with stellar accent */}
+                  <div className={`
+                    rounded-xl p-4 border
+                    ${isDark
+                      ? 'bg-stellar-cyan/5 border-stellar-cyan/20'
+                      : 'bg-blue-50/50 border-blue-100'
+                    }
+                  `}>
+                    <p className={`
+                      text-xs font-bold uppercase mb-3 flex items-center gap-1.5
+                      ${isDark ? 'text-stellar-cyan' : 'text-blue-600'}
+                    `}>
                       <Users className="w-3.5 h-3.5" />
                       Campanhas Manuais
                     </p>
-                    {/* Dropdown row */}
-                    <div className="relative mb-2.5">
-                      <select
+                    {/* Dropdown row - using CosmicDropdown */}
+                    <div className="mb-3">
+                      <CosmicDropdown
                         value={selectedManualCampaign}
-                        onChange={(e) => setSelectedManualCampaign(e.target.value)}
-                        className={`w-full text-sm rounded-xl px-4 min-h-[48px] appearance-none cursor-pointer
-                                  transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-                                  ${selectedManualCampaign
-                                    ? 'bg-blue-600 text-white font-medium border-blue-600 dark:border-blue-500'
-                                    : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600'
-                                  }`}
-                      >
-                        <option value="" className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700">
-                          Selecionar Campanha...
-                        </option>
-                        {manual.map(campaign => (
-                          <option key={campaign.id} value={campaign.id} className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700">
-                            {campaign.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none transition-colors ${
-                        selectedManualCampaign ? 'text-white/80' : 'text-blue-400'
-                      }`} />
+                        onChange={setSelectedManualCampaign}
+                        options={[
+                          { value: '', label: 'Selecionar Campanha...' },
+                          ...manual.map(campaign => ({
+                            value: campaign.id,
+                            label: campaign.name
+                          }))
+                        ]}
+                        className="w-full"
+                      />
                     </div>
                     {/* Action buttons row */}
                     <div className="flex gap-2">
-                      <button
+                      <motion.button
                         onClick={handleAddToManualCampaign}
                         disabled={selectedIds.size === 0 || !selectedManualCampaign}
-                        className="flex-1 min-h-[44px] text-sm font-semibold bg-blue-600 text-white rounded-xl
-                                 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed
-                                 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
-                                 dark:focus-visible:ring-offset-slate-800 transition-colors
-                                 flex items-center justify-center gap-2"
+                        className={`
+                          flex-1 min-h-[44px] text-sm font-semibold rounded-xl
+                          transition-all duration-200
+                          flex items-center justify-center gap-2
+                          focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40
+                          ${selectedIds.size > 0 && selectedManualCampaign
+                            ? isDark
+                              ? 'bg-gradient-to-r from-stellar-blue to-stellar-cyan text-white hover:shadow-lg hover:shadow-stellar-cyan/20'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                            : isDark
+                              ? 'bg-space-void/50 text-slate-500 cursor-not-allowed'
+                              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                          }
+                        `}
+                        whileTap={selectedIds.size > 0 && selectedManualCampaign && !prefersReducedMotion ? { scale: 0.98 } : undefined}
                       >
                         <Plus className="w-4 h-4" />
                         Adicionar à Campanha
-                      </button>
+                      </motion.button>
                       {onCreateCampaign && (
-                        <button
+                        <motion.button
                           onClick={handleCreateNewCampaign}
                           disabled={selectedIds.size === 0}
-                          className="min-h-[44px] px-4 text-sm font-medium
-                                   bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400
-                                   border border-blue-200 dark:border-blue-800 rounded-xl
-                                   hover:bg-blue-50 dark:hover:bg-blue-900/30
-                                   disabled:opacity-40 disabled:cursor-not-allowed
-                                   focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
-                                   dark:focus-visible:ring-offset-slate-800 transition-colors
-                                   flex items-center gap-1.5"
+                          className={`
+                            min-h-[44px] px-4 text-sm font-medium rounded-xl
+                            border transition-all duration-200
+                            flex items-center gap-1.5
+                            focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40
+                            ${selectedIds.size > 0
+                              ? isDark
+                                ? 'bg-space-dust text-stellar-cyan border-stellar-cyan/30 hover:bg-stellar-cyan/10 hover:border-stellar-cyan/50'
+                                : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
+                              : isDark
+                                ? 'bg-space-void/50 text-slate-500 border-slate-700 cursor-not-allowed'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                            }
+                          `}
+                          whileTap={selectedIds.size > 0 && !prefersReducedMotion ? { scale: 0.98 } : undefined}
                         >
                           <Plus className="w-4 h-4" />
                           Nova
-                        </button>
+                        </motion.button>
                       )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Filter Controls - Compact single-row layout with clear grouping */}
-              <div className="px-3 sm:px-5 py-2.5 border-b border-slate-200 dark:border-slate-700">
+              {/* Filter Controls - Compact single-row layout with cosmic styling */}
+              <div className={`
+                px-3 sm:px-5 py-3
+                border-b ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+                ${isDark ? 'bg-space-nebula/30' : 'bg-slate-50/50'}
+              `}>
                 <div className="flex items-center justify-between gap-3">
                   {/* Left: Selection toggle + count (separated) */}
                   <div className="flex items-center gap-3">
-                    {/* Checkbox + label */}
-                    <button
+                    {/* Checkbox + label with animated checkmark */}
+                    <motion.button
                       onClick={toggleSelectAll}
                       className="flex items-center gap-2 min-h-[36px] group"
+                      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
                     >
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                        selectedIds.size === filteredCustomers.length && filteredCustomers.length > 0
-                          ? 'border-blue-500 bg-blue-500'
-                          : selectedIds.size > 0
-                            ? 'border-blue-500 bg-blue-500'
-                            : 'border-slate-300 dark:border-slate-500 group-hover:border-blue-400'
-                      }`}>
-                        {selectedIds.size > 0 && <Check className="w-3.5 h-3.5 text-white" />}
-                      </div>
-                      <span className="text-sm text-slate-600 dark:text-slate-300">
+                      <motion.div
+                        className={`
+                          w-5 h-5 rounded-md border-2 flex items-center justify-center
+                          transition-colors duration-150
+                          ${selectedIds.size === filteredCustomers.length && filteredCustomers.length > 0
+                            ? isDark ? 'border-stellar-cyan bg-stellar-cyan' : 'border-blue-500 bg-blue-500'
+                            : selectedIds.size > 0
+                              ? isDark ? 'border-stellar-cyan bg-stellar-cyan' : 'border-blue-500 bg-blue-500'
+                              : isDark ? 'border-slate-500 group-hover:border-stellar-cyan/60' : 'border-slate-300 group-hover:border-blue-400'
+                          }
+                        `}
+                      >
+                        <AnimatePresence>
+                          {selectedIds.size > 0 && (
+                            <motion.div
+                              variants={prefersReducedMotion ? undefined : checkmarkVariants}
+                              initial="hidden"
+                              animate="visible"
+                              exit="hidden"
+                            >
+                              <Check className="w-3.5 h-3.5 text-white" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                      <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                         Selecionar todos
                       </span>
-                    </button>
+                    </motion.button>
                     {/* Count - always visible, separated */}
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    <span className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                       {selectedIds.size}
-                      <span className="text-slate-400 dark:text-slate-500 font-normal"> / {filteredCustomers.length}</span>
+                      <span className={`font-normal ${isDark ? 'text-slate-500' : 'text-slate-400'}`}> / {filteredCustomers.length}</span>
                     </span>
                   </div>
 
-                  {/* Right: Include filters as compact checkboxes */}
-                  <div className="flex items-center gap-3">
-                    {/* Contacted checkbox */}
-                    <button
+                  {/* Right: Filter toggle pills */}
+                  <div className="flex items-center gap-2">
+                    {/* Contacted toggle pill */}
+                    <motion.button
                       onClick={() => {
                         haptics.light();
                         setHideContacted(!hideContacted);
                       }}
-                      className="flex items-center gap-1.5 group"
+                      className={`
+                        flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
+                        border transition-all duration-200
+                        ${!hideContacted
+                          ? isDark
+                            ? 'bg-stellar-cyan/20 text-stellar-cyan border-stellar-cyan/30'
+                            : 'bg-blue-100 text-blue-700 border-blue-200'
+                          : isDark
+                            ? 'bg-space-dust text-slate-400 border-stellar-cyan/10 hover:border-stellar-cyan/20'
+                            : 'bg-slate-100 text-slate-500 border-slate-200 hover:border-slate-300'
+                        }
+                      `}
+                      whileTap={prefersReducedMotion ? undefined : { scale: 0.95 }}
                     >
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
-                        !hideContacted
-                          ? 'border-blue-500 bg-blue-500'
-                          : 'border-slate-300 dark:border-slate-500 group-hover:border-blue-400'
-                      }`}>
-                        {!hideContacted && <Check className="w-3 h-3 text-white" />}
-                      </div>
-                      <span className={`text-sm ${!hideContacted ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}>
-                        <span className="hidden sm:inline">Contactados </span>
-                        <span className="text-slate-400 dark:text-slate-500">({stats.contacted})</span>
-                      </span>
-                    </button>
+                      <motion.div
+                        initial={false}
+                        animate={{ scale: !hideContacted ? 1 : 0.8, opacity: !hideContacted ? 1 : 0.5 }}
+                        transition={prefersReducedMotion ? { duration: 0 } : SPRING.QUICK}
+                      >
+                        <Check className="w-3 h-3" />
+                      </motion.div>
+                      <span className="hidden sm:inline">Contactados</span>
+                      <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>({stats.contacted})</span>
+                    </motion.button>
 
-                    {/* Blacklisted checkbox */}
-                    <button
+                    {/* Blacklisted toggle pill */}
+                    <motion.button
                       onClick={() => {
                         haptics.light();
                         setHideBlacklisted(!hideBlacklisted);
                       }}
-                      className="flex items-center gap-1.5 group"
+                      className={`
+                        flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
+                        border transition-all duration-200
+                        ${!hideBlacklisted
+                          ? isDark
+                            ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                            : 'bg-red-100 text-red-700 border-red-200'
+                          : isDark
+                            ? 'bg-space-dust text-slate-400 border-stellar-cyan/10 hover:border-red-500/20'
+                            : 'bg-slate-100 text-slate-500 border-slate-200 hover:border-slate-300'
+                        }
+                      `}
+                      whileTap={prefersReducedMotion ? undefined : { scale: 0.95 }}
                     >
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
-                        !hideBlacklisted
-                          ? 'border-red-500 bg-red-500'
-                          : 'border-slate-300 dark:border-slate-500 group-hover:border-red-400'
-                      }`}>
-                        {!hideBlacklisted && <Check className="w-3 h-3 text-white" />}
-                      </div>
-                      <span className={`text-sm ${!hideBlacklisted ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}>
-                        <span className="hidden sm:inline">Bloqueados </span>
-                        <span className="text-slate-400 dark:text-slate-500">({stats.blacklisted})</span>
-                      </span>
-                    </button>
+                      <motion.div
+                        initial={false}
+                        animate={{ scale: !hideBlacklisted ? 1 : 0.8, opacity: !hideBlacklisted ? 1 : 0.5 }}
+                        transition={prefersReducedMotion ? { duration: 0 } : SPRING.QUICK}
+                      >
+                        <Check className="w-3 h-3" />
+                      </motion.div>
+                      <span className="hidden sm:inline">Bloqueados</span>
+                      <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>({stats.blacklisted})</span>
+                    </motion.button>
                   </div>
                 </div>
               </div>
 
               {/* Customer List - Scrollable with safe area padding for notched devices */}
               {/* min-h-0 is critical for flex-1 overflow to work properly */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 pb-safe custom-scrollbar">
+              <div className={`flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 pb-safe custom-scrollbar ${isDark ? 'bg-space-dust/30' : ''}`}>
                 {displayList.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Users className="w-6 h-6 text-slate-400" />
-                    </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Nenhum cliente encontrado
-                    </p>
-                  </div>
+                  <EmptyState
+                    icon={Users}
+                    title="Nenhum cliente encontrado"
+                    description={
+                      (hideContacted && stats.contacted > 0) || (hideBlacklisted && stats.blacklisted > 0)
+                        ? "Ajuste os filtros para ver mais clientes"
+                        : undefined
+                    }
+                    action={
+                      (hideContacted || hideBlacklisted)
+                        ? () => { setHideContacted(false); setHideBlacklisted(false); }
+                        : undefined
+                    }
+                    actionLabel="Limpar Filtros"
+                    size="md"
+                  />
                 ) : (
-                  <div className="space-y-2">
+                  <motion.div
+                    className="space-y-2"
+                    variants={prefersReducedMotion ? undefined : customerListVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
                     {displayList.map((customer) => {
                       const customerId = customer.id || customer.doc;
                       const customerPhone = customer.phone || customer.telefone;
@@ -670,55 +880,82 @@ const CustomerSegmentModal = ({
                       const isCustomerBlacklisted = isBlacklisted(customerPhone);
 
                       return (
-                        <div
+                        <motion.div
                           key={customerId}
-                          className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                            isSelected
-                              ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                              : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600/50'
-                          }`}
+                          variants={prefersReducedMotion ? undefined : customerCardVariants}
+                          className={`
+                            flex items-center gap-3 p-3 sm:p-4 rounded-xl border
+                            transition-all duration-200
+                            ${isSelected
+                              ? isDark
+                                ? 'bg-stellar-cyan/10 border-stellar-cyan/30'
+                                : 'bg-blue-50 border-blue-200'
+                              : isDark
+                                ? 'bg-space-dust/50 border-stellar-cyan/10 hover:border-stellar-cyan/20 hover:bg-space-dust/70'
+                                : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                            }
+                          `}
+                          whileHover={prefersReducedMotion ? undefined : { y: -1 }}
+                          whileTap={prefersReducedMotion ? undefined : { scale: 0.995 }}
                         >
                           {/* Checkbox with larger tap area for mobile */}
-                          <label className="flex items-center justify-center w-10 h-10 -m-2 cursor-pointer flex-shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSelect(customerId)}
-                              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
-                            />
-                          </label>
+                          <div className="flex items-center justify-center w-10 h-10 -m-2 flex-shrink-0">
+                            <motion.div
+                              initial={false}
+                              animate={{ scale: isSelected ? 1.05 : 1 }}
+                              transition={prefersReducedMotion ? { duration: 0 } : SPRING.QUICK}
+                            >
+                              <HapticCheckbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleSelect(customerId)}
+                                className={isDark ? 'border-stellar-cyan/30 data-[state=checked]:bg-stellar-cyan' : ''}
+                              />
+                            </motion.div>
+                          </div>
 
-                          {/* Avatar */}
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                          {/* Avatar - Gradient cosmic style */}
+                          <div className={`
+                            w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0
+                            ${isDark
+                              ? 'bg-gradient-to-br from-stellar-blue/80 to-stellar-cyan/80'
+                              : 'bg-gradient-to-br from-slate-300 to-slate-400'
+                            }
+                          `}>
+                            <span className="text-xs font-bold text-white">
                               {getInitials(customer.name)}
                             </span>
                           </div>
 
                           {/* Customer Info - Clickable */}
                           <div
-                            className="flex-1 min-w-0 cursor-pointer"
+                            className="flex-1 min-w-0 cursor-pointer group"
                             onClick={() => handleCustomerClick(customer)}
                           >
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold text-slate-800 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400">
+                              <p className={`
+                                text-sm font-semibold truncate transition-colors duration-150
+                                ${isDark
+                                  ? 'text-white group-hover:text-stellar-cyan'
+                                  : 'text-slate-800 group-hover:text-blue-600'
+                                }
+                              `}>
                                 {customer.name || 'Cliente'}
                               </p>
                               {isCustomerContacted && (
-                                <span className="inline-flex items-center gap-0.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded-full">
+                                <Badge variant="contacted" className="gap-0.5">
                                   <Check className="w-3 h-3" />
                                   Contactado
-                                </span>
+                                </Badge>
                               )}
                               {isCustomerBlacklisted && (
-                                <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded-full">
+                                <Badge variant="blacklisted">
                                   Bloqueado
-                                </span>
+                                </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                            <div className={`flex items-center gap-3 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                               <span>{maskPhone(customerPhone)}</span>
-                              <span className="font-medium text-slate-700 dark:text-slate-300">
+                              <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                                 {formatCurrency(customer.netTotal || customer.y)}
                               </span>
                               {customer.daysSinceLastVisit !== undefined && (
@@ -726,7 +963,12 @@ const CustomerSegmentModal = ({
                                   {customer.daysSinceLastVisit}d
                                 </span>
                               )}
-                              {customer.x !== undefined && !customer.daysSinceLastVisit && (
+                              {customer.daysSinceFirstVisit !== undefined && customer.daysSinceLastVisit === undefined && (
+                                <span className={customer.daysSinceFirstVisit >= 30 ? 'text-red-500 font-medium' : ''}>
+                                  {customer.daysSinceFirstVisit}d
+                                </span>
+                              )}
+                              {customer.x !== undefined && !customer.daysSinceLastVisit && !customer.daysSinceFirstVisit && (
                                 <span className={customer.x >= 30 ? 'text-red-500 font-medium' : ''}>
                                   {customer.x}d
                                 </span>
@@ -734,25 +976,36 @@ const CustomerSegmentModal = ({
                             </div>
                           </div>
 
-                        </div>
+                        </motion.div>
                       );
                     })}
-                  </div>
+                  </motion.div>
                 )}
 
-                {/* Show More Button - mobile-friendly touch target */}
+                {/* Show More Button - mobile-friendly touch target with cosmic styling */}
                 {hasMore && (
                   <div className="mt-4 text-center">
-                    <button
+                    <motion.button
                       onClick={() => {
                         haptics.light();
                         setVisibleCount(prev => prev + ITEMS_PER_PAGE);
                       }}
-                      className="inline-flex items-center gap-2 px-6 min-h-[48px] text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lavpop-blue focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+                      className={`
+                        inline-flex items-center gap-2 px-6 min-h-[48px]
+                        text-sm font-semibold rounded-xl
+                        border transition-all duration-200
+                        focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40
+                        ${isDark
+                          ? 'bg-space-dust text-stellar-cyan border-stellar-cyan/20 hover:border-stellar-cyan/40 hover:bg-stellar-cyan/10'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:border-slate-300'
+                        }
+                      `}
+                      whileHover={prefersReducedMotion ? undefined : { y: -1 }}
+                      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
                     >
                       <ChevronRight className="w-4 h-4 rotate-90" />
                       Mostrar Mais ({remaining})
-                    </button>
+                    </motion.button>
                   </div>
                 )}
               </div>

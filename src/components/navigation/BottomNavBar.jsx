@@ -1,34 +1,38 @@
-// BottomNavBar.jsx v3.1 - MINIMALIST STELLAR NAVIGATION
-// Clean implementation following React Navigation best practices
-// https://reactnavigation.org/docs/bottom-tab-navigator/
+// BottomNavBar.jsx v4.1 - FLOATING PILL NAVIGATION
+// Modern floating bottom nav with animated pill indicator
+// Inspired by BuildUI animated tabs pattern
 //
 // ARCHITECTURE:
 // - Controlled component: receives activeTab, fires onMoreClick
-// - Pure presentational: no internal routing logic
-// - CSS-only animations: no Framer Motion dependencies
+// - Framer Motion `layoutId` for smooth pill transitions
+// - Spring physics for natural, bouncy animations
 // - Accessible: aria-current, focus-visible, screen reader labels
 //
 // FEATURES:
-// - Icons only with label on active item
-// - Subtle glow effect on active state
+// - Floating glassmorphic container with rounded corners
+// - Animated pill indicator that slides between tabs
+// - Icons + labels with color transitions
 // - 48x48px touch targets (Material Design standard)
 // - Safe area support for notched devices
 // - Reduced motion support
 // - Dark/light mode via useTheme()
-// - Modal-aware: slides out when modals open (via body.modal-open class)
+// - Modal-aware: slides out when modals open
+// - Landscape mode: compact height
 //
 // CHANGELOG:
-// v3.1 (2026-01-27): Modal-aware navigation
-//   - Added bottom-nav-container class for CSS-based hiding
-//   - Smooth slide-out transition when modals open
-//   - Prevents accidental taps behind modal backdrop
-// v3.0 (2026-01-27): Clean start - Minimalist Stellar design
-//   - Built from scratch following industry best practices
-//   - Removed all legacy code and workarounds
-//   - CSS-only animations for reliability
+// v4.1 (2026-01-28): Theme-aware floating shadow
+//   - Replaced downward shadow with centered glow for floating effect
+//   - Light: subtle black glow - shadow-[0_0_20px_rgba(0,0,0,0.12)]
+//   - Dark: stellar cyan glow - shadow-[0_0_24px_rgba(0,174,239,0.15)]
+// v4.0 (2026-01-28): Floating Pill Navigation redesign
+//   - New floating glassmorphic container design
+//   - Added animated pill indicator with Framer Motion layoutId
+//   - Spring physics for natural transitions
+//   - Preserved all v3.x mobile features
 
 import { memo, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -50,8 +54,22 @@ const MORE_ROUTES = ['social', 'weather', 'intelligence', 'operations', 'upload'
 // Module-level flag for one-time entrance animation
 let hasPlayedEntrance = false;
 
+// Spring transition config for pill animation
+const PILL_SPRING = {
+  type: 'spring',
+  bounce: 0.2,
+  duration: 0.6,
+};
+
+// Spring transition for tap feedback
+const TAP_SPRING = {
+  type: 'spring',
+  stiffness: 400,
+  damping: 17,
+};
+
 /**
- * NavItem - Individual navigation button
+ * NavItem - Individual navigation button with animated pill
  * Memoized to prevent re-renders during navigation
  */
 const NavItem = memo(({
@@ -62,7 +80,7 @@ const NavItem = memo(({
   isButton,
   onClick,
   isDark,
-  reducedMotion
+  reducedMotion,
 }) => {
   const handleClick = useCallback((e) => {
     // Re-tap active tab = scroll to top
@@ -75,39 +93,53 @@ const NavItem = memo(({
   }, [isActive, isButton, onClick, reducedMotion]);
 
   const content = (
-    <div className="flex flex-col items-center justify-center gap-0.5">
-      {/* Icon with glow when active */}
-      <div className={`
-        transition-all duration-200
-        ${isActive ? 'stellar-glow scale-110' : 'scale-100'}
-      `}>
-        <Icon
-          className={`w-6 h-6 transition-colors duration-200
-            ${isActive ? 'text-stellar-cyan' : isDark ? 'text-slate-500' : 'text-slate-400'}
-          `}
-          strokeWidth={isActive ? 2.5 : 2}
+    <motion.div
+      className="relative flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl"
+      whileTap={reducedMotion ? {} : { scale: 0.92 }}
+      transition={TAP_SPRING}
+    >
+      {/* Animated pill background - only renders on active item */}
+      {isActive && (
+        <motion.div
+          layoutId="navPill"
+          className={`absolute inset-0 rounded-xl ${
+            isDark
+              ? 'bg-stellar-cyan/15 border border-stellar-cyan/20'
+              : 'bg-stellar-cyan/10 border border-stellar-cyan/15'
+          }`}
+          initial={false}
+          transition={reducedMotion ? { duration: 0 } : PILL_SPRING}
         />
-      </div>
+      )}
 
-      {/* Label - always visible */}
-      <span className={`
-        text-[10px] font-medium transition-colors duration-200
-        ${isActive ? 'text-stellar-cyan' : isDark ? 'text-slate-500' : 'text-slate-400'}
-      `}>
+      {/* Icon */}
+      <Icon
+        className={`relative z-10 w-5 h-5 transition-colors duration-200 ${
+          isActive
+            ? 'text-stellar-cyan'
+            : isDark ? 'text-slate-400' : 'text-slate-500'
+        }`}
+        strokeWidth={isActive ? 2.25 : 2}
+      />
+
+      {/* Label */}
+      <span className={`relative z-10 text-[10px] font-medium transition-colors duration-200 ${
+        isActive
+          ? 'text-stellar-cyan'
+          : isDark ? 'text-slate-400' : 'text-slate-500'
+      }`}>
         {label}
       </span>
-    </div>
+    </motion.div>
   );
 
-  // Common button/link classes
+  // Common wrapper classes
   const baseClasses = `
-    flex items-center justify-center
+    relative flex items-center justify-center
     min-w-12 min-h-12
-    rounded-xl
-    transition-transform duration-100
-    active:scale-95
     focus-visible:outline-none focus-visible:ring-2
     focus-visible:ring-stellar-cyan focus-visible:ring-offset-2
+    ${isDark ? 'focus-visible:ring-offset-space-dust' : 'focus-visible:ring-offset-white'}
   `;
 
   if (isButton) {
@@ -150,7 +182,7 @@ NavItem.propTypes = {
 };
 
 /**
- * BottomNavBar - Minimalist stellar navigation
+ * BottomNavBar - Floating pill navigation
  *
  * @param {string} activeTab - Current tab ID from parent
  * @param {function} onMoreClick - Handler for "More" button
@@ -168,31 +200,44 @@ const BottomNavBar = ({ activeTab, onMoreClick }) => {
       const timer = setTimeout(() => {
         hasPlayedEntrance = true;
         setShowEntrance(false);
-      }, 300);
+      }, 400);
       return () => clearTimeout(timer);
     }
   }, [showEntrance]);
 
   const isMoreActive = MORE_ROUTES.includes(activeTab);
 
+  // Entrance animation variants
+  const containerVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: reducedMotion
+        ? { duration: 0 }
+        : { type: 'spring', stiffness: 260, damping: 20 },
+    },
+  };
+
   return (
-    <nav
-      className={`
-        bottom-nav-container
-        lg:hidden fixed bottom-0 inset-x-0 z-40
-        transition-all duration-200 ease-out
-        ${showEntrance ? 'nav-entrance' : ''}
-      `}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    <motion.nav
+      className="bottom-nav-container lg:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-2"
+      style={{ paddingBottom: `max(env(safe-area-inset-bottom, 8px), 8px)` }}
       aria-label="Navegação principal"
+      initial={showEntrance ? 'hidden' : false}
+      animate="visible"
+      variants={containerVariants}
     >
-      {/* Navigation container */}
+      {/* Floating glassmorphic container */}
       <div className={`
-        nav-top-fade
-        ${isDark ? 'bg-space-void/90' : 'bg-white/95'}
-        backdrop-blur-lg
         flex items-center justify-around
-        ${isLandscape ? 'h-12 py-1' : 'h-16 py-2'}
+        ${isLandscape ? 'py-1.5' : 'py-2'}
+        rounded-2xl
+        ${isDark
+          ? 'bg-space-dust/85 border border-white/10 shadow-[0_0_24px_rgba(0,174,239,0.15)]'
+          : 'bg-white/90 border border-slate-200/80 shadow-[0_0_20px_rgba(0,0,0,0.12)]'
+        }
+        backdrop-blur-xl
       `}>
         {NAV_ITEMS.map(item => (
           <NavItem
@@ -215,7 +260,7 @@ const BottomNavBar = ({ activeTab, onMoreClick }) => {
           reducedMotion={reducedMotion}
         />
       </div>
-    </nav>
+    </motion.nav>
   );
 };
 

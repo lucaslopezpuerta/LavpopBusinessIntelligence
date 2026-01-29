@@ -1,8 +1,16 @@
-// CustomerProfileModal.jsx v4.7 - ANIMATION STANDARDIZATION
+// CustomerProfileModal.jsx v4.9 - MOBILE SAFE AREA COMPLIANCE
 // Comprehensive customer profile modal for Customer Directory
 // Design System v5.1 compliant - Variant D (Glassmorphism Cosmic)
 //
 // CHANGELOG:
+// v4.9 (2026-01-28): Bottom action bar safe area fix
+//   - Increased content pb-20 → pb-28 to fully clear action bar + Android nav
+//   - Action bar uses pb-safe (48px on Android via --native-safe-area-bottom)
+//   - Prevents content from hiding behind floating action buttons
+// v4.8 (2026-01-28): Mobile full-screen and safe area fix
+//   - Uses h-[100dvh] for proper full-screen on mobile (dynamic viewport height)
+//   - Changed rounded-none to rounded-t-2xl for bottom-sheet style
+//   - pt-safe now works with new CSS definition (max with Android fallback)
 // v4.7 (2026-01-27): Animation standardization
 //   - Added Framer Motion entrance animations using MODAL constants
 //   - Replaced CSS animate-fade-in with motion.div for backdrop
@@ -224,6 +232,7 @@ import { parseBrDate } from '../utils/dateUtils';
 import { useBlacklist } from '../hooks/useBlacklist';
 import { useSwipeToClose } from '../hooks/useSwipeToClose';
 import { haptics } from '../utils/haptics';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 // Segment-based avatar configuration
 // Maps RFM segments to icons and gradient colors for visual recognition
@@ -343,7 +352,6 @@ const MiniSparkline = ({ data, color = 'sky', height = 32, className = '' }) => 
 };
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
-    const [activeTab, setActiveTab] = useState('profile');
     const [showCyclesTrend, setShowCyclesTrend] = useState(false);
     // Initialize empty, useEffect loads from backend asynchronously
     const [communicationLog, setCommunicationLog] = useState([]);
@@ -657,13 +665,13 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                 {/* Modal Content */}
                 <motion.div
                     {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
-                    className="relative bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl max-w-2xl w-full h-full sm:h-auto max-h-full sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
+                    className="relative bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
                     onClick={(e) => e.stopPropagation()}
                     style={swipeStyle}
                     {...swipeHandlers}
                 >
                 {/* Header wrapper with safe area - cosmic gradient background */}
-                <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-space-nebula dark:to-space-dust pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl">
+                <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-space-nebula dark:to-space-dust pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-2xl">
                     {/* Swipe handle indicator (mobile only) */}
                     <div className="sm:hidden flex justify-center pt-2 pb-1">
                         <div
@@ -799,60 +807,48 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     )}
                 </AnimatePresence>
 
-                {/* Tab Navigation - Cosmic styling with stellar-cyan accents */}
-                <div className="border-b border-slate-200 dark:border-stellar-cyan/10 bg-white dark:bg-space-dust/50">
-                    <div className="flex px-2 sm:px-4">
-                        <button
-                            onClick={() => { haptics.tick(); setActiveTab('profile'); }}
-                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40 rounded-t-lg ${activeTab === 'profile'
-                                ? 'border-stellar-cyan text-stellar-cyan'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                                }`}
+                {/* Tab Navigation - shadcn Tabs with cosmic styling */}
+                <Tabs defaultValue="profile" className="flex flex-col flex-1 min-h-0" onValueChange={() => haptics.tick()}>
+                    <TabsList className="flex-shrink-0 w-full justify-start rounded-none border-b border-slate-200 dark:border-stellar-cyan/10 bg-white dark:bg-space-dust/50 h-auto p-0 px-2 sm:px-4">
+                        <TabsTrigger
+                            value="profile"
+                            className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold rounded-none border-b-2 border-transparent data-[state=active]:border-stellar-cyan data-[state=active]:text-stellar-cyan data-[state=active]:bg-transparent data-[state=active]:shadow-none text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                         >
                             <User className="w-4 h-4" />
                             <span className="hidden sm:inline">Perfil</span>
                             <span className="sm:hidden">Perfil</span>
-                        </button>
-                        <button
-                            onClick={() => { haptics.tick(); setActiveTab('financial'); }}
-                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40 rounded-t-lg ${activeTab === 'financial'
-                                ? 'border-stellar-cyan text-stellar-cyan'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                                }`}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="financial"
+                            className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold rounded-none border-b-2 border-transparent data-[state=active]:border-stellar-cyan data-[state=active]:text-stellar-cyan data-[state=active]:bg-transparent data-[state=active]:shadow-none text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                         >
                             <DollarSign className="w-4 h-4" />
                             <span className="hidden sm:inline">Financeiro</span>
                             <span className="sm:hidden">Finan.</span>
-                        </button>
-                        <button
-                            onClick={() => { haptics.tick(); setActiveTab('behavior'); }}
-                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40 rounded-t-lg ${activeTab === 'behavior'
-                                ? 'border-stellar-cyan text-stellar-cyan'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                                }`}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="behavior"
+                            className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold rounded-none border-b-2 border-transparent data-[state=active]:border-stellar-cyan data-[state=active]:text-stellar-cyan data-[state=active]:bg-transparent data-[state=active]:shadow-none text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                         >
                             <Activity className="w-4 h-4" />
                             <span className="hidden sm:inline">Comportamento</span>
                             <span className="sm:hidden">Comport.</span>
-                        </button>
-                        <button
-                            onClick={() => { haptics.tick(); setActiveTab('history'); }}
-                            className={`flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-colors border-b-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40 rounded-t-lg ${activeTab === 'history'
-                                ? 'border-stellar-cyan text-stellar-cyan'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                                }`}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="history"
+                            className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold rounded-none border-b-2 border-transparent data-[state=active]:border-stellar-cyan data-[state=active]:text-stellar-cyan data-[state=active]:bg-transparent data-[state=active]:shadow-none text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                         >
                             <FileText className="w-4 h-4" />
                             <span className="hidden sm:inline">Histórico</span>
                             <span className="sm:hidden">Hist.</span>
-                        </button>
-                    </div>
-                </div>
+                        </TabsTrigger>
+                    </TabsList>
 
-                {/* Tab Content - Fill viewport on mobile, safe area for floating action bar */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-20 sm:pb-4 custom-scrollbar">
-                    {/* TAB 1: Profile & Contact - Flex layout to fill space on mobile */}
-                    {activeTab === 'profile' && (
+                    {/* Tab Content - Fill viewport on mobile, safe area for floating action bar */}
+                    {/* pb-28 (112px) = action bar height (56px) + Android nav safe area (48px) + 8px buffer */}
+                    <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-28 sm:pb-4 custom-scrollbar">
+                        {/* TAB 1: Profile & Contact - Flex layout to fill space on mobile */}
+                        <TabsContent value="profile" className="mt-0">
                         <div className="flex flex-col h-full gap-3 sm:gap-4">
                             {/* Personal Information - 2x2 grid on mobile */}
                             <div>
@@ -1002,10 +998,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </div>
                             </div>
                         </div>
-                    )}
+                        </TabsContent>
 
-                    {/* TAB 2: Financial Summary - Fill viewport on mobile */}
-                    {activeTab === 'financial' && (
+                        {/* TAB 2: Financial Summary - Fill viewport on mobile */}
+                        <TabsContent value="financial" className="mt-0">
                         <div className="flex flex-col h-full gap-4">
                             {/* Hero: Total Gasto */}
                             <div className="bg-gradient-to-br from-stellar-cyan/10 to-blue-100 dark:from-stellar-cyan/20 dark:to-blue-900/20 rounded-xl p-4 border border-stellar-cyan/30 dark:border-stellar-cyan/20">
@@ -1073,10 +1069,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </div>
                             </div>
                         </div>
-                    )}
+                        </TabsContent>
 
-                    {/* TAB 3: Behavior & Risk - Fill viewport on mobile */}
-                    {activeTab === 'behavior' && (
+                        {/* TAB 3: Behavior & Risk - Fill viewport on mobile */}
+                        <TabsContent value="behavior" className="mt-0">
                         <div className="flex flex-col h-full gap-4">
                             {/* Visit Pattern - 2x2 grid */}
                             <div>
@@ -1157,10 +1153,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </div>
                             </div>
                         </div>
-                    )}
+                        </TabsContent>
 
-                    {/* TAB 4: Transaction History - Compact on mobile */}
-                    {activeTab === 'history' && (
+                        {/* TAB 4: Transaction History - Compact on mobile */}
+                        <TabsContent value="history" className="mt-0">
                         <div>
                             <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-1.5 sm:mb-2 flex items-center gap-1.5">
                                 <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stellar-cyan" />
@@ -1222,8 +1218,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </table>
                             </div>
                         </div>
-                    )}
-                </div>
+                        </TabsContent>
+                    </div>
+                </Tabs>
 
                 {/* Mobile Quick Actions - Fixed bottom bar with cosmic styling */}
                 {/* v4.4: Uses stellar-cyan (call), cosmic-green (WhatsApp), stellar-blue (email) */}

@@ -9,8 +9,9 @@
  * - Gradient submit button with shimmer effect
  * - Theme-aware (light/dark) design
  * - Reduced motion support for accessibility
+ * - Haptic feedback on form validation (error/success)
  *
- * @version 3.0.0 - Cosmic Precision
+ * @version 3.1.0 - Haptic feedback
  */
 
 import React, { useState, useEffect } from 'react';
@@ -21,6 +22,8 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { BilavnovaIcon } from '../ui/BilavnovaLogo';
+import { haptics } from '../../utils/haptics';
+import { Alert, AlertDescription } from '../ui/alert';
 
 // Animation variants
 const containerVariants = {
@@ -102,15 +105,17 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
 
-    // Basic validation
+    // Basic validation with haptic feedback
     if (!email.trim()) {
       setError('Digite seu email');
+      haptics.error();
       setLoading(false);
       return;
     }
 
     if (!password) {
       setError('Digite sua senha');
+      haptics.error();
       setLoading(false);
       return;
     }
@@ -119,6 +124,10 @@ const LoginPage = () => {
 
     if (!result.success) {
       setError(result.error);
+      haptics.error();
+    } else {
+      // Success feedback before redirect
+      haptics.success();
     }
     // On success, AuthContext will update and App.jsx will redirect
 
@@ -264,14 +273,11 @@ const LoginPage = () => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex items-center gap-2 p-3 rounded-xl ${
-                  isDark
-                    ? 'bg-red-500/10 border border-red-500/20'
-                    : 'bg-red-50 border border-red-200'
-                }`}
               >
-                <AlertCircle className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
-                <span className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{displayError}</span>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{displayError}</AlertDescription>
+                </Alert>
               </motion.div>
             )}
 
