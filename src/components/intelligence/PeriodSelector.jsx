@@ -113,7 +113,7 @@ const PeriodSelector = ({
     <div className={`relative ${className}`}>
       {showIcon && (
         <Calendar
-          className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${iconSizes[size]} text-gray-500 dark:text-slate-400 pointer-events-none`}
+          className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${iconSizes[size]} text-slate-500 dark:text-slate-400 pointer-events-none`}
           aria-hidden="true"
         />
       )}
@@ -122,15 +122,15 @@ const PeriodSelector = ({
         onChange={handleChange}
         className={`
           w-full appearance-none cursor-pointer
-          bg-white dark:bg-slate-800
-          border border-gray-300 dark:border-slate-600
+          bg-white dark:bg-space-dust
+          border border-slate-300 dark:border-slate-600
           rounded-lg
           ${sizeClasses[size]}
           ${showIcon ? 'pl-8 sm:pl-9' : ''}
-          text-gray-900 dark:text-white
+          text-slate-900 dark:text-white
           font-medium
-          hover:border-gray-400 dark:hover:border-slate-500
-          focus:outline-none focus:ring-2 focus:ring-lavpop-blue/50 focus:border-lavpop-blue
+          hover:border-slate-400 dark:hover:border-slate-500
+          focus:outline-none focus:ring-2 focus:ring-stellar-cyan/50 focus:border-stellar-cyan
           transition-colors
         `}
         aria-label="Selecionar período de análise"
@@ -142,7 +142,7 @@ const PeriodSelector = ({
         ))}
       </select>
       <ChevronDown
-        className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${iconSizes[size]} text-gray-500 dark:text-slate-400 pointer-events-none`}
+        className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${iconSizes[size]} text-slate-500 dark:text-slate-400 pointer-events-none`}
         aria-hidden="true"
       />
     </div>

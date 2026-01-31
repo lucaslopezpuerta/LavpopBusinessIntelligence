@@ -1,7 +1,11 @@
-// NewClientsChart.jsx v4.4 - MODE-AWARE AMBER BADGES
+// NewClientsChart.jsx v4.5 - STAGGERED BAR ANIMATIONS
 // New customer acquisition with campaign integration
 //
 // CHANGELOG:
+// v4.5 (2026-01-30): Staggered bar animations
+//   - NEW: Bars animate in left-to-right with staggered delay
+//   - NEW: AnimatedNumber component for count-up stats
+//   - Uses CHART_ANIMATION.BAR_STAGGER preset
 // v4.4 (2026-01-29): Yellow to amber color migration with mode-aware badges
 //   - Warning pills: yellow-600/yellow-500 solid → amber-600/amber-500 solid button
 //   - Hover states: yellow-700/yellow-600 → amber-700/amber-600
@@ -72,6 +76,7 @@
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import AnimatedNumber from './ui/AnimatedNumber';
 import { UserPlus, AlertTriangle, CheckCircle, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
@@ -97,7 +102,7 @@ const NewClientsChart = ({
 
   // Reduced motion preference for accessibility
   const prefersReducedMotion = useReducedMotion();
-  const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR;
+  const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR_STAGGER;
 
   // Handle both old format (array) and new format ({ daily, newCustomerIds })
   const dailyData = useMemo(() => {
@@ -267,10 +272,10 @@ const NewClientsChart = ({
       const isActiveTouchItem = isActiveTouch(dayData.displayDate);
 
       return (
-        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
+        <div role="tooltip" className="bg-white/90 dark:bg-space-dust/90 backdrop-blur-xl p-3 border border-slate-200 dark:border-stellar-cyan/10 rounded-lg shadow-xl text-xs">
           <p className="font-bold text-slate-800 dark:text-white mb-1">{payload[0].payload.displayDate}</p>
           <p className="text-slate-600 dark:text-slate-300">
-            <span className="font-bold text-lavpop-blue dark:text-blue-400 text-lg">{payload[0].value}</span> novos clientes
+            <span className="font-bold text-stellar-blue dark:text-blue-400 text-lg">{payload[0].value}</span> novos clientes
           </p>
 
           {/* Welcome status for this day - Fixed: text-xs instead of text-[10px] */}
@@ -304,7 +309,7 @@ const NewClientsChart = ({
   if (!dailyData || dailyData.length === 0) return null;
 
   return (
-    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-white/20 dark:border-slate-700/50 shadow-sm h-full flex flex-col">
+    <div className="bg-white/80 dark:bg-space-dust/80 backdrop-blur-xl rounded-2xl p-5 border border-white/20 dark:border-stellar-cyan/10 shadow-sm h-full flex flex-col">
       {/* Header */}
       <div className="mb-4">
         {/* Title + Subtitle */}
@@ -437,12 +442,14 @@ const NewClientsChart = ({
               isAnimationActive={!prefersReducedMotion}
               animationDuration={chartAnim.duration}
               animationEasing={chartAnim.easing}
-              animationBegin={chartAnim.delay}
             >
               {dailyData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={entry.count > stats.avgNew ? seriesColors[0] : chartColors.info}
+                  style={{
+                    animationDelay: prefersReducedMotion ? '0ms' : `${(chartAnim.baseDelay || 50) + (index * (chartAnim.staggerDelay || 30))}ms`
+                  }}
                 />
               ))}
               <LabelList dataKey="count" position="top" fontSize={10} fill={chartColors.tickText} />
@@ -451,15 +458,19 @@ const NewClientsChart = ({
         </ResponsiveContainer>
       </motion.div>
 
-      {/* Bottom stats - centered */}
+      {/* Bottom stats - centered with animated numbers */}
       <div className="flex justify-center items-center gap-6 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
         <div className="text-center">
-          <div className="text-2xl font-black text-slate-800 dark:text-white">{stats.totalNew}</div>
+          <div className="text-2xl font-black text-slate-800 dark:text-white">
+            <AnimatedNumber value={stats.totalNew} />
+          </div>
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Total</div>
         </div>
         <div className="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
         <div className="text-center">
-          <div className="text-2xl font-black text-slate-800 dark:text-white">{stats.avgNew}</div>
+          <div className="text-2xl font-black text-slate-800 dark:text-white">
+            <AnimatedNumber value={stats.avgNew} />
+          </div>
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Média/Dia</div>
         </div>
       </div>

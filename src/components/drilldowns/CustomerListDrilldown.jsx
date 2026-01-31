@@ -1,4 +1,4 @@
-// CustomerListDrilldown.jsx v3.15 - SOLID BADGE COLORS
+// CustomerListDrilldown.jsx v3.16 - Enhanced Swipe UX with Haptic Feedback
 // ✅ Pagination with "Ver mais" button
 // ✅ WhatsApp and Call actions
 // ✅ Dynamic sorting with controls
@@ -14,6 +14,13 @@
 // ✅ Blacklist indicator with toggle to show/hide
 //
 // CHANGELOG:
+// v3.16 (2026-01-30): Enhanced Swipe UX with Haptic Feedback
+//   - Uses new useSwipeToAction hook for centralized swipe logic
+//   - Added haptic feedback: 10ms pulse at threshold, [20,50,20] pattern on success
+//   - Added visual threshold indicator (icon scale bump at 56px)
+//   - Added success flash animation with 350ms hold before snap-back
+//   - Improved SwipeableCard with success state styling
+//   - Reduced code duplication (~60 lines removed)
 // v3.15 (2026-01-29): Solid Badge Colors
 //   - Migrated badge/pill colors from opacity-based to solid colors
 //   - Empty state icon: emerald-600/500 with white icon
@@ -86,24 +93,52 @@ import { useBlacklist } from '../../hooks/useBlacklist';
 import { addCommunicationEntry, getDefaultNotes } from '../../utils/communicationLog';
 import { isValidBrazilianMobile, normalizePhone } from '../../utils/phoneUtils';
 import { SWIPE_ACTION } from '../../constants/animations';
+import { useSwipeToAction } from '../../hooks/useSwipeToAction';
 
 const ITEMS_PER_PAGE = 5;
 
-// Swipeable card wrapper with spring physics
-const SwipeableCard = ({ isSwipingThis, swipeOffset, canWhatsApp, hasPhone, contacted, canContact, children, ...touchHandlers }) => {
-    // Spring-animated card position for smooth swipe physics
-    const x = useSpring(0, SWIPE_ACTION.CARD_SPRING);
+// Swipeable card wrapper with spring physics and success flash
+const SwipeableCard = ({
+    isSwipingThis,
+    swipeOffset,
+    canWhatsApp,
+    hasPhone,
+    contacted,
+    canContact,
+    actionSuccess,
+    children,
+    // Animation values from useSwipeToAction hook
+    springX,
+    leftIconScale: parentLeftIconScale,
+    leftIconOpacity: parentLeftIconOpacity,
+    rightIconScale: parentRightIconScale,
+    rightIconOpacity: parentRightIconOpacity,
+    ...touchHandlers
+}) => {
+    // Local spring for fallback (always created to satisfy hooks rules)
+    const localX = useSpring(0, SWIPE_ACTION.CARD_SPRING);
 
-    // Update spring when swipeOffset changes
+    // Update local spring when swipeOffset changes (only used when parent doesn't provide springX)
     useEffect(() => {
-        x.set(isSwipingThis ? swipeOffset : 0);
-    }, [x, isSwipingThis, swipeOffset]);
+        if (!springX) {
+            localX.set(isSwipingThis ? swipeOffset : 0);
+        }
+    }, [localX, springX, isSwipingThis, swipeOffset]);
 
-    // Transform swipe offset to icon scale/opacity for reveal effect
-    const leftIconScale = useTransform(x, [0, 40, 64], [0.6, 0.9, 1]);
-    const leftIconOpacity = useTransform(x, [0, 30, 64], [0, 0.7, 1]);
-    const rightIconScale = useTransform(x, [-64, -40, 0], [1, 0.9, 0.6]);
-    const rightIconOpacity = useTransform(x, [-64, -30, 0], [1, 0.7, 0]);
+    // Use parent's spring when swiping and available, otherwise use local
+    const activeX = isSwipingThis && springX ? springX : localX;
+
+    // Fallback transforms based on local spring (always call hooks - no conditionals)
+    const fallbackLeftIconScale = useTransform(localX, [0, 40, 56, 72], [0.6, 0.9, 1.15, 1.0]);
+    const fallbackLeftIconOpacity = useTransform(localX, [0, 30, 56], [0, 0.7, 1]);
+    const fallbackRightIconScale = useTransform(localX, [-72, -56, -40, 0], [1.0, 1.15, 0.9, 0.6]);
+    const fallbackRightIconOpacity = useTransform(localX, [-56, -30, 0], [1, 0.7, 0]);
+
+    // Use parent transforms when swiping and available, fallbacks otherwise
+    const activeLeftIconScale = isSwipingThis && parentLeftIconScale ? parentLeftIconScale : fallbackLeftIconScale;
+    const activeLeftIconOpacity = isSwipingThis && parentLeftIconOpacity ? parentLeftIconOpacity : fallbackLeftIconOpacity;
+    const activeRightIconScale = isSwipingThis && parentRightIconScale ? parentRightIconScale : fallbackRightIconScale;
+    const activeRightIconOpacity = isSwipingThis && parentRightIconOpacity ? parentRightIconOpacity : fallbackRightIconOpacity;
 
     return (
         <div className="relative overflow-hidden rounded-xl">
@@ -112,23 +147,31 @@ const SwipeableCard = ({ isSwipingThis, swipeOffset, canWhatsApp, hasPhone, cont
                 <>
                     {canWhatsApp && (
                         <div className="md:hidden absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
-                            <motion.div style={{ scale: leftIconScale, opacity: leftIconOpacity }}>
+                            <motion.div style={{ scale: activeLeftIconScale, opacity: activeLeftIconOpacity }}>
                                 <MessageCircle className="w-5 h-5 text-white" />
                             </motion.div>
                         </div>
                     )}
                     <div className="md:hidden absolute inset-y-0 right-0 w-16 bg-blue-500 flex items-center justify-center">
-                        <motion.div style={{ scale: rightIconScale, opacity: rightIconOpacity }}>
+                        <motion.div style={{ scale: activeRightIconScale, opacity: activeRightIconOpacity }}>
                             <Phone className="w-5 h-5 text-white" />
                         </motion.div>
                     </div>
                 </>
             )}
 
-            {/* Card content with spring physics */}
+            {/* Card content with spring physics and success flash */}
             <motion.div
-                style={{ x }}
-                className="relative"
+                style={{ x: activeX }}
+                className={`relative transition-colors duration-200 ${
+                    actionSuccess === 'left'
+                        ? 'bg-blue-500/20 rounded-xl'
+                        : actionSuccess === 'right'
+                            ? 'bg-green-500/20 rounded-xl'
+                            : ''
+                }`}
+                animate={actionSuccess ? { scale: [1, 1.02, 1] } : {}}
+                transition={actionSuccess ? { duration: 0.3, ease: 'easeOut' } : {}}
                 {...touchHandlers}
             >
                 {children}
@@ -147,9 +190,7 @@ const SORT_OPTIONS = {
 const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
     const [sortBy, setSortBy] = useState(type === 'atrisk' ? 'days' : 'value');
-    const [swipeState, setSwipeState] = useState({ id: null, direction: null, offset: 0 });
     const [showBlacklisted, setShowBlacklisted] = useState(false);
-    const touchStartRef = useRef({ x: 0, y: 0 });
 
     // Shared contact tracking (syncs across app with effectiveness tracking)
     const { isContacted, toggleContacted, markContacted } = useContactTracking();
@@ -303,77 +344,35 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
         }
     }, [isContacted, toggleContacted, markContacted, getCustomerContext]);
 
-    // Touch handlers for swipe (mobile row actions)
-    // v3.14: Improved sensitivity with THRESHOLDS (deadzone, velocity, stricter direction)
-    const handleTouchStart = useCallback((e, customerId) => {
-        const touch = e.touches[0];
-        touchStartRef.current = {
-            x: touch.clientX,
-            y: touch.clientY,
-            time: Date.now()  // Track start time for velocity calculation
-        };
-        setSwipeState({ id: customerId, direction: null, offset: 0 });
-    }, []);
+    // Enhanced swipe gestures with haptic feedback and success animations
+    // v3.16: Using useSwipeToAction hook for centralized, improved UX
+    const {
+        swipeState,
+        actionSuccess,
+        x: swipeSpringX,
+        leftIconScale,
+        leftIconOpacity,
+        rightIconScale,
+        rightIconOpacity,
+        handlers: swipeHandlers,
+        isSwipingItem,
+    } = useSwipeToAction({
+        onSwipeLeft: (customerId, customer) => {
+            // Call action (swipe left reveals phone icon)
+            if (customer?.phone) {
+                handleCall(null, customer.phone, customerId);
+            }
+        },
+        onSwipeRight: (customerId, customer) => {
+            // WhatsApp action (swipe right reveals WhatsApp icon)
+            if (customer?.phone && hasValidWhatsApp(customer.phone)) {
+                handleWhatsApp(null, customer.phone, customerId);
+            }
+        },
+    });
 
-    const handleTouchMove = useCallback((e, customerId) => {
-        if (swipeState.id !== customerId) return;
-
-        const touch = e.touches[0];
-        const deltaX = touch.clientX - touchStartRef.current.x;
-        const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-        const absX = Math.abs(deltaX);
-
-        const { THRESHOLDS } = SWIPE_ACTION;
-
-        // Deadzone: ignore micro-movements (prevents accidental triggers)
-        if (absX < THRESHOLDS.DEADZONE) return;
-
-        // Stricter vertical tolerance - cancel if too vertical
-        if (deltaY > absX * THRESHOLDS.VERTICAL_RATIO) {
-            setSwipeState({ id: null, direction: null, offset: 0 });
-            return;
-        }
-
-        const offset = Math.max(-THRESHOLDS.MAX_OFFSET, Math.min(THRESHOLDS.MAX_OFFSET, deltaX));
-        const direction = offset > THRESHOLDS.DIRECTION_MIN ? 'right'
-                        : offset < -THRESHOLDS.DIRECTION_MIN ? 'left'
-                        : null;
-
-        setSwipeState({ id: customerId, direction, offset });
-    }, [swipeState.id]);
-
-    const handleTouchEnd = useCallback((customer, customerId) => {
-        const { THRESHOLDS } = SWIPE_ACTION;
-        const absOffset = Math.abs(swipeState.offset);
-
-        // Calculate velocity (px per ms) for fast flick detection
-        const elapsed = Date.now() - touchStartRef.current.time;
-        const velocity = elapsed > 0 ? absOffset / elapsed : 0;
-
-        // Must meet threshold OR have high velocity (for quick flicks)
-        const meetsThreshold = absOffset >= THRESHOLDS.ACTION_TRIGGER;
-        const hasHighVelocity = velocity >= THRESHOLDS.MIN_VELOCITY && absOffset > THRESHOLDS.DIRECTION_MIN;
-
-        if (!swipeState.direction || !customer.phone || (!meetsThreshold && !hasHighVelocity)) {
-            setSwipeState({ id: null, direction: null, offset: 0 });
-            return;
-        }
-
-        // Trigger call/WhatsApp (handlers also log and mark as contacted with context)
-        // WhatsApp only works for valid Brazilian mobiles
-        if (swipeState.direction === 'right' && hasValidWhatsApp(customer.phone)) {
-            handleWhatsApp(null, customer.phone, customerId);
-        } else if (swipeState.direction === 'left') {
-            handleCall(null, customer.phone, customerId);
-        }
-
-        setSwipeState({ id: null, direction: null, offset: 0 });
-    }, [swipeState.direction, swipeState.offset, handleWhatsApp, handleCall]);
-
-    // Handle touch cancel (e.g., if user moves finger off screen)
-    const handleTouchCancel = useCallback(() => {
-        setSwipeState({ id: null, direction: null, offset: 0 });
-    }, []);
+    // Destructure handlers for cleaner usage
+    const { handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel } = swipeHandlers;
 
     // Get type-specific secondary info
     const getSecondaryInfo = (customer) => {
@@ -448,7 +447,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                     className={`
                                         px-2 py-0.5 text-xs rounded transition-colors
                                         ${sortBy === key
-                                            ? 'bg-lavpop-blue text-white'
+                                            ? 'bg-stellar-blue text-white'
                                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                         }
                                     `}
@@ -507,10 +506,16 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                             hasPhone={hasPhone}
                             contacted={contacted}
                             canContact={canContact}
+                            actionSuccess={isSwipingThis ? actionSuccess : null}
                             onTouchStart={(e) => hasPhone && !contacted && canContact && handleTouchStart(e, customerId)}
                             onTouchMove={(e) => hasPhone && !contacted && canContact && handleTouchMove(e, customerId)}
-                            onTouchEnd={() => !contacted && canContact && handleTouchEnd(customer, customerId)}
+                            onTouchEnd={() => !contacted && canContact && handleTouchEnd(customerId, customer)}
                             onTouchCancel={handleTouchCancel}
+                            springX={isSwipingThis ? swipeSpringX : undefined}
+                            leftIconScale={isSwipingThis ? leftIconScale : undefined}
+                            leftIconOpacity={isSwipingThis ? leftIconOpacity : undefined}
+                            rightIconScale={isSwipingThis ? rightIconScale : undefined}
+                            rightIconOpacity={isSwipingThis ? rightIconOpacity : undefined}
                         >
                             {/* Card content */}
                             <div
@@ -592,7 +597,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                                 {/* Call button - hidden on mobile (use swipe) */}
                                                 <button
                                                     onClick={(e) => handleCall(e, customer.phone, customerId)}
-                                                    className="hidden md:flex w-11 h-11 items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-lavpop-blue dark:text-blue-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                                    className="hidden md:flex w-11 h-11 items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-stellar-blue dark:text-stellar-cyan border border-slate-200 dark:border-stellar-cyan/10 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                                                     title="Ligar"
                                                 >
                                                     <Phone className="w-4 h-4" />
@@ -603,7 +608,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                                     disabled={!canWhatsApp}
                                                     className={`hidden md:flex w-11 h-11 items-center justify-center rounded-lg border transition-colors ${
                                                         canWhatsApp
-                                                            ? 'bg-white dark:bg-slate-800 text-lavpop-green border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
+                                                            ? 'bg-white dark:bg-slate-800 text-emerald-600 border-slate-200 dark:border-stellar-cyan/10 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
                                                             : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
                                                     }`}
                                                     title={canWhatsApp ? 'WhatsApp' : 'Número inválido para WhatsApp'}
@@ -643,7 +648,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
             {hasMore && (
                 <button
                     onClick={handleShowMore}
-                    className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-lavpop-blue dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-stellar-blue dark:hover:text-stellar-cyan hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-stellar-cyan/10 transition-colors"
                 >
                     <ChevronDown className="w-4 h-4" />
                     Ver mais {remaining > ITEMS_PER_PAGE ? ITEMS_PER_PAGE : remaining} clientes

@@ -1,4 +1,4 @@
-// UploadHistoryTab.jsx v2.2 - ACCESSIBILITY
+// UploadHistoryTab.jsx v2.3 - SWIPE-TO-DELETE GESTURE
 // Display upload history from Supabase upload_history table
 //
 // Features:
@@ -6,11 +6,17 @@
 //   - Visual status indicators with gradient backgrounds
 //   - Enhanced card design with left accent stripe
 //   - Stat grid with semantic colors
+//   - Swipe-to-delete individual records on mobile
 //   - Clear history button
 //   - Auto-refresh after parent upload
 //   - Cosmic Precision Design System v5.1 compliant
 //
 // CHANGELOG:
+// v2.3 (2026-01-30): Swipe-to-delete gesture on mobile
+//   - Added useSwipeToAction hook for swipe-left-to-delete
+//   - Individual records can now be deleted via swipe gesture
+//   - Haptic feedback at threshold and on successful delete
+//   - Success flash animation before card removal
 // v2.2 (2026-01-27): Accessibility improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Staggered list animations respect reduced motion preference
@@ -36,7 +42,7 @@
 // Requires: upload_history table in Supabase (see docs/upload_history.sql)
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
 import {
   Clock,
   CheckCircle2,
@@ -52,6 +58,187 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { getSupabaseClient } from '../utils/supabaseClient';
 import useReducedMotion from '../hooks/useReducedMotion';
+import { useSwipeToAction } from '../hooks/useSwipeToAction';
+import { SWIPE_ACTION } from '../constants/animations';
+
+// ==================== SWIPEABLE HISTORY CARD (MOBILE) ====================
+
+const SwipeableHistoryCard = ({
+  record,
+  index,
+  statusInfo,
+  typeInfo,
+  isDark,
+  prefersReducedMotion,
+  formatDate,
+  formatDuration,
+  isSwipingThis,
+  swipeX,
+  rightIconScale: parentRightIconScale,
+  rightIconOpacity: parentRightIconOpacity,
+  actionSuccess,
+  handlers
+}) => {
+  const StatusIcon = statusInfo.icon;
+  const TypeIcon = typeInfo.icon;
+
+  // Local spring for cards not currently being swiped (always call hooks unconditionally)
+  const localX = useSpring(0, SWIPE_ACTION.CARD_SPRING);
+  const fallbackRightIconScale = useTransform(localX, [-72, -56, -40, 0], [1.0, 1.15, 0.9, 0.6]);
+  const fallbackRightIconOpacity = useTransform(localX, [-56, -30, 0], [1, 0.7, 0]);
+
+  // Select active values based on swipe state
+  const activeX = isSwipingThis ? swipeX : localX;
+  const activeRightIconScale = isSwipingThis && parentRightIconScale ? parentRightIconScale : fallbackRightIconScale;
+  const activeRightIconOpacity = isSwipingThis && parentRightIconOpacity ? parentRightIconOpacity : fallbackRightIconOpacity;
+
+  const isDeleteSuccess = isSwipingThis && actionSuccess === 'left';
+
+  return (
+    <motion.div
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -100, height: 0, marginBottom: 0 }}
+      transition={prefersReducedMotion ? { duration: 0.1 } : { delay: index * 0.03 }}
+      className="relative overflow-hidden rounded-xl"
+    >
+      {/* Delete action background (revealed on swipe left) */}
+      <div className="absolute inset-0 flex items-center justify-end bg-gradient-to-l from-red-500 to-red-600 rounded-xl">
+        <motion.div
+          className="flex items-center justify-center w-16 h-full"
+          style={{
+            scale: activeRightIconScale,
+            opacity: activeRightIconOpacity
+          }}
+        >
+          <Trash2 className="w-6 h-6 text-white" />
+        </motion.div>
+      </div>
+
+      {/* Swipeable card content */}
+      <motion.div
+        style={{ x: activeX }}
+        className={`
+          relative overflow-hidden rounded-xl border
+          ${isDark
+            ? 'bg-space-dust border-stellar-cyan/10'
+            : 'bg-white border-slate-200'}
+          ${isDeleteSuccess ? (isDark ? 'bg-red-900/30' : 'bg-red-50') : ''}
+        `}
+        animate={isDeleteSuccess ? { scale: [1, 1.02, 1] } : {}}
+        onTouchStart={(e) => handlers.handleTouchStart(e, record.id)}
+        onTouchMove={(e) => handlers.handleTouchMove(e, record.id)}
+        onTouchEnd={() => handlers.handleTouchEnd(record.id, record)}
+        onTouchCancel={handlers.handleTouchCancel}
+      >
+        {/* Left accent stripe */}
+        <div className={`absolute top-0 left-0 w-1 h-full ${statusInfo.accent}`} />
+
+        <div className="p-3 pl-4">
+          {/* Header row - type, status, date */}
+          <div className="flex items-start gap-2.5">
+            {/* Type icon */}
+            <div className={`w-10 h-10 rounded-xl ${typeInfo.bg} flex items-center justify-center flex-shrink-0`}>
+              <TypeIcon className={`w-4 h-4 ${typeInfo.color}`} />
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {record.file_type === 'sales' ? 'Vendas' : 'Clientes'}
+                </span>
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${statusInfo.bg} ${statusInfo.color}`}>
+                  <StatusIcon className="w-3 h-3" />
+                  {record.status === 'success' ? 'Sucesso' : record.status === 'partial' ? 'Parcial' : 'Falha'}
+                </span>
+                {record.source === 'automated' && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-100 text-purple-600'}`}>
+                    Auto
+                  </span>
+                )}
+              </div>
+              <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {formatDate(record.uploaded_at)}
+                </span>
+              </div>
+            </div>
+
+            {/* Duration */}
+            <div className={`text-right flex-shrink-0 px-2 py-1 rounded-lg ${isDark ? 'bg-space-nebula' : 'bg-slate-50'}`}>
+              <p className={`font-semibold text-xs ${isDark ? 'text-white' : 'text-slate-700'}`}>
+                {formatDuration(record.duration_ms)}
+              </p>
+              <p className={`text-[9px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>duração</p>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className={`mt-3 pt-3 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-100'}`}>
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <div className={`p-2 rounded-lg ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+                <p className={`font-bold text-base ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                  {record.records_inserted || 0}
+                </p>
+                <p className={`text-[9px] font-medium ${isDark ? 'text-emerald-400/70' : 'text-emerald-600/70'}`}>
+                  inseridos
+                </p>
+              </div>
+              {record.records_updated > 0 ? (
+                <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
+                  <p className={`font-bold text-base ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                    {record.records_updated}
+                  </p>
+                  <p className={`text-[9px] font-medium ${isDark ? 'text-blue-400/70' : 'text-blue-600/70'}`}>
+                    atualizados
+                  </p>
+                </div>
+              ) : (
+                <div className={`p-2 rounded-lg ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+                  <p className={`font-bold text-base ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                    {record.records_skipped || 0}
+                  </p>
+                  <p className={`text-[9px] font-medium ${isDark ? 'text-amber-400/70' : 'text-amber-600/70'}`}>
+                    ignorados
+                  </p>
+                </div>
+              )}
+              <div className={`p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                <p className={`font-bold text-base ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                  {record.records_total || 0}
+                </p>
+                <p className={`text-[9px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                  total
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Errors */}
+          {record.errors && record.errors.length > 0 && (
+            <div className={`mt-2.5 pt-2.5 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-100'}`}>
+              <p className={`text-[11px] font-semibold mb-1.5 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                Erros encontrados:
+              </p>
+              <div className={`text-[11px] space-y-1 p-2 rounded-lg ${isDark ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-600'}`}>
+                {record.errors.slice(0, 3).map((err, i) => (
+                  <p key={i} className="truncate">• {err}</p>
+                ))}
+                {record.errors.length > 3 && (
+                  <p className={isDark ? 'text-red-400/70' : 'text-red-500'}>
+                    +{record.errors.length - 3} mais erros...
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const UploadHistoryTab = ({ refreshTrigger }) => {
   const { isDark } = useTheme();
@@ -205,6 +392,41 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
     }
   };
 
+  // Delete individual record
+  const handleDeleteRecord = useCallback(async (recordId) => {
+    try {
+      const client = await getSupabaseClient();
+      if (!client) return;
+
+      await client.from('upload_history').delete().eq('id', recordId);
+      setHistory(prev => prev.filter(r => r.id !== recordId));
+    } catch (err) {
+      console.error('[UploadHistory] Delete error:', err);
+      setError(err.message);
+    }
+  }, []);
+
+  // Swipe-to-delete gesture hook
+  const {
+    swipeState,
+    actionSuccess,
+    x: swipeX,
+    rightIconScale,
+    rightIconOpacity,
+    handlers: swipeHandlers,
+    isSwipingItem,
+    getSuccessState
+  } = useSwipeToAction({
+    onSwipeLeft: async (recordId) => {
+      // Delete on swipe left
+      await handleDeleteRecord(recordId);
+    },
+    canSwipeLeft: true,
+    canSwipeRight: false, // Only delete action
+    disabled: false,
+    reduceMotion: prefersReducedMotion
+  });
+
   if (loading) {
     return (
       <div className={`
@@ -337,8 +559,38 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
         </div>
       )}
 
-      {/* History list */}
-      <AnimatePresence>
+      {/* History list - Mobile (swipeable) */}
+      <div className="sm:hidden space-y-4">
+        <AnimatePresence>
+          {history.map((record, index) => {
+            const statusInfo = getStatusInfo(record.status);
+            const typeInfo = getTypeIcon(record.file_type);
+
+            return (
+              <SwipeableHistoryCard
+                key={record.id}
+                record={record}
+                index={index}
+                statusInfo={statusInfo}
+                typeInfo={typeInfo}
+                isDark={isDark}
+                prefersReducedMotion={prefersReducedMotion}
+                formatDate={formatDate}
+                formatDuration={formatDuration}
+                isSwipingThis={isSwipingItem(record.id)}
+                swipeX={swipeX}
+                rightIconScale={rightIconScale}
+                rightIconOpacity={rightIconOpacity}
+                actionSuccess={getSuccessState(record.id)}
+                handlers={swipeHandlers}
+              />
+            );
+          })}
+        </AnimatePresence>
+      </div>
+
+      {/* Desktop: Non-swipeable cards */}
+      <div className="hidden sm:block space-y-4">
         {history.map((record, index) => {
           const statusInfo = getStatusInfo(record.status);
           const typeInfo = getTypeIcon(record.file_type);
@@ -362,91 +614,85 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
               {/* Left accent stripe */}
               <div className={`absolute top-0 left-0 w-1 h-full ${statusInfo.accent}`} />
 
-              <div className="p-3 sm:p-4 pl-4 sm:pl-5">
+              <div className="p-4 pl-5">
                 {/* Header row - type, status, date */}
-                <div className="flex items-start gap-2.5 sm:gap-3">
+                <div className="flex items-start gap-3">
                   {/* Type icon */}
-                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${typeInfo.bg} flex items-center justify-center flex-shrink-0`}>
-                    <TypeIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${typeInfo.color}`} />
+                  <div className={`w-11 h-11 rounded-xl ${typeInfo.bg} flex items-center justify-center flex-shrink-0`}>
+                    <TypeIcon className={`w-5 h-5 ${typeInfo.color}`} />
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                      <span className={`font-semibold text-sm sm:text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`font-semibold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>
                         {record.file_type === 'sales' ? 'Vendas' : 'Clientes'}
                       </span>
-                      <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${statusInfo.bg} ${statusInfo.color}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.color}`}>
                         <StatusIcon className="w-3 h-3" />
                         {record.status === 'success' ? 'Sucesso' : record.status === 'partial' ? 'Parcial' : 'Falha'}
                       </span>
                       {record.source === 'automated' && (
-                        <span className={`
-                          px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium
-                          ${isDark ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-100 text-purple-600'}
-                        `}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-100 text-purple-600'}`}>
                           Auto
                         </span>
                       )}
                     </div>
-                    <div className={`flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 mt-1 sm:mt-1.5 text-xs sm:text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        <Clock className="w-3.5 h-3.5" />
                         {formatDate(record.uploaded_at)}
                       </span>
                       {record.file_name && (
-                        <span className="truncate max-w-[120px] sm:max-w-[150px] opacity-75">{record.file_name}</span>
+                        <span className="truncate max-w-[150px] opacity-75">{record.file_name}</span>
                       )}
                     </div>
                   </div>
 
                   {/* Duration */}
-                  <div className={`
-                    text-right flex-shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg
-                    ${isDark ? 'bg-space-nebula' : 'bg-slate-50'}
-                  `}>
-                    <p className={`font-semibold text-xs sm:text-sm ${isDark ? 'text-white' : 'text-slate-700'}`}>
+                  <div className={`text-right flex-shrink-0 px-3 py-1.5 rounded-lg ${isDark ? 'bg-space-nebula' : 'bg-slate-50'}`}>
+                    <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-700'}`}>
                       {formatDuration(record.duration_ms)}
                     </p>
-                    <p className={`text-[9px] sm:text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>duração</p>
+                    <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>duração</p>
                   </div>
                 </div>
 
                 {/* Stats row */}
-                <div className={`mt-3 sm:mt-4 pt-3 sm:pt-4 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-100'}`}>
-                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center">
-                    <div className={`p-2 sm:p-2.5 rounded-lg ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
-                      <p className={`font-bold text-base sm:text-lg ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                <div className={`mt-4 pt-4 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-100'}`}>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className={`p-2.5 rounded-lg ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+                      <p className={`font-bold text-lg ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                         {record.records_inserted || 0}
                       </p>
-                      <p className={`text-[9px] sm:text-[10px] font-medium ${isDark ? 'text-emerald-400/70' : 'text-emerald-600/70'}`}>
+                      <p className={`text-[10px] font-medium ${isDark ? 'text-emerald-400/70' : 'text-emerald-600/70'}`}>
                         inseridos
                       </p>
                     </div>
                     {record.records_updated > 0 ? (
-                      <div className={`p-2 sm:p-2.5 rounded-lg ${isDark ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
-                        <p className={`font-bold text-base sm:text-lg ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                      <div className={`p-2.5 rounded-lg ${isDark ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
+                        <p className={`font-bold text-lg ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                           {record.records_updated}
                         </p>
-                        <p className={`text-[9px] sm:text-[10px] font-medium ${isDark ? 'text-blue-400/70' : 'text-blue-600/70'}`}>
+                        <p className={`text-[10px] font-medium ${isDark ? 'text-blue-400/70' : 'text-blue-600/70'}`}>
                           atualizados
                         </p>
                       </div>
                     ) : (
-                      <div className={`p-2 sm:p-2.5 rounded-lg ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
-                        <p className={`font-bold text-base sm:text-lg ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                      <div className={`p-2.5 rounded-lg ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+                        <p className={`font-bold text-lg ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
                           {record.records_skipped || 0}
                         </p>
-                        <p className={`text-[9px] sm:text-[10px] font-medium ${isDark ? 'text-amber-400/70' : 'text-amber-600/70'}`}>
+                        <p className={`text-[10px] font-medium ${isDark ? 'text-amber-400/70' : 'text-amber-600/70'}`}>
                           ignorados
                         </p>
                       </div>
                     )}
-                    <div className={`p-2 sm:p-2.5 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
-                      <p className={`font-bold text-base sm:text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                    <div className={`p-2.5 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                      <p className={`font-bold text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                         {record.records_total || 0}
                       </p>
-                      <p className={`text-[9px] sm:text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                      <p className={`text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
                         total
                       </p>
                     </div>
@@ -455,14 +701,11 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
 
                 {/* Errors */}
                 {record.errors && record.errors.length > 0 && (
-                  <div className={`mt-2.5 sm:mt-3 pt-2.5 sm:pt-3 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-100'}`}>
-                    <p className={`text-[11px] sm:text-xs font-semibold mb-1.5 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                  <div className={`mt-3 pt-3 border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-100'}`}>
+                    <p className={`text-xs font-semibold mb-1.5 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
                       Erros encontrados:
                     </p>
-                    <div className={`
-                      text-[11px] sm:text-xs space-y-1 p-2 sm:p-2.5 rounded-lg
-                      ${isDark ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-600'}
-                    `}>
+                    <div className={`text-xs space-y-1 p-2.5 rounded-lg ${isDark ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-600'}`}>
                       {record.errors.slice(0, 3).map((err, i) => (
                         <p key={i} className="truncate">• {err}</p>
                       ))}
@@ -478,7 +721,7 @@ const UploadHistoryTab = ({ refreshTrigger }) => {
             </motion.div>
           );
         })}
-      </AnimatePresence>
+      </div>
     </div>
   );
 };

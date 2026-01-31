@@ -639,7 +639,7 @@ function AppContent() {
         <footer className={`border-t ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'} ${isDark ? 'bg-space-void' : 'bg-white/50'} backdrop-blur-sm mt-auto`}>
           <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3">
             {/* Mobile: Compact with labels */}
-            <div className={`flex sm:hidden items-center justify-center gap-4 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <div className={`flex sm:hidden items-center justify-center gap-4 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               <span>Dados: {formatBrDateOnly(data?.lastImportedAt)}</span>
               <span>•</span>
               <span>Build: {formatBrDateOnly(BUILD_TIME)}</span>

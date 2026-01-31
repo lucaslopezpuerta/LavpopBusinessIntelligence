@@ -174,7 +174,7 @@ const SearchInput = ({
           text-slate-700 dark:text-slate-200
           placeholder:text-slate-400 dark:placeholder:text-slate-500
           transition-colors duration-200
-          focus:outline-none focus:ring-2 focus:ring-lavpop-blue-500/50 focus:border-lavpop-blue-500 dark:focus:border-lavpop-blue-400
+          focus:outline-none focus:ring-2 focus:ring-stellar-cyan/50 focus:border-stellar-cyan dark:focus:border-stellar-cyan
           hover:border-slate-300 dark:hover:border-slate-600
           disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-900
         `}

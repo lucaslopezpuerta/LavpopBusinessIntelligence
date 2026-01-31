@@ -1,8 +1,13 @@
-// FirstVisitConversionCard.jsx v2.2
+// FirstVisitConversionCard.jsx v2.3
 // Tracks critical 1st→2nd visit conversion rate
-// Design System v5.1 compliant - Premium Glass Card pattern
+// Design System v5.2 compliant - Premium Glass Card pattern
 //
 // CHANGELOG:
+// v2.3 (2026-01-29): Premium Gradient Status Badges
+//   - Status badges now use gradient backgrounds matching HealthPill patterns
+//   - excellent: emerald→teal, good: blue→cyan, attention: amber→orange, critical: red→rose
+//   - Added text shadows for depth on gradient backgrounds
+//   - Removed animation features for cleaner, instant rendering
 // v2.2 (2026-01-27): Accessibility & consistency improvements
 //   - Added useReducedMotion hook for prefers-reduced-motion support
 //   - Replaced inline hoverTransition with TWEEN.HOVER constant
@@ -207,35 +212,39 @@ const FirstVisitConversionCard = ({
     };
   }, [metrics, notWelcomedPending.length]);
 
-  // Color classes based on status
+  // Color classes based on status - now with premium gradients
   const statusColors = {
     excellent: {
       bg: 'bg-emerald-50 dark:bg-emerald-900/20',
       border: 'border-emerald-200 dark:border-emerald-800/50',
       text: 'text-emerald-600 dark:text-emerald-400',
       accent: 'border-l-emerald-500 dark:border-l-emerald-400',
-      iconBg: 'bg-emerald-500 dark:bg-emerald-600'
+      iconBg: 'bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-500 dark:to-teal-600',
+      badgeGradient: 'bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-500 dark:to-teal-600 text-white'
     },
     good: {
       bg: 'bg-blue-50 dark:bg-blue-900/20',
       border: 'border-blue-200 dark:border-blue-800/50',
       text: 'text-blue-600 dark:text-blue-400',
       accent: 'border-l-blue-500 dark:border-l-blue-400',
-      iconBg: 'bg-blue-500 dark:bg-blue-600'
+      iconBg: 'bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-500 dark:to-cyan-600',
+      badgeGradient: 'bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-500 dark:to-cyan-600 text-white'
     },
     attention: {
       bg: 'bg-amber-50 dark:bg-amber-900/20',
       border: 'border-amber-200 dark:border-amber-800/50',
       text: 'text-amber-600 dark:text-amber-400',
       accent: 'border-l-amber-500 dark:border-l-amber-400',
-      iconBg: 'bg-amber-500 dark:bg-amber-600'
+      iconBg: 'bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-500 dark:to-orange-600',
+      badgeGradient: 'bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-500 dark:to-orange-600 text-white'
     },
     critical: {
       bg: 'bg-red-50 dark:bg-red-900/20',
       border: 'border-red-200 dark:border-red-800/50',
       text: 'text-red-600 dark:text-red-400',
       accent: 'border-l-red-500 dark:border-l-red-400',
-      iconBg: 'bg-red-500 dark:bg-red-600'
+      iconBg: 'bg-gradient-to-r from-red-500 to-rose-500 dark:from-red-500 dark:to-rose-600',
+      badgeGradient: 'bg-gradient-to-r from-red-500 to-rose-500 dark:from-red-500 dark:to-rose-600 text-white'
     }
   };
 
@@ -263,7 +272,7 @@ const FirstVisitConversionCard = ({
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
         <div className={`w-10 h-10 rounded-xl ${colors.iconBg} flex items-center justify-center shadow-sm shrink-0`}>
-          <Users className="w-5 h-5 text-white" />
+          <Users className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
@@ -275,7 +284,10 @@ const FirstVisitConversionCard = ({
                 formula="(Clientes com 2+ visitas ÷ Total de novos) × 100"
               />
             </h3>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
+            <span
+              className={`text-xs font-medium px-2 py-0.5 rounded-full shadow-sm ${colors.badgeGradient}`}
+              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}
+            >
               {status.label}
             </span>
           </div>

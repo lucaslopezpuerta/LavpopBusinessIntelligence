@@ -64,7 +64,7 @@ const RFM_SEGMENTS = [
   { id: 'Frequente', label: 'Frequente', color: 'blue', bgLight: 'bg-blue-100', bgDark: 'dark:bg-blue-900/40', textLight: 'text-blue-700', textDark: 'dark:text-blue-300', selectedBg: 'bg-blue-500', borderHover: 'hover:border-blue-400 dark:hover:border-blue-500/50' },
   { id: 'Promissor', label: 'Promissor', color: 'cyan', bgLight: 'bg-cyan-100', bgDark: 'dark:bg-cyan-900/40', textLight: 'text-cyan-700', textDark: 'dark:text-cyan-300', selectedBg: 'bg-cyan-500', borderHover: 'hover:border-cyan-400 dark:hover:border-cyan-500/50' },
   { id: 'Esfriando', label: 'Esfriando', color: 'slate', bgLight: 'bg-slate-200', bgDark: 'dark:bg-slate-700/50', textLight: 'text-slate-700', textDark: 'dark:text-slate-300', selectedBg: 'bg-slate-500', borderHover: 'hover:border-slate-400 dark:hover:border-slate-500/50' },
-  { id: 'Inativo', label: 'Inativo', color: 'gray', bgLight: 'bg-gray-200', bgDark: 'dark:bg-gray-700/50', textLight: 'text-gray-600', textDark: 'dark:text-gray-400', selectedBg: 'bg-gray-500', borderHover: 'hover:border-gray-400 dark:hover:border-gray-500/50' }
+  { id: 'Inativo', label: 'Inativo', color: 'slate', bgLight: 'bg-slate-200', bgDark: 'dark:bg-slate-700/50', textLight: 'text-slate-600', textDark: 'dark:text-slate-400', selectedBg: 'bg-slate-500', borderHover: 'hover:border-slate-400 dark:hover:border-slate-500/50' }
 ];
 
 // Risk Levels with cosmic color mapping
@@ -328,7 +328,7 @@ const AudienceFilterBuilder = ({
             {title}
           </span>
           {count > 0 && (
-            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-stellar-cyan/20 dark:bg-stellar-cyan/30 text-stellar-cyan rounded-full min-w-[18px] text-center">
+            <span className="px-1.5 py-0.5 text-xs font-bold bg-stellar-cyan/20 dark:bg-stellar-cyan/30 text-stellar-cyan rounded-full min-w-[18px] text-center">
               {count}
             </span>
           )}
@@ -354,7 +354,7 @@ const AudienceFilterBuilder = ({
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {validPhoneCustomers.length}
               </p>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 clientes com WhatsApp valido
               </p>
             </div>
@@ -370,7 +370,7 @@ const AudienceFilterBuilder = ({
           )}
         </div>
         {filteredCustomers.length !== validPhoneCustomers.length && (
-          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
             {filteredCustomers.length - validPhoneCustomers.length} clientes sem WhatsApp valido
           </p>
@@ -398,7 +398,7 @@ const AudienceFilterBuilder = ({
               <div className="pt-3 pb-1 px-1 space-y-3">
                 {/* Recent visitors */}
                 <div>
-                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
                     <TrendingUp className="w-3 h-3 text-emerald-500" />
                     Clientes que visitaram recentemente
                   </p>
@@ -427,7 +427,7 @@ const AudienceFilterBuilder = ({
 
                 {/* Inactive (win-back) */}
                 <div>
-                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
                     <Clock className="w-3 h-3 text-amber-500" />
                     Clientes inativos (win-back)
                   </p>
@@ -480,7 +480,7 @@ const AudienceFilterBuilder = ({
               <div className="pt-3 pb-1 px-1 space-y-4">
                 {/* Total Spend Range */}
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
                     Gasto total (R$)
                   </label>
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -504,7 +504,7 @@ const AudienceFilterBuilder = ({
 
                 {/* Wallet Balance Range */}
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
                     Saldo na carteira (R$)
                   </label>
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -552,7 +552,7 @@ const AudienceFilterBuilder = ({
               <div className="pt-3 pb-1 px-1 space-y-4">
                 {/* Visit Count */}
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
                     Numero de visitas
                   </label>
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 max-w-[200px]">
@@ -576,7 +576,7 @@ const AudienceFilterBuilder = ({
 
                 {/* RFM Segments */}
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
                     <Sparkles className="w-3 h-3 text-yellow-500" />
                     Segmento RFM
                   </label>
@@ -605,7 +605,7 @@ const AudienceFilterBuilder = ({
 
                 {/* Risk Levels */}
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-1.5">
                     <AlertTriangle className="w-3 h-3 text-amber-500" />
                     Nivel de risco
                   </label>

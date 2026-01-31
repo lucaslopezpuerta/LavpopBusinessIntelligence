@@ -1,8 +1,13 @@
-// NewCampaignModal.jsx v7.1 - MODE-AWARE WARNING BADGES
+// NewCampaignModal.jsx v7.2 - SWIPE-TO-CLOSE GESTURES
 // Campaign creation wizard modal
 // Design System v5.1 compliant - Variant D (Glassmorphism Cosmic)
 //
 // CHANGELOG:
+// v7.2 (2026-01-30): Swipe-to-close and escape key support
+//   - Added useSwipeToClose hook for mobile gesture support
+//   - Added escape key handler for keyboard dismissal
+//   - Added drag handle indicator on mobile
+//   - Backdrop opacity linked to swipe progress
 // v7.1 (2026-01-29): Mode-aware warning badges
 //   - Replaced bg-yellow-600 dark:bg-yellow-500 with mode-aware amber badges
 //   - Audience/template icon wells now use bg-amber-50 text-amber-800 border-amber-200 in light mode
@@ -205,10 +210,13 @@ import {
   getTemplatesByAudience
 } from '../../config/messageTemplates';
 import { TEMPLATE_CAMPAIGN_TYPE_MAP } from '../../config/couponConfig';
-import { MODAL } from '../../constants/animations';
+import { MODAL, MODAL_SWIPE } from '../../constants/animations';
 import { haptics } from '../../utils/haptics';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useSwipeToClose } from '../../hooks/useSwipeToClose';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useTheme } from '../../contexts/ThemeContext';
 import CosmicDatePicker from '../ui/CosmicDatePicker';
 import CosmicTimePicker from '../ui/CosmicTimePicker';
 
@@ -398,6 +406,27 @@ const NewCampaignModal = ({
   // iOS-compatible scroll lock - prevents body scroll while modal is open
   useScrollLock(isOpen);
   const prefersReducedMotion = useReducedMotion();
+  const { isDark } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+
+  // Swipe-to-close gesture (mobile only)
+  const { handlers, style, isDragging, backdropOpacity } = useSwipeToClose({
+    onClose: handleClose,
+    threshold: MODAL_SWIPE.THRESHOLD,
+    resistance: MODAL_SWIPE.RESISTANCE,
+    velocityThreshold: MODAL_SWIPE.VELOCITY_THRESHOLD,
+    disabled: !isMobile || !isOpen
+  });
+
+  // Close on escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
 
   // Get audience customers with valid phones
   // v5.1: Added support for 'customFiltered' from AudienceFilterBuilder
@@ -795,11 +824,12 @@ const NewCampaignModal = ({
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-          {/* Backdrop */}
+          {/* Backdrop - opacity linked to swipe progress on mobile */}
           <motion.div
             {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
             className="absolute inset-0 bg-black/60 dark:backdrop-blur-sm"
             onClick={handleClose}
+            style={isMobile ? { opacity: backdropOpacity } : undefined}
           />
           {/* Modal */}
           <motion.div
@@ -808,9 +838,22 @@ const NewCampaignModal = ({
             {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
             className="relative w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-stellar-cyan/15 flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            style={isMobile ? style : undefined}
+            {...(isMobile ? handlers : {})}
           >
+            {/* Drag Handle (mobile only) */}
+            {isMobile && (
+              <div className="flex justify-center pt-2 pb-1">
+                <div className={`w-10 h-1 rounded-full transition-colors ${
+                  isDragging
+                    ? 'bg-stellar-cyan'
+                    : isDark ? 'bg-stellar-cyan/30' : 'bg-slate-300'
+                }`} />
+              </div>
+            )}
+
         {/* Header wrapper with safe area - extends background into notch/Dynamic Island */}
-        <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl">
+        <div className={`bg-white dark:bg-space-dust/95 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-none sm:rounded-t-2xl ${isMobile ? 'pt-0' : 'pt-safe sm:pt-0'}`}>
           {/* Header content */}
           <div className="px-3 py-2.5 sm:px-6 sm:py-4 flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">

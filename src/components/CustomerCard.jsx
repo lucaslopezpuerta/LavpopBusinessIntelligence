@@ -1,8 +1,25 @@
-// CustomerCard.jsx v6.4 - SUBTLE ACTIONS
+// CustomerCard.jsx v6.8 - SWIPE BACKGROUND POSITIONING FIX
 // Premium card design with risk-based ambient glow and subtle action buttons
 // Design System v5.0 compliant - Cosmic Precision + Premium Effects
 //
 // CHANGELOG:
+// v6.8 (2026-01-30): Swipe background positioning fix
+//   - Fixed: Each action background now positioned on its own side (left/right)
+//   - Matches AtRiskCustomersTable pattern: left-0 w-20 for WhatsApp, right-0 w-20 for Call
+//   - No more z-index issues when releasing swipe - backgrounds don't overlap
+// v6.7 (2026-01-30): Card disappearing fix
+//   - Fixed: Card content now has z-20 to stay above action backgrounds
+//   - Fixed: Removed background transparency to prevent see-through during swipe
+// v6.6 (2026-01-30): Swipe gesture bug fixes
+//   - Fixed: Action backgrounds now show correctly based on swipe direction
+//   - Fixed: Swipe actions now mark customer as contacted via useContactTracking
+//   - Green WhatsApp shows on swipe right, blue Call shows on swipe left
+// v6.5 (2026-01-30): Swipe-to-action gesture on mobile
+//   - Added swipe-right for WhatsApp and swipe-left for Call
+//   - Haptic feedback at threshold crossing and on action trigger
+//   - Visual threshold indicator with icon scale bump
+//   - Success flash animation before snap-back
+//   - Respects prefers-reduced-motion preference
 // v6.4 (2026-01-18): Subtle action buttons
 //   - Redesigned buttons as ghost/outline style
 //   - Transparent backgrounds with subtle borders
@@ -46,7 +63,8 @@
 // v5.1 (2025-12-01): Unified risk pill styling
 // v5.0 (2025-11-24): Fixed-size clickable card
 
-import React from 'react';
+import React, { useCallback } from 'react';
+import { motion, useSpring, useTransform } from 'framer-motion';
 import {
   Phone,
   MessageCircle,
@@ -59,6 +77,10 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
 import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
+import { useSwipeToAction } from '../hooks/useSwipeToAction';
+import { SWIPE_ACTION } from '../constants/animations';
+import useReducedMotion from '../hooks/useReducedMotion';
+import { useContactTracking } from '../hooks/useContactTracking';
 
 // Risk-based gradient system with ambient glow colors
 const RISK_GRADIENTS = {
@@ -107,6 +129,19 @@ const RISK_GRADIENTS = {
 };
 
 const CustomerCard = ({ customer, onClick, isContacted = false }) => {
+  const prefersReducedMotion = useReducedMotion();
+
+  // Contact tracking (syncs across app with effectiveness tracking)
+  const { isContacted: isContactedHook, markContacted } = useContactTracking();
+  const customerId = customer.doc || customer.id;
+  const contacted = isContacted || isContactedHook(customerId);
+
+  // Customer context for effectiveness tracking
+  const customerContext = {
+    customerName: customer.name || null,
+    riskLevel: customer.riskLevel || null
+  };
+
   // Get risk styling with fallback
   const risk = RISK_GRADIENTS[customer.riskLevel] || RISK_GRADIENTS['Lost'];
 
@@ -119,45 +154,120 @@ const CustomerCard = ({ customer, onClick, isContacted = false }) => {
     ? getPhoneValidationError(customer.phone)
     : null;
 
-  const handleCall = (e) => {
-    e.stopPropagation();
-    if (customer.phone) window.location.href = `tel:${customer.phone}`;
-  };
+  const handleCall = useCallback((e) => {
+    if (e) e.stopPropagation();
+    if (customer.phone) {
+      window.location.href = `tel:${customer.phone}`;
+      // Mark as contacted with context (for effectiveness tracking)
+      if (customerId && !contacted) {
+        markContacted(customerId, 'call', customerContext);
+      }
+    }
+  }, [customer.phone, customerId, contacted, markContacted, customerContext]);
 
-  const handleWhatsApp = (e) => {
-    e.stopPropagation();
+  const handleWhatsApp = useCallback((e) => {
+    if (e) e.stopPropagation();
     if (hasValidPhone && customer.phone) {
       const cleanPhone = customer.phone.replace(/\D/g, '');
       // Ensure country code for WhatsApp
       const whatsappPhone = cleanPhone.length === 11 ? '55' + cleanPhone : cleanPhone;
       window.open(`https://wa.me/${whatsappPhone}`, '_blank');
+      // Mark as contacted with context (for effectiveness tracking)
+      if (customerId && !contacted) {
+        markContacted(customerId, 'whatsapp', customerContext);
+      }
     }
-  };
+  }, [hasValidPhone, customer.phone, customerId, contacted, markContacted, customerContext]);
+
+  // Swipe-to-action gesture hook
+  const {
+    swipeState,
+    actionSuccess,
+    x,
+    leftIconScale,
+    leftIconOpacity,
+    rightIconScale,
+    rightIconOpacity,
+    handlers,
+    isSwipingItem
+  } = useSwipeToAction({
+    onSwipeLeft: () => handleCall(),     // Swipe left → Call
+    onSwipeRight: () => handleWhatsApp(), // Swipe right → WhatsApp
+    canSwipeLeft: !!customer.phone,
+    canSwipeRight: hasValidPhone,
+    disabled: !customer.phone,
+    reduceMotion: prefersReducedMotion
+  });
+
+  const isSwipingThis = isSwipingItem(customer.id || customer.phone);
+  const isCallSuccess = isSwipingThis && actionSuccess === 'left';
+  const isWhatsAppSuccess = isSwipingThis && actionSuccess === 'right';
 
   return (
-    <div
-      onClick={onClick}
-      className="
-        group relative overflow-hidden
-        bg-white/95 dark:bg-space-dust/90
-        backdrop-blur-sm
-        rounded-2xl
-        border border-slate-200/80 dark:border-stellar-cyan/15
-        transition-all duration-300 ease-out
-        cursor-pointer
-        hover:scale-[1.02]
-        h-full flex flex-col
-      "
-      style={{
-        boxShadow: `0 4px 20px -4px ${risk.glow}, 0 0 0 1px transparent`,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = `0 8px 32px -4px ${risk.glowHover}, 0 0 0 1px ${risk.glow}`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = `0 4px 20px -4px ${risk.glow}, 0 0 0 1px transparent`;
-      }}
-    >
+    <div className="relative overflow-hidden rounded-2xl h-full sm:overflow-visible">
+      {/* Mobile: Swipe action backgrounds - each positioned on its own side */}
+      {customer.phone && (
+        <div className="sm:hidden absolute inset-0 rounded-2xl overflow-hidden">
+          {/* WhatsApp action (swipe right reveals left side) */}
+          {hasValidPhone && (
+            <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-emerald-500 to-emerald-600 flex items-center justify-center">
+              <motion.div
+                style={{
+                  scale: leftIconScale,
+                  opacity: leftIconOpacity
+                }}
+              >
+                <MessageCircle className="w-6 h-6 text-white" />
+              </motion.div>
+            </div>
+          )}
+          {/* Call action (swipe left reveals right side) */}
+          <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-blue-500 to-blue-600 flex items-center justify-center">
+            <motion.div
+              style={{
+                scale: rightIconScale,
+                opacity: rightIconOpacity
+              }}
+            >
+              <Phone className="w-6 h-6 text-white" />
+            </motion.div>
+          </div>
+        </div>
+      )}
+
+      {/* Swipeable card content - z-20 to stay above action backgrounds */}
+      <motion.div
+        className={`
+          group relative overflow-hidden z-20
+          bg-white dark:bg-space-dust
+          backdrop-blur-sm
+          rounded-2xl
+          border border-slate-200/80 dark:border-stellar-cyan/15
+          transition-all duration-300 ease-out
+          cursor-pointer
+          sm:hover:scale-[1.02]
+          h-full flex flex-col
+          ${isCallSuccess ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+          ${isWhatsAppSuccess ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}
+        `}
+        animate={(isCallSuccess || isWhatsAppSuccess) ? { scale: [1, 1.02, 1] } : {}}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        onClick={onClick}
+        onTouchStart={(e) => handlers.handleTouchStart(e, customer.id || customer.phone)}
+        onTouchMove={(e) => handlers.handleTouchMove(e, customer.id || customer.phone)}
+        onTouchEnd={() => handlers.handleTouchEnd(customer.id || customer.phone, customer)}
+        onTouchCancel={handlers.handleTouchCancel}
+        style={{
+          x: isSwipingThis ? x : 0,
+          boxShadow: `0 4px 20px -4px ${risk.glow}, 0 0 0 1px transparent`,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = `0 8px 32px -4px ${risk.glowHover}, 0 0 0 1px ${risk.glow}`;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = `0 4px 20px -4px ${risk.glow}, 0 0 0 1px transparent`;
+        }}
+      >
       {/* Gradient Accent Header - Thicker for more presence */}
       <div className={`
         h-2 w-full
@@ -166,7 +276,7 @@ const CustomerCard = ({ customer, onClick, isContacted = false }) => {
       `} />
 
       {/* Contacted Indicator - Premium Badge */}
-      {isContacted && (
+      {contacted && (
         <div className="absolute top-4 right-4 z-10">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 ring-2 ring-white/30 dark:ring-emerald-400/20">
             <Check className="w-4 h-4 text-white" strokeWidth={3} />
@@ -286,9 +396,9 @@ const CustomerCard = ({ customer, onClick, isContacted = false }) => {
           </div>
         </div>
 
-        {/* Action Buttons - Subtle Ghost Style */}
+        {/* Action Buttons - Subtle Ghost Style (hidden on mobile where swipe is used) */}
         {customer.phone && (
-          <div className="flex gap-2 mt-auto pt-3">
+          <div className="hidden sm:flex gap-2 mt-auto pt-3">
             <button
               onClick={handleCall}
               className="
@@ -336,7 +446,21 @@ const CustomerCard = ({ customer, onClick, isContacted = false }) => {
             </button>
           </div>
         )}
+
+        {/* Mobile: Swipe hint */}
+        {customer.phone && (
+          <div className="sm:hidden flex items-center justify-center gap-4 mt-auto pt-3 text-xs text-slate-400 dark:text-slate-500">
+            <span className="flex items-center gap-1">
+              <MessageCircle className="w-3 h-3 text-emerald-500" /> →
+            </span>
+            <span>Deslize</span>
+            <span className="flex items-center gap-1">
+              ← <Phone className="w-3 h-3 text-blue-500" />
+            </span>
+          </div>
+        )}
       </div>
+      </motion.div>
     </div>
   );
 };

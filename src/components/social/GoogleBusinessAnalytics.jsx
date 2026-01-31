@@ -196,7 +196,7 @@ const OAuthSetup = ({ onConnect }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+    <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-stellar-cyan/10 p-8 text-center">
       <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
         <Building2 className="w-8 h-8 text-white" />
       </div>
@@ -228,7 +228,7 @@ const OAuthSetup = ({ onConnect }) => {
 // ==================== PROFILE HEADER ====================
 
 const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh, isSyncing, isLoadingHistory, lastSync }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5">
+  <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-stellar-cyan/10 p-4 sm:p-5">
     {/* ===== MOBILE LAYOUT ===== */}
     <div className="sm:hidden">
       {/* Row 1: Icon + Business Name + Refresh */}
@@ -434,7 +434,7 @@ const KPIGrid = ({ metrics, isLoading }) => {
 // ==================== CHARTS ====================
 
 const ChartCard = ({ title, subtitle, icon: Icon, iconColor = 'text-slate-400', iconBg = 'bg-slate-100 dark:bg-slate-700/50', children, className = '' }) => (
-  <div className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden ${className}`}>
+  <div className={`bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-stellar-cyan/10 overflow-hidden ${className}`}>
     <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
       {Icon && (
         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${iconBg} ${iconColor}`}>
@@ -719,9 +719,9 @@ const ReviewsSection = ({ reviews, isLoading, onReply, onLoadMore, hasMore }) =>
     : '0.0';
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-stellar-cyan/10 overflow-hidden">
       {/* Header with rating summary */}
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-stellar-cyan/10">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center">
@@ -947,7 +947,7 @@ const GoogleBusinessAnalytics = () => {
   // Error state
   if (error && !profile) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+      <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-stellar-cyan/10 p-8 text-center">
         <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Erro ao carregar</h3>
         <p className="text-xs text-slate-500 mb-4">{error}</p>

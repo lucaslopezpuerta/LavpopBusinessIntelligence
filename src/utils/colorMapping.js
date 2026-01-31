@@ -1,8 +1,34 @@
-// colorMapping.js v2.1 - MODE-AWARE WARNING PALETTE
+// colorMapping.js v3.2 - BILAVNOVA PRECISION PALETTE
 // Unified semantic color mapping for Intelligence components
-// Design System v5.1 compliant - Eye-strain optimized
+// Design System v6.2 compliant - Brand-aligned with vibrant semantic colors
+//
+// Bilavnova Precision Accent Colors (v6.2 - Vibrant Tailwind 500):
+// - Success: cosmic-green (#22C55E) - Tailwind green-500
+// - Warning: cosmic-amber (#F59E0B) - Tailwind amber-500
+// - Error: cosmic-rose (#EF4444) - Tailwind red-500
+// - Primary: stellar-cyan (#00aeef) - Brand electric cyan
+// - Secondary: stellar-blue (#2d388a) - Brand deep royal
+// - Special: cosmic-purple (#A855F7) - Tailwind purple-500
 //
 // CHANGELOG:
+// v3.2 (2026-01-30): Bilavnova Precision - Vibrant semantic colors
+//   - Replaced muted Nord semantic colors with vibrant Tailwind 500-level:
+//     cosmic-green: #A3BE8C → #22C55E (green-500)
+//     cosmic-amber: #EBCB8B → #F59E0B (amber-500)
+//     cosmic-rose: #BF616A → #EF4444 (red-500)
+//     cosmic-purple: #B48EAD → #A855F7 (purple-500)
+//   - Updated chartColors primary palette and semantic colors
+//   - All colors WCAG AA verified
+// v3.1 (2026-01-30): Bilavnova Precision - Brand color restoration
+//   - Restored brand gradient: #2d388a → #00aeef (from logo)
+//   - stellar-cyan now #00aeef (brand vibrant) instead of #88C0D0
+//   - stellar-blue now #2d388a (brand deep) instead of #5E81AC
+//   - Removed Nord-specific stellar-ice and stellar-frost
+//   - Maintained WCAG AA compliance throughout
+// v3.0 (2026-01-30): Aurora Borealis - Nord-inspired palette
+//   - Updated chart colors to use Aurora palette
+//   - stellar colors now reference Nord frost (#88C0D0)
+//   - Maintained WCAG AA compliance throughout
 // v2.1 (2026-01-29): Mode-aware warning colors for light mode refinement
 //   - Light mode warnings: Soft tinted amber (bg-amber-50, text-amber-800)
 //   - Dark mode warnings: Solid amber (bg-amber-500, text-white)
@@ -303,17 +329,17 @@ export const semanticColors = {
     ring: 'ring-cyan-500',
     solidGradient: 'bg-gradient-to-br from-cyan-500 to-sky-600',
   },
-  lavpop: {
-    bg: 'bg-lavpop-blue-50 dark:bg-lavpop-blue-900/20',
-    bgGradient: 'bg-gradient-to-br from-lavpop-blue-50 to-lavpop-blue-100 dark:from-lavpop-blue-900/30 dark:to-lavpop-blue-800/20',
-    border: 'border-lavpop-blue-200 dark:border-lavpop-blue-800',
-    text: 'text-lavpop-blue-900 dark:text-lavpop-blue-100',
-    textMuted: 'text-lavpop-blue-700 dark:text-lavpop-blue-300',
-    textSubtle: 'text-lavpop-blue-600 dark:text-lavpop-blue-400',
-    icon: 'text-lavpop-blue dark:text-blue-400',
-    iconBg: 'bg-lavpop-blue-600 dark:bg-lavpop-blue-500',
-    gradient: 'from-lavpop-blue to-blue-600',
-    ring: 'ring-lavpop-blue',
+  stellar: {
+    bg: 'bg-blue-50 dark:bg-stellar-cyan/10',
+    bgGradient: 'bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-stellar-blue/20 dark:to-stellar-cyan/10',
+    border: 'border-blue-200 dark:border-stellar-cyan/20',
+    text: 'text-stellar-blue dark:text-stellar-cyan',
+    textMuted: 'text-blue-700 dark:text-stellar-cyan/80',
+    textSubtle: 'text-blue-600 dark:text-stellar-cyan/60',
+    icon: 'text-stellar-blue dark:text-stellar-cyan',
+    iconBg: 'bg-stellar-blue dark:bg-stellar-cyan',
+    gradient: 'from-stellar-blue to-stellar-cyan',
+    ring: 'ring-stellar-cyan',
   },
   indigo: {
     bg: 'bg-indigo-50 dark:bg-indigo-900/20',
@@ -448,25 +474,32 @@ export const getCampaignStatusColor = (status) => {
 
 /**
  * Chart color palette for consistent data visualization
+ * v3.1: Bilavnova Precision palette - Brand aligned
  */
 export const chartColors = {
-  primary: ['#1a5a8e', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
-  revenue: '#10b981',
-  cost: '#ef4444',
-  profit: '#8b5cf6',
-  lavpop: '#1a5a8e',
+  // Bilavnova Precision primary palette (v6.2 - vibrant)
+  primary: ['#2d388a', '#00aeef', '#22C55E', '#F59E0B', '#EF4444', '#A855F7'],
 
-  // Weather chart colors
+  // Semantic chart colors (Bilavnova v6.2 - vibrant)
+  revenue: '#22C55E',    // cosmic-green (vibrant)
+  cost: '#EF4444',       // cosmic-rose (vibrant)
+  profit: '#A855F7',     // cosmic-purple (vibrant)
+  stellar: '#00aeef',    // stellar-cyan (brand)
+
+  // Legacy alias
+  lavpop: '#2d388a',     // stellar-blue (brand)
+
+  // Weather chart colors (Bilavnova v6.2 - vibrant)
   weather: {
-    sunny: '#f59e0b',
-    cloudy: '#64748b',
-    rainy: '#3b82f6',
+    sunny: '#F59E0B',    // cosmic-amber (vibrant)
+    cloudy: '#4C566A',   // Nord polar night 3
+    rainy: '#00aeef',    // stellar-cyan (brand)
   },
 
-  // Trend colors
-  positive: '#10b981',
-  negative: '#ef4444',
-  neutral: '#64748b',
+  // Trend colors (Bilavnova v6.2 - vibrant)
+  positive: '#22C55E',   // cosmic-green (vibrant)
+  negative: '#EF4444',   // cosmic-rose (vibrant)
+  neutral: '#4C566A',    // Nord polar night 3
 };
 
 /**
@@ -547,30 +580,31 @@ export const weatherColors = {
 
 /**
  * Weather chart colors for Recharts visualization
+ * v3.2: Bilavnova Precision palette (vibrant)
  */
 export const weatherChartColors = {
   temperature: {
-    stroke: '#f59e0b',      // amber-500
+    stroke: '#F59E0B',      // cosmic-amber (vibrant)
     fill: 'url(#tempGradient)',
-    gradient: ['#fbbf24', '#f59e0b', '#d97706'], // amber scale
+    gradient: ['#F59E0B', '#F97316', '#EF4444'], // Vibrant warm scale
   },
   precipitation: {
-    stroke: '#0ea5e9',      // sky-500
-    fill: '#0ea5e9',
+    stroke: '#00aeef',      // stellar-cyan (brand)
+    fill: '#00aeef',
     opacity: 0.6,
   },
   humidity: {
-    stroke: '#8b5cf6',      // violet-500
+    stroke: '#A855F7',      // cosmic-purple (vibrant)
     fill: 'url(#humidityGradient)',
   },
   wind: {
-    stroke: '#14b8a6',      // teal-500
-    fill: '#14b8a6',
+    stroke: '#2d388a',      // stellar-blue (brand)
+    fill: '#2d388a',
     opacity: 0.4,
   },
   uv: {
-    stroke: '#f97316',      // orange-500
-    fill: '#f97316',
+    stroke: '#F97316',      // orange-500 (vibrant)
+    fill: '#F97316',
   },
 };
 

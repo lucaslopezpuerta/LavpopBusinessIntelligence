@@ -34,10 +34,10 @@ const ThemeToggle = ({ className = '' }) => {
         w-11 h-11 rounded-lg
         transition-all duration-300 ease-in-out
         hover:scale-105 active:scale-95
-        focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2
-        ${isDark 
-          ? 'bg-slate-700 hover:bg-slate-600 text-yellow-300' 
-          : 'bg-slate-100 hover:bg-slate-200 text-lavpop-blue'
+        focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-2
+        ${isDark
+          ? 'bg-slate-700 hover:bg-slate-600 text-yellow-300'
+          : 'bg-slate-100 hover:bg-slate-200 text-stellar-blue'
         }
         ${className}
       `}

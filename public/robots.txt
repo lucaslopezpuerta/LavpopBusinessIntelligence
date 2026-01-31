@@ -1,0 +1,5 @@
+# Bilavnova Business Intelligence
+# Private dashboard - block all crawlers
+
+User-agent: *
+Disallow: /

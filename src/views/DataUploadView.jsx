@@ -138,7 +138,7 @@ const DataUploadView = ({ onDataChange }) => {
               >
                 <span className="text-gradient-stellar">UPLOAD DE DADOS</span>
               </h1>
-              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Importar dados de vendas e clientes
               </p>
             </div>

@@ -56,7 +56,7 @@ import { CHART_ANIMATION } from '../constants/animations';
 // Pure function using unified DAILY_THRESHOLDS
 const getColor = (utilization) => {
   if (utilization >= DAILY_THRESHOLDS.excellent) return '#10b981'; // emerald-500
-  if (utilization >= DAILY_THRESHOLDS.good) return '#1a5a8e'; // lavpop-blue
+  if (utilization >= DAILY_THRESHOLDS.good) return '#06b6d4'; // cyan-500
   if (utilization >= DAILY_THRESHOLDS.fair) return '#f59e0b'; // amber-500
   return '#dc2626'; // red-600
 };

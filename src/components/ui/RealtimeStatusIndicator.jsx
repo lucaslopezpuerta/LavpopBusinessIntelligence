@@ -1,4 +1,4 @@
-// RealtimeStatusIndicator.jsx v1.2 - COSMIC REALTIME STATUS
+// RealtimeStatusIndicator.jsx v1.4 - COSMIC REALTIME STATUS
 // Visual indicator for Supabase Realtime connection status
 //
 // FEATURES:
@@ -8,12 +8,20 @@
 // - Dark/light mode support
 // - Reduced motion accessibility support
 // - Cosmic design system compliant
+// - Portal-based tooltip (escapes overflow containers)
 //
 // USAGE:
 // <RealtimeStatusIndicator />  // Compact mode (default)
 // <RealtimeStatusIndicator showLabel />  // With text label
 //
 // CHANGELOG:
+// v1.4 (2026-01-30): Portal-based tooltip (fixes drawer clipping)
+//   - Tooltip now renders via createPortal to document.body
+//   - Escapes overflow-hidden containers (mobile drawer)
+//   - Smart positioning: prefers below, falls back to above
+//   - Viewport edge clamping prevents overflow
+//   - Added backdrop overlay for mobile tap-to-dismiss
+// v1.3 (2026-01-30): Attempted CSS-only fixes (superseded by v1.4)
 // v1.2 (2026-01-23): Touch-friendly tooltip
 //   - Added touch device detection
 //   - Mobile: tap to toggle tooltip (stays open until tap elsewhere)
@@ -26,9 +34,10 @@
 //   - Simplified "Última atualização" to "Atualização"
 // v1.0 (2026-01-23): Initial implementation
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Wifi, RefreshCw } from 'lucide-react';
 import { useRealtimeSyncContext } from '../../contexts/RealtimeSyncContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -50,14 +59,28 @@ const useIsTouchDevice = () => {
   return isTouch;
 };
 
+// Safe area constants for positioning
+const SAFE_AREA = {
+  top: 60,      // iOS Dynamic Island + status bar
+  bottom: 100,  // Bottom nav + home indicator
+  padding: 12   // Edge padding
+};
+
+// Tooltip dimensions (approximate)
+const TOOLTIP_WIDTH = 176;  // w-44 = 11rem = 176px
+const TOOLTIP_HEIGHT = 100; // Approximate height
+
 const RealtimeStatusIndicator = ({ showLabel = false, className = '' }) => {
   const { isConnected, lastUpdate, getConnectionStatusText } = useRealtimeSyncContext();
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
   const isTouch = useIsTouchDevice();
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0, position: 'bottom' });
   const containerRef = useRef(null);
+  const buttonRef = useRef(null);
   const closeTimeoutRef = useRef(null);
+  const tooltipRef = useRef(null);
 
   // Format last update time
   const getLastUpdateText = () => {
@@ -70,6 +93,42 @@ const RealtimeStatusIndicator = ({ showLabel = false, className = '' }) => {
     return `Há ${Math.floor(diff / 3600)}h`;
   };
 
+  // Calculate tooltip position from button rect
+  const calculatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+
+    const rect = buttonRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Calculate available space
+    const spaceBelow = viewportHeight - rect.bottom - SAFE_AREA.bottom;
+    const spaceAbove = rect.top - SAFE_AREA.top;
+
+    // Determine vertical position (prefer below, fallback to above)
+    let top, position;
+    if (spaceBelow >= TOOLTIP_HEIGHT || spaceBelow >= spaceAbove) {
+      // Position below
+      top = rect.bottom + 8;
+      position = 'bottom';
+    } else {
+      // Position above
+      top = rect.top - TOOLTIP_HEIGHT - 8;
+      position = 'top';
+    }
+
+    // Calculate horizontal position (centered under button, clamped to viewport)
+    const buttonCenter = rect.left + rect.width / 2;
+    let left = buttonCenter - TOOLTIP_WIDTH / 2;
+
+    // Clamp to viewport edges
+    const minLeft = SAFE_AREA.padding;
+    const maxLeft = viewportWidth - TOOLTIP_WIDTH - SAFE_AREA.padding;
+    left = Math.max(minLeft, Math.min(left, maxLeft));
+
+    setTooltipPosition({ top, left, position });
+  }, []);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -77,48 +136,47 @@ const RealtimeStatusIndicator = ({ showLabel = false, className = '' }) => {
     };
   }, []);
 
-  // Close tooltip when clicking outside (for touch devices)
+  // Hide tooltip on scroll
   useEffect(() => {
-    if (!isTouch || !showTooltip) return;
-
-    const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setShowTooltip(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, [isTouch, showTooltip]);
+    if (!showTooltip) return;
+    const handleScroll = () => setShowTooltip(false);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [showTooltip]);
 
   // Desktop only: hover handlers
-  const handleMouseEnter = () => {
+  const handleMouseEnter = useCallback(() => {
     if (isTouch) return;
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
+    calculatePosition();
     setShowTooltip(true);
-  };
+  }, [isTouch, calculatePosition]);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     if (isTouch) return;
     closeTimeoutRef.current = setTimeout(() => {
       setShowTooltip(false);
     }, 150);
-  };
+  }, [isTouch]);
 
   // Mobile: tap to toggle with haptic feedback
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     if (isTouch) {
       haptics.light();
+      if (!showTooltip) {
+        calculatePosition();
+      }
       setShowTooltip(!showTooltip);
     }
-  };
+  }, [isTouch, showTooltip, calculatePosition]);
+
+  // Mobile: tap backdrop to dismiss
+  const handleBackdropClick = useCallback(() => {
+    setShowTooltip(false);
+  }, []);
 
   // Status colors
   const getStatusColor = () => {
@@ -139,6 +197,73 @@ const RealtimeStatusIndicator = ({ showLabel = false, className = '' }) => {
       : 'rgba(245, 158, 11, 0.5)'; // amber-500
   };
 
+  // Animation variants based on position
+  const getAnimationVariants = () => {
+    const yOffset = tooltipPosition.position === 'top' ? 8 : -8;
+    return {
+      initial: { opacity: 0, y: yOffset, scale: 0.95 },
+      animate: { opacity: 1, y: 0, scale: 1 },
+      exit: { opacity: 0, y: yOffset, scale: 0.95 }
+    };
+  };
+
+  // Tooltip content (rendered in portal)
+  const tooltipContent = (
+    <motion.div
+      ref={tooltipRef}
+      {...(prefersReducedMotion
+        ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+        : getAnimationVariants()
+      )}
+      transition={prefersReducedMotion ? { duration: 0.1 } : { type: 'spring', damping: 25, stiffness: 350 }}
+      className={`fixed w-44 rounded-xl shadow-xl border py-2.5 px-3 z-[9999] pointer-events-auto
+        ${isDark
+          ? 'bg-space-dust/95 backdrop-blur-xl border-stellar-cyan/20 shadow-stellar'
+          : 'bg-white/95 backdrop-blur-xl border-stellar-blue/10 shadow-bilavnova'
+        }`}
+      style={{
+        top: tooltipPosition.top,
+        left: tooltipPosition.left,
+      }}
+      data-realtime-tooltip
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-2">
+        {isConnected ? (
+          <Wifi className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+        ) : (
+          <RefreshCw className={`w-4 h-4 text-amber-500 flex-shrink-0 ${!prefersReducedMotion ? 'animate-spin' : ''}`} />
+        )}
+        <span className={`text-sm font-semibold whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-800'}`}>
+          {getConnectionStatusText()}
+        </span>
+      </div>
+
+      {/* Divider */}
+      <div className={`h-px mb-2 ${isDark ? 'divider-cosmic' : 'bg-slate-200'}`} />
+
+      {/* Details */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-3">
+          <span className={`text-[11px] whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Status
+          </span>
+          <span className={`text-[11px] font-medium ${isConnected ? 'text-emerald-500' : 'text-amber-500'}`}>
+            {isConnected ? 'Ativo' : 'Reconectando'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className={`text-[11px] whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Atualização
+          </span>
+          <span className={`text-[11px] font-medium whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            {getLastUpdateText()}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+
   return (
     <div
       ref={containerRef}
@@ -148,6 +273,7 @@ const RealtimeStatusIndicator = ({ showLabel = false, className = '' }) => {
     >
       {/* Status indicator button */}
       <button
+        ref={buttonRef}
         onClick={handleClick}
         className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-200 min-h-[36px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan
           ${isDark
@@ -221,57 +347,25 @@ const RealtimeStatusIndicator = ({ showLabel = false, className = '' }) => {
         )}
       </button>
 
-      {/* Tooltip - positioned to stay on screen */}
-      <AnimatePresence>
-        {showTooltip && (
-          <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.95 }}
-            transition={{ duration: 0.12 }}
-            className={`absolute top-full left-0 mt-2 w-44 rounded-xl shadow-xl border py-2.5 px-3 z-50
-              ${isDark
-                ? 'bg-space-dust/95 backdrop-blur-xl border-stellar-cyan/20 shadow-stellar'
-                : 'bg-white/95 backdrop-blur-xl border-stellar-blue/10 shadow-bilavnova'
-              }`}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-2">
-              {isConnected ? (
-                <Wifi className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-              ) : (
-                <RefreshCw className={`w-4 h-4 text-amber-500 flex-shrink-0 ${!prefersReducedMotion ? 'animate-spin' : ''}`} />
+      {/* Portal-based tooltip - renders at document.body to escape overflow containers */}
+      {createPortal(
+        <AnimatePresence>
+          {showTooltip && (
+            <>
+              {/* Backdrop for mobile - tap outside to dismiss */}
+              {isTouch && (
+                <div
+                  className="fixed inset-0 z-[9998]"
+                  onClick={handleBackdropClick}
+                  aria-hidden="true"
+                />
               )}
-              <span className={`text-sm font-semibold whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                {getConnectionStatusText()}
-              </span>
-            </div>
-
-            {/* Divider */}
-            <div className={`h-px mb-2 ${isDark ? 'divider-cosmic' : 'bg-slate-200'}`} />
-
-            {/* Details */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <span className={`text-[11px] whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Status
-                </span>
-                <span className={`text-[11px] font-medium ${isConnected ? 'text-emerald-500' : 'text-amber-500'}`}>
-                  {isConnected ? 'Ativo' : 'Reconectando'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className={`text-[11px] whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Atualização
-                </span>
-                <span className={`text-[11px] font-medium whitespace-nowrap ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                  {getLastUpdateText()}
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {tooltipContent}
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };

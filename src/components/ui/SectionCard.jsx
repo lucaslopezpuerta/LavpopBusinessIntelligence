@@ -86,9 +86,9 @@ const SECTION_COLORS = {
     border: 'border-purple-700 dark:border-purple-400',
     icon: 'text-white'
   },
-  lavpop: {
-    bg: 'bg-lavpop-blue-600 dark:bg-lavpop-blue-500',
-    border: 'border-lavpop-blue-700 dark:border-lavpop-blue-400',
+  stellar: {
+    bg: 'bg-stellar-blue dark:bg-stellar-cyan',
+    border: 'border-stellar-blue dark:border-stellar-cyan',
     icon: 'text-white'
   }
 };

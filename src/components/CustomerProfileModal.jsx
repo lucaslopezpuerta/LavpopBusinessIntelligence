@@ -256,7 +256,7 @@ const SEGMENT_AVATARS = {
     'Lost': { icon: UserMinus, from: 'from-gray-500', to: 'to-slate-600', text: 'text-white' },
     'Unclassified': { icon: User, from: 'from-slate-400', to: 'to-slate-500', text: 'text-white' },
     // Default fallback for any unmatched segment
-    'default': { icon: User, from: 'from-lavpop-blue', to: 'to-blue-600', text: 'text-white' },
+    'default': { icon: User, from: 'from-stellar-blue', to: 'to-stellar-cyan', text: 'text-white' },
 };
 
 // High contrast risk pill styling - solid colors with white text for visibility
@@ -985,7 +985,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                                                 {new Date(entry.date).toLocaleDateString('pt-BR')}
                                                             </span>
                                                             {entry.campaign_name && (
-                                                                <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">
+                                                                <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
                                                                     {entry.campaign_name}
                                                                 </span>
                                                             )}

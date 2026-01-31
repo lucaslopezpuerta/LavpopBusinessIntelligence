@@ -1,5 +1,7 @@
-// OperatingCyclesChart.jsx v5.8 - DESIGN SYSTEM v5.1 COMPLIANCE
-// ✅ NEW: Split by filter (All/Wash Only/Dry Only)
+// OperatingCyclesChart.jsx v5.9 - STAGGERED BAR ANIMATIONS
+// ✅ NEW: Staggered bar entrance animation (left-to-right)
+// ✅ NEW: Animated number counters in stats footer
+// ✅ Split by filter (All/Wash Only/Dry Only)
 // ✅ Same month last year comparison (YoY)
 // ✅ Gradient bars for visual depth
 // ✅ Compact mode for single-glance dashboard
@@ -7,6 +9,11 @@
 // ✅ Design System v5.1 compliant (Cosmic Precision)
 //
 // CHANGELOG:
+// v5.9 (2026-01-30): Staggered bar animations
+//   - NEW: Bars animate in left-to-right with staggered delay
+//   - NEW: AnimatedNumber component for count-up stats
+//   - Uses CHART_ANIMATION.BAR_STAGGER preset
+//   - Respects useReducedMotion for accessibility
 // v5.8 (2026-01-22): Design System v5.1 compliance
 //   - UPDATED: Title size to text-lg (18px) per Design System
 //   - UPDATED: Icon size to w-5 h-5, color to cyan-600/cyan-400
@@ -55,13 +62,14 @@
 // v4.0: Previous implementation
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart } from 'recharts';
+import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart, Cell } from 'recharts';
 import { WashingMachine, TrendingUp, Calendar, Droplet, Flame, Layers } from 'lucide-react';
 import { parseBrDate } from '../utils/dateUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { getChartColors } from '../utils/chartColors';
 import { CHART_ANIMATION } from '../constants/animations';
+import AnimatedNumber from './ui/AnimatedNumber';
 
 function countMachines(str) {
   if (!str) return { wash: 0, dry: 0 };
@@ -93,7 +101,7 @@ const OperatingCyclesChart = ({
 
   // Reduced motion preference for accessibility
   const prefersReducedMotion = useReducedMotion();
-  const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR;
+  const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR_STAGGER;
 
   // Generate last 4 months for selector
   const monthOptions = useMemo(() => {
@@ -410,7 +418,7 @@ const OperatingCyclesChart = ({
                       className={`
                         px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all
                         ${isSelected
-                          ? 'bg-white dark:bg-slate-600 text-lavpop-blue dark:text-white shadow-sm'
+                          ? 'bg-white dark:bg-slate-600 text-stellar-blue dark:text-white shadow-sm'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-600/50'
                         }
                       `}
@@ -482,7 +490,7 @@ const OperatingCyclesChart = ({
                     className={`
                       px-2 py-1 rounded-md text-xs font-semibold transition-all
                       ${isSelected
-                        ? 'bg-white dark:bg-slate-600 text-lavpop-blue dark:text-white shadow-sm'
+                        ? 'bg-white dark:bg-slate-600 text-stellar-blue dark:text-white shadow-sm'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }
                     `}
@@ -611,36 +619,50 @@ const OperatingCyclesChart = ({
               />
             )}
 
-            {/* Wash Bars - conditional on splitBy */}
+            {/* Wash Bars - conditional on splitBy, staggered entrance */}
             {(splitBy === 'all' || splitBy === 'wash') && (
               <Bar
                 dataKey="Lavagens"
-                fill="url(#washGradient)"
                 radius={[4, 4, 0, 0]}
                 name="Lavagens"
                 maxBarSize={50}
                 isAnimationActive={!prefersReducedMotion}
                 animationDuration={chartAnim.duration}
                 animationEasing={chartAnim.easing}
-                animationBegin={chartAnim.delay}
               >
+                {chartData.map((entry, index) => (
+                  <Cell
+                    key={`wash-${index}`}
+                    fill="url(#washGradient)"
+                    style={{
+                      animationDelay: prefersReducedMotion ? '0ms' : `${chartAnim.baseDelay + (index * chartAnim.staggerDelay)}ms`
+                    }}
+                  />
+                ))}
                 <LabelList content={renderLabel} />
               </Bar>
             )}
 
-            {/* Dry Bars - conditional on splitBy, slightly staggered */}
+            {/* Dry Bars - conditional on splitBy, staggered with offset */}
             {(splitBy === 'all' || splitBy === 'dry') && (
               <Bar
                 dataKey="Secagens"
-                fill="url(#dryGradient)"
                 radius={[4, 4, 0, 0]}
                 name="Secagens"
                 maxBarSize={50}
                 isAnimationActive={!prefersReducedMotion}
                 animationDuration={chartAnim.duration}
                 animationEasing={chartAnim.easing}
-                animationBegin={chartAnim.delay + 100}
               >
+                {chartData.map((entry, index) => (
+                  <Cell
+                    key={`dry-${index}`}
+                    fill="url(#dryGradient)"
+                    style={{
+                      animationDelay: prefersReducedMotion ? '0ms' : `${chartAnim.baseDelay + 50 + (index * chartAnim.staggerDelay)}ms`
+                    }}
+                  />
+                ))}
                 <LabelList content={renderLabel} />
               </Bar>
             )}
@@ -661,23 +683,23 @@ const OperatingCyclesChart = ({
           /* Compact: Inline stats row */
           <div className="flex items-center justify-center gap-4 text-xs">
             <span className="font-bold text-slate-900 dark:text-white">
-              {periodInfo.totalCycles} total
+              <AnimatedNumber value={periodInfo.totalCycles} /> total
             </span>
             <span className="flex items-center gap-1">
               <Droplet className="w-3 h-3" style={{ color: colors.primary }} />
-              <span style={{ color: colors.primary }}>{periodInfo.totalWash}</span>
+              <AnimatedNumber value={periodInfo.totalWash} className="font-bold" style={{ color: colors.primary }} />
             </span>
             <span className="flex items-center gap-1">
               <Flame className="w-3 h-3" style={{ color: colors.secondary }} />
-              <span style={{ color: colors.secondary }}>{periodInfo.totalDry}</span>
+              <AnimatedNumber value={periodInfo.totalDry} className="font-bold" style={{ color: colors.secondary }} />
             </span>
           </div>
         ) : (
-          /* Expanded: Grid layout */
+          /* Expanded: Grid layout with animated numbers */
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className={`text-center transition-opacity duration-200 ${splitBy !== 'all' ? 'opacity-50' : ''}`}>
               <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                {periodInfo.totalCycles}
+                <AnimatedNumber value={periodInfo.totalCycles} />
               </div>
               <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
                 <span className="hidden sm:inline">Total</span> Ciclos
@@ -690,7 +712,7 @@ const OperatingCyclesChart = ({
             </div>
             <div className={`text-center transition-all duration-200 ${splitBy === 'wash' ? 'sm:scale-110' : splitBy === 'dry' ? 'opacity-50' : ''}`}>
               <div className="text-xl sm:text-2xl font-bold" style={{ color: colors.primary }}>
-                {periodInfo.totalWash}
+                <AnimatedNumber value={periodInfo.totalWash} />
               </div>
               <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
                 <Droplet className="w-3 h-3" style={{ color: colors.primary }} />
@@ -700,7 +722,7 @@ const OperatingCyclesChart = ({
             </div>
             <div className={`text-center transition-all duration-200 ${splitBy === 'dry' ? 'sm:scale-110' : splitBy === 'wash' ? 'opacity-50' : ''}`}>
               <div className="text-xl sm:text-2xl font-bold" style={{ color: colors.secondary }}>
-                {periodInfo.totalDry}
+                <AnimatedNumber value={periodInfo.totalDry} />
               </div>
               <div className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider mt-0.5 sm:mt-1 flex items-center justify-center gap-1">
                 <Flame className="w-3 h-3" style={{ color: colors.secondary }} />

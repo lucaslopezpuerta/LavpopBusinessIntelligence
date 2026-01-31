@@ -1,8 +1,13 @@
-// KPIDetailModal.jsx v2.12 - AMBER ICON WELL COLORS
+// KPIDetailModal.jsx v2.13 - SWIPE-TO-CLOSE GESTURES
 // Enhanced modal with metric-aware header and cosmic glassmorphism
 // Design System v5.1 compliant - Tier 2 Enhanced
 //
 // CHANGELOG:
+// v2.13 (2026-01-30): Swipe-to-close and portal rendering
+//   - Added useSwipeToClose hook for mobile gesture support
+//   - Added portal rendering for proper z-index stacking
+//   - Added drag handle indicator on mobile
+//   - Backdrop opacity linked to swipe progress
 // v2.12 (2026-01-29): Amber color standardization for icon wells
 //   - Icon well 'orange' key now uses bg-amber-600/500 for consistency
 // v2.11 (2026-01-29): Orange to yellow color migration
@@ -47,11 +52,14 @@
 // v1.0: Initial implementation
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { MODAL } from '../../constants/animations';
+import { MODAL, MODAL_SWIPE } from '../../constants/animations';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useSwipeToClose } from '../../hooks/useSwipeToClose';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useTheme } from '../../contexts/ThemeContext';
 
 // Color mapping for accent backgrounds (solid colors)
@@ -78,6 +86,16 @@ const KPIDetailModal = ({
 }) => {
     const prefersReducedMotion = useReducedMotion();
     const { isDark } = useTheme();
+    const isMobile = useMediaQuery('(max-width: 1023px)');
+
+    // Swipe-to-close gesture (mobile only)
+    const { handlers, style, isDragging, backdropOpacity } = useSwipeToClose({
+        onClose,
+        threshold: MODAL_SWIPE.THRESHOLD,
+        resistance: MODAL_SWIPE.RESISTANCE,
+        velocityThreshold: MODAL_SWIPE.VELOCITY_THRESHOLD,
+        disabled: !isMobile || !isOpen
+    });
 
     // Close on escape key
     useEffect(() => {
@@ -97,15 +115,16 @@ const KPIDetailModal = ({
     // iOS-compatible scroll lock - prevents body scroll while modal is open
     useScrollLock(isOpen);
 
-    return (
+    const modalContent = (
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
+                    {/* Backdrop - opacity linked to swipe progress on mobile */}
                     <motion.div
                         {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
                         onClick={onClose}
                         className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        style={isMobile ? { opacity: backdropOpacity } : undefined}
                     >
                         {/* Modal Container - Cosmic Tier 2 */}
                         <motion.div
@@ -121,11 +140,25 @@ const KPIDetailModal = ({
                                 border ${isDark ? 'border-stellar-cyan/15' : 'border-slate-200'}
                                 flex flex-col max-h-[90vh]
                             `}
+                            style={isMobile ? style : undefined}
+                            {...(isMobile ? handlers : {})}
                         >
+                            {/* Drag Handle (mobile only) */}
+                            {isMobile && (
+                                <div className="flex justify-center pt-2 pb-1">
+                                    <div className={`w-10 h-1 rounded-full transition-colors ${
+                                        isDragging
+                                            ? 'bg-stellar-cyan'
+                                            : isDark ? 'bg-stellar-cyan/30' : 'bg-slate-300'
+                                    }`} />
+                                </div>
+                            )}
+
                             {/* Header - Cosmic border */}
                             <div className={`
                                 flex items-center justify-between p-4 sm:p-6
                                 border-b ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+                                ${isMobile ? 'pt-2' : ''}
                             `}>
                                 <div className="flex items-center gap-3">
                                     {Icon && (
@@ -156,7 +189,7 @@ const KPIDetailModal = ({
                                     <button
                                         onClick={onClose}
                                         className={`
-                                            p-2 rounded-full transition-colors
+                                            p-2 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center
                                             ${isDark
                                                 ? 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
                                                 : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
@@ -178,6 +211,9 @@ const KPIDetailModal = ({
             )}
         </AnimatePresence>
     );
+
+    // Render via portal for proper z-index stacking
+    return createPortal(modalContent, document.body);
 };
 
 export default KPIDetailModal;

@@ -196,7 +196,7 @@ const TrendBadge = ({ value, compact = false }) => {
 // ==================== PROFILE HEADER ====================
 
 const ProfileHeader = ({ profile, summary, historyDays, onDaysChange, onRefresh, isSyncing, isLoadingHistory, lastSync }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5">
+  <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-stellar-cyan/10 p-4 sm:p-5">
     {/* ===== MOBILE LAYOUT ===== */}
     <div className="sm:hidden">
       {/* Row 1: Avatar + Username + Refresh */}
@@ -409,7 +409,7 @@ const InstagramKPIGrid = ({ insights, latestHistory, isLoading }) => {
 // ==================== CHARTS ====================
 
 const ChartCard = ({ title, subtitle, icon: Icon, iconColor = 'text-slate-400', iconBg = 'bg-slate-100 dark:bg-slate-700/50', children, className = '' }) => (
-  <div className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden ${className}`}>
+  <div className={`bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-stellar-cyan/10 overflow-hidden ${className}`}>
     <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
       {Icon && (
         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${iconBg} ${iconColor}`}>
@@ -650,7 +650,7 @@ const PostCard = ({ post }) => {
 };
 
 const PostsSection = ({ media, isLoading }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden h-full flex flex-col">
+  <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-stellar-cyan/10 overflow-hidden h-full flex flex-col">
     <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
       <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-pink-500/20 to-rose-500/20 text-pink-500 dark:from-pink-500/30 dark:to-rose-500/30">
         <Grid3X3 className="w-4 h-4" />
@@ -691,8 +691,8 @@ const CommentsSection = ({ comments, isLoading }) => {
   const paginatedComments = comments.slice(page * COMMENTS_PER_PAGE, (page + 1) * COMMENTS_PER_PAGE);
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden h-full flex flex-col min-h-[400px]">
-      <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-stellar-cyan/10 overflow-hidden h-full flex flex-col min-h-[400px]">
+      <div className="px-4 py-2.5 border-b border-slate-100 dark:border-stellar-cyan/10 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-blue-500 dark:from-blue-500/30 dark:to-indigo-500/30">
             <MessageCircle className="w-4 h-4" />
@@ -862,7 +862,7 @@ const InstagramAnalytics = () => {
 
   if (error && !profile) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+      <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-stellar-cyan/10 p-8 text-center">
         <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Erro ao carregar</h3>
         <p className="text-xs text-slate-500 mb-4">{error}</p>

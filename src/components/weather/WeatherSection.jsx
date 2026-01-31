@@ -122,7 +122,7 @@ const SectionHeader = ({ title, subtitle, isDark, headerRight }) => (
             <span className="text-gradient-stellar">{title}</span>
           </h1>
           {subtitle && (
-            <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               {subtitle}
             </p>
           )}

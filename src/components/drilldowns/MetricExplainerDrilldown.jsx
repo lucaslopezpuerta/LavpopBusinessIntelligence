@@ -59,7 +59,7 @@ const MetricExplainerDrilldown = ({ metricType }) => {
             {/* Formula Card */}
             <div className="bg-slate-50 dark:bg-slate-700/50 p-4 sm:p-5 rounded-xl border border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-2 mb-3">
-                    <Calculator className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+                    <Calculator className="w-5 h-5 text-stellar-blue dark:text-stellar-cyan" />
                     <h3 className="font-semibold text-slate-900 dark:text-white">Como é calculado?</h3>
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-600 text-center font-mono text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -74,7 +74,7 @@ const MetricExplainerDrilldown = ({ metricType }) => {
             {content.benchmarks.length > 0 && (
                 <div>
                     <div className="flex items-center gap-2 mb-3">
-                        <Target className="w-5 h-5 text-lavpop-blue dark:text-blue-400" />
+                        <Target className="w-5 h-5 text-stellar-blue dark:text-stellar-cyan" />
                         <h3 className="font-semibold text-slate-900 dark:text-white">Benchmarks</h3>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

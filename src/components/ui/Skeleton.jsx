@@ -135,10 +135,10 @@ const SkeletonCircle = ({ size = 'w-10 h-10', className = '', stagger = false, s
 const SkeletonCard = ({ className = '', staggerIndex = 0 }) => (
   <div
     className={`
-      bg-white dark:bg-slate-800
+      bg-white dark:bg-space-dust
       rounded-xl shadow-soft
       p-4 sm:p-6
-      border border-gray-100 dark:border-slate-700
+      border border-slate-100 dark:border-slate-700
       ${className}
     `}
   >
@@ -173,7 +173,7 @@ const SkeletonChart = ({ height = 'h-64', className = '' }) => (
 const SkeletonSection = ({ className = '' }) => (
   <div
     className={`
-      bg-white dark:bg-slate-800
+      bg-white dark:bg-space-dust
       rounded-2xl shadow-soft
       p-4 sm:p-6 lg:p-8
       ${className}
@@ -223,7 +223,7 @@ const IntelligenceLoadingSkeleton = () => (
     <SkeletonHeader />
 
     {/* Health Score Hero Card */}
-    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-space-dust">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
         <div className="flex items-center gap-4">
           <Skeleton className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl" stagger staggerIndex={0} />
@@ -247,7 +247,7 @@ const IntelligenceLoadingSkeleton = () => (
     </div>
 
     {/* Revenue Forecast */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
       <div className="flex items-center justify-between mb-4">
         <SkeletonText width="w-40" height="h-5" stagger staggerIndex={7} />
         <SkeletonText width="w-24" height="h-4" stagger staggerIndex={7} />
@@ -294,7 +294,7 @@ const SkeletonHeader = () => (
 
 // Hero KPI Card skeleton (larger, with sparkline area)
 const SkeletonHeroCard = ({ staggerIndex = 0 }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-5">
+  <div className="bg-white dark:bg-space-dust rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-5">
     <div className="flex items-start justify-between mb-3">
       <div className="space-y-2">
         <SkeletonText width="w-24" height="h-4" stagger staggerIndex={staggerIndex} />
@@ -338,7 +338,7 @@ const DashboardLoadingSkeleton = () => (
     {/* Secondary KPI cards - 2x3 grid */}
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       {[0, 1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+        <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-3">
           <SkeletonText width="w-16" height="h-3" className="mb-2" stagger staggerIndex={i} />
           <SkeletonText width="w-12" height="h-6" className="mb-1" stagger staggerIndex={i} />
           <SkeletonText width="w-20" height="h-3" stagger staggerIndex={i} />
@@ -347,7 +347,7 @@ const DashboardLoadingSkeleton = () => (
     </div>
 
     {/* Chart section */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
       <div className="flex items-center justify-between mb-4">
         <SkeletonText width="w-40" height="h-5" stagger staggerIndex={6} />
         <SkeletonText width="w-24" height="h-8" className="rounded-lg" stagger staggerIndex={7} />
@@ -370,7 +370,7 @@ const CustomersLoadingSkeleton = () => (
     {/* Section 2: Acquisition + Visit Patterns (1/2 + 1/2) */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* AcquisitionCard skeleton */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-start gap-3 mb-4">
           <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={1} />
           <div className="flex-1 space-y-2">
@@ -396,7 +396,7 @@ const CustomersLoadingSkeleton = () => (
       </div>
 
       {/* VisitHeatmap skeleton */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-start gap-3 mb-4">
           <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={1} />
           <div className="flex-1 space-y-2">
@@ -436,7 +436,7 @@ const CustomersLoadingSkeleton = () => (
     {/* Section 3: Conversion (1/2 + 1/2) */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* FirstVisitConversionCard skeleton */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         {/* Header */}
         <div className="flex items-start gap-3 mb-4">
           <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={0} />
@@ -491,7 +491,7 @@ const CustomersLoadingSkeleton = () => (
       </div>
 
       {/* RetentionCard skeleton */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         {/* Header */}
         <div className="flex items-start gap-3 mb-4">
           <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={0} />
@@ -546,7 +546,7 @@ const CustomersLoadingSkeleton = () => (
     {/* Section 4: Risk Management */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* ChurnHistogram skeleton */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-start gap-3 mb-4">
           <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={0} />
           <div className="flex-1 space-y-2">
@@ -559,7 +559,7 @@ const CustomersLoadingSkeleton = () => (
       </div>
 
       {/* FrequencyDegradationAlert skeleton (optional, shown for layout) */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-start gap-3 mb-4">
           <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={0} />
           <div className="flex-1 space-y-2">
@@ -583,7 +583,7 @@ const CustomersLoadingSkeleton = () => (
     </div>
 
     {/* AtRiskCustomersTable skeleton */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       <div className="p-5 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -617,7 +617,7 @@ const CustomersLoadingSkeleton = () => (
     </div>
 
     {/* Section 5: RFM Scatter Plot - Full Width */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={0} />
@@ -673,9 +673,9 @@ const DirectoryLoadingSkeleton = () => (
     </div>
 
     {/* Main content card */}
-    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       {/* Filter bar */}
-      <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+      <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-space-dust/50">
         <div className="flex flex-wrap items-center gap-3">
           <Skeleton className="h-10 flex-1 min-w-[200px] max-w-md rounded-lg" stagger staggerIndex={0} />
           <Skeleton className="h-10 w-32 rounded-lg" stagger staggerIndex={1} />
@@ -751,7 +751,7 @@ const CampaignsLoadingSkeleton = () => (
     {/* Dashboard cards - 4 column grid */}
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+        <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-4">
           <SkeletonText width="w-20" height="h-3" className="mb-2" stagger staggerIndex={i} />
           <SkeletonText width="w-16" height="h-7" className="mb-1" stagger staggerIndex={i + 1} />
           <SkeletonText width="w-24" height="h-3" stagger staggerIndex={i + 1} />
@@ -761,11 +761,11 @@ const CampaignsLoadingSkeleton = () => (
 
     {/* Main content area - charts */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <SkeletonText width="w-40" height="h-5" className="mb-4" stagger staggerIndex={5} />
         <SkeletonChartAnimated height="h-64" />
       </div>
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <SkeletonText width="w-40" height="h-5" className="mb-4" stagger staggerIndex={5} />
         <SkeletonChartAnimated height="h-64" />
       </div>
@@ -809,7 +809,7 @@ const WeatherLoadingSkeleton = () => (
       <Skeleton className="h-48 sm:h-56 rounded-2xl" stagger staggerIndex={1} />
 
       {/* Metrics Grid */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 h-full">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl space-y-2">
@@ -823,7 +823,7 @@ const WeatherLoadingSkeleton = () => (
     </div>
 
     {/* Row 2: Hourly Forecast - full width */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700">
         <SkeletonText width="w-36" height="h-5" stagger staggerIndex={3} />
       </div>
@@ -844,7 +844,7 @@ const WeatherLoadingSkeleton = () => (
     </div>
 
     {/* Row 3: Daily Forecast - full width */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700">
         <SkeletonText width="w-32" height="h-5" stagger staggerIndex={5} />
       </div>
@@ -864,7 +864,7 @@ const WeatherLoadingSkeleton = () => (
     </div>
 
     {/* Row 4: Business Impact - full width */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
       <SkeletonText width="w-48" height="h-6" className="mb-4" stagger staggerIndex={6} />
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {[0, 1, 2, 3, 4, 5, 6].map((i) => (
@@ -888,7 +888,7 @@ const OperationsLoadingSkeleton = () => (
     <SkeletonHeader />
 
     {/* Date Range Selector */}
-    <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+    <div className="flex items-center gap-3 p-3 bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700">
       {[0, 1, 2, 3].map((i) => (
         <Skeleton key={i} className="h-8 w-28 rounded-lg" stagger staggerIndex={i} />
       ))}
@@ -903,7 +903,7 @@ const OperationsLoadingSkeleton = () => (
     </div>
 
     {/* MachinePerformanceTable - Premium Glass card */}
-    <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+    <div className="bg-white/80 dark:bg-space-dust/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
       {/* Header with cyan icon badge */}
       <div className="flex items-start gap-3 mb-4">
         <Skeleton className="w-10 h-10 rounded-xl bg-cyan-200 dark:bg-cyan-900/50" stagger staggerIndex={0} />
@@ -960,7 +960,7 @@ const OperationsLoadingSkeleton = () => (
     </div>
 
     {/* UtilizationHeatmap - Premium Glass card */}
-    <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+    <div className="bg-white/80 dark:bg-space-dust/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
       {/* Header with cyan icon badge + view toggle */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-start gap-3">
@@ -1005,7 +1005,7 @@ const OperationsLoadingSkeleton = () => (
     {/* PeakHoursSummary + DayOfWeekChart - Side by side */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       {/* PeakHoursSummary - Premium Glass card */}
-      <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+      <div className="bg-white/80 dark:bg-space-dust/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
         {/* Header with cyan icon badge */}
         <div className="flex items-start gap-3 mb-4">
           <Skeleton className="w-10 h-10 rounded-xl bg-cyan-200 dark:bg-cyan-900/50" stagger staggerIndex={0} />
@@ -1045,7 +1045,7 @@ const OperationsLoadingSkeleton = () => (
       </div>
 
       {/* DayOfWeekChart - Premium Glass card */}
-      <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+      <div className="bg-white/80 dark:bg-space-dust/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
         {/* Header with cyan icon badge */}
         <div className="flex items-start gap-3 mb-4">
           <Skeleton className="w-10 h-10 rounded-xl bg-cyan-200 dark:bg-cyan-900/50" stagger staggerIndex={0} />
@@ -1100,7 +1100,7 @@ const SocialMediaLoadingSkeleton = () => {
       </div>
 
       {/* Primary chart section */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="mb-4">
           <SkeletonText width="w-40" height="h-5" stagger staggerIndex={6} />
         </div>
@@ -1108,7 +1108,7 @@ const SocialMediaLoadingSkeleton = () => {
       </div>
 
       {/* Secondary chart section */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="mb-4">
           <SkeletonText width="w-36" height="h-5" stagger staggerIndex={7} />
         </div>

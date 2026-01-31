@@ -183,7 +183,7 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
                 >
                   <span className="text-gradient-stellar">VISÃO GERAL</span>
                 </h1>
-                <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   Métricas principais da sua lavanderia
                 </p>
               </div>

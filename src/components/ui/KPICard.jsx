@@ -228,7 +228,7 @@ const KPICard = ({
     rounded-xl
     border border-slate-100 dark:border-stellar-cyan/10
     ${statusBorders[status] || ''}
-    ${onClick ? 'cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2 dark:focus:ring-offset-space-dust' : ''}
+    ${onClick ? 'cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-2 dark:focus:ring-offset-space-dust' : ''}
     ${className}
   `.trim();
 

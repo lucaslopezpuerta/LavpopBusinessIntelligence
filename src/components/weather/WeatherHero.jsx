@@ -183,7 +183,7 @@ const WeatherHero = ({
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">
               {location?.name || 'Caxias do Sul'}
             </h2>
-            <p className="text-white/70 text-xs sm:text-sm lg:text-base">
+            <p className="text-white/90 text-xs sm:text-sm lg:text-base">
               {location?.region || 'Rio Grande do Sul'}
             </p>
           </div>
@@ -216,7 +216,7 @@ const WeatherHero = ({
               </span>
             </button>
             {lastUpdated && (
-              <span className="text-white/50 text-[10px] sm:text-xs mt-1" title={lastUpdateText}>
+              <span className="text-white/80 text-[10px] sm:text-xs mt-1" title={lastUpdateText}>
                 {relativeTime}
               </span>
             )}

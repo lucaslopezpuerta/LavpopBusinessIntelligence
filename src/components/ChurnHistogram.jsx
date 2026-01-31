@@ -1,7 +1,10 @@
-// ChurnHistogram.jsx v4.1 - Premium Glass Card
+// ChurnHistogram.jsx v4.2 - STAGGERED BAR ANIMATIONS
 // Time-to-churn distribution histogram with contact tracking integration
 //
 // CHANGELOG:
+// v4.2 (2026-01-30): Staggered bar animations
+//   - NEW: Bars animate in left-to-right with staggered delay
+//   - Uses CHART_ANIMATION.BAR_STAGGER preset
 // v4.1 (2026-01-20): Premium Glass Effects
 //   - Replaced hard borders with soft glow system
 //   - Added ring-1 for subtle edge definition
@@ -112,7 +115,7 @@ const ChurnHistogram = ({
 
     // Reduced motion preference for accessibility
     const prefersReducedMotion = useReducedMotion();
-    const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR;
+    const chartAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.BAR_STAGGER;
 
     // Blacklist check for tooltip display
     const { isBlacklisted } = useBlacklist();
@@ -324,10 +327,10 @@ const ChurnHistogram = ({
             }).length;
 
             return (
-                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs">
+                <div role="tooltip" className="bg-white/90 dark:bg-space-dust/90 backdrop-blur-xl p-3 border border-slate-200 dark:border-stellar-cyan/10 rounded-lg shadow-xl text-xs">
                     <p className="font-bold text-slate-800 dark:text-white mb-1">Intervalo: {label} dias</p>
                     <p className="text-slate-600 dark:text-slate-300">
-                        <span className="font-bold text-lavpop-blue dark:text-blue-400 text-lg">{payload[0].value}</span> clientes
+                        <span className="font-bold text-stellar-blue dark:text-stellar-cyan text-lg">{payload[0].value}</span> clientes
                     </p>
                     <p className="text-slate-500 dark:text-slate-400 mt-1 italic">
                         retornam geralmente neste período
@@ -335,7 +338,7 @@ const ChurnHistogram = ({
 
                     {/* Contact and blacklist status breakdown */}
                     {binData.count > 0 && (contactedIds.size > 0 || blacklistedCount > 0) && (
-                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1">
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-stellar-cyan/10 space-y-1">
                             {contactedIds.size > 0 && (
                                 <>
                                     <div className="flex items-center justify-between text-xs">
@@ -488,7 +491,6 @@ const ChurnHistogram = ({
                             isAnimationActive={!prefersReducedMotion}
                             animationDuration={chartAnim.duration}
                             animationEasing={chartAnim.easing}
-                            animationBegin={chartAnim.delay}
                         >
                             {data.map((entry, index) => (
                                 <Cell
@@ -498,6 +500,9 @@ const ChurnHistogram = ({
                                             entry.min < 30 ? '#f59e0b' : // Warning (Amber)
                                                 '#ef4444' // Danger (Red)
                                     }
+                                    style={{
+                                        animationDelay: prefersReducedMotion ? '0ms' : `${(chartAnim.baseDelay || 50) + (index * (chartAnim.staggerDelay || 30))}ms`
+                                    }}
                                 />
                             ))}
                         </Bar>

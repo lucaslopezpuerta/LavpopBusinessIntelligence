@@ -21,8 +21,8 @@ export default defineConfig({
         name: 'Bilavnova Business Intelligence',
         short_name: 'Bilavnova',
         description: 'Dashboard de análise de dados para Bilavnova',
-        theme_color: '#1a5a8e',
-        background_color: '#1a5a8e',
+        theme_color: '#0a0f1e',
+        background_color: '#050816',
         display: 'standalone',
         start_url: '/',
         icons: [

@@ -60,10 +60,10 @@ const ProgressBar = ({
     amber: 'from-amber-500 to-amber-600',
     red: 'from-red-500 to-red-600',
     blue: 'from-blue-500 to-blue-600',
-    lavpop: 'from-lavpop-blue to-blue-600',
+    lavpop: 'from-stellar-blue to-blue-600',
     indigo: 'from-indigo-500 to-purple-500',
     purple: 'from-purple-500 to-violet-600',
-    gradient: 'from-lavpop-blue via-purple-500 to-pink-500',
+    gradient: 'from-stellar-blue via-purple-500 to-pink-500',
   };
 
   const gradient = gradients[color] || gradients.blue;
@@ -78,7 +78,7 @@ const ProgressBar = ({
       <div
         className={`
           w-full ${sizeClass}
-          bg-gray-200 dark:bg-slate-700
+          bg-slate-200 dark:bg-slate-700
           rounded-full overflow-hidden
           shadow-inner
         `}
@@ -102,7 +102,7 @@ const ProgressBar = ({
 
       {/* Labels */}
       {showLabels && (
-        <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mt-1.5">
+        <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-1.5">
           <span>{minLabel || min}</span>
           <span>{maxLabel || max}</span>
         </div>
@@ -131,11 +131,11 @@ export const ProgressBarWithValue = ({
       {/* Header with label and value */}
       <div className="flex justify-between items-center mb-1.5">
         {label && (
-          <span className="text-xs font-medium text-gray-600 dark:text-slate-400">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
             {label}
           </span>
         )}
-        <span className="text-xs font-semibold text-gray-900 dark:text-white">
+        <span className="text-xs font-semibold text-slate-900 dark:text-white">
           {valueFormatter(progress)}
         </span>
       </div>
@@ -170,7 +170,7 @@ export const SegmentedProgressBar = ({
     amber: 'bg-amber-500',
     red: 'bg-red-500',
     blue: 'bg-blue-500',
-    lavpop: 'bg-lavpop-blue',
+    lavpop: 'bg-stellar-blue',
   };
 
   const bgColor = gradients[color] || gradients.blue;
@@ -189,7 +189,7 @@ export const SegmentedProgressBar = ({
         return (
           <div
             key={index}
-            className="flex-1 h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden"
+            className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"
           >
             <div
               className={`h-full ${bgColor} rounded-full transition-all duration-300`}
@@ -231,7 +231,7 @@ export const CircularProgress = ({
     amber: 'stroke-amber-500',
     red: 'stroke-red-500',
     blue: 'stroke-blue-500',
-    lavpop: 'stroke-lavpop-blue',
+    lavpop: 'stroke-stellar-blue',
     indigo: 'stroke-indigo-500',
     purple: 'stroke-purple-500',
   };
@@ -249,7 +249,7 @@ export const CircularProgress = ({
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-gray-200 dark:text-slate-700"
+          className="text-slate-200 dark:text-slate-700"
         />
         {/* Progress circle */}
         <circle
@@ -266,7 +266,7 @@ export const CircularProgress = ({
       </svg>
       {showValue && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
             {valueFormatter(clampedProgress)}
           </span>
         </div>

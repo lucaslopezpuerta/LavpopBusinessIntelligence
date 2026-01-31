@@ -1,7 +1,12 @@
-// RetentionCard.jsx v2.6
+// RetentionCard.jsx v2.7
 // Full retention analytics card with segment comparison and re-engage actions
 //
 // CHANGELOG:
+// v2.7 (2026-01-29): Premium Gradient Status Badges
+//   - Status badges now use gradient backgrounds matching HealthPill patterns
+//   - Saudável: emerald→teal, Moderado: blue→cyan, Em Risco: amber→orange, Crítico: red→rose
+//   - Added text shadows for depth on gradient backgrounds
+//   - Header icon now uses gradient background
 // v2.6 (2026-01-29): Yellow to amber color migration with mode-aware badges
 //   - CHANGED: "Em Risco" status bgColor from yellow-600/500 solid to mode-aware amber
 //   - CHANGED: "Em Risco" status barColor from yellow-500 to amber-500
@@ -100,14 +105,14 @@ const cardHoverAnimationReduced = {
 };
 
 /**
- * Get status color classes based on retention rate
+ * Get status color classes based on retention rate - now with premium gradients
  */
 const getStatusClasses = (rate) => {
   if (rate >= STATUS_THRESHOLDS.HEALTHY) {
     return {
       label: 'Saudável',
       textColor: 'text-white',
-      bgColor: 'bg-emerald-600 dark:bg-emerald-500',
+      bgColor: 'bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-500 dark:to-teal-600',
       barColor: 'bg-emerald-500',
       icon: CheckCircle
     };
@@ -116,7 +121,7 @@ const getStatusClasses = (rate) => {
     return {
       label: 'Moderado',
       textColor: 'text-white',
-      bgColor: 'bg-blue-600 dark:bg-blue-500',
+      bgColor: 'bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-500 dark:to-cyan-600',
       barColor: 'bg-blue-500',
       icon: Info
     };
@@ -124,8 +129,8 @@ const getStatusClasses = (rate) => {
   if (rate >= STATUS_THRESHOLDS.AT_RISK) {
     return {
       label: 'Em Risco',
-      textColor: 'text-amber-800 dark:text-white',
-      bgColor: 'bg-amber-50 border border-amber-200 dark:bg-amber-500 dark:border-amber-400',
+      textColor: 'text-white',
+      bgColor: 'bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-500 dark:to-orange-600',
       barColor: 'bg-amber-500',
       icon: AlertCircle
     };
@@ -133,7 +138,7 @@ const getStatusClasses = (rate) => {
   return {
     label: 'Crítico',
     textColor: 'text-white',
-    bgColor: 'bg-red-600 dark:bg-red-500',
+    bgColor: 'bg-gradient-to-r from-red-500 to-rose-500 dark:from-red-500 dark:to-rose-600',
     barColor: 'bg-red-500',
     icon: AlertCircle
   };
@@ -434,8 +439,8 @@ const RetentionCard = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-blue-500 dark:bg-blue-600 flex items-center justify-center shadow-sm shrink-0">
-            <RefreshCw className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-500 dark:to-teal-600 flex items-center justify-center shadow-sm shrink-0">
+            <RefreshCw className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} />
           </div>
           <div className="min-w-0">
             <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
@@ -478,9 +483,18 @@ const RetentionCard = ({
         <div className="w-px h-12 bg-slate-200 dark:bg-slate-600" />
 
         <div className="text-center">
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${overallStatus.bgColor}`}>
-            <StatusIcon className={`w-3.5 h-3.5 ${overallStatus.textColor}`} />
-            <span className={`text-xs font-bold ${overallStatus.textColor} uppercase`}>
+          <div
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shadow-sm ${overallStatus.bgColor}`}
+            aria-label={`Status: ${overallStatus.label}`}
+          >
+            <StatusIcon
+              className={`w-3.5 h-3.5 ${overallStatus.textColor}`}
+              style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }}
+            />
+            <span
+              className={`text-xs font-bold ${overallStatus.textColor} uppercase`}
+              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}
+            >
               {overallStatus.label}
             </span>
           </div>

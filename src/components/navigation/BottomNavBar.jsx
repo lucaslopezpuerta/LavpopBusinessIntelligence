@@ -1,4 +1,4 @@
-// BottomNavBar.jsx v4.1 - FLOATING PILL NAVIGATION
+// BottomNavBar.jsx v4.2 - FLOATING PILL NAVIGATION
 // Modern floating bottom nav with animated pill indicator
 // Inspired by BuildUI animated tabs pattern
 //
@@ -12,6 +12,7 @@
 // - Floating glassmorphic container with rounded corners
 // - Animated pill indicator that slides between tabs
 // - Icons + labels with color transitions
+// - Icon pop animation on tab activation
 // - 48x48px touch targets (Material Design standard)
 // - Safe area support for notched devices
 // - Reduced motion support
@@ -20,6 +21,12 @@
 // - Landscape mode: compact height
 //
 // CHANGELOG:
+// v4.2 (2026-01-29): Visual polish & micro-interactions
+//   - Enhanced glassmorphism with saturate filter and inner highlight
+//   - Icon pop animation when tab becomes active
+//   - Improved pill glow with pulsing effect
+//   - Better shadow depth for floating appearance
+//   - Uses NAV_MICRO presets from animations.js
 // v4.1 (2026-01-28): Theme-aware floating shadow
 //   - Replaced downward shadow with centered glow for floating effect
 //   - Light: subtle black glow - shadow-[0_0_20px_rgba(0,0,0,0.12)]
@@ -30,14 +37,15 @@
 //   - Spring physics for natural transitions
 //   - Preserved all v3.x mobile features
 
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { haptics } from '../../utils/haptics';
+import { NAV_MICRO } from '../../constants/animations';
 import { BarChart3, Search, Users, MessageSquare, Menu } from 'lucide-react';
 
 // Navigation configuration - single source of truth
@@ -54,12 +62,8 @@ const MORE_ROUTES = ['social', 'weather', 'intelligence', 'operations', 'upload'
 // Module-level flag for one-time entrance animation
 let hasPlayedEntrance = false;
 
-// Spring transition config for pill animation
-const PILL_SPRING = {
-  type: 'spring',
-  bounce: 0.2,
-  duration: 0.6,
-};
+// Spring transition config for pill animation (enhanced v4.2)
+const PILL_SPRING = NAV_MICRO.PILL_SPRING;
 
 // Spring transition for tap feedback
 const TAP_SPRING = {
@@ -67,6 +71,9 @@ const TAP_SPRING = {
   stiffness: 400,
   damping: 17,
 };
+
+// Icon pop animation when becoming active
+const ICON_POP = NAV_MICRO.ICON_POP;
 
 /**
  * NavItem - Individual navigation button with animated pill
@@ -82,6 +89,15 @@ const NavItem = memo(({
   isDark,
   reducedMotion,
 }) => {
+  // Track previous active state for icon pop animation
+  const wasActive = useRef(isActive);
+  const justBecameActive = isActive && !wasActive.current;
+
+  // Update ref after render
+  useEffect(() => {
+    wasActive.current = isActive;
+  }, [isActive]);
+
   const handleClick = useCallback((e) => {
     // Re-tap active tab = scroll to top
     if (isActive && !isButton) {
@@ -104,23 +120,34 @@ const NavItem = memo(({
           layoutId="navPill"
           className={`absolute inset-0 rounded-xl ${
             isDark
-              ? 'bg-stellar-cyan/15 border border-stellar-cyan/20'
-              : 'bg-stellar-cyan/10 border border-stellar-cyan/15'
+              ? 'bg-stellar-cyan/15 border border-stellar-cyan/25'
+              : 'bg-stellar-cyan/10 border border-stellar-cyan/20'
           }`}
           initial={false}
           transition={reducedMotion ? { duration: 0 } : PILL_SPRING}
+          style={{
+            boxShadow: isDark
+              ? '0 0 12px rgba(0,174,239,0.2), inset 0 1px 0 rgba(255,255,255,0.05)'
+              : '0 0 8px rgba(0,174,239,0.15), inset 0 1px 0 rgba(255,255,255,0.5)'
+          }}
         />
       )}
 
-      {/* Icon */}
-      <Icon
-        className={`relative z-10 w-5 h-5 transition-colors duration-200 ${
-          isActive
-            ? 'text-stellar-cyan'
-            : isDark ? 'text-slate-400' : 'text-slate-500'
-        }`}
-        strokeWidth={isActive ? 2.25 : 2}
-      />
+      {/* Icon with pop animation on activation */}
+      <motion.div
+        className="relative z-10"
+        animate={justBecameActive && !reducedMotion ? ICON_POP : {}}
+        key={isActive ? 'active' : 'inactive'}
+      >
+        <Icon
+          className={`w-5 h-5 transition-colors duration-200 ${
+            isActive
+              ? 'text-stellar-cyan'
+              : isDark ? 'text-slate-400' : 'text-slate-500'
+          }`}
+          strokeWidth={isActive ? 2.25 : 2}
+        />
+      </motion.div>
 
       {/* Label */}
       <span className={`relative z-10 text-[10px] font-medium transition-colors duration-200 ${
@@ -228,17 +255,27 @@ const BottomNavBar = ({ activeTab, onMoreClick }) => {
       animate="visible"
       variants={containerVariants}
     >
-      {/* Floating glassmorphic container */}
-      <div className={`
-        flex items-center justify-around
-        ${isLandscape ? 'py-1.5' : 'py-2'}
-        rounded-2xl
-        ${isDark
-          ? 'bg-space-dust/85 border border-white/10 shadow-[0_0_24px_rgba(0,174,239,0.15)]'
-          : 'bg-white/90 border border-slate-200/80 shadow-[0_0_20px_rgba(0,0,0,0.12)]'
-        }
-        backdrop-blur-xl
-      `}>
+      {/* Floating glassmorphic container - enhanced v4.2 */}
+      <div
+        className={`
+          flex items-center justify-around
+          ${isLandscape ? 'py-1.5' : 'py-2'}
+          rounded-2xl
+          backdrop-blur-xl backdrop-saturate-150
+          ${isDark
+            ? 'border border-white/10'
+            : 'border border-slate-200/60'
+          }
+        `}
+        style={{
+          background: isDark
+            ? 'linear-gradient(135deg, rgba(26,31,53,0.88) 0%, rgba(10,15,30,0.92) 100%)'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.92) 100%)',
+          boxShadow: isDark
+            ? 'inset 0 1px 0 rgba(255,255,255,0.05), 0 0 32px rgba(0,174,239,0.12), 0 4px 24px rgba(0,0,0,0.3)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.8), 0 0 24px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06)'
+        }}
+      >
         {NAV_ITEMS.map(item => (
           <NavItem
             key={item.id}

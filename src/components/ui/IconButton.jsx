@@ -64,7 +64,7 @@ const IconButton = ({
         disabled:opacity-50 disabled:cursor-not-allowed
         ${sizeClasses}
         ${active
-          ? 'bg-lavpop-blue/10 text-lavpop-blue dark:bg-blue-500/20 dark:text-blue-400'
+          ? 'bg-stellar-cyan/10 text-stellar-blue dark:bg-stellar-cyan/20 dark:text-stellar-cyan'
           : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200'
         }
         ${className}

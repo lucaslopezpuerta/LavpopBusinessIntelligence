@@ -1,7 +1,13 @@
-// ExportModal.jsx v1.5 - ANIMATION PERFORMANCE
+// ExportModal.jsx v1.6 - SWIPE-TO-CLOSE GESTURES
 // Modal for exporting data to CSV or PDF with charts
 //
 // CHANGELOG:
+// v1.6 (2026-01-30): Swipe-to-close and portal rendering
+//   - Added useSwipeToClose hook for mobile gesture support
+//   - Added portal rendering for proper z-index stacking
+//   - Replaced manual scroll lock with useScrollLock hook
+//   - Added drag handle indicator on mobile
+//   - Added useTheme for cosmic dark mode support
 // v1.5 (2026-01-25): Animation performance optimization
 //   - Extracted inline animation objects to constants (prevents re-renders)
 //   - Uses MODAL variants from animations.js for consistency
@@ -21,11 +27,16 @@
 // v1.0 (2025-12-17): Initial implementation
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileSpreadsheet, FileText, Download, Loader2, Check, AlertCircle, BookOpen, BarChart3 } from 'lucide-react';
 import { exportToCSV, exportToPDF, exportCompleteReport, exportExecutiveSummary } from '../utils/exportUtils';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-import { MODAL } from '../constants/animations';
+import { useScrollLock } from '../hooks/useScrollLock';
+import { useSwipeToClose } from '../hooks/useSwipeToClose';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useTheme } from '../contexts/ThemeContext';
+import { MODAL, MODAL_SWIPE } from '../constants/animations';
 
 // Export configurations with correct field mappings from Supabase
 const EXPORT_CONFIGS = {
@@ -187,6 +198,17 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [showGlobal, setShowGlobal] = useState(true); // Show global reports by default
   const prefersReducedMotion = useReducedMotion();
+  const { isDark } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+
+  // Swipe-to-close gesture (mobile only)
+  const { handlers, style, isDragging, backdropOpacity } = useSwipeToClose({
+    onClose,
+    threshold: MODAL_SWIPE.THRESHOLD,
+    resistance: MODAL_SWIPE.RESISTANCE,
+    velocityThreshold: MODAL_SWIPE.VELOCITY_THRESHOLD,
+    disabled: !isMobile || !isOpen
+  });
 
   const viewExports = VIEW_EXPORTS[activeView] || VIEW_EXPORTS.dashboard;
 
@@ -208,31 +230,8 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  // iOS-compatible scroll lock - prevents body scroll while modal is open
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const scrollY = window.scrollY;
-    const originalStyles = {
-      overflow: document.body.style.overflow,
-      position: document.body.style.position,
-      top: document.body.style.top,
-      width: document.body.style.width,
-    };
-
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-
-    return () => {
-      document.body.style.overflow = originalStyles.overflow;
-      document.body.style.position = originalStyles.position;
-      document.body.style.top = originalStyles.top;
-      document.body.style.width = originalStyles.width;
-      window.scrollTo(0, scrollY);
-    };
-  }, [isOpen]);
+  // iOS-compatible scroll lock
+  useScrollLock(isOpen);
 
   // Get data for specific export type
   const getExportData = (exportId) => {
@@ -452,32 +451,54 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
           {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
+          style={isMobile ? { opacity: backdropOpacity } : undefined}
         />
 
         <motion.div
           role="dialog"
           aria-modal="true"
           {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
-          className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden"
+          className={`relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${
+            isDark ? 'bg-space-dust' : 'bg-white'
+          }`}
+          style={isMobile ? style : undefined}
+          {...(isMobile ? handlers : {})}
         >
-          <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+          {/* Drag Handle (mobile only) */}
+          {isMobile && (
+            <div className="flex justify-center pt-2 pb-1">
+              <div className={`w-10 h-1 rounded-full transition-colors ${
+                isDragging
+                  ? 'bg-stellar-cyan'
+                  : isDark ? 'bg-stellar-cyan/30' : 'bg-slate-300'
+              }`} />
+            </div>
+          )}
+
+          <div className={`flex items-center justify-between p-4 ${isMobile ? 'pt-2' : ''} border-b ${
+            isDark ? 'border-stellar-cyan/10' : 'border-slate-200'
+          }`}>
+            <h2 className={`text-lg font-semibold flex items-center gap-2 ${
+              isDark ? 'text-white' : 'text-slate-900'
+            }`}>
               <Download className="w-5 h-5 text-blue-500" />
               Exportar Dados
             </h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                isDark ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+              }`}
               aria-label="Fechar"
             >
-              <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
@@ -606,8 +627,15 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
             )}
           </div>
 
-          <div className="flex justify-end gap-2 p-4 pb-safe border-t border-slate-200 dark:border-slate-700">
-            <button onClick={onClose} className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <div className={`flex justify-end gap-2 p-4 pb-safe border-t ${
+            isDark ? 'border-stellar-cyan/10' : 'border-slate-200'
+          }`}>
+            <button
+              onClick={onClose}
+              className={`px-4 py-2 rounded-xl transition-colors ${
+                isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
               Cancelar
             </button>
             <button
@@ -626,6 +654,9 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
       </div>
     </AnimatePresence>
   );
+
+  // Render via portal for proper z-index stacking
+  return createPortal(modalContent, document.body);
 };
 
 export default ExportModal;

@@ -1,9 +1,18 @@
-// VisitHeatmap Component v3.2.0
+// VisitHeatmap Component v3.4.0
 // Size-based density visualization with segment filtering
 //
 // CHANGELOG:
+// v3.4.0 (2026-01-30): Staggered cell reveal animation
+//   - NEW: Cells animate with staggered pop-in on segment change
+//   - Uses Framer Motion variants for orchestrated entrance
+//   - Respects useReducedMotion for accessibility
+// v3.3.0 (2026-01-29): Semantic Color Consistency Audit
+//   - CHANGED: Fiéis segment from amber to emerald (amber=warning semantic conflict)
+//   - CHANGED: Peak cell highlight from amber to cyan (peak is positive insight)
+//   - Maintains semantic consistency: emerald=success, cyan=highlight, purple=new
+//   - Updated tooltip and legend colors to match new peak styling
 // v3.2.0 (2026-01-23): Segment Filter Color Consistency
-//   - Filter toggle buttons now use segment-specific colors (blue/amber/purple)
+//   - Filter toggle buttons now use segment-specific colors (blue/emerald/purple)
 //   - Active button matches chart palette for visual coherence
 //   - Added activeButton property to segment configuration
 //   - Improved hover states with subtle background transitions
@@ -31,9 +40,9 @@
 //   - Icon wrapped in colored background pill
 //   - Title uses text-base font-bold for consistency
 // v2.2.0 (2026-01-12): Segment-based color palettes
-//   - Each segment now has its own color palette (blue/amber/purple)
-//   - Todos: lavpop-blue (default brand color)
-//   - Fiéis: amber (matches VIP crown theme)
+//   - Each segment now has its own color palette (blue/emerald/purple)
+//   - Todos: blue-500 (default brand color)
+//   - Fiéis: emerald (success/retention theme - changed from amber in v3.3.0)
 //   - Novos: purple (matches Novato segment)
 //   - Legend dynamically updates to show current segment color
 // v2.1.0 (2026-01-12): Tooltip & Sheet UX upgrade
@@ -50,9 +59,9 @@
 // FEATURES:
 // - 7 days × 15 hours grid (8h-23h business hours)
 // - Segment toggle: Todos | Fiéis (VIP+Frequente) | Novos (Novato + recent first visit)
-// - Segment-specific color palettes (blue/amber/purple)
+// - Segment-specific color palettes (blue/emerald/purple)
 // - Size-based density + quantile color scale
-// - Peak hour/day highlighted in amber
+// - Peak hour/day highlighted in cyan
 // - Dark mode + responsive design
 
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
@@ -64,7 +73,7 @@ import { getVisitHeatmapData } from '../utils/customerMetrics';
 import { useSwipeToClose } from '../hooks/useSwipeToClose';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useTheme } from '../contexts/ThemeContext';
-import { MOBILE_SHEET, TWEEN } from '../constants/animations';
+import { MOBILE_SHEET, TWEEN, CHART_ANIMATION } from '../constants/animations';
 
 // Segment configuration with color palettes
 const SEGMENTS = [
@@ -72,14 +81,14 @@ const SEGMENTS = [
     id: 'all',
     label: 'Todos',
     icon: Users,
-    color: 'lavpop-blue',
+    color: 'blue-500',
     activeButton: 'bg-blue-500 dark:bg-blue-600 text-white shadow-sm',
     palette: {
-      p95: 'bg-lavpop-blue dark:bg-blue-500',
-      p90: 'bg-lavpop-blue/80 dark:bg-blue-500/80',
-      p75: 'bg-lavpop-blue/60 dark:bg-blue-500/60',
-      p50: 'bg-lavpop-blue/40 dark:bg-blue-500/40',
-      low: 'bg-lavpop-blue/20 dark:bg-blue-500/20',
+      p95: 'bg-blue-500 dark:bg-blue-500',
+      p90: 'bg-blue-500/80 dark:bg-blue-500/80',
+      p75: 'bg-blue-500/60 dark:bg-blue-500/60',
+      p50: 'bg-blue-500/40 dark:bg-blue-500/40',
+      low: 'bg-blue-500/20 dark:bg-blue-500/20',
       empty: 'bg-slate-200 dark:bg-slate-700/40'
     }
   },
@@ -87,14 +96,14 @@ const SEGMENTS = [
     id: 'loyalists',
     label: 'Fiéis',
     icon: Crown,
-    color: 'amber',
-    activeButton: 'bg-amber-500 dark:bg-amber-500 text-white shadow-sm',
+    color: 'emerald',
+    activeButton: 'bg-emerald-500 dark:bg-emerald-500 text-white shadow-sm',
     palette: {
-      p95: 'bg-amber-500 dark:bg-amber-400',
-      p90: 'bg-amber-500/80 dark:bg-amber-400/80',
-      p75: 'bg-amber-500/60 dark:bg-amber-400/60',
-      p50: 'bg-amber-500/40 dark:bg-amber-400/40',
-      low: 'bg-amber-500/20 dark:bg-amber-400/20',
+      p95: 'bg-emerald-500 dark:bg-emerald-400',
+      p90: 'bg-emerald-500/80 dark:bg-emerald-400/80',
+      p75: 'bg-emerald-500/60 dark:bg-emerald-400/60',
+      p50: 'bg-emerald-500/40 dark:bg-emerald-400/40',
+      low: 'bg-emerald-500/20 dark:bg-emerald-400/20',
       empty: 'bg-slate-200 dark:bg-slate-700/40'
     }
   },
@@ -130,6 +139,41 @@ const tooltipAnimation = {
 };
 const springConfig = { type: 'spring', damping: 25, stiffness: 400, mass: 0.5 };
 
+// Heatmap cell stagger animation variants (v3.4.0)
+const heatmapContainerVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      delayChildren: 0.1,
+      staggerChildren: 0.015
+    }
+  }
+};
+
+const heatmapRowVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.02
+    }
+  }
+};
+
+const heatmapCellVariants = {
+  hidden: { opacity: 0, scale: 0 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 400,
+      damping: 20
+    }
+  }
+};
+
 /**
  * Get cell size in pixels based on density quantiles
  * Returns square dimensions for consistent visual appearance
@@ -153,7 +197,7 @@ const getCellSize = (count, quantiles, isMobile = false) => {
  */
 const getQuantileColor = (count, quantiles, palette, isPeak = false) => {
   if (count === 0) return palette.empty;
-  if (isPeak) return 'bg-amber-400 dark:bg-amber-500';  // Peak = amber/gold (always)
+  if (isPeak) return 'bg-cyan-400 dark:bg-cyan-500';  // Peak = cyan highlight (positive insight)
   if (count >= quantiles.p95) return palette.p95;
   if (count >= quantiles.p90) return palette.p90;
   if (count >= quantiles.p75) return palette.p75;
@@ -177,7 +221,7 @@ const getPercentileLabel = (count, quantiles) => {
  * Get percentile badge color classes
  */
 const getPercentileBadgeClasses = (count, quantiles) => {
-  if (count >= quantiles.p95) return 'bg-lavpop-blue/10 text-lavpop-blue dark:bg-blue-500/20 dark:text-blue-400';
+  if (count >= quantiles.p95) return 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400';
   if (count >= quantiles.p75) return 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
   return 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400';
 };
@@ -258,8 +302,8 @@ const HoverTooltip = ({ data, coords }) => {
           <span className={`
             text-xl font-bold
             ${isPeak
-              ? 'text-amber-500 dark:text-amber-400'
-              : 'text-lavpop-blue dark:text-blue-400'
+              ? 'text-cyan-500 dark:text-cyan-400'
+              : 'text-blue-600 dark:text-blue-400'
             }
           `}>
             {data.count}
@@ -274,13 +318,13 @@ const HoverTooltip = ({ data, coords }) => {
           <span className={`
             inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium
             ${isPeak
-              ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+              ? 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400'
               : isHigh
-                ? 'bg-blue-50 text-lavpop-blue dark:bg-blue-900/40 dark:text-blue-400'
+                ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
                 : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
             }
           `}>
-            {isPeak && <span className="w-1 h-1 rounded-full bg-amber-500" />}
+            {isPeak && <span className="w-1 h-1 rounded-full bg-cyan-500" />}
             {data.percentileLabel}
           </span>
         </div>
@@ -425,7 +469,7 @@ const MobileSheet = ({ isOpen, onClose, data, quantiles }) => {
 
               {/* Stats */}
               <div className="text-center">
-                <p className="text-4xl font-bold text-lavpop-blue dark:text-blue-400 mb-1">
+                <p className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-1">
                   {data.count}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
@@ -449,6 +493,7 @@ const MobileSheet = ({ isOpen, onClose, data, quantiles }) => {
 
 const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
   const [selectedSegment, setSelectedSegment] = useState('all');
   const [isMobile, setIsMobile] = useState(false);
   const [sheetData, setSheetData] = useState(null);
@@ -611,9 +656,9 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
           </div>
         </div>
 
-        {/* Peak indicator with amber accent */}
+        {/* Peak indicator with cyan accent */}
         <p className="text-xs text-slate-600 dark:text-slate-400">
-          Pico: <span className="font-semibold text-amber-500 dark:text-amber-400">{peak.dayNameFull} {peak.hour}h</span>
+          Pico: <span className="font-semibold text-cyan-500 dark:text-cyan-400">{peak.dayNameFull} {peak.hour}h</span>
           <span className="text-slate-400 dark:text-slate-500"> ({peak.count} visitas)</span>
         </p>
       </div>
@@ -633,50 +678,59 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
           ))}
         </div>
 
-        {/* Day Rows */}
-        {grid.map(dayRow => (
-          <div
-            key={dayRow.day}
-            className="grid gap-0.5 mb-0.5"
-            style={{ gridTemplateColumns: `32px repeat(${hours.length}, 1fr)` }}
-          >
-            {/* Day Label */}
-            <div className="flex items-center justify-end pr-1 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">
-              {dayRow.dayName}
-            </div>
+        {/* Day Rows - with staggered cell animation on segment change */}
+        <motion.div
+          key={selectedSegment}
+          variants={prefersReducedMotion ? undefined : heatmapContainerVariants}
+          initial={prefersReducedMotion ? false : "hidden"}
+          animate="visible"
+        >
+          {grid.map((dayRow, rowIndex) => (
+            <motion.div
+              key={dayRow.day}
+              className="grid gap-0.5 mb-0.5"
+              style={{ gridTemplateColumns: `32px repeat(${hours.length}, 1fr)` }}
+              variants={prefersReducedMotion ? undefined : heatmapRowVariants}
+            >
+              {/* Day Label */}
+              <div className="flex items-center justify-end pr-1 text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400">
+                {dayRow.dayName}
+              </div>
 
-            {/* Hour Cells - Square size varies with density */}
-            {dayRow.cells.map(cell => {
-              const isPeak = dayRow.day === peak.day && cell.hour === peak.hour;
-              const sizePx = getCellSize(cell.count, quantiles, isMobile);
-              const colorClass = getQuantileColor(cell.count, quantiles, palette, isPeak);
-              const ariaLabel = `${dayRow.dayNameFull} ${cell.hour}h: ${cell.count} visitas (${getPercentileLabel(cell.count, quantiles)})`;
+              {/* Hour Cells - Square size varies with density, animated on segment change */}
+              {dayRow.cells.map(cell => {
+                const isPeak = dayRow.day === peak.day && cell.hour === peak.hour;
+                const sizePx = getCellSize(cell.count, quantiles, isMobile);
+                const colorClass = getQuantileColor(cell.count, quantiles, palette, isPeak);
+                const ariaLabel = `${dayRow.dayNameFull} ${cell.hour}h: ${cell.count} visitas (${getPercentileLabel(cell.count, quantiles)})`;
 
-              return (
-                <button
-                  key={cell.hour}
-                  onClick={(e) => handleCellTap(e, dayRow, cell, quantiles)}
-                  onMouseEnter={(e) => handleCellHover(e, dayRow, cell, quantiles)}
-                  onMouseLeave={handleCellLeave}
-                  className="h-6 sm:h-8 flex items-center justify-center relative group focus:outline-none"
-                  aria-label={ariaLabel}
-                >
-                  <div
-                    className={`
-                      rounded-lg transition-all duration-200 ${colorClass}
-                      group-hover:scale-110 group-hover:ring-2 group-hover:ring-slate-400/50 dark:group-hover:ring-slate-500/50
-                      ${isPeak ? 'ring-2 ring-amber-500/50' : ''}
-                    `}
-                    style={{
-                      width: sizePx,
-                      height: sizePx
-                    }}
-                  />
-                </button>
-              );
-            })}
-          </div>
-        ))}
+                return (
+                  <motion.button
+                    key={cell.hour}
+                    onClick={(e) => handleCellTap(e, dayRow, cell, quantiles)}
+                    onMouseEnter={(e) => handleCellHover(e, dayRow, cell, quantiles)}
+                    onMouseLeave={handleCellLeave}
+                    className="h-6 sm:h-8 flex items-center justify-center relative group focus:outline-none"
+                    aria-label={ariaLabel}
+                    variants={prefersReducedMotion ? undefined : heatmapCellVariants}
+                  >
+                    <div
+                      className={`
+                        rounded-lg transition-all duration-200 ${colorClass}
+                        group-hover:scale-110 group-hover:ring-2 group-hover:ring-slate-400/50 dark:group-hover:ring-slate-500/50
+                        ${isPeak ? 'ring-2 ring-cyan-500/50' : ''}
+                      `}
+                      style={{
+                        width: sizePx,
+                        height: sizePx
+                      }}
+                    />
+                  </motion.button>
+                );
+              })}
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
 
       {/* Mobile Legend (only visible on small screens) - uses segment color palette */}
@@ -690,7 +744,7 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
         </div>
         <span>MAX</span>
         <span className="ml-2">•</span>
-        <div className="w-3 h-3 rounded-sm bg-amber-400 dark:bg-amber-500" />
+        <div className="w-3 h-3 rounded-sm bg-cyan-400 dark:bg-cyan-500" />
         <span>PICO</span>
       </div>
 

@@ -1,8 +1,12 @@
-// Button.jsx v1.3 - HAPTIC FEEDBACK UPDATE
+// Button.jsx v1.4 - AURORA BOREALIS CTA
 // Reusable button component with Framer Motion animations
-// Design System v4.3 compliant - Tier 1 Essential
+// Design System v6.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.4 (2026-01-30): Aurora Borealis CTA variant
+//   - NEW: 'cta' variant using cosmic-amber (#EBCB8B) for high-emphasis actions
+//   - CTA hierarchy: cta (amber) > primary/cosmic (gradient) > secondary > ghost
+//   - Updated danger variant to use cosmic-rose
 // v1.3 (2026-01-28): Haptic feedback integration
 //   - Added haptics.light() on button press for tactile feedback
 //   - Native Capacitor haptics on Android/iOS, web fallback
@@ -34,7 +38,7 @@ import { haptics } from '../../utils/haptics';
 /**
  * Premium Button Component
  *
- * @param {string} variant - 'primary' | 'secondary' | 'ghost' | 'danger' | 'cosmic'
+ * @param {string} variant - 'cta' | 'primary' | 'secondary' | 'ghost' | 'danger' | 'cosmic'
  * @param {string} size - 'sm' | 'md' | 'lg'
  * @param {boolean} loading - Show loading spinner
  * @param {boolean} disabled - Disable button
@@ -43,6 +47,8 @@ import { haptics } from '../../utils/haptics';
  * @param {React.ComponentType} rightIcon - Icon component to show on right
  * @param {string} className - Additional CSS classes
  * @param {React.ReactNode} children - Button content
+ *
+ * CTA Hierarchy: cta (amber, high emphasis) > primary/cosmic (gradient) > secondary > ghost
  */
 const Button = ({
   variant = 'primary',
@@ -68,14 +74,20 @@ const Button = ({
     onClick?.(e);
   }, [onClick, isDisabled]);
 
-  // Variant styles - Cosmic Precision (v4.3)
+  // Variant styles - Aurora Borealis (v6.0)
   const variants = {
-    primary: 'bg-gradient-to-r from-lavpop-blue-500 to-lavpop-blue-600 hover:from-lavpop-blue-600 hover:to-lavpop-blue-700 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-lavpop-blue-500/25 focus-visible:ring-lavpop-blue-500 dark:from-lavpop-blue-600 dark:to-lavpop-blue-700 dark:hover:from-lavpop-blue-500 dark:hover:to-lavpop-blue-600',
-    // NEW: Cosmic variant using stellar gradient
+    // CTA: High emphasis - cosmic-amber for primary actions
+    cta: 'bg-cosmic-amber hover:bg-amber-400 text-space-void font-semibold shadow-md hover:shadow-lg hover:shadow-cosmic-amber/25 focus-visible:ring-cosmic-amber',
+    // Primary: Medium emphasis - stellar gradient
+    primary: 'bg-gradient-to-r from-stellar-blue to-stellar-cyan hover:from-stellar-blue/90 hover:to-stellar-cyan/90 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-stellar-cyan/25 focus-visible:ring-stellar-cyan dark:from-stellar-blue dark:to-stellar-cyan dark:hover:from-stellar-blue/90 dark:hover:to-stellar-cyan/90',
+    // Cosmic: Alias for stellar gradient
     cosmic: 'bg-gradient-stellar text-white font-semibold shadow-md hover:shadow-lg hover:shadow-stellar-cyan/25 focus-visible:ring-stellar-cyan',
+    // Secondary: Low emphasis - neutral
     secondary: 'bg-white dark:bg-space-dust text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-stellar-cyan/15 hover:bg-slate-50 dark:hover:bg-space-nebula hover:border-slate-300 dark:hover:border-stellar-cyan/20 shadow-sm hover:shadow focus-visible:ring-slate-400',
+    // Ghost: Minimal emphasis
     ghost: 'bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-space-dust focus-visible:ring-slate-400',
-    danger: 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-red-500/25 focus-visible:ring-red-500',
+    // Danger: Destructive actions - cosmic-rose
+    danger: 'bg-cosmic-rose hover:bg-red-500 text-white font-semibold shadow-md hover:shadow-lg hover:shadow-cosmic-rose/25 focus-visible:ring-cosmic-rose',
   };
 
   // Size styles

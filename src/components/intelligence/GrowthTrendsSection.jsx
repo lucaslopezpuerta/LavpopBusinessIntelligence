@@ -1,8 +1,14 @@
-// GrowthTrendsSection.jsx v6.4.0 - MODE-AWARE WARNING BADGES
+// GrowthTrendsSection.jsx v6.5.0 - ANIMATION ENHANCEMENTS
 // Growth & trends analysis section for Intelligence tab
 // Design System v5.1 compliant - Premium Glass styling
 //
 // CHANGELOG:
+// v6.5.0 (2026-01-30): Animation enhancements
+//   - NEW: Area chart path drawing effect (CSS stroke-dasharray animation)
+//   - NEW: Period selector micro-interactions (motion.button with spring)
+//   - NEW: Monthly cards stagger animation (mobile)
+//   - NEW: Table rows stagger animation (desktop)
+//   - All animations respect useReducedMotion for accessibility
 // v6.4.0 (2026-01-29): Mode-aware warning badges - soft tinted in light mode
 // v6.3.2 (2026-01-29): Orange→Yellow color migration
 //   - Partial month badges now use yellow-600/yellow-500 instead of orange
@@ -193,7 +199,7 @@ const GrowthTrendsSection = ({
         className={`
           ${isMobile ? 'px-2 py-1.5 rounded-lg' : 'px-3 py-2.5 rounded-xl'}
           shadow-xl pointer-events-none
-          backdrop-blur-md
+          backdrop-blur-xl
           ${isDark
             ? 'bg-space-dust/95 ring-1 ring-stellar-cyan/20'
             : 'bg-white/95 ring-1 ring-slate-200 shadow-lg'
@@ -201,14 +207,14 @@ const GrowthTrendsSection = ({
         `}
         style={isNearRightEdge ? { transform: 'translateX(-100%)' } : undefined}
       >
-        <p className={`${isMobile ? 'text-[10px]' : 'text-xs'} font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
           {isMobile ? data.month : (data.fullMonth || data.month)}
         </p>
         <p className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold tracking-tight ${isDark ? 'text-stellar-cyan' : 'text-blue-600'}`}>
           {currencyFormatter(data.Receita)}
         </p>
         {data.isPartial && (
-          <p className={`${isMobile ? 'text-[9px]' : 'text-xs'} ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+          <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
             {isMobile ? 'Parcial' : 'Mês parcial'}
           </p>
         )}
@@ -437,13 +443,16 @@ const GrowthTrendsSection = ({
                 </h4>
                 <div className={`flex items-center gap-1 p-0.5 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
                   {CHART_PERIODS.map((period) => (
-                    <button
+                    <motion.button
                       key={period.value}
                       type="button"
                       onClick={() => setChartPeriod(period.value)}
                       disabled={growthTrends.monthly.length < period.value}
+                      whileHover={!prefersReducedMotion && growthTrends.monthly.length >= period.value ? { scale: 1.05 } : {}}
+                      whileTap={!prefersReducedMotion && growthTrends.monthly.length >= period.value ? { scale: 0.95 } : {}}
+                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                       className={`
-                        px-2.5 py-1 text-xs font-medium rounded-md transition-all
+                        px-2.5 py-1 text-xs font-medium rounded-md transition-colors
                         ${chartPeriod === period.value
                           ? isDark
                             ? 'bg-slate-700 text-white shadow-sm'
@@ -456,13 +465,13 @@ const GrowthTrendsSection = ({
                       `}
                     >
                       {period.label}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
 
               <motion.div
-                className="h-72 sm:h-80 lg:h-96 w-full -mx-2"
+                className={`h-72 sm:h-80 lg:h-96 w-full -mx-2 ${!prefersReducedMotion ? 'revenue-area-path' : ''}`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: 'easeOut' }}
@@ -558,19 +567,34 @@ const GrowthTrendsSection = ({
             </div>
           )}
 
-          {/* Mobile: Compact cards */}
+          {/* Mobile: Compact cards - staggered entrance */}
           <div className="block lg:hidden">
             <h4 className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold mb-3 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
               Últimos 6 Meses
             </h4>
 
-            <div className="space-y-2">
+            <motion.div
+              className="space-y-2"
+              initial="hidden"
+              animate="visible"
+              variants={prefersReducedMotion ? {} : {
+                hidden: { opacity: 1 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.05 }
+                }
+              }}
+            >
               {monthlyData.map((month) => {
                 const isLastYearSameMonth = yoyData?.lastYearLabel && formatMonthKey(month.month, 'short') === yoyData.lastYearLabel;
 
                 return (
-                  <div
+                  <motion.div
                     key={month.month}
+                    variants={prefersReducedMotion ? {} : {
+                      hidden: { opacity: 0, y: 8 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.25 } }
+                    }}
                     className={`
                       rounded-xl p-3 transition-colors
                       ${month.isCurrentMonth || month.isPartial
@@ -631,10 +655,10 @@ const GrowthTrendsSection = ({
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           </div>
 
           {/* Desktop: Table view */}
@@ -659,10 +683,25 @@ const GrowthTrendsSection = ({
                   </th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-200'}`}>
+              <motion.tbody
+                className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-200'}`}
+                initial="hidden"
+                animate="visible"
+                variants={prefersReducedMotion ? {} : {
+                  hidden: { opacity: 1 },
+                  visible: {
+                    opacity: 1,
+                    transition: { staggerChildren: 0.04 }
+                  }
+                }}
+              >
                 {monthlyData.map((month) => (
-                  <tr
+                  <motion.tr
                     key={month.month}
+                    variants={prefersReducedMotion ? {} : {
+                      hidden: { opacity: 0, x: -10 },
+                      visible: { opacity: 1, x: 0, transition: { duration: 0.2 } }
+                    }}
                     className={
                       month.isCurrentMonth
                         ? isDark ? 'bg-blue-900/10' : 'bg-blue-50/50'
@@ -703,9 +742,9 @@ const GrowthTrendsSection = ({
                         <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>—</span>
                       )}
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
-              </tbody>
+              </motion.tbody>
             </table>
           </div>
         </div>

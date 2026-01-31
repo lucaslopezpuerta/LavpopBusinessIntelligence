@@ -128,7 +128,7 @@ const PullToRefreshWrapper = ({
                     w-5 h-5 transition-colors duration-150
                     ${isReady || isRefreshing
                       ? 'text-stellar-cyan'
-                      : 'text-lavpop-blue dark:text-blue-400'
+                      : 'text-stellar-blue dark:text-stellar-cyan'
                     }
                   `}
                   style={{

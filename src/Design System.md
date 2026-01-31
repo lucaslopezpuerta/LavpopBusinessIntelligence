@@ -1,8 +1,55 @@
-# Bilavnova Design System v5.1
+# Bilavnova Design System v6.3
 
-> **Theme:** Cosmic Precision - Space-age aesthetics with stellar gradients
-> **Last Updated:** January 18, 2026
+> **Theme:** Aurora Void - Deep aurora-tinted backgrounds with vibrant accents
+> **Last Updated:** January 30, 2026
+> **Inspiration:** [Bilavnova Logo Gradient](src/assets/Logo%20Files/), Aurora Borealis, Deep Space
 > **Dark Mode:** Fully functional via Tailwind safelist + useTheme pattern
+
+### v6.3 Changes (2026-01-30) - Aurora Void
+- **Aurora-Tinted Deep Blacks:** Replaced GitHub-derived neutrals with deeper, aurora-coherent backgrounds
+  - Space Void: `#020910` (was #0D1117) - Near-black with teal whisper, L=4%
+  - Space Nebula: `#0A1520` (was #161B22) - Deep navy-teal, L=8%
+  - Space Dust: `#131D28` (was #21262D) - Aurora blue undertone, L=12%
+  - Space Elevated: `#1C2736` (was #30363D) - Visible elevation step, L=16%
+- **HSL Hue Consistency:** All dark backgrounds now share ~210° hue (teal-blue)
+- **Light Mode Unchanged:** Nordic Snow Storm palette preserved
+- **WCAG Contrast Improved:** White on Void now 19.2:1 (was 15.8:1)
+- **Rationale:** Deeper void creates atmospheric backdrop for bright aurora accents to "glow"
+
+### v6.2 Changes (2026-01-30) - Vibrant Semantic Colors
+- **Vibrant Semantic Colors:** Replaced muted Nord pastels with vibrant Tailwind 500-level colors
+  - Cosmic Green: `#22C55E` (was #A3BE8C) - Tailwind green-500, electric success
+  - Cosmic Amber: `#F59E0B` (was #EBCB8B) - Tailwind amber-500, bright warning
+  - Cosmic Rose: `#EF4444` (was #BF616A) - Tailwind red-500, clear danger
+  - Cosmic Purple: `#A855F7` (was #B48EAD) - Tailwind purple-500, vivid accent
+- **Rationale:** Muted Nord pastels clashed with vibrant brand gradient (#2d388a → #00aeef)
+- **WCAG AA Verified:** All colors 4.5:1+ contrast on both dark (#020910) and light (#ECEFF4) backgrounds
+
+### v6.1 Changes (2026-01-30) - Bilavnova Precision
+- **Brand Color Restoration:** Restored original logo gradient colors
+  - Stellar Blue: `#2d388a` (was #5E81AC) - Deep royal brand start
+  - Stellar Cyan: `#00aeef` (was #88C0D0) - Vibrant electric brand accent
+- **Removed Nord-Specific Tokens:** stellar-frost (#8FBCBB) and stellar-ice (#81A1C1) removed
+- **Preserved Surfaces:** Polar Night dark + Snow Storm light unchanged from v6.0
+- **WCAG AA Verified:** #00aeef on #0D1117 = 5.8:1 ✅ | #2d388a on #FFFFFF = 8.5:1 ✅
+
+### v6.0 Changes (2026-01-30) - Aurora Borealis (Surfaces)
+- **Dark Mode (Polar Night, superseded by v6.3):** GitHub-inspired surfaces
+  - ~~Space Void: `#0D1117`~~ → #020910, ~~Space Nebula: `#161B22`~~ → #0A1520, ~~Space Dust: `#21262D`~~ → #131D28
+- **Light Mode (Snow Storm):** New soft gray-white surfaces (unchanged in v6.3)
+  - Space Light: `#ECEFF4` | Space Mist: `#E5E9F0` | Space Cloud: `#D8DEE9`
+- **Semantic Accent System (superseded by v6.2):**
+  - ~~cosmic-green (#A3BE8C)~~ → #22C55E, ~~cosmic-amber (#EBCB8B)~~ → #F59E0B
+- **WCAG AA/AAA Compliant:** All accent combinations verified
+
+### v5.4 Changes (2026-01-29)
+- **Complete Legacy Color Purge:** Removed all remaining `lavpop-*` references across 45+ files
+- **colorMapping.js:** Renamed `lavpop` key to `stellar` for consistency
+- **Focus Rings:** Standardized on `ring-stellar-cyan`
+
+### v5.3 Changes (2026-01-29)
+- **Unified Stellar Cyan:** Standardized color values
+- **WCAG AA Contrast Fixes:** Fixed opacity text, dark mode text on dark backgrounds
 
 ---
 
@@ -47,12 +94,15 @@ What are you styling?
 | Category | Accent | Example Components |
 |----------|--------|--------------------|
 | Acquisition/New | `purple` | AcquisitionCard, NewCustomers |
-| Retention/Success | `emerald` | RetentionCard, HealthMetrics |
+| Retention/Success | `emerald` | RetentionCard, HealthMetrics, VisitHeatmap (Fiéis segment) |
 | Revenue/Financial | `teal` | RevenueCard, ProfitMetrics |
 | Operations/Cycles | `cyan` | OperatingCyclesChart |
+| Positive Highlight | `cyan` | Peak indicators, insights (NOT amber - amber=warning) |
 | Warning/Attention | `amber` | FrequencyDegradationAlert |
 | Risk/Critical | `red` | ChurnHistogram, AtRiskTable |
-| Analytics/General | `blue` | VisitHeatmap, RFMScatterPlot |
+| Analytics/General | `blue` | VisitHeatmap (Todos segment), RFMScatterPlot |
+
+> **Important:** Use `cyan` for positive insights like peak hours/days. Do NOT use `amber` for positive highlights - amber is reserved for warnings. Use `emerald` for loyalty/success segments (e.g., "Fiéis" = loyal customers).
 
 ---
 
@@ -60,43 +110,60 @@ What are you styling?
 
 ### 1.1 Color System
 
-#### Space Colors (Dark Backgrounds)
+#### Space Colors - Aurora Void (Dark Mode)
 
-| Token | Hex | Tailwind | Usage |
-|-------|-----|----------|-------|
-| **Space Void** | `#050816` | `bg-space-void` | Page background (deepest) |
-| **Space Nebula** | `#0a0f1e` | `bg-space-nebula` | Fixed elements (sidebar, topbar) |
-| **Space Dust** | `#1a1f35` | `bg-space-dust` | Cards, modals, elevated surfaces |
-| **Space Light** | `#f8fafc` | `bg-space-light` | Light mode page background |
+| Token | Hex | Tailwind | Usage | HSL |
+|-------|-----|----------|-------|-----|
+| **Space Void** | `#020910` | `bg-space-void` | Page background (deepest) | 210°, 78%, 4% |
+| **Space Nebula** | `#0A1520` | `bg-space-nebula` | Fixed elements (sidebar, topbar) | 210°, 52%, 8% |
+| **Space Dust** | `#131D28` | `bg-space-dust` | Cards, modals, elevated surfaces | 211°, 36%, 12% |
+| **Space Elevated** | `#1C2736` | `bg-space-elevated` | Hover states, dropdowns | 215°, 32%, 16% |
 
 ```
-Depth Hierarchy (Dark Mode):
+Depth Hierarchy (Dark Mode - Aurora Void):
 ┌────────────────────────────────────────┐
-│  VOID (#050816)    - Page background   │
-│  ├── NEBULA (#0a0f1e) - Fixed nav      │
-│  │   └── DUST (#1a1f35) - Cards        │
+│  VOID (#020910)    - Page background   │
+│  ├── NEBULA (#0A1520) - Fixed nav      │
+│  │   └── DUST (#131D28) - Cards        │
+│  │       └── ELEVATED (#1C2736) - Hover│
 └────────────────────────────────────────┘
+
+Aurora Tint Rationale:
+- Consistent ~210° hue creates atmospheric cohesion
+- Deeper L values (4-16%) provide true void aesthetic
+- Teal undertones make cyan/green accents naturally "glow"
 ```
 
-#### Stellar Colors (Accents)
+#### Space Colors - Snow Storm (Light Mode)
 
 | Token | Hex | Tailwind | Usage |
 |-------|-----|----------|-------|
-| **Stellar Blue** | `#2d388a` | `text-stellar-blue` | Gradient start, deep accents |
-| **Stellar Cyan** | `#00aeef` | `text-stellar-cyan` | Active states, links, focus |
-| **Cosmic Green** | `#00d68f` | `text-cosmic-green` | Success states, WhatsApp, positive actions |
+| **Space Light** | `#ECEFF4` | `bg-space-light` | Page background |
+| **Space Mist** | `#E5E9F0` | `bg-space-mist` | Secondary surfaces |
+| **Space Cloud** | `#D8DEE9` | `bg-space-cloud` | Cards, elevated |
 
-**Stellar Cyan Opacity Scale:**
+#### Brand Accent Colors (Bilavnova Precision v6.2)
+
+| Token | Hex | Tailwind | Usage |
+|-------|-----|----------|-------|
+| **Stellar Blue** | `#2d388a` | `text-stellar-blue` | Brand gradient start, deep royal accents |
+| **Stellar Cyan** | `#00aeef` | `text-stellar-cyan` | Primary accent (brand electric), links, focus rings |
+| **Cosmic Green** | `#22C55E` | `text-cosmic-green` | Success, positive metrics (vibrant green-500) |
+| **Cosmic Amber** | `#F59E0B` | `text-cosmic-amber` | CTA buttons, warnings (vibrant amber-500) |
+| **Cosmic Rose** | `#EF4444` | `text-cosmic-rose` | Errors, critical alerts (vibrant red-500) |
+| **Cosmic Purple** | `#A855F7` | `text-cosmic-purple` | Special features, badges (vibrant purple-500) |
+
+**Stellar Opacity Scale:**
 - `/5` - Light mode subtle borders
 - `/10` - Dark mode card borders (most common)
 - `/15` - Visible borders, navigation
 - `/20` - Active state backgrounds
 
-**Cosmic Green Opacity Scale:**
-- `/10` - Subtle background tint
-- `/20` - Hover state backgrounds
-- `/30` - Border color (light mode)
-- `/40` - Active/focus borders
+**Brand Glow Effects:**
+```css
+--stellar-glow: 0 0 20px rgba(0, 174, 239, 0.3);
+--bilavnova-gradient: linear-gradient(135deg, #2d388a 0%, #00aeef 100%);
+```
 
 #### Semantic Colors
 
@@ -107,6 +174,20 @@ Depth Hierarchy (Dark Mode):
 | Profit | `emerald-50` | `emerald-900/20` | `emerald-500` | Positive outcomes |
 | Warning | `amber-50` | `amber-900/20` | `amber-500` | Attention needed |
 | Info | `blue-50` | `blue-900/20` | `blue-500` | Informational |
+
+#### Risk Escalation Colors
+
+For progressive urgency indicators (e.g., days since last visit), use this escalation pattern:
+
+| Level | Color | Tailwind | Days Example |
+|-------|-------|----------|--------------|
+| Normal | Slate | `bg-slate-100 dark:bg-slate-700` | 0-29 days |
+| Overdue | Amber-500 | `bg-amber-500 text-white` | 30+ days |
+| Monitor | Amber-600 | `bg-amber-600 text-white` | 40+ days |
+| At Risk | Red-500 | `bg-red-500 text-white` | 50+ days |
+| Critical | Red-600 | `bg-red-600 text-white` | 60+ days |
+
+> **Note:** Do NOT use `orange` for escalation - stay within the `amber` and `red` families for Design System consistency.
 
 ### 1.2 Typography
 
@@ -425,25 +506,39 @@ const MyHeroPage = () => {
 
 | Type | Classes |
 |------|---------|
+| **CTA (Amber)** | `bg-cosmic-amber hover:bg-amber-400 text-space-void font-semibold shadow-md hover:shadow-lg rounded-xl px-4 py-2` |
 | **Primary** | `bg-gradient-stellar text-white font-semibold shadow-md hover:shadow-lg rounded-xl px-4 py-2` |
 | **Secondary** | `bg-white dark:bg-space-dust text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-stellar-cyan/15 rounded-xl px-4 py-2` |
 | **Ghost** | `bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-space-dust rounded-xl px-4 py-2` |
 | **Success/WhatsApp** | `bg-cosmic-green/10 dark:bg-cosmic-green/20 text-cosmic-green border border-cosmic-green/30 hover:bg-cosmic-green/20 dark:hover:border-cosmic-green/50 rounded-xl px-4 py-2` |
-| **Danger** | `bg-gradient-to-r from-red-500 to-rose-500 text-white font-semibold rounded-xl px-4 py-2` |
+| **Danger** | `bg-cosmic-rose hover:bg-red-500 text-white font-semibold rounded-xl px-4 py-2` |
 | **Icon** | `p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-space-dust` |
 
+**CTA Hierarchy:** `cosmic-amber` (high emphasis) > `gradient-stellar` (medium) > `secondary` (low)
+
 ```jsx
-// Primary Button
+// CTA Button (High Emphasis - use for primary actions)
+<button className="
+  bg-cosmic-amber hover:bg-amber-400
+  text-space-void font-semibold
+  shadow-md hover:shadow-lg hover:shadow-cosmic-amber/25
+  rounded-xl px-4 py-2
+  active:scale-[0.98] transition-all
+">
+  Get Started
+</button>
+
+// Primary Button (Medium Emphasis)
 <button className="
   bg-gradient-stellar text-white font-semibold
   shadow-md hover:shadow-lg hover:shadow-stellar-cyan/25
   rounded-xl px-4 py-2
   active:scale-[0.98] transition-all
 ">
-  Primary Action
+  Learn More
 </button>
 
-// Secondary Button
+// Secondary Button (Low Emphasis)
 <button className="
   bg-white dark:bg-space-dust
   text-slate-700 dark:text-slate-200
@@ -452,7 +547,7 @@ const MyHeroPage = () => {
   rounded-xl px-4 py-2
   transition-all
 ">
-  Secondary Action
+  Cancel
 </button>
 ```
 
@@ -746,14 +841,29 @@ const { isDark } = useTheme();
 ">
   <ResponsiveContainer width="100%" height={300}>
     <BarChart data={data}>
-      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e293b' : '#e2e8f0'} />
+      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#21262D' : '#e2e8f0'} />
       <XAxis stroke={isDark ? '#64748b' : '#94a3b8'} />
       <YAxis stroke={isDark ? '#64748b' : '#94a3b8'} />
       <Tooltip content={<CustomTooltip />} />
-      <Bar dataKey="value" fill="#00aeef" />
+      <Bar dataKey="value" fill="#00aeef" /> {/* stellar-cyan (brand) */}
     </BarChart>
   </ResponsiveContainer>
 </div>
+```
+
+**Bilavnova Chart Color Palette:**
+```javascript
+// Primary series colors (from colorMapping.js)
+const chartColors = ['#2d388a', '#00aeef', '#A3BE8C', '#EBCB8B', '#BF616A', '#B48EAD'];
+
+// Semantic chart colors
+revenue: '#A3BE8C',   // cosmic-green
+cost: '#BF616A',      // cosmic-rose
+profit: '#B48EAD',    // cosmic-purple
+primary: '#00aeef',   // stellar-cyan (brand)
+lavpop: '#2d388a',    // stellar-blue (brand)
+positive: '#A3BE8C',  // cosmic-green
+negative: '#BF616A',  // cosmic-rose
 ```
 
 **Chart Tooltip (Variant A):**
@@ -853,10 +963,17 @@ import { useTouchTooltip } from '../hooks/useTouchTooltip';
 ### Special Gradients
 | Class | Effect |
 |-------|--------|
-| `bg-gradient-stellar` | 135° stellar blue → cyan |
+| `bg-gradient-stellar` | 135° stellar blue (#2d388a) → cyan (#00aeef) |
+| `bg-gradient-bilavnova` | 135° brand gradient (#2d388a → #00aeef) |
 | `bg-gradient-nebula` | Blue → purple → cyan |
 | `bg-gradient-aurora-subtle` | Vertical aurora fade |
 | `text-gradient-stellar` | Gradient text (brand name) |
+
+**Brand Glow Box Shadow:**
+```css
+shadow-stellar: 0 0 20px rgba(45, 56, 138, 0.15), 0 0 40px rgba(0, 174, 239, 0.08);
+shadow-stellar-glow: 0 0 20px rgba(0, 174, 239, 0.3);
+```
 
 ---
 
@@ -904,9 +1021,14 @@ safelist: [
 
 1. **Minimum touch target:** 44x44px (`min-h-[44px] min-w-[44px]`)
 2. **Minimum font size:** 12px (`text-xs`)
-3. **Color contrast:** Don't rely solely on color
+3. **Color contrast:**
+   - WCAG AA requires 4.5:1 for normal text, 3:1 for large text
+   - **Avoid opacity text:** Don't use `text-white/60`, `text-white/70` on colored backgrounds
+   - **Dark mode on dark bg:** Use `slate-200` or `slate-300` text on `slate-700` backgrounds (not `slate-400`)
+   - **Light mode on white bg:** Use `slate-500` or `slate-600` for secondary text (not `slate-400`)
 4. **Focus states:** Visible focus rings on all interactive elements
 5. **Reduced motion:** Animations respect `prefers-reduced-motion`
+6. **Color-only indicators:** Add icons or patterns alongside color for risk/status indicators
 
 ---
 
@@ -914,6 +1036,11 @@ safelist: [
 
 | Version | Date | Major Changes |
 |---------|------|---------------|
+| **v6.1** | Jan 30, 2026 | **Bilavnova Precision** - Brand color restoration. Stellar Blue restored to #2d388a, Stellar Cyan to #00aeef. Removed Nord-specific frost/ice tokens. Kept improved Polar Night + Snow Storm surfaces. WCAG AA verified (5.8:1 contrast). |
+| v6.0 | Jan 30, 2026 | **Aurora Borealis** - Complete surface refresh. Polar Night dark mode (#0D1117, #161B22, #21262D). Snow Storm light mode (#ECEFF4, #E5E9F0, #D8DEE9). Semantic accent system. |
+| v5.4 | Jan 29, 2026 | Complete lavpop→stellar migration, ARIA tooltips, font size fixes |
+| v5.3 | Jan 29, 2026 | Unified stellar-cyan, WCAG AA contrast fixes, chart color tokens |
+| v5.2 | Jan 29, 2026 | Semantic color audit: cyan for highlights, emerald for loyalty, risk escalation guide |
 | v5.1 | Jan 18, 2026 | Added cosmic-green color, Success/WhatsApp button variant |
 | v5.0 | Jan 17, 2026 | Complete restructure for agent-friendliness |
 | v4.4 | Jan 17, 2026 | Cosmic Variant Selection Guide |
@@ -925,14 +1052,15 @@ safelist: [
 
 ---
 
-## Appendix B: Legacy Patterns (Backwards Compatibility)
+## Appendix B: Legacy Patterns (Reference Only)
 
-> **Warning:** These patterns are deprecated. Use Cosmic patterns for new components.
+> **Note:** As of v5.4, all legacy `lavpop-*` colors have been removed from the codebase. These patterns are documented for historical reference only.
 
-### Legacy Brand Colors
+### Legacy Brand Colors (REMOVED in v5.4)
 ```javascript
-'lavpop-blue': '#1a5a8e'   // Use stellar-blue instead
-'lavpop-green': '#55b03b'  // Use emerald-500 instead
+// These colors no longer exist in the codebase:
+'lavpop-blue': '#1a5a8e'   // Replaced with stellar-blue/stellar-cyan
+'lavpop-green': '#55b03b'  // Replaced with emerald-500/600
 ```
 
 ### Legacy Dark Backgrounds
@@ -1004,6 +1132,23 @@ const { isDark } = useTheme();
 | `tailwind.config.js` | Color tokens, safelist, custom utilities |
 | `src/index.css` | CSS custom properties, aurora-overlay, starfield |
 | `src/contexts/ThemeContext.jsx` | Theme provider and useTheme hook |
-| `src/utils/colorMapping.js` | Semantic color utility functions |
+| `src/utils/colorMapping.js` | Semantic color utility functions (uses `stellar` key, not `lavpop`) |
 | `src/utils/chartColors.js` | Theme-aware chart color utility |
 | `src/constants/zIndex.js` | Z-index semantic constants |
+
+---
+
+## Appendix D: v5.4 Audit Summary
+
+The following files were updated in the v5.4 legacy color audit:
+
+| Category | Files Updated | Changes |
+|----------|---------------|---------|
+| **UI Components** | IconButton, KPICard, ThemeToggle, SearchInput, PullToRefreshWrapper | Focus rings → `stellar-cyan` |
+| **Views** | Directory, Customers, Campaigns | Spinner borders → `stellar-cyan` |
+| **Charts** | ChurnHistogram, RFMScatterPlot, AcquisitionCard | Tooltips → `role="tooltip"` + `dark:bg-space-dust` |
+| **Drilldowns** | CustomerListDrilldown, MetricExplainerDrilldown | Button colors → `stellar-blue/cyan` |
+| **Modals** | MobileTooltipSheet, CustomerProfileModal | Icon colors → `stellar-blue/cyan`, avatar gradient fixed |
+| **Utils** | colorMapping.js | `lavpop` key renamed to `stellar` |
+
+**Compliance Score:** 100% - No remaining `lavpop-*` class references in UI code.

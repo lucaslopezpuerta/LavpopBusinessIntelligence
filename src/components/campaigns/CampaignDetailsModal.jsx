@@ -1,9 +1,15 @@
-// CampaignDetailsModal.jsx v2.8 - MODE-AWARE PENDING STATUS
+// CampaignDetailsModal.jsx v2.9 - SWIPE-TO-CLOSE GESTURES
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v2.9 (2026-01-30): Swipe-to-close and portal rendering
+//   - Added useSwipeToClose hook for mobile gesture support
+//   - Added escape key handler for keyboard dismissal
+//   - Added portal rendering for proper z-index stacking
+//   - Added drag handle indicator on mobile
+//   - Backdrop opacity linked to swipe progress
 // v2.8 (2026-01-29): Mode-aware pending status badge
 // v2.7 (2026-01-29): Orange to yellow color migration
 //   - Replaced bg-orange-600 dark:bg-orange-500 with bg-yellow-600 dark:bg-yellow-500
@@ -53,6 +59,7 @@
 // v1.0 (2025-12-08): Initial implementation
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -77,10 +84,13 @@ import {
   Search
 } from 'lucide-react';
 import { getCampaignContacts, getCampaignPerformance } from '../../utils/campaignService';
-import { MODAL } from '../../constants/animations';
+import { MODAL, MODAL_SWIPE } from '../../constants/animations';
 import { haptics } from '../../utils/haptics';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useSwipeToClose } from '../../hooks/useSwipeToClose';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Pagination config
 const CONTACTS_PER_PAGE = 20;
@@ -111,6 +121,26 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
 
   // Reduced motion accessibility
   const prefersReducedMotion = useReducedMotion();
+  const { isDark } = useTheme();
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+
+  // Swipe-to-close gesture (mobile only)
+  const { handlers, style, isDragging, backdropOpacity } = useSwipeToClose({
+    onClose,
+    threshold: MODAL_SWIPE.THRESHOLD,
+    resistance: MODAL_SWIPE.RESISTANCE,
+    velocityThreshold: MODAL_SWIPE.VELOCITY_THRESHOLD,
+    disabled: !isMobile
+  });
+
+  // Close on escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   // Fetch campaign contacts on mount
   useEffect(() => {
@@ -342,14 +372,15 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
     </button>
   );
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-        {/* Backdrop */}
+        {/* Backdrop - opacity linked to swipe progress on mobile */}
         <motion.div
           {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
+          style={isMobile ? { opacity: backdropOpacity } : undefined}
         />
 
         {/* Modal Content */}
@@ -357,12 +388,28 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
           role="dialog"
           aria-modal="true"
           {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
-          className="relative bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl w-full max-w-full sm:max-w-xl lg:max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+          className={`relative rounded-xl sm:rounded-2xl w-full max-w-full sm:max-w-xl lg:max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden ${
+            isDark ? 'bg-space-dust' : 'bg-white'
+          }`}
           onClick={(e) => e.stopPropagation()}
+          style={isMobile ? style : undefined}
+          {...(isMobile ? handlers : {})}
         >
+          {/* Drag Handle (mobile only) */}
+          {isMobile && (
+            <div className="flex justify-center pt-2 pb-1">
+              <div className={`w-10 h-1 rounded-full transition-colors ${
+                isDragging
+                  ? 'bg-purple-500'
+                  : isDark ? 'bg-stellar-cyan/30' : 'bg-slate-300'
+              }`} />
+            </div>
+          )}
 
         {/* Header with Refresh */}
-        <div className="flex items-center justify-between p-3 sm:p-4 pt-safe border-b border-slate-200 dark:border-slate-700 shrink-0">
+        <div className={`flex items-center justify-between p-3 sm:p-4 border-b shrink-0 ${
+          isDark ? 'border-stellar-cyan/10' : 'border-slate-200'
+        } ${isMobile ? 'pt-1' : 'pt-safe'}`}>
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="p-1.5 sm:p-2 bg-purple-600 dark:bg-purple-500 rounded-lg shrink-0 shadow-sm">
               <Target className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -412,7 +459,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
         </div>
 
         {/* Metrics Grid - Responsive: 2 cols → 3 cols → 6 cols (grouped) */}
-        <div className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shrink-0 p-3 sm:p-4">
+        <div className={`border-b shrink-0 p-3 sm:p-4 ${
+          isDark ? 'border-stellar-cyan/10 bg-space-nebula/50' : 'border-slate-200 bg-slate-50'
+        }`}>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {/* Enviados + Entregues */}
             <div className="text-center" title="Mensagens enviadas via WhatsApp">
@@ -465,7 +514,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
         </div>
 
         {/* Filter Bar - Collapsible */}
-        <div className="border-b border-slate-200 dark:border-slate-700 shrink-0">
+        <div className={`border-b shrink-0 ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}`}>
           {/* Collapsed Header */}
           <div className="flex items-center justify-between p-2 sm:p-3">
             <button
@@ -673,7 +722,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
 
         {/* Pagination - with safe area for notch devices */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-3 py-2 pb-safe border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shrink-0">
+          <div className={`flex items-center justify-between px-3 py-2 pb-safe border-t shrink-0 ${
+            isDark ? 'border-stellar-cyan/10 bg-space-nebula/50' : 'border-slate-200 bg-slate-50'
+          }`}>
             <span className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">
               {totalFiltered} contatos • Pág {currentPage}/{totalPages}
             </span>
@@ -742,6 +793,9 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
       </div>
     </AnimatePresence>
   );
+
+  // Render via portal for proper z-index stacking
+  return createPortal(modalContent, document.body);
 };
 
 export default CampaignDetailsModal;

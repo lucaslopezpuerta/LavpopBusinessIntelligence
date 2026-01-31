@@ -1,4 +1,4 @@
-// MinimalTopBar.jsx v5.1 - FUNCTIONAL COMMAND BRIDGE
+// MinimalTopBar.jsx v5.2 - FUNCTIONAL COMMAND BRIDGE
 // Purely functional top bar - sidebar owns the brand
 // Design System v5.1 compliant - UX research-driven layout
 //
@@ -9,6 +9,11 @@
 // - Mobile = Small orbital icon (brand recognition when sidebar hidden)
 //
 // CHANGELOG:
+// v5.2 (2026-01-29): Visual polish & micro-interactions
+//   - Enhanced glassmorphism with saturate filter and inner highlight
+//   - Improved dropdown animations with better spring physics
+//   - Better shadow depth for floating appearance
+//   - Refined VitalsConsole styling
 // v5.1 (2026-01-29): Brand consolidation - sidebar owns the logo
 //   - REMOVED: Full logo on desktop (sidebar has it now)
 //   - NEW: MobileOrbitalIcon - small icon for mobile only
@@ -86,11 +91,19 @@ const MobileOrbitalIcon = ({ isDark, prefersReducedMotion }) => (
 // ═══════════════════════════════════════════════════════════════════════════
 const VitalsConsole = ({ isDark, prefersReducedMotion }) => (
   <motion.div
-    className={`hidden lg:flex items-center gap-1 px-2 py-1.5 rounded-full ${
+    className={`hidden lg:flex items-center gap-1 px-2 py-1.5 rounded-full backdrop-blur-sm ${
       isDark
-        ? 'bg-space-dust/60 border border-stellar-cyan/10'
-        : 'bg-slate-50/80 border border-slate-200/60'
-    } backdrop-blur-sm`}
+        ? 'border border-stellar-cyan/15'
+        : 'border border-slate-200/60'
+    }`}
+    style={{
+      background: isDark
+        ? 'linear-gradient(135deg, rgba(26,31,53,0.7) 0%, rgba(10,15,30,0.8) 100%)'
+        : 'linear-gradient(135deg, rgba(248,250,252,0.9) 0%, rgba(241,245,249,0.85) 100%)',
+      boxShadow: isDark
+        ? 'inset 0 1px 0 rgba(255,255,255,0.03), 0 2px 8px rgba(0,0,0,0.2)'
+        : 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 8px rgba(0,0,0,0.04)'
+    }}
     whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
   >
@@ -181,7 +194,7 @@ const ActionItem = ({ icon: Icon, label, onClick, loading, shortcut, isDark }) =
     <Icon className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'} ${loading ? 'animate-spin' : ''}`} />
     <span className="flex-1 text-left font-medium">{label}</span>
     {shortcut && (
-      <kbd className={`px-1.5 py-0.5 text-[10px] font-mono rounded border
+      <kbd className={`px-1.5 py-0.5 text-xs font-mono rounded border
         ${isDark
           ? 'bg-space-void/50 text-slate-500 border-stellar-cyan/20'
           : 'bg-slate-100 text-slate-400 border-slate-200'
@@ -289,15 +302,23 @@ const QuickActions = ({ onOpenExport, onRefresh, refreshing, prefersReducedMotio
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.95 }}
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.95 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute right-0 mt-2 w-52 rounded-xl shadow-xl border py-2 z-50
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className={`absolute right-0 mt-2 w-52 rounded-xl border py-2 z-50 backdrop-blur-xl backdrop-saturate-150
               ${isDark
-                ? 'bg-space-dust/95 backdrop-blur-xl border-stellar-cyan/20 shadow-stellar'
-                : 'bg-white/95 backdrop-blur-xl border-stellar-blue/10 shadow-bilavnova'
+                ? 'border-stellar-cyan/20'
+                : 'border-slate-200/60'
               }`}
+            style={{
+              background: isDark
+                ? 'linear-gradient(135deg, rgba(26,31,53,0.95) 0%, rgba(10,15,30,0.98) 100%)'
+                : 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%)',
+              boxShadow: isDark
+                ? 'inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.4), 0 0 24px rgba(0,174,239,0.1)'
+                : 'inset 0 1px 0 rgba(255,255,255,0.8), 0 8px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)'
+            }}
           >
             <ActionItem
               icon={FileDown}
@@ -399,36 +420,44 @@ const CommandPalette = ({ prefersReducedMotion }) => {
         whileHover={prefersReducedMotion ? {} : { y: -2 }}
         transition={{ type: 'spring', stiffness: 400, damping: 17 }}
       >
-        <span className="text-[11px] font-mono font-bold">?</span>
+        <span className="text-xs font-mono font-bold">?</span>
       </motion.div>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.95 }}
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.95 }}
-            transition={{ duration: 0.12 }}
-            className={`absolute right-0 mt-2 w-40 rounded-xl shadow-xl border py-3 px-3 z-50
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className={`absolute right-0 mt-2 w-40 rounded-xl border py-3 px-3 z-50 backdrop-blur-xl backdrop-saturate-150
               ${isDark
-                ? 'bg-space-dust/95 backdrop-blur-xl border-stellar-cyan/20 shadow-stellar'
-                : 'bg-white/95 backdrop-blur-xl border-stellar-blue/10 shadow-bilavnova'
+                ? 'border-stellar-cyan/20'
+                : 'border-slate-200/60'
               }`}
+            style={{
+              background: isDark
+                ? 'linear-gradient(135deg, rgba(26,31,53,0.95) 0%, rgba(10,15,30,0.98) 100%)'
+                : 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%)',
+              boxShadow: isDark
+                ? 'inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.4), 0 0 24px rgba(0,174,239,0.1)'
+                : 'inset 0 1px 0 rgba(255,255,255,0.8), 0 8px 32px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)'
+            }}
           >
-            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${isDark ? 'text-stellar-cyan/70' : 'text-stellar-cyan'}`}>
+            <p className={`text-xs uppercase tracking-wider font-semibold mb-2 ${isDark ? 'text-stellar-cyan/70' : 'text-stellar-cyan'}`}>
               Atalhos
             </p>
             <div className="space-y-1.5">
               {shortcuts.map(({ key, desc }) => (
                 <div key={key} className="flex items-center justify-between">
-                  <kbd className={`px-1.5 py-0.5 text-[10px] font-mono rounded border
+                  <kbd className={`px-1.5 py-0.5 text-xs font-mono rounded border
                     ${isDark
                       ? 'bg-space-void/50 text-slate-400 border-stellar-cyan/20'
                       : 'bg-slate-100 text-slate-500 border-slate-200'
                     }`}>
                     {key}
                   </kbd>
-                  <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</span>
+                  <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{desc}</span>
                 </div>
               ))}
             </div>
@@ -448,14 +477,18 @@ const MinimalTopBar = ({ refreshing, onRefresh, onOpenExport }) => {
 
   return (
     <header
-      className={`sticky top-0 z-40 safe-area-top relative ${
-        isDark
-          ? 'bg-space-nebula/95 shadow-stellar'
-          : 'bg-white/95 shadow-bilavnova'
+      className={`sticky top-0 z-40 safe-area-top relative backdrop-blur-xl backdrop-saturate-150 ${
+        isDark ? '' : ''
       }`}
       style={{
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        backdropFilter: 'blur(20px) saturate(1.5)',
+        WebkitBackdropFilter: 'blur(20px) saturate(1.5)',
+        background: isDark
+          ? 'linear-gradient(180deg, rgba(10,15,30,0.95) 0%, rgba(10,15,30,0.92) 100%)'
+          : 'linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(248,250,252,0.95) 100%)',
+        boxShadow: isDark
+          ? 'inset 0 -1px 0 rgba(0,174,239,0.1), 0 4px 24px rgba(0,0,0,0.3)'
+          : 'inset 0 -1px 0 rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.06)'
       }}
     >
       {/* Subtle noise texture for depth */}

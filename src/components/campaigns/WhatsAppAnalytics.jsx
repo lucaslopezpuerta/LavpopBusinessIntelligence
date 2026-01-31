@@ -382,7 +382,7 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
         {/* Row 3: Date filter + Sync time (like Instagram) */}
         <div className="flex items-center justify-between mt-3 gap-2">
           <DateFilter value={dateFilter} onChange={onDateFilterChange} />
-          <span className="text-slate-400 text-xs flex-shrink-0">{lastSync ? formatTimeAgo(lastSync) : ''}</span>
+          <span className="text-slate-500 dark:text-slate-400 text-xs flex-shrink-0">{lastSync ? formatTimeAgo(lastSync) : ''}</span>
         </div>
       </div>
 
@@ -434,12 +434,12 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
       {/* ===== SUMMARY BAR (shared) ===== */}
       <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-          <span className="text-slate-400 flex items-center gap-1">
+          <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <Calendar className="w-3 h-3" />
             {dateFilter === '7d' ? '7 dias' : dateFilter === '30d' ? '30 dias' : 'Todo período'}
           </span>
           {isLoading ? (
-            <div className="flex items-center gap-2 text-slate-400">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <Loader2 className="w-3 h-3 animate-spin" />
               <span>Carregando...</span>
             </div>
@@ -456,12 +456,12 @@ const ProfileHeader = ({ profile, summary, dateFilter, onDateFilterChange, onRef
               </span>
             </div>
           ) : (
-            <span className="text-slate-400">Sem dados</span>
+            <span className="text-slate-500 dark:text-slate-400">Sem dados</span>
           )}
           {/* Desktop: Sync button and last sync time */}
           <div className="hidden sm:flex items-center gap-2 ml-auto">
             {lastSync && (
-              <span className="text-slate-400 text-xs">Sync: {formatTimeAgo(lastSync)}</span>
+              <span className="text-slate-500 dark:text-slate-400 text-xs">Sync: {formatTimeAgo(lastSync)}</span>
             )}
             <button onClick={() => { haptics.light(); onRefresh(); }} disabled={isSyncing} className="px-3 py-1 flex items-center gap-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 disabled:opacity-50 text-white text-xs font-semibold rounded-full shadow-sm transition-all">
               <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -489,7 +489,7 @@ const MessageTrendChart = ({ data, isLoading }) => {
   if (isLoading) {
     return (
       <div className="h-[300px] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+        <Loader2 className="w-8 h-8 text-slate-500 dark:text-slate-400 animate-spin" />
       </div>
     );
   }
@@ -1041,7 +1041,7 @@ const WhatsAppAnalytics = () => {
         <SectionCard>
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-              <MessageCircle className="w-8 h-8 text-slate-400" />
+              <MessageCircle className="w-8 h-8 text-slate-500 dark:text-slate-400" />
             </div>
             <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
               Nenhum dado disponível
@@ -1275,7 +1275,7 @@ const WhatsAppAnalytics = () => {
 
                   {/* Sort Controls */}
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-400">Ordenar:</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Ordenar:</span>
                     <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-full p-0.5 gap-0.5">
                       {[
                         { field: 'dateSent', label: 'Data' },

@@ -1,7 +1,7 @@
 /**
  * AppSettingsModal - App-wide settings modal
  *
- * VERSION: 2.5
+ * VERSION: 2.6
  *
  * Replaces BusinessSettingsModal with improved UX:
  * - Dark mode support
@@ -17,6 +17,10 @@
  * - Framer Motion animations with reduced motion support (v2.4)
  *
  * CHANGELOG:
+ * v2.6 (2026-01-30): Swipe-to-close gestures
+ *   - Added useSwipeToClose hook for mobile gesture support
+ *   - Added drag handle indicator on mobile
+ *   - Backdrop opacity linked to swipe progress
  * v2.5 (2026-01-28): Mobile full-screen fix
  *   - Uses h-[100dvh] for proper full-screen on mobile (dynamic viewport height)
  *   - Changed rounded-none to rounded-t-2xl for bottom-sheet style
@@ -99,11 +103,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, DollarSign, Wrench, Settings, Palette, Sun, Moon, Monitor, AlertCircle, LayoutGrid, Rows3, Bot, Globe, Zap } from 'lucide-react';
-import { MODAL } from '../constants/animations';
+import { MODAL, MODAL_SWIPE } from '../constants/animations';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useScrollLock } from '../hooks/useScrollLock';
+import { useSwipeToClose } from '../hooks/useSwipeToClose';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import CosmicDatePicker from './ui/CosmicDatePicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -111,8 +116,18 @@ import { haptics } from '../utils/haptics';
 
 const AppSettingsModal = ({ isOpen, onClose }) => {
   const { settings, updateSettings, isSaving, error } = useAppSettings();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
+
+  // Swipe-to-close gesture (mobile only)
+  const { handlers, style, isDragging, backdropOpacity } = useSwipeToClose({
+    onClose,
+    threshold: MODAL_SWIPE.THRESHOLD,
+    resistance: MODAL_SWIPE.RESISTANCE,
+    velocityThreshold: MODAL_SWIPE.VELOCITY_THRESHOLD,
+    disabled: !isMobile || !isOpen
+  });
 
   const [localSettings, setLocalSettings] = useState(settings);
   const [hasChanges, setHasChanges] = useState(false);
@@ -187,11 +202,12 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-          {/* Backdrop */}
+          {/* Backdrop - opacity linked to swipe progress on mobile */}
           <motion.div
             {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
             className="absolute inset-0 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm"
             onClick={onClose}
+            style={isMobile ? { opacity: backdropOpacity } : undefined}
           />
           {/* Modal */}
           <motion.div
@@ -200,9 +216,22 @@ const AppSettingsModal = ({ isOpen, onClose }) => {
             {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
             className="relative w-full sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
             onClick={(e) => e.stopPropagation()}
+            style={isMobile ? style : undefined}
+            {...(isMobile ? handlers : {})}
           >
+            {/* Drag Handle (mobile only) */}
+            {isMobile && (
+              <div className="flex justify-center pt-2 pb-1">
+                <div className={`w-10 h-1 rounded-full transition-colors ${
+                  isDragging
+                    ? 'bg-stellar-cyan'
+                    : isDark ? 'bg-stellar-cyan/30' : 'bg-slate-300'
+                }`} />
+              </div>
+            )}
+
         {/* Header wrapper with safe area - extends background into notch/Dynamic Island */}
-        <div className="bg-white dark:bg-space-dust/95 pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-2xl flex-shrink-0">
+        <div className={`bg-white dark:bg-space-dust/95 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-2xl flex-shrink-0 ${isMobile ? 'pt-0' : 'pt-safe sm:pt-0'}`}>
           {/* Header content */}
           <div className="flex items-center justify-between px-4 sm:px-5 py-3">
             <div className="flex items-center gap-2.5">

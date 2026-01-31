@@ -1,8 +1,23 @@
-// animations.js v3.4 - MICRO-INTERACTION ANIMATIONS
+// animations.js v4.0 - CHART ANIMATION ENHANCEMENTS
 // Centralized animation configurations for consistent motion design
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v4.0 (2026-01-30): Chart animation enhancements
+//   - Added BAR_STAGGER for left-to-right bar entrance animations
+//   - Added SCATTER for bubble pop-in animations
+//   - Added LINE_DRAW for path drawing effect
+//   - Added TOOLTIP for spring-based tooltip entrance
+//   - Added HEATMAP for staggered cell reveal
+//   - Added COUNTER for animated number component
+// v3.6 (2026-01-30): Modal swipe-to-close standardization
+//   - Added MODAL_SWIPE constants for unified swipe threshold configuration
+//   - Used by all modal components for consistent gesture behavior
+// v3.5 (2026-01-29): Navigation micro-interactions
+//   - Added NAV_MICRO for navigation component animations
+//   - TAP_BOUNCE, ICON_WIGGLE, GLOW_PULSE presets
+//   - PILL_SPRING, ICON_POP for bottom nav enhancements
+//   - DRAWER_SWIPE thresholds for mobile gestures
 // v3.4 (2026-01-28): Bottom navigation modal transitions
 //   - Added BOTTOM_NAV_MODAL for smooth slide-fade when modals open
 //   - Uses CSS `translate` property to avoid Framer Motion conflicts
@@ -179,6 +194,54 @@ export const CHART_ANIMATION = {
     duration: 0,
     delay: 0,
     easing: 'linear'
+  },
+  // Staggered bar entrance - bars animate left-to-right (v4.0)
+  BAR_STAGGER: {
+    duration: 600,
+    baseDelay: 50,      // Initial delay before first bar
+    staggerDelay: 30,   // 30ms between each bar
+    easing: 'ease-out'
+  },
+  // ScatterChart bubble pop-in (v4.0)
+  SCATTER: {
+    duration: 400,
+    staggerDelay: 15,   // 15ms between each bubble
+    easing: 'ease-out'
+  },
+  // Line path drawing effect - starts after bars (v4.0)
+  LINE_DRAW: {
+    duration: 1200,
+    delay: 800,         // Start after bars complete
+    easing: 'ease-out'
+  },
+  // Tooltip entrance animation (v4.0)
+  TOOLTIP: {
+    initial: { opacity: 0, y: 8, scale: 0.95 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: 4, scale: 0.98 },
+    transition: { type: 'spring', stiffness: 300, damping: 20 }
+  },
+  // Heatmap cell reveal - staggered grid animation (v4.0)
+  HEATMAP: {
+    cell: {
+      hidden: { opacity: 0, scale: 0 },
+      visible: { opacity: 1, scale: 1 }
+    },
+    container: {
+      hidden: { opacity: 1 },
+      visible: {
+        opacity: 1,
+        transition: {
+          delayChildren: 0.1,
+          staggerChildren: 0.015
+        }
+      }
+    }
+  },
+  // Animated number counter (v4.0)
+  COUNTER: {
+    duration: 800,
+    easing: 'easeOut'
   }
 };
 
@@ -626,6 +689,25 @@ export const SWIPE_ACTION = {
     DEADZONE: 8,            // Initial pixels ignored (prevents accidental)
     VERTICAL_RATIO: 0.35,   // Max vertical/horizontal ratio (was 0.5)
     MIN_VELOCITY: 0.3       // Minimum px/ms velocity to trigger action
+  },
+  // Success flash animation (v3.4)
+  // Brief visual confirmation after action triggers
+  SUCCESS_FLASH: {
+    // Card pulse animation
+    CARD: {
+      scale: [1, 1.02, 1],
+      transition: {
+        duration: 0.3,
+        ease: 'easeOut'
+      }
+    },
+    // Success hold duration before snap-back (ms)
+    HOLD_DURATION: 350,
+    // Haptic patterns
+    HAPTIC: {
+      THRESHOLD: 10,         // 10ms pulse at threshold crossing
+      SUCCESS: [20, 50, 20]  // Short-pause-short pattern on action
+    }
   }
 };
 
@@ -733,6 +815,66 @@ export const BOTTOM_NAV_MODAL = {
   }
 };
 
+// Navigation micro-interactions (v3.5)
+// Refined animations for navigation components
+export const NAV_MICRO = {
+  // Subtle bounce on nav item tap
+  TAP_BOUNCE: {
+    scale: [1, 0.95, 1.02, 1],
+    transition: { duration: 0.3, times: [0, 0.2, 0.6, 1] }
+  },
+
+  // Icon wiggle on hover (desktop)
+  ICON_WIGGLE: {
+    rotate: [0, -5, 5, -3, 3, 0],
+    transition: { duration: 0.4 }
+  },
+
+  // Glow pulse for active indicator
+  GLOW_PULSE: {
+    boxShadow: [
+      '0 0 8px rgba(0,174,239,0.3)',
+      '0 0 16px rgba(0,174,239,0.5)',
+      '0 0 8px rgba(0,174,239,0.3)'
+    ],
+    transition: { duration: 2, repeat: Infinity }
+  },
+
+  // Enhanced pill spring for bottom nav
+  PILL_SPRING: {
+    type: 'spring',
+    bounce: 0.25,
+    duration: 0.5,
+    mass: 0.8
+  },
+
+  // Icon pop on active state
+  ICON_POP: {
+    scale: [1, 1.15, 1],
+    transition: { duration: 0.3, ease: 'easeOut' }
+  },
+
+  // Drawer swipe thresholds
+  DRAWER_SWIPE: {
+    CLOSE_THRESHOLD: 50,      // px to trigger close
+    VELOCITY_THRESHOLD: 300,  // px/s for fast flick
+    ELASTIC: 0.1,             // drag elasticity
+    SPRING: {
+      type: 'spring',
+      damping: 25,
+      stiffness: 250
+    }
+  }
+};
+
+// Modal swipe-to-close thresholds (v3.6)
+// Standardized configuration for all modal components
+export const MODAL_SWIPE = {
+  THRESHOLD: 80,              // px to trigger close (after resistance applied)
+  RESISTANCE: 0.5,            // drag resistance factor (0.5 = need ~160px actual drag)
+  VELOCITY_THRESHOLD: 0.5,    // px/ms for fast flick detection
+};
+
 // Pull-to-refresh animations (v2.1)
 // Refined timing for smooth, responsive feel
 export const PULL_REFRESH = {
@@ -786,6 +928,7 @@ export default {
   INTERACTIVE,
   MOBILE_SHEET,
   MODAL,
+  MODAL_SWIPE,
   BUBBLE_ACTIVE,
   PAGE_TRANSITION,
   PAGE_TRANSITION_REDUCED,
@@ -799,5 +942,6 @@ export default {
   TAB_CONTENT,
   ALERT,
   BOTTOM_NAV_MODAL,
+  NAV_MICRO,
   PULL_REFRESH
 };

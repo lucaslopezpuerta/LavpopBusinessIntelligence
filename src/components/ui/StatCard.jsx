@@ -32,24 +32,24 @@ const StatCard = ({
   return (
     <div
       className={`
-        bg-white dark:bg-slate-800
+        bg-white dark:bg-space-dust
         rounded-xl shadow-soft
         p-4 sm:p-6
-        border border-gray-100 dark:border-slate-700
+        border border-slate-100 dark:border-slate-700
         hover:shadow-lg transition-shadow
         ${className}
       `}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-slate-400 mb-1 sm:mb-2">
+          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-1 sm:mb-2">
             {label}
           </p>
-          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1 truncate">
+          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white mb-0.5 sm:mb-1 truncate">
             {value}
           </p>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 truncate">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 truncate">
               {subtitle}
             </p>
           )}
@@ -67,7 +67,7 @@ const StatCard = ({
                     ? 'text-green-600 dark:text-green-400'
                     : trend.direction === 'down'
                       ? 'text-red-600 dark:text-red-400'
-                      : 'text-gray-600 dark:text-slate-400'
+                      : 'text-slate-600 dark:text-slate-400'
                 }`}
                 role="status"
                 aria-label={`Tendência: ${trend.value}`}

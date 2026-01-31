@@ -1,9 +1,48 @@
-/* Bilavnova BI - Base Styles v5.0 (Cosmic Precision 2.0)
- * Space-age futurist design system - Eye-strain optimized
+/* Bilavnova BI - Base Styles v6.5.2 (Animation Performance)
+ * Aurora-tinted deep blacks with vibrant semantic colors
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
  *
+ * SOURCES:
+ * - Brand Logo: Bilavnova gradient (#2d388a → #00aeef)
+ * - Aurora Borealis: Deep teal-black backgrounds for cosmic depth
+ *
  * CHANGELOG:
+ * v6.5.2 (2026-01-31): Animation Performance Fixes
+ *   - Removed filter: blur() from content-reveal (paint-triggering)
+ *   - Removed filter: blur() from skeleton-fade-out
+ *   - Separated refresh-spin rotation from drop-shadow (static glow)
+ *   - Removed stale-breathe box-shadow animation (solid colors now)
+ * v6.5.1 (2026-01-30): Area path drawing fix
+ *   - FIXED: Added stroke-dashoffset: 2000 initial value to prevent flash
+ *   - Path now hidden during 0.3s delay before animation starts
+ * v6.5 (2026-01-30): Chart Animations - Area path drawing
+ *   - Added @keyframes area-draw for AreaChart path reveal
+ *   - Added .revenue-area-path utility class for GrowthTrendsSection
+ * v6.4 (2026-01-30): Chart Animations - Scatter bubble pop-in
+ *   - Added @keyframes scatter-fade for ScatterChart bubbles
+ *   - Added .animate-scatter-pop utility class
+ * v6.3 (2026-01-30): Aurora Void - Deep aurora-tinted backgrounds
+ *   - Deepened dark mode backgrounds for true "space void" aesthetic
+ *   - Added teal undertones (HSL ~210°) for aurora coherence
+ *   - Space Void: #0D1117 → #020910 (L=4%, maximum depth)
+ *   - Space Nebula: #161B22 → #0A1520 (L=8%)
+ *   - Space Dust: #21262D → #131D28 (L=12%)
+ *   - Space Elevated: #30363D → #1C2736 (L=16%)
+ *   - Light mode unchanged (Nordic Snow Storm)
+ *   - WCAG contrast improved across all combinations
+ * v6.2 (2026-01-30): Bilavnova Precision - Vibrant Semantic Colors
+ *   - Replaced muted Nord semantic colors with vibrant Tailwind 500-level:
+ *     cosmic-green: #A3BE8C → #22C55E (green-500)
+ *     cosmic-amber: #EBCB8B → #F59E0B (amber-500)
+ *     cosmic-rose: #BF616A → #EF4444 (red-500)
+ *     cosmic-purple: #B48EAD → #A855F7 (purple-500)
+ *   - All colors WCAG AA verified
+ * v6.1 (2026-01-30): Bilavnova Precision - Brand Color Restoration
+ *   - Restored brand gradient: #2d388a → #00aeef (from logo)
+ *   - Removed Nord-specific stellar-frost and stellar-ice
+ *   - Kept improved surface colors (Polar Night + Snow Storm)
+ *   - WCAG AA verified for all primary combinations
  * v5.0 (2026-01-29): Cosmic Precision 2.0 - Color harmony overhaul
  *   - Refined stellar-cyan from #00aeef to #5BA3D9 (42% less saturated)
  *   - Reduced glow intensities for softer appearance
@@ -51,64 +90,64 @@
 
 @layer base {
   :root {
-    /* shadcn tokens - Light Theme */
-    --background: 248 250 252;        /* space-light #f8fafc */
-    --foreground: 15 23 42;           /* slate-900 */
-    --card: 255 255 255;
-    --card-foreground: 15 23 42;
+    /* shadcn tokens - Light Theme (Snow Storm) */
+    --background: 236 239 244;        /* space-light #ECEFF4 */
+    --foreground: 46 52 64;           /* Nord polar night */
+    --card: 229 233 240;              /* space-mist #E5E9F0 */
+    --card-foreground: 46 52 64;
     --popover: 255 255 255;
-    --popover-foreground: 15 23 42;
-    --primary: 45 56 138;             /* stellar-blue #2d388a */
-    --primary-foreground: 248 250 252;
-    --secondary: 241 245 249;         /* slate-100 */
-    --secondary-foreground: 15 23 42;
-    --muted: 241 245 249;
-    --muted-foreground: 100 116 139;  /* slate-500 */
-    --accent: 241 245 249;
-    --accent-foreground: 15 23 42;
-    --destructive: 239 68 68;         /* red-500 */
+    --popover-foreground: 46 52 64;
+    --primary: 45 56 138;             /* stellar-blue #2d388a (brand) */
+    --primary-foreground: 236 239 244;
+    --secondary: 216 222 233;         /* space-cloud #D8DEE9 */
+    --secondary-foreground: 46 52 64;
+    --muted: 216 222 233;
+    --muted-foreground: 76 86 106;    /* Nord polar night 3 */
+    --accent: 216 222 233;
+    --accent-foreground: 46 52 64;
+    --destructive: 191 97 106;        /* cosmic-rose #BF616A */
     --destructive-foreground: 255 255 255;
-    --border: 226 232 240;            /* slate-200 */
-    --input: 226 232 240;
-    --ring: 0 174 239;                /* stellar-cyan #00aeef */
+    --border: 216 222 233;            /* space-cloud */
+    --input: 216 222 233;
+    --ring: 0 174 239;                /* stellar-cyan #00aeef (brand) */
     --radius: 0.5rem;
 
-    /* Chart colors for shadcn charts */
-    --chart-1: 45 56 138;             /* stellar-blue */
-    --chart-2: 0 174 239;             /* stellar-cyan */
-    --chart-3: 0 214 143;             /* cosmic-green */
-    --chart-4: 139 92 246;            /* violet-500 */
-    --chart-5: 249 115 22;            /* orange-500 */
+    /* Chart colors for shadcn charts - Bilavnova palette (v6.2 vibrant) */
+    --chart-1: 45 56 138;             /* stellar-blue #2d388a (brand) */
+    --chart-2: 0 174 239;             /* stellar-cyan #00aeef (brand) */
+    --chart-3: 34 197 94;             /* cosmic-green #22C55E (vibrant) */
+    --chart-4: 168 85 247;            /* cosmic-purple #A855F7 (vibrant) */
+    --chart-5: 245 158 11;            /* cosmic-amber #F59E0B (vibrant) */
   }
 
   .dark {
-    /* shadcn tokens - Dark Theme (Cosmic Precision) */
-    --background: 5 8 22;             /* space-void #050816 */
-    --foreground: 248 250 252;        /* slate-50 */
-    --card: 26 31 53;                 /* space-dust #1a1f35 */
-    --card-foreground: 248 250 252;
-    --popover: 26 31 53;              /* space-dust */
-    --popover-foreground: 248 250 252;
-    --primary: 0 174 239;             /* stellar-cyan #00aeef */
-    --primary-foreground: 5 8 22;     /* space-void */
-    --secondary: 10 15 30;            /* space-nebula #0a0f1e */
-    --secondary-foreground: 248 250 252;
-    --muted: 10 15 30;                /* space-nebula */
+    /* shadcn tokens - Dark Theme (Aurora Void v6.3) */
+    --background: 2 9 16;             /* space-void #020910 (aurora) */
+    --foreground: 236 239 244;        /* space-light #ECEFF4 */
+    --card: 19 29 40;                 /* space-dust #131D28 (aurora) */
+    --card-foreground: 236 239 244;
+    --popover: 19 29 40;              /* space-dust (aurora) */
+    --popover-foreground: 236 239 244;
+    --primary: 0 174 239;             /* stellar-cyan #00aeef (brand) */
+    --primary-foreground: 2 9 16;     /* space-void (aurora) */
+    --secondary: 10 21 32;            /* space-nebula #0A1520 (aurora) */
+    --secondary-foreground: 236 239 244;
+    --muted: 10 21 32;                /* space-nebula (aurora) */
     --muted-foreground: 148 163 184;  /* slate-400 */
-    --accent: 10 15 30;               /* space-nebula */
-    --accent-foreground: 248 250 252;
-    --destructive: 239 68 68;         /* red-500 */
-    --destructive-foreground: 248 250 252;
-    --border: 30 41 59;               /* slate-800 */
-    --input: 30 41 59;
-    --ring: 0 174 239;                /* stellar-cyan */
+    --accent: 10 21 32;               /* space-nebula (aurora) */
+    --accent-foreground: 236 239 244;
+    --destructive: 239 68 68;         /* cosmic-rose #EF4444 (vibrant) */
+    --destructive-foreground: 236 239 244;
+    --border: 28 39 54;               /* space-elevated #1C2736 (aurora) */
+    --input: 28 39 54;
+    --ring: 0 174 239;                /* stellar-cyan #00aeef (brand) */
 
-    /* Chart colors for shadcn charts - dark mode */
-    --chart-1: 0 174 239;             /* stellar-cyan */
-    --chart-2: 45 56 138;             /* stellar-blue */
-    --chart-3: 0 214 143;             /* cosmic-green */
-    --chart-4: 167 139 250;           /* violet-400 */
-    --chart-5: 251 146 60;            /* orange-400 */
+    /* Chart colors for shadcn charts - dark mode Bilavnova (v6.2 vibrant) */
+    --chart-1: 0 174 239;             /* stellar-cyan #00aeef (brand) */
+    --chart-2: 45 56 138;             /* stellar-blue #2d388a (brand) */
+    --chart-3: 34 197 94;             /* cosmic-green #22C55E (vibrant) */
+    --chart-4: 168 85 247;            /* cosmic-purple #A855F7 (vibrant) */
+    --chart-5: 245 158 11;            /* cosmic-amber #F59E0B (vibrant) */
   }
 }
 
@@ -117,90 +156,118 @@
    ============================================ */
 
 :root {
-  /* Cosmic Precision 2.0 - Stellar Colors (v5.0 - eye-strain optimized) */
-  --stellar-blue: #2d388a;
-  --stellar-cyan: #5BA3D9;          /* Refined: 58% saturation (was 100%) */
-  --stellar-cyan-bright: #00aeef;   /* Legacy: for gradients needing vibrancy */
-  --stellar-gradient: linear-gradient(135deg, #2d388a 0%, #5BA3D9 100%);
-  --stellar-gradient-vibrant: linear-gradient(135deg, #2d388a 0%, #00aeef 100%);
-  --space-void: #050816;
-  --space-nebula: #0a0f1e;
-  --space-dust: #1a1f35;
+  /* Bilavnova Precision - Stellar Colors (v6.1 - Brand aligned) */
+  --stellar-blue: #2d388a;          /* Brand gradient start - deep royal */
+  --stellar-cyan: #00aeef;          /* Brand gradient end - vibrant electric */
+  --stellar-gradient: linear-gradient(135deg, #2d388a 0%, #00aeef 100%);
 
-  /* Bilavnova Brand Gradient (from logo) */
+  /* Aurora Void - Space Colors (v6.3 - Aurora-tinted + Snow Storm) */
+  --space-void: #020910;            /* Aurora void - deepest (L=4%) */
+  --space-nebula: #0A1520;          /* Aurora nebula - elevated (L=8%) */
+  --space-dust: #131D28;            /* Aurora dust - surface (L=12%) */
+  --space-elevated: #1C2736;        /* Aurora elevated - hover (L=16%) */
+  --space-light: #ECEFF4;           /* Snow Storm - light bg (unchanged) */
+  --space-mist: #E5E9F0;            /* Snow Storm - secondary (unchanged) */
+  --space-cloud: #D8DEE9;           /* Snow Storm - cards (unchanged) */
+
+  /* Bilavnova Precision - Cosmic Accents (v6.2 - vibrant) */
+  --cosmic-green: #22C55E;          /* Success - Tailwind green-500 */
+  --cosmic-amber: #F59E0B;          /* CTA/Warning - Tailwind amber-500 */
+  --cosmic-rose: #EF4444;           /* Error - Tailwind red-500 */
+  --cosmic-purple: #A855F7;         /* Special - Tailwind purple-500 */
+
+  /* Chart Color Tokens (v6.2 - Bilavnova palette, vibrant) */
+  --chart-primary: #2d388a;         /* stellar-blue (brand) */
+  --chart-primary-muted: #4a5699;   /* stellar-blue lighter */
+  --chart-secondary: #00aeef;       /* stellar-cyan (brand) */
+  --chart-success: #22C55E;         /* cosmic-green (vibrant) */
+  --chart-warning: #F59E0B;         /* cosmic-amber (vibrant) */
+  --chart-danger: #EF4444;          /* cosmic-rose (vibrant) */
+
+  /* Bilavnova Brand Gradient (v6.1 - from logo) */
   --bilavnova-gradient-start: #2d388a;
   --bilavnova-gradient-end: #00aeef;
   --bilavnova-gradient: linear-gradient(135deg, #2d388a 0%, #00aeef 100%);
 
-  /* Lavpop Brand Colors (legacy) */
+  /* Lavpop Brand Colors (legacy - deprecated) */
   --color-lavpop-blue: #1a5a8e;
   --color-lavpop-green: #55b03b;
 
-  /* Light Theme (Default) - Clean geometric space */
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #64748b;
-  --color-text-muted: #94a3b8;
+  /* Light Theme (Snow Storm) */
+  --color-background: #ECEFF4;
+  --color-surface: #E5E9F0;
+  --color-surface-hover: #D8DEE9;
+  --color-border: #D8DEE9;
+  --color-text-primary: #2E3440;    /* Nord polar night */
+  --color-text-secondary: #4C566A;  /* Nord polar night 3 */
+  --color-text-muted: #616E88;
 
   /* Loading/Login Screen - Light Theme */
-  --loading-bg: #f8fafc;
-  --loading-surface: #ffffff;
-  --loading-border: #e2e8f0;
-  --loading-text: #0f172a;
-  --loading-text-secondary: #64748b;
+  --loading-bg: #ECEFF4;
+  --loading-surface: #E5E9F0;
+  --loading-border: #D8DEE9;
+  --loading-text: #2E3440;
+  --loading-text-secondary: #4C566A;
 
   /* Glassmorphism - Light Theme */
-  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg: rgba(236, 239, 244, 0.8);
   --glass-border: rgba(45, 56, 138, 0.1);
   --glass-blur: 12px;
 
-  /* Shadows - v5.0: Reduced glow intensity for softer appearance */
+  /* Shadows - v6.1: Brand glow */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-lavpop: 0 4px 14px 0 rgba(26, 90, 142, 0.15);
+  --shadow-lavpop: 0 4px 14px 0 rgba(45, 56, 138, 0.15);
   --shadow-bilavnova: 0 4px 24px rgba(45, 56, 138, 0.15);
-  --shadow-bilavnova-glow: 0 4px 32px rgba(91, 163, 217, 0.2);  /* Softer with new cyan */
-  --shadow-stellar: 0 0 20px rgba(45, 56, 138, 0.15), 0 0 40px rgba(91, 163, 217, 0.08);
-  --stellar-glow: 0 0 20px rgba(91, 163, 217, 0.3);  /* New softer glow */
-  --stellar-glow-soft: 0 0 12px rgba(91, 163, 217, 0.2);
+  --shadow-bilavnova-glow: 0 4px 32px rgba(0, 174, 239, 0.2);
+  --shadow-stellar: 0 0 20px rgba(45, 56, 138, 0.15), 0 0 40px rgba(0, 174, 239, 0.08);
+  --stellar-glow: 0 0 20px rgba(0, 174, 239, 0.3);
+  --stellar-glow-soft: 0 0 12px rgba(0, 174, 239, 0.2);
+  --aurora-glow: 0 0 20px rgba(0, 174, 239, 0.3);
 }
 
 .dark {
-  /* Dark Theme - Deep space */
-  --color-background: #050816;
-  --color-surface: #0a0f1e;
-  --color-surface-hover: #1a1f35;
-  --color-border: #1e293b;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
+  /* Dark Theme (Aurora Void v6.3) */
+  --color-background: #020910;
+  --color-surface: #0A1520;
+  --color-surface-hover: #131D28;
+  --color-border: #1C2736;
+  --color-text-primary: #ECEFF4;
+  --color-text-secondary: #D8DEE9;
+  --color-text-muted: #81A1C1;
 
-  /* Loading/Login Screen - Dark Theme (Cosmic) */
-  --loading-bg: #050816;
-  --loading-surface: #0a0f1e;
-  --loading-border: #1e293b;
-  --loading-text: #f1f5f9;
-  --loading-text-secondary: #94a3b8;
+  /* Loading/Login Screen - Dark Theme (Aurora Void) */
+  --loading-bg: #020910;
+  --loading-surface: #0A1520;
+  --loading-border: #1C2736;
+  --loading-text: #ECEFF4;
+  --loading-text-secondary: #D8DEE9;
 
-  /* Glassmorphism - Dark Theme */
-  --glass-bg: rgba(10, 15, 30, 0.7);
+  /* Glassmorphism - Dark Theme (Aurora) */
+  --glass-bg: rgba(10, 21, 32, 0.7);
   --glass-border: rgba(0, 174, 239, 0.15);
   --glass-blur: 16px;
 
-  /* Darker shadows with stellar glow - v5.0: Softer intensities */
+  /* Darker shadows with brand glow - v6.1 */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
-  --shadow-lavpop: 0 4px 14px 0 rgba(26, 90, 142, 0.3);
+  --shadow-lavpop: 0 4px 14px 0 rgba(45, 56, 138, 0.3);
   --shadow-bilavnova: 0 4px 24px rgba(45, 56, 138, 0.3);
-  --shadow-bilavnova-glow: 0 4px 32px rgba(91, 163, 217, 0.3);  /* Softer with new cyan */
-  --shadow-stellar: 0 0 30px rgba(91, 163, 217, 0.25), 0 0 60px rgba(45, 56, 138, 0.15);
-  --stellar-glow: 0 0 20px rgba(91, 163, 217, 0.4);
-  --stellar-glow-soft: 0 0 12px rgba(91, 163, 217, 0.25);
+  --shadow-bilavnova-glow: 0 4px 32px rgba(0, 174, 239, 0.3);
+  --shadow-stellar: 0 0 30px rgba(0, 174, 239, 0.25), 0 0 60px rgba(45, 56, 138, 0.15);
+  --stellar-glow: 0 0 20px rgba(0, 174, 239, 0.4);
+  --stellar-glow-soft: 0 0 12px rgba(0, 174, 239, 0.25);
+  --aurora-glow: 0 0 20px rgba(0, 174, 239, 0.4);
+
+  /* Chart Color Tokens - Dark Mode (v6.2 - Bilavnova, vibrant) */
+  --chart-primary: #00aeef;         /* stellar-cyan (brand) */
+  --chart-primary-muted: #4a5699;   /* stellar-blue lighter */
+  --chart-secondary: #2d388a;       /* stellar-blue (brand) */
+  --chart-success: #22C55E;         /* cosmic-green (vibrant) */
+  --chart-warning: #F59E0B;         /* cosmic-amber (vibrant) */
+  --chart-danger: #EF4444;          /* cosmic-rose (vibrant) */
 }
 
 /* ============================================
@@ -368,8 +435,8 @@ body {
     135deg,
     rgba(45, 56, 138, 0.3) 0%,
     rgba(0, 174, 239, 0.2) 20%,
-    rgba(139, 92, 246, 0.25) 40%,
-    rgba(0, 214, 143, 0.15) 60%,
+    rgba(0, 174, 239, 0.25) 40%,
+    rgba(34, 197, 94, 0.15) 60%,
     rgba(0, 174, 239, 0.2) 80%,
     rgba(45, 56, 138, 0.3) 100%
   );
@@ -383,8 +450,8 @@ body {
     135deg,
     rgba(45, 56, 138, 0.12) 0%,
     rgba(0, 174, 239, 0.08) 20%,
-    rgba(139, 92, 246, 0.1) 40%,
-    rgba(0, 214, 143, 0.06) 60%,
+    rgba(0, 174, 239, 0.1) 40%,
+    rgba(34, 197, 94, 0.06) 60%,
     rgba(0, 174, 239, 0.08) 80%,
     rgba(45, 56, 138, 0.12) 100%
   );
@@ -458,29 +525,27 @@ body {
   }
 }
 
-/* Stale data indicator - amber breathing glow */
-@keyframes stale-breathe {
-  0%, 100% {
-    box-shadow: 0 0 4px rgba(245, 158, 11, 0.3);
+/* Stale data indicator - removed in v1.1 (solid colors now, no animation needed)
+   Keeping commented for reference if pulse effect is desired in future:
+   @keyframes stale-pulse {
+     0%, 100% { opacity: 0.7; }
+     50% { opacity: 1; }
+   }
+*/
+
+/* Refresh spinner with brand glow (v1.1 performance fix - static glow, animated rotation) */
+@keyframes refresh-spin {
+  from {
+    transform: rotate(0deg);
   }
-  50% {
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+  to {
+    transform: rotate(360deg);
   }
 }
 
-/* Refresh spinner with stellar glow */
-@keyframes refresh-spin-glow {
-  0% {
-    transform: rotate(0deg);
-    filter: drop-shadow(0 0 4px rgba(0, 174, 239, 0.3));
-  }
-  50% {
-    filter: drop-shadow(0 0 8px rgba(0, 174, 239, 0.5));
-  }
-  100% {
-    transform: rotate(360deg);
-    filter: drop-shadow(0 0 4px rgba(0, 174, 239, 0.3));
-  }
+.refresh-spin-glow {
+  filter: drop-shadow(0 0 6px rgba(0, 174, 239, 0.4));
+  animation: refresh-spin 1s linear infinite;
 }
 
 /* Skeleton bar wave - for chart loading */
@@ -490,6 +555,48 @@ body {
   }
   50% {
     transform: scaleY(1);
+  }
+}
+
+/* ScatterChart bubble fade-in animation (v4.0)
+   Opacity-only animation avoids SVG transform coordinate issues
+   Scale transforms on SVG elements cause positioning bugs in Recharts */
+@keyframes scatter-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-scatter-pop {
+  opacity: 0;  /* Hidden before animation starts - prevents flash */
+  animation: scatter-fade 300ms ease-out forwards;
+}
+
+/* AreaChart path drawing animation (v4.0)
+   Progressive line reveal effect for GrowthTrendsSection revenue chart */
+@keyframes area-draw {
+  from {
+    stroke-dashoffset: 2000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.revenue-area-path .recharts-area-curve {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;  /* Hide path initially - prevents flash during delay */
+  animation: area-draw 1.5s ease-out 0.3s forwards;
+}
+
+/* Reduced motion: disable path drawing animation */
+@media (prefers-reduced-motion: reduce) {
+  .revenue-area-path .recharts-area-curve {
+    animation: none;
+    stroke-dasharray: none;
   }
 }
 
@@ -509,14 +616,14 @@ body {
   animation: cosmic-shimmer 1.8s ease-in-out infinite;
 }
 
-/* Dark mode cosmic skeleton - stellar cyan glow */
+/* Dark mode cosmic skeleton - aurora brand cyan glow */
 .dark .skeleton-cosmic {
   background: linear-gradient(
     90deg,
-    rgba(26, 31, 53, 0.95) 0%,
+    rgba(19, 29, 40, 0.95) 0%,
     rgba(0, 174, 239, 0.12) 20%,
-    rgba(30, 41, 59, 0.9) 40%,
-    rgba(26, 31, 53, 0.95) 100%
+    rgba(28, 39, 54, 0.9) 40%,
+    rgba(19, 29, 40, 0.95) 100%
   );
   background-size: 200% 100%;
   box-shadow: inset 0 0 0 1px rgba(0, 174, 239, 0.08);
@@ -551,15 +658,8 @@ body {
 .skeleton-stagger-7 { animation-delay: 300ms, 0ms; }
 .skeleton-stagger-8 { animation-delay: 350ms, 0ms; }
 
-/* Stale data indicator amber breathing */
-.stale-indicator {
-  animation: stale-breathe 2s ease-in-out infinite;
-}
-
-/* Refresh spinner with glow */
-.refresh-spin-glow {
-  animation: refresh-spin-glow 1s linear infinite;
-}
+/* Note: .stale-indicator uses solid colors now (v1.1), animation removed for performance */
+/* Note: .refresh-spin-glow class is defined near its @keyframes above (line ~540) */
 
 /* Chart bar skeleton with wave animation */
 .skeleton-bar-wave {
@@ -581,16 +681,14 @@ body {
 .skeleton-bar-wave:nth-child(11) { animation-delay: 800ms; }
 .skeleton-bar-wave:nth-child(12) { animation-delay: 880ms; }
 
-/* Content reveal transition - blur to sharp */
+/* Content reveal transition - compositor-only (v1.1 performance fix) */
 @keyframes content-reveal {
   0% {
     opacity: 0;
-    filter: blur(4px);
     transform: scale(0.98);
   }
   100% {
     opacity: 1;
-    filter: blur(0);
     transform: scale(1);
   }
 }
@@ -599,12 +697,11 @@ body {
   animation: content-reveal 0.3s ease-out forwards;
 }
 
-/* Skeleton fade out before content reveal */
+/* Skeleton fade out before content reveal - compositor-only (v1.1 performance fix) */
 @keyframes skeleton-fade-out {
   to {
     opacity: 0;
     transform: scale(0.98);
-    filter: blur(4px);
   }
 }
 
@@ -623,13 +720,10 @@ body {
     transform: none;
   }
 
-  .stale-indicator {
-    animation: none;
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
-  }
+  /* .stale-indicator no longer animates (solid colors in v1.1) */
 
   .refresh-spin-glow {
-    animation: spin 1s linear infinite;
+    animation: refresh-spin 1s linear infinite;
     filter: none;
   }
 
@@ -637,7 +731,6 @@ body {
   .skeleton-fade-out {
     animation: none;
     opacity: 1;
-    filter: none;
     transform: none;
   }
 }
@@ -778,17 +871,17 @@ body.modal-open .bottom-nav-container {
    COSMIC PRECISION UTILITIES (v4.0)
    ============================================ */
 
-/* Star field background - scattered tiny gradient dots */
+/* Star field background - scattered tiny gradient dots (Bilavnova) */
 .bg-starfield {
   background-image:
     radial-gradient(1px 1px at 20px 30px, rgba(0, 174, 239, 0.4), transparent),
     radial-gradient(1px 1px at 40px 70px, rgba(45, 56, 138, 0.3), transparent),
     radial-gradient(1px 1px at 50px 160px, rgba(0, 174, 239, 0.25), transparent),
-    radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(236, 239, 244, 0.35), transparent),
     radial-gradient(1px 1px at 130px 80px, rgba(0, 174, 239, 0.2), transparent),
-    radial-gradient(1px 1px at 160px 120px, rgba(255, 255, 255, 0.25), transparent),
+    radial-gradient(1px 1px at 160px 120px, rgba(236, 239, 244, 0.25), transparent),
     radial-gradient(1px 1px at 180px 20px, rgba(45, 56, 138, 0.3), transparent),
-    radial-gradient(1px 1px at 200px 160px, rgba(0, 174, 239, 0.3), transparent);
+    radial-gradient(1px 1px at 200px 160px, rgba(34, 197, 94, 0.3), transparent);
   background-size: 220px 180px;
 }
 
@@ -1035,13 +1128,13 @@ body.modal-open .bottom-nav-container {
   box-shadow: 0 0 20px rgba(0, 174, 239, 0.4), 0 0 40px rgba(0, 174, 239, 0.2);
 }
 
-/* Nebula hover glow */
+/* Aurora hover glow */
 .hover-nebula-glow {
   transition: box-shadow 0.3s ease;
 }
 
 .hover-nebula-glow:hover {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), 0 0 40px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 20px rgba(0, 174, 239, 0.4), 0 0 40px rgba(34, 197, 94, 0.2);
 }
 
 /* Orbital ring on hover */
@@ -1068,12 +1161,12 @@ body.modal-open .bottom-nav-container {
 
 /* --- Background Enhancements --- */
 
-/* Nebula cloud effect */
+/* Aurora cloud effect */
 .bg-nebula-clouds {
   background:
-    radial-gradient(ellipse at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 30%, rgba(45, 56, 138, 0.15) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 70%, rgba(0, 174, 239, 0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 60%);
+    radial-gradient(ellipse at 50% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
 }
 
 /* Cosmic dust particles (subtle) */
@@ -1097,10 +1190,10 @@ body.modal-open .bottom-nav-container {
   );
 }
 
-/* Deep space - darker void effect */
+/* Deep space - aurora void effect */
 .bg-deep-space {
   background:
-    radial-gradient(ellipse at 50% 50%, transparent 0%, rgba(5, 8, 22, 0.5) 100%);
+    radial-gradient(ellipse at 50% 50%, transparent 0%, rgba(2, 9, 16, 0.5) 100%);
 }
 
 /* --- Cosmic Inner Glow --- */

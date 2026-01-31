@@ -473,7 +473,7 @@ const Customers = ({ data, onDataChange }) => {
               >
                 <span className="text-gradient-stellar">CLIENTES</span>
               </h1>
-              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Inteligência e análise comportamental
               </p>
             </div>
@@ -650,7 +650,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Customer Profile Modal */}
       {selectedCustomer && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerProfileModal
             customer={selectedCustomer}
             sales={data.sales}
@@ -661,7 +661,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* New Campaign Modal - for creating campaigns from chart insights */}
       {campaignModalOpen && audienceSegments && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
           <NewCampaignModal
             isOpen={campaignModalOpen}
             onClose={() => {
@@ -676,7 +676,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Retention Re-engage Modal - for overdue customers from RetentionCard */}
       {retentionModalOpen && retentionModalCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerSegmentModal
             isOpen={retentionModalOpen}
             onClose={() => {
@@ -700,7 +700,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Health At-Risk Modal - for at-risk customers from HealthPill */}
       {healthAtRiskModalOpen && atRiskCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerSegmentModal
             isOpen={healthAtRiskModalOpen}
             onClose={() => setHealthAtRiskModalOpen(false)}
@@ -720,7 +720,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Welcome Modal - for new customers without welcome campaign */}
       {welcomeModalOpen && welcomeModalCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerSegmentModal
             isOpen={welcomeModalOpen}
             onClose={() => {
@@ -743,7 +743,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Lost Customers Modal - first-time visitors who didn't return */}
       {lostCustomersModalOpen && lostCustomersModalData.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerSegmentModal
             isOpen={lostCustomersModalOpen}
             onClose={() => {
@@ -766,7 +766,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Frequency Degradation Modal - customers with slipping visit patterns */}
       {degradationModalOpen && degradationModalCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerSegmentModal
             isOpen={degradationModalOpen}
             onClose={() => {

@@ -240,8 +240,8 @@ const Tooltip = ({ children, content, howToRead, dataRange }) => {
       className={`
         fixed z-[9999] w-64 p-3 rounded-xl shadow-xl text-left pointer-events-none
         ${isDark ? 'bg-space-dust/95' : 'bg-white/95'}
-        backdrop-blur-md
-        ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
+        backdrop-blur-xl
+        ring-1 ${isDark ? 'ring-stellar-cyan/10' : 'ring-slate-200'}
       `}
       style={{
         top: coords.top - 8,
@@ -285,7 +285,7 @@ const Tooltip = ({ children, content, howToRead, dataRange }) => {
           {children}
         </button>
         {isVisible && isMobile && (
-          <div className={`fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 p-4 rounded-xl shadow-2xl ${isDark ? 'bg-space-dust/95' : 'bg-white/95'} backdrop-blur-md ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}`}>
+          <div className={`fixed z-50 inset-x-4 top-1/2 -translate-y-1/2 p-4 rounded-xl shadow-2xl ${isDark ? 'bg-space-dust/95' : 'bg-white/95'} backdrop-blur-xl ring-1 ${isDark ? 'ring-stellar-cyan/10' : 'ring-slate-200'}`}>
             <button type="button" onClick={closeTooltip} className="absolute top-3 right-3 p-1.5 rounded-full" aria-label="Fechar">
               <X className="w-4 h-4" />
             </button>
@@ -365,7 +365,7 @@ const DimensionCard = ({ dimKey, dimension, isPriority, isDark, isDesktop, index
       </div>
 
       {/* Label */}
-      <h4 className={`${isDesktop ? 'text-xs' : 'text-[11px]'} font-semibold mt-1 mb-1 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+      <h4 className={`text-xs font-semibold mt-1 mb-1 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
         {label}
       </h4>
 
@@ -374,7 +374,7 @@ const DimensionCard = ({ dimKey, dimension, isPriority, isDark, isDesktop, index
         {dimension.color === 'positive' && <CheckCircle className={`w-3 h-3 ${isDark ? 'text-emerald-400' : 'text-emerald-500'}`} aria-hidden="true" />}
         {dimension.color === 'warning' && <AlertTriangle className={`w-3 h-3 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} aria-hidden="true" />}
         {dimension.color === 'negative' && <TrendingDown className={`w-3 h-3 ${isDark ? 'text-red-400' : 'text-red-500'}`} aria-hidden="true" />}
-        <span className={`${isDesktop ? 'text-xs' : 'text-[11px]'} ${statusColor}`}>{dimension.status}</span>
+        <span className={`text-xs ${statusColor}`}>{dimension.status}</span>
       </div>
     </motion.div>
   );

@@ -563,7 +563,7 @@ const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {
 
   if (isExpired) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
         Encerrada
       </span>
     );
@@ -587,7 +587,7 @@ const StatusPill = ({ enabled, sendCount, maxSends, validUntil }) => {
   }
 
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300">
       Inativa
     </span>
   );

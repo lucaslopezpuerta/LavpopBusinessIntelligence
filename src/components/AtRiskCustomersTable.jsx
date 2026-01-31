@@ -1,9 +1,9 @@
-// AtRiskCustomersTable.jsx v10.10 - SOLID COLOR BADGES
+// AtRiskCustomersTable.jsx v10.12 - Enhanced Swipe UX with Haptic Feedback
 // ✅ Quick filter tabs (Todos/Sem contato/Contactados)
 // ✅ Last contact info (date + method display)
 // ✅ Batch selection with CustomerSegmentModal
 // ✅ Search by name
-// ✅ Days-to-churn urgency color gradient
+// ✅ Days-to-churn urgency color gradient (amber/red escalation)
 // ✅ Enhanced call/whatsapp buttons (no manual checkbox)
 // ✅ Sort persistence (localStorage)
 // ✅ Keyboard navigation
@@ -17,6 +17,17 @@
 // ✅ Virtualized "Show All" mode for large lists (react-window)
 //
 // CHANGELOG:
+// v10.12 (2026-01-30): Enhanced Swipe UX with Haptic Feedback
+//   - Uses new useSwipeToAction hook for centralized swipe logic
+//   - Added haptic feedback: 10ms pulse at threshold, [20,50,20] pattern on success
+//   - Added visual threshold indicator (icon scale bump at 56px)
+//   - Added success flash animation with 350ms hold before snap-back
+//   - Improved icon transforms with threshold bounce effect
+//   - Reduced code duplication (~80 lines removed)
+// v10.11 (2026-01-29): Design System Color Compliance
+//   - Replaced orange-500 with amber-600 for "Monitor" days threshold
+//   - Maintains visual escalation (amber-500 → amber-600 → red-500 → red-600)
+//   - Orange removed from palette (was undocumented in Design System v5.1)
 // v10.10 (2026-01-29): Solid Color Badges for WCAG AA
 //   - Action buttons now use solid colors (blue-600/green-600 with white text)
 //   - Improved contrast for call/WhatsApp buttons
@@ -133,6 +144,7 @@ import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, ChevronUp
 import { HapticCheckbox } from './ui/HapticCheckbox';
 import { List as FixedSizeList } from 'react-window';
 import { SWIPE_ACTION } from '../constants/animations';
+import { useSwipeToAction } from '../hooks/useSwipeToAction';
 // Note: ArrowUpDown removed in v9.10 - replaced by clickable column headers with chevrons
 import { RISK_LABELS, DAY_THRESHOLDS } from '../utils/customerMetrics';
 
@@ -186,10 +198,11 @@ const FILTER_TABS = {
 
 // Days urgency thresholds and colors (v3.8.0 - uses DAY_THRESHOLDS)
 // Aligned with data-driven thresholds from customerMetrics.js
+// v10.11: Replaced orange-500 with amber-600 for Design System compliance
 const getDaysUrgencyColor = (days) => {
   if (days >= DAY_THRESHOLDS.CHURNING) return 'bg-red-600 text-white';      // 60+ days: Critical
   if (days >= DAY_THRESHOLDS.AT_RISK) return 'bg-red-500 text-white';       // 50+ days: At Risk
-  if (days >= DAY_THRESHOLDS.MONITOR) return 'bg-orange-500 text-white';    // 40+ days: Monitor
+  if (days >= DAY_THRESHOLDS.MONITOR) return 'bg-amber-600 text-white';     // 40+ days: Monitor (was orange)
   if (days >= DAY_THRESHOLDS.HEALTHY) return 'bg-amber-500 text-white';     // 30+ days: Overdue
   return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'; // 0-29 days: Normal
 };
@@ -220,27 +233,45 @@ const MobileCustomerCard = memo(({
   canContact,
   isSelected,
   swipeOffset,
+  actionSuccess,
   styles,
   onCardClick,
   onTouchStart,
   onTouchMove,
   onTouchEnd,
   onTouchCancel,
-  onToggleSelect
+  onToggleSelect,
+  // Icon animation transforms from useSwipeToAction
+  leftIconScale,
+  leftIconOpacity,
+  rightIconScale,
+  rightIconOpacity,
+  springX,
 }) => {
-  // Spring-animated card position for smooth swipe physics
-  const x = useSpring(0, SWIPE_ACTION.CARD_SPRING);
+  // Local spring for fallback (always created to satisfy hooks rules)
+  const localX = useSpring(0, SWIPE_ACTION.CARD_SPRING);
 
-  // Update spring when swipeOffset changes
+  // Update local spring when swipeOffset changes (only used when parent doesn't provide springX)
   useEffect(() => {
-    x.set(isSwipingThis ? swipeOffset : 0);
-  }, [x, isSwipingThis, swipeOffset]);
+    if (!springX) {
+      localX.set(isSwipingThis ? swipeOffset : 0);
+    }
+  }, [localX, springX, isSwipingThis, swipeOffset]);
 
-  // Transform swipe offset to icon scale/opacity for reveal effect
-  const leftIconScale = useTransform(x, [0, 40, 64], [0.6, 0.9, 1]);
-  const leftIconOpacity = useTransform(x, [0, 30, 64], [0, 0.7, 1]);
-  const rightIconScale = useTransform(x, [-64, -40, 0], [1, 0.9, 0.6]);
-  const rightIconOpacity = useTransform(x, [-64, -30, 0], [1, 0.7, 0]);
+  // Use parent's spring when swiping and available, otherwise use local
+  const activeX = isSwipingThis && springX ? springX : localX;
+
+  // Fallback transforms based on local spring (always call hooks)
+  const fallbackLeftIconScale = useTransform(localX, [0, 40, 56, 72], [0.6, 0.9, 1.15, 1.0]);
+  const fallbackLeftIconOpacity = useTransform(localX, [0, 30, 56], [0, 0.7, 1]);
+  const fallbackRightIconScale = useTransform(localX, [-72, -56, -40, 0], [1.0, 1.15, 0.9, 0.6]);
+  const fallbackRightIconOpacity = useTransform(localX, [-56, -30, 0], [1, 0.7, 0]);
+
+  // Use parent transforms when swiping and available, fallbacks otherwise
+  const activeLeftIconScale = isSwipingThis && leftIconScale ? leftIconScale : fallbackLeftIconScale;
+  const activeLeftIconOpacity = isSwipingThis && leftIconOpacity ? leftIconOpacity : fallbackLeftIconOpacity;
+  const activeRightIconScale = isSwipingThis && rightIconScale ? rightIconScale : fallbackRightIconScale;
+  const activeRightIconOpacity = isSwipingThis && rightIconOpacity ? rightIconOpacity : fallbackRightIconOpacity;
 
   // Memoize the border color style
   const borderStyle = useMemo(() => ({
@@ -254,35 +285,41 @@ const MobileCustomerCard = memo(({
         <>
           {canWhatsApp && (
             <div className="absolute inset-y-0 left-0 w-16 bg-green-500 flex items-center justify-center">
-              <motion.div style={{ scale: leftIconScale, opacity: leftIconOpacity }}>
+              <motion.div style={{ scale: activeLeftIconScale, opacity: activeLeftIconOpacity }}>
                 <MessageCircle className="w-5 h-5 text-white" />
               </motion.div>
             </div>
           )}
           <div className="absolute inset-y-0 right-0 w-16 bg-blue-500 flex items-center justify-center">
-            <motion.div style={{ scale: rightIconScale, opacity: rightIconOpacity }}>
+            <motion.div style={{ scale: activeRightIconScale, opacity: activeRightIconOpacity }}>
               <Phone className="w-5 h-5 text-white" />
             </motion.div>
           </div>
         </>
       )}
 
-      {/* Card content with spring physics */}
+      {/* Card content with spring physics and success flash */}
       <motion.div
         className={`
           relative flex items-center gap-3 p-3
           border border-l-4 rounded-xl
-          touch-pan-y
-          ${contacted
-            ? 'bg-gradient-to-r from-emerald-50/80 to-emerald-25/40 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200/60 dark:border-emerald-700/30'
-            : blacklisted
-              ? 'bg-gradient-to-r from-red-50/60 to-slate-50 dark:from-red-950 dark:to-red-900 border-red-200/60 dark:border-red-700/30'
-              : 'bg-gradient-to-r from-slate-50 to-white dark:from-space-dust dark:to-space-nebula border-slate-200/60 dark:border-stellar-cyan/10'
+          touch-pan-y transition-colors duration-200
+          ${actionSuccess === 'left'
+            ? 'bg-blue-500/20 dark:bg-blue-500/30 border-blue-500 dark:border-blue-400'
+            : actionSuccess === 'right'
+              ? 'bg-green-500/20 dark:bg-green-500/30 border-green-500 dark:border-green-400'
+              : contacted
+                ? 'bg-gradient-to-r from-emerald-50/80 to-emerald-25/40 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200/60 dark:border-emerald-700/30'
+                : blacklisted
+                  ? 'bg-gradient-to-r from-red-50/60 to-slate-50 dark:from-red-950 dark:to-red-900 border-red-200/60 dark:border-red-700/30'
+                  : 'bg-gradient-to-r from-slate-50 to-white dark:from-space-dust dark:to-space-nebula border-slate-200/60 dark:border-stellar-cyan/10'
           }
           ${isSelected ? 'ring-2 ring-stellar-cyan/50 dark:ring-stellar-cyan/40' : ''}
         `}
-        style={{ ...borderStyle, x }}
+        style={{ ...borderStyle, x: activeX }}
         whileTap={{ scale: 0.99 }}
+        animate={actionSuccess ? { scale: [1, 1.02, 1] } : {}}
+        transition={actionSuccess ? { duration: 0.3, ease: 'easeOut' } : {}}
         onClick={onCardClick}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -361,6 +398,7 @@ const MobileCustomerCard = memo(({
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isSwipingThis === nextProps.isSwipingThis &&
     prevProps.swipeOffset === nextProps.swipeOffset &&
+    prevProps.actionSuccess === nextProps.actionSuccess &&
     prevProps.customer.name === nextProps.customer.name &&
     prevProps.customer.daysSinceLastVisit === nextProps.customer.daysSinceLastVisit &&
     prevProps.customer.netTotal === nextProps.customer.netTotal &&
@@ -406,7 +444,7 @@ const DesktopCustomerRow = memo(({
             ? 'bg-red-50/40 dark:bg-red-900/10 hover:bg-red-100/40 dark:hover:bg-red-900/20'
             : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
         }
-        ${isSelected ? 'bg-lavpop-blue/5' : ''}
+        ${isSelected ? 'bg-blue-600/5' : ''}
       `}
       style={borderStyle}
       onClick={onRowClick}
@@ -528,7 +566,7 @@ const DesktopCustomerRow = memo(({
                 ) : (
                   <button
                     disabled
-                    className="p-2.5 rounded-lg bg-slate-400 dark:bg-slate-600 text-white/60 cursor-not-allowed"
+                    className="p-2.5 rounded-lg bg-slate-400 dark:bg-slate-600 text-slate-200 dark:text-slate-400 cursor-not-allowed"
                     title="Número inválido"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -591,9 +629,8 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
   const focusedRowRef = useRef(0);
   const virtualListRef = useRef(null); // Ref for virtualized list container
 
-  // Swipe state for mobile
-  const [swipeState, setSwipeState] = useState({ id: null, direction: null, offset: 0 });
-  const touchStartRef = useRef({ x: 0, y: 0 });
+  // Swipe state for mobile - using enhanced hook with haptic feedback
+  // Note: We'll initialize the hook after defining the callbacks below
 
   // Get all at-risk customers
   const allAtRiskCustomers = useMemo(() => {
@@ -886,75 +923,35 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
     }
   }, [isContacted, markContacted, getCustomerContext]);
 
-  // Touch handlers for swipe (mobile row actions)
-  // v10.9: Improved sensitivity with THRESHOLDS (deadzone, velocity, stricter direction)
-  const handleTouchStart = useCallback((e, customerId) => {
-    const touch = e.touches[0];
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now()  // Track start time for velocity calculation
-    };
-    setSwipeState({ id: customerId, direction: null, offset: 0 });
-  }, []);
+  // Enhanced swipe gestures with haptic feedback and success animations
+  // v10.12: Using useSwipeToAction hook for centralized, improved UX
+  const {
+    swipeState,
+    actionSuccess,
+    x: swipeSpringX,
+    leftIconScale,
+    leftIconOpacity,
+    rightIconScale,
+    rightIconOpacity,
+    handlers: swipeHandlers,
+    isSwipingItem,
+  } = useSwipeToAction({
+    onSwipeLeft: (customerId, customer) => {
+      // Call action (swipe left reveals phone icon)
+      if (customer?.phone) {
+        handleCall(null, customer.phone, customerId);
+      }
+    },
+    onSwipeRight: (customerId, customer) => {
+      // WhatsApp action (swipe right reveals WhatsApp icon)
+      if (customer?.phone && hasValidWhatsApp(customer.phone)) {
+        handleWhatsApp(null, customer.phone, customerId);
+      }
+    },
+  });
 
-  const handleTouchMove = useCallback((e, customerId) => {
-    if (swipeState.id !== customerId) return;
-
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
-    const absX = Math.abs(deltaX);
-
-    const { THRESHOLDS } = SWIPE_ACTION;
-
-    // Deadzone: ignore micro-movements (prevents accidental triggers)
-    if (absX < THRESHOLDS.DEADZONE) return;
-
-    // Stricter vertical tolerance - cancel if too vertical
-    if (deltaY > absX * THRESHOLDS.VERTICAL_RATIO) {
-      setSwipeState({ id: null, direction: null, offset: 0 });
-      return;
-    }
-
-    const offset = Math.max(-THRESHOLDS.MAX_OFFSET, Math.min(THRESHOLDS.MAX_OFFSET, deltaX));
-    const direction = offset > THRESHOLDS.DIRECTION_MIN ? 'right'
-                    : offset < -THRESHOLDS.DIRECTION_MIN ? 'left'
-                    : null;
-
-    setSwipeState({ id: customerId, direction, offset });
-  }, [swipeState.id]);
-
-  const handleTouchEnd = useCallback((customer, customerId) => {
-    const { THRESHOLDS } = SWIPE_ACTION;
-    const absOffset = Math.abs(swipeState.offset);
-
-    // Calculate velocity (px per ms) for fast flick detection
-    const elapsed = Date.now() - touchStartRef.current.time;
-    const velocity = elapsed > 0 ? absOffset / elapsed : 0;
-
-    // Must meet threshold OR have high velocity (for quick flicks)
-    const meetsThreshold = absOffset >= THRESHOLDS.ACTION_TRIGGER;
-    const hasHighVelocity = velocity >= THRESHOLDS.MIN_VELOCITY && absOffset > THRESHOLDS.DIRECTION_MIN;
-
-    if (!swipeState.direction || !customer.phone || (!meetsThreshold && !hasHighVelocity)) {
-      setSwipeState({ id: null, direction: null, offset: 0 });
-      return;
-    }
-
-    if (swipeState.direction === 'right' && hasValidWhatsApp(customer.phone)) {
-      handleWhatsApp(null, customer.phone, customerId);
-    } else if (swipeState.direction === 'left') {
-      handleCall(null, customer.phone, customerId);
-    }
-
-    setSwipeState({ id: null, direction: null, offset: 0 });
-  }, [swipeState.direction, swipeState.offset, handleWhatsApp, handleCall]);
-
-  // Handle touch cancel (e.g., if user moves finger off screen)
-  const handleTouchCancel = useCallback(() => {
-    setSwipeState({ id: null, direction: null, offset: 0 });
-  }, []);
+  // Destructure handlers for cleaner usage
+  const { handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel } = swipeHandlers;
 
   // Get selected customers for modal
   const selectedCustomers = useMemo(() => {
@@ -1156,13 +1153,19 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                       canContact={canContact}
                       isSelected={selectedIds.has(customerId)}
                       swipeOffset={swipeState.offset}
+                      actionSuccess={isSwipingThis ? actionSuccess : null}
                       styles={getRiskStyles(customer.riskLevel)}
                       onCardClick={() => setSelectedCustomer(customer)}
                       onTouchStart={hasPhone && !contacted && canContact ? (e) => handleTouchStart(e, customerId) : undefined}
                       onTouchMove={hasPhone && !contacted && canContact ? (e) => handleTouchMove(e, customerId) : undefined}
-                      onTouchEnd={!contacted && canContact ? () => handleTouchEnd(customer, customerId) : undefined}
+                      onTouchEnd={!contacted && canContact ? () => handleTouchEnd(customerId, customer) : undefined}
                       onTouchCancel={handleTouchCancel}
                       onToggleSelect={() => toggleSelect(customerId)}
+                      leftIconScale={isSwipingThis ? leftIconScale : undefined}
+                      leftIconOpacity={isSwipingThis ? leftIconOpacity : undefined}
+                      rightIconScale={isSwipingThis ? rightIconScale : undefined}
+                      rightIconOpacity={isSwipingThis ? rightIconOpacity : undefined}
+                      springX={isSwipingThis ? swipeSpringX : undefined}
                     />
                   </div>
                 );
@@ -1194,13 +1197,19 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                     canContact={canContact}
                     isSelected={selectedIds.has(customerId)}
                     swipeOffset={swipeState.offset}
+                    actionSuccess={isSwipingThis ? actionSuccess : null}
                     styles={getRiskStyles(customer.riskLevel)}
                     onCardClick={() => setSelectedCustomer(customer)}
                     onTouchStart={hasPhone && !contacted && canContact ? (e) => handleTouchStart(e, customerId) : undefined}
                     onTouchMove={hasPhone && !contacted && canContact ? (e) => handleTouchMove(e, customerId) : undefined}
-                    onTouchEnd={!contacted && canContact ? () => handleTouchEnd(customer, customerId) : undefined}
+                    onTouchEnd={!contacted && canContact ? () => handleTouchEnd(customerId, customer) : undefined}
                     onTouchCancel={handleTouchCancel}
                     onToggleSelect={() => toggleSelect(customerId)}
+                    leftIconScale={isSwipingThis ? leftIconScale : undefined}
+                    leftIconOpacity={isSwipingThis ? leftIconOpacity : undefined}
+                    rightIconScale={isSwipingThis ? rightIconScale : undefined}
+                    rightIconOpacity={isSwipingThis ? rightIconOpacity : undefined}
+                    springX={isSwipingThis ? swipeSpringX : undefined}
                   />
                 );
               })}
@@ -1228,16 +1237,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                 <th scope="col" className="px-4 py-3 text-left">
                   <button
                     onClick={() => handleColumnSort('name')}
-                    className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-lavpop-blue dark:hover:text-blue-400 group"
+                    className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-blue-600 dark:hover:text-blue-400 group"
                   >
-                    <span className={sortBy === 'name' ? 'text-lavpop-blue dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
+                    <span className={sortBy === 'name' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
                       Cliente
                     </span>
                     {sortBy === 'name' ? (
                       sortDirection === 'desc' ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                        <ChevronDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       ) : (
-                        <ChevronUp className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                        <ChevronUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       )
                     ) : (
                       <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1252,16 +1261,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                 <th scope="col" className="px-4 py-3 text-center">
                   <button
                     onClick={() => handleColumnSort('value')}
-                    className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-lavpop-blue dark:hover:text-blue-400 group w-full"
+                    className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-blue-600 dark:hover:text-blue-400 group w-full"
                   >
-                    <span className={sortBy === 'value' ? 'text-lavpop-blue dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
+                    <span className={sortBy === 'value' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
                       Valor Gasto
                     </span>
                     {sortBy === 'value' ? (
                       sortDirection === 'desc' ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                        <ChevronDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       ) : (
-                        <ChevronUp className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                        <ChevronUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       )
                     ) : (
                       <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1271,16 +1280,16 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                 <th scope="col" className="px-4 py-3 text-center">
                   <button
                     onClick={() => handleColumnSort('days')}
-                    className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-lavpop-blue dark:hover:text-blue-400 group w-full"
+                    className="flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:text-blue-600 dark:hover:text-blue-400 group w-full"
                   >
-                    <span className={sortBy === 'days' ? 'text-lavpop-blue dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
+                    <span className={sortBy === 'days' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}>
                       Dias Ausente
                     </span>
                     {sortBy === 'days' ? (
                       sortDirection === 'desc' ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                        <ChevronDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       ) : (
-                        <ChevronUp className="w-3.5 h-3.5 text-lavpop-blue dark:text-blue-400" />
+                        <ChevronUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       )
                     ) : (
                       <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1391,7 +1400,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
       {/* Customer Profile Modal */}
       {selectedCustomer && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerProfileModal
             customer={selectedCustomer}
             sales={salesData}
@@ -1402,7 +1411,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
       {/* Segment Modal for batch actions */}
       {segmentModalOpen && selectedCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" /></div></div>}>
           <CustomerSegmentModal
             isOpen={segmentModalOpen}
             onClose={() => {

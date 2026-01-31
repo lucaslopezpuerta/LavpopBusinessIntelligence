@@ -1,8 +1,13 @@
-// FrequencyDegradationAlert.jsx v3.1 - COSMIC PRECISION 2.0
+// FrequencyDegradationAlert.jsx v3.2 - PREMIUM GRADIENTS
 // Early warning for customers with growing visit intervals
-// Design System v5.0 compliant - Premium Glass Card pattern
+// Design System v5.2 compliant - Premium Glass Card pattern
 //
 // CHANGELOG:
+// v3.2 (2026-01-29): Premium Gradients
+//   - Applied amber→orange gradient to header icon, alert badge, and action button
+//   - Matches HealthPill "ATENÇÃO" gradient for visual consistency
+//   - Added text shadows for depth on gradient backgrounds
+//   - VIP segment icons now use gradient for premium feel
 // v3.1 (2026-01-29): Soft stat boxes for reduced eye strain
 //   - VIP stat box: solid amber → soft amber-50/amber-500/15 with border
 //   - Revenue at risk box: solid red → soft red-50/red-500/15 with border
@@ -151,10 +156,10 @@ const CustomerPreviewRow = ({ customer, onOpenProfile }) => {
         {/* Segment icon */}
         <div className={`p-1.5 rounded-lg shrink-0 ${
           customer.isPriority
-            ? 'bg-amber-600 dark:bg-amber-500'      // FIXED: amber passes WCAG (4.7:1)
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-500 dark:to-orange-600'
             : 'bg-slate-600 dark:bg-slate-500'
         }`}>
-          <SegmentIcon className="w-3.5 h-3.5 text-white" />
+          <SegmentIcon className="w-3.5 h-3.5 text-white" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} />
         </div>
 
         {/* Desktop: Name + gap history inline */}
@@ -298,8 +303,8 @@ const FrequencyDegradationAlert = ({
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-amber-600 dark:bg-amber-500 flex items-center justify-center shadow-sm shrink-0">
-          <AlertTriangle className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-500 dark:to-orange-600 flex items-center justify-center shadow-sm shrink-0">
+          <AlertTriangle className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
@@ -310,7 +315,10 @@ const FrequencyDegradationAlert = ({
                 description="Detecta clientes ATIVOS cujos intervalos entre visitas estão aumentando. Se um cliente que vinha a cada 10 dias passa a vir a cada 20 dias, ele aparece aqui ANTES de entrar em risco. É um sistema de alerta precoce."
               />
             </h3>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-600 dark:bg-amber-500 text-white">
+            <span
+              className="text-xs font-medium px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-500 dark:to-orange-600 text-white"
+              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}
+            >
               Alerta
             </span>
           </div>
@@ -393,10 +401,10 @@ const FrequencyDegradationAlert = ({
       {onContactCustomers && (
         <button
           onClick={handleContactAll}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition-colors mb-4"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 dark:from-amber-500 dark:to-orange-600 dark:hover:from-amber-600 dark:hover:to-orange-700 text-white font-medium rounded-lg transition-all mb-4 shadow-sm hover:shadow-md"
         >
-          <Phone className="w-4 h-4" />
-          Contatar antes que virem "Em Risco"
+          <Phone className="w-4 h-4" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} />
+          <span style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>Contatar antes que virem "Em Risco"</span>
         </button>
       )}
 

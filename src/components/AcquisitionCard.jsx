@@ -1,9 +1,14 @@
-// AcquisitionCard.jsx v2.6 - MODE-AWARE AMBER BADGES
+// AcquisitionCard.jsx v2.7 - PREMIUM GRADIENT PILLS
 // Unified acquisition metrics + daily chart
 // Replaces: CleanKPICard (Novos) + NewClientsChart
-// Design System v5.1 compliant - Cosmic Glass Cards
+// Design System v5.2 compliant - Cosmic Glass Cards
 //
 // CHANGELOG:
+// v2.7 (2026-01-29): Premium Gradient Pills
+//   - StatusPill now uses premium gradients matching HealthPill patterns
+//   - Removed entrance animations for cleaner, instant rendering
+//   - Added text shadows and icon drop shadows for depth
+//   - success: emerald→teal, warning: amber→orange, info: blue→cyan
 // v2.6 (2026-01-29): Yellow to amber color migration with mode-aware badges
 //   - CHANGED: Warning StatusPill variant from yellow-600/500 solid to mode-aware amber
 //   - Mode-aware badges: bg-amber-50 text-amber-800 border border-amber-200 (light)
@@ -107,20 +112,7 @@ const heroVariantsReduced = {
   visible: { opacity: 1 }
 };
 
-const pillVariants = {
-  hidden: { opacity: 0, x: 20 },
-  visible: (i) => ({
-    opacity: 1,
-    x: 0,
-    transition: { delay: 0.2 + i * 0.1, duration: 0.3 }
-  })
-};
-
-// Reduced motion variant - instant visibility
-const pillVariantsReduced = {
-  hidden: { opacity: 1 },
-  visible: { opacity: 1 }
-};
+// Pill animations removed in v2.7 for cleaner, instant rendering
 
 // Premium glass hover - subtle lift with enhanced glow
 const cardHoverAnimation = {
@@ -209,36 +201,31 @@ const AnimatedSparkline = ({ data, color = '#8b5cf6', height = 60, prefersReduce
 };
 
 // ============================================================================
-// STATUS PILL
+// STATUS PILL - Premium Gradient Version
 // ============================================================================
 
-const StatusPill = ({ icon: Icon, label, value, variant = 'default', index = 0, prefersReducedMotion = false }) => {
-  const variants = {
-    success: 'bg-emerald-600 dark:bg-emerald-500 text-white border-transparent',
-    warning: 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400',
-    info: 'bg-blue-600 dark:bg-blue-500 text-white border-transparent',
-    default: 'bg-slate-600 dark:bg-slate-500 text-white border-transparent'
+const StatusPill = ({ icon: Icon, label, value, variant = 'default' }) => {
+  // Premium gradient backgrounds matching HealthPill patterns
+  const gradients = {
+    success: 'bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-500 dark:to-teal-600',
+    warning: 'bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-500 dark:to-orange-600',
+    info: 'bg-gradient-to-r from-blue-500 to-cyan-500 dark:from-blue-500 dark:to-cyan-600',
+    default: 'bg-gradient-to-r from-slate-500 to-slate-600 dark:from-slate-500 dark:to-slate-600'
   };
 
-  const iconColors = {
-    success: 'text-white',
-    warning: 'text-amber-600 dark:text-white',
-    info: 'text-white',
-    default: 'text-white'
-  };
+  // Subtle text shadow for depth on gradient backgrounds
+  const textShadowStyle = { textShadow: '0 1px 2px rgba(0,0,0,0.15)' };
+  const iconFilterStyle = { filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' };
 
   return (
-    <motion.div
-      custom={index}
-      variants={prefersReducedMotion ? pillVariantsReduced : pillVariants}
-      initial="hidden"
-      animate="visible"
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${variants[variant]}`}
+    <div
+      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white shadow-sm ${gradients[variant]}`}
+      aria-label={`${label}: ${value}`}
     >
-      <Icon className={`w-3 h-3 ${iconColors[variant]}`} />
-      <span className="font-bold">{value}</span>
-      <span className="opacity-75">{label}</span>
-    </motion.div>
+      <Icon className="w-3 h-3 text-white" style={iconFilterStyle} />
+      <span className="font-bold" style={textShadowStyle}>{value}</span>
+      <span className="opacity-90" style={textShadowStyle}>{label}</span>
+    </div>
   );
 };
 
@@ -472,7 +459,7 @@ const AcquisitionCard = ({
       const isActiveTouchItem = isActiveTouch(dayData.displayDate);
 
       return (
-        <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl text-xs">
+        <div role="tooltip" className="bg-white/95 dark:bg-space-dust/95 backdrop-blur-xl p-3 border border-slate-200 dark:border-stellar-cyan/10 rounded-xl shadow-xl text-xs">
           <p className="font-bold text-slate-800 dark:text-white mb-1">{dayData.displayDate}</p>
           <p className="text-slate-600 dark:text-slate-300">
             <span className="font-bold text-purple-600 dark:text-purple-400 text-lg">{payload[0].value}</span> novos
@@ -610,8 +597,6 @@ const AcquisitionCard = ({
                 value={`${stats.welcomePct}%`}
                 label="welcome"
                 variant="success"
-                index={0}
-                prefersReducedMotion={prefersReducedMotion}
               />
             )}
 
@@ -622,8 +607,6 @@ const AcquisitionCard = ({
                 value={`${stats.weekChange > 0 ? '+' : ''}${stats.weekChange}%`}
                 label="semana"
                 variant={stats.weekChange > 0 ? 'success' : 'default'}
-                index={1}
-                prefersReducedMotion={prefersReducedMotion}
               />
             )}
 
@@ -634,8 +617,6 @@ const AcquisitionCard = ({
                 value={`${stats.returnPct}%`}
                 label="retorno"
                 variant={stats.returnPct >= 30 ? 'success' : 'info'}
-                index={2}
-                prefersReducedMotion={prefersReducedMotion}
               />
             )}
           </div>
@@ -661,7 +642,7 @@ const AcquisitionCard = ({
             className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
               viewMode === 'daily'
                 ? 'bg-purple-600 dark:bg-purple-500 text-white'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
             }`}
           >
             Diário
@@ -671,7 +652,7 @@ const AcquisitionCard = ({
             className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
               viewMode === 'weekly'
                 ? 'bg-purple-600 dark:bg-purple-500 text-white'
-                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
             }`}
           >
             Semanal

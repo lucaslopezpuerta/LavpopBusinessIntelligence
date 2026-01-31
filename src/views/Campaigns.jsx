@@ -84,7 +84,7 @@ const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignM
 const ModalLoadingFallback = () => (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl">
-      <div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin mx-auto" />
+      <div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin mx-auto" />
     </div>
   </div>
 );
@@ -220,7 +220,7 @@ const Campaigns = ({ data, onDataChange }) => {
               >
                 <span className="text-gradient-stellar">CAMPANHAS</span>
               </h1>
-              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Mensagens, automações e ROI de campanhas
               </p>
             </div>
@@ -254,7 +254,7 @@ const Campaigns = ({ data, onDataChange }) => {
 
       {/* Automation Rules Section */}
       {activeSection === 'automations' && (
-        <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-lavpop-blue border-t-transparent rounded-full animate-spin" /></div>}>
+        <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
           <AutomationRules
             audienceSegments={audienceSegments}
           />

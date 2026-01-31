@@ -1,8 +1,13 @@
-// BlacklistManager.jsx v4.6 - COSMIC FILTER ENHANCEMENTS
+// BlacklistManager.jsx v4.7 - SWIPE-TO-DELETE GESTURE
 // WhatsApp blacklist management UI component
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v4.7 (2026-01-30): Swipe-to-delete gesture on mobile
+//   - Added useSwipeToAction hook for swipe-left-to-delete
+//   - Mobile rows now support swipe gesture with haptic feedback
+//   - Visual delete indicator revealed on swipe
+//   - Success flash animation on delete confirmation
 // v4.6 (2026-01-29): Cosmic filter enhancements and solid amber badges
 //   - Solid amber badges for undelivered/number-blocked (WCAG AA consistent)
 //   - Filter buttons: added active:scale-[0.98] micro-interactions
@@ -89,7 +94,10 @@
 //   - CSV import/export
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { motion, useSpring, useTransform } from 'framer-motion';
 import { haptics } from '../../utils/haptics';
+import { useSwipeToAction } from '../../hooks/useSwipeToAction';
+import { SWIPE_ACTION } from '../../constants/animations';
 import {
   ShieldOff,
   RefreshCw,
@@ -246,7 +254,7 @@ const DistributionChart = ({ stats, isLoading }) => {
     if (!active || !payload || !payload.length) return null;
     const item = payload[0].payload;
     return (
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-3 py-2 text-sm">
+      <div role="tooltip" className="bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/10 rounded-lg shadow-lg px-3 py-2 text-sm">
         <p className="font-medium text-slate-900 dark:text-white">
           {CHART_LABELS[item.key] || item.key}
         </p>
@@ -281,6 +289,92 @@ const DistributionChart = ({ stats, isLoading }) => {
   );
 };
 
+// ==================== SWIPEABLE BLACKLIST ROW (MOBILE) ====================
+
+const SwipeableBlacklistRow = ({
+  entry,
+  badge,
+  onRemove,
+  isSwipingThis,
+  swipeX,
+  rightIconScale: parentRightIconScale,
+  rightIconOpacity: parentRightIconOpacity,
+  actionSuccess,
+  handlers
+}) => {
+  const BadgeIcon = badge.icon;
+
+  // Local spring for rows not currently being swiped (always call hooks unconditionally)
+  const localX = useSpring(0, SWIPE_ACTION.CARD_SPRING);
+
+  // Local transforms for when this row is not being swiped
+  const fallbackRightIconScale = useTransform(localX, [-72, -56, -40, 0], [1.0, 1.15, 0.9, 0.6]);
+  const fallbackRightIconOpacity = useTransform(localX, [-56, -30, 0], [1, 0.7, 0]);
+
+  // Select active values based on swipe state
+  const activeX = isSwipingThis ? swipeX : localX;
+  const activeRightIconScale = isSwipingThis && parentRightIconScale ? parentRightIconScale : fallbackRightIconScale;
+  const activeRightIconOpacity = isSwipingThis && parentRightIconOpacity ? parentRightIconOpacity : fallbackRightIconOpacity;
+
+  // Success state styling
+  const isDeleteSuccess = isSwipingThis && actionSuccess === 'left';
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Delete action background (revealed on swipe left) */}
+      <div className="absolute inset-0 flex items-center justify-end bg-gradient-to-l from-red-500 to-red-600">
+        <motion.div
+          className="flex items-center justify-center w-16 h-full"
+          style={{
+            scale: activeRightIconScale,
+            opacity: activeRightIconOpacity
+          }}
+        >
+          <Trash2 className="w-6 h-6 text-white" />
+        </motion.div>
+      </div>
+
+      {/* Swipeable card content */}
+      <motion.div
+        style={{ x: activeX }}
+        className={`
+          relative bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800
+          ${isDeleteSuccess ? 'bg-red-50 dark:bg-red-900/20' : ''}
+        `}
+        animate={isDeleteSuccess ? { scale: [1, 1.02, 1] } : {}}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        onTouchStart={(e) => handlers.handleTouchStart(e, entry.phone)}
+        onTouchMove={(e) => handlers.handleTouchMove(e, entry.phone)}
+        onTouchEnd={() => handlers.handleTouchEnd(entry.phone, entry)}
+        onTouchCancel={handlers.handleTouchCancel}
+      >
+        <div className="flex items-center py-3 px-3">
+          {/* Phone + Name */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-mono font-medium text-slate-900 dark:text-white">
+                {entry.phone}
+              </span>
+              {entry.name && (
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                  {entry.name}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Reason Badge */}
+          <div className="flex-shrink-0 ml-3">
+            <span className={`inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.className}`}>
+              <BadgeIcon className="w-3 h-3" />
+            </span>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const BlacklistManager = ({ customerData }) => {
   const [blacklist, setBlacklist] = useState([]);
   const [stats, setStats] = useState({ total: 0, byReason: {}, bySource: {} });
@@ -308,6 +402,29 @@ const BlacklistManager = ({ customerData }) => {
 
   // Toast notifications
   const { success, error } = useToast();
+
+  // Swipe-to-delete gesture hook
+  const {
+    swipeState,
+    actionSuccess,
+    x: swipeX,
+    rightIconScale,
+    rightIconOpacity,
+    handlers: swipeHandlers,
+    isSwipingItem,
+    getSuccessState
+  } = useSwipeToAction({
+    onSwipeLeft: async (phone, entry) => {
+      // Delete action - swipe left reveals delete
+      if (window.confirm(`Remover ${phone} da blacklist?`)) {
+        await removeFromBlacklistAsync(phone);
+        await refreshData();
+      }
+    },
+    canSwipeLeft: true,
+    canSwipeRight: false, // Only delete action (left swipe)
+    disabled: false
+  });
 
   // Refresh blacklist data (async)
   const refreshData = useCallback(async () => {
@@ -638,7 +755,7 @@ const BlacklistManager = ({ customerData }) => {
               </div>
 
               {/* Distribution Chart - full width on mobile, 2 columns on desktop */}
-              <div className="sm:col-span-2 p-3 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <div className="sm:col-span-2 p-3 sm:p-4 rounded-xl bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/10 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                     Distribuição por Motivo
@@ -691,13 +808,13 @@ const BlacklistManager = ({ customerData }) => {
             <button
               onClick={() => { haptics.tick(); handleExport(); }}
               disabled={blacklist.length === 0}
-              className="w-9 h-9 flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-full disabled:opacity-50"
+              className="w-9 h-9 flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 rounded-full disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
             </button>
 
             {/* Import */}
-            <label className="w-9 h-9 flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-full cursor-pointer">
+            <label className="w-9 h-9 flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 rounded-full cursor-pointer">
               <Upload className="w-4 h-4" />
               <input type="file" accept=".csv" onChange={handleImport} className="hidden" disabled={isImporting} />
             </label>
@@ -731,13 +848,13 @@ const BlacklistManager = ({ customerData }) => {
               <button
                 onClick={() => { haptics.tick(); handleExport(); }}
                 disabled={blacklist.length === 0}
-                className="px-3 py-1.5 flex items-center gap-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-full hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 flex items-center gap-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-xs font-medium rounded-full hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
               >
                 <Download className="w-3 h-3" />
                 Exportar
               </button>
 
-              <label className="px-3 py-1.5 flex items-center gap-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium rounded-full hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer">
+              <label className="px-3 py-1.5 flex items-center gap-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-xs font-medium rounded-full hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer">
                 <Upload className="w-3 h-3" />
                 {isImporting ? 'Importando...' : 'Importar'}
                 <input
@@ -793,25 +910,75 @@ const BlacklistManager = ({ customerData }) => {
           <ReasonFilter value={reasonFilter} onChange={setReasonFilter} />
         </div>
 
-        {/* Blacklist Table */}
-        <div className="-mx-2 sm:mx-0 overflow-x-auto">
+        {/* Mobile: Swipeable Card List */}
+        <div className="sm:hidden -mx-2 space-y-0">
+          {/* Mobile sort header */}
+          <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              {[
+                { id: 'phone', label: 'Tel.' },
+                { id: 'reason', label: 'Motivo' }
+              ].map((col) => (
+                <button
+                  key={col.id}
+                  onClick={() => { haptics.tick(); handleSort(col.id); }}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                    sortColumn === col.id
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  {col.label}
+                  {getSortIcon(col.id)}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-slate-400">← Deslize p/ excluir</span>
+          </div>
+
+          {paginatedBlacklist.length === 0 ? (
+            <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+              {searchQuery || reasonFilter !== 'all' ? 'Nenhum resultado encontrado' : 'Blacklist vazia'}
+            </div>
+          ) : (
+            paginatedBlacklist.map((entry) => {
+              const badge = getReasonBadge(entry.reason);
+              return (
+                <SwipeableBlacklistRow
+                  key={entry.phone}
+                  entry={entry}
+                  badge={badge}
+                  onRemove={handleRemove}
+                  isSwipingThis={isSwipingItem(entry.phone)}
+                  swipeX={swipeX}
+                  rightIconScale={rightIconScale}
+                  rightIconOpacity={rightIconOpacity}
+                  actionSuccess={getSuccessState(entry.phone)}
+                  handlers={swipeHandlers}
+                />
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop: Table Layout */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                 <th
                   onClick={() => { haptics.tick(); handleSort('phone'); }}
-                  className="text-center py-2.5 px-3 sm:px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[130px] sm:w-[180px]"
+                  className="text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[180px]"
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="sm:hidden">Tel.</span>
-                    <span className="hidden sm:inline">Telefone</span>
+                    <span>Telefone</span>
                     {getSortIcon('phone')}
                   </div>
                 </th>
                 <th
                   onClick={() => { haptics.tick(); handleSort('name'); }}
-                  className="hidden sm:table-cell text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  className="text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     Nome
@@ -820,7 +987,7 @@ const BlacklistManager = ({ customerData }) => {
                 </th>
                 <th
                   onClick={() => { haptics.tick(); handleSort('reason'); }}
-                  className="text-center py-2.5 px-3 sm:px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[100px] sm:w-[140px]"
+                  className="text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[140px]"
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     Motivo
@@ -829,7 +996,7 @@ const BlacklistManager = ({ customerData }) => {
                 </th>
                 <th
                   onClick={() => { haptics.tick(); handleSort('date'); }}
-                  className="hidden sm:table-cell text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[110px]"
+                  className="text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide cursor-pointer hover:text-red-600 dark:hover:text-red-400 transition-colors w-[110px]"
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -837,7 +1004,7 @@ const BlacklistManager = ({ customerData }) => {
                     {getSortIcon('date')}
                   </div>
                 </th>
-                <th className="text-center py-2.5 px-2 sm:px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide w-[50px]">
+                <th className="text-center py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide w-[50px]">
                   <span className="sr-only">Ação</span>
                 </th>
               </tr>
@@ -859,36 +1026,28 @@ const BlacklistManager = ({ customerData }) => {
                       key={entry.phone}
                       className="border-b border-slate-100 dark:border-slate-800 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors"
                     >
-                      <td className="py-3 px-3 sm:px-4 text-center">
-                        <div className="flex flex-col gap-0.5 items-center">
-                          <span className="text-sm font-mono font-medium text-slate-900 dark:text-white">
-                            {entry.phone}
-                          </span>
-                          {/* Mobile: show name under phone */}
-                          {entry.name && (
-                            <span className="sm:hidden text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
-                              {entry.name}
-                            </span>
-                          )}
-                        </div>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-sm font-mono font-medium text-slate-900 dark:text-white">
+                          {entry.phone}
+                        </span>
                       </td>
-                      <td className="hidden sm:table-cell py-3 px-4 text-center">
+                      <td className="py-3 px-4 text-center">
                         <span className="text-sm text-slate-600 dark:text-slate-300">
                           {entry.name || <span className="text-slate-400">—</span>}
                         </span>
                       </td>
-                      <td className="py-3 px-3 sm:px-4 text-center">
+                      <td className="py-3 px-4 text-center">
                         <span className={`inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.className}`}>
                           <BadgeIcon className="w-3 h-3" />
-                          <span className="hidden sm:inline">{badge.label}</span>
+                          <span>{badge.label}</span>
                         </span>
                       </td>
-                      <td className="hidden sm:table-cell py-3 px-4 text-center">
+                      <td className="py-3 px-4 text-center">
                         <span className="text-sm text-slate-500 dark:text-slate-400 tabular-nums">
                           {entry.addedAt ? new Date(entry.addedAt).toLocaleDateString('pt-BR') : <span className="text-slate-400">—</span>}
                         </span>
                       </td>
-                      <td className="py-3 px-2 sm:px-4 text-center">
+                      <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => { haptics.warning(); handleRemove(entry.phone); }}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors"
@@ -914,7 +1073,7 @@ const BlacklistManager = ({ customerData }) => {
               <select
                 value={itemsPerPage}
                 onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                className="px-2 py-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="px-2 py-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 {ITEMS_PER_PAGE_OPTIONS.map(option => (
                   <option key={option} value={option}>{option}</option>

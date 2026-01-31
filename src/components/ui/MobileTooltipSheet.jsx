@@ -419,8 +419,8 @@ const MobileTooltipSheet = ({
               <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
                 {/* Value */}
                 <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-2.5 sm:p-3 text-center">
-                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-lavpop-blue dark:text-blue-400" aria-hidden="true" />
-                  <div className="text-sm sm:text-base font-bold text-lavpop-blue dark:text-blue-400 truncate">
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-stellar-blue dark:text-stellar-cyan" aria-hidden="true" />
+                  <div className="text-sm sm:text-base font-bold text-stellar-blue dark:text-stellar-cyan truncate">
                     {formatCurrency(data.y)}
                   </div>
                   <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
@@ -441,8 +441,8 @@ const MobileTooltipSheet = ({
 
                 {/* Visits */}
                 <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-2.5 sm:p-3 text-center">
-                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-lavpop-green dark:text-emerald-400" aria-hidden="true" />
-                  <div className="text-sm sm:text-base font-bold text-lavpop-green dark:text-emerald-400">
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <div className="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400">
                     {data.r}
                   </div>
                   <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
@@ -468,10 +468,10 @@ const MobileTooltipSheet = ({
                   }}
                   className="flex-1 flex items-center justify-center gap-2
                            min-h-[48px] px-3 sm:px-4 rounded-xl
-                           bg-lavpop-blue hover:bg-lavpop-blue/90
+                           bg-stellar-blue hover:bg-stellar-blue/90
                            text-white text-sm sm:text-base font-semibold
                            transition-colors duration-150
-                           focus:outline-none focus:ring-2 focus:ring-lavpop-blue focus:ring-offset-2
+                           focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-2
                            dark:focus:ring-offset-slate-800"
                   style={{ touchAction: 'manipulation' }}
                 >

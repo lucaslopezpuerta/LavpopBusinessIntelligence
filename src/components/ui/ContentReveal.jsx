@@ -1,4 +1,4 @@
-// ContentReveal.jsx v1.0
+// ContentReveal.jsx v1.1
 // Smooth skeleton-to-content transition wrapper
 // Design System v5.1 compliant
 //
@@ -8,12 +8,15 @@
 //   </ContentReveal>
 //
 // Features:
-//   - Skeleton fades out with blur + scale
-//   - Content reveals with blur-to-sharp focus effect
+//   - Skeleton fades out with opacity + scale
+//   - Content reveals with smooth opacity transition
 //   - Respects prefers-reduced-motion
 //   - Uses Framer Motion for smooth animations
 //
 // CHANGELOG:
+// v1.1 (2026-01-31): Performance optimization
+//   - Removed filter: blur() animation (paint-triggering)
+//   - Now uses compositor-only properties (opacity, transform)
 // v1.0 (2026-01-27): Initial implementation
 //   - Framer Motion AnimatePresence for state transitions
 //   - Blur-to-sharp content reveal (4px -> 0)
@@ -30,14 +33,12 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
  * @param {boolean} isLoading - Whether to show skeleton (true) or content (false)
  * @param {React.ReactNode} skeleton - Skeleton component to show during loading
  * @param {React.ReactNode} children - Content to reveal after loading
- * @param {number} blurAmount - Blur pixels during transition (default: 4)
  * @param {number} duration - Animation duration in seconds (default: 0.3)
  */
 const ContentReveal = ({
   isLoading,
   skeleton,
   children,
-  blurAmount = 4,
   duration = 0.3
 }) => {
   const prefersReducedMotion = useReducedMotion();
@@ -47,13 +48,12 @@ const ContentReveal = ({
     return isLoading ? skeleton : children;
   }
 
-  // Skeleton exit animation
+  // Skeleton exit animation (compositor-only: opacity + scale)
   const skeletonVariants = {
     initial: { opacity: 1 },
     exit: {
       opacity: 0,
       scale: 0.98,
-      filter: `blur(${blurAmount}px)`,
       transition: {
         duration: duration * 0.7,
         ease: 'easeOut'
@@ -61,16 +61,14 @@ const ContentReveal = ({
     }
   };
 
-  // Content enter animation
+  // Content enter animation (compositor-only: opacity + scale)
   const contentVariants = {
     initial: {
       opacity: 0,
-      filter: `blur(${blurAmount}px)`,
       scale: 0.98
     },
     animate: {
       opacity: 1,
-      filter: 'blur(0px)',
       scale: 1,
       transition: {
         duration,

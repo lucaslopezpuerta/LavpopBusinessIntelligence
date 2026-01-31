@@ -1,7 +1,17 @@
-// RFMScatterPlot.jsx v5.6.0 - MODE-AWARE AMBER BADGES
+// RFMScatterPlot.jsx v5.8.1 - BUBBLE ENTRANCE ANIMATION
 // Visual representation of customer value and recency with contact tracking
 //
 // CHANGELOG:
+// v5.8.1 (2026-01-30): Switched to Recharts native animation
+//   - FIXED: CSS animations caused SVG coordinate glitches
+//   - Uses Recharts isAnimationActive/animationDuration props
+//   - Bubbles animate smoothly without positioning issues
+//   - Respects useReducedMotion for accessibility
+// v5.7.0 (2026-01-29): Premium Gradient Pill
+//   - Applied amber→orange gradient to "At Risk" pill button
+//   - Matches HealthPill/FrequencyDegradationAlert gradient styling
+//   - Added text shadows and icon drop shadows for depth
+//   - Updated hover states with gradient transitions
 // v5.6.0 (2026-01-29): Yellow to amber color migration with mode-aware badges
 //   - CHANGED: "At Risk" tooltip badge from yellow-600/500 solid to mode-aware amber styling
 //   - CHANGED: At Risk pill button to amber-600/500 with amber-700/600 hover
@@ -174,7 +184,9 @@ import CustomerSegmentModal from './modals/CustomerSegmentModal';
 import MobileTooltipSheet from './ui/MobileTooltipSheet';
 import { useTouchTooltip } from '../hooks/useTouchTooltip';
 import { useBlacklist } from '../hooks/useBlacklist';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { haptics } from '../utils/haptics';
+import { CHART_ANIMATION } from '../constants/animations';
 
 // Desktop breakpoint for responsive chart labels
 const DESKTOP_BREAKPOINT = 1024;
@@ -193,6 +205,10 @@ const RFMScatterPlot = ({
 
     // Blacklist check for visual indicator
     const { isBlacklisted } = useBlacklist();
+
+    // Reduced motion preference for accessibility
+    const prefersReducedMotion = useReducedMotion();
+    const scatterAnim = prefersReducedMotion ? CHART_ANIMATION.REDUCED : CHART_ANIMATION.SCATTER;
 
     // Responsive font sizes for chart labels (12px mobile, 14px desktop)
     const [isDesktop, setIsDesktop] = useState(false);
@@ -351,11 +367,11 @@ const RFMScatterPlot = ({
             };
 
             return (
-                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl text-xs max-w-[220px]">
+                <div role="tooltip" className="bg-white/90 dark:bg-space-dust/90 backdrop-blur-xl p-3 border border-slate-200 dark:border-stellar-cyan/10 rounded-lg shadow-xl text-xs max-w-[220px]">
                     <p className="font-bold text-slate-800 dark:text-white mb-1">{d.name}</p>
-                    <p className="text-slate-600 dark:text-slate-300">Gasto: <span className="font-semibold text-lavpop-blue dark:text-blue-400">{formatCurrency(d.y)}</span></p>
+                    <p className="text-slate-600 dark:text-slate-300">Gasto: <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(d.y)}</span></p>
                     <p className="text-slate-600 dark:text-slate-300">Última visita: <span className="font-semibold text-red-500 dark:text-red-400">{d.x} dias atrás</span></p>
-                    <p className="text-slate-600 dark:text-slate-300">Frequência: <span className="font-semibold text-lavpop-green dark:text-emerald-400">{d.r} visitas</span></p>
+                    <p className="text-slate-600 dark:text-slate-300">Frequência: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{d.r} visitas</span></p>
 
                     {/* Risk Status Badge - Mode-aware styling for WCAG AA compliance */}
                     <div className={`mt-2 text-xs font-bold uppercase px-2 py-0.5 rounded-full w-fit flex items-center gap-1 ${
@@ -433,24 +449,24 @@ const RFMScatterPlot = ({
                         </div>
                     </div>
 
-                    {/* At-Risk Pill - solid amber button with hover states */}
+                    {/* At-Risk Pill - premium gradient button with hover states */}
                     {notContactedHighValue > 0 ? (
                         <button
                             onClick={() => { haptics.light(); handleHighValueAtRiskClick(); }}
-                            className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2.5 sm:min-h-[44px] bg-amber-600 dark:bg-amber-500 border border-amber-700 dark:border-amber-400 rounded-full hover:bg-amber-700 dark:hover:bg-amber-600 hover:shadow-md hover:scale-[1.02] transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto"
+                            className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2.5 sm:min-h-[44px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 dark:from-amber-500 dark:to-orange-600 dark:hover:from-amber-600 dark:hover:to-orange-700 border border-amber-400/50 dark:border-orange-400/50 rounded-full hover:shadow-md hover:scale-[1.02] transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto shadow-sm"
                             aria-label={`${notContactedHighValue} clientes de alto valor em risco sem contato. Clique para ver detalhes.`}
                         >
-                            <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                            <span className="text-[10px] sm:text-xs font-medium text-white whitespace-nowrap">
+                            <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} />
+                            <span className="text-xs font-medium text-white whitespace-nowrap" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>
                                 {notContactedHighValue}
                                 <span className="hidden sm:inline"> em risco</span>
                             </span>
-                            <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/80 group-hover:translate-x-0.5 transition-transform" />
+                            <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white/80 group-hover:translate-x-0.5 transition-transform" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} />
                         </button>
                     ) : highValueAtRiskCustomers.length > 0 ? (
                         <div className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-2 bg-emerald-600 dark:bg-emerald-500 border border-emerald-700 dark:border-emerald-400 rounded-full absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto">
                             <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                            <span className="text-[10px] sm:text-xs font-medium text-white whitespace-nowrap hidden sm:inline">
+                            <span className="text-xs font-medium text-white whitespace-nowrap hidden sm:inline">
                                 Todos contactados
                             </span>
                         </div>
@@ -615,7 +631,7 @@ const RFMScatterPlot = ({
                                         <td className="py-2 px-3 text-right font-mono text-slate-600 dark:text-slate-400">
                                             {d.x}d
                                         </td>
-                                        <td className="py-2 px-3 text-right font-semibold text-lavpop-blue dark:text-blue-400">
+                                        <td className="py-2 px-3 text-right font-semibold text-blue-600 dark:text-blue-400">
                                             {formatCurrency(d.y)}
                                         </td>
                                         <td className="py-2 px-3 text-right text-slate-600 dark:text-slate-400 hidden sm:table-cell">
@@ -705,6 +721,9 @@ const RFMScatterPlot = ({
                             fill="#8884d8"
                             onClick={(data) => handleBubbleClick(data)}
                             cursor={onOpenCustomerProfile ? 'pointer' : 'default'}
+                            isAnimationActive={!prefersReducedMotion}
+                            animationDuration={scatterAnim.duration}
+                            animationEasing={scatterAnim.easing}
                         >
                             {zoomedData.map((entry, index) => {
                                 // Determine base fill color

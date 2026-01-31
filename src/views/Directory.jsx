@@ -504,7 +504,7 @@ const Directory = ({ data, onDataChange }) => {
               >
                 <span className="text-gradient-stellar">DIRETÓRIO</span>
               </h1>
-              <p className={`text-[10px] sm:text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Navegue e gerencie sua base de clientes
               </p>
             </div>
@@ -609,7 +609,7 @@ const Directory = ({ data, onDataChange }) => {
               <SlidersHorizontal className="w-4 h-4" />
               <span>Filtros</span>
               {hasActiveFilters && !filtersExpanded && (
-                <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-lavpop-blue text-white">
+                <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-stellar-blue text-white">
                   {activeFilterCount}
                 </span>
               )}
@@ -622,7 +622,7 @@ const Directory = ({ data, onDataChange }) => {
               disabled={!filteredCustomers.length}
               className="
                 hidden sm:flex items-center justify-center gap-2 px-4 py-3
-                bg-lavpop-green hover:bg-green-600
+                bg-emerald-600 hover:bg-emerald-700
                 text-white rounded-xl text-sm font-bold
                 transition-all shadow-sm hover:shadow-md
                 active:scale-95
@@ -714,7 +714,7 @@ const Directory = ({ data, onDataChange }) => {
                               ? 'bg-gradient-stellar text-white shadow-md'
                               : isDark
                                 ? 'bg-space-dust text-slate-400 border border-stellar-cyan/10 hover:border-stellar-cyan/30 hover:text-stellar-cyan'
-                                : 'bg-white text-slate-600 border border-slate-200 hover:border-lavpop-blue hover:text-lavpop-blue'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:border-stellar-cyan hover:text-stellar-blue'
                             }
                           `}
                         >
@@ -794,7 +794,7 @@ const Directory = ({ data, onDataChange }) => {
                               ? 'bg-gradient-stellar text-white shadow-md'
                               : isDark
                                 ? 'bg-space-dust text-slate-400 border border-stellar-cyan/10 hover:border-stellar-cyan/30 hover:text-stellar-cyan'
-                                : 'bg-white text-slate-600 border border-slate-200 hover:border-lavpop-blue hover:text-lavpop-blue'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:border-stellar-cyan hover:text-stellar-blue'
                             }
                           `}
                         >
@@ -1050,11 +1050,11 @@ const Directory = ({ data, onDataChange }) => {
             })}
             className="
               fixed z-40
-              bg-gradient-to-r from-lavpop-blue to-lavpop-green
+              bg-gradient-to-r from-stellar-blue to-stellar-cyan
               text-white px-6 py-3 rounded-full shadow-lg
               flex items-center gap-2 font-semibold
               hover:shadow-xl active:scale-95 transition-all
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-lavpop-blue
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stellar-blue
             "
             style={{
               // Mobile: 64px (nav) + 1rem (spacing) + safe area; Desktop: just 1.5rem + safe area
