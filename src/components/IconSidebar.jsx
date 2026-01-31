@@ -1,4 +1,4 @@
-// IconSidebar.jsx v5.7 - ORBITAL COMMAND CENTER (Brand Home)
+// IconSidebar.jsx v5.8 - ORBITAL COMMAND CENTER (Brand Home)
 // Bold, distinctive sidebar with cosmic mission control aesthetics
 // SIDEBAR OWNS THE BRAND - full logo when expanded, icon when collapsed
 //
@@ -20,6 +20,9 @@
 // - Drag enabled only after entry animation completes (fixes DevTools gesture issues)
 //
 // CHANGELOG:
+// v5.8 (2026-01-31): Removed ThemeToggle from mobile drawer
+//   - ThemeToggle now lives in MinimalTopBar (visible on all screens)
+//   - Cleaner footer layout without flex wrapper
 // v5.7 (2026-01-30): Removed pull-down-to-close feature
 //   - Removed pullReady state and pull-down gesture handlers
 //   - Removed drag handle element (cleaner UI)
@@ -100,7 +103,6 @@ import { useScrollLock } from '../hooks/useScrollLock';
 import { useTheme } from '../contexts/ThemeContext';
 import { NAV_MICRO } from '../constants/animations';
 import { haptics } from '../utils/haptics';
-import ThemeToggle from './ThemeToggle';
 import RealtimeStatusIndicator from './ui/RealtimeStatusIndicator';
 
 // Brand logos - Full horizontal SVG for expanded state
@@ -684,21 +686,16 @@ const MobileDrawer = memo(({
                   prefersReducedMotion={prefersReducedMotion}
                   onNavigate={handleMobileNavigate}
                 />
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <NavItem
-                      item={settingsItem}
-                      isMobile
-                      onClick={onOpenSettings}
-                      activeTab={activeTab}
-                      isExpanded={true}
-                      isDark={isDark}
-                      prefersReducedMotion={prefersReducedMotion}
-                      onNavigate={handleMobileNavigate}
-                    />
-                  </div>
-                  <ThemeToggle />
-                </div>
+                <NavItem
+                  item={settingsItem}
+                  isMobile
+                  onClick={onOpenSettings}
+                  activeTab={activeTab}
+                  isExpanded={true}
+                  isDark={isDark}
+                  prefersReducedMotion={prefersReducedMotion}
+                  onNavigate={handleMobileNavigate}
+                />
               </motion.div>
             </motion.aside>
           </FocusTrap>

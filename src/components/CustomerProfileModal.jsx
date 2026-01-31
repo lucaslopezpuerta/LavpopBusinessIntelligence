@@ -1,195 +1,29 @@
-// CustomerProfileModal.jsx v4.9 - MOBILE SAFE AREA COMPLIANCE
+// CustomerProfileModal.jsx v5.0 - BASEMODAL MIGRATION
 // Comprehensive customer profile modal for Customer Directory
-// Design System v5.1 compliant - Variant D (Glassmorphism Cosmic)
+// Design System v5.1 compliant - Tier 2 Enhanced
 //
 // CHANGELOG:
+// v5.0 (2026-01-31): BaseModal migration
+//   - Migrated to BaseModal component for consistent UX
+//   - Removed duplicate boilerplate (portal, animations, swipe, scroll lock)
+//   - Uses showHeader={false} for custom header with avatar and actions
+//   - Preserved all 4 tabs and business logic
+//   - Reduced from ~1300 lines to ~1000 lines
+// v4.11 (2026-01-31): Enhanced drag handle
+// v4.10 (2026-01-31): Enhanced modal transitions
 // v4.9 (2026-01-28): Bottom action bar safe area fix
-//   - Increased content pb-20 → pb-28 to fully clear action bar + Android nav
-//   - Action bar uses pb-safe (48px on Android via --native-safe-area-bottom)
-//   - Prevents content from hiding behind floating action buttons
 // v4.8 (2026-01-28): Mobile full-screen and safe area fix
-//   - Uses h-[100dvh] for proper full-screen on mobile (dynamic viewport height)
-//   - Changed rounded-none to rounded-t-2xl for bottom-sheet style
-//   - pt-safe now works with new CSS definition (max with Android fallback)
 // v4.7 (2026-01-27): Animation standardization
-//   - Added Framer Motion entrance animations using MODAL constants
-//   - Replaced CSS animate-fade-in with motion.div for backdrop
-//   - Added proper exit animations via AnimatePresence
-//   - Uses existing useReducedMotion hook for accessibility
 // v4.6 (2026-01-18): Improved card label contrast in dark mode
-//   - Changed all card titles from dark:text-slate-400 to dark:text-slate-300
-//   - Better readability for CPF, Telefone, Email, Desde, Segmento RFM, etc.
 // v4.5 (2026-01-18): Prominent WhatsApp button
-//   - Changed desktop WhatsApp from ghost to solid cosmic-green
-//   - Now matches mobile floating bar prominence
-//   - Added subtle shadow for depth (shadow-cosmic-green/25)
 // v4.4 (2026-01-18): Cosmic action buttons design
-//   - Header buttons: stellar-cyan (call), cosmic-green (WhatsApp), stellar-blue (email)
-//   - Mobile floating bar: Same cosmic color scheme
-//   - Uses new cosmic-green (#00d68f) from Design System v5.1
 // v4.3 (2026-01-18): Service sparklines in Financial tab
-//   - NEW: MiniSparkline inline component for 6-month service trends
-//   - Added sparklines to Lavagem/Secagem cards filling empty space
-//   - Uses washSparkline/drySparkline data from customerMetrics.js v3.13.0
-//   - Sparklines show service count trend with gradient fill
 // v4.2 (2026-01-18): Balanced mobile layout
-//   - FIXED: Text was too small (9-10px) and space was wasted
-//   - Now uses flexbox with h-full and flex-1 to fill viewport properly
-//   - Minimum text size increased to 11px for labels, 12px+ for values
-//   - Larger cards with p-3 padding and rounded-xl corners
-//   - Profile tab: 2x2 grid for personal info, larger wallet cards
-//   - Financial tab: Hero total card, larger service breakdown
-//   - Behavior tab: 2x2 grid for visit stats, proper spacing
-//   - Communication log fills remaining space with scrollable entries
-//   - All value text now text-lg to text-xl for readability
 // v4.0 (2026-01-18): Cosmic Design System v5.0 overhaul
-//   - Full glassmorphism styling with space-dust/space-nebula backgrounds
-//   - Stellar-cyan accent colors throughout (borders, active states, icons)
-//   - Updated header with cosmic gradient and improved safe area handling
-//   - Redesigned tabs with stellar-cyan active indicators
-//   - Glassmorphism content cards with subtle borders
-//   - Ghost-style action buttons (transparent bg, subtle borders)
-//   - Enhanced mobile floating action bar with cosmic styling
-//   - Improved dark mode contrast and visual hierarchy
-//   - Framer Motion animations preserved
-// v3.7 (2026-01-12): Fix header safe area gradient in dark mode
-//   - Moved pt-safe from container to header wrapper
-//   - Header gradient now extends into safe area (no color mismatch)
-//   - Swipe handle now sits on header gradient background
-// v3.6 (2026-01-12): Full-screen safe area compliance
-//   - Added pt-safe to modal container for top notch/Dynamic Island on mobile
-//   - Full-screen mobile modals now respect both top and bottom safe areas
-// v3.5 (2026-01-11): Service breakdown & empty state text contrast
-//   - FIXED: "X serviços" text in Lavagem/Secagem cards
-//   - FIXED: Loading/empty state text in Communication History
-//   - FIXED: Timestamp text in Communication Log entries
-//   - Changed text-slate-400/500 → text-slate-500/600 dark:text-slate-400
-//   - Improves readability in both light and dark modes
-// v3.4 (2026-01-11): Dark mode icon contrast fixes
-//   - FIXED: Removed duplicate dark:text-blue-400 class on tab navigation (4 instances)
-//   - FIXED: Added dark mode variants to section header icons:
-//     * Wallet icon: dark:text-green-400
-//     * Target icon: dark:text-red-400
-//     * BarChart3 icon: dark:text-green-400
-//     * AlertTriangle (phone warning): dark:text-amber-400
-// v3.3 (2026-01-11): Risk card styling consistency fix
-//   - FIXED: Risk level mini-card now uses light 50-level backgrounds
-//   - FIXED: Added proper dark mode support (dark:bg-*-900/20)
-//   - NEW: RISK_CARD_STYLES and RISK_CARD_TEXT constants for consistent styling
-//   - Matches opacity/style of other mini-cards in modal
-// v3.2 (2026-01-11): Fix async communication log handling
-//   - FIXED: TypeError: communicationLog.map is not a function
-//   - Root cause: getCommunicationLog is async but was called synchronously
-//   - Initialize state with empty array (useEffect loads from backend)
-//   - Removed redundant setCommunicationLog calls from action handlers
-//   - Event listener already handles log updates via dispatched events
-// v3.1 (2026-01-11): Bug fixes from mobile UX audit
-//   - FIXED: Body scroll lock now works on iOS (position:fixed approach)
-//   - FIXED: Card title contrast improved (text-slate-400 → text-slate-500)
-//   - FIXED: Removed redundant WhatsApp button in Communication History
-//   - FIXED: Add button no longer shows + twice (removed duplicate text)
-//   - FIXED: Contacted indicator consolidated - removed header pill, keep toggle only
-// v3.0 (2026-01-11): Complete mobile UX transformation
-//   - FIXED: All text sizes now WCAG compliant (min 12px)
-//   - FIXED: All touch targets now 44px minimum
-//   - NEW: Full-screen layout on mobile (no margins/rounded corners)
-//   - NEW: Swipe-to-close gesture with handle indicator
-//   - NEW: Floating action bar for quick contact on mobile
-//   - NEW: Lucide icons in tab navigation
-//   - NEW: Haptic feedback on all interactive elements
-//   - IMPROVED: Badge layout with better spacing
-//   - IMPROVED: Content scrolling with safe area support
-// v2.11 (2026-01-07): Focus ring standardization for accessibility
-//   - Added focus-visible rings to close button, tabs, and action buttons
-//   - Added glass morphism to modal container (bg-white/95 backdrop-blur-xl)
-//   - Improves keyboard navigation UX
-// v2.10 (2025-12-22): Lock body scroll when modal is open
-//   - Prevents parent page from scrolling while modal is visible
-//   - Restores original overflow on close
-// v2.9 (2025-12-22): Added Recarga badge in transaction history
-//   - parseMachines now detects "recarga" credit top-up transactions
-//   - Shows amber "Recarga" badge instead of empty space
-// v2.8 (2025-12-22): Fixed visits vs transactions distinction
-//   - Behavior tab now uses customer.visits (unique days)
-//   - Financial tab keeps customer.transactions (raw rows)
-// v2.7 (2025-12-22): Added lifetime cycles trend chart
-//   - Click customer name to expand/collapse trend panel
-//   - Uses new CustomerCyclesTrend component
-//   - Smooth animation with framer-motion
-// v2.6 (2025-12-22): Added haptic feedback on tabs, actions, and close
-// v2.5 (2025-12-16): Standardized z-index system
-//   - Uses Z_INDEX.MODAL_CHILD from shared constants
-//   - Consistent layering: primary modals (50) < child modals (60)
-// v2.4 (2025-12-16): UX consistency with CustomerSegmentModal
-//   - Added Escape key handler to close modal
-//   - Added click-outside (backdrop) to close modal
-//   - Added portal rendering via createPortal for proper z-index stacking
-//   - Consistent close behavior across all modals
-// v2.3 (2025-12-15): Z-index fix for modal stacking
-//   - Changed z-50 to z-[1100] to appear above CustomerSegmentModal (z-[1050])
-// v2.2 (2025-12-14): Blacklist indicator
-//   - Shows "Bloqueado" badge for blacklisted customers (takes precedence over contacted)
-//   - Disables all contact actions (Call, WhatsApp, Email) for blacklisted
-//   - Shows blacklist reason discreetly on hover
-//   - Uses useBlacklist hook for centralized blacklist management
-// v2.1 (2025-12-14): Mask CPF for privacy
-//   - Added maskCpf() helper: 12345678901 → 123.***.***-01
-//   - CPF now displays masked in Personal Information section
-// v2.0 (2025-12-12): Backend communication log integration
-//   - Uses getCommunicationLogAsync to fetch from comm_logs table
-//   - Merges backend data with localStorage for complete history
-//   - Shows campaign context when communication was from a campaign
-//   - Loading state while fetching backend data
-// v1.9 (2025-12-10): Use shared dateUtils for consistent timezone handling
-//   - Removed duplicate parseBrDate function
-//   - Now imports parseBrDate from dateUtils.js
-//   - Ensures Brazil timezone consistency across all components
-// v1.8 (2025-12-08): Contact context tracking
-//   - Passes customer name and risk level when marking as contacted
-//   - Uses markContacted for proper effectiveness tracking
-//   - Supports campaign effectiveness metrics
-// v1.7 (2025-12-03): Phone validation for WhatsApp
-//   - Added Brazilian mobile validation before WhatsApp actions
-//   - Shows warning indicator for invalid phone numbers
-//   - Disables WhatsApp buttons when phone is invalid
-//   - Tooltip explains validation error
-// v1.6 (2025-12-01): Badge redesign for better visibility
-//   - High contrast risk pills with solid colors (RISK_PILL_STYLES)
-//   - Segment displayed as gradient pill matching avatar colors
-//   - Removed pulsing dot from risk pill for cleaner look
-//   - Unified shadow-sm on all header pills
-// v1.5 (2025-12-01): Header UX improvements
-//   - Segment-based avatar icons with color gradients
-//   - Removed redundant "Retorno %" from header (exists in Behavior tab)
-//   - Moved contacted toggle to Communication History section header
-//   - Mobile users can now toggle contacted status
-// v1.4 (2025-12-01): Shared communication logging
-//   - Uses shared communicationLog utility for cross-component sync
-//   - Listens for communicationLogUpdate events from other components
-//   - Communication history updates in real-time when actions happen elsewhere
-// v1.3 (2025-12-01): Shared contact tracking
-//   - Added useContactTracking hook for app-wide sync
-//   - Contact indicator in header
-//   - Auto-mark as contacted on call/WhatsApp/Email
-// v1.2 (2025-11-30): Performance improvements
-//   - Replaced window resize listener with useIsMobile hook (matchMedia)
-// v1.1 (2025-11-29): Design System v3.0 compliance
-//   - Replaced emojis with lucide-react icons in communication log
-//   - Removed emojis from select options
-// v1.0 (2025-11-24): Initial implementation
-//   - Tab 1: Profile & Contact (personal info, wallet, communication log)
-//   - Tab 2: Financial Summary (lifetime value, revenue breakdown)
-//   - Tab 3: Behavior & Risk (visit patterns, risk assessment, preferences)
-//   - Tab 4: Transaction History (last 10 transactions)
-//   - Communication logging via localStorage
-//   - Quick contact actions (Call, WhatsApp, Email)
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Z_INDEX } from '../constants/zIndex';
-import { MODAL } from '../constants/animations';
-import { useReducedMotion } from '../hooks/useReducedMotion';
+import BaseModal from './ui/BaseModal';
 import CustomerCyclesTrend from './drilldowns/CustomerCyclesTrend';
 import {
     X,
@@ -230,14 +64,12 @@ import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, g
 import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
 import { parseBrDate } from '../utils/dateUtils';
 import { useBlacklist } from '../hooks/useBlacklist';
-import { useSwipeToClose } from '../hooks/useSwipeToClose';
 import { haptics } from '../utils/haptics';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 // Segment-based avatar configuration
 // Maps RFM segments to icons and gradient colors for visual recognition
-// Portuguese segment names (VIP, Frequente, Promissor, Novato, Esfriando, Inativo)
-// These are DISTINCT from Churn Risk Level names to avoid confusion
 const SEGMENT_AVATARS = {
     // Portuguese RFM segments (v3.4.0 - current)
     'VIP': { icon: Crown, from: 'from-amber-400', to: 'to-yellow-500', text: 'text-amber-900' },
@@ -255,13 +87,10 @@ const SEGMENT_AVATARS = {
     'AtRisk': { icon: AlertTriangle, from: 'from-red-500', to: 'to-rose-600', text: 'text-white' },
     'Lost': { icon: UserMinus, from: 'from-gray-500', to: 'to-slate-600', text: 'text-white' },
     'Unclassified': { icon: User, from: 'from-slate-400', to: 'to-slate-500', text: 'text-white' },
-    // Default fallback for any unmatched segment
     'default': { icon: User, from: 'from-stellar-blue', to: 'to-stellar-cyan', text: 'text-white' },
 };
 
-// High contrast risk pill styling - solid colors with white text for visibility
-// Colors follow Design System v3.1 Status Indicators:
-//   Info (Monitor) → blue, Warning (At Risk) → amber, Error (Churning) → red
+// High contrast risk pill styling
 const RISK_PILL_STYLES = {
     'Healthy': 'bg-emerald-500 text-white',
     'Monitor': 'bg-blue-500 text-white',
@@ -271,8 +100,7 @@ const RISK_PILL_STYLES = {
     'Lost': 'bg-slate-500 text-white',
 };
 
-// Light background styles for risk mini-cards with proper dark mode support
-// Uses subtle 50-level colors for consistency with other mini-cards
+// Light background styles for risk mini-cards
 const RISK_CARD_STYLES = {
     'Healthy': 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50',
     'Monitor': 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50',
@@ -282,7 +110,7 @@ const RISK_CARD_STYLES = {
     'Lost': 'bg-slate-50 dark:bg-slate-700/20 border border-slate-200 dark:border-slate-600/50',
 };
 
-// Text colors for risk mini-cards with dark mode support
+// Text colors for risk mini-cards
 const RISK_CARD_TEXT = {
     'Healthy': 'text-green-700 dark:text-green-400',
     'Monitor': 'text-blue-700 dark:text-blue-400',
@@ -293,12 +121,10 @@ const RISK_CARD_TEXT = {
 };
 
 // MiniSparkline - Inline SVG sparkline for service trend visualization
-// Displays last 6 months of data as a smooth area chart
 const MiniSparkline = ({ data, color = 'sky', height = 32, className = '' }) => {
     const width = 80;
     const padding = 2;
 
-    // Handle empty or all-zero data
     const hasData = data && data.length > 0 && data.some(v => v > 0);
     if (!hasData) {
         return (
@@ -308,18 +134,16 @@ const MiniSparkline = ({ data, color = 'sky', height = 32, className = '' }) => 
         );
     }
 
-    const maxVal = Math.max(...data, 1); // Avoid division by zero
+    const maxVal = Math.max(...data, 1);
     const points = data.map((val, i) => {
         const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
         const y = height - padding - ((val / maxVal) * (height - 2 * padding));
         return `${x},${y}`;
     });
 
-    // Build path for line and area
     const linePath = `M ${points.join(' L ')}`;
     const areaPath = `M ${padding},${height - padding} L ${points.join(' L ')} L ${width - padding},${height - padding} Z`;
 
-    // Color mapping
     const colorMap = {
         sky: { stroke: '#0ea5e9', fill: 'url(#sparkline-sky)' },
         emerald: { stroke: '#10b981', fill: 'url(#sparkline-emerald)' },
@@ -340,7 +164,6 @@ const MiniSparkline = ({ data, color = 'sky', height = 32, className = '' }) => 
             </defs>
             <path d={areaPath} fill={colorConfig.fill} />
             <path d={linePath} fill="none" stroke={colorConfig.stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            {/* Dot on the last point */}
             {points.length > 0 && (() => {
                 const lastPoint = points[points.length - 1].split(',');
                 return (
@@ -353,23 +176,14 @@ const MiniSparkline = ({ data, color = 'sky', height = 32, className = '' }) => 
 
 const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [showCyclesTrend, setShowCyclesTrend] = useState(false);
-    // Initialize empty, useEffect loads from backend asynchronously
     const [communicationLog, setCommunicationLog] = useState([]);
     const [isLoadingLog, setIsLoadingLog] = useState(true);
     const [newNote, setNewNote] = useState('');
     const [noteMethod, setNoteMethod] = useState('call');
-    // Use matchMedia hook instead of resize listener
     const isMobile = useMediaQuery('(max-width: 639px)');
     const prefersReducedMotion = useReducedMotion();
 
-    // Swipe-to-close gesture for mobile
-    const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
-        onClose,
-        threshold: 80,
-        resistance: 0.5,
-    });
-
-    // Load communication log from backend (comm_logs table) on mount
+    // Load communication log from backend on mount
     useEffect(() => {
         let mounted = true;
 
@@ -381,7 +195,6 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                 }
             } catch (error) {
                 console.warn('Failed to load backend communication log:', error);
-                // Keep localStorage data on error
             } finally {
                 if (mounted) {
                     setIsLoadingLog(false);
@@ -396,12 +209,11 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         };
     }, [customer.doc]);
 
-    // Shared contact tracking (syncs across app with effectiveness tracking)
+    // Shared contact tracking
     const { isContacted, toggleContacted, markContacted } = useContactTracking();
     const customerId = customer.doc || customer.id;
     const contacted = isContacted(customerId);
 
-    // Customer context for effectiveness tracking
     const customerContext = {
         customerName: customer.name || null,
         riskLevel: customer.riskLevel || null
@@ -415,62 +227,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         ? getPhoneValidationError(customer.phone)
         : null;
 
-    // Blacklist check (takes precedence over contacted status)
+    // Blacklist check
     const { isBlacklisted, getBlacklistReason } = useBlacklist();
-
-    // Escape key handler - consistent with CustomerSegmentModal
-    useEffect(() => {
-        const handleEscapeKey = (e) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-
-        document.addEventListener('keydown', handleEscapeKey);
-        return () => document.removeEventListener('keydown', handleEscapeKey);
-    }, [onClose]);
-
-    // Lock body scroll when modal is open (iOS-compatible)
-    useEffect(() => {
-        // Save current scroll position and styles
-        const scrollY = window.scrollY;
-        const originalStyles = {
-            overflow: document.body.style.overflow,
-            position: document.body.style.position,
-            top: document.body.style.top,
-            left: document.body.style.left,
-            right: document.body.style.right,
-            width: document.body.style.width,
-        };
-
-        // Lock scrolling - position:fixed prevents iOS scroll-through
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.left = '0';
-        document.body.style.right = '0';
-        document.body.style.width = '100%';
-
-        return () => {
-            // Restore original styles
-            document.body.style.overflow = originalStyles.overflow;
-            document.body.style.position = originalStyles.position;
-            document.body.style.top = originalStyles.top;
-            document.body.style.left = originalStyles.left;
-            document.body.style.right = originalStyles.right;
-            document.body.style.width = originalStyles.width;
-            // Restore scroll position
-            window.scrollTo(0, scrollY);
-        };
-    }, []);
-
-    // Click-outside handler
-    const handleBackdropClick = useCallback((e) => {
-        // Only close if clicking the backdrop itself, not the modal content
-        if (e.target === e.currentTarget) {
-            onClose();
-        }
-    }, [onClose]);
+    const blacklisted = isBlacklisted(customer.phone);
+    const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
 
     // Toggle cycles trend panel
     const toggleCyclesTrend = useCallback(() => {
@@ -478,21 +238,15 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         setShowCyclesTrend(prev => !prev);
     }, []);
 
-    const blacklisted = isBlacklisted(customer.phone);
-    const blacklistInfo = blacklisted ? getBlacklistReason(customer.phone) : null;
-
-    // Listen for communication log updates from other components
+    // Listen for communication log updates
     useEffect(() => {
         const handleLogUpdate = async (event) => {
-            // Only update if it's for this customer
             if (event.detail?.customerId === customer.doc) {
-                // Fetch fresh data from backend to ensure consistency
                 try {
                     const log = await getCommunicationLogAsync(customer.doc);
                     setCommunicationLog(log);
                 } catch (error) {
                     console.warn('Failed to refresh communication log:', error);
-                    // Keep current state on error (already an array)
                 }
             }
         };
@@ -501,12 +255,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         return () => window.removeEventListener('communicationLogUpdate', handleLogUpdate);
     }, [customer.doc]);
 
-    // Add communication entry (manual form submission)
+    // Add communication entry
     const addCommunication = () => {
         if (!newNote.trim()) return;
-
-        // Use shared utility (will dispatch event for sync)
-        // Event listener will update communicationLog state automatically
         addCommunicationEntry(customer.doc, noteMethod, newNote);
         setNewNote('');
     };
@@ -514,14 +265,11 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     // Get risk configuration
     const riskConfig = RISK_LABELS[customer.riskLevel] || RISK_LABELS['Lost'];
 
-    // Quick actions - use shared utility for communication logging
-    // Event listener updates communicationLog state automatically via dispatched event
+    // Quick actions
     const handleCall = () => {
         if (customer.phone) {
             window.location.href = `tel:${customer.phone}`;
-            // Auto-log call attempt (uses shared utility, dispatches event)
             addCommunicationEntry(customer.doc, 'call', getDefaultNotes('call'));
-            // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
                 markContacted(customerId, 'call', customerContext);
             }
@@ -531,12 +279,9 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const handleWhatsApp = () => {
         if (hasValidPhone && customer.phone) {
             const cleanPhone = customer.phone.replace(/\D/g, '');
-            // Ensure country code for WhatsApp
             const whatsappPhone = cleanPhone.length === 11 ? '55' + cleanPhone : cleanPhone;
             window.open(`https://wa.me/${whatsappPhone}`, '_blank');
-            // Auto-log WhatsApp (uses shared utility, dispatches event)
             addCommunicationEntry(customer.doc, 'whatsapp', getDefaultNotes('whatsapp'));
-            // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
                 markContacted(customerId, 'whatsapp', customerContext);
             }
@@ -546,9 +291,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const handleEmail = () => {
         if (customer.email) {
             window.location.href = `mailto:${customer.email}`;
-            // Auto-log email (uses shared utility, dispatches event)
             addCommunicationEntry(customer.doc, 'email', getDefaultNotes('email'));
-            // Mark as contacted with context (for effectiveness tracking)
             if (customerId && !contacted) {
                 markContacted(customerId, 'email', customerContext);
             }
@@ -563,22 +306,18 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         }
     };
 
-    // parseBrDate now imported from dateUtils.js for consistent timezone handling
-
-    // Mask CPF for privacy: 12345678901 → 123.***.***-01
+    // Mask CPF for privacy
     const maskCpf = (cpf) => {
         if (!cpf) return '-';
         const clean = String(cpf).replace(/\D/g, '');
-        if (clean.length !== 11) return cpf; // Return as-is if not valid CPF length
+        if (clean.length !== 11) return cpf;
         return `${clean.slice(0, 3)}.***.***-${clean.slice(-2)}`;
     };
 
-    // Helper for parsing machines - extracts machine codes (e.g., "Lavadora:3" -> "L3")
-    // Also detects "Recarga" (credit top-up) transactions
+    // Parse machines from transaction
     const parseMachines = (machineStr) => {
         if (!machineStr || machineStr === 'N/A') return [];
 
-        // Check for Recarga (credit top-up) first
         if (machineStr.toLowerCase().includes('recarga')) {
             return [{ code: 'Recarga', type: 'recarga' }];
         }
@@ -603,7 +342,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         return machines;
     };
 
-    // Transaction History Logic (Copied from CustomerDetailModal for consistency)
+    // Transaction History
     const transactionHistory = useMemo(() => {
         if (!sales || sales.length === 0) return [];
 
@@ -631,10 +370,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
             })
             .filter((txn) => txn.dateValid)
             .sort((a, b) => b.date - a.date)
-            .slice(0, 5); // Limit to last 5 transactions
+            .slice(0, 5);
     }, [sales, customer.doc, isMobile]);
 
-    // Calculate revenue breakdown
+    // Revenue breakdown
     const revenueBreakdown = useMemo(() => {
         const washPct = parseFloat(customer.washPercentage) || 0;
         const dryPct = parseFloat(customer.dryPercentage) || 0;
@@ -646,145 +385,118 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
         };
     }, [customer]);
 
-    // Portal rendering for proper z-index stacking
-    return createPortal(
-        <AnimatePresence>
-            <div
-                className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="customer-profile-title"
+    return (
+        <>
+            <BaseModal
+                isOpen={true}
+                onClose={onClose}
+                size="full"
+                maxWidth="2xl"
+                showHeader={false}
+                contentClassName="p-0"
+                ariaLabel={`Perfil de ${customer.name}`}
+                zIndex={60}
             >
-                {/* Backdrop */}
-                <motion.div
-                    {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
-                    className="absolute inset-0 bg-black/50 dark:bg-black/70 dark:backdrop-blur-sm"
-                    onClick={handleBackdropClick}
-                />
-
-                {/* Modal Content */}
-                <motion.div
-                    {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
-                    className="relative bg-white dark:bg-space-dust/95 dark:backdrop-blur-xl rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col border-0 sm:border border-slate-200 dark:border-stellar-cyan/15"
-                    onClick={(e) => e.stopPropagation()}
-                    style={swipeStyle}
-                    {...swipeHandlers}
-                >
-                {/* Header wrapper with safe area - cosmic gradient background */}
-                <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-space-nebula dark:to-space-dust pt-safe sm:pt-0 border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-2xl">
-                    {/* Swipe handle indicator (mobile only) */}
-                    <div className="sm:hidden flex justify-center pt-2 pb-1">
-                        <div
-                            className={`w-10 h-1 rounded-full transition-colors ${
-                                isDragging ? 'bg-slate-400 dark:bg-stellar-cyan/50' : 'bg-slate-300 dark:bg-stellar-cyan/20'
-                            }`}
-                            aria-hidden="true"
-                        />
-                    </div>
-                    {/* Header content */}
+                {/* Custom Header with Avatar and Actions */}
+                <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-space-nebula dark:to-space-dust border-b border-slate-200 dark:border-stellar-cyan/10 rounded-t-2xl flex-shrink-0">
                     <div className="px-4 py-3 sm:px-5">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                            {/* Segment-based Avatar */}
-                            {(() => {
-                                const avatarConfig = SEGMENT_AVATARS[customer.segment] || SEGMENT_AVATARS['default'];
-                                const AvatarIcon = avatarConfig.icon;
-                                return (
-                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarConfig.from} ${avatarConfig.to} flex items-center justify-center ${avatarConfig.text} shadow-md`}>
-                                        <AvatarIcon className="w-5 h-5" />
-                                    </div>
-                                );
-                            })()}
-                            <div className="flex-1 min-w-0">
-                                <button
-                                    onClick={toggleCyclesTrend}
-                                    className="flex items-center gap-1.5 group text-left"
-                                    title="Ver histórico de ciclos"
-                                >
-                                    <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate group-hover:text-stellar-cyan transition-colors">
-                                        {customer.name}
-                                    </h2>
-                                    <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-stellar-cyan transition-all flex-shrink-0 ${showCyclesTrend ? 'rotate-180' : ''}`} />
-                                </button>
-                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    {/* Blacklist indicator */}
-                                    {blacklisted && (
-                                        <div
-                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-red-600 text-white shadow-sm cursor-help"
-                                            title={blacklistInfo?.reason || 'Bloqueado'}
-                                        >
-                                            <Ban className="w-3 h-3" />
-                                            Bloqueado
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1">
+                                {/* Segment-based Avatar */}
+                                {(() => {
+                                    const avatarConfig = SEGMENT_AVATARS[customer.segment] || SEGMENT_AVATARS['default'];
+                                    const AvatarIcon = avatarConfig.icon;
+                                    return (
+                                        <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarConfig.from} ${avatarConfig.to} flex items-center justify-center ${avatarConfig.text} shadow-md`}>
+                                            <AvatarIcon className="w-5 h-5" />
                                         </div>
-                                    )}
-                                    {/* Risk status pill - high contrast */}
-                                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase shadow-sm ${RISK_PILL_STYLES[customer.riskLevel] || 'bg-slate-500 text-white'}`}>
-                                        {riskConfig.pt}
-                                    </div>
-                                    {/* Segment pill - gradient matching avatar */}
-                                    {(() => {
-                                        const segConfig = SEGMENT_AVATARS[customer.segment] || SEGMENT_AVATARS['default'];
-                                        return (
-                                            <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r ${segConfig.from} ${segConfig.to} ${segConfig.text} shadow-sm`}>
-                                                {customer.segment}
+                                    );
+                                })()}
+                                <div className="flex-1 min-w-0">
+                                    <button
+                                        onClick={toggleCyclesTrend}
+                                        className="flex items-center gap-1.5 group text-left"
+                                        title="Ver histórico de ciclos"
+                                    >
+                                        <h2 id="customer-profile-title" className="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate group-hover:text-stellar-cyan transition-colors">
+                                            {customer.name}
+                                        </h2>
+                                        <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-stellar-cyan transition-all flex-shrink-0 ${showCyclesTrend ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                        {/* Blacklist indicator */}
+                                        {blacklisted && (
+                                            <div
+                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-red-600 text-white shadow-sm cursor-help"
+                                                title={blacklistInfo?.reason || 'Bloqueado'}
+                                            >
+                                                <Ban className="w-3 h-3" />
+                                                Bloqueado
                                             </div>
-                                        );
-                                    })()}
+                                        )}
+                                        {/* Risk status pill */}
+                                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase shadow-sm ${RISK_PILL_STYLES[customer.riskLevel] || 'bg-slate-500 text-white'}`}>
+                                            {riskConfig.pt}
+                                        </div>
+                                        {/* Segment pill */}
+                                        {(() => {
+                                            const segConfig = SEGMENT_AVATARS[customer.segment] || SEGMENT_AVATARS['default'];
+                                            return (
+                                                <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r ${segConfig.from} ${segConfig.to} ${segConfig.text} shadow-sm`}>
+                                                    {customer.segment}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
+                                {/* Quick Actions - desktop only */}
+                                {!blacklisted && (
+                                    <div className="hidden sm:flex gap-2">
+                                        {customer.phone && (
+                                            <>
+                                                <button
+                                                    onClick={handleCall}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stellar-cyan/10 dark:bg-stellar-cyan/15 text-stellar-cyan border border-stellar-cyan/30 dark:border-stellar-cyan/25 hover:bg-stellar-cyan/20 dark:hover:bg-stellar-cyan/25 hover:border-stellar-cyan/50 transition-all text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
+                                                >
+                                                    <Phone className="w-3.5 h-3.5" />
+                                                    <span className="hidden min-[500px]:inline">Ligar</span>
+                                                </button>
+                                                <button
+                                                    onClick={handleWhatsApp}
+                                                    disabled={!hasValidPhone}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-cosmic-green/40 ${
+                                                        hasValidPhone
+                                                            ? 'bg-cosmic-green text-white border-cosmic-green hover:bg-cosmic-green/90 shadow-sm shadow-cosmic-green/25 cursor-pointer'
+                                                            : 'bg-slate-100/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed opacity-60'
+                                                    }`}
+                                                    title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido para WhatsApp')}
+                                                >
+                                                    <MessageCircle className="w-3.5 h-3.5" />
+                                                    <span className="hidden min-[500px]:inline">WhatsApp</span>
+                                                </button>
+                                            </>
+                                        )}
+                                        {customer.email && (
+                                            <button
+                                                onClick={handleEmail}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stellar-blue/10 dark:bg-blue-500/15 text-stellar-blue dark:text-blue-400 border border-stellar-blue/30 dark:border-blue-500/25 hover:bg-stellar-blue/20 dark:hover:bg-blue-500/25 hover:border-stellar-blue/50 dark:hover:border-blue-500/50 transition-all text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-blue/40"
+                                            >
+                                                <Mail className="w-3.5 h-3.5" />
+                                                <span className="hidden min-[500px]:inline">Email</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                            {/* Quick Actions - desktop only (contacted toggle moved to Communication History) */}
-                            {/* Hide all actions if blacklisted */}
-                            {/* v4.4: Cosmic design with stellar-cyan (call), cosmic-green (WhatsApp), stellar-blue (email) */}
-                            {!blacklisted && (
-                                <div className="hidden sm:flex gap-2">
-                                    {customer.phone && (
-                                        <>
-                                            {/* Call button - Stellar cyan cosmic style */}
-                                            <button
-                                                onClick={handleCall}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stellar-cyan/10 dark:bg-stellar-cyan/15 text-stellar-cyan border border-stellar-cyan/30 dark:border-stellar-cyan/25 hover:bg-stellar-cyan/20 dark:hover:bg-stellar-cyan/25 hover:border-stellar-cyan/50 transition-all text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
-                                            >
-                                                <Phone className="w-3.5 h-3.5" />
-                                                <span className="hidden min-[500px]:inline">Ligar</span>
-                                            </button>
-                                            {/* WhatsApp button - Solid cosmic green (primary action) */}
-                                            <button
-                                                onClick={handleWhatsApp}
-                                                disabled={!hasValidPhone}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-cosmic-green/40 ${
-                                                    hasValidPhone
-                                                        ? 'bg-cosmic-green text-white border-cosmic-green hover:bg-cosmic-green/90 shadow-sm shadow-cosmic-green/25 cursor-pointer'
-                                                        : 'bg-slate-100/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed opacity-60'
-                                                }`}
-                                                title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido para WhatsApp')}
-                                            >
-                                                <MessageCircle className="w-3.5 h-3.5" />
-                                                <span className="hidden min-[500px]:inline">WhatsApp</span>
-                                            </button>
-                                        </>
-                                    )}
-                                    {/* Email button - Stellar blue cosmic style */}
-                                    {customer.email && (
-                                        <button
-                                            onClick={handleEmail}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stellar-blue/10 dark:bg-blue-500/15 text-stellar-blue dark:text-blue-400 border border-stellar-blue/30 dark:border-blue-500/25 hover:bg-stellar-blue/20 dark:hover:bg-blue-500/25 hover:border-stellar-blue/50 dark:hover:border-blue-500/50 transition-all text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-blue/40"
-                                        >
-                                            <Mail className="w-3.5 h-3.5" />
-                                            <span className="hidden min-[500px]:inline">Email</span>
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
 
-                        <button
-                            onClick={() => { haptics.light(); onClose(); }}
-                            className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-space-nebula rounded-lg transition-colors ml-2 sm:ml-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
-                            aria-label="Fechar"
-                        >
-                            <X className="w-6 h-6 text-slate-500 dark:text-slate-400" />
-                        </button>
-                    </div>
+                            <button
+                                onClick={() => { haptics.light(); onClose(); }}
+                                className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-200 dark:hover:bg-space-nebula rounded-lg transition-colors ml-2 sm:ml-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
+                                aria-label="Fechar"
+                            >
+                                <X className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -796,7 +508,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={prefersReducedMotion ? undefined : { height: 0, opacity: 0 }}
                             transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeInOut' }}
-                            className="border-b border-slate-200 dark:border-stellar-cyan/10 overflow-hidden"
+                            className="border-b border-slate-200 dark:border-stellar-cyan/10 overflow-hidden flex-shrink-0"
                         >
                             <CustomerCyclesTrend
                                 sales={sales}
@@ -807,7 +519,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                     )}
                 </AnimatePresence>
 
-                {/* Tab Navigation - shadcn Tabs with cosmic styling */}
+                {/* Tab Navigation */}
                 <Tabs defaultValue="profile" className="flex flex-col flex-1 min-h-0" onValueChange={() => haptics.tick()}>
                     <TabsList className="flex-shrink-0 w-full justify-start rounded-none border-b border-slate-200 dark:border-stellar-cyan/10 bg-white dark:bg-space-dust/50 h-auto p-0 px-2 sm:px-4">
                         <TabsTrigger
@@ -844,13 +556,12 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </TabsTrigger>
                     </TabsList>
 
-                    {/* Tab Content - Fill viewport on mobile, safe area for floating action bar */}
-                    {/* pb-28 (112px) = action bar height (56px) + Android nav safe area (48px) + 8px buffer */}
+                    {/* Tab Content */}
                     <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-28 sm:pb-4 custom-scrollbar">
-                        {/* TAB 1: Profile & Contact - Flex layout to fill space on mobile */}
+                        {/* TAB 1: Profile & Contact */}
                         <TabsContent value="profile" className="mt-0">
                         <div className="flex flex-col h-full gap-3 sm:gap-4">
-                            {/* Personal Information - 2x2 grid on mobile */}
+                            {/* Personal Information */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                                     <User className="w-4 h-4 text-stellar-cyan" />
@@ -907,7 +618,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </div>
                             </div>
 
-                            {/* Communication Log - Flex-1 to fill remaining space */}
+                            {/* Communication Log */}
                             <div className="flex-1 flex flex-col min-h-0">
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -956,7 +667,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                     </div>
                                 </div>
 
-                                {/* Communication History - Scrollable to fill remaining space */}
+                                {/* Communication History */}
                                 <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
                                     {isLoadingLog ? (
                                         <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-sm">
@@ -1000,7 +711,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </div>
                         </TabsContent>
 
-                        {/* TAB 2: Financial Summary - Fill viewport on mobile */}
+                        {/* TAB 2: Financial Summary */}
                         <TabsContent value="financial" className="mt-0">
                         <div className="flex flex-col h-full gap-4">
                             {/* Hero: Total Gasto */}
@@ -1014,7 +725,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </div>
                             </div>
 
-                            {/* Secondary metrics: Ticket + Transactions */}
+                            {/* Secondary metrics */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-slate-50 dark:bg-space-nebula/50 rounded-xl p-3.5 border border-slate-200 dark:border-stellar-cyan/10">
                                     <div className="text-[11px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-1">Ticket Médio</div>
@@ -1030,7 +741,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </div>
                             </div>
 
-                            {/* Revenue Breakdown - Compact cards with inline sparklines */}
+                            {/* Revenue Breakdown */}
                             <div>
                                 <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Por Serviço</h4>
                                 <div className="grid grid-cols-2 gap-2">
@@ -1071,10 +782,10 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </div>
                         </TabsContent>
 
-                        {/* TAB 3: Behavior & Risk - Fill viewport on mobile */}
+                        {/* TAB 3: Behavior & Risk */}
                         <TabsContent value="behavior" className="mt-0">
                         <div className="flex flex-col h-full gap-4">
-                            {/* Visit Pattern - 2x2 grid */}
+                            {/* Visit Pattern */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                                     <Activity className="w-4 h-4 text-stellar-cyan" />
@@ -1131,7 +842,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                 </div>
                             </div>
 
-                            {/* Service Preferences - Fill remaining space */}
+                            {/* Service Preferences */}
                             <div className="flex-1">
                                 <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                                     <BarChart3 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
@@ -1155,7 +866,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </div>
                         </TabsContent>
 
-                        {/* TAB 4: Transaction History - Compact on mobile */}
+                        {/* TAB 4: Transaction History */}
                         <TabsContent value="history" className="mt-0">
                         <div>
                             <h3 className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mb-1.5 sm:mb-2 flex items-center gap-1.5">
@@ -1221,64 +932,61 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                         </TabsContent>
                     </div>
                 </Tabs>
+            </BaseModal>
 
-                {/* Mobile Quick Actions - Fixed bottom bar with cosmic styling */}
-                {/* v4.4: Uses stellar-cyan (call), cosmic-green (WhatsApp), stellar-blue (email) */}
-                {!blacklisted && (customer.phone || customer.email) && (
-                    <div className="sm:hidden fixed bottom-0 left-0 right-0 z-[70]
-                                    bg-white/95 dark:bg-space-dust/95 backdrop-blur-xl
-                                    border-t border-slate-200 dark:border-stellar-cyan/10
-                                    px-4 py-3 pb-safe flex gap-2">
-                        {customer.phone && (
-                            <>
-                                <button
-                                    onClick={() => { haptics.light(); handleCall(); }}
-                                    className="flex-1 min-h-[44px] flex items-center justify-center gap-2
-                                             bg-stellar-cyan/10 dark:bg-stellar-cyan/15 text-stellar-cyan
-                                             border border-stellar-cyan/30 dark:border-stellar-cyan/25
-                                             rounded-xl font-semibold text-sm
-                                             hover:bg-stellar-cyan/20 dark:hover:bg-stellar-cyan/25
-                                             active:scale-[0.97] transition-all
-                                             focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
-                                >
-                                    <Phone className="w-5 h-5" />
-                                    Ligar
-                                </button>
-                                <button
-                                    onClick={() => { haptics.light(); handleWhatsApp(); }}
-                                    disabled={!hasValidPhone}
-                                    className={`flex-1 min-h-[44px] flex items-center justify-center gap-2
-                                             rounded-xl font-semibold text-sm transition-all active:scale-[0.97]
-                                             focus:outline-none focus-visible:ring-2 focus-visible:ring-cosmic-green/40
-                                             ${hasValidPhone
-                                                 ? 'bg-cosmic-green text-white hover:bg-cosmic-green/90 border border-cosmic-green'
-                                                 : 'bg-slate-200/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
-                                             }`}
-                                >
-                                    <MessageCircle className="w-5 h-5" />
-                                    WhatsApp
-                                </button>
-                            </>
-                        )}
-                        {customer.email && (
+            {/* Mobile Quick Actions - Fixed bottom bar */}
+            {!blacklisted && (customer.phone || customer.email) && (
+                <div className="sm:hidden fixed bottom-0 left-0 right-0 z-[70]
+                                bg-white/95 dark:bg-space-dust/95 backdrop-blur-xl
+                                border-t border-slate-200 dark:border-stellar-cyan/10
+                                px-4 py-3 pb-safe flex gap-2">
+                    {customer.phone && (
+                        <>
                             <button
-                                onClick={() => { haptics.light(); handleEmail(); }}
+                                onClick={() => { haptics.light(); handleCall(); }}
                                 className="flex-1 min-h-[44px] flex items-center justify-center gap-2
-                                         bg-stellar-blue text-white rounded-xl font-semibold text-sm
-                                         hover:bg-stellar-blue/90 border border-stellar-blue
+                                         bg-stellar-cyan/10 dark:bg-stellar-cyan/15 text-stellar-cyan
+                                         border border-stellar-cyan/30 dark:border-stellar-cyan/25
+                                         rounded-xl font-semibold text-sm
+                                         hover:bg-stellar-cyan/20 dark:hover:bg-stellar-cyan/25
                                          active:scale-[0.97] transition-all
-                                         focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-blue/40"
+                                         focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan/40"
                             >
-                                <Mail className="w-5 h-5" />
-                                Email
+                                <Phone className="w-5 h-5" />
+                                Ligar
                             </button>
-                        )}
-                    </div>
-                )}
-                </motion.div>
-            </div>
-        </AnimatePresence>,
-        document.body
+                            <button
+                                onClick={() => { haptics.light(); handleWhatsApp(); }}
+                                disabled={!hasValidPhone}
+                                className={`flex-1 min-h-[44px] flex items-center justify-center gap-2
+                                         rounded-xl font-semibold text-sm transition-all active:scale-[0.97]
+                                         focus:outline-none focus-visible:ring-2 focus-visible:ring-cosmic-green/40
+                                         ${hasValidPhone
+                                             ? 'bg-cosmic-green text-white hover:bg-cosmic-green/90 border border-cosmic-green'
+                                             : 'bg-slate-200/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
+                                         }`}
+                            >
+                                <MessageCircle className="w-5 h-5" />
+                                WhatsApp
+                            </button>
+                        </>
+                    )}
+                    {customer.email && (
+                        <button
+                            onClick={() => { haptics.light(); handleEmail(); }}
+                            className="flex-1 min-h-[44px] flex items-center justify-center gap-2
+                                     bg-stellar-blue text-white rounded-xl font-semibold text-sm
+                                     hover:bg-stellar-blue/90 border border-stellar-blue
+                                     active:scale-[0.97] transition-all
+                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-stellar-blue/40"
+                        >
+                            <Mail className="w-5 h-5" />
+                            Email
+                        </button>
+                    )}
+                </div>
+            )}
+        </>
     );
 };
 

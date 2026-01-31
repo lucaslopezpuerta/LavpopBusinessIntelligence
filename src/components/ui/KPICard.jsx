@@ -1,8 +1,12 @@
-// KPICard.jsx v1.17 - SOLID COLOR TREND BADGES
+// KPICard.jsx v1.18 - REFRESH OVERLAY SUPPORT
 // Unified KPI card component for Intelligence dashboard
 // Design System v5.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.18 (2026-01-31): Refresh overlay support
+//   - Added isRefreshing prop for background refresh visual feedback
+//   - Subtle stellar-cyan shimmer overlay during data refresh
+//   - Non-blocking (pointer-events: none)
 // v1.17 (2026-01-28): Solid color trend badges for WCAG AA compliance
 //   - WoW trend badges now use solid colors with white text
 //   - Positive: emerald-600/500, Negative: red-600/500
@@ -76,7 +80,7 @@
 //   - Optional click handler with proper a11y
 
 import React, { useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { getSemanticColor } from '../../utils/colorMapping';
 import ContextHelp from '../ContextHelp';
@@ -113,6 +117,7 @@ const hoverAnimationReduced = {
  * @param {string} className - Additional CSS classes
  * @param {string} tooltip - Optional plain language description for ContextHelp icon
  * @param {string} status - Optional status for colored left border: 'success' | 'warning' | 'danger' | 'neutral'
+ * @param {boolean} isRefreshing - Shows subtle shimmer overlay when true (for background refresh feedback)
  */
 const KPICard = ({
   label,
@@ -129,6 +134,7 @@ const KPICard = ({
   className = '',
   tooltip,
   status,
+  isRefreshing = false,
 }) => {
   const colors = getSemanticColor(color);
   const prefersReducedMotion = useReducedMotion();
@@ -224,6 +230,7 @@ const KPICard = ({
   };
 
   const cardClasses = `
+    relative
     ${v.container}
     rounded-xl
     border border-slate-100 dark:border-stellar-cyan/10
@@ -344,6 +351,20 @@ const KPICard = ({
           </div>
         )}
       </div>
+
+      {/* Refresh overlay - shows during background data refresh */}
+      <AnimatePresence>
+        {isRefreshing && (
+          <motion.div
+            className="absolute inset-0 rounded-xl refresh-overlay z-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
     </MotionCard>
   );
 };

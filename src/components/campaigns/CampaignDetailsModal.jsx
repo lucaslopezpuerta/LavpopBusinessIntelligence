@@ -1,66 +1,26 @@
-// CampaignDetailsModal.jsx v2.9 - SWIPE-TO-CLOSE GESTURES
+// CampaignDetailsModal.jsx v3.0 - BASEMODAL MIGRATION
 // Shows campaign details with individual contact outcomes
 // Displays which contacts have returned vs pending vs expired
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.0 (2026-01-31): BaseModal migration
+//   - Migrated to BaseModal component for consistent UX
+//   - Removed duplicate boilerplate (portal, animations, swipe, scroll lock)
+//   - Uses showHeader={false} for custom campaign header
+//   - Reduced from ~820 lines to ~550 lines
+// v2.11 (2026-01-31): Enhanced drag handle
+// v2.10 (2026-01-31): Enhanced modal transitions
 // v2.9 (2026-01-30): Swipe-to-close and portal rendering
-//   - Added useSwipeToClose hook for mobile gesture support
-//   - Added escape key handler for keyboard dismissal
-//   - Added portal rendering for proper z-index stacking
-//   - Added drag handle indicator on mobile
-//   - Backdrop opacity linked to swipe progress
 // v2.8 (2026-01-29): Mode-aware pending status badge
 // v2.7 (2026-01-29): Orange to yellow color migration
-//   - Replaced bg-orange-600 dark:bg-orange-500 with bg-yellow-600 dark:bg-yellow-500
-//   - Consistent with campaign color scheme updates
 // v2.6 (2026-01-29): Amber to orange color migration
-//   - Replaced bg-amber-600 dark:bg-amber-500 with bg-orange-600 dark:bg-orange-500
-//   - Consistent with campaign color scheme updates
 // v2.5 (2026-01-29): Solid Color Badges for WCAG AA
-//   - Status badges now use solid colors with white text
-//   - Filter pills use solid colors when active
-//   - Header icon uses solid background
-//   - Improved contrast throughout modal
 // v2.4 (2026-01-27): Animation standardization
-//   - Added Framer Motion animations using MODAL constants
-//   - Added AnimatePresence for proper enter/exit animations
-//   - Added useReducedMotion hook for accessibility
-//   - Added pt-safe to header for notch devices
 // v2.3 (2026-01-12): Refactored to useScrollLock hook
-//   - Replaced inline scroll lock useEffect with shared useScrollLock hook
-//   - Reduces code duplication across modals
 // v2.2 (2026-01-12): Safe area compliance
-//   - Added pb-safe to pagination footer for iPhone home indicator
-// v2.1 (2026-01-12): iOS-compatible scroll lock
-//   - Added body scroll lock to prevent background scrolling
-//   - Preserves scroll position when modal closes
-// v2.0 (2026-01-09): Design System v4.0 compliance
-//   - Fixed 15 instances of text-[10px] → text-xs (12px minimum)
-//   - Fixed touch targets: pagination buttons now min 44px
-// v1.9 (2025-12-22): Added haptic feedback on filters, sort, pagination
-// v1.8 (2025-12-15): UX enhancements from audit
-//   - Added contact search field (filter by name or phone)
-//   - Reduced metrics grid density (8→6 cols on desktop)
-//   - Show contact date on mobile (compact format)
-//   - Added "jump to page" input for long lists (>5 pages)
-// v1.7 (2025-12-15): Redesigned metrics and filters for mobile
-//   - Metrics: Responsive grid (2 cols mobile, 4 tablet, 8 desktop) - no horizontal scroll
-//   - Filters: Collapsible panel with summary badge (tap to expand)
-//   - Refresh button moved to header (next to close button)
-//   - Sort options always visible in compact form
-//   - Active filter count shown in collapsed state
-// v1.6 (2025-12-14): Major UX overhaul - mobile scroll fix, compact layout
-// v1.5 (2025-12-14): Delivery metrics, pagination, sort/filter options
-// v1.4 (2025-12-14): Mask CPF for privacy
-// v1.3 (2025-12-14): Added phone display (now in contact_tracking)
-// v1.2 (2025-12-14): Fixed contacts not showing for automations
-// v1.1 (2025-12-13): Mobile compatibility improvements
-// v1.0 (2025-12-08): Initial implementation
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Target,
@@ -84,13 +44,9 @@ import {
   Search
 } from 'lucide-react';
 import { getCampaignContacts, getCampaignPerformance } from '../../utils/campaignService';
-import { MODAL, MODAL_SWIPE } from '../../constants/animations';
 import { haptics } from '../../utils/haptics';
-import { useScrollLock } from '../../hooks/useScrollLock';
-import { useSwipeToClose } from '../../hooks/useSwipeToClose';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
-import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useTheme } from '../../contexts/ThemeContext';
+import BaseModal from '../ui/BaseModal';
 
 // Pagination config
 const CONTACTS_PER_PAGE = 20;
@@ -116,31 +72,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
   const [currentPage, setCurrentPage] = useState(1);
   const [jumpToPage, setJumpToPage] = useState('');
 
-  // iOS-compatible scroll lock - prevents body scroll while modal is open
-  useScrollLock(true);
-
-  // Reduced motion accessibility
-  const prefersReducedMotion = useReducedMotion();
   const { isDark } = useTheme();
-  const isMobile = useMediaQuery('(max-width: 1023px)');
-
-  // Swipe-to-close gesture (mobile only)
-  const { handlers, style, isDragging, backdropOpacity } = useSwipeToClose({
-    onClose,
-    threshold: MODAL_SWIPE.THRESHOLD,
-    resistance: MODAL_SWIPE.RESISTANCE,
-    velocityThreshold: MODAL_SWIPE.VELOCITY_THRESHOLD,
-    disabled: !isMobile
-  });
-
-  // Close on escape key
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
 
   // Fetch campaign contacts on mount
   useEffect(() => {
@@ -372,430 +304,383 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
     </button>
   );
 
-  const modalContent = (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-        {/* Backdrop - opacity linked to swipe progress on mobile */}
-        <motion.div
-          {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
-          style={isMobile ? { opacity: backdropOpacity } : undefined}
-        />
-
-        {/* Modal Content */}
-        <motion.div
-          role="dialog"
-          aria-modal="true"
-          {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
-          className={`relative rounded-xl sm:rounded-2xl w-full max-w-full sm:max-w-xl lg:max-w-3xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden ${
-            isDark ? 'bg-space-dust' : 'bg-white'
-          }`}
-          onClick={(e) => e.stopPropagation()}
-          style={isMobile ? style : undefined}
-          {...(isMobile ? handlers : {})}
+  // Pagination footer
+  const paginationFooter = totalPages > 1 ? (
+    <div className="flex items-center justify-between">
+      <span className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">
+        {totalFiltered} contatos • Pág {currentPage}/{totalPages}
+      </span>
+      <div className="flex items-center gap-0.5">
+        <button
+          onClick={() => { haptics.tick(); setCurrentPage(p => Math.max(1, p - 1)); }}
+          disabled={currentPage === 1}
+          className="p-2 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
-          {/* Drag Handle (mobile only) */}
-          {isMobile && (
-            <div className="flex justify-center pt-2 pb-1">
-              <div className={`w-10 h-1 rounded-full transition-colors ${
-                isDragging
-                  ? 'bg-purple-500'
-                  : isDark ? 'bg-stellar-cyan/30' : 'bg-slate-300'
-              }`} />
-            </div>
-          )}
+          <ChevronLeft className="w-4 h-4" />
+        </button>
 
-        {/* Header with Refresh */}
-        <div className={`flex items-center justify-between p-3 sm:p-4 border-b shrink-0 ${
-          isDark ? 'border-stellar-cyan/10' : 'border-slate-200'
-        } ${isMobile ? 'pt-1' : 'pt-safe'}`}>
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="p-1.5 sm:p-2 bg-purple-600 dark:bg-purple-500 rounded-lg shrink-0 shadow-sm">
-              <Target className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
-                {campaignData.name || campaign.id}
-              </h2>
-              <div className="flex items-center gap-2 text-xs sm:text-xs text-slate-500 dark:text-slate-400">
-                {campaignData.created_at && (
-                  <span className="flex items-center gap-0.5">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(campaignData.created_at).toLocaleDateString('pt-BR')}
-                  </span>
-                )}
-                {campaignData.audience && (
-                  <span className="flex items-center gap-0.5">
-                    <Users className="w-3 h-3" />
-                    {getAudienceLabel(campaignData.audience)}
-                  </span>
-                )}
-                {campaignData.contact_method && (
-                  <span className="hidden sm:flex items-center gap-0.5">
-                    <MessageSquare className="w-3 h-3" />
-                    {campaignData.contact_method === 'whatsapp' ? 'WhatsApp' : campaignData.contact_method}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
+        {/* Page Numbers */}
+        {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+          let pageNum;
+          if (totalPages <= 3) {
+            pageNum = i + 1;
+          } else if (currentPage === 1) {
+            pageNum = i + 1;
+          } else if (currentPage === totalPages) {
+            pageNum = totalPages - 2 + i;
+          } else {
+            pageNum = currentPage - 1 + i;
+          }
+          return (
             <button
-              onClick={() => { haptics.light(); handleRefresh(); }}
-              disabled={isLoading}
-              className="p-2 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
-              title="Atualizar"
+              key={pageNum}
+              onClick={() => { haptics.tick(); setCurrentPage(pageNum); }}
+              className={`min-w-[44px] min-h-[44px] rounded text-xs font-medium transition-colors flex items-center justify-center ${
+                currentPage === pageNum
+                  ? 'bg-purple-600 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {pageNum}
             </button>
-            <button
-              onClick={() => { haptics.light(); onClose(); }}
-              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+          );
+        })}
 
-        {/* Metrics Grid - Responsive: 2 cols → 3 cols → 6 cols (grouped) */}
-        <div className={`border-b shrink-0 p-3 sm:p-4 ${
-          isDark ? 'border-stellar-cyan/10 bg-space-nebula/50' : 'border-slate-200 bg-slate-50'
-        }`}>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-            {/* Enviados + Entregues */}
-            <div className="text-center" title="Mensagens enviadas via WhatsApp">
-              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Enviados</p>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">{campaignData.sends || 0}</p>
-            </div>
-            <div className="text-center" title="Mensagens entregues no dispositivo">
-              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Entregues</p>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                {campaignData.has_delivery_data ? (campaignData.delivered || 0) + (campaignData.read || 0) : '-'}
-              </p>
-            </div>
-            {/* Lidas + Falhou */}
-            <div className="text-center" title="Mensagens abertas/lidas">
-              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Lidas</p>
-              <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {campaignData.has_delivery_data ? (campaignData.read || 0) : '-'}
-                {campaignData.has_delivery_data && (campaignData.failed || 0) > 0 && (
-                  <span className="text-xs text-red-500 ml-1" title="Falhas na entrega">
-                    ({campaignData.failed} ✕)
-                  </span>
-                )}
-              </p>
-            </div>
-            {/* Rastreados + Retornaram */}
-            <div className="text-center" title="Contatos sendo monitorados">
-              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Rastreados</p>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">{campaignData.contacts_tracked || contacts.length}</p>
-            </div>
-            <div className="text-center" title="Clientes que retornaram à loja">
-              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Retornaram</p>
-              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                {campaignData.contacts_returned || statusCounts.returned || 0}
-              </p>
-            </div>
-            {/* Taxa + Receita (combined on mobile) */}
-            <div className="text-center" title="Taxa de retorno e receita recuperada">
-              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Taxa / Receita</p>
-              <p className="text-lg font-bold">
-                <span className={`${(campaignData.return_rate || 0) > 15 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
-                  {formatPercent(campaignData.return_rate || 0)}
-                </span>
-                <span className="text-slate-300 dark:text-slate-600 mx-1">·</span>
-                <span className="text-emerald-600 dark:text-emerald-400 text-sm">
-                  {formatCurrency(campaignData.total_revenue_recovered || 0)}
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
+        <button
+          onClick={() => { haptics.tick(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
+          disabled={currentPage === totalPages}
+          className="p-2 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
 
-        {/* Filter Bar - Collapsible */}
-        <div className={`border-b shrink-0 ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}`}>
-          {/* Collapsed Header */}
-          <div className="flex items-center justify-between p-2 sm:p-3">
-            <button
-              onClick={() => { haptics.tick(); setFiltersExpanded(!filtersExpanded); }}
-              className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span>Filtros</span>
-              {activeFilterCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-600 dark:bg-purple-500 text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-              {filtersExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-
-            {/* Sort - Always visible */}
-            <div className="flex items-center gap-1">
-              <SortPill field="date" label="Data" />
-              <SortPill field="name" label="Nome" />
-              <SortPill field="status" label="Status" />
-            </div>
-          </div>
-
-          {/* Expanded Filters */}
-          {filtersExpanded && (
-            <div className="px-3 pb-3 space-y-2">
-              {/* Return Status */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-medium text-slate-400 uppercase w-14">Retorno</span>
-                <FilterPill active={filterStatus === 'all'} onClick={() => setFilterStatus('all')}>
-                  Todos ({contacts.length})
-                </FilterPill>
-                <FilterPill active={filterStatus === 'returned'} onClick={() => setFilterStatus('returned')}>
-                  <CheckCircle2 className="w-3 h-3 inline mr-0.5 text-emerald-500" />
-                  {statusCounts.returned || 0}
-                </FilterPill>
-                <FilterPill active={filterStatus === 'pending'} onClick={() => setFilterStatus('pending')}>
-                  <Clock className="w-3 h-3 inline mr-0.5 text-amber-500" />
-                  {statusCounts.pending || 0}
-                </FilterPill>
-                <FilterPill active={filterStatus === 'expired'} onClick={() => setFilterStatus('expired')}>
-                  <XCircle className="w-3 h-3 inline mr-0.5 text-slate-400" />
-                  {statusCounts.expired || 0}
-                </FilterPill>
-              </div>
-
-              {/* Delivery Status */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-medium text-slate-400 uppercase w-14">Entrega</span>
-                <FilterPill active={filterDelivery === 'all'} onClick={() => setFilterDelivery('all')}>
-                  Todas
-                </FilterPill>
-                <FilterPill
-                  active={filterDelivery === 'delivered'}
-                  onClick={() => setFilterDelivery('delivered')}
-                  activeColor="bg-green-600 dark:bg-green-500 text-white"
-                >
-                  <CheckCircle2 className="w-3 h-3 inline mr-0.5" />
-                  {deliveryCounts.delivered || 0}
-                </FilterPill>
-                <FilterPill
-                  active={filterDelivery === 'read'}
-                  onClick={() => setFilterDelivery('read')}
-                  activeColor="bg-blue-600 dark:bg-blue-500 text-white"
-                >
-                  <BookOpen className="w-3 h-3 inline mr-0.5" />
-                  {deliveryCounts.read || 0}
-                </FilterPill>
-                <FilterPill
-                  active={filterDelivery === 'failed'}
-                  onClick={() => setFilterDelivery('failed')}
-                  activeColor="bg-red-600 dark:bg-red-500 text-white"
-                >
-                  <AlertCircle className="w-3 h-3 inline mr-0.5" />
-                  {deliveryCounts.failed || 0}
-                </FilterPill>
-                <FilterPill active={filterDelivery === 'pending'} onClick={() => setFilterDelivery('pending')}>
-                  <Clock className="w-3 h-3 inline mr-0.5" />
-                  {deliveryCounts.pending || 0}
-                </FilterPill>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Search Bar */}
-        <div className="px-2 sm:px-3 pt-2 sm:pt-3 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        {/* Jump to page - Only show when > 5 pages */}
+        {totalPages > 5 && (
+          <form onSubmit={handleJumpToPage} className="ml-2 flex items-center gap-1">
             <input
-              type="search"
-              placeholder="Buscar por nome ou telefone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 pl-8 pr-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpToPage}
+              onChange={(e) => setJumpToPage(e.target.value)}
+              placeholder="Ir p/"
+              className="w-14 h-7 px-1.5 text-xs text-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+          </form>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <BaseModal
+      isOpen={true}
+      onClose={onClose}
+      size="full"
+      maxWidth="3xl"
+      showHeader={false}
+      footer={paginationFooter}
+      contentClassName="p-0"
+    >
+      {/* Custom Header with Refresh */}
+      <div className={`flex items-center justify-between p-3 sm:p-4 border-b shrink-0 ${
+        isDark ? 'border-stellar-cyan/10' : 'border-slate-200'
+      }`}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="p-1.5 sm:p-2 bg-purple-600 dark:bg-purple-500 rounded-lg shrink-0 shadow-sm">
+            <Target className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
-        </div>
-
-        {/* Contact List */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="p-2 sm:p-3">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <RefreshCw className="w-5 h-5 text-purple-500 animate-spin" />
-                <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">Carregando...</span>
-              </div>
-            ) : paginatedContacts.length > 0 ? (
-              <div className="space-y-1.5">
-                {paginatedContacts.map((contact) => {
-                  const status = contact.status || 'pending';
-                  const deliveryStatus = contact.delivery_status || 'pending';
-
-                  return (
-                    <div
-                      key={contact.id}
-                      className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:shadow-sm transition-shadow"
-                    >
-                      {/* Status Icon */}
-                      <div className={`p-1.5 rounded-md shrink-0 ${getStatusColor(status)}`}>
-                        {getStatusIcon(status)}
-                      </div>
-
-                      {/* Customer Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                          {contact.customer_name || 'Cliente'}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-xs sm:text-xs text-slate-500 dark:text-slate-400">
-                          {contact.phone && (
-                            <span className="flex items-center gap-0.5">
-                              <Phone className="w-2.5 h-2.5" />
-                              {contact.phone}
-                            </span>
-                          )}
-                          <span className="hidden sm:inline">CPF: {maskCpf(contact.customer_id)}</span>
-                        </div>
-                      </div>
-
-                      {/* Badges - Right side */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Delivery Status */}
-                        <span
-                          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700"
-                          title={getDeliveryLabel(deliveryStatus)}
-                        >
-                          {getDeliveryIcon(deliveryStatus)}
-                          <span className="hidden sm:inline text-slate-600 dark:text-slate-400 ml-0.5">
-                            {getDeliveryLabel(deliveryStatus)}
-                          </span>
-                        </span>
-
-                        {/* Return Status Badge */}
-                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getStatusColor(status)}`}>
-                          {getStatusLabel(status)}
-                        </span>
-
-                        {/* Return details */}
-                        {status === 'returned' && contact.return_revenue > 0 && (
-                          <span className="hidden sm:flex items-center gap-0.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                            <DollarSign className="w-3 h-3" />
-                            {formatCurrency(contact.return_revenue)}
-                          </span>
-                        )}
-
-                        {/* Date - Compact on mobile, full on desktop */}
-                        {contact.contacted_at && (
-                          <span className="text-xs text-slate-400 dark:text-slate-500" title={new Date(contact.contacted_at).toLocaleDateString('pt-BR')}>
-                            <span className="sm:hidden">
-                              {new Date(contact.contacted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                            </span>
-                            <span className="hidden sm:inline">
-                              {new Date(contact.contacted_at).toLocaleDateString('pt-BR')}
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Users className="w-6 h-6 text-slate-400" />
-                </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {contacts.length === 0
-                    ? 'Nenhum contato registrado'
-                    : 'Nenhum contato com os filtros selecionados'}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Pagination - with safe area for notch devices */}
-        {totalPages > 1 && (
-          <div className={`flex items-center justify-between px-3 py-2 pb-safe border-t shrink-0 ${
-            isDark ? 'border-stellar-cyan/10 bg-space-nebula/50' : 'border-slate-200 bg-slate-50'
-          }`}>
-            <span className="text-xs sm:text-xs text-slate-500 dark:text-slate-400">
-              {totalFiltered} contatos • Pág {currentPage}/{totalPages}
-            </span>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => { haptics.tick(); setCurrentPage(p => Math.max(1, p - 1)); }}
-                disabled={currentPage === 1}
-                className="p-2 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              {/* Page Numbers */}
-              {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage === 1) {
-                  pageNum = i + 1;
-                } else if (currentPage === totalPages) {
-                  pageNum = totalPages - 2 + i;
-                } else {
-                  pageNum = currentPage - 1 + i;
-                }
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => { haptics.tick(); setCurrentPage(pageNum); }}
-                    className={`min-w-[44px] min-h-[44px] rounded text-xs font-medium transition-colors flex items-center justify-center ${
-                      currentPage === pageNum
-                        ? 'bg-purple-600 text-white'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-
-              <button
-                onClick={() => { haptics.tick(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              {/* Jump to page - Only show when > 5 pages */}
-              {totalPages > 5 && (
-                <form onSubmit={handleJumpToPage} className="ml-2 flex items-center gap-1">
-                  <input
-                    type="number"
-                    min="1"
-                    max={totalPages}
-                    value={jumpToPage}
-                    onChange={(e) => setJumpToPage(e.target.value)}
-                    placeholder="Ir p/"
-                    className="w-14 h-7 px-1.5 text-xs text-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  />
-                </form>
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
+              {campaignData.name || campaign.id}
+            </h2>
+            <div className="flex items-center gap-2 text-xs sm:text-xs text-slate-500 dark:text-slate-400">
+              {campaignData.created_at && (
+                <span className="flex items-center gap-0.5">
+                  <Calendar className="w-3 h-3" />
+                  {new Date(campaignData.created_at).toLocaleDateString('pt-BR')}
+                </span>
               )}
+              {campaignData.audience && (
+                <span className="flex items-center gap-0.5">
+                  <Users className="w-3 h-3" />
+                  {getAudienceLabel(campaignData.audience)}
+                </span>
+              )}
+              {campaignData.contact_method && (
+                <span className="hidden sm:flex items-center gap-0.5">
+                  <MessageSquare className="w-3 h-3" />
+                  {campaignData.contact_method === 'whatsapp' ? 'WhatsApp' : campaignData.contact_method}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => { haptics.light(); handleRefresh(); }}
+            disabled={isLoading}
+            className="p-2 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+            title="Atualizar"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={() => { haptics.light(); onClose(); }}
+            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Metrics Grid */}
+      <div className={`border-b shrink-0 p-3 sm:p-4 ${
+        isDark ? 'border-stellar-cyan/10 bg-space-nebula/50' : 'border-slate-200 bg-slate-50'
+      }`}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <div className="text-center" title="Mensagens enviadas via WhatsApp">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Enviados</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">{campaignData.sends || 0}</p>
+          </div>
+          <div className="text-center" title="Mensagens entregues no dispositivo">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Entregues</p>
+            <p className="text-lg font-bold text-green-600 dark:text-green-400">
+              {campaignData.has_delivery_data ? (campaignData.delivered || 0) + (campaignData.read || 0) : '-'}
+            </p>
+          </div>
+          <div className="text-center" title="Mensagens abertas/lidas">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Lidas</p>
+            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+              {campaignData.has_delivery_data ? (campaignData.read || 0) : '-'}
+              {campaignData.has_delivery_data && (campaignData.failed || 0) > 0 && (
+                <span className="text-xs text-red-500 ml-1" title="Falhas na entrega">
+                  ({campaignData.failed} ✕)
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="text-center" title="Contatos sendo monitorados">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Rastreados</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">{campaignData.contacts_tracked || contacts.length}</p>
+          </div>
+          <div className="text-center" title="Clientes que retornaram à loja">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Retornaram</p>
+            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+              {campaignData.contacts_returned || statusCounts.returned || 0}
+            </p>
+          </div>
+          <div className="text-center" title="Taxa de retorno e receita recuperada">
+            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Taxa / Receita</p>
+            <p className="text-lg font-bold">
+              <span className={`${(campaignData.return_rate || 0) > 15 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                {formatPercent(campaignData.return_rate || 0)}
+              </span>
+              <span className="text-slate-300 dark:text-slate-600 mx-1">·</span>
+              <span className="text-emerald-600 dark:text-emerald-400 text-sm">
+                {formatCurrency(campaignData.total_revenue_recovered || 0)}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Bar - Collapsible */}
+      <div className={`border-b shrink-0 ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}`}>
+        <div className="flex items-center justify-between p-2 sm:p-3">
+          <button
+            onClick={() => { haptics.tick(); setFiltersExpanded(!filtersExpanded); }}
+            className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Filtros</span>
+            {activeFilterCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-600 dark:bg-purple-500 text-white">
+                {activeFilterCount}
+              </span>
+            )}
+            {filtersExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+
+          <div className="flex items-center gap-1">
+            <SortPill field="date" label="Data" />
+            <SortPill field="name" label="Nome" />
+            <SortPill field="status" label="Status" />
+          </div>
+        </div>
+
+        {filtersExpanded && (
+          <div className="px-3 pb-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-medium text-slate-400 uppercase w-14">Retorno</span>
+              <FilterPill active={filterStatus === 'all'} onClick={() => setFilterStatus('all')}>
+                Todos ({contacts.length})
+              </FilterPill>
+              <FilterPill active={filterStatus === 'returned'} onClick={() => setFilterStatus('returned')}>
+                <CheckCircle2 className="w-3 h-3 inline mr-0.5 text-emerald-500" />
+                {statusCounts.returned || 0}
+              </FilterPill>
+              <FilterPill active={filterStatus === 'pending'} onClick={() => setFilterStatus('pending')}>
+                <Clock className="w-3 h-3 inline mr-0.5 text-amber-500" />
+                {statusCounts.pending || 0}
+              </FilterPill>
+              <FilterPill active={filterStatus === 'expired'} onClick={() => setFilterStatus('expired')}>
+                <XCircle className="w-3 h-3 inline mr-0.5 text-slate-400" />
+                {statusCounts.expired || 0}
+              </FilterPill>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-medium text-slate-400 uppercase w-14">Entrega</span>
+              <FilterPill active={filterDelivery === 'all'} onClick={() => setFilterDelivery('all')}>
+                Todas
+              </FilterPill>
+              <FilterPill
+                active={filterDelivery === 'delivered'}
+                onClick={() => setFilterDelivery('delivered')}
+                activeColor="bg-green-600 dark:bg-green-500 text-white"
+              >
+                <CheckCircle2 className="w-3 h-3 inline mr-0.5" />
+                {deliveryCounts.delivered || 0}
+              </FilterPill>
+              <FilterPill
+                active={filterDelivery === 'read'}
+                onClick={() => setFilterDelivery('read')}
+                activeColor="bg-blue-600 dark:bg-blue-500 text-white"
+              >
+                <BookOpen className="w-3 h-3 inline mr-0.5" />
+                {deliveryCounts.read || 0}
+              </FilterPill>
+              <FilterPill
+                active={filterDelivery === 'failed'}
+                onClick={() => setFilterDelivery('failed')}
+                activeColor="bg-red-600 dark:bg-red-500 text-white"
+              >
+                <AlertCircle className="w-3 h-3 inline mr-0.5" />
+                {deliveryCounts.failed || 0}
+              </FilterPill>
+              <FilterPill active={filterDelivery === 'pending'} onClick={() => setFilterDelivery('pending')}>
+                <Clock className="w-3 h-3 inline mr-0.5" />
+                {deliveryCounts.pending || 0}
+              </FilterPill>
             </div>
           </div>
         )}
-        </motion.div>
       </div>
-    </AnimatePresence>
-  );
 
-  // Render via portal for proper z-index stacking
-  return createPortal(modalContent, document.body);
+      {/* Search Bar */}
+      <div className="px-2 sm:px-3 pt-2 sm:pt-3 shrink-0">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="search"
+            placeholder="Buscar por nome ou telefone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-9 pl-8 pr-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Contact List */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="p-2 sm:p-3">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-5 h-5 text-purple-500 animate-spin" />
+              <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">Carregando...</span>
+            </div>
+          ) : paginatedContacts.length > 0 ? (
+            <div className="space-y-1.5">
+              {paginatedContacts.map((contact) => {
+                const status = contact.status || 'pending';
+                const deliveryStatus = contact.delivery_status || 'pending';
+
+                return (
+                  <div
+                    key={contact.id}
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:shadow-sm transition-shadow"
+                  >
+                    <div className={`p-1.5 rounded-md shrink-0 ${getStatusColor(status)}`}>
+                      {getStatusIcon(status)}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                        {contact.customer_name || 'Cliente'}
+                      </p>
+                      <div className="flex items-center gap-1.5 text-xs sm:text-xs text-slate-500 dark:text-slate-400">
+                        {contact.phone && (
+                          <span className="flex items-center gap-0.5">
+                            <Phone className="w-2.5 h-2.5" />
+                            {contact.phone}
+                          </span>
+                        )}
+                        <span className="hidden sm:inline">CPF: {maskCpf(contact.customer_id)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span
+                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700"
+                        title={getDeliveryLabel(deliveryStatus)}
+                      >
+                        {getDeliveryIcon(deliveryStatus)}
+                        <span className="hidden sm:inline text-slate-600 dark:text-slate-400 ml-0.5">
+                          {getDeliveryLabel(deliveryStatus)}
+                        </span>
+                      </span>
+
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getStatusColor(status)}`}>
+                        {getStatusLabel(status)}
+                      </span>
+
+                      {status === 'returned' && contact.return_revenue > 0 && (
+                        <span className="hidden sm:flex items-center gap-0.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                          <DollarSign className="w-3 h-3" />
+                          {formatCurrency(contact.return_revenue)}
+                        </span>
+                      )}
+
+                      {contact.contacted_at && (
+                        <span className="text-xs text-slate-400 dark:text-slate-500" title={new Date(contact.contacted_at).toLocaleDateString('pt-BR')}>
+                          <span className="sm:hidden">
+                            {new Date(contact.contacted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                          <span className="hidden sm:inline">
+                            {new Date(contact.contacted_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Users className="w-6 h-6 text-slate-400" />
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {contacts.length === 0
+                  ? 'Nenhum contato registrado'
+                  : 'Nenhum contato com os filtros selecionados'}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </BaseModal>
+  );
 };
 
 export default CampaignDetailsModal;

@@ -1,30 +1,27 @@
-// MinimalTopBar.jsx v5.2 - FUNCTIONAL COMMAND BRIDGE
-// Purely functional top bar - sidebar owns the brand
-// Design System v5.1 compliant - UX research-driven layout
+// MinimalTopBar.jsx v6.0 - STELLAR COMMAND BRIDGE
+// Prominent brand presence with full utility
+// Design System v5.1 compliant
 //
 // DESIGN DECISION:
-// Following UX best practices (Nielsen Norman, Cieden, UX Planet):
-// - Sidebar = Brand home (full logo when expanded)
-// - TopBar = Functional only (no redundant branding)
-// - Mobile = Small orbital icon (brand recognition when sidebar hidden)
+// Logo sizing best practice: 60-80% of topbar height for strong brand presence
+// - Desktop: Full horizontal logo (44px / 60px = 73%)
+// - Mobile: Saturn icon (40px / 56px = 71%)
 //
 // CHANGELOG:
+// v6.0 (2026-01-31): Brand-forward redesign
+//   - NEW: Prominent BilavnovaFullLogo on desktop (h-11, 44px)
+//   - NEW: Large BilavnovaIcon on mobile (h-10, 40px)
+//   - NEW: NotificationBell with unread badge
+//   - NEW: Compact weather on mobile
+//   - NEW: ThemeToggle visible on mobile
+//   - REMOVED: MobileOrbitalIcon (replaced with BilavnovaIcon)
 // v5.2 (2026-01-29): Visual polish & micro-interactions
 //   - Enhanced glassmorphism with saturate filter and inner highlight
 //   - Improved dropdown animations with better spring physics
 //   - Better shadow depth for floating appearance
 //   - Refined VitalsConsole styling
 // v5.1 (2026-01-29): Brand consolidation - sidebar owns the logo
-//   - REMOVED: Full logo on desktop (sidebar has it now)
-//   - NEW: MobileOrbitalIcon - small icon for mobile only
-//   - MOVED: VitalsConsole to left (no longer centered)
-//   - Maintains HorizonScanner and cosmic styling
 // v5.0 (2026-01-29): Stellar Command Bridge redesign
-//   - Brand SVG logos (moved to sidebar in v5.1)
-//   - VitalsConsole - unified pill with weather, location, realtime
-//   - HorizonScanner - subtle sweep animation
-// v4.3 (2026-01-23): Settings button moved to sidebar
-// v4.2 (2026-01-23): Realtime connection status indicator
 // v4.x-v1.x: Previous implementations
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -33,13 +30,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import WeatherWidget from './WeatherWidget_API';
 import ThemeToggle from './ThemeToggle';
 import RealtimeStatusIndicator from './ui/RealtimeStatusIndicator';
+import { BilavnovaIcon, BilavnovaFullLogo } from './ui/BilavnovaLogo';
 import { haptics } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-
-// Orbital icon for mobile-only branding (sidebar owns full logo on desktop)
-const OrbitalIcon = '/pwa-192x192.png';
 
 // Hook to detect touch/mobile device
 const useIsTouchDevice = () => {
@@ -58,31 +53,67 @@ const useIsTouchDevice = () => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MobileOrbitalIcon - Small icon for mobile only (sidebar owns full logo)
+// BrandLogo - Prominent brand presence (60-80% of topbar height)
+// Mobile: Saturn icon (40px = 71% of 56px topbar)
+// Desktop: Full horizontal logo (44px = 73% of 60px topbar)
 // ═══════════════════════════════════════════════════════════════════════════
-const MobileOrbitalIcon = ({ isDark, prefersReducedMotion }) => (
-  <div className="relative flex items-center lg:hidden">
-    {/* Subtle glow behind icon */}
+const BrandLogo = ({ isDark, prefersReducedMotion }) => (
+  <div className="relative flex items-center flex-shrink-0">
+    {/* Subtle glow behind logo */}
     {!prefersReducedMotion && (
       <motion.div
-        className={`absolute -inset-1.5 rounded-full blur-lg ${
-          isDark ? 'bg-stellar-cyan/25' : 'bg-stellar-blue/15'
+        className={`absolute -inset-2 rounded-xl blur-xl ${
+          isDark ? 'bg-stellar-cyan/15' : 'bg-stellar-blue/10'
         }`}
         animate={{
-          opacity: [0.4, 0.6, 0.4],
-          scale: [0.95, 1.05, 0.95]
+          opacity: [0.3, 0.5, 0.3],
+          scale: [0.98, 1.02, 0.98]
         }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
       />
     )}
 
-    {/* Orbital icon */}
-    <img
-      src={OrbitalIcon}
-      alt="Bilavnova"
-      className="relative h-7 w-7 object-contain"
+    {/* Mobile: Large Saturn icon - 40px (71% of 56px topbar) */}
+    <BilavnovaIcon
+      className="relative h-10 w-10 lg:hidden"
+      variant="gradient"
+      gradientId="topbarIconGradient"
+    />
+
+    {/* Desktop: Full horizontal logo - 44px (73% of 60px topbar) */}
+    <BilavnovaFullLogo
+      className="relative hidden lg:block h-11"
+      variant="gradient"
     />
   </div>
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NotificationBell - Bell icon with unread badge
+// ═══════════════════════════════════════════════════════════════════════════
+const NotificationBell = ({ unreadCount = 0, onClick, isDark, prefersReducedMotion }) => (
+  <motion.button
+    onClick={onClick}
+    whileHover={prefersReducedMotion ? {} : { y: -2 }}
+    whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
+    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+    className={`relative flex items-center justify-center min-h-[44px] min-w-[44px] p-2.5 rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan
+      ${isDark
+        ? 'text-slate-400 hover:bg-stellar-cyan/10 hover:text-stellar-cyan'
+        : 'text-slate-500 hover:bg-stellar-blue/5 hover:text-stellar-blue'
+      }`}
+    aria-label={`Notificações${unreadCount > 0 ? ` (${unreadCount} não lidas)` : ''}`}
+    title="Notificações"
+  >
+    <Bell className="w-5 h-5" />
+    {unreadCount > 0 && (
+      <span className={`absolute top-1.5 right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full ring-2 ${
+        isDark ? 'ring-space-dust' : 'ring-white'
+      }`}>
+        {unreadCount > 99 ? '99+' : unreadCount}
+      </span>
+    )}
+  </motion.button>
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -474,12 +505,11 @@ const CommandPalette = ({ prefersReducedMotion }) => {
 const MinimalTopBar = ({ refreshing, onRefresh, onOpenExport }) => {
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
+  const [unreadNotifications] = useState(0); // TODO: Connect to notification system
 
   return (
     <header
-      className={`sticky top-0 z-40 safe-area-top relative backdrop-blur-xl backdrop-saturate-150 ${
-        isDark ? '' : ''
-      }`}
+      className="sticky top-0 z-40 safe-area-top relative backdrop-blur-xl backdrop-saturate-150"
       style={{
         backdropFilter: 'blur(20px) saturate(1.5)',
         WebkitBackdropFilter: 'blur(20px) saturate(1.5)',
@@ -501,17 +531,27 @@ const MinimalTopBar = ({ refreshing, onRefresh, onOpenExport }) => {
 
       {/* Main content */}
       <div className="relative h-14 lg:h-[60px] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-4">
-        {/* Left: Mobile icon OR Desktop Vitals Console */}
-        <div className="flex items-center gap-3">
-          {/* Mobile only: Small orbital icon (sidebar owns full logo on desktop) */}
-          <MobileOrbitalIcon isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
+        {/* LEFT: Brand Logo (prominent sizing) */}
+        <BrandLogo isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
 
-          {/* Desktop only: Vitals Console (left-aligned since sidebar has logo) */}
-          <VitalsConsole isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
-        </div>
+        {/* CENTER: VitalsConsole (desktop only) */}
+        <VitalsConsole isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
 
-        {/* Right: Command Controls */}
-        <div className="flex items-center gap-1">
+        {/* RIGHT: Actions */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Compact weather for mobile */}
+          <div className="lg:hidden">
+            <WeatherWidget compact />
+          </div>
+
+          {/* Notification Bell */}
+          <NotificationBell
+            unreadCount={unreadNotifications}
+            onClick={() => {/* TODO: Open notification panel */}}
+            isDark={isDark}
+            prefersReducedMotion={prefersReducedMotion}
+          />
+
           {/* Quick Actions */}
           <QuickActions
             onOpenExport={onOpenExport}
@@ -520,10 +560,8 @@ const MinimalTopBar = ({ refreshing, onRefresh, onOpenExport }) => {
             prefersReducedMotion={prefersReducedMotion}
           />
 
-          {/* Theme Toggle - desktop only */}
-          <div className="hidden lg:block">
-            <ThemeToggle className="no-print" />
-          </div>
+          {/* Theme Toggle - now visible on all screens */}
+          <ThemeToggle className="no-print" />
 
           {/* Keyboard Hints - desktop only */}
           <div className="hidden lg:block">

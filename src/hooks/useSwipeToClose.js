@@ -1,4 +1,4 @@
-// useSwipeToClose.js v1.0
+// useSwipeToClose.js v1.1 - THRESHOLD HAPTIC FEEDBACK
 // Hook for swipe-down-to-close gesture on mobile modals/sheets
 //
 // FEATURES:
@@ -7,16 +7,23 @@
 // - Resistance factor for natural feel
 // - Velocity-based closing (fast swipe = close)
 // - Optional backdrop opacity tied to drag
+// - Haptic feedback when crossing threshold (once per gesture)
+// - Exposes hasReachedThreshold for visual feedback
 // - Works with Framer Motion or vanilla
 //
 // USAGE:
-// const { handlers, style, isDragging } = useSwipeToClose({
+// const { handlers, style, isDragging, progress, hasReachedThreshold } = useSwipeToClose({
 //   onClose: () => setIsOpen(false),
 //   threshold: 100,
 // });
 // <div {...handlers} style={style}>Modal content</div>
 //
 // CHANGELOG:
+// v1.1 (2026-01-31): Threshold haptic feedback
+//   - Added hasTriggeredHapticRef to track threshold crossing
+//   - Added haptics.tick() when crossing threshold (once per gesture)
+//   - Reset haptic ref on gesture end/cancel
+//   - Exposed hasReachedThreshold boolean state for visual feedback
 // v1.0 (2025-12-18): Initial implementation
 
 import { useState, useRef, useCallback, useMemo } from 'react';
@@ -44,6 +51,7 @@ export function useSwipeToClose({
   const startYRef = useRef(0);
   const startTimeRef = useRef(0);
   const currentYRef = useRef(0);
+  const hasTriggeredHapticRef = useRef(false);
 
   const handleStart = useCallback((e) => {
     if (disabled) return;
@@ -53,6 +61,7 @@ export function useSwipeToClose({
     startYRef.current = clientY;
     currentYRef.current = clientY;
     startTimeRef.current = Date.now();
+    hasTriggeredHapticRef.current = false;
     setIsDragging(true);
   }, [disabled]);
 
@@ -68,10 +77,16 @@ export function useSwipeToClose({
       // Apply resistance
       const resistedDelta = deltaY * resistance;
       setDragY(resistedDelta);
+
+      // Haptic feedback when crossing threshold (once per gesture)
+      if (resistedDelta >= threshold && !hasTriggeredHapticRef.current) {
+        hasTriggeredHapticRef.current = true;
+        haptics.tick();
+      }
     } else {
       setDragY(0);
     }
-  }, [isDragging, disabled, resistance]);
+  }, [isDragging, disabled, resistance, threshold]);
 
   const handleEnd = useCallback(() => {
     if (!isDragging || disabled) return;
@@ -92,11 +107,13 @@ export function useSwipeToClose({
     // Reset
     setDragY(0);
     setIsDragging(false);
+    hasTriggeredHapticRef.current = false;
   }, [isDragging, disabled, dragY, threshold, velocityThreshold, onClose]);
 
   const handleCancel = useCallback(() => {
     setDragY(0);
     setIsDragging(false);
+    hasTriggeredHapticRef.current = false;
   }, []);
 
   // Style to apply to the modal container
@@ -116,6 +133,11 @@ export function useSwipeToClose({
     return Math.min(1, Math.max(0, dragY / threshold));
   }, [dragY, threshold]);
 
+  // Boolean for threshold visual feedback
+  const hasReachedThreshold = useMemo(() => {
+    return dragY >= threshold;
+  }, [dragY, threshold]);
+
   return {
     handlers: {
       onTouchStart: handleStart,
@@ -132,6 +154,7 @@ export function useSwipeToClose({
     dragY,
     progress,
     backdropOpacity,
+    hasReachedThreshold,
   };
 }
 

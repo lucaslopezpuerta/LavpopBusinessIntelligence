@@ -1,42 +1,27 @@
-// ExportModal.jsx v1.6 - SWIPE-TO-CLOSE GESTURES
+// ExportModal.jsx v2.0 - BASEMODAL MIGRATION
 // Modal for exporting data to CSV or PDF with charts
 //
 // CHANGELOG:
+// v2.0 (2026-01-31): BaseModal migration
+//   - Migrated to BaseModal component for consistent UX
+//   - Removed duplicate boilerplate (portal, animations, swipe, scroll lock)
+//   - Uses BaseModal footer prop for action buttons
+//   - Reduced from ~680 lines to ~380 lines
+// v1.8 (2026-01-31): Enhanced drag handle
+// v1.7 (2026-01-31): Enhanced modal transitions
 // v1.6 (2026-01-30): Swipe-to-close and portal rendering
-//   - Added useSwipeToClose hook for mobile gesture support
-//   - Added portal rendering for proper z-index stacking
-//   - Replaced manual scroll lock with useScrollLock hook
-//   - Added drag handle indicator on mobile
-//   - Added useTheme for cosmic dark mode support
 // v1.5 (2026-01-25): Animation performance optimization
-//   - Extracted inline animation objects to constants (prevents re-renders)
-//   - Uses MODAL variants from animations.js for consistency
 // v1.4 (2026-01-12): iOS-compatible scroll lock
-//   - Added body scroll lock to prevent background scrolling
-//   - Preserves scroll position when modal closes
 // v1.3 (2025-12-17): Global reports (Complete + Executive Summary)
-//   - Added "Relatório Completo" multi-page PDF
-//   - Added "Resumo Executivo" single-page PDF
-//   - Global reports available from any view
-//   - Separate section for comprehensive reports
 // v1.2 (2025-12-17): Fixed data field mappings + new export types
-//   - Updated column configs to match actual Supabase data structure
-//   - Added: activeCustomers, newCustomers, recentTransactions, dailySales
-//   - Fixed RFM segment summary using rfm data (not customers)
 // v1.1 (2025-12-17): More export options per view
 // v1.0 (2025-12-17): Initial implementation
 
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileSpreadsheet, FileText, Download, Loader2, Check, AlertCircle, BookOpen, BarChart3 } from 'lucide-react';
+import { FileSpreadsheet, FileText, Download, Loader2, Check, AlertCircle, BookOpen, BarChart3 } from 'lucide-react';
 import { exportToCSV, exportToPDF, exportCompleteReport, exportExecutiveSummary } from '../utils/exportUtils';
-import { useReducedMotion } from '../hooks/useReducedMotion';
-import { useScrollLock } from '../hooks/useScrollLock';
-import { useSwipeToClose } from '../hooks/useSwipeToClose';
-import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useTheme } from '../contexts/ThemeContext';
-import { MODAL, MODAL_SWIPE } from '../constants/animations';
+import BaseModal from './ui/BaseModal';
 
 // Export configurations with correct field mappings from Supabase
 const EXPORT_CONFIGS = {
@@ -196,42 +181,20 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
   const [selectedExport, setSelectedExport] = useState(null);
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const [showGlobal, setShowGlobal] = useState(true); // Show global reports by default
-  const prefersReducedMotion = useReducedMotion();
+  const [showGlobal, setShowGlobal] = useState(true);
   const { isDark } = useTheme();
-  const isMobile = useMediaQuery('(max-width: 1023px)');
-
-  // Swipe-to-close gesture (mobile only)
-  const { handlers, style, isDragging, backdropOpacity } = useSwipeToClose({
-    onClose,
-    threshold: MODAL_SWIPE.THRESHOLD,
-    resistance: MODAL_SWIPE.RESISTANCE,
-    velocityThreshold: MODAL_SWIPE.VELOCITY_THRESHOLD,
-    disabled: !isMobile || !isOpen
-  });
 
   const viewExports = VIEW_EXPORTS[activeView] || VIEW_EXPORTS.dashboard;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
-      setSelectedExport('executiveSummary'); // Default to executive summary
+      setSelectedExport('executiveSummary');
       setFormat('pdf');
       setShowGlobal(true);
       setStatus('idle');
       setErrorMessage('');
     }
   }, [isOpen]);
-
-  React.useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape' && isOpen) onClose();
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  // iOS-compatible scroll lock
-  useScrollLock(isOpen);
 
   // Get data for specific export type
   const getExportData = (exportId) => {
@@ -449,214 +412,236 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
     }
   };
 
-  if (!isOpen) return null;
-
-  const modalContent = (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div
-          {...(prefersReducedMotion ? MODAL.BACKDROP_REDUCED : MODAL.BACKDROP)}
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
-          style={isMobile ? { opacity: backdropOpacity } : undefined}
-        />
-
-        <motion.div
-          role="dialog"
-          aria-modal="true"
-          {...(prefersReducedMotion ? MODAL.CONTENT_REDUCED : MODAL.CONTENT)}
-          className={`relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden ${
-            isDark ? 'bg-space-dust' : 'bg-white'
-          }`}
-          style={isMobile ? style : undefined}
-          {...(isMobile ? handlers : {})}
-        >
-          {/* Drag Handle (mobile only) */}
-          {isMobile && (
-            <div className="flex justify-center pt-2 pb-1">
-              <div className={`w-10 h-1 rounded-full transition-colors ${
-                isDragging
-                  ? 'bg-stellar-cyan'
-                  : isDark ? 'bg-stellar-cyan/30' : 'bg-slate-300'
-              }`} />
-            </div>
-          )}
-
-          <div className={`flex items-center justify-between p-4 ${isMobile ? 'pt-2' : ''} border-b ${
-            isDark ? 'border-stellar-cyan/10' : 'border-slate-200'
-          }`}>
-            <h2 className={`text-lg font-semibold flex items-center gap-2 ${
-              isDark ? 'text-white' : 'text-slate-900'
-            }`}>
-              <Download className="w-5 h-5 text-blue-500" />
-              Exportar Dados
-            </h2>
-            <button
-              onClick={onClose}
-              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                isDark ? 'hover:bg-white/5 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
-              }`}
-              aria-label="Fechar"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="p-4 space-y-4">
-            {/* Tab selector: Global vs View-specific */}
-            <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-700 rounded-xl">
-              <button
-                onClick={() => {
-                  setShowGlobal(true);
-                  setSelectedExport('executiveSummary');
-                  setFormat('pdf');
-                }}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${showGlobal ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                Relatórios
-              </button>
-              <button
-                onClick={() => {
-                  setShowGlobal(false);
-                  setSelectedExport(viewExports[0]?.id || null);
-                }}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${!showGlobal ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                Dados da Aba
-              </button>
-            </div>
-
-            {/* Format selector (only for view-specific exports) */}
-            {!showGlobal && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Formato</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setFormat('csv')}
-                    className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${format === 'csv' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'}`}
-                  >
-                    <FileSpreadsheet className={`w-5 h-5 ${format === 'csv' ? 'text-blue-500' : 'text-slate-400'}`} />
-                    <div className="text-left">
-                      <div className={`font-medium ${format === 'csv' ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>CSV</div>
-                      <div className="text-xs text-slate-500">Excel, Sheets</div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setFormat('pdf')}
-                    className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${format === 'pdf' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'}`}
-                  >
-                    <FileText className={`w-5 h-5 ${format === 'pdf' ? 'text-blue-500' : 'text-slate-400'}`} />
-                    <div className="text-left">
-                      <div className={`font-medium ${format === 'pdf' ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>PDF</div>
-                      <div className="text-xs text-slate-500">Com gráficos</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Global Reports */}
-            {showGlobal && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tipo de Relatório</label>
-                <div className="space-y-2">
-                  {GLOBAL_REPORTS.map(option => {
-                    const Icon = option.icon;
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => setSelectedExport(option.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${selectedExport === option.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'}`}
-                      >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedExport === option.id ? 'bg-blue-500' : 'bg-slate-100 dark:bg-slate-700'}`}>
-                          <Icon className={`w-5 h-5 ${selectedExport === option.id ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-                        </div>
-                        <div className="flex-1">
-                          <div className={`font-medium ${selectedExport === option.id ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>{option.label}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">{option.description}</div>
-                        </div>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedExport === option.id ? 'border-blue-500 bg-blue-500' : 'border-slate-300 dark:border-slate-500'}`}>
-                          {selectedExport === option.id && <Check className="w-3 h-3 text-white" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
-                  Relatórios PDF com gráficos e insights automáticos
-                </p>
-              </div>
-            )}
-
-            {/* View-specific exports */}
-            {!showGlobal && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tipo de Relatório</label>
-                <div className="space-y-2">
-                  {viewExports.map(option => (
-                    <button
-                      key={option.id}
-                      onClick={() => setSelectedExport(option.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${selectedExport === option.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'}`}
-                    >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedExport === option.id ? 'border-blue-500 bg-blue-500' : 'border-slate-300 dark:border-slate-500'}`}>
-                        {selectedExport === option.id && <Check className="w-3 h-3 text-white" />}
-                      </div>
-                      <div>
-                        <div className={`font-medium ${selectedExport === option.id ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>{option.label}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{option.description}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {status === 'error' && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm">{errorMessage}</span>
-              </div>
-            )}
-
-            {status === 'success' && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400">
-                <Check className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm">Exportação concluída!</span>
-              </div>
-            )}
-          </div>
-
-          <div className={`flex justify-end gap-2 p-4 pb-safe border-t ${
-            isDark ? 'border-stellar-cyan/10' : 'border-slate-200'
-          }`}>
-            <button
-              onClick={onClose}
-              className={`px-4 py-2 rounded-xl transition-colors ${
-                isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleExport}
-              disabled={status === 'loading' || !selectedExport}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {status === 'loading' ? (
-                <><Loader2 className="w-4 h-4 animate-spin" />Exportando...</>
-              ) : (
-                <><Download className="w-4 h-4" />Exportar</>
-              )}
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+  // Footer with action buttons
+  const footer = (
+    <div className="flex justify-end gap-2">
+      <button
+        onClick={onClose}
+        className={`px-4 py-2 rounded-xl transition-colors ${
+          isDark ? 'text-slate-400 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'
+        }`}
+      >
+        Cancelar
+      </button>
+      <button
+        onClick={handleExport}
+        disabled={status === 'loading' || !selectedExport}
+        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {status === 'loading' ? (
+          <><Loader2 className="w-4 h-4 animate-spin" />Exportando...</>
+        ) : (
+          <><Download className="w-4 h-4" />Exportar</>
+        )}
+      </button>
+    </div>
   );
 
-  // Render via portal for proper z-index stacking
-  return createPortal(modalContent, document.body);
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="medium"
+      maxWidth="md"
+      title="Exportar Dados"
+      icon={Download}
+      iconColor="blue"
+      footer={footer}
+    >
+      <div className="p-4 space-y-4">
+        {/* Tab selector: Global vs View-specific */}
+        <div className={`flex gap-2 p-1 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+          <button
+            onClick={() => {
+              setShowGlobal(true);
+              setSelectedExport('executiveSummary');
+              setFormat('pdf');
+            }}
+            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+              showGlobal
+                ? `${isDark ? 'bg-slate-600 text-white' : 'bg-white text-slate-900'} shadow-sm`
+                : `${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`
+            }`}
+          >
+            Relatórios
+          </button>
+          <button
+            onClick={() => {
+              setShowGlobal(false);
+              setSelectedExport(viewExports[0]?.id || null);
+            }}
+            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+              !showGlobal
+                ? `${isDark ? 'bg-slate-600 text-white' : 'bg-white text-slate-900'} shadow-sm`
+                : `${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`
+            }`}
+          >
+            Dados da Aba
+          </button>
+        </div>
+
+        {/* Format selector (only for view-specific exports) */}
+        {!showGlobal && (
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Formato
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setFormat('csv')}
+                className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                  format === 'csv'
+                    ? `border-blue-500 ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`
+                    : `${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'}`
+                }`}
+              >
+                <FileSpreadsheet className={`w-5 h-5 ${format === 'csv' ? 'text-blue-500' : 'text-slate-400'}`} />
+                <div className="text-left">
+                  <div className={`font-medium ${format === 'csv' ? (isDark ? 'text-blue-300' : 'text-blue-700') : (isDark ? 'text-slate-300' : 'text-slate-700')}`}>
+                    CSV
+                  </div>
+                  <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Excel, Sheets</div>
+                </div>
+              </button>
+              <button
+                onClick={() => setFormat('pdf')}
+                className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                  format === 'pdf'
+                    ? `border-blue-500 ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`
+                    : `${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'}`
+                }`}
+              >
+                <FileText className={`w-5 h-5 ${format === 'pdf' ? 'text-blue-500' : 'text-slate-400'}`} />
+                <div className="text-left">
+                  <div className={`font-medium ${format === 'pdf' ? (isDark ? 'text-blue-300' : 'text-blue-700') : (isDark ? 'text-slate-300' : 'text-slate-700')}`}>
+                    PDF
+                  </div>
+                  <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Com gráficos</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Global Reports */}
+        {showGlobal && (
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Tipo de Relatório
+            </label>
+            <div className="space-y-2">
+              {GLOBAL_REPORTS.map(option => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => setSelectedExport(option.id)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                      selectedExport === option.id
+                        ? `border-blue-500 ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`
+                        : `${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'}`
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      selectedExport === option.id ? 'bg-blue-500' : (isDark ? 'bg-slate-700' : 'bg-slate-100')
+                    }`}>
+                      <Icon className={`w-5 h-5 ${
+                        selectedExport === option.id ? 'text-white' : (isDark ? 'text-slate-400' : 'text-slate-500')
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className={`font-medium ${
+                        selectedExport === option.id
+                          ? (isDark ? 'text-blue-300' : 'text-blue-700')
+                          : (isDark ? 'text-slate-300' : 'text-slate-700')
+                      }`}>
+                        {option.label}
+                      </div>
+                      <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {option.description}
+                      </div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      selectedExport === option.id
+                        ? 'border-blue-500 bg-blue-500'
+                        : (isDark ? 'border-slate-500' : 'border-slate-300')
+                    }`}>
+                      {selectedExport === option.id && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <p className={`mt-2 text-xs text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Relatórios PDF com gráficos e insights automáticos
+            </p>
+          </div>
+        )}
+
+        {/* View-specific exports */}
+        {!showGlobal && (
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              Tipo de Relatório
+            </label>
+            <div className="space-y-2">
+              {viewExports.map(option => (
+                <button
+                  key={option.id}
+                  onClick={() => setSelectedExport(option.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                    selectedExport === option.id
+                      ? `border-blue-500 ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`
+                      : `${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'}`
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    selectedExport === option.id
+                      ? 'border-blue-500 bg-blue-500'
+                      : (isDark ? 'border-slate-500' : 'border-slate-300')
+                  }`}>
+                    {selectedExport === option.id && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div>
+                    <div className={`font-medium ${
+                      selectedExport === option.id
+                        ? (isDark ? 'text-blue-300' : 'text-blue-700')
+                        : (isDark ? 'text-slate-300' : 'text-slate-700')
+                    }`}>
+                      {option.label}
+                    </div>
+                    <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {option.description}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Error message */}
+        {status === 'error' && (
+          <div className={`flex items-center gap-2 p-3 rounded-xl ${
+            isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-600'
+          }`}>
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span className="text-sm">{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Success message */}
+        {status === 'success' && (
+          <div className={`flex items-center gap-2 p-3 rounded-xl ${
+            isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+          }`}>
+            <Check className="w-5 h-5 flex-shrink-0" />
+            <span className="text-sm">Exportação concluída!</span>
+          </div>
+        )}
+      </div>
+    </BaseModal>
+  );
 };
 
 export default ExportModal;

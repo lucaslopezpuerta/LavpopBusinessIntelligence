@@ -1,8 +1,13 @@
-// Skeleton.jsx v3.3 - Skeleton Component Type Audit
+// Skeleton.jsx v3.4 - NEW SKELETON VARIANTS
 // Premium skeleton loading with stellar glow effects
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v3.4 (2026-01-31): New skeleton variants for complex components
+//   - RFMScatterPlotSkeleton: Scatter chart with quadrants, legend, and distributed dots
+//   - VisitHeatmapSkeleton: Calendar heatmap grid (7x15) with variable cell sizes
+//   - PriorityMatrixSkeleton: 4-quadrant business scoring with radial gauge
+//   - All new variants support stagger animation and cosmic shimmer
 // v3.3 (2026-01-28): Skeleton Component Type Audit
 //   - SkeletonHeader: Redesigned to match Cosmic Precision v2.1 glassmorphism header
 //     - Icon container: w-11 h-11 sm:w-12 sm:h-12 (was w-10 h-10 with border-l-4)
@@ -1118,6 +1123,250 @@ const SocialMediaLoadingSkeleton = () => {
   );
 };
 
+// RFMScatterPlotSkeleton - scatter chart with quadrants (v3.4)
+// Matches RFMScatterPlot.jsx v5.8.1 layout
+const RFMScatterPlotSkeleton = () => (
+  <div className={`
+    relative bg-white/80 dark:bg-space-dust/40
+    backdrop-blur-xl rounded-2xl p-4 sm:p-5
+    ring-1 ring-slate-200/80 dark:ring-white/[0.05]
+  `}>
+    {/* Header with icon and at-risk pill */}
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+      <div className="flex items-center gap-2.5">
+        <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={0} />
+        <div className="space-y-1">
+          <SkeletonText width="w-36" height="h-5" stagger staggerIndex={0} />
+          <SkeletonText width="w-52" height="h-3" stagger staggerIndex={1} />
+        </div>
+      </div>
+      {/* At-risk pill placeholder */}
+      <Skeleton className="h-9 w-28 rounded-full" stagger staggerIndex={1} />
+    </div>
+
+    {/* Legend row */}
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
+      {['Saudável', 'Em Risco', 'Crítico'].map((_, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <Skeleton className="w-2.5 h-2.5 rounded-full" stagger staggerIndex={2} />
+          <SkeletonText width="w-14" height="h-3" stagger staggerIndex={2 + i} />
+        </div>
+      ))}
+      <div className="pl-2 border-l border-slate-300 dark:border-slate-600 flex items-center gap-1.5">
+        <Skeleton className="w-3 h-3 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-500" stagger staggerIndex={4} />
+        <SkeletonText width="w-20" height="h-3" stagger staggerIndex={4} />
+      </div>
+    </div>
+
+    {/* Toolbar row */}
+    <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700 mb-4">
+      <Skeleton className="h-8 w-20 rounded-lg" stagger staggerIndex={5} />
+      <div className="flex items-center gap-1">
+        <Skeleton className="h-8 w-8 rounded-lg" stagger staggerIndex={5} />
+        <SkeletonText width="w-8" height="h-4" stagger staggerIndex={5} />
+        <Skeleton className="h-8 w-8 rounded-lg" stagger staggerIndex={5} />
+      </div>
+    </div>
+
+    {/* Chart area with scatter dots */}
+    <div className="h-[280px] sm:h-[350px] lg:h-[420px] relative bg-slate-50 dark:bg-space-dust/30 rounded-xl overflow-hidden">
+      {/* Grid lines */}
+      <div className="absolute inset-4 border-l border-b border-slate-200 dark:border-slate-700" />
+
+      {/* Danger zone shaded area */}
+      <div className="absolute right-0 top-0 bottom-0 w-1/4 bg-red-50/50 dark:bg-red-900/10" />
+
+      {/* Reference line */}
+      <div className="absolute right-1/4 top-0 bottom-0 w-0.5 border-l-2 border-dashed border-red-300 dark:border-red-700" />
+
+      {/* Scatter dots - distributed across the chart */}
+      {[...Array(25)].map((_, i) => {
+        const sizes = ['w-3 h-3', 'w-4 h-4', 'w-5 h-5'];
+        return (
+          <SkeletonCircle
+            key={i}
+            size={sizes[i % 3]}
+            className="absolute"
+            stagger
+            staggerIndex={Math.min(5 + Math.floor(i / 5), 7)}
+            style={{
+              left: `${8 + (i * 3.5) % 85}%`,
+              top: `${10 + (i * 7) % 75}%`,
+            }}
+          />
+        );
+      })}
+    </div>
+  </div>
+);
+
+// VisitHeatmapSkeleton - calendar heatmap grid (v3.4)
+// Matches VisitHeatmap.jsx v3.4.0 layout
+const VisitHeatmapSkeleton = () => (
+  <div className={`
+    bg-white/80 dark:bg-space-dust/40
+    backdrop-blur-xl rounded-2xl
+    ring-1 ring-slate-200/80 dark:ring-white/[0.05]
+    px-3 py-3 sm:px-4 sm:py-4
+  `}>
+    {/* Header with segment toggle */}
+    <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+      <div className="flex items-center gap-2.5">
+        <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={0} />
+        <div className="space-y-1">
+          <SkeletonText width="w-28" height="h-5" stagger staggerIndex={0} />
+          {/* Inline legend */}
+          <div className="hidden sm:flex items-center gap-1">
+            <SkeletonText width="w-6" height="h-2.5" stagger staggerIndex={1} />
+            <div className="flex items-center gap-0.5">
+              {[6, 8, 10, 12].map((s, i) => (
+                <Skeleton key={i} className="rounded-sm" style={{ width: s, height: s }} />
+              ))}
+            </div>
+            <SkeletonText width="w-6" height="h-2.5" stagger staggerIndex={1} />
+          </div>
+        </div>
+      </div>
+      {/* Segment toggle */}
+      <Skeleton className="h-8 w-36 rounded-lg" stagger staggerIndex={1} />
+    </div>
+
+    {/* Peak indicator */}
+    <SkeletonText width="w-44" height="h-3" className="mb-2" stagger staggerIndex={1} />
+
+    {/* Heatmap grid - 7 days x 15 hours */}
+    <div className="space-y-0.5">
+      {/* Hour headers row */}
+      <div className="grid gap-0.5" style={{ gridTemplateColumns: '32px repeat(15, 1fr)' }}>
+        <div /> {/* Empty corner */}
+        {[...Array(15)].map((_, i) => (
+          <Skeleton key={i} className="h-3 rounded" stagger staggerIndex={Math.min(2 + Math.floor(i / 4), 7)} />
+        ))}
+      </div>
+
+      {/* 7 day rows with cells */}
+      {[...Array(7)].map((_, row) => (
+        <div key={row} className="grid gap-0.5" style={{ gridTemplateColumns: '32px repeat(15, 1fr)' }}>
+          {/* Day label */}
+          <Skeleton className="h-6 sm:h-8 w-8 rounded" stagger staggerIndex={Math.min(2 + row, 7)} />
+          {/* Hour cells with variable sizes */}
+          {[...Array(15)].map((_, col) => {
+            const sizeVariant = (row + col) % 4;
+            const sizes = [6, 10, 14, 18];
+            return (
+              <div key={col} className="h-6 sm:h-8 flex items-center justify-center">
+                <Skeleton
+                  className="rounded-lg"
+                  style={{
+                    width: sizes[sizeVariant],
+                    height: sizes[sizeVariant]
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+
+    {/* Mobile legend */}
+    <div className="sm:hidden mt-1.5 flex items-center justify-center gap-1">
+      <SkeletonText width="w-6" height="h-3" />
+      <div className="flex items-center gap-0.5">
+        {[6, 8, 10, 12].map((s, i) => (
+          <Skeleton key={i} className="rounded-sm" style={{ width: s, height: s }} />
+        ))}
+      </div>
+      <SkeletonText width="w-6" height="h-3" />
+    </div>
+
+    {/* Footer date range */}
+    <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700/50 text-center">
+      <SkeletonText width="w-32" height="h-2.5" className="mx-auto" stagger staggerIndex={7} />
+    </div>
+  </div>
+);
+
+// PriorityMatrixSkeleton - 4-quadrant business scoring (v3.4)
+// Matches PriorityMatrix.jsx v3.5.0 layout
+const PriorityMatrixSkeleton = () => (
+  <div className={`
+    bg-white/80 dark:bg-space-dust/40
+    backdrop-blur-xl rounded-2xl p-5
+    ring-1 ring-slate-200/80 dark:ring-white/[0.05]
+  `}>
+    {/* Header */}
+    <div className="flex items-start gap-3 mb-5">
+      <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={0} />
+      <div className="space-y-1">
+        <SkeletonText width="w-40" height="h-5" stagger staggerIndex={0} />
+        <SkeletonText width="w-28" height="h-3" stagger staggerIndex={1} />
+      </div>
+    </div>
+
+    {/* Hero Section - Overall Score with Radial Gauge */}
+    <div className="flex flex-col items-center mb-5 p-6 lg:p-8 bg-slate-50 dark:bg-space-dust/60 rounded-2xl">
+      <SkeletonText width="w-24" height="h-4" className="mb-4" stagger staggerIndex={1} />
+
+      {/* Radial gauge placeholder */}
+      <div className="relative w-[160px] h-[160px] lg:w-[200px] lg:h-[200px]">
+        {/* Outer ring */}
+        <Skeleton className="w-full h-full rounded-full" stagger staggerIndex={2} />
+        {/* Inner content */}
+        <div className="absolute inset-4 flex flex-col items-center justify-center bg-white dark:bg-space-dust rounded-full">
+          <SkeletonText width="w-14" height="h-10" stagger staggerIndex={3} />
+          <SkeletonText width="w-8" height="h-3" className="mt-1" stagger staggerIndex={3} />
+        </div>
+      </div>
+
+      {/* Status indicator */}
+      <div className="flex items-center gap-1.5 mt-4">
+        <SkeletonCircle size="w-4 h-4" stagger staggerIndex={4} />
+        <SkeletonText width="w-16" height="h-4" stagger staggerIndex={4} />
+      </div>
+    </div>
+
+    {/* Dimension Grid - 4 cards with mini arcs */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-5">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="rounded-xl p-3 bg-slate-50 dark:bg-space-dust/60 flex flex-col items-center text-center">
+          {/* Mini arc gauge */}
+          <Skeleton className="w-[60px] lg:w-[70px] h-[35px] rounded mt-1" stagger staggerIndex={Math.min(4 + i, 7)} />
+
+          {/* Score */}
+          <div className="flex items-baseline gap-0.5 mt-1">
+            <SkeletonText width="w-8" height="h-6" stagger staggerIndex={Math.min(5 + i, 7)} />
+            <SkeletonText width="w-4" height="h-3" stagger staggerIndex={Math.min(5 + i, 7)} />
+          </div>
+
+          {/* Label */}
+          <SkeletonText width="w-20" height="h-3" className="mt-1" stagger staggerIndex={Math.min(5 + i, 7)} />
+
+          {/* Status with icon */}
+          <div className="flex items-center gap-1 mt-1">
+            <SkeletonCircle size="w-3 h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
+            <SkeletonText width="w-12" height="h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Priority Focus Alert */}
+    <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 ring-1 ring-red-200 dark:ring-red-500/30 relative overflow-hidden">
+      {/* Animated stripe */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-red-500 via-rose-500 to-red-500" />
+
+      <div className="flex items-center gap-4 ml-2">
+        <div className="flex-1 min-w-0">
+          <SkeletonText width="w-48" height="h-5" stagger staggerIndex={7} />
+          <SkeletonText width="w-40" height="h-3" className="mt-1" stagger staggerIndex={7} />
+        </div>
+        <Skeleton className="w-16 h-10 rounded-lg shrink-0" stagger staggerIndex={7} />
+      </div>
+    </div>
+  </div>
+);
+
 export {
   Skeleton,
   SkeletonText,
@@ -1138,6 +1387,10 @@ export {
   SocialMediaLoadingSkeleton,
   WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
+  // Component-specific skeletons (v3.4)
+  RFMScatterPlotSkeleton,
+  VisitHeatmapSkeleton,
+  PriorityMatrixSkeleton,
 };
 
 export default Skeleton;

@@ -709,6 +709,63 @@ body {
   animation: skeleton-fade-out 0.2s ease-out forwards;
 }
 
+/* ============================================
+   BACKGROUND REFRESH ANIMATIONS (v6.6)
+   Subtle visual feedback during data refresh
+   ============================================ */
+
+/* Background refresh pulse - compositor-only animation */
+@keyframes refresh-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.refresh-pulse {
+  animation: refresh-pulse 1.5s ease-in-out infinite;
+}
+
+/* Refresh overlay shimmer - for card/chart overlays */
+@keyframes refresh-overlay-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.refresh-overlay {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 174, 239, 0.05) 20%,
+    rgba(0, 174, 239, 0.08) 50%,
+    rgba(0, 174, 239, 0.05) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: refresh-overlay-shimmer 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Dark mode refresh overlay - stronger cyan glow */
+.dark .refresh-overlay {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 174, 239, 0.08) 20%,
+    rgba(0, 174, 239, 0.12) 50%,
+    rgba(0, 174, 239, 0.08) 80%,
+    transparent 100%
+  );
+}
+
 /* Reduced motion: simplify animations */
 @media (prefers-reduced-motion: reduce) {
   .skeleton-cosmic,
@@ -732,6 +789,16 @@ body {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  /* Refresh animations - static for reduced motion */
+  .refresh-pulse {
+    animation: none;
+    opacity: 0.8;
+  }
+
+  .refresh-overlay {
+    animation: none;
   }
 }
 

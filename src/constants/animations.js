@@ -1,8 +1,25 @@
-// animations.js v4.0 - CHART ANIMATION ENHANCEMENTS
+// animations.js v4.3 - DRAG HANDLE ANIMATIONS
 // Centralized animation configurations for consistent motion design
 // Design System v5.1 compliant
 //
 // CHANGELOG:
+// v4.3 (2026-01-31): Drag handle animations
+//   - Added DRAG_HANDLE constants for modal swipe-to-close visual feedback
+//   - Width animation: 48px → 56px (dragging) → 64px (threshold)
+//   - Subtle Y translation follows drag (max 4px)
+//   - Glow effect configuration for threshold state
+// v4.2 (2026-01-31): Enhanced modal transitions
+//   - Platform-aware animations: slide-up on mobile, scale+lift on desktop
+//   - MODAL.CONTENT now has subtle Y offset (20px) for "emerging" effect
+//   - Added MODAL.CONTENT_MOBILE for bottom sheet slide-up animation
+//   - Added MODAL.STAGGER_CONTAINER and STAGGER_ITEM for content sequencing
+//   - Improved spring physics: stiffer (380), less mass for snappier feel
+//   - Faster exit animations for decisive dismissal
+// v4.1 (2026-01-31): Skeleton reveal animations
+//   - Added SKELETON_REVEAL for progressive skeleton entrance
+//   - Container orchestrates staggered children (60ms stagger)
+//   - Item uses spring physics with subtle y+scale entrance
+//   - Includes reduced motion variants
 // v4.0 (2026-01-30): Chart animation enhancements
 //   - Added BAR_STAGGER for left-to-right bar entrance animations
 //   - Added SCATTER for bubble pop-in animations
@@ -245,6 +262,50 @@ export const CHART_ANIMATION = {
   }
 };
 
+// Progressive skeleton reveal configurations (v4.1)
+// Orchestrates cascading entrance of skeleton elements
+export const SKELETON_REVEAL = {
+  // Container orchestration - coordinates children with stagger
+  container: {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.15,
+        ease: 'easeOut',
+        when: 'beforeChildren',
+        staggerChildren: 0.06,
+        delayChildren: 0.05
+      }
+    }
+  },
+
+  // Individual skeleton item - subtle upward motion with scale
+  item: {
+    hidden: { opacity: 0, y: 8, scale: 0.97 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 400,
+        damping: 28
+      }
+    }
+  },
+
+  // Reduced motion variants - instant transitions
+  containerReduced: {
+    hidden: { opacity: 1 },
+    visible: { opacity: 1 }
+  },
+  itemReduced: {
+    hidden: {},
+    visible: {}
+  }
+};
+
 // Entrance animation variants
 export const ENTRANCE = {
   // Fade in with upward motion
@@ -408,21 +469,76 @@ export const MOBILE_SHEET = {
 };
 
 // Modal animations - extracted for performance (avoids inline object creation)
+// v4.1: Enhanced transitions with platform-aware animations and content stagger
 export const MODAL = {
-  // Backdrop overlay
+  // Backdrop overlay - smooth fade with slight delay for depth
   BACKDROP: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
-    transition: TWEEN.FADE
+    transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
   },
 
-  // Content panel with scale
+  // Desktop content panel - scale + subtle Y movement for "lift" effect
   CONTENT: {
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.95 },
-    transition: SPRING.GENTLE
+    initial: { opacity: 0, scale: 0.92, y: 20 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.95, y: 10 },
+    transition: {
+      type: 'spring',
+      stiffness: 380,
+      damping: 28,
+      mass: 0.9
+    }
+  },
+
+  // Mobile content - slide up from bottom (bottom sheet style)
+  CONTENT_MOBILE: {
+    initial: { opacity: 0, y: '100%' },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        stiffness: 400,
+        damping: 32,
+        mass: 0.8
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: '100%',
+      transition: {
+        type: 'tween',
+        duration: 0.2,
+        ease: [0.4, 0, 1, 1] // ease-in for quick exit
+      }
+    }
+  },
+
+  // Staggered content entrance - for header/body/footer sequencing
+  STAGGER_CONTAINER: {
+    initial: { opacity: 1 },
+    animate: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.06,
+        delayChildren: 0.1
+      }
+    }
+  },
+
+  STAGGER_ITEM: {
+    initial: { opacity: 0, y: 12 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        stiffness: 400,
+        damping: 28
+      }
+    }
   },
 
   // Reduced motion variants (instant transitions)
@@ -434,9 +550,16 @@ export const MODAL = {
   },
 
   CONTENT_REDUCED: {
-    initial: { opacity: 1, scale: 1 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 1, scale: 1 },
+    initial: { opacity: 1, scale: 1, y: 0 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 1, scale: 1, y: 0 },
+    transition: { duration: 0 }
+  },
+
+  CONTENT_MOBILE_REDUCED: {
+    initial: { opacity: 1, y: 0 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 1, y: 0 },
     transition: { duration: 0 }
   }
 };
@@ -576,7 +699,7 @@ export const PAGE_TRANSITION_STELLAR_REDUCED = {
   }
 };
 
-// Toast notification animations
+// Toast notification animations (v1.1 - Progress bar + Swipe dismiss)
 export const TOAST = {
   // Entry from top
   ENTER: {
@@ -591,6 +714,19 @@ export const TOAST = {
     scale: 0.95,
     transition: { type: 'tween', duration: 0.15, ease: 'easeIn' }
   },
+  // Swipe dismiss exit (horizontal)
+  SWIPE_EXIT: {
+    opacity: 0,
+    x: 100,
+    transition: { type: 'tween', duration: 0.2, ease: 'easeIn' }
+  },
+  // Progress bar countdown
+  PROGRESS: {
+    initial: { scaleX: 1 },
+    animate: { scaleX: 0 },
+    // Duration set dynamically based on toast duration
+    transition: { ease: 'linear' }
+  },
   // Reduced motion variants
   ENTER_REDUCED: {
     initial: { opacity: 0 },
@@ -600,7 +736,11 @@ export const TOAST = {
   EXIT_REDUCED: {
     opacity: 0,
     transition: { duration: 0.1 }
-  }
+  },
+  // Swipe threshold for dismiss (px)
+  SWIPE_THRESHOLD: 80,
+  // Velocity threshold for fast swipe dismiss (px/ms)
+  VELOCITY_THRESHOLD: 0.4
 };
 
 // Success animation (SVG checkmark)
@@ -875,6 +1015,43 @@ export const MODAL_SWIPE = {
   VELOCITY_THRESHOLD: 0.5,    // px/ms for fast flick detection
 };
 
+// Drag handle animations (v4.3)
+// Visual feedback for modal swipe-to-close gesture
+export const DRAG_HANDLE = {
+  // Width states (px)
+  WIDTH_DEFAULT: 48,          // Default/idle width
+  WIDTH_DRAGGING: 56,         // Width when actively dragging
+  WIDTH_THRESHOLD: 64,        // Width when threshold reached
+
+  // Size (px)
+  HEIGHT: 6,                  // Handle height
+
+  // Y translation (px)
+  TRANSLATE_MAX: 4,           // Max Y translation following drag
+
+  // Spring physics for smooth transitions
+  SPRING: {
+    type: 'spring',
+    stiffness: 500,
+    damping: 30
+  },
+
+  // Glow effect for threshold state
+  GLOW: {
+    boxShadow: '0 0 8px rgba(0, 174, 239, 0.5)'
+  },
+
+  // Color values for different states
+  COLORS: {
+    DEFAULT_DARK: 'bg-stellar-cyan/20',
+    DEFAULT_LIGHT: 'bg-slate-300',
+    DRAGGING_DARK: 'bg-stellar-cyan/50',
+    DRAGGING_LIGHT: 'bg-slate-400',
+    THRESHOLD_DARK: 'bg-stellar-cyan',
+    THRESHOLD_LIGHT: 'bg-slate-500'
+  }
+};
+
 // Pull-to-refresh animations (v2.1)
 // Refined timing for smooth, responsive feel
 export const PULL_REFRESH = {
@@ -929,12 +1106,14 @@ export default {
   MOBILE_SHEET,
   MODAL,
   MODAL_SWIPE,
+  DRAG_HANDLE,
   BUBBLE_ACTIVE,
   PAGE_TRANSITION,
   PAGE_TRANSITION_REDUCED,
   PAGE_TRANSITION_STELLAR,
   PAGE_TRANSITION_STELLAR_REDUCED,
   CHART_ANIMATION,
+  SKELETON_REVEAL,
   TOAST,
   SUCCESS_ANIMATION,
   ERROR_ANIMATION,

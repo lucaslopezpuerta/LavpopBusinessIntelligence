@@ -182,6 +182,7 @@ import IconSidebar from './components/IconSidebar';
 import MinimalTopBar from './components/MinimalTopBar';
 import BottomNavBar from './components/navigation/BottomNavBar';
 import OfflineIndicator from './components/OfflineIndicator';
+import BackgroundRefreshIndicator from './components/ui/BackgroundRefreshIndicator';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppSettingsModal from './components/AppSettingsModal';
 // ExportModal lazy-loaded to save ~170KB (jsPDF, papaparse, jspdf-autotable)
@@ -603,6 +604,12 @@ function AppContent() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             onOpenExport={() => setShowExport(true)}
+          />
+
+          {/* Background Refresh Indicator - floating badge during data refresh */}
+          <BackgroundRefreshIndicator
+            isRefreshing={refreshing}
+            variant="floating"
           />
 
           {/* Main Content - Full width with edge-to-edge support */}

@@ -1,7 +1,12 @@
-// ToastContext.jsx v1.1 - Global toast notification state management
+// ToastContext.jsx v1.2 - PAUSE/RESUME + PROGRESS TRACKING
 // Provides toast API for showing success, error, warning, and info notifications
 //
 // CHANGELOG:
+// v1.2 (2026-01-31): Pause/resume + progress tracking
+//   - Added pauseToast/resumeToast for hover-to-pause behavior
+//   - Added remainingTime tracking for progress bar animation
+//   - Toast now stores duration and pausedAt for time calculations
+//   - Exposed getRemainingTime helper for progress bar
 // v1.1 (2026-01-28): Haptic feedback integration
 //   - Added haptic feedback when toast appears
 //   - Different haptic patterns for each toast type:
@@ -36,6 +41,8 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const idCounterRef = useRef(0);
   const timersRef = useRef(new Map());
+  // Track remaining time when paused
+  const pausedStateRef = useRef(new Map()); // { id: { remainingTime, pausedAt } }
 
   // Clear timer for a toast
   const clearTimer = useCallback((id) => {
@@ -44,6 +51,7 @@ export function ToastProvider({ children }) {
       clearTimeout(timer);
       timersRef.current.delete(id);
     }
+    pausedStateRef.current.delete(id);
   }, []);
 
   // Dismiss a single toast
@@ -87,13 +95,16 @@ export function ToastProvider({ children }) {
     action = null // { label: string, onClick: () => void }
   }) => {
     const id = ++idCounterRef.current;
+    const createdAt = Date.now();
 
     const newToast = {
       id,
       type,
       message,
       action,
-      createdAt: Date.now()
+      duration,    // Store duration for progress bar
+      createdAt,
+      isPaused: false
     };
 
     // Trigger haptic feedback based on toast type
@@ -121,6 +132,63 @@ export function ToastProvider({ children }) {
     return id;
   }, [dismissToast, clearTimer, triggerHaptic]);
 
+  // Pause toast auto-dismiss (for hover behavior)
+  const pauseToast = useCallback((id) => {
+    const toast = toasts.find(t => t.id === id);
+    if (!toast || toast.duration <= 0) return;
+
+    // Clear existing timer
+    const timer = timersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timersRef.current.delete(id);
+    }
+
+    // Calculate remaining time
+    const elapsed = Date.now() - toast.createdAt;
+    const previousPaused = pausedStateRef.current.get(id);
+    const remainingTime = previousPaused
+      ? previousPaused.remainingTime
+      : Math.max(0, toast.duration - elapsed);
+
+    // Store paused state
+    pausedStateRef.current.set(id, {
+      remainingTime,
+      pausedAt: Date.now()
+    });
+
+    // Update toast isPaused state
+    setToasts(prev => prev.map(t =>
+      t.id === id ? { ...t, isPaused: true } : t
+    ));
+  }, [toasts]);
+
+  // Resume toast auto-dismiss
+  const resumeToast = useCallback((id) => {
+    const pausedState = pausedStateRef.current.get(id);
+    if (!pausedState) return;
+
+    const { remainingTime } = pausedState;
+    pausedStateRef.current.delete(id);
+
+    // Update toast isPaused state and createdAt to reflect new timeline
+    setToasts(prev => prev.map(t =>
+      t.id === id ? {
+        ...t,
+        isPaused: false,
+        createdAt: Date.now() - (t.duration - remainingTime) // Adjust createdAt for progress bar
+      } : t
+    ));
+
+    // Set new timer with remaining time
+    if (remainingTime > 0) {
+      const timer = setTimeout(() => {
+        dismissToast(id);
+      }, remainingTime);
+      timersRef.current.set(id, timer);
+    }
+  }, [dismissToast]);
+
   // Convenience methods
   const success = useCallback((message, options = {}) => {
     return showToast({ type: TOAST_TYPES.SUCCESS, message, ...options });
@@ -143,6 +211,9 @@ export function ToastProvider({ children }) {
     showToast,
     dismissToast,
     dismissAll,
+    // Pause/resume for hover behavior
+    pauseToast,
+    resumeToast,
     // Convenience methods
     success,
     error,
