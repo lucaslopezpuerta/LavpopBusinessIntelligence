@@ -248,7 +248,7 @@ const BaseModal = ({
     green: { bg: 'bg-emerald-600 dark:bg-emerald-500', text: 'text-white' },
     purple: { bg: 'bg-purple-600 dark:bg-purple-500', text: 'text-white' },
     cyan: { bg: 'bg-cyan-600 dark:bg-cyan-500', text: 'text-white' },
-    orange: { bg: 'bg-amber-600 dark:bg-amber-500', text: 'text-white' },
+    orange: { bg: 'bg-orange-600 dark:bg-orange-500', text: 'text-white' },
     red: { bg: 'bg-red-600 dark:bg-red-500', text: 'text-white' },
     slate: { bg: 'bg-slate-600 dark:bg-slate-500', text: 'text-white' },
     emerald: { bg: 'bg-emerald-600 dark:bg-emerald-500', text: 'text-white' },

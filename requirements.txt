@@ -7,5 +7,8 @@ google-api-python-client==2.110.0
 
 
 # HTTP requests for CapSolver API
-requests>=2.31.0
+requests==2.32.3
+
+# Supabase Python client (used by supabase_uploader.py)
+supabase>=2.4.0
 

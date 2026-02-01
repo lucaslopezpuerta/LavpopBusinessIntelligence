@@ -380,7 +380,7 @@ const AudienceSelector = ({ audienceSegments, selectedAudience, onSelectAudience
         {/* Category Filter */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 mr-2">
-            <Filter className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+            <Filter className="w-4 h-4 text-slate-400 dark:text-slate-400" />
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               Filtrar:
             </span>

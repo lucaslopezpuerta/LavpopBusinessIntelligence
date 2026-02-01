@@ -1,13 +1,21 @@
 /**
- * HeroKPICard.jsx v4.0 - COSMIC PRECISION REDESIGN
+ * HeroKPICard.jsx v4.2 - UNIFIED TYPOGRAPHY
  * Primary KPI card for hero metrics (Revenue, Cycles, etc.)
- * Design System v5.1 compliant - Glassmorphic Hero variant
+ * Design System v6.0 compliant - Aligned with KPICard v1.21 styling
  *
  * CHANGELOG:
+ * v4.2 (2026-01-31): Unified typography with KPICard/SecondaryKPICard
+ *   - Font: Changed from Orbitron to Inter (default) for consistency
+ *   - All KPI cards now use the same font family
+ * v4.1 (2026-01-31): Premium visual alignment with KPICard v1.19
+ *   - Background: Gradient depth (from-space-dust via-space-dust to-space-nebula/30)
+ *   - Shadow: Inner highlight for premium feel
+ *   - Hover: Deeper lift (y:-4, scale:1.01) with cyan glow
+ *   - Typography: font-extrabold + tabular-nums for values
  * v4.0 (2026-01-22): Complete UI redesign - "Cosmic Precision" theme
  *   - NEW: Glassmorphism background with backdrop-blur
  *   - NEW: Accent-tinted radial gradient overlays
- *   - NEW: Orbitron font for value display
+ *   - REMOVED: Orbitron font (unified to Inter in v4.2)
  *   - NEW: Constellation-style sparkline with star points
  *   - NEW: Space-themed icon container
  *   - NEW: Theme-aware colors (dark/light mode)
@@ -129,51 +137,43 @@ const HeroKPICard = ({
   const colorMap = {
     blue: {
       glow: 'rgba(45, 56, 138, 0.25)',
-      border: 'border-l-blue-500 dark:border-l-blue-400',
-      iconBg: isDark ? 'bg-blue-500/20' : 'bg-blue-50',
       iconColor: isDark ? 'text-blue-400' : 'text-blue-600',
+      iconGradient: 'from-blue-500 to-blue-600',
       sparkline: { dark: '#60a5fa', light: '#2563eb' }, // blue-400 / blue-600
     },
     green: {
       glow: 'rgba(16, 185, 129, 0.25)',
-      border: 'border-l-emerald-500 dark:border-l-emerald-400',
-      iconBg: isDark ? 'bg-emerald-500/20' : 'bg-emerald-50',
       iconColor: isDark ? 'text-emerald-400' : 'text-emerald-600',
+      iconGradient: 'from-emerald-500 to-emerald-600',
       sparkline: { dark: '#34d399', light: '#059669' }, // emerald-400 / emerald-600
     },
     purple: {
       glow: 'rgba(168, 85, 247, 0.25)',
-      border: 'border-l-purple-500 dark:border-l-purple-400',
-      iconBg: isDark ? 'bg-purple-500/20' : 'bg-purple-50',
       iconColor: isDark ? 'text-purple-400' : 'text-purple-600',
+      iconGradient: 'from-purple-500 to-purple-600',
       sparkline: { dark: '#c084fc', light: '#9333ea' }, // purple-400 / purple-600
     },
     amber: {
       glow: 'rgba(245, 158, 11, 0.25)',
-      border: 'border-l-amber-500 dark:border-l-amber-400',
-      iconBg: isDark ? 'bg-amber-500/20' : 'bg-amber-50',
       iconColor: isDark ? 'text-amber-400' : 'text-amber-600',
+      iconGradient: 'from-amber-500 to-amber-600',
       sparkline: { dark: '#fbbf24', light: '#d97706' }, // amber-400 / amber-600
     },
     red: {
       glow: 'rgba(239, 68, 68, 0.25)',
-      border: 'border-l-rose-500 dark:border-l-rose-400',
-      iconBg: isDark ? 'bg-rose-500/20' : 'bg-rose-50',
       iconColor: isDark ? 'text-rose-400' : 'text-rose-600',
+      iconGradient: 'from-rose-500 to-rose-600',
       sparkline: { dark: '#fb7185', light: '#e11d48' }, // rose-400 / rose-600
     },
     slate: {
       glow: 'rgba(100, 116, 139, 0.15)',
-      border: 'border-l-slate-500 dark:border-l-slate-400',
-      iconBg: isDark ? 'bg-slate-500/20' : 'bg-slate-50',
       iconColor: isDark ? 'text-slate-400' : 'text-slate-600',
+      iconGradient: 'from-slate-500 to-slate-600',
       sparkline: { dark: '#94a3b8', light: '#475569' }, // slate-400 / slate-600
     },
   };
 
   const colors = colorMap[color] || colorMap.blue;
-  // Always use the card's own color for border accent
-  const borderClass = colors.border;
   const isClickable = !!onClick;
 
   // Handle click with haptic feedback
@@ -192,19 +192,21 @@ const HeroKPICard = ({
     }
   }, [isClickable, onClick]);
 
-  // Memoized animation states - prevents object recreation on re-render
+  // Memoized animation states - aligned with KPICard v1.19
   const restState = useMemo(() => ({
     y: 0,
+    scale: 1,
     boxShadow: isDark
-      ? '0 1px 3px rgba(0, 0, 0, 0.2)'
-      : '0 1px 3px rgba(0, 0, 0, 0.1)',
+      ? '0 2px 8px rgba(0, 0, 0, 0.3)'
+      : '0 1px 3px rgba(0, 0, 0, 0.08)',
   }), [isDark]);
 
   const hoverState = useMemo(() => ({
     y: -4,
+    scale: 1.01,
     boxShadow: isDark
-      ? '0 16px 48px rgba(0, 0, 0, 0.4)'
-      : '0 16px 48px rgba(0, 0, 0, 0.12)',
+      ? '0 16px 48px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 174, 239, 0.15)'
+      : '0 16px 48px rgba(0, 0, 0, 0.12), 0 0 20px rgba(0, 174, 239, 0.08)',
   }), [isDark]);
 
   return (
@@ -222,10 +224,9 @@ const HeroKPICard = ({
         relative overflow-hidden
         ${compact ? 'px-4 pt-3 pb-4' : 'p-4 sm:p-5'}
         rounded-2xl
-        border-l-4 ${borderClass}
         ${isDark
-          ? 'bg-space-dust/70 border border-stellar-cyan/15'
-          : 'bg-white border border-slate-200 shadow-md'
+          ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 border border-stellar-cyan/10 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+          : 'bg-gradient-to-br from-white via-white to-slate-50/50 border border-slate-200/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
         }
         ${isSelected
           ? 'ring-2 ring-stellar-cyan ring-offset-2 ring-offset-space-dust'
@@ -265,16 +266,26 @@ const HeroKPICard = ({
         {Icon && (
           <div
             className={`
-              ${compact ? 'p-2' : 'p-2.5 sm:p-2'}
-              rounded-xl flex-shrink-0
-              ${colors.iconBg}
-              ${isDark ? 'border border-white/10' : 'border border-slate-200/50'}
+              relative ${compact ? 'p-2' : 'p-2.5 sm:p-2'} rounded-xl flex-shrink-0 overflow-hidden
+              ${isDark
+                ? 'bg-gradient-to-br from-white/5 to-white/10 border border-white/10 backdrop-blur-sm'
+                : `bg-gradient-to-br ${colors.iconGradient}`
+              }
             `}
           >
+            {/* Subtle accent color reflection in dark mode */}
+            {isDark && (
+              <div
+                className="absolute inset-0 opacity-20 pointer-events-none"
+                style={{
+                  background: `radial-gradient(circle at center, ${colors.sparkline.dark}, transparent 70%)`
+                }}
+              />
+            )}
             <Icon
               className={`
-                ${compact ? 'w-6 h-6' : 'w-5 h-5 sm:w-6 sm:h-6'}
-                ${colors.iconColor}
+                relative z-10 ${compact ? 'w-6 h-6' : 'w-5 h-5 sm:w-6 sm:h-6'}
+                ${isDark ? colors.iconColor : 'text-white'}
               `}
             />
           </div>
@@ -310,16 +321,15 @@ const HeroKPICard = ({
         )}
       </div>
 
-      {/* Value - Orbitron font */}
+      {/* Value - Inter font (unified with KPICard/SecondaryKPICard) */}
       <div
         className={`
           ${compact ? 'text-2xl' : 'text-2xl sm:text-3xl'}
-          font-bold tracking-tight
+          font-extrabold tracking-tight tabular-nums
           ${compact ? 'mb-1' : 'mb-1.5 sm:mb-2'}
           relative z-10
           ${isDark ? 'text-white' : 'text-slate-900'}
         `}
-        style={{ fontFamily: "'Orbitron', sans-serif" }}
       >
         {displayValue}
       </div>

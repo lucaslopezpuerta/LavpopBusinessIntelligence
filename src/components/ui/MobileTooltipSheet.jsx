@@ -397,7 +397,7 @@ const MobileTooltipSheet = ({
                     className="w-10 h-10 flex items-center justify-center flex-shrink-0
                              rounded-full -mr-2
                              text-slate-400 hover:text-slate-600
-                             dark:text-slate-500 dark:hover:text-slate-300
+                             dark:text-slate-400 dark:hover:text-slate-300
                              hover:bg-slate-100 dark:hover:bg-slate-700
                              transition-colors duration-150
                              focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2

@@ -108,7 +108,7 @@ const EmptyState = ({
         className={`${sizeConfig.iconWrapper} rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center`}
       >
         <Icon
-          className={`${sizeConfig.icon} text-slate-400 dark:text-slate-500`}
+          className={`${sizeConfig.icon} text-slate-400 dark:text-slate-400`}
           aria-hidden="true"
         />
       </motion.div>

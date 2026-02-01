@@ -1,7 +1,12 @@
-// ExportModal.jsx v2.0 - BASEMODAL MIGRATION
-// Modal for exporting data to CSV or PDF with charts
+// ExportModal.jsx v2.1 - NARRATIVE-DRIVEN EXPORTS
+// Modal for exporting data to CSV or PDF with charts and narratives
 //
 // CHANGELOG:
+// v2.1 (2026-01-31): Narrative-driven export refactor
+//   - Added Customer Health Report option
+//   - Updated descriptions for narrative-driven reports
+//   - Async export handlers for new report functions
+//   - Design System v6.3 compliant exports
 // v2.0 (2026-01-31): BaseModal migration
 //   - Migrated to BaseModal component for consistent UX
 //   - Removed duplicate boilerplate (portal, animations, swipe, scroll lock)
@@ -18,8 +23,8 @@
 // v1.0 (2025-12-17): Initial implementation
 
 import React, { useState, useEffect } from 'react';
-import { FileSpreadsheet, FileText, Download, Loader2, Check, AlertCircle, BookOpen, BarChart3 } from 'lucide-react';
-import { exportToCSV, exportToPDF, exportCompleteReport, exportExecutiveSummary } from '../utils/exportUtils';
+import { FileSpreadsheet, FileText, Download, Loader2, Check, AlertCircle, BookOpen, BarChart3, Users } from 'lucide-react';
+import { exportToCSV, exportToPDF, exportCompleteReport, exportExecutiveSummary, exportCustomerHealthReport } from '../utils/exportUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import BaseModal from './ui/BaseModal';
 
@@ -161,17 +166,24 @@ const VIEW_EXPORTS = {
 // Global comprehensive reports (available from any view)
 const GLOBAL_REPORTS = [
   {
+    id: 'executiveSummary',
+    label: 'Resumo Executivo',
+    description: '1 página • KPIs, narrativas e ações prioritárias',
+    icon: BarChart3,
+    pdfOnly: true
+  },
+  {
     id: 'completeReport',
     label: 'Relatório Completo',
-    description: 'Multi-página com todos os dados e gráficos',
+    description: '5 páginas • Análise profunda com gráficos e recomendações',
     icon: BookOpen,
     pdfOnly: true
   },
   {
-    id: 'executiveSummary',
-    label: 'Resumo Executivo',
-    description: 'Uma página com KPIs e insights',
-    icon: BarChart3,
+    id: 'customerHealth',
+    label: 'Saúde de Clientes',
+    description: '2 páginas • Segmentos RFM e clientes em risco',
+    icon: Users,
     pdfOnly: true
   },
 ];
@@ -363,16 +375,23 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
     try {
       const timestamp = new Date().toISOString().split('T')[0];
 
-      // Handle global reports
-      if (selectedExport === 'completeReport') {
-        exportCompleteReport(data, `lavpop-relatorio-completo-${timestamp}`);
+      // Handle global reports (async functions)
+      if (selectedExport === 'executiveSummary') {
+        await exportExecutiveSummary(data, `bilavnova-resumo-executivo-${timestamp}`);
         setStatus('success');
         setTimeout(() => onClose(), 1500);
         return;
       }
 
-      if (selectedExport === 'executiveSummary') {
-        exportExecutiveSummary(data, `lavpop-resumo-executivo-${timestamp}`);
+      if (selectedExport === 'completeReport') {
+        await exportCompleteReport(data, `bilavnova-relatorio-completo-${timestamp}`);
+        setStatus('success');
+        setTimeout(() => onClose(), 1500);
+        return;
+      }
+
+      if (selectedExport === 'customerHealth') {
+        await exportCustomerHealthReport(data, `bilavnova-saude-clientes-${timestamp}`);
         setStatus('success');
         setTimeout(() => onClose(), 1500);
         return;
@@ -386,7 +405,7 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
         throw new Error('Nenhum dado disponível para este relatório');
       }
 
-      const filename = `lavpop-${selectedExport}-${timestamp}`;
+      const filename = `bilavnova-${selectedExport}-${timestamp}`;
 
       if (format === 'csv') {
         exportToCSV(exportData, filename, { columns: config.columns });
@@ -573,7 +592,7 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
               })}
             </div>
             <p className={`mt-2 text-xs text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Relatórios PDF com gráficos e insights automáticos
+              Relatórios PDF com narrativas, gráficos e ações recomendadas
             </p>
           </div>
         )}

@@ -1086,7 +1086,7 @@ const BlacklistManager = ({ customerData }) => {
             <div className="text-xs text-slate-500 dark:text-slate-400">
               Mostrando {startIndex + 1}-{endIndex} de {filteredBlacklist.length} entradas
               {filteredBlacklist.length !== blacklist.length && (
-                <span className="text-slate-400 dark:text-slate-500"> (filtrado de {blacklist.length})</span>
+                <span className="text-slate-400 dark:text-slate-400"> (filtrado de {blacklist.length})</span>
               )}
             </div>
 

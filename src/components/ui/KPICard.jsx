@@ -1,8 +1,27 @@
-// KPICard.jsx v1.18 - REFRESH OVERLAY SUPPORT
+// KPICard.jsx v1.22 - TOOLTIP ACCESSIBILITY
 // Unified KPI card component for Intelligence dashboard
-// Design System v5.0 compliant - Tier 1 Essential
+// Design System v6.0 compliant - Tier 1 Essential with enhanced aesthetics
 //
 // CHANGELOG:
+// v1.22 (2026-01-31): Tooltip accessibility for screen readers
+//   - Added aria-describedby linking clickable cards to tooltip content
+//   - Screen readers now announce tooltip description when focusing card
+// v1.21 (2026-01-31): Unified icon & typography patterns
+//   - Label tracking: tracking-wider (aligned with Hero/Secondary cards)
+//   - Value typography: Added tracking-tight for consistent number display
+//   - Maintains consistency across all KPI card variants
+// v1.20 (2026-01-31): Sparkline support
+//   - NEW: sparklineData prop for optional full-width sparkline background
+//   - Absorbs CleanKPICard functionality for card consolidation
+//   - Sparkline uses semantic color with gradient fill
+//   - Dark/light mode aware sparkline colors
+// v1.19 (2026-01-31): Premium visual redesign
+//   - Typography: tabular-nums for values, refined tracking on labels
+//   - Background: Subtle gradient depth (via → to-nebula/30)
+//   - Borders: Inner highlight shadow for premium feel
+//   - Hover: Deeper lift (y:-4, scale:1.01) with cyan glow
+//   - Icons: Glassmorphic container in dark mode
+//   - Maintains full accessibility (WCAG AA, reduced motion)
 // v1.18 (2026-01-31): Refresh overlay support
 //   - Added isRefreshing prop for background refresh visual feedback
 //   - Subtle stellar-cyan shimmer overlay during data refresh
@@ -79,19 +98,118 @@
 //   - Dark mode support
 //   - Optional click handler with proper a11y
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useId, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { getSemanticColor } from '../../utils/colorMapping';
 import ContextHelp from '../ContextHelp';
 import useReducedMotion from '../../hooks/useReducedMotion';
+import { useTheme } from '../../contexts/ThemeContext';
 import { TWEEN, STAGGER, SPRING } from '../../constants/animations';
 import { haptics } from '../../utils/haptics';
 
-// Smooth tween animation config for hover (avoids spring oscillation/trembling)
+// Sparkline color mapping for semantic colors (light/dark mode)
+const sparklineColors = {
+  blue: { light: '#3b82f6', dark: '#60a5fa' },
+  revenue: { light: '#10b981', dark: '#34d399' },
+  emerald: { light: '#10b981', dark: '#34d399' },
+  cost: { light: '#ef4444', dark: '#f87171' },
+  profit: { light: '#8b5cf6', dark: '#a78bfa' },
+  purple: { light: '#9333ea', dark: '#a855f7' },
+  indigo: { light: '#6366f1', dark: '#818cf8' },
+  amber: { light: '#f59e0b', dark: '#fbbf24' },
+  warning: { light: '#f59e0b', dark: '#fbbf24' },
+  positive: { light: '#10b981', dark: '#34d399' },
+  negative: { light: '#ef4444', dark: '#f87171' },
+  stellar: { light: '#00aeef', dark: '#00aeef' },
+  neutral: { light: '#64748b', dark: '#94a3b8' },
+};
+
+/**
+ * Full-width sparkline background component
+ * Renders an SVG area chart behind card content
+ */
+const Sparkline = ({ data, color, isDark, id }) => {
+  const pathData = useMemo(() => {
+    if (!data || data.length < 2) return null;
+
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+
+    // Use percentage-based coordinates for full responsiveness
+    const points = data.map((value, index) => {
+      const x = (index / (data.length - 1)) * 100;
+      const y = 100 - ((value - min) / range) * 70 - 15; // 70% height range, 15% padding
+      return `${x},${y}`;
+    });
+
+    return {
+      line: `M${points.join(' L')}`,
+      area: `M0,100 L${points.join(' L')} L100,100 Z`
+    };
+  }, [data]);
+
+  if (!pathData) return null;
+
+  const gradientId = `kpi-sparkline-${id}`;
+  const strokeColor = sparklineColors[color]?.[isDark ? 'dark' : 'light'] || sparklineColors.stellar[isDark ? 'dark' : 'light'];
+
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={strokeColor} stopOpacity="0.12" />
+          <stop offset="100%" stopColor={strokeColor} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {/* Area fill */}
+      <path d={pathData.area} fill={`url(#${gradientId})`} />
+      {/* Line */}
+      <path
+        d={pathData.line}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+};
+
+// Premium hover animation - deeper lift with cyan glow accent
 const hoverAnimation = {
-  rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
-  hover: { y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }
+  rest: {
+    y: 0,
+    scale: 1,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+  },
+  hover: {
+    y: -4,
+    scale: 1.01,
+    boxShadow: '0 16px 48px rgba(0,0,0,0.12), 0 0 20px rgba(0,174,239,0.08)'
+  }
+};
+
+// Dark mode hover - enhanced cyan glow
+const hoverAnimationDark = {
+  rest: {
+    y: 0,
+    scale: 1,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+  },
+  hover: {
+    y: -4,
+    scale: 1.01,
+    boxShadow: '0 16px 48px rgba(0,0,0,0.4), 0 0 24px rgba(0,174,239,0.15)'
+  }
 };
 
 // Reduced motion variants - no movement, just subtle opacity
@@ -118,6 +236,7 @@ const hoverAnimationReduced = {
  * @param {string} tooltip - Optional plain language description for ContextHelp icon
  * @param {string} status - Optional status for colored left border: 'success' | 'warning' | 'danger' | 'neutral'
  * @param {boolean} isRefreshing - Shows subtle shimmer overlay when true (for background refresh feedback)
+ * @param {number[]} sparklineData - Optional array of values for full-width sparkline background
  */
 const KPICard = ({
   label,
@@ -135,9 +254,13 @@ const KPICard = ({
   tooltip,
   status,
   isRefreshing = false,
+  sparklineData,
 }) => {
+  const uniqueId = useId();
+  const tooltipDescId = tooltip ? `${uniqueId}-tooltip-desc` : undefined;
   const colors = getSemanticColor(color);
   const prefersReducedMotion = useReducedMotion();
+  const { isDark } = useTheme();
 
   // Wrap onClick with haptic feedback for clickable cards
   const handleClick = useCallback((e) => {
@@ -147,32 +270,32 @@ const KPICard = ({
     }
   }, [onClick]);
 
-  // Variant-specific styling - Cosmic Precision (v4.3)
-  // Uses space-dust for dark backgrounds (Tier 1 Essential)
+  // Variant-specific styling - Cosmic Precision v6.0
+  // Premium gradient backgrounds with depth, refined typography
   const variants = {
     default: {
-      container: 'p-3 sm:p-5 bg-white dark:bg-space-dust',
-      value: 'text-lg sm:text-2xl',
-      label: 'text-xs',
+      container: 'p-3 sm:p-5 bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-space-dust dark:via-space-dust dark:to-space-nebula/30',
+      value: 'text-lg sm:text-2xl tabular-nums',
+      label: 'text-[10px] sm:text-xs tracking-wider',
       subtitle: 'text-xs',
     },
     hero: {
-      container: 'p-4 sm:p-6 bg-white dark:bg-space-dust',
-      value: 'text-xl sm:text-3xl lg:text-4xl',
-      label: 'text-xs sm:text-sm',
+      container: 'p-4 sm:p-6 bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-space-dust dark:via-space-dust dark:to-space-nebula/30',
+      value: 'text-xl sm:text-3xl lg:text-4xl tabular-nums',
+      label: 'text-[10px] sm:text-sm tracking-wider',
       subtitle: 'text-xs sm:text-sm',
     },
     compact: {
-      container: 'p-2.5 sm:p-4 bg-white dark:bg-space-dust',
-      value: 'text-base sm:text-xl',
-      label: 'text-xs',
+      container: 'p-2.5 sm:p-4 bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-space-dust dark:via-space-dust dark:to-space-nebula/30',
+      value: 'text-base sm:text-xl tabular-nums',
+      label: 'text-[10px] sm:text-xs tracking-wider',
       subtitle: 'text-xs',
     },
     gradient: {
-      // Design System v4.0: Vibrant gradients with white text
+      // Design System v6.0: Vibrant gradients with white text
       container: `p-3 sm:p-5 ${colors.solidGradient || colors.bgGradient} shadow-lg`,
-      value: 'text-lg sm:text-2xl',
-      label: 'text-xs',
+      value: 'text-lg sm:text-2xl tabular-nums',
+      label: 'text-[10px] sm:text-xs tracking-wider',
       subtitle: 'text-xs',
     },
   };
@@ -229,12 +352,16 @@ const KPICard = ({
     );
   };
 
+  const hasSparkline = sparklineData && sparklineData.length >= 2;
+
   const cardClasses = `
     relative
     ${v.container}
     rounded-xl
-    border border-slate-100 dark:border-stellar-cyan/10
+    border border-slate-200/80 dark:border-stellar-cyan/10
+    shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]
     ${statusBorders[status] || ''}
+    ${hasSparkline ? 'overflow-hidden' : ''}
     ${onClick ? 'cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-stellar-cyan focus:ring-offset-2 dark:focus:ring-offset-space-dust' : ''}
     ${className}
   `.trim();
@@ -251,18 +378,33 @@ const KPICard = ({
       onClick={onClick ? handleClick : undefined}
       type={onClick ? 'button' : undefined}
       aria-label={onClick ? `${label}: ${value}` : undefined}
+      aria-describedby={onClick && tooltipDescId ? tooltipDescId : undefined}
       initial="rest"
       whileHover="hover"
-      variants={prefersReducedMotion ? hoverAnimationReduced : hoverAnimation}
+      variants={prefersReducedMotion ? hoverAnimationReduced : (isDark ? hoverAnimationDark : hoverAnimation)}
       transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
     >
-      <div className="flex items-start justify-between gap-2 sm:gap-3">
+      {/* Hidden tooltip description for screen readers */}
+      {onClick && tooltip && (
+        <span id={tooltipDescId} className="sr-only">{tooltip}</span>
+      )}
+      {/* Optional sparkline background */}
+      {hasSparkline && (
+        <Sparkline
+          data={sparklineData}
+          color={color}
+          isDark={isDark}
+          id={uniqueId}
+        />
+      )}
+
+      <div className="relative z-10 flex items-start justify-between gap-2 sm:gap-3">
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Responsive label: show mobileLabel on small screens, full label on larger */}
             {/* Using div instead of p to allow ContextHelp tooltip (contains div) as child */}
             <div className={`
-              ${v.label} font-medium uppercase tracking-wide mb-0.5 sm:mb-1 leading-tight flex items-center gap-1
+              ${v.label} font-semibold uppercase mb-0.5 sm:mb-1 leading-tight flex items-center gap-1
               ${isGradient ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}
             `}>
               {mobileLabel ? (
@@ -275,12 +417,12 @@ const KPICard = ({
               {tooltip && (
                 <ContextHelp
                   description={tooltip}
-                  className={isGradient ? 'text-white/60 hover:text-white/90' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'}
+                  className={isGradient ? 'text-white/60 hover:text-white/90' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300'}
                 />
               )}
             </div>
             <p className={`
-              ${v.value} font-bold mb-0.5 leading-tight break-words
+              ${v.value} font-extrabold tracking-tight mb-0.5 leading-tight break-words
               ${isGradient ? 'text-white' : 'text-slate-900 dark:text-white'}
             `}>
               {value}
@@ -338,14 +480,28 @@ const KPICard = ({
             )}
           </div>
 
-        {/* Icon - smaller on mobile */}
+        {/* Icon - glassmorphic container in dark mode */}
         {Icon && (
           <div className={`
-            p-1.5 sm:p-2.5 rounded-lg flex-shrink-0
-            ${isGradient ? 'bg-white/20' : `bg-gradient-to-br ${colors.gradient}`}
+            relative p-1.5 sm:p-2.5 rounded-xl flex-shrink-0 overflow-hidden
+            ${isGradient
+              ? 'bg-white/20'
+              : isDark
+                ? 'bg-gradient-to-br from-white/5 to-white/10 border border-white/10 backdrop-blur-sm'
+                : `bg-gradient-to-br ${colors.gradient}`
+            }
           `}>
+            {/* Subtle accent color reflection in dark mode - uses semantic color */}
+            {isDark && !isGradient && (
+              <div
+                className="absolute inset-0 opacity-20 pointer-events-none"
+                style={{
+                  background: `radial-gradient(circle at center, ${colors.accentColor?.dark || '#00aeef'}, transparent 70%)`
+                }}
+              />
+            )}
             <Icon
-              className={`w-4 h-4 sm:w-6 sm:h-6 ${isGradient ? 'text-white' : 'text-white'}`}
+              className={`relative z-10 w-4 h-4 sm:w-6 sm:h-6 ${isGradient ? 'text-white' : isDark ? (colors.textSubtle || 'text-stellar-cyan') : 'text-white'}`}
               aria-hidden="true"
             />
           </div>

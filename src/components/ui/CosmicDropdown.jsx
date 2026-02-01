@@ -1,4 +1,4 @@
-// CosmicDropdown.jsx v1.2.0
+// CosmicDropdown.jsx v1.3.0
 // Custom dropdown component with cosmic Design System styling
 // Replaces native <select> elements for consistent theming
 //
@@ -8,7 +8,7 @@
 // - Keyboard navigation (Arrow keys, Enter, Escape)
 // - Click outside to close
 // - Touch-friendly with haptic feedback
-// - Accessible with ARIA attributes
+// - Accessible with ARIA attributes (aria-activedescendant for screen readers)
 // - Drop-up support for bottom-positioned dropdowns
 // - Animated checkmark for selected option
 //
@@ -21,6 +21,10 @@
 // />
 //
 // CHANGELOG:
+// v1.3.0 (2026-01-31): aria-activedescendant for screen readers
+//   - Added aria-activedescendant to button for keyboard navigation
+//   - Added unique IDs to each option for ARIA reference
+//   - Added aria-labelledby to listbox linking back to button
 // v1.2.0 (2026-01-27): Micro-interaction animations
 //   - Added staggered option entrance animations
 //   - Animated checkmark with spring physics
@@ -34,7 +38,7 @@
 //   - Framer Motion animations
 //   - Keyboard and touch support
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -89,6 +93,12 @@ const CosmicDropdown = ({
   const listRef = useRef(null);
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
+
+  // Generate unique IDs for ARIA attributes
+  const baseId = useId();
+  const buttonId = `${baseId}-button`;
+  const listboxId = `${baseId}-listbox`;
+  const getOptionId = (optionValue) => `${baseId}-option-${optionValue}`;
 
   // Find current selected option
   const selectedOption = options.find(opt => opt.value === value);
@@ -174,10 +184,17 @@ const CosmicDropdown = ({
     <div className={`relative ${className}`} ref={containerRef}>
       {/* Trigger button */}
       <button
+        id={buttonId}
         type="button"
         onClick={handleToggle}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-controls={listboxId}
+        aria-activedescendant={
+          isOpen && highlightedIndex >= 0 && options[highlightedIndex]
+            ? getOptionId(options[highlightedIndex].value)
+            : undefined
+        }
         aria-label={selectedOption ? selectedOption.label : placeholder}
         className={`
           h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer
@@ -226,7 +243,9 @@ const CosmicDropdown = ({
               py-1
               max-h-60 overflow-auto
             `}
+            id={listboxId}
             role="listbox"
+            aria-labelledby={buttonId}
             ref={listRef}
           >
             <motion.div
@@ -242,6 +261,7 @@ const CosmicDropdown = ({
                 return (
                   <motion.div
                     key={option.value}
+                    id={getOptionId(option.value)}
                     variants={prefersReducedMotion ? undefined : optionVariants}
                     role="option"
                     aria-selected={isSelected}

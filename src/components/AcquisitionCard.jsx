@@ -503,7 +503,7 @@ const AcquisitionCard = ({
         }
         p-4 ${className}
       `}>
-        <div className="flex items-center justify-center h-48 text-slate-400 dark:text-slate-500">
+        <div className="flex items-center justify-center h-48 text-slate-400 dark:text-slate-400">
           <div className="text-center">
             <UserPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">Carregando dados de aquisição...</p>

@@ -199,7 +199,7 @@ const CosmicTimePicker = ({
           ${isDark ? 'focus:ring-stellar-cyan/40' : 'focus:ring-stellar-cyan/30'}
         `}
       >
-        <span className={`truncate ${!value ? 'text-slate-400 dark:text-slate-500' : ''}`}>
+        <span className={`truncate ${!value ? 'text-slate-400 dark:text-slate-400' : ''}`}>
           {displayValue}
         </span>
         <Clock

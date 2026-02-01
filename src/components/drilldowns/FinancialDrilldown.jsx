@@ -40,11 +40,13 @@
 // v2.1: Fixed & Robust implementation
 import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Calendar, TrendingUp, Award } from 'lucide-react';
 import { parseSalesRecords } from '../../utils/transactionParser';
 import { formatDate } from '../../utils/dateUtils';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getChartColors, getSeriesColors } from '../../utils/chartColors';
 import { BUSINESS_PARAMS } from '../../utils/operationsMetrics';
+import KPICard, { KPIGrid } from '../ui/KPICard';
 
 const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
     const { isDark } = useTheme();
@@ -170,14 +172,15 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
     }, [dailyData, metricType]);
 
     // Metric configuration using centralized colors
+    // wash/dry use explicit colors to match SecondaryKPICard header icons
     const metricConfig = useMemo(() => ({
         revenue: { label: 'Receita Líquida', unit: '', color: seriesColors[1] },      // Emerald/green
         mtd: { label: 'Receita Bruta', unit: '', color: seriesColors[3] },            // Amber for MTD
         cycles: { label: 'Ciclos', unit: ' ciclos', color: seriesColors[0] },         // Primary blue
-        utilization: { label: 'Utilização', unit: '%', color: seriesColors[2] }, // Purple/violet
-        wash: { label: 'Lavagens', unit: ' lavagens', color: seriesColors[5] },       // Cyan
-        dry: { label: 'Secagens', unit: ' secagens', color: seriesColors[3] },        // Amber
-    }), [seriesColors]);
+        utilization: { label: 'Utilização', unit: '%', color: seriesColors[2] },      // Purple/violet
+        wash: { label: 'Lavagens', unit: ' lavagens', color: isDark ? '#22d3ee' : '#06b6d4' },  // Cyan (matches header)
+        dry: { label: 'Secagens', unit: ' secagens', color: isDark ? '#fb923c' : '#f97316' },   // Orange (matches header)
+    }), [seriesColors, isDark]);
 
     const config = metricConfig[metricType] || metricConfig.cycles;
 
@@ -207,41 +210,48 @@ const FinancialDrilldown = ({ salesData, metricType = 'revenue' }) => {
     const color = config.color;
     const gradientId = `gradient-${metricType}`;
 
+    // Map metricType to KPICard semantic color
+    // Uses semantic color keys from colorMapping.js (revenue, warning, blue, purple, cyan, orange, etc.)
+    const colorMapping = {
+        revenue: 'revenue',      // emerald - net revenue
+        mtd: 'warning',          // amber - gross revenue MTD
+        cycles: 'blue',          // blue - cycle count
+        utilization: 'purple',   // purple - utilization %
+        wash: 'cyan',            // cyan - wash cycles (matches SecondaryKPICard)
+        dry: 'orange',           // orange - dry cycles (matches SecondaryKPICard)
+    };
+    const cardColor = colorMapping[metricType] || 'blue';
+
     return (
         <div className="space-y-6">
-            {/* Summary Stats - responsive grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-                        {metricType === 'utilization' ? 'Média 30 dias' : 'Últimos 30 dias'}
-                    </p>
-                    <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
-                        {formatValue(stats.total)}
-                    </p>
-                </div>
+            {/* Summary Stats - using KPICard components */}
+            <KPIGrid columns={metricType === 'utilization' ? 2 : 3} animate={false}>
+                <KPICard
+                    label={metricType === 'utilization' ? 'Média 30 dias' : 'Últimos 30 dias'}
+                    value={formatValue(stats.total)}
+                    icon={Calendar}
+                    color={cardColor}
+                    variant="compact"
+                />
                 {/* Hide "Média Diária" for utilization since it's the same as "Média 30 dias" */}
                 {metricType !== 'utilization' && (
-                    <div className="bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Média Diária</p>
-                        <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
-                            {formatValue(Math.round(stats.average * 10) / 10)}
-                        </p>
-                    </div>
+                    <KPICard
+                        label="Média Diária"
+                        value={formatValue(Math.round(stats.average * 10) / 10)}
+                        icon={TrendingUp}
+                        color={cardColor}
+                        variant="compact"
+                    />
                 )}
-                <div className={`${metricType === 'utilization' ? '' : 'col-span-2 sm:col-span-1'} bg-slate-50 dark:bg-slate-700/50 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700`}>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Melhor Dia</p>
-                    <div className="flex items-baseline gap-1">
-                        <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                            {stats.bestValue > 0 ? formatValue(stats.bestValue) : '-'}
-                        </p>
-                        {stats.bestDay && stats.bestValue > 0 && (
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                                ({stats.bestDay})
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
+                <KPICard
+                    label="Melhor Dia"
+                    value={stats.bestValue > 0 ? formatValue(stats.bestValue) : '-'}
+                    subtitle={stats.bestDay && stats.bestValue > 0 ? stats.bestDay : undefined}
+                    icon={Award}
+                    color={cardColor}
+                    variant="compact"
+                />
+            </KPIGrid>
 
             {/* Chart */}
             <div className="h-48 sm:h-64 w-full">

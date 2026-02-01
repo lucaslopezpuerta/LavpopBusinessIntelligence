@@ -129,7 +129,7 @@ const MiniSparkline = ({ data, color = 'sky', height = 32, className = '' }) => 
     if (!hasData) {
         return (
             <div className={`flex items-center justify-center ${className}`} style={{ width, height }}>
-                <span className="text-[9px] text-slate-400 dark:text-slate-500">Sem dados</span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-400">Sem dados</span>
             </div>
         );
     }
@@ -467,7 +467,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-cosmic-green/40 ${
                                                         hasValidPhone
                                                             ? 'bg-cosmic-green text-white border-cosmic-green hover:bg-cosmic-green/90 shadow-sm shadow-cosmic-green/25 cursor-pointer'
-                                                            : 'bg-slate-100/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed opacity-60'
+                                                            : 'bg-slate-100/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-400 border-transparent cursor-not-allowed opacity-60'
                                                     }`}
                                                     title={hasValidPhone ? 'WhatsApp' : (phoneError || 'Número inválido para WhatsApp')}
                                                 >
@@ -655,7 +655,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             value={newNote}
                                             onChange={(e) => setNewNote(e.target.value)}
                                             placeholder="Adicionar nota..."
-                                            className="flex-1 min-w-0 px-2.5 py-1.5 bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg text-xs text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40"
+                                            className="flex-1 min-w-0 px-2.5 py-1.5 bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg text-xs text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40"
                                             onKeyPress={(e) => e.key === 'Enter' && addCommunication()}
                                         />
                                         <button
@@ -963,7 +963,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                          focus:outline-none focus-visible:ring-2 focus-visible:ring-cosmic-green/40
                                          ${hasValidPhone
                                              ? 'bg-cosmic-green text-white hover:bg-cosmic-green/90 border border-cosmic-green'
-                                             : 'bg-slate-200/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
+                                             : 'bg-slate-200/50 dark:bg-space-void/30 text-slate-400 dark:text-slate-400 border-transparent cursor-not-allowed'
                                          }`}
                             >
                                 <MessageCircle className="w-5 h-5" />

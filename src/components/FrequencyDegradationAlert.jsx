@@ -189,7 +189,7 @@ const CustomerPreviewRow = ({ customer, onOpenProfile }) => {
       <div className="sm:hidden flex items-center gap-2 mt-1.5 ml-9 overflow-hidden">
         <IntervalBadge historicalAvg={customer.historicalAvg} recentAvg={customer.recentAvg} />
         <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-center gap-1 text-xs font-mono text-slate-400 dark:text-slate-500 truncate">
+          <div className="flex items-center gap-1 text-xs font-mono text-slate-400 dark:text-slate-400 truncate">
             {customer.recentGaps?.slice(-4).map((gap, i) => (
               <span key={i} className="flex items-center gap-1 shrink-0">
                 {i > 0 && <span className="text-slate-300 dark:text-slate-600">→</span>}

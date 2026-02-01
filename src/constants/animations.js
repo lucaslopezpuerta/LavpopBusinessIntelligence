@@ -1052,6 +1052,62 @@ export const DRAG_HANDLE = {
   }
 };
 
+// Long-press menu animations (v1.0)
+// Visual feedback and menu entrance for long-press interactions
+export const LONG_PRESS_MENU = {
+  // Press-and-hold visual feedback (applied to pressed element)
+  HOLD_FEEDBACK: {
+    scale: 0.98,
+    transition: { duration: 0.1, ease: 'easeOut' }
+  },
+
+  // Long-press activated pulse (brief confirmation)
+  ACTIVATED: {
+    scale: [1, 1.02, 1],
+    transition: { duration: 0.2, ease: 'easeOut' }
+  },
+
+  // Menu container entrance
+  CONTAINER: {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.15,
+        ease: 'easeOut',
+        when: 'beforeChildren',
+        staggerChildren: 0.05,
+        delayChildren: 0.1
+      }
+    },
+    exit: {
+      opacity: 0,
+      transition: { duration: 0.1, ease: 'easeIn' }
+    }
+  },
+
+  // Individual menu item entrance (slide from left)
+  ITEM: {
+    hidden: { opacity: 0, x: -12 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: { type: 'spring', stiffness: 400, damping: 25 }
+    }
+  },
+
+  // Reduced motion variants
+  CONTAINER_REDUCED: {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 },
+    exit: { opacity: 0 }
+  },
+  ITEM_REDUCED: {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 }
+  }
+};
+
 // Pull-to-refresh animations (v2.1)
 // Refined timing for smooth, responsive feel
 export const PULL_REFRESH = {
@@ -1107,6 +1163,7 @@ export default {
   MODAL,
   MODAL_SWIPE,
   DRAG_HANDLE,
+  LONG_PRESS_MENU,
   BUBBLE_ACTIVE,
   PAGE_TRANSITION,
   PAGE_TRANSITION_REDUCED,

@@ -41,7 +41,7 @@ const ContextHelp = ({ title, description, formula, children, className }) => {
     return (
         <Tooltip content={content} position="bottom">
             {/* Simple icon wrapper - touch target handled by Tooltip's trigger div */}
-            <HelpCircle className={`w-3.5 h-3.5 transition-colors ${className || 'text-slate-400 dark:text-slate-500 hover:text-stellar-blue dark:hover:text-blue-400'}`} />
+            <HelpCircle className={`w-3.5 h-3.5 transition-colors ${className || 'text-slate-400 dark:text-slate-400 hover:text-stellar-blue dark:hover:text-blue-400'}`} />
         </Tooltip>
     );
 };

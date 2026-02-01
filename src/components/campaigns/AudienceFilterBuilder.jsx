@@ -335,7 +335,7 @@ const AudienceFilterBuilder = ({
         </div>
         <ChevronDown className={`
           w-4 h-4 transition-transform duration-200
-          ${isExpanded ? 'rotate-180 text-stellar-cyan' : 'text-slate-400 dark:text-slate-500'}
+          ${isExpanded ? 'rotate-180 text-stellar-cyan' : 'text-slate-400 dark:text-slate-400'}
         `} />
       </button>
     );
@@ -489,15 +489,15 @@ const AudienceFilterBuilder = ({
                       placeholder="Min"
                       value={filters.minSpend}
                       onChange={(e) => updateFilter('minSpend', e.target.value)}
-                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400"
                     />
-                    <span className="text-slate-400 dark:text-slate-500 text-xs">até</span>
+                    <span className="text-slate-400 dark:text-slate-400 text-xs">até</span>
                     <input
                       type="number"
                       placeholder="Max"
                       value={filters.maxSpend}
                       onChange={(e) => updateFilter('maxSpend', e.target.value)}
-                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400"
                     />
                   </div>
                 </div>
@@ -513,15 +513,15 @@ const AudienceFilterBuilder = ({
                       placeholder="Min"
                       value={filters.minWalletBalance}
                       onChange={(e) => updateFilter('minWalletBalance', e.target.value)}
-                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400"
                     />
-                    <span className="text-slate-400 dark:text-slate-500 text-xs">até</span>
+                    <span className="text-slate-400 dark:text-slate-400 text-xs">até</span>
                     <input
                       type="number"
                       placeholder="Max"
                       value={filters.maxWalletBalance}
                       onChange={(e) => updateFilter('maxWalletBalance', e.target.value)}
-                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400"
                     />
                   </div>
                 </div>
@@ -561,15 +561,15 @@ const AudienceFilterBuilder = ({
                       placeholder="Min"
                       value={filters.minVisits}
                       onChange={(e) => updateFilter('minVisits', e.target.value)}
-                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400"
                     />
-                    <span className="text-slate-400 dark:text-slate-500 text-xs">até</span>
+                    <span className="text-slate-400 dark:text-slate-400 text-xs">até</span>
                     <input
                       type="number"
                       placeholder="Max"
                       value={filters.maxVisits}
                       onChange={(e) => updateFilter('maxVisits', e.target.value)}
-                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full min-w-0 h-9 px-3 text-sm bg-white dark:bg-space-dust border border-slate-200 dark:border-stellar-cyan/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-stellar-cyan/40 dark:focus:ring-stellar-cyan/50 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400"
                     />
                   </div>
                 </div>

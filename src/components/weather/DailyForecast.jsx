@@ -90,7 +90,7 @@ const DayCard = ({ day, isToday, weeklyMin, weeklyMax, expanded, onToggle }) => 
               <span className="text-xs sm:text-sm font-medium">{Math.round(day.precipProb)}%</span>
             </div>
           ) : (
-            <span className="text-xs sm:text-sm text-slate-400 dark:text-slate-500">—</span>
+            <span className="text-xs sm:text-sm text-slate-400 dark:text-slate-400">—</span>
           )}
         </div>
 

@@ -651,7 +651,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
                       )}
 
                       {contact.contacted_at && (
-                        <span className="text-xs text-slate-400 dark:text-slate-500" title={new Date(contact.contacted_at).toLocaleDateString('pt-BR')}>
+                        <span className="text-xs text-slate-400 dark:text-slate-400" title={new Date(contact.contacted_at).toLocaleDateString('pt-BR')}>
                           <span className="sm:hidden">
                             {new Date(contact.contacted_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                           </span>

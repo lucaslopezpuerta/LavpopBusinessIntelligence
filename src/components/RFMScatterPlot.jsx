@@ -500,7 +500,7 @@ const RFMScatterPlot = ({
                             title={showContactedBorders ? 'Ocultar bordas de contactados' : 'Mostrar bordas de contactados'}
                         >
                             <div className={`w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dashed border-blue-500 ${!showContactedBorders && 'border-slate-400'}`}></div>
-                            <span className={`font-medium ${showContactedBorders ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                            <span className={`font-medium ${showContactedBorders ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-400'}`}>
                                 <span className="hidden sm:inline">Contactado </span>({totalContacted})
                             </span>
                         </button>
@@ -517,7 +517,7 @@ const RFMScatterPlot = ({
                             title={showBlockedBorders ? 'Ocultar bordas de bloqueados' : 'Mostrar bordas de bloqueados'}
                         >
                             <div className={`w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600 border-2 border-dotted ${showBlockedBorders ? 'border-slate-900 dark:border-slate-100' : 'border-slate-400'}`}></div>
-                            <span className={`font-medium ${showBlockedBorders ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                            <span className={`font-medium ${showBlockedBorders ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400 dark:text-slate-400'}`}>
                                 <span className="hidden sm:inline">Bloqueado </span>({totalBlacklisted})
                             </span>
                         </button>

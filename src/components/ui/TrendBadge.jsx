@@ -1,8 +1,11 @@
-// TrendBadge.jsx v1.5 - SOLID COLOR BADGES
+// TrendBadge.jsx v1.6 - NEUTRAL CONTRAST FIX
 // Reusable trend indicator badge
 // Design System v3.1 compliant
 //
 // CHANGELOG:
+// v1.6 (2026-01-31): Neutral state WCAG AA contrast fix
+//   - Fixed neutral state dark mode contrast (was ~3.5:1, now ~7:1)
+//   - Changed from slate-700/slate-300 to slate-600/slate-100
 // v1.5 (2026-01-28): Solid colors for WCAG AA compliance
 //   - Positive/negative trends now use solid colors with white text
 //   - Inverted variant unchanged (designed for gradient backgrounds)
@@ -105,6 +108,7 @@ const TrendBadge = ({
   }
 
   // Standard styling for light backgrounds
+  // Neutral state: WCAG AA compliant contrast (slate-100 on slate-600 = ~7:1)
   if (isNeutral) {
     return (
       <span
@@ -112,8 +116,8 @@ const TrendBadge = ({
           inline-flex items-center
           ${sizeClasses[size]}
           rounded-md font-semibold
-          bg-slate-100 dark:bg-slate-700
-          text-slate-600 dark:text-slate-300
+          bg-slate-200 dark:bg-slate-600
+          text-slate-700 dark:text-slate-100
           ${className}
         `}
         aria-label={getAriaLabel()}

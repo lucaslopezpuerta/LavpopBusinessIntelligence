@@ -308,7 +308,7 @@ const HoverTooltip = ({ data, coords }) => {
           `}>
             {data.count}
           </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-0.5">
+          <span className="text-[10px] text-slate-400 dark:text-slate-400 ml-0.5">
             visitas
           </span>
         </div>
@@ -457,7 +457,7 @@ const MobileSheet = ({ isOpen, onClose, data, quantiles }) => {
                   className="w-10 h-10 flex items-center justify-center flex-shrink-0
                            rounded-full -mr-2
                            text-slate-400 hover:text-slate-600
-                           dark:text-slate-500 dark:hover:text-slate-300
+                           dark:text-slate-400 dark:hover:text-slate-300
                            hover:bg-slate-100 dark:hover:bg-slate-700
                            transition-colors duration-150"
                   style={{ touchAction: 'manipulation' }}
@@ -659,7 +659,7 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
         {/* Peak indicator with cyan accent */}
         <p className="text-xs text-slate-600 dark:text-slate-400">
           Pico: <span className="font-semibold text-cyan-500 dark:text-cyan-400">{peak.dayNameFull} {peak.hour}h</span>
-          <span className="text-slate-400 dark:text-slate-500"> ({peak.count} visitas)</span>
+          <span className="text-slate-400 dark:text-slate-400"> ({peak.count} visitas)</span>
         </p>
       </div>
 
@@ -750,7 +750,7 @@ const VisitHeatmap = ({ salesData, customerMap, className = '' }) => {
 
       {/* Footer - Data date range */}
       <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700/50 text-center">
-        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+        <span className="text-[10px] text-slate-400 dark:text-slate-400">
           {formatDateRange()}
         </span>
       </div>

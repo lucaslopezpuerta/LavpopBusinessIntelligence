@@ -281,7 +281,7 @@ const DayPredictionCard = ({ prediction, forecast, isToday = false }) => {
             />
           </div>
           {/* Text range */}
-          <div className="text-[10px] text-slate-400 dark:text-slate-500">
+          <div className="text-[10px] text-slate-400 dark:text-slate-400">
             {formatConfidenceRange(confidenceLow, confidenceHigh)}
           </div>
         </div>
@@ -605,7 +605,7 @@ const ModelBadge = ({ modelInfo, onClick }) => {
               </p>
             )}
           </div>
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-500 italic">
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 italic">
             Clique para ver diagnósticos completos
           </p>
         </div>
@@ -910,7 +910,7 @@ const WeatherBusinessImpact = ({
           <p className="text-slate-600 dark:text-slate-400 text-sm">
             Coletando dados para o modelo de previsão...
           </p>
-          <p className="text-slate-500 dark:text-slate-500 text-xs mt-2">
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-2">
             São necessários pelo menos 30 dias de dados
           </p>
         </div>
@@ -976,7 +976,7 @@ const WeatherBusinessImpact = ({
         {/* Model MAE indicator */}
         {modelInfo?.mae && (
           <div className="mt-3 text-center">
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-400 dark:text-slate-400">
               Margem de erro: ±R$ {modelInfo.mae}/dia
               {modelInfo.interval_method === 'statistical' && (
                 <span className="ml-1 text-emerald-500">• estatístico</span>

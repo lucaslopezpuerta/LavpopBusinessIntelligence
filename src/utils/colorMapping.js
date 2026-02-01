@@ -275,6 +275,34 @@ export const semanticColors = {
     ring: 'ring-blue-500',
     solidGradient: 'bg-gradient-to-br from-blue-500 to-indigo-600',
   },
+  cyan: {
+    bg: 'bg-cyan-50 dark:bg-cyan-900/20',
+    bgGradient: 'bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/20 dark:to-cyan-800/20',
+    border: 'border-cyan-200 dark:border-cyan-800',
+    text: 'text-cyan-900 dark:text-cyan-100',
+    textMuted: 'text-cyan-700 dark:text-cyan-300',
+    textSubtle: 'text-cyan-600 dark:text-cyan-400',
+    icon: 'text-white',
+    iconBg: 'bg-cyan-600 dark:bg-cyan-500',
+    gradient: 'from-cyan-500 to-cyan-600',
+    ring: 'ring-cyan-500',
+    solidGradient: 'bg-gradient-to-br from-cyan-500 to-teal-600',
+    accentColor: { dark: '#22d3ee', light: '#06b6d4' }, // cyan-400 / cyan-500 for icon glow
+  },
+  orange: {
+    bg: 'bg-orange-50 dark:bg-orange-900/20',
+    bgGradient: 'bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20',
+    border: 'border-orange-200 dark:border-orange-800',
+    text: 'text-orange-900 dark:text-orange-100',
+    textMuted: 'text-orange-700 dark:text-orange-300',
+    textSubtle: 'text-orange-600 dark:text-orange-400',
+    icon: 'text-white',
+    iconBg: 'bg-orange-600 dark:bg-orange-500',
+    gradient: 'from-orange-500 to-orange-600',
+    ring: 'ring-orange-500',
+    solidGradient: 'bg-gradient-to-br from-orange-500 to-amber-600',
+    accentColor: { dark: '#fb923c', light: '#f97316' }, // orange-400 / orange-500 for icon glow
+  },
 
   // WhatsApp brand colors
   whatsapp: {

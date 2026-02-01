@@ -327,7 +327,7 @@ const CustomerCard = ({ customer, onClick, isContacted = false }) => {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-sm text-slate-400 dark:text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-slate-400 dark:text-slate-400">
               <Phone className="w-4 h-4 shrink-0" />
               <span className="italic">Sem telefone</span>
             </div>
@@ -435,7 +435,7 @@ const CustomerCard = ({ customer, onClick, isContacted = false }) => {
                      focus:outline-none focus:ring-2 focus:ring-emerald-400/50 dark:focus:ring-emerald-500/30`
                   : `bg-slate-100/50 dark:bg-space-void/30
                      border border-transparent
-                     text-slate-400 dark:text-slate-500
+                     text-slate-400 dark:text-slate-400
                      cursor-not-allowed opacity-60`
                 }
               `}
@@ -449,7 +449,7 @@ const CustomerCard = ({ customer, onClick, isContacted = false }) => {
 
         {/* Mobile: Swipe hint */}
         {customer.phone && (
-          <div className="sm:hidden flex items-center justify-center gap-4 mt-auto pt-3 text-xs text-slate-400 dark:text-slate-500">
+          <div className="sm:hidden flex items-center justify-center gap-4 mt-auto pt-3 text-xs text-slate-400 dark:text-slate-400">
             <span className="flex items-center gap-1">
               <MessageCircle className="w-3 h-3 text-emerald-500" /> →
             </span>

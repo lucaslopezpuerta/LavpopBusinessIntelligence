@@ -1,8 +1,11 @@
-// Button.jsx v1.4 - AURORA BOREALIS CTA
+// Button.jsx v1.5 - FOCUS RING OFFSET FIX
 // Reusable button component with Framer Motion animations
 // Design System v6.0 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.5 (2026-01-31): Focus ring offset accessibility fix
+//   - Added focus-visible:ring-offset-white for light mode
+//   - Changed dark:focus-visible:ring-offset-slate-900 to space-dust for consistency
 // v1.4 (2026-01-30): Aurora Borealis CTA variant
 //   - NEW: 'cta' variant using cosmic-amber (#EBCB8B) for high-emphasis actions
 //   - CTA hierarchy: cta (amber) > primary/cosmic (gradient) > secondary > ghost
@@ -104,7 +107,7 @@ const Button = ({
     lg: 'w-5 h-5',
   };
 
-  const baseClasses = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none';
+  const baseClasses = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none';
 
   return (
     <motion.button
@@ -175,7 +178,7 @@ export const IconButton = ({
 
   return (
     <motion.button
-      className={`inline-flex items-center justify-center rounded-xl transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${sizes[size]} ${variants[variant] || variants.ghost} ${className}`}
+      className={`inline-flex items-center justify-center rounded-xl transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust ${sizes[size]} ${variants[variant] || variants.ghost} ${className}`}
       onClick={handleClick}
       disabled={disabled}
       whileHover={prefersReducedMotion ? undefined : INTERACTIVE.ICON_HOVER}

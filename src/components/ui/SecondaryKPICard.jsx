@@ -1,9 +1,17 @@
 /**
- * SecondaryKPICard.jsx v3.1 - COSMIC PRECISION REDESIGN
+ * SecondaryKPICard.jsx v3.3 - UNIFIED ICON & TYPOGRAPHY
  * Compact KPI card for secondary metrics
- * Design System v5.1 compliant - Glassmorphic variant
+ * Design System v6.0 compliant - Aligned with KPICard v1.21 styling
  *
  * CHANGELOG:
+ * v3.3 (2026-01-31): Unified icon & typography patterns
+ *   - Icon container: rounded-xl (aligned with KPICard/HeroKPICard)
+ *   - Maintains consistent styling across all KPI card variants
+ * v3.2 (2026-01-31): Premium visual alignment with KPICard v1.19
+ *   - Background: Gradient depth (from-space-dust via-space-dust to-space-nebula/30)
+ *   - Shadow: Inner highlight for premium feel
+ *   - Hover: Deeper lift (y:-4, scale:1.01) with cyan glow
+ *   - Typography: font-extrabold + tabular-nums for values
  * v3.1 (2026-01-22): Visual polish improvements
  *   - NEW: 2px accent-colored top border for visual connection to color
  *   - IMPROVED: Larger icon sizes (w-4/w-5 instead of w-3.5/w-4)
@@ -72,51 +80,51 @@ const SecondaryKPICard = ({
   const colorMap = {
     cyan: {
       glow: 'rgba(6, 182, 212, 0.2)',
-      iconBg: isDark ? 'bg-cyan-500/20' : 'bg-cyan-50',
       iconColor: isDark ? 'text-cyan-400' : 'text-cyan-600',
-      topBorder: 'border-t-cyan-500 dark:border-t-cyan-400',
+      iconGradient: 'from-cyan-500 to-cyan-600',
+      accentColor: '#22d3ee', // cyan-400
     },
     orange: {
       glow: 'rgba(249, 115, 22, 0.2)',
-      iconBg: isDark ? 'bg-orange-500/20' : 'bg-orange-50',
       iconColor: isDark ? 'text-orange-400' : 'text-orange-600',
-      topBorder: 'border-t-orange-500 dark:border-t-orange-400',
+      iconGradient: 'from-orange-500 to-orange-600',
+      accentColor: '#fb923c', // orange-400
     },
     purple: {
       glow: 'rgba(168, 85, 247, 0.2)',
-      iconBg: isDark ? 'bg-purple-500/20' : 'bg-purple-50',
       iconColor: isDark ? 'text-purple-400' : 'text-purple-600',
-      topBorder: 'border-t-purple-500 dark:border-t-purple-400',
+      iconGradient: 'from-purple-500 to-purple-600',
+      accentColor: '#c084fc', // purple-400
     },
     blue: {
       glow: 'rgba(59, 130, 246, 0.2)',
-      iconBg: isDark ? 'bg-blue-500/20' : 'bg-blue-50',
       iconColor: isDark ? 'text-blue-400' : 'text-blue-600',
-      topBorder: 'border-t-blue-500 dark:border-t-blue-400',
+      iconGradient: 'from-blue-500 to-blue-600',
+      accentColor: '#60a5fa', // blue-400
     },
     amber: {
       glow: 'rgba(245, 158, 11, 0.2)',
-      iconBg: isDark ? 'bg-amber-500/20' : 'bg-amber-50',
       iconColor: isDark ? 'text-amber-400' : 'text-amber-600',
-      topBorder: 'border-t-amber-500 dark:border-t-amber-400',
+      iconGradient: 'from-amber-500 to-amber-600',
+      accentColor: '#fbbf24', // amber-400
     },
     red: {
       glow: 'rgba(239, 68, 68, 0.2)',
-      iconBg: isDark ? 'bg-red-500/20' : 'bg-red-50',
       iconColor: isDark ? 'text-red-400' : 'text-red-600',
-      topBorder: 'border-t-red-500 dark:border-t-red-400',
+      iconGradient: 'from-red-500 to-red-600',
+      accentColor: '#f87171', // red-400
     },
     green: {
       glow: 'rgba(16, 185, 129, 0.2)',
-      iconBg: isDark ? 'bg-emerald-500/20' : 'bg-emerald-50',
       iconColor: isDark ? 'text-emerald-400' : 'text-emerald-600',
-      topBorder: 'border-t-emerald-500 dark:border-t-emerald-400',
+      iconGradient: 'from-emerald-500 to-emerald-600',
+      accentColor: '#34d399', // emerald-400
     },
     slate: {
       glow: 'rgba(100, 116, 139, 0.15)',
-      iconBg: isDark ? 'bg-slate-500/20' : 'bg-slate-100',
       iconColor: isDark ? 'text-slate-400' : 'text-slate-600',
-      topBorder: 'border-t-slate-500 dark:border-t-slate-400',
+      iconGradient: 'from-slate-500 to-slate-600',
+      accentColor: '#94a3b8', // slate-400
     },
   };
 
@@ -139,19 +147,21 @@ const SecondaryKPICard = ({
     }
   }, [isClickable, onClick]);
 
-  // Memoized animation states - prevents variants object recreation on re-render
+  // Memoized animation states - aligned with KPICard v1.19
   const restState = useMemo(() => ({
     y: 0,
+    scale: 1,
     boxShadow: isDark
-      ? '0 1px 3px rgba(0, 0, 0, 0.15)'
+      ? '0 2px 8px rgba(0, 0, 0, 0.3)'
       : '0 1px 3px rgba(0, 0, 0, 0.08)',
   }), [isDark]);
 
   const hoverState = useMemo(() => ({
-    y: -3,
+    y: -4,
+    scale: 1.01,
     boxShadow: isDark
-      ? '0 12px 36px rgba(0, 0, 0, 0.35)'
-      : '0 12px 36px rgba(0, 0, 0, 0.1)',
+      ? '0 16px 48px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 174, 239, 0.15)'
+      : '0 16px 48px rgba(0, 0, 0, 0.12), 0 0 20px rgba(0, 174, 239, 0.08)',
   }), [isDark]);
 
   return (
@@ -169,10 +179,9 @@ const SecondaryKPICard = ({
         relative overflow-hidden
         ${compact ? 'px-3 py-3' : 'px-3 py-3 sm:px-4 sm:py-4'}
         rounded-xl
-        border-t-2 ${colors.topBorder}
         ${isDark
-          ? 'bg-space-dust/70 border border-stellar-cyan/10'
-          : 'bg-white border border-slate-200 shadow-sm'
+          ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 border border-stellar-cyan/10 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+          : 'bg-gradient-to-br from-white via-white to-slate-50/50 border border-slate-200/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
         }
         ${isClickable
           ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2'
@@ -196,16 +205,26 @@ const SecondaryKPICard = ({
           {Icon && (
             <div
               className={`
-                ${compact ? 'p-2' : 'p-2'}
-                rounded-lg flex-shrink-0
-                ${colors.iconBg}
-                ${isDark ? 'border border-white/10' : 'border border-slate-200/50'}
+                relative ${compact ? 'p-2' : 'p-2'} rounded-xl flex-shrink-0 overflow-hidden
+                ${isDark
+                  ? 'bg-gradient-to-br from-white/5 to-white/10 border border-white/10 backdrop-blur-sm'
+                  : `bg-gradient-to-br ${colors.iconGradient}`
+                }
               `}
             >
+              {/* Subtle accent color reflection in dark mode */}
+              {isDark && (
+                <div
+                  className="absolute inset-0 opacity-20 pointer-events-none"
+                  style={{
+                    background: `radial-gradient(circle at center, ${colors.accentColor}, transparent 70%)`
+                  }}
+                />
+              )}
               <Icon
                 className={`
-                  ${compact ? 'w-4 h-4' : 'w-5 h-5'}
-                  ${colors.iconColor}
+                  relative z-10 ${compact ? 'w-4 h-4' : 'w-5 h-5'}
+                  ${isDark ? colors.iconColor : 'text-white'}
                 `}
               />
             </div>
@@ -238,7 +257,7 @@ const SecondaryKPICard = ({
         <div
           className={`
             ${compact ? 'text-xl' : 'text-xl sm:text-2xl'}
-            font-bold tracking-tight
+            font-extrabold tracking-tight tabular-nums
             ${isDark ? 'text-white' : 'text-slate-900'}
           `}
         >

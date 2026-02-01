@@ -1406,7 +1406,7 @@ const WhatsAppAnalytics = () => {
                   <div className="text-xs text-slate-500 dark:text-slate-400">
                     Mostrando {processedInboundMessages.startIdx}-{processedInboundMessages.endIdx} de {processedInboundMessages.totalCount} entradas
                     {processedInboundMessages.totalCount !== engagementData.inboundMessages.length && (
-                      <span className="text-slate-400 dark:text-slate-500"> (filtrado de {engagementData.inboundMessages.length})</span>
+                      <span className="text-slate-400 dark:text-slate-400"> (filtrado de {engagementData.inboundMessages.length})</span>
                     )}
                   </div>
 

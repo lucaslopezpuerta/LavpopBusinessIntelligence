@@ -340,7 +340,7 @@ const FirstVisitConversionCard = ({
             <ComparisonBar
               label="Sem boas-vindas"
               icon={UserX}
-              iconColor="text-slate-400 dark:text-slate-500"
+              iconColor="text-slate-400 dark:text-slate-400"
               count={metrics.withoutWelcome.total}
               converted={metrics.withoutWelcome.converted}
               rate={metrics.withoutWelcome.rate}

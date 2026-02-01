@@ -286,7 +286,7 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
               <button
                 key={key}
                 onClick={() => setFilterStatus(key)}
-                className={`flex-1 sm:flex-none min-h-[36px] px-2 sm:px-3 rounded-lg text-xs font-medium transition-all ${
+                className={`flex-1 sm:flex-none min-h-[36px] px-2 sm:px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   filterStatus === key
                     ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -307,7 +307,7 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
                 <button
                   key={key}
                   onClick={() => setFilterType(filterType === key ? 'all' : key)}
-                  className={`flex items-center gap-1 min-h-[36px] px-2.5 sm:px-3 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-1 min-h-[36px] px-2.5 sm:px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                     filterType === key
                       ? key === 'automated'
                         ? 'bg-purple-600 dark:bg-purple-500 text-white'
@@ -532,7 +532,7 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
             <p className="text-slate-600 dark:text-slate-400 mb-2">
               Nenhuma campanha encontrada
             </p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-400 dark:text-slate-400">
               Crie uma nova campanha na aba "Nova Campanha"
             </p>
           </div>

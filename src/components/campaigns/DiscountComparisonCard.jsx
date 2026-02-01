@@ -107,7 +107,7 @@ const EmptyComparison = ({ type }) => (
     <p className="text-sm text-slate-500 dark:text-slate-400">
       Sem dados de {type} ainda
     </p>
-    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+    <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">
       Envie campanhas com diferentes {type === 'desconto' ? 'descontos' : 'servicos'}
     </p>
   </div>

@@ -465,7 +465,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                 flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors
                                 ${showBlacklisted
                                     ? 'bg-red-600 dark:bg-red-500 text-white'
-                                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                                    : 'text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                                 }
                             `}
                             title={showBlacklisted ? 'Ocultar bloqueados' : `Mostrar ${blacklistedInList} bloqueado${blacklistedInList > 1 ? 's' : ''}`}
@@ -568,7 +568,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                                         {getSecondaryInfo(customer)}
-                                        {tertiaryInfo && <span className="text-slate-400 dark:text-slate-500"> · </span>}
+                                        {tertiaryInfo && <span className="text-slate-400 dark:text-slate-400"> · </span>}
                                         {tertiaryInfo && <span className="text-slate-600 dark:text-slate-300 font-medium">{tertiaryInfo}</span>}
                                     </p>
                                 </div>
@@ -584,7 +584,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                                 rounded-lg border transition-colors
                                                 ${contacted
                                                     ? 'bg-emerald-600 dark:bg-emerald-500 text-white border-emerald-600 dark:border-emerald-500'
-                                                    : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                                    : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
                                                 }
                                             `}
                                             title={contacted ? 'Desmarcar' : 'Marcar contactado'}
@@ -609,7 +609,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
                                                     className={`hidden md:flex w-11 h-11 items-center justify-center rounded-lg border transition-colors ${
                                                         canWhatsApp
                                                             ? 'bg-white dark:bg-slate-800 text-emerald-600 border-slate-200 dark:border-stellar-cyan/10 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
-                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed'
                                                     }`}
                                                     title={canWhatsApp ? 'WhatsApp' : 'Número inválido para WhatsApp'}
                                                 >
@@ -639,7 +639,7 @@ const CustomerListDrilldown = ({ customers = [], type = 'active' }) => {
 
             {/* Swipe hint for mobile */}
             {customers.length > 0 && customers.some(c => c.phone && formatPhone(c.phone)) && (
-                <p className="md:hidden text-center text-xs text-slate-400 dark:text-slate-500 py-1">
+                <p className="md:hidden text-center text-xs text-slate-400 dark:text-slate-400 py-1">
                     Deslize ← para ligar{customers.some(c => hasValidWhatsApp(c.phone)) ? ' ou → para WhatsApp' : ''}
                 </p>
             )}

@@ -5,7 +5,7 @@
 //
 // CHANGELOG:
 // v2.1 (2026-01-18): Improved card label contrast in dark mode
-//   - Changed stat card titles from dark:text-slate-500 to dark:text-slate-300
+//   - Changed stat card titles from dark:text-slate-400 to dark:text-slate-300
 //   - Better readability for Total, Média, Melhor Mês labels
 // v2.0 (2026-01-18): Cosmic Design System v5.0 overhaul
 //   - Updated to space-nebula/space-dust backgrounds
@@ -138,7 +138,7 @@ const CustomerCyclesTrend = ({ sales, customerDoc, onCollapse }) => {
             <span className="text-xs font-medium">Ocultar</span>
           </button>
         </div>
-        <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm">
+        <div className="text-center py-6 text-slate-400 dark:text-slate-400 text-sm">
           Nenhum histórico de ciclos disponível
         </div>
       </div>
@@ -169,17 +169,17 @@ const CustomerCyclesTrend = ({ sales, customerDoc, onCollapse }) => {
         <div className="bg-white dark:bg-space-dust/80 rounded-xl p-2.5 border border-slate-200 dark:border-stellar-cyan/15">
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Total</p>
           <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.total}</p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500">ciclos</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-400">ciclos</p>
         </div>
         <div className="bg-white dark:bg-space-dust/80 rounded-xl p-2.5 border border-slate-200 dark:border-stellar-cyan/15">
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Média</p>
           <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.average}</p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500">por mês</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-400">por mês</p>
         </div>
         <div className="bg-white dark:bg-space-dust/80 rounded-xl p-2.5 border border-slate-200 dark:border-stellar-cyan/15">
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase mb-0.5">Melhor Mês</p>
           <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.bestMonth}</p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500">{stats.bestValue} ciclos</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-400">{stats.bestValue} ciclos</p>
         </div>
       </div>
 

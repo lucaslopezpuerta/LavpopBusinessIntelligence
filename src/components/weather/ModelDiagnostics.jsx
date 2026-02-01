@@ -126,7 +126,7 @@ const MetricCard = ({ icon: Icon, label, value, subtext, colorClass = 'text-slat
     </div>
     <div className={`text-lg font-bold ${colorClass}`}>{value}</div>
     {subtext && (
-      <div className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">{subtext}</div>
+      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtext}</div>
     )}
   </div>
 );
@@ -285,7 +285,7 @@ const ModelDiagnostics = ({ isOpen, onClose, modelInfo, dataQuality }) => {
                   Dias com receita abaixo de R$ 100 (feriados, manutenção, etc.) são imprevisíveis
                   sem indicadores externos. Eles representam ~17% dos dias mas causam ~40% do erro total.
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   <Info className="w-3 h-3 inline mr-1" />
                   Este modelo prevê receita para <strong>dias normais de operação</strong>.
                 </p>

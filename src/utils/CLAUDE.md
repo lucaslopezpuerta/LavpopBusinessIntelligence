@@ -4,7 +4,7 @@ Utility functions and services for the Bilavnova Business Intelligence applicati
 
 ## Overview
 
-This directory contains 39 utility files organized by category:
+This directory contains 42 utility files organized by category:
 - **Data & API** - Supabase client, loaders, API services
 - **Metrics & Calculations** - Business logic and analytics
 - **Localization** - Brazilian date/number/phone formatting
@@ -66,6 +66,15 @@ This directory contains 39 utility files organized by category:
 | `chartThemes.js` | Theme-aware chart configs |
 | `colorMapping.js` | Semantic color system |
 | `lazyCharts.jsx` | Code-split chart components |
+
+### PDF Export System (v2.0)
+
+| File | Purpose |
+|------|---------|
+| `exportUtils.js` | Main PDF/CSV export functions (Executive Summary, Complete Report, Customer Health) |
+| `pdfSectionBuilders.js` | Modular PDF section renderers (hero, KPI grid, narratives, gauges, charts) |
+| `pdfInsightGenerator.js` | Narrative & insight generation in Portuguese |
+| `reportConfigs.js` | Design System v6.3 colors and report template configurations |
 
 ### Platform & Mobile
 

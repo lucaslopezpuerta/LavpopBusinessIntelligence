@@ -130,7 +130,7 @@ const SectionHeader = ({
           </h2>
         </div>
         <ChevronDown
-          className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0"
+          className="w-4 h-4 text-slate-400 dark:text-slate-400 flex-shrink-0"
         />
       </button>
     );
@@ -172,7 +172,7 @@ const SectionHeader = ({
         <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
           {action && action}
           <ChevronDown
-            className="w-5 h-5 text-slate-400 dark:text-slate-500 transition-transform duration-200 rotate-180"
+            className="w-5 h-5 text-slate-400 dark:text-slate-400 transition-transform duration-200 rotate-180"
           />
         </div>
       </button>

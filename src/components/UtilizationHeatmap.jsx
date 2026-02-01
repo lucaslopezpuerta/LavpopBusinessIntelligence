@@ -99,7 +99,7 @@ const getColorFromIntensity = (intensity, mode = 'services') => {
  * Get text color based on intensity for contrast
  */
 const getTextColorFromIntensity = (intensity) => {
-  if (intensity === 0) return 'text-slate-400 dark:text-slate-500';
+  if (intensity === 0) return 'text-slate-400 dark:text-slate-400';
   if (intensity > 0.5) return 'text-white';
   return 'text-slate-700 dark:text-slate-800';
 };

@@ -1,4 +1,4 @@
-// OPERATIONS KPI CARDS V6.9.0 - MODE-AWARE AMBER BADGES
+// OPERATIONS KPI CARDS V6.9.1 - SKELETON LOADING STATE
 // ✅ Math: Absolute pp trend change (not relative %)
 // ✅ Math: Capacity adapts to date window (partial week support)
 // ✅ Math: Service diff hidden for currentWeek (partial vs full unfair)
@@ -6,12 +6,17 @@
 // ✅ UX: Subtle threshold legend (footnote style)
 // ✅ UX: Simplified card layout (cleaner, less overload)
 // ✅ UX: Comparison label adapts to dateWindow
+// ✅ UX: Skeleton loading matches card layout (prevents layout shift)
 // ✅ Design System: Minimum 12px fonts (no text-[9px] or text-[10px])
 // ✅ Mobile: Responsive text sizing with sm: breakpoints
 // ✅ Accessibility: Proper color contrast and touch targets
 // ✅ WCAG AA: Mode-aware badges with proper contrast
 //
 // CHANGELOG:
+// v6.9.1 (2026-01-31): Skeleton loading state
+//   - Replaced simple text loading with 3-card skeleton grid
+//   - Skeleton matches final card layout (prevents CLS)
+//   - Dark/light mode skeleton colors
 // v6.9.0 (2026-01-29): Yellow to amber color migration with mode-aware badges
 //   - Razoavel status: yellow-600/yellow-500 → mode-aware amber styling
 //   - Mode-aware badges: bg-amber-50 text-amber-800 border border-amber-200 (light)
@@ -226,8 +231,36 @@ const OperationsKPICards = ({
 
   if (!currentData) {
     return (
-      <div className="flex items-center justify-center h-32 text-slate-600 dark:text-slate-400">
-        <div className="animate-pulse">Carregando métricas...</div>
+      <div className="space-y-4 mb-4 sm:mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+          {[1, 2, 3].map(i => (
+            <div
+              key={i}
+              className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5 border-2 border-slate-200 dark:border-slate-700 animate-pulse"
+            >
+              {/* Header skeleton */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-slate-200 dark:bg-slate-700" />
+                <div className="flex-1">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-1" />
+                  <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16" />
+                </div>
+              </div>
+              {/* Metric skeleton */}
+              <div className="mb-3">
+                <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-2" />
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32" />
+              </div>
+              {/* Progress bar skeleton */}
+              <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full mb-6" />
+              {/* Footer skeleton */}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full mb-1" />
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -407,7 +440,7 @@ const OperationsKPICards = ({
             />
           </div>
           {/* Threshold legend - positioned proportionally to 0-50% scale */}
-          <div className="relative w-full h-4 mt-1 text-xs text-slate-500 dark:text-slate-500">
+          <div className="relative w-full h-4 mt-1 text-xs text-slate-500 dark:text-slate-400">
             <span className="absolute left-0">0%</span>
             <span className="absolute left-[10%] -translate-x-1/2">5%</span>
             <span className="absolute left-[20%] -translate-x-1/2 text-amber-600 dark:text-amber-400">10%</span>
@@ -433,7 +466,7 @@ const OperationsKPICards = ({
               )}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-500 mt-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             <span>Capacidade ({periodConfig.days}d):</span>
             <span>{maxCapacity} ciclos</span>
           </div>
@@ -488,7 +521,7 @@ const OperationsKPICards = ({
       </div>
 
       {/* Threshold Legend - Subtle footnote style */}
-      <div className="flex flex-wrap items-center justify-center gap-x-2 sm:gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-500 pt-2 pb-2">
+      <div className="flex flex-wrap items-center justify-center gap-x-2 sm:gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-2 pb-2">
         <span className="flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
           <span className="hidden sm:inline">≥25%</span> Excelente

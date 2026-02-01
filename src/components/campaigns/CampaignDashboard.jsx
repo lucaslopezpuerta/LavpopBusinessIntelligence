@@ -231,7 +231,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Nenhuma campanha enviada ainda
         </p>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+        <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">
           Crie sua primeira campanha clicando em "Nova Campanha"
         </p>
       </div>
@@ -343,7 +343,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                         </span>
                       )}
                       {/* Audience - desktop only */}
-                      <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-500 truncate">
+                      <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-400 truncate">
                         {campaign.audience}
                       </span>
                     </div>
@@ -447,7 +447,7 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
                           ? 'text-emerald-500 dark:text-emerald-400'
                           : campaign.avg_days_to_return <= 7
                             ? 'text-blue-500 dark:text-blue-400'
-                            : 'text-slate-400 dark:text-slate-500'
+                            : 'text-slate-400 dark:text-slate-400'
                       }`} title="Média de dias até retorno">
                         {campaign.avg_days_to_return.toFixed(0)}d retorno
                       </span>

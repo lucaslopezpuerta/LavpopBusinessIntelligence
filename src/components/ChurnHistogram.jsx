@@ -222,7 +222,7 @@ const ChurnHistogram = ({
                     </div>
                 </div>
                 <div className="flex-1 min-h-[250px] flex items-center justify-center">
-                    <div className="text-center text-slate-400 dark:text-slate-500">
+                    <div className="text-center text-slate-400 dark:text-slate-400">
                         <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">Carregando dados...</p>
                     </div>

@@ -331,7 +331,7 @@ const OperatingCyclesChart = ({
 
   if (!periodInfo || chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 sm:h-64 text-slate-400 dark:text-slate-500">
+      <div className="flex items-center justify-center h-48 sm:h-64 text-slate-400 dark:text-slate-400">
         <div className="text-center">
           <WashingMachine className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 text-cyan-500/50 dark:text-cyan-400/50" />
           <p className="text-sm font-medium">Sem dados disponíveis</p>
@@ -516,7 +516,7 @@ const OperatingCyclesChart = ({
                 <svg className="w-3 h-2" aria-hidden="true" viewBox="0 0 12 8">
                   <line x1="0" y1="4" x2="12" y2="4" stroke={colors.info} strokeWidth="2" strokeDasharray="3 2" />
                 </svg>
-                <span className="text-slate-500 dark:text-slate-500 hidden sm:inline">{periodInfo?.comparisonYear}</span>
+                <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">{periodInfo?.comparisonYear}</span>
               </div>
             </>
           )}
@@ -530,7 +530,7 @@ const OperatingCyclesChart = ({
                 <svg className="w-3 h-2" aria-hidden="true" viewBox="0 0 12 8">
                   <line x1="0" y1="4" x2="12" y2="4" stroke={colors.warning} strokeWidth="2" strokeDasharray="3 2" />
                 </svg>
-                <span className="text-slate-500 dark:text-slate-500 hidden sm:inline">{periodInfo?.comparisonYear}</span>
+                <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">{periodInfo?.comparisonYear}</span>
               </div>
             </>
           )}

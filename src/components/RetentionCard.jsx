@@ -543,7 +543,7 @@ const RetentionCard = ({
 
       {/* Footer */}
       <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-        <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
+        <p className="text-xs text-slate-400 dark:text-slate-400 text-center">
           Últimos 90 dias
         </p>
       </div>

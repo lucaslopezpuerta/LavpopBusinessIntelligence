@@ -719,7 +719,7 @@ const NewCampaignModal = ({
                     ? 'bg-gradient-stellar text-white shadow-md shadow-stellar-cyan/20'
                     : isCompleted
                       ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-slate-400 dark:text-slate-500'
+                      : 'text-slate-400 dark:text-slate-400'
                   }
                 `}>
                   {isCompleted ? (
@@ -1375,7 +1375,7 @@ const NewCampaignModal = ({
                           />
                         </div>
                       </div>
-                      <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-1.5 sm:mt-2 text-center">
+                      <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-400 mt-1.5 sm:mt-2 text-center">
                         Horário de Brasília
                       </p>
                     </div>

@@ -365,7 +365,7 @@ const MobileCustomerCard = memo(({
 
         {/* Customer info */}
         <div className="min-w-0 flex-1">
-          <p className={`text-sm font-semibold truncate ${contacted ? 'line-through text-slate-400 dark:text-slate-500' : ''} ${blacklisted && !contacted ? 'text-slate-500 dark:text-slate-400' : ''} ${!blacklisted && !contacted ? 'text-slate-900 dark:text-white' : ''}`}>
+          <p className={`text-sm font-semibold truncate ${contacted ? 'line-through text-slate-400 dark:text-slate-400' : ''} ${blacklisted && !contacted ? 'text-slate-500 dark:text-slate-400' : ''} ${!blacklisted && !contacted ? 'text-slate-900 dark:text-white' : ''}`}>
             {customer.name || 'Sem nome'}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
@@ -385,7 +385,7 @@ const MobileCustomerCard = memo(({
           </p>
         </div>
 
-        <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+        <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-400 flex-shrink-0" />
       </motion.div>
     </div>
   );
@@ -488,7 +488,7 @@ const DesktopCustomerRow = memo(({
           <div className="flex items-center gap-2">
             <span className={`
               font-semibold
-              ${contacted ? 'line-through text-slate-400 dark:text-slate-500' : ''}
+              ${contacted ? 'line-through text-slate-400 dark:text-slate-400' : ''}
               ${blacklisted ? 'text-slate-500 dark:text-slate-400' : ''}
               ${!contacted && !blacklisted ? 'text-slate-900 dark:text-white' : ''}
             `}>
@@ -530,7 +530,7 @@ const DesktopCustomerRow = memo(({
             {contactInfo.method} há {contactInfo.timeAgo}
           </span>
         ) : (
-          <span className="text-xs text-slate-400 dark:text-slate-500">
+          <span className="text-xs text-slate-400 dark:text-slate-400">
             Sem contato
           </span>
         )}
@@ -1092,13 +1092,13 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
             {/* Search */}
             <div className="relative flex-1 max-w-xs group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 group-focus-within:text-stellar-cyan transition-colors duration-200" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-400 group-focus-within:text-stellar-cyan transition-colors duration-200" />
               <input
                 type="text"
                 placeholder="Buscar por nome..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-sm bg-white/80 dark:bg-space-dust/50 border border-slate-200/80 dark:border-stellar-cyan/15 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-stellar-cyan/40 dark:focus:border-stellar-cyan/30 focus:ring-2 focus:ring-stellar-cyan/20 transition-all duration-200"
+                className="w-full pl-9 pr-8 py-2 text-sm bg-white/80 dark:bg-space-dust/50 border border-slate-200/80 dark:border-stellar-cyan/15 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none focus:border-stellar-cyan/40 dark:focus:border-stellar-cyan/30 focus:ring-2 focus:ring-stellar-cyan/20 transition-all duration-200"
               />
               {searchQuery && (
                 <button
@@ -1215,7 +1215,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
               })}
 
               {paginatedCustomers.some(c => c.phone && formatPhone(c.phone)) && (
-                <p className="text-center text-xs text-slate-400 dark:text-slate-500 py-1">
+                <p className="text-center text-xs text-slate-400 dark:text-slate-400 py-1">
                   Deslize ← para ligar{paginatedCustomers.some(c => hasValidWhatsApp(c.phone)) ? ' ou → para WhatsApp' : ''}
                 </p>
               )}
@@ -1249,7 +1249,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                         <ChevronUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       )
                     ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
                   </button>
                 </th>
@@ -1273,7 +1273,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                         <ChevronUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       )
                     ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
                   </button>
                 </th>
@@ -1292,7 +1292,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
                         <ChevronUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       )
                     ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
                   </button>
                 </th>
