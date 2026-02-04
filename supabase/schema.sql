@@ -1,6 +1,12 @@
 -- Lavpop Business Intelligence - Supabase Schema
 -- Run this SQL in your Supabase SQL Editor to set up the database
--- Version: 3.36 (2026-01-24)
+-- Version: 3.37 (2026-02-02)
+--
+-- v3.37: WhatChimp Integration - Customer Summary Columns
+--   - Added data_cadastro column to customer_summary view (for anniversary template)
+--   - Added risk_level column to customer_summary view (for WhatChimp labeling)
+--   - Enables dynamic label assignment in WhatChimp based on RFM segment and risk level
+--   - See migrations/044_add_customer_summary_columns.sql
 --
 -- v3.36: New Automation Types & One-Time Sends
 --   - Added welcome_sent_at, post_visit_sent_at columns for one-time send tracking
@@ -1380,7 +1386,9 @@ GROUP BY
   COALESCE(contact_method, 'unknown'),
   CASE WHEN campaign_id IS NOT NULL THEN 'campaign' ELSE 'manual' END;
 
--- Customer summary view (aggregated from transactions) - v3.2 (removed risk_level)
+-- Customer summary view (aggregated from transactions)
+-- v3.37: Added data_cadastro and risk_level for WhatChimp integration
+-- v3.2: Removed computed risk_level (now from customers table)
 CREATE VIEW customer_summary AS
 SELECT
   c.doc,
@@ -1393,6 +1401,36 @@ SELECT
   c.f_score,
   c.m_score,
   c.recent_monetary_90d,
+  -- NEW v3.37: Registration date for anniversary template
+  c.data_cadastro,
+  -- NEW v3.37: Risk level for WhatChimp labeling
+  c.risk_level,
+  -- Phone normalization (Brazilian mobile format: 55 + DDD + 9 + 8 digits)
+  CASE
+    WHEN c.telefone IS NULL OR c.telefone = '' THEN NULL
+    ELSE (
+      SELECT
+        CASE
+          WHEN n.normalized ~ '^55[1-9]{2}9[0-9]{8}$' THEN n.normalized
+          ELSE NULL
+        END
+      FROM (
+        SELECT
+          CASE LENGTH(d.digits)
+            WHEN 13 THEN
+              CASE WHEN d.digits LIKE '55%' THEN d.digits ELSE NULL END
+            WHEN 12 THEN
+              CASE WHEN d.digits LIKE '55%' THEN SUBSTR(d.digits, 1, 4) || '9' || SUBSTR(d.digits, 5) ELSE NULL END
+            WHEN 11 THEN '55' || d.digits
+            WHEN 10 THEN '55' || SUBSTR(d.digits, 1, 2) || '9' || SUBSTR(d.digits, 3)
+            ELSE NULL
+          END AS normalized
+        FROM (
+          SELECT REGEXP_REPLACE(c.telefone, '[^0-9]', '', 'g') AS digits
+        ) d
+      ) n
+    )
+  END AS normalized_phone,
   -- Transaction stats
   COUNT(t.id) FILTER (WHERE NOT t.is_recarga) as transaction_count,
   COUNT(t.id) FILTER (WHERE t.is_recarga) as recarga_count,
@@ -1415,7 +1453,19 @@ SELECT
   ) as avg_ticket
 FROM customers c
 LEFT JOIN transactions t ON c.doc = t.doc_cliente
-GROUP BY c.doc, c.nome, c.telefone, c.email, c.saldo_carteira, c.rfm_segment, c.r_score, c.f_score, c.m_score, c.recent_monetary_90d;
+GROUP BY
+  c.doc,
+  c.nome,
+  c.telefone,
+  c.email,
+  c.saldo_carteira,
+  c.rfm_segment,
+  c.r_score,
+  c.f_score,
+  c.m_score,
+  c.recent_monetary_90d,
+  c.data_cadastro,
+  c.risk_level;
 
 -- Coupon effectiveness view (for A/B testing analysis) - NEW v3.0
 CREATE OR REPLACE VIEW coupon_effectiveness AS

@@ -1,8 +1,14 @@
-// RevenueForecast.jsx v3.2.0 - MODE-AWARE WARNING BADGES
+// RevenueForecast.jsx v3.3.0 - UI POLISH (KPICard Pattern)
 // Revenue projection card for Intelligence tab
 // Design System v5.1 compliant - Premium Glass
 //
 // CHANGELOG:
+// v3.3.0 (2026-02-01): UI polish following KPICard.jsx pattern
+//   - Stats cards: Added gradient backgrounds and inner shadow accent
+//   - Updated padding: p-3.5 → p-4 for better spacing
+//   - Label typography: Added tracking-wider, improved color contrast
+//   - Value typography: Added tabular-nums for number alignment
+//   - Temperature card: Added gradient background
 // v3.2.0 (2026-01-29): Mode-aware warning badges
 //   - Confidence badge amber state now light-friendly (amber-50/amber-500)
 //   - Amber text now mode-aware (amber-800 light, white dark)
@@ -217,30 +223,34 @@ const RevenueForecast = ({
       <div className={`grid gap-3 mb-5 ${showTempInsight ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3'}`}>
         {/* Daily Average */}
         <div className={`
-          p-3.5 rounded-xl
-          ${isDark ? 'bg-slate-800/80' : 'bg-white'}
+          p-4 rounded-xl
+          ${isDark
+            ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+            : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
           ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
           shadow-sm
         `}>
-          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-600 dark:text-slate-300 mb-1`}>
+          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} tracking-wider text-slate-500 dark:text-slate-400 mb-1`}>
             Média Diária
           </p>
-          <p className={`${isDesktop ? 'text-xl' : 'text-lg'} font-bold text-slate-900 dark:text-white`}>
+          <p className={`${isDesktop ? 'text-xl' : 'text-lg'} font-bold tabular-nums text-slate-900 dark:text-white`}>
             {formatCurrency(dailyAverage)}
           </p>
         </div>
 
         {/* Days Remaining */}
         <div className={`
-          p-3.5 rounded-xl
-          ${isDark ? 'bg-slate-800/80' : 'bg-white'}
+          p-4 rounded-xl
+          ${isDark
+            ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+            : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
           ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
           shadow-sm
         `}>
-          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-600 dark:text-slate-300 mb-1`}>
+          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} tracking-wider text-slate-500 dark:text-slate-400 mb-1`}>
             Dias Restantes
           </p>
-          <p className={`${isDesktop ? 'text-xl' : 'text-lg'} font-bold text-slate-900 dark:text-white`}>
+          <p className={`${isDesktop ? 'text-xl' : 'text-lg'} font-bold tabular-nums text-slate-900 dark:text-white`}>
             {daysRemaining}
           </p>
         </div>
@@ -248,12 +258,14 @@ const RevenueForecast = ({
         {/* Month Progress - Full width on mobile */}
         <div className={`
           col-span-2 lg:col-span-1
-          p-3.5 rounded-xl
-          ${isDark ? 'bg-slate-800/80' : 'bg-white'}
+          p-4 rounded-xl
+          ${isDark
+            ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+            : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
           ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
           shadow-sm
         `}>
-          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-slate-600 dark:text-slate-300 mb-2`}>
+          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} tracking-wider text-slate-500 dark:text-slate-400 mb-2`}>
             Progresso do Mês
           </p>
           <div className="flex items-center gap-2">
@@ -287,14 +299,16 @@ const RevenueForecast = ({
         {showTempInsight && (
           <div className={`
             col-span-2 lg:col-span-1
-            p-3.5 rounded-xl
-            ${isDark ? 'bg-blue-900/50' : 'bg-blue-50'}
+            p-4 rounded-xl
+            ${isDark
+              ? 'bg-gradient-to-br from-blue-900/50 via-blue-900/40 to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(59,130,246,0.1)]'
+              : 'bg-gradient-to-br from-blue-50 via-blue-50/80 to-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
             ring-1 ${isDark ? 'ring-blue-400/20' : 'ring-blue-200'}
             shadow-sm
           `}>
             <div className="flex items-center gap-1.5 mb-1">
               <Thermometer className="w-4 h-4 text-blue-500 dark:text-blue-400" aria-hidden="true" />
-              <p className={`${isDesktop ? 'text-sm' : 'text-xs'} text-blue-700 dark:text-blue-300`}>
+              <p className={`${isDesktop ? 'text-sm' : 'text-xs'} tracking-wider text-blue-700 dark:text-blue-300`}>
                 Fator Clima
               </p>
             </div>

@@ -282,7 +282,7 @@ const getLoadingFallback = (tabId) => {
 
 function AppContent() {
   const { activeTab, navigateTo } = useNavigation();
-  const { isPinned, toggleMobileSidebar } = useSidebar();
+  const { isPinned, toggleMobileSidebar, isMobileOpen } = useSidebar();
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
   // Fast fade-only page transition - content stagger handles the entrance feel
@@ -588,9 +588,10 @@ function AppContent() {
         {/* Note: IconSidebar has its own backdrop inside MobileDrawer - no separate Backdrop needed */}
         <IconSidebar activeTab={activeTab} onNavigate={handleTabChange} onOpenSettings={() => setShowSettings(true)} />
 
-        {/* Bottom Navigation Bar - Glassmorphism floating pill (v1.0) */}
+        {/* Bottom Navigation Bar - Glassmorphism floating pill (v4.3) */}
         {/* Uses useTheme() internally - safe because ThemeContext is memoized */}
-        <BottomNavBar activeTab={activeTab} onMoreClick={toggleMobileSidebar} />
+        {/* isMobileSidebarOpen: Framer Motion coordinates with drawer animation */}
+        <BottomNavBar activeTab={activeTab} onMoreClick={toggleMobileSidebar} isMobileSidebarOpen={isMobileOpen} />
 
         {/* Offline Indicator */}
         <OfflineIndicator lastSyncTime={lastRefreshed} />

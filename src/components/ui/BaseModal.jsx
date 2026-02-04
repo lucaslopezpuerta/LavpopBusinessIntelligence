@@ -1,21 +1,32 @@
-// BaseModal.jsx v1.0 - Unified modal component for consistent UX
+// BaseModal.jsx v1.2 - FLASH-FREE ANIMATION
 // Design System v5.1 compliant - Variant D (Glassmorphism)
 //
 // FEATURES:
 // - Platform-aware animations (bottom sheet on mobile, centered on desktop)
-// - Swipe-to-close gesture support on mobile
+// - Header-only swipe-to-close (content scrolls freely)
+// - Natural spring physics for snap-back and close
 // - Focus trap for accessibility
 // - Keyboard navigation (Escape to close)
 // - Safe area handling for notched devices
 // - Scroll lock to prevent body scroll
 // - Reduced motion support
+// - Flash-free mounting (outer container animated)
 //
 // CHANGELOG:
+// v1.2 (2026-02-02): Flash-free animation
+//   - Outer container now animated to prevent any flash before modal animates
+//   - Eliminates brief "small square in center" artifact on mount
+//   - Outer motion.div fades in over 150ms, coordinated with backdrop/content
+// v1.1 (2026-02-01): Header-only drag gesture
+//   - Swipe gesture now only triggers from header/drag handle area
+//   - Content scrolling no longer interferes with close gesture
+//   - Natural spring physics for snap-back and close animations
+//   - Framer Motion drag system for smoother feel
 // v1.0 (2026-01-31): Initial implementation
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValueEvent } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import useMediaQuery from '../../hooks/useMediaQuery';
@@ -23,7 +34,7 @@ import useReducedMotion from '../../hooks/useReducedMotion';
 import useScrollLock from '../../hooks/useScrollLock';
 import useSwipeToClose from '../../hooks/useSwipeToClose';
 import DragHandle from './DragHandle';
-import { MODAL, MODAL_SWIPE } from '../../constants/animations';
+import { MODAL } from '../../constants/animations';
 
 /**
  * BaseModal - Unified modal component
@@ -94,20 +105,29 @@ const BaseModal = ({
   // Scroll lock
   useScrollLock(isOpen && preventScroll);
 
-  // Swipe-to-close gesture
+  // Swipe-to-close gesture (v1.1: header-only drag zone)
   const {
-    handlers: swipeHandlers,
-    style: swipeStyle,
+    dragZoneProps,
+    modalMotionProps,
     isDragging,
-    progress,
     hasReachedThreshold,
-    backdropOpacity,
+    progress: progressMotionValue,
+    backdropOpacity: backdropOpacityMotionValue,
   } = useSwipeToClose({
     onClose,
-    threshold: MODAL_SWIPE.THRESHOLD,
-    resistance: MODAL_SWIPE.RESISTANCE,
-    velocityThreshold: MODAL_SWIPE.VELOCITY_THRESHOLD,
     disabled: !isMobile || !isOpen || !enableSwipeToClose,
+  });
+
+  // Subscribe to motion values for DragHandle and backdrop
+  const [currentProgress, setCurrentProgress] = useState(0);
+  const [currentBackdropOpacity, setCurrentBackdropOpacity] = useState(1);
+
+  useMotionValueEvent(progressMotionValue, 'change', (value) => {
+    setCurrentProgress(value);
+  });
+
+  useMotionValueEvent(backdropOpacityMotionValue, 'change', (value) => {
+    setCurrentBackdropOpacity(value);
   });
 
   // Escape key handler
@@ -284,9 +304,13 @@ const BaseModal = ({
   return createPortal(
     <AnimatePresence mode="wait">
       {isOpen && (
-        <div
+        <motion.div
           className={`fixed inset-0 flex ${isMobile ? 'items-end' : 'items-center'} justify-center`}
           style={{ zIndex }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
         >
           {/* Backdrop */}
           <motion.div
@@ -294,7 +318,7 @@ const BaseModal = ({
             initial={backdropAnimation.initial}
             animate={{
               ...backdropAnimation.animate,
-              opacity: isDragging ? backdropOpacity : backdropAnimation.animate.opacity,
+              opacity: isDragging ? currentBackdropOpacity : backdropAnimation.animate.opacity,
             }}
             exit={backdropAnimation.exit}
             transition={backdropAnimation.transition}
@@ -324,113 +348,119 @@ const BaseModal = ({
             animate={contentAnimation.animate}
             exit={contentAnimation.exit}
             transition={contentAnimation.transition}
-            style={isMobile && enableSwipeToClose ? swipeStyle : undefined}
             onKeyDown={handleKeyDown}
-            {...(isMobile && enableSwipeToClose ? swipeHandlers : {})}
+            {...(isMobile && enableSwipeToClose ? modalMotionProps : {})}
           >
-            {/* Drag Handle (mobile only) */}
-            {isMobile && showDragHandle && (
-              <div className="flex justify-center pt-3 pb-1">
-                <DragHandle
-                  isDragging={isDragging}
-                  progress={progress}
-                  hasReachedThreshold={hasReachedThreshold}
-                />
-              </div>
-            )}
-
-            {/* Header */}
-            {showHeader && (title || showCloseButton) && (
-              <header
-                className={`
-                  flex items-center gap-3 px-4 sm:px-6
-                  ${isMobile && !showDragHandle ? 'pt-safe' : ''}
-                  ${isMobile ? 'py-3' : 'py-4'}
-                  border-b
-                  ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
-                  flex-shrink-0
-                `}
-              >
-                {/* Icon */}
-                {Icon && (
-                  <div
-                    className={`
-                      flex-shrink-0 w-10 h-10 rounded-xl
-                      flex items-center justify-center
-                      ${iconColors.bg}
-                    `}
-                  >
-                    <Icon className={`w-5 h-5 ${iconColors.text}`} />
-                  </div>
-                )}
-
-                {/* Title & Subtitle */}
-                <div className="flex-1 min-w-0">
-                  {title && (
-                    <h2
-                      className={`
-                        text-lg font-semibold truncate
-                        ${isDark ? 'text-white' : 'text-slate-900'}
-                      `}
-                    >
-                      {title}
-                    </h2>
-                  )}
-                  {subtitle && (
-                    <p
-                      className={`
-                        text-sm truncate
-                        ${isDark ? 'text-slate-400' : 'text-slate-500'}
-                      `}
-                    >
-                      {subtitle}
-                    </p>
-                  )}
+            {/* Drag Zone: Header area for swipe-to-close gesture (mobile only) */}
+            {/* v1.1: Drag zone prevents gesture from interfering with content scroll */}
+            <div
+              {...(isMobile && enableSwipeToClose ? dragZoneProps : {})}
+              className={isMobile && enableSwipeToClose ? 'select-none' : ''}
+            >
+              {/* Drag Handle (mobile only) */}
+              {isMobile && showDragHandle && (
+                <div className="flex justify-center pt-3 pb-1">
+                  <DragHandle
+                    isDragging={isDragging}
+                    progress={currentProgress}
+                    hasReachedThreshold={hasReachedThreshold}
+                  />
                 </div>
+              )}
 
-                {/* Badge */}
-                {badge && (
-                  <div className="flex-shrink-0">
-                    {typeof badge === 'string' ? (
-                      <span
+              {/* Header */}
+              {showHeader && (title || showCloseButton) && (
+                <header
+                  className={`
+                    flex items-center gap-3 px-4 sm:px-6
+                    ${isMobile && !showDragHandle ? 'pt-safe' : ''}
+                    ${isMobile ? 'py-3' : 'py-4'}
+                    border-b
+                    ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'}
+                    flex-shrink-0
+                  `}
+                >
+                  {/* Icon */}
+                  {Icon && (
+                    <div
+                      className={`
+                        flex-shrink-0 w-10 h-10 rounded-xl
+                        flex items-center justify-center
+                        ${iconColors.bg}
+                      `}
+                    >
+                      <Icon className={`w-5 h-5 ${iconColors.text}`} />
+                    </div>
+                  )}
+
+                  {/* Title & Subtitle */}
+                  <div className="flex-1 min-w-0">
+                    {title && (
+                      <h2
                         className={`
-                          px-2 py-1 rounded-full text-xs font-medium
-                          ${isDark ? 'bg-stellar-cyan/20 text-stellar-cyan' : 'bg-blue-100 text-blue-700'}
+                          text-lg font-semibold truncate
+                          ${isDark ? 'text-white' : 'text-slate-900'}
                         `}
                       >
-                        {badge}
-                      </span>
-                    ) : (
-                      badge
+                        {title}
+                      </h2>
+                    )}
+                    {subtitle && (
+                      <p
+                        className={`
+                          text-sm truncate
+                          ${isDark ? 'text-slate-400' : 'text-slate-500'}
+                        `}
+                      >
+                        {subtitle}
+                      </p>
                     )}
                   </div>
-                )}
 
-                {/* Header Actions */}
-                {headerActions && (
-                  <div className="flex-shrink-0 flex items-center gap-2">
-                    {headerActions}
-                  </div>
-                )}
+                  {/* Badge */}
+                  {badge && (
+                    <div className="flex-shrink-0">
+                      {typeof badge === 'string' ? (
+                        <span
+                          className={`
+                            px-2 py-1 rounded-full text-xs font-medium
+                            ${isDark ? 'bg-stellar-cyan/20 text-stellar-cyan' : 'bg-blue-100 text-blue-700'}
+                          `}
+                        >
+                          {badge}
+                        </span>
+                      ) : (
+                        badge
+                      )}
+                    </div>
+                  )}
 
-                {/* Close Button */}
-                {showCloseButton && (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className={`
-                      flex-shrink-0 p-2 rounded-lg transition-colors
-                      ${isDark
-                        ? 'text-slate-400 hover:text-white hover:bg-white/10'
-                        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}
-                    `}
-                    aria-label="Fechar"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                )}
-              </header>
-            )}
+                  {/* Header Actions */}
+                  {headerActions && (
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      {headerActions}
+                    </div>
+                  )}
+
+                  {/* Close Button */}
+                  {showCloseButton && (
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className={`
+                        flex-shrink-0 p-2 rounded-lg transition-colors
+                        ${isDark
+                          ? 'text-slate-400 hover:text-white hover:bg-white/10'
+                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}
+                      `}
+                      aria-label="Fechar"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </header>
+              )}
+            </div>
 
             {/* Content */}
             <main
@@ -458,7 +488,7 @@ const BaseModal = ({
               </footer>
             )}
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>,
     document.body

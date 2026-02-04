@@ -1,4 +1,4 @@
-// BottomNavBar.jsx v4.2 - FLOATING PILL NAVIGATION
+// BottomNavBar.jsx v4.3 - FLOATING PILL NAVIGATION
 // Modern floating bottom nav with animated pill indicator
 // Inspired by BuildUI animated tabs pattern
 //
@@ -17,10 +17,16 @@
 // - Safe area support for notched devices
 // - Reduced motion support
 // - Dark/light mode via useTheme()
-// - Modal-aware: slides out when modals open
+// - Modal-aware: slides out when modals open (CSS for non-sidebar modals)
+// - Sidebar-coordinated: Framer Motion spring animation synced with drawer
 // - Landscape mode: compact height
 //
 // CHANGELOG:
+// v4.3 (2026-02-02): Coordinated sidebar animation
+//   - Added isMobileSidebarOpen prop for Framer Motion animation
+//   - Spring physics match MobileDrawer for fluid coordination
+//   - CSS handles non-sidebar modals, Framer Motion handles sidebar
+//   - Navigation remains unaffected (separate state)
 // v4.2 (2026-01-29): Visual polish & micro-interactions
 //   - Enhanced glassmorphism with saturate filter and inner highlight
 //   - Icon pop animation when tab becomes active
@@ -45,7 +51,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { haptics } from '../../utils/haptics';
-import { NAV_MICRO } from '../../constants/animations';
+import { NAV_MICRO, BOTTOM_NAV } from '../../constants/animations';
 import { BarChart3, Search, Users, MessageSquare, Menu } from 'lucide-react';
 
 // Navigation configuration - single source of truth
@@ -213,8 +219,9 @@ NavItem.propTypes = {
  *
  * @param {string} activeTab - Current tab ID from parent
  * @param {function} onMoreClick - Handler for "More" button
+ * @param {boolean} isMobileSidebarOpen - Whether mobile sidebar drawer is open
  */
-const BottomNavBar = ({ activeTab, onMoreClick }) => {
+const BottomNavBar = ({ activeTab, onMoreClick, isMobileSidebarOpen = false }) => {
   const { isDark } = useTheme();
   const isLandscape = useMediaQuery('(orientation: landscape) and (max-height: 500px)');
   const reducedMotion = useReducedMotion();
@@ -234,17 +241,32 @@ const BottomNavBar = ({ activeTab, onMoreClick }) => {
 
   const isMoreActive = MORE_ROUTES.includes(activeTab);
 
-  // Entrance animation variants
+  // Animation variants for entrance + sidebar coordination
+  // Uses spring physics matching MobileDrawer for fluid motion
   const containerVariants = {
+    // Initial entrance animation
     hidden: { y: 20, opacity: 0 },
+    // Normal visible state
     visible: {
       y: 0,
       opacity: 1,
       transition: reducedMotion
         ? { duration: 0 }
-        : { type: 'spring', stiffness: 260, damping: 20 },
+        : BOTTOM_NAV.SHOW,
+    },
+    // Hidden when sidebar is open - coordinated with drawer animation
+    sidebarHidden: {
+      y: 80,
+      opacity: 0,
+      transition: reducedMotion
+        ? { duration: 0 }
+        : BOTTOM_NAV.HIDE,
     },
   };
+
+  // Determine current animation state
+  // Priority: sidebar open → hidden, otherwise → visible
+  const animationState = isMobileSidebarOpen ? 'sidebarHidden' : 'visible';
 
   return (
     <motion.nav
@@ -252,7 +274,7 @@ const BottomNavBar = ({ activeTab, onMoreClick }) => {
       style={{ paddingBottom: `max(env(safe-area-inset-bottom, 8px), 8px)` }}
       aria-label="Navegação principal"
       initial={showEntrance ? 'hidden' : false}
-      animate="visible"
+      animate={animationState}
       variants={containerVariants}
     >
       {/* Floating glassmorphic container - enhanced v4.2 */}
@@ -306,6 +328,8 @@ BottomNavBar.propTypes = {
   activeTab: PropTypes.string.isRequired,
   /** Handler to open mobile sidebar (from useSidebar().toggleMobileSidebar) */
   onMoreClick: PropTypes.func.isRequired,
+  /** Whether mobile sidebar drawer is open (Framer Motion coordination) */
+  isMobileSidebarOpen: PropTypes.bool,
 };
 
 export default memo(BottomNavBar);

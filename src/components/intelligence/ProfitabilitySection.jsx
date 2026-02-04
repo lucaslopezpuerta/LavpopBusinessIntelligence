@@ -1,8 +1,14 @@
-// ProfitabilitySection.jsx v4.2.0 - YELLOW→AMBER REVERT
+// ProfitabilitySection.jsx v4.3.0 - UI POLISH (KPICard Pattern)
 // Profitability analysis section for Intelligence tab
 // Design System v5.1 compliant - Premium Glass styling
 //
 // CHANGELOG:
+// v4.3.0 (2026-02-01): UI polish following KPICard.jsx pattern
+//   - OptimizationLever cards: Added gradient backgrounds and inner shadow
+//   - Updated padding: p-3 → p-3 sm:p-4 for better mobile spacing
+//   - Added tracking-wider to titles, tabular-nums to values
+//   - Break-even section: Added gradient background and inner shadow
+//   - Critical Insight alert: Added gradient background and inner shadow
 // v4.2.0 (2026-01-29): Yellow→Amber revert for icon wells
 //   - OptimizationLever amber icon wells now use amber-600/amber-500 (solid)
 //   - Critical Insight warning icon wells now use amber-600/amber-500 (solid)
@@ -53,8 +59,10 @@ const OptimizationLever = ({ title, target, detail, icon: Icon, color, isDark, i
 
   return (
     <div className={`
-      p-3 rounded-xl
-      ${isDark ? 'bg-space-dust/60' : 'bg-white'}
+      p-3 sm:p-4 rounded-xl
+      ${isDark
+        ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+        : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
       ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
       shadow-sm
     `}>
@@ -63,7 +71,7 @@ const OptimizationLever = ({ title, target, detail, icon: Icon, color, isDark, i
           <Icon className="w-4.5 h-4.5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <span className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+          <span className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
             {title}
           </span>
           <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} truncate`}>
@@ -71,7 +79,7 @@ const OptimizationLever = ({ title, target, detail, icon: Icon, color, isDark, i
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <p className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {target}
           </p>
         </div>
@@ -159,8 +167,12 @@ const ProfitabilitySection = ({
           <div className={`
             p-4 rounded-xl
             ${isAboveBreakEven
-              ? isDark ? 'bg-emerald-900/20' : 'bg-emerald-50/80'
-              : isDark ? 'bg-amber-900/20' : 'bg-amber-50/80'
+              ? isDark
+                ? 'bg-gradient-to-br from-emerald-900/30 via-emerald-900/20 to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(16,185,129,0.1)]'
+                : 'bg-gradient-to-br from-emerald-50 via-emerald-50/80 to-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
+              : isDark
+                ? 'bg-gradient-to-br from-amber-900/30 via-amber-900/20 to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(245,158,11,0.1)]'
+                : 'bg-gradient-to-br from-amber-50 via-amber-50/80 to-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
             }
             ring-1 ${isAboveBreakEven
               ? isDark ? 'ring-emerald-500/20' : 'ring-emerald-200'
@@ -263,7 +275,9 @@ const ProfitabilitySection = ({
           {/* Break-even Progress */}
           <div className={`
             p-4 rounded-xl
-            ${isDark ? 'bg-space-dust/60' : 'bg-white'}
+            ${isDark
+              ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+              : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
             ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
             shadow-sm
           `}>

@@ -906,12 +906,16 @@ body {
 }
 
 /* ============================================
-   MODAL-AWARE NAVIGATION (v4.4)
+   MODAL-AWARE NAVIGATION (v4.5)
    Smooth slide-fade for BottomNavBar when modals open
    Uses CSS `translate` property to avoid Framer Motion transform conflicts
+
+   v4.5 (2026-02-02): Sidebar uses Framer Motion for coordinated animation
+     - CSS rule scoped to :not(.sidebar-open) for non-sidebar modals
+     - Sidebar animation handled by BottomNavBar Framer Motion variants
    ============================================ */
 
-/* Base transition for smooth hide/show */
+/* Base transition for smooth hide/show (non-sidebar modals) */
 .bottom-nav-container {
   /* translate property is separate from transform, won't conflict with Framer Motion */
   translate: 0 0;
@@ -921,8 +925,9 @@ body {
     visibility 0.3s cubic-bezier(0.0, 0, 0.2, 1);
 }
 
-/* Slide down + fade out when modal is open */
-body.modal-open .bottom-nav-container {
+/* Slide down + fade out when non-sidebar modal is open */
+/* Sidebar uses Framer Motion for coordinated spring animation with drawer */
+body.modal-open:not(.sidebar-open) .bottom-nav-container {
   opacity: 0;
   translate: 0 100%;
   visibility: hidden;

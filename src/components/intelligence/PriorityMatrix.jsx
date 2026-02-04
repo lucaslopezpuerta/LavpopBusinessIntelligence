@@ -1,8 +1,14 @@
-// PriorityMatrix.jsx v3.5.0 - SOLID COLOR BADGES
+// PriorityMatrix.jsx v3.6.0 - UI POLISH (KPICard Pattern)
 // Matriz de Prioridades - Visual Command Center com Gauges Radiais
 // Design System v5.1 compliant - Premium Glass with Radial Gauges
 //
 // CHANGELOG:
+// v3.6.0 (2026-02-01): UI polish following KPICard.jsx pattern
+//   - Dimension cards: Added gradient backgrounds and inner shadow accent
+//   - Updated padding: p-3 sm:p-4 for better mobile spacing
+//   - Increased arc/score spacing: mt-1 → mt-2
+//   - Label typography: Added tracking-wider
+//   - Hero section: Added gradient background and inner shadow
 // v3.5.0 (2026-01-28): Solid color badges for WCAG AA compliance
 //   - Priority score badge now uses solid colors
 //   - Removed unused bg property from getScoreColorEnhanced (dead code)
@@ -316,12 +322,14 @@ const DimensionCard = ({ dimKey, dimension, isPriority, isDark, isDesktop, index
       animate={{ y: 0, opacity: 1 }}
       transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.5, delay: 0.2 + (index * 0.1), ease: "easeOut" }}
       className={`
-        relative rounded-xl ${isDesktop ? 'p-3' : 'p-2.5'} flex flex-col items-center text-center
+        relative rounded-xl p-3 sm:p-4 flex flex-col items-center text-center
         ${isPriority
           ? `${isDark ? 'bg-gradient-to-br from-red-900/40 via-red-900/30 to-space-dust/60' : 'bg-gradient-to-br from-red-50 via-red-50/80 to-white'}
              ring-2 ${isDark ? 'ring-red-500/40' : 'ring-red-300'}
              shadow-lg ${isDark ? 'shadow-red-500/20' : ''}`
-          : `${isDark ? 'bg-space-dust/60' : 'bg-white'}
+          : `${isDark
+               ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+               : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
              ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
              shadow-md`
         }
@@ -352,12 +360,12 @@ const DimensionCard = ({ dimKey, dimension, isPriority, isDark, isDesktop, index
       )}
 
       {/* Mini arc */}
-      <div className="mt-1">
+      <div className="mt-2">
         <MiniArc score={dimension.score} isDark={isDark} size={isDesktop ? 70 : 60} prefersReducedMotion={prefersReducedMotion} />
       </div>
 
       {/* Score */}
-      <div className="mt-1">
+      <div className="mt-2">
         <span className={`${isDesktop ? 'text-xl' : 'text-lg'} font-bold ${scoreColors.text}`}>
           {dimension.score.toFixed(1)}
         </span>
@@ -365,7 +373,7 @@ const DimensionCard = ({ dimKey, dimension, isPriority, isDark, isDesktop, index
       </div>
 
       {/* Label */}
-      <h4 className={`text-xs font-semibold mt-1 mb-1 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+      <h4 className={`text-[10px] sm:text-xs font-semibold tracking-wider mt-1.5 mb-1 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
         {label}
       </h4>
 
@@ -431,7 +439,9 @@ const PriorityMatrix = ({
         transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.6, ease: "easeOut" }}
         className={`
           relative rounded-2xl p-6 lg:p-8 mb-5
-          ${isDark ? 'bg-space-dust/60' : 'bg-white'}
+          ${isDark
+            ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+            : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
           ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
           shadow-md overflow-hidden
         `}

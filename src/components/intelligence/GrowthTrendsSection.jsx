@@ -1,8 +1,15 @@
-// GrowthTrendsSection.jsx v6.5.0 - ANIMATION ENHANCEMENTS
+// GrowthTrendsSection.jsx v6.6.0 - UI POLISH (KPICard Pattern)
 // Growth & trends analysis section for Intelligence tab
 // Design System v5.1 compliant - Premium Glass styling
 //
 // CHANGELOG:
+// v6.6.0 (2026-02-01): UI polish following KPICard.jsx pattern
+//   - ServiceSegmentCard: Added gradient backgrounds and inner shadow
+//   - Updated padding: p-3 → p-3 sm:p-4 for better mobile spacing
+//   - Added tracking-wider to labels, tabular-nums to values
+//   - Chart container: Added gradient background and inner shadow
+//   - Table header: Added inner shadow accent
+//   - Mobile cards: Added gradient backgrounds and inner shadow
 // v6.5.0 (2026-01-30): Animation enhancements
 //   - NEW: Area chart path drawing effect (CSS stroke-dasharray animation)
 //   - NEW: Period selector micro-interactions (motion.button with spring)
@@ -69,14 +76,14 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
 
   return (
     <div className={`
-      p-3 rounded-xl
+      p-3 sm:p-4 rounded-xl
       ${isMainDriver
         ? isDark
-          ? 'bg-red-900/20 ring-2 ring-red-500/30'
-          : 'bg-red-50 ring-2 ring-red-200'
+          ? 'bg-gradient-to-br from-red-900/30 via-red-900/20 to-space-nebula/30 ring-2 ring-red-500/30 shadow-[inset_0_1px_0_0_rgba(239,68,68,0.1)]'
+          : 'bg-gradient-to-br from-red-50 via-red-50/80 to-white ring-2 ring-red-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
         : isDark
-          ? 'bg-space-dust/60 ring-1 ring-white/[0.08]'
-          : 'bg-white ring-1 ring-slate-200'
+          ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 ring-1 ring-white/[0.08] shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+          : 'bg-gradient-to-br from-white via-white to-slate-50/50 ring-1 ring-slate-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
       }
       shadow-sm
     `}>
@@ -86,7 +93,7 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+            <span className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
               {label}
             </span>
             {isMainDriver && (
@@ -98,10 +105,10 @@ const ServiceSegmentCard = ({ label, icon: Icon, revenue, growth, isMainDriver, 
           <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>vs mês anterior</p>
         </div>
         <div className="text-right shrink-0">
-          <p className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <p className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {formatCurrency(revenue)}
           </p>
-          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold ${growthColor}`}>
+          <p className={`${isDesktop ? 'text-sm' : 'text-xs'} font-semibold tabular-nums ${growthColor}`}>
             {growth === null ? '—' : `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`}
           </p>
         </div>
@@ -432,7 +439,9 @@ const GrowthTrendsSection = ({
           {chartData && (
             <div className={`
               p-4 rounded-xl
-              ${isDark ? 'bg-space-dust/60' : 'bg-white'}
+              ${isDark
+                ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+                : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
               ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
               shadow-sm
             `}>
@@ -596,12 +605,18 @@ const GrowthTrendsSection = ({
                       visible: { opacity: 1, y: 0, transition: { duration: 0.25 } }
                     }}
                     className={`
-                      rounded-xl p-3 transition-colors
+                      rounded-xl p-3 sm:p-4 transition-colors
                       ${month.isCurrentMonth || month.isPartial
-                        ? isDark ? 'bg-blue-900/20 ring-1 ring-blue-500/20' : 'bg-blue-50 ring-1 ring-blue-200'
+                        ? isDark
+                          ? 'bg-gradient-to-br from-blue-900/30 via-blue-900/20 to-space-nebula/30 ring-1 ring-blue-500/20 shadow-[inset_0_1px_0_0_rgba(59,130,246,0.1)]'
+                          : 'bg-gradient-to-br from-blue-50 via-blue-50/80 to-white ring-1 ring-blue-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
                         : isLastYearSameMonth
-                          ? isDark ? 'bg-slate-700/50 ring-1 ring-slate-600' : 'bg-slate-100 ring-1 ring-slate-300'
-                          : isDark ? 'bg-space-dust/60 ring-1 ring-white/[0.08]' : 'bg-white ring-1 ring-slate-200'
+                          ? isDark
+                            ? 'bg-gradient-to-br from-slate-700/50 via-slate-700/40 to-space-nebula/30 ring-1 ring-slate-600 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+                            : 'bg-gradient-to-br from-slate-100 via-slate-100/80 to-white ring-1 ring-slate-300 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
+                          : isDark
+                            ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 ring-1 ring-white/[0.08] shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+                            : 'bg-gradient-to-br from-white via-white to-slate-50/50 ring-1 ring-slate-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
                       }
                     `}
                   >
@@ -667,7 +682,7 @@ const GrowthTrendsSection = ({
             ${isDark ? 'ring-1 ring-white/[0.08]' : 'ring-1 ring-slate-200'}
           `}>
             <table className="w-full">
-              <thead className={isDark ? 'bg-slate-800/50' : 'bg-slate-50'}>
+              <thead className={`${isDark ? 'bg-slate-800/50 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]' : 'bg-slate-50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}`}>
                 <tr>
                   <th className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     Mês

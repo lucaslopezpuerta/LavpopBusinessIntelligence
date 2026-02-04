@@ -1007,12 +1007,27 @@ export const NAV_MICRO = {
   }
 };
 
-// Modal swipe-to-close thresholds (v3.6)
+// Modal swipe-to-close thresholds (v4.4)
 // Standardized configuration for all modal components
+// v4.4: Added spring configurations for natural snap-back/close animations
 export const MODAL_SWIPE = {
-  THRESHOLD: 80,              // px to trigger close (after resistance applied)
-  RESISTANCE: 0.5,            // drag resistance factor (0.5 = need ~160px actual drag)
-  VELOCITY_THRESHOLD: 0.5,    // px/ms for fast flick detection
+  THRESHOLD: 100,             // px to trigger close
+  VELOCITY_THRESHOLD: 500,    // px/s for fast flick detection
+  ELASTIC: 0.3,               // drag elasticity (rubber-band effect)
+
+  // Spring for snapping back when released before threshold
+  SNAP_BACK: {
+    type: 'spring',
+    stiffness: 500,
+    damping: 30
+  },
+
+  // Spring for close animation (slightly softer for smooth exit)
+  CLOSE: {
+    type: 'spring',
+    stiffness: 400,
+    damping: 35
+  }
 };
 
 // Drag handle animations (v4.3)
@@ -1151,6 +1166,23 @@ export const PULL_REFRESH = {
   }
 };
 
+// Bottom navigation bar animations (v4.3)
+// Coordinated with MobileDrawer spring physics for fluid motion
+export const BOTTOM_NAV = {
+  // Show animation - matches MobileDrawer open spring
+  SHOW: {
+    type: 'spring',
+    damping: 25,
+    stiffness: 250
+  },
+  // Hide animation - matches MobileDrawer close spring
+  HIDE: {
+    type: 'spring',
+    damping: 30,
+    stiffness: 300
+  }
+};
+
 // Default export for convenience
 export default {
   SPRING,
@@ -1179,5 +1211,6 @@ export default {
   ALERT,
   BOTTOM_NAV_MODAL,
   NAV_MICRO,
-  PULL_REFRESH
+  PULL_REFRESH,
+  BOTTOM_NAV
 };

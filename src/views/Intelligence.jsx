@@ -1,8 +1,13 @@
-// Intelligence.jsx v3.21.1 - SECTION SPACING FIX
+// Intelligence.jsx v3.22.0 - UI POLISH (KPICard Pattern)
 // Refactored with Priority Matrix, auto-refresh, collapsible sections
 // Design System v5.1 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v3.22.0 (2026-02-01): UI polish - child components updated
+//   - PriorityMatrix v3.6.0: Gradient backgrounds, inner shadow, tracking
+//   - RevenueForecast v3.3.0: Stats card gradients, typography polish
+//   - ProfitabilitySection v4.3.0: Alert/lever card gradients, inner shadow
+//   - GrowthTrendsSection v6.6.0: Service cards, chart, table polish
 // v3.21.1 (2026-01-29): Section spacing fix
 //   - Added space-y-6 to main AnimatedSection for proper card separation
 // v3.21.0 (2026-01-29): Mode-aware warning badges

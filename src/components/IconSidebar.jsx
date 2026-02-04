@@ -441,8 +441,10 @@ const MobileDrawer = memo(({
     }
   }, [isMobileOpen, prefersReducedMotion, x]);
 
-  // Handle horizontal swipe to close with velocity-aware animation
-  const handleDragEnd = useCallback(async (_, info) => {
+  // Handle horizontal swipe to close
+  // AnimatePresence handles exit animation via exit prop
+  // Close state immediately so BottomNavBar animates in parallel
+  const handleDragEnd = useCallback((_, info) => {
     const { CLOSE_THRESHOLD, VELOCITY_THRESHOLD } = NAV_MICRO.DRAWER_SWIPE;
     const currentX = x.get();
 
@@ -452,9 +454,6 @@ const MobileDrawer = memo(({
       currentX < -CLOSE_THRESHOLD;              // Dragged past threshold
 
     if (shouldClose) {
-      // Use velocity for natural momentum (minimum -500 for smooth exit)
-      const velocity = Math.min(info.velocity.x, -500);
-
       // Haptic feedback
       if (info.velocity.x < -VELOCITY_THRESHOLD) {
         haptics.medium(); // Fast flick = stronger feedback
@@ -462,15 +461,8 @@ const MobileDrawer = memo(({
         haptics.success(); // Slow drag = success pattern
       }
 
-      // Animate out with velocity, then close
-      await animate(x, -320, prefersReducedMotion ? { duration: 0 } : {
-        type: 'spring',
-        velocity: velocity,
-        damping: 30,
-        stiffness: 300,
-      });
-
-      // Close after animation completes
+      // Close immediately - AnimatePresence handles exit animation
+      // BottomNavBar starts animating in parallel (coordinated spring physics)
       closeMobileSidebar();
     } else {
       // Snap back to open position
@@ -482,36 +474,29 @@ const MobileDrawer = memo(({
     }
   }, [closeMobileSidebar, prefersReducedMotion, x]);
 
-  // Handle close button click - animate out then close
-  const handleCloseButton = useCallback(async () => {
+  // Handle close button click - close immediately, AnimatePresence handles exit
+  const handleCloseButton = useCallback(() => {
     haptics.light();
-    await animate(x, -320, prefersReducedMotion ? { duration: 0 } : {
-      type: 'spring',
-      damping: 25,
-      stiffness: 300,
-    });
     closeMobileSidebar();
-  }, [closeMobileSidebar, prefersReducedMotion, x]);
+  }, [closeMobileSidebar]);
 
-  // Handle backdrop click - animate out then close
-  const handleBackdropClick = useCallback(async () => {
-    await animate(x, -320, prefersReducedMotion ? { duration: 0 } : {
-      type: 'spring',
-      damping: 30,
-      stiffness: 300,
-    });
+  // Handle backdrop click - close immediately, AnimatePresence handles exit
+  const handleBackdropClick = useCallback(() => {
     closeMobileSidebar();
-  }, [closeMobileSidebar, prefersReducedMotion, x]);
+  }, [closeMobileSidebar]);
 
   return (
     <AnimatePresence>
       {isMobileOpen && (
         <>
-          {/* Dark overlay backdrop - opacity linked to drawer drag position via useTransform */}
-          {/* NO initial/animate props - backdropOpacity transform handles all states */}
+          {/* Dark overlay backdrop */}
+          {/* AnimatePresence handles exit animation for coordinated close with BottomNavBar */}
           <motion.div
             className="lg:hidden fixed inset-0 bg-black z-40"
-            style={{ opacity: backdropOpacity }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.6 }}
+            exit={{ opacity: 0 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 250 }}
             onClick={handleBackdropClick}
             aria-hidden="true"
           />
@@ -531,7 +516,7 @@ const MobileDrawer = memo(({
             <motion.aside
               className={`lg:hidden fixed left-0 top-0 bottom-0 w-[300px] z-50 rounded-r-3xl shadow-2xl flex flex-col safe-area-top safe-area-bottom safe-area-left overflow-hidden backdrop-blur-xl backdrop-saturate-150`}
               style={{
-                // Motion values control position and visual feedback
+                // Motion values control position and visual feedback during drag
                 x,
                 opacity: drawerOpacity,
                 scale: drawerScale,
@@ -549,10 +534,16 @@ const MobileDrawer = memo(({
                   ? 'inset -1px 0 0 rgba(0,174,239,0.1), 8px 0 32px rgba(0,0,0,0.5)'
                   : 'inset -1px 0 0 rgba(0,0,0,0.05), 8px 0 32px rgba(0,0,0,0.15)',
               }}
-              // NO animate/exit props - controlled by x motion value
+              // Exit animation for AnimatePresence - coordinates with BottomNavBar
+              exit={{
+                x: -320,
+                opacity: 0,
+                scale: 0.95,
+                transition: prefersReducedMotion ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 300 }
+              }}
+              // Drag only enabled after entry animation completes
               // NO dragSnapToOrigin - handled manually in onDragEnd
               // NO dragDirectionLock - causes issues in DevTools emulation
-              // Drag only enabled after entry animation completes
               drag={isEntryAnimationComplete ? "x" : false}
               dragConstraints={{ left: -320, right: 0 }}
               dragElastic={{ left: 0.2, right: 0 }}
@@ -879,7 +870,8 @@ const IconSidebar = ({ activeTab, onNavigate, onOpenSettings }) => {
   const collapseTimeoutRef = useRef(null);
 
   // Lock scroll and hide BottomNavBar when mobile drawer is open
-  useScrollLock(isMobileOpen);
+  // Pass true for isSidebar to add 'sidebar-open' class for Framer Motion coordination
+  useScrollLock(isMobileOpen, true);
 
   // Clean up timeout on unmount
   useEffect(() => {

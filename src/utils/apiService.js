@@ -349,6 +349,10 @@ export const api = {
     async getByPhone(phone) {
       const result = await apiRequest('logs.getByPhone', { phone });
       return result.logs || [];
+    },
+
+    async delete(id) {
+      return await apiRequest('logs.delete', { id });
     }
   },
 

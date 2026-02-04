@@ -1,8 +1,13 @@
-// communicationLog.js v3.0 - BACKEND ONLY
+// communicationLog.js v3.2 - ID FIX
 // Utility for logging customer communications across the app
 // Used by CustomerProfileModal, CustomerListDrilldown, AtRiskCustomersTable, etc.
 //
 // CHANGELOG:
+// v3.2 (2026-02-03): Fix missing id in log entries
+//   - Added id field to transformation (was missing, broke delete)
+// v3.1 (2026-02-03): Delete support
+//   - Added deleteCommunicationEntry() for removing log entries
+//   - Dispatches communicationLogUpdate event on delete
 // v3.0 (2025-12-12): Backend only - removed localStorage
 //   - All communication logs now stored exclusively in Supabase
 //   - Removed localStorage fallbacks
@@ -87,8 +92,9 @@ export const getCommunicationLog = async (customerId, options = {}) => {
       limit
     });
 
-    // Transform to UI format
+    // Transform to UI format (MUST include id for delete functionality)
     const entries = (result.logs || []).map(e => ({
+      id: e.id,  // Required for delete
       date: e.sent_at || e.date,
       method: e.method || e.channel,
       notes: e.notes || e.message,
@@ -173,4 +179,28 @@ export const getCommunicationStats = async (customerId) => {
   });
 
   return stats;
+};
+
+/**
+ * Delete a communication entry by ID (backend only)
+ * @param {string|number} entryId - The log entry ID
+ * @param {string} customerId - Customer ID for event dispatch
+ * @returns {Promise<boolean>} Success status
+ */
+export const deleteCommunicationEntry = async (entryId, customerId) => {
+  if (!entryId) return false;
+
+  try {
+    await api.logs.delete(entryId);
+
+    // Dispatch event for UI update
+    window.dispatchEvent(new CustomEvent('communicationLogUpdate', {
+      detail: { customerId, deleted: entryId }
+    }));
+
+    return true;
+  } catch (error) {
+    console.error('Failed to delete communication entry:', error.message);
+    return false;
+  }
 };

@@ -12,6 +12,12 @@
 [functions."weather-sync"]
   schedule = "0 9 * * *"
 
+# Scheduled function to sync customers to WhatChimp with labels
+# Runs daily at 10:00 UTC (07:00 Brazil time)
+# Runs 1 hour after POS customer sync (09:00 UTC via GitHub Actions)
+[functions."whatchimp-sync"]
+  schedule = "0 10 * * *"
+
 # SPA fallback for client-side routing
 # Note: Static files in /assets are served directly by Netlify before this rule applies
 [[redirects]]
@@ -63,3 +69,5 @@
 # SUPABASE_SERVICE_KEY - Your Supabase service role key
 # GOOGLE_API_KEY - Google Places API key
 # VITE_SENTRY_DSN - Sentry DSN for error tracking (frontend)
+# WHATCHIMP_API_KEY - WhatChimp API key for subscriber sync
+# WHATCHIMP_PHONE_NUMBER_ID - WhatsApp Phone Number ID for WhatChimp

@@ -1,4 +1,4 @@
-// colorMapping.js v3.2 - BILAVNOVA PRECISION PALETTE
+// colorMapping.js v3.3 - BILAVNOVA PRECISION PALETTE
 // Unified semantic color mapping for Intelligence components
 // Design System v6.2 compliant - Brand-aligned with vibrant semantic colors
 //
@@ -11,6 +11,10 @@
 // - Special: cosmic-purple (#A855F7) - Tailwind purple-500
 //
 // CHANGELOG:
+// v3.3 (2026-02-02): KPICard icon glow colors
+//   - Added accentColor to semantic colors for dark mode icon glow
+//   - revenue, cost, profit, positive, negative, neutral, warning, blue
+//   - Fixes cyan-only glow fallback in KPICard.jsx
 // v3.2 (2026-01-30): Bilavnova Precision - Vibrant semantic colors
 //   - Replaced muted Nord semantic colors with vibrant Tailwind 500-level:
 //     cosmic-green: #A3BE8C → #22C55E (green-500)
@@ -71,6 +75,7 @@ export const semanticColors = {
     gradient: 'from-emerald-500 to-emerald-600',
     ring: 'ring-emerald-500',
     solidGradient: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+    accentColor: { dark: '#34d399', light: '#10b981' }, // emerald-400 / emerald-500 for icon glow
   },
   cost: {
     bg: 'bg-red-50 dark:bg-red-900/20',
@@ -84,6 +89,7 @@ export const semanticColors = {
     gradient: 'from-red-500 to-red-600',
     ring: 'ring-red-500',
     solidGradient: 'bg-gradient-to-br from-red-500 to-rose-600',
+    accentColor: { dark: '#f87171', light: '#ef4444' }, // red-400 / red-500 for icon glow
   },
   profit: {
     bg: 'bg-purple-50 dark:bg-purple-900/20',
@@ -97,6 +103,7 @@ export const semanticColors = {
     gradient: 'from-purple-500 to-purple-600',
     ring: 'ring-purple-500',
     solidGradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
+    accentColor: { dark: '#c4b5fd', light: '#a855f7' }, // purple-300 / purple-500 for icon glow
   },
 
   // Trend indicators
@@ -112,6 +119,7 @@ export const semanticColors = {
     gradient: 'from-emerald-500 to-emerald-600',
     ring: 'ring-emerald-500',
     solidGradient: 'bg-gradient-to-br from-emerald-500 to-green-600',
+    accentColor: { dark: '#34d399', light: '#10b981' }, // emerald-400 / emerald-500 for icon glow
   },
   negative: {
     bg: 'bg-red-50 dark:bg-red-900/20',
@@ -125,6 +133,7 @@ export const semanticColors = {
     gradient: 'from-red-500 to-red-600',
     ring: 'ring-red-500',
     solidGradient: 'bg-gradient-to-br from-red-500 to-rose-600',
+    accentColor: { dark: '#f87171', light: '#ef4444' }, // red-400 / red-500 for icon glow
   },
   neutral: {
     bg: 'bg-slate-50 dark:bg-slate-800',
@@ -138,6 +147,7 @@ export const semanticColors = {
     gradient: 'from-slate-500 to-slate-600',
     ring: 'ring-slate-500',
     solidGradient: 'bg-gradient-to-br from-slate-500 to-slate-600',
+    accentColor: { dark: '#94a3b8', light: '#64748b' }, // slate-400 / slate-500 for icon glow
   },
   warning: {
     bg: 'bg-amber-50 dark:bg-amber-900/20',
@@ -151,6 +161,7 @@ export const semanticColors = {
     gradient: 'from-amber-500 to-amber-600',
     ring: 'ring-amber-500',
     solidGradient: 'bg-gradient-to-br from-amber-500 to-amber-600',
+    accentColor: { dark: '#fbbf24', light: '#f59e0b' }, // amber-400 / amber-500 for icon glow
   },
 
   // Weather-specific (semantic colors for weather conditions)
@@ -274,6 +285,7 @@ export const semanticColors = {
     gradient: 'from-blue-500 to-blue-600',
     ring: 'ring-blue-500',
     solidGradient: 'bg-gradient-to-br from-blue-500 to-indigo-600',
+    accentColor: { dark: '#60a5fa', light: '#3b82f6' }, // blue-400 / blue-500 for icon glow
   },
   cyan: {
     bg: 'bg-cyan-50 dark:bg-cyan-900/20',

@@ -1,160 +1,164 @@
-// useSwipeToClose.js v1.1 - THRESHOLD HAPTIC FEEDBACK
+// useSwipeToClose.js v2.0 - FRAMER MOTION DRAG SYSTEM
 // Hook for swipe-down-to-close gesture on mobile modals/sheets
 //
 // FEATURES:
-// - Swipe down to close (configurable threshold)
-// - Visual feedback during drag (translateY)
-// - Resistance factor for natural feel
+// - Header-only drag zone (content scrolls freely)
+// - Natural spring physics for snap-back and close
 // - Velocity-based closing (fast swipe = close)
-// - Optional backdrop opacity tied to drag
-// - Haptic feedback when crossing threshold (once per gesture)
-// - Exposes hasReachedThreshold for visual feedback
-// - Works with Framer Motion or vanilla
+// - Backdrop opacity tied to drag progress
+// - Haptic feedback at threshold
+// - Uses Framer Motion's useDragControls for precise control
 //
 // USAGE:
-// const { handlers, style, isDragging, progress, hasReachedThreshold } = useSwipeToClose({
+// const { dragZoneProps, modalMotionProps, isDragging, progress, ... } = useSwipeToClose({
 //   onClose: () => setIsOpen(false),
-//   threshold: 100,
 // });
-// <div {...handlers} style={style}>Modal content</div>
+// <motion.div {...modalMotionProps}>
+//   <div {...dragZoneProps}>Header / Drag handle</div>
+//   <main>Content (scrollable)</main>
+// </motion.div>
 //
 // CHANGELOG:
+// v2.0 (2026-02-01): Framer Motion drag system
+//   - Complete refactor using useDragControls
+//   - Header-only drag zone to prevent scroll interference
+//   - Natural spring physics for snap-back and close animations
+//   - Uses onDrag info.offset for position tracking
 // v1.1 (2026-01-31): Threshold haptic feedback
-//   - Added hasTriggeredHapticRef to track threshold crossing
-//   - Added haptics.tick() when crossing threshold (once per gesture)
-//   - Reset haptic ref on gesture end/cancel
-//   - Exposed hasReachedThreshold boolean state for visual feedback
 // v1.0 (2025-12-18): Initial implementation
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useDragControls, useMotionValue, useTransform } from 'framer-motion';
 import { haptics } from '../utils/haptics';
+import { MODAL_SWIPE } from '../constants/animations';
 
 /**
  * Hook for swipe-to-close gesture on modals/sheets
+ * Uses Framer Motion's drag system for natural spring physics
+ *
  * @param {Object} options
  * @param {Function} options.onClose - Callback when swipe threshold is exceeded
  * @param {number} options.threshold - Distance in px to trigger close (default: 100)
- * @param {number} options.velocityThreshold - Velocity in px/ms to trigger close (default: 0.5)
- * @param {number} options.resistance - Resistance factor for drag (default: 0.5)
+ * @param {number} options.velocityThreshold - Velocity in px/s to trigger close (default: 500)
  * @param {boolean} options.disabled - Disable swipe gesture
  */
 export function useSwipeToClose({
   onClose,
-  threshold = 100,
-  velocityThreshold = 0.5,
-  resistance = 0.5,
+  threshold = MODAL_SWIPE.THRESHOLD,
+  velocityThreshold = MODAL_SWIPE.VELOCITY_THRESHOLD,
   disabled = false,
 } = {}) {
-  const [dragY, setDragY] = useState(0);
+  const dragControls = useDragControls();
+
+  // Track current drag offset for derived values
+  const dragY = useMotionValue(0);
+
+  // Track drag state
   const [isDragging, setIsDragging] = useState(false);
-
-  const startYRef = useRef(0);
-  const startTimeRef = useRef(0);
-  const currentYRef = useRef(0);
+  const [hasReachedThreshold, setHasReachedThreshold] = useState(false);
   const hasTriggeredHapticRef = useRef(false);
+  const isClosingRef = useRef(false);
 
-  const handleStart = useCallback((e) => {
-    if (disabled) return;
+  // Derived values using useTransform for real-time updates
+  const progress = useTransform(dragY, [0, threshold], [0, 1]);
+  const backdropOpacity = useTransform(dragY, [0, threshold], [1, 0.3]);
 
-    // Get touch/mouse Y position
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    startYRef.current = clientY;
-    currentYRef.current = clientY;
-    startTimeRef.current = Date.now();
+  // Handle drag start from header zone
+  const handlePointerDown = useCallback((e) => {
+    if (disabled || isClosingRef.current) return;
+
     hasTriggeredHapticRef.current = false;
     setIsDragging(true);
-  }, [disabled]);
+    setHasReachedThreshold(false);
+    dragY.set(0);
+    dragControls.start(e);
+  }, [disabled, dragControls, dragY]);
 
-  const handleMove = useCallback((e) => {
-    if (!isDragging || disabled) return;
+  // Monitor drag position for feedback
+  const handleDrag = useCallback((event, info) => {
+    const currentY = Math.max(0, info.offset.y);
+    dragY.set(currentY);
 
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const deltaY = clientY - startYRef.current;
-    currentYRef.current = clientY;
+    // Update threshold state
+    const reachedThreshold = currentY >= threshold;
+    setHasReachedThreshold(reachedThreshold);
 
-    // Only allow downward drag (positive deltaY)
-    if (deltaY > 0) {
-      // Apply resistance
-      const resistedDelta = deltaY * resistance;
-      setDragY(resistedDelta);
-
-      // Haptic feedback when crossing threshold (once per gesture)
-      if (resistedDelta >= threshold && !hasTriggeredHapticRef.current) {
-        hasTriggeredHapticRef.current = true;
-        haptics.tick();
-      }
-    } else {
-      setDragY(0);
+    // Haptic feedback when crossing threshold (once per gesture)
+    if (reachedThreshold && !hasTriggeredHapticRef.current) {
+      hasTriggeredHapticRef.current = true;
+      haptics.tick();
     }
-  }, [isDragging, disabled, resistance, threshold]);
+  }, [dragY, threshold]);
 
-  const handleEnd = useCallback(() => {
-    if (!isDragging || disabled) return;
+  // Handle drag end - decide to close or snap back
+  const handleDragEnd = useCallback((event, info) => {
+    setIsDragging(false);
+    hasTriggeredHapticRef.current = false;
 
-    const endTime = Date.now();
-    const duration = endTime - startTimeRef.current;
-    const distance = currentYRef.current - startYRef.current;
-    const velocity = distance / duration; // px/ms
+    const { velocity, offset } = info;
+    const shouldClose = offset.y > threshold || velocity.y > velocityThreshold;
 
-    // Check if should close (threshold or velocity)
-    const shouldClose = dragY > threshold || velocity > velocityThreshold;
-
-    if (shouldClose && onClose) {
+    if (shouldClose && onClose && !isClosingRef.current) {
+      isClosingRef.current = true;
       haptics.light();
+      setHasReachedThreshold(false);
+
+      // Let AnimatePresence handle the exit animation
+      // Reset state and call onClose
+      dragY.set(0);
       onClose();
+      isClosingRef.current = false;
+    } else {
+      // Snap back - the dragConstraints will handle this automatically
+      setHasReachedThreshold(false);
+      dragY.set(0);
     }
+  }, [threshold, velocityThreshold, onClose, dragY]);
 
-    // Reset
-    setDragY(0);
-    setIsDragging(false);
-    hasTriggeredHapticRef.current = false;
-  }, [isDragging, disabled, dragY, threshold, velocityThreshold, onClose]);
+  // Props for the drag initiation zone (header area)
+  const dragZoneProps = {
+    onPointerDown: handlePointerDown,
+    style: { touchAction: 'none' },
+  };
 
-  const handleCancel = useCallback(() => {
-    setDragY(0);
-    setIsDragging(false);
-    hasTriggeredHapticRef.current = false;
-  }, []);
+  // Motion props for the modal container
+  const modalMotionProps = {
+    drag: disabled ? false : 'y',
+    dragControls,
+    dragListener: false, // Important: only allow drag from dragZoneProps
+    dragConstraints: { top: 0, bottom: 0 },
+    dragElastic: { top: 0, bottom: MODAL_SWIPE.ELASTIC },
+    dragSnapToOrigin: true, // Spring back to origin when released
+    dragTransition: MODAL_SWIPE.SNAP_BACK, // Use spring physics
+    onDrag: handleDrag,
+    onDragEnd: handleDragEnd,
+  };
 
-  // Style to apply to the modal container
-  const style = useMemo(() => ({
-    transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-    transition: isDragging ? 'none' : 'transform 0.3s ease-out',
-  }), [dragY, isDragging]);
-
-  // Opacity for backdrop (fades as you drag)
-  const backdropOpacity = useMemo(() => {
-    if (!isDragging || dragY <= 0) return 1;
-    return Math.max(0.3, 1 - (dragY / threshold) * 0.7);
-  }, [isDragging, dragY, threshold]);
-
-  // Progress value 0-1 for animations
-  const progress = useMemo(() => {
-    return Math.min(1, Math.max(0, dragY / threshold));
-  }, [dragY, threshold]);
-
-  // Boolean for threshold visual feedback
-  const hasReachedThreshold = useMemo(() => {
-    return dragY >= threshold;
-  }, [dragY, threshold]);
+  // Get current values for components that need them
+  const getCurrentProgress = useCallback(() => progress.get(), [progress]);
+  const getCurrentBackdropOpacity = useCallback(() => backdropOpacity.get(), [backdropOpacity]);
 
   return {
-    handlers: {
-      onTouchStart: handleStart,
-      onTouchMove: handleMove,
-      onTouchEnd: handleEnd,
-      onTouchCancel: handleCancel,
-      onMouseDown: handleStart,
-      onMouseMove: handleMove,
-      onMouseUp: handleEnd,
-      onMouseLeave: handleCancel,
-    },
-    style,
+    // New API for header-only drag
+    dragZoneProps,
+    modalMotionProps,
+
+    // State
     isDragging,
+    hasReachedThreshold,
+
+    // Motion values for external components (e.g., DragHandle, backdrop)
     dragY,
     progress,
     backdropOpacity,
-    hasReachedThreshold,
+
+    // Utility functions
+    getCurrentProgress,
+    getCurrentBackdropOpacity,
+
+    // Legacy compatibility: handlers object (deprecated)
+    handlers: dragZoneProps,
+    style: {}, // No longer needed, use modalMotionProps
   };
 }
 

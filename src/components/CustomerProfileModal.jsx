@@ -1,8 +1,14 @@
-// CustomerProfileModal.jsx v5.0 - BASEMODAL MIGRATION
+// CustomerProfileModal.jsx v5.5 - FULL DELETE AUDIT
 // Comprehensive customer profile modal for Customer Directory
 // Design System v5.1 compliant - Tier 2 Enhanced
 //
 // CHANGELOG:
+// v5.5 (2026-02-03): Complete delete audit - 3 root causes fixed:
+//   1. communicationLog.js: id field missing from transformation
+//   2. apiService.js: logs.delete() had wrong params ({}, {id}) instead of ({id})
+//   3. CustomerProfileModal: String() comparison for type consistency
+//   4. CustomerProfileModal: Framer Motion animate/transition separation
+// v5.1-5.4: Incremental delete fixes (consolidated above)
 // v5.0 (2026-01-31): BaseModal migration
 //   - Migrated to BaseModal component for consistent UX
 //   - Removed duplicate boilerplate (portal, animations, swipe, scroll lock)
@@ -55,12 +61,13 @@ import {
     UserMinus,
     Ban,
     ChevronDown,
+    Trash2,
 } from 'lucide-react';
 import { formatCurrency } from '../utils/numberUtils';
 import { RISK_LABELS } from '../utils/customerMetrics';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useContactTracking } from '../hooks/useContactTracking';
-import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, getDefaultNotes } from '../utils/communicationLog';
+import { addCommunicationEntry, getCommunicationLog, getCommunicationLogAsync, getDefaultNotes, deleteCommunicationEntry } from '../utils/communicationLog';
 import { isValidBrazilianMobile, getPhoneValidationError } from '../utils/phoneUtils';
 import { parseBrDate } from '../utils/dateUtils';
 import { useBlacklist } from '../hooks/useBlacklist';
@@ -180,6 +187,7 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
     const [isLoadingLog, setIsLoadingLog] = useState(true);
     const [newNote, setNewNote] = useState('');
     const [noteMethod, setNoteMethod] = useState('call');
+    const [deletingLogId, setDeletingLogId] = useState(null);
     const isMobile = useMediaQuery('(max-width: 639px)');
     const prefersReducedMotion = useReducedMotion();
 
@@ -303,6 +311,28 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
             toggleContacted(customerId);
         } else {
             markContacted(customerId, 'manual', customerContext);
+        }
+    };
+
+    // Delete communication log entry (tap-to-confirm pattern)
+    // Uses String() for consistent comparison (entry.id from DB can be number or string)
+    const handleDeleteLog = async (entry) => {
+        const entryId = String(entry.id);
+        if (deletingLogId === entryId) {
+            // Second tap = confirm delete
+            haptics.light();
+            const success = await deleteCommunicationEntry(entry.id, customer.doc);
+            if (success) {
+                // Optimistic update - remove from local state
+                setCommunicationLog(prev => prev.filter(e => String(e.id) !== entryId));
+            }
+            setDeletingLogId(null);
+        } else {
+            // First tap = enter confirmation mode
+            haptics.tick();
+            setDeletingLogId(entryId);
+            // Auto-cancel after 3 seconds
+            setTimeout(() => setDeletingLogId(prev => prev === entryId ? null : prev), 3000);
         }
     };
 
@@ -678,33 +708,67 @@ const CustomerProfileModal = ({ customer, onClose, sales }) => {
                                             Nenhuma comunicação registrada
                                         </div>
                                     ) : (
-                                        communicationLog.map((entry, idx) => (
-                                            <div key={idx} className="bg-white dark:bg-space-nebula/30 rounded-lg p-2.5 border border-slate-200 dark:border-stellar-cyan/10">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 dark:bg-space-dust flex-shrink-0">
-                                                        {entry.method === 'call' && <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
-                                                        {entry.method === 'whatsapp' && <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-                                                        {entry.method === 'email' && <Mail className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
-                                                        {entry.method === 'note' && <FileText className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="text-xs font-semibold text-slate-800 dark:text-white truncate">
-                                                            {entry.notes}
+                                        <AnimatePresence mode="popLayout">
+                                            {communicationLog.map((entry, idx) => (
+                                                <motion.div
+                                                    key={entry.id || `log-${idx}`}
+                                                    layout={!prefersReducedMotion}
+                                                    initial={prefersReducedMotion ? false : { opacity: 0, y: -10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+                                                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                                                    className="bg-white dark:bg-space-nebula/30 rounded-lg p-2.5 border border-slate-200 dark:border-stellar-cyan/10 group"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 dark:bg-space-dust flex-shrink-0">
+                                                            {entry.method === 'call' && <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                                                            {entry.method === 'whatsapp' && <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                                                            {entry.method === 'email' && <Mail className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
+                                                            {entry.method === 'note' && <FileText className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />}
                                                         </div>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                                {new Date(entry.date).toLocaleDateString('pt-BR')}
-                                                            </span>
-                                                            {entry.campaign_name && (
-                                                                <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-                                                                    {entry.campaign_name}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-xs font-semibold text-slate-800 dark:text-white truncate">
+                                                                {entry.notes}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                                    {new Date(entry.date).toLocaleDateString('pt-BR')}
                                                                 </span>
-                                                            )}
+                                                                {entry.campaign_name && (
+                                                                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                                                                        {entry.campaign_name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
+                                                        {/* Delete button - tap-to-confirm pattern with pulse animation */}
+                                                        <motion.button
+                                                            onClick={() => handleDeleteLog(entry)}
+                                                            animate={deletingLogId === String(entry.id) && !prefersReducedMotion
+                                                                ? { scale: [1, 1.1, 1] }
+                                                                : { scale: 1 }
+                                                            }
+                                                            transition={deletingLogId === String(entry.id) && !prefersReducedMotion
+                                                                ? { repeat: Infinity, duration: 0.6 }
+                                                                : { duration: 0.15 }
+                                                            }
+                                                            className={`
+                                                                min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg
+                                                                transition-colors duration-150
+                                                                ${deletingLogId === String(entry.id)
+                                                                    ? 'bg-red-500 text-white'
+                                                                    : 'text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                                                }
+                                                            `}
+                                                            title={deletingLogId === String(entry.id) ? 'Toque para confirmar' : 'Excluir'}
+                                                            aria-label={deletingLogId === String(entry.id) ? 'Confirmar exclusão' : 'Excluir entrada'}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </motion.button>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        ))
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
                                     )}
                                 </div>
                             </div>

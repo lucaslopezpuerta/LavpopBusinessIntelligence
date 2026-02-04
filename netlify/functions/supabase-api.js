@@ -314,6 +314,9 @@ exports.handler = async (event, context) => {
       case 'logs.getByPhone':
         return await getLogsByPhone(supabase, params.phone, headers);
 
+      case 'logs.delete':
+        return await deleteCommLog(supabase, id || data?.id, headers);
+
       // ==================== AUTOMATION RULES ====================
       case 'automation.getAll':
         return await getAutomationRules(supabase, headers);
@@ -939,6 +942,35 @@ async function getLogsByPhone(supabase, phone, headers) {
     statusCode: 200,
     headers,
     body: JSON.stringify({ logs: data })
+  };
+}
+
+async function deleteCommLog(supabase, id, headers) {
+  if (!id) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'ID is required' })
+    };
+  }
+
+  const { error } = await supabase
+    .from('comm_logs')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
+    };
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ success: true })
   };
 }
 
