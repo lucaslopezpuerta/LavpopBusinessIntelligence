@@ -1,14 +1,21 @@
-// netlify/functions/whatchimp-api.js v1.8
+// netlify/functions/whatchimp-api.js v1.9
 // WhatChimp Subscriber Management API
 //
 // ACTIONS:
-// - sync_all: Full sync of all customers to WhatChimp with labels and saldo
 // - sync_customer: Sync single customer by doc or phone
 // - get_labels: List all WhatChimp labels
 // - list_subscribers: List WhatChimp subscribers (paginated)
 // - get_stats: Get sync statistics and label distribution for analytics
 //
+// NOTE: Full sync is handled by:
+// - whatchimp-sync.js (scheduled daily at 10:00 UTC)
+// - whatchimp-sync-background.js (manual trigger from UI)
+//
 // CHANGELOG:
+// v1.9 (2026-02-04): Remove sync_all action
+//   - sync_all moved to whatchimp-sync-background.js (Netlify Background Function)
+//   - Regular functions timeout after 26s, full sync takes ~15 min
+//   - Reduces code duplication
 // v1.8 (2026-02-03): Save sync results to app_settings
 //   - sync_all now saves results to whatchimp_last_sync JSONB column
 //   - Enables WhatChimp Analytics dashboard to show last sync info
@@ -77,42 +84,6 @@ const ALL_MANAGED_LABELS = [
   248609, 249390, 249391, 249392, 249393, 249394,  // RFM labels
   249396, 249397, 249399, 249400, 249401           // Risk labels
 ];
-
-// Deduplicate customers by phone, keeping primary (highest transaction_count)
-function deduplicateByPhone(customers) {
-  const phoneMap = new Map();
-  const duplicates = [];
-
-  customers.forEach(customer => {
-    const phone = customer.normalized_phone;
-    if (!phone) return;
-
-    if (!phoneMap.has(phone)) {
-      phoneMap.set(phone, customer);
-    } else {
-      const existing = phoneMap.get(phone);
-      const existingTxns = existing.transaction_count || 0;
-      const currentTxns = customer.transaction_count || 0;
-
-      if (currentTxns > existingTxns) {
-        duplicates.push({
-          phone,
-          kept: { doc: customer.doc, nome: customer.nome, txns: currentTxns },
-          skipped: { doc: existing.doc, nome: existing.nome, txns: existingTxns }
-        });
-        phoneMap.set(phone, customer);
-      } else {
-        duplicates.push({
-          phone,
-          kept: { doc: existing.doc, nome: existing.nome, txns: existingTxns },
-          skipped: { doc: customer.doc, nome: customer.nome, txns: currentTxns }
-        });
-      }
-    }
-  });
-
-  return { customers: Array.from(phoneMap.values()), duplicates };
-}
 
 // Initialize Supabase client
 function getSupabaseClient() {
@@ -255,127 +226,6 @@ async function syncCustomer(customer) {
 
     return { action: 'failed', phone, success: false, error: 'create failed', details: createResult };
   }
-}
-
-// Sync all customers
-async function syncAllCustomers(headers) {
-  const startTime = Date.now();
-  const supabase = getSupabaseClient();
-
-  // Get all customers with valid phone, excluding blacklisted
-  const { data: customers, error } = await supabase
-    .from('customer_summary')
-    .select('doc, nome, normalized_phone, rfm_segment, risk_level, saldo_carteira, transaction_count')
-    .not('normalized_phone', 'is', null);
-
-  if (error) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Failed to fetch customers', details: error.message })
-    };
-  }
-
-  // Get blacklisted numbers
-  const { data: blacklist } = await supabase
-    .from('blacklist')
-    .select('phone');
-
-  const blacklistedPhones = new Set((blacklist || []).map(b => b.phone));
-
-  // Filter out blacklisted
-  const afterBlacklist = customers.filter(c => {
-    const phone = c.normalized_phone?.replace(/\D/g, '');
-    return phone && !blacklistedPhones.has(phone) && !blacklistedPhones.has('+' + phone);
-  });
-
-  // Deduplicate by phone (keeps customer with highest transaction_count)
-  const { customers: eligibleCustomers, duplicates } = deduplicateByPhone(afterBlacklist);
-
-  // Parallel processing configuration
-  // Reduced from 10 to 5 - WhatChimp silently drops requests with higher concurrency
-  const CONCURRENCY = 5;
-
-  const results = {
-    total: eligibleCustomers.length,
-    created: 0,
-    updated: 0,
-    failed: 0,
-    errors: []
-  };
-
-  // Process customers in parallel batches
-  for (let i = 0; i < eligibleCustomers.length; i += CONCURRENCY) {
-    const batch = eligibleCustomers.slice(i, i + CONCURRENCY);
-
-    const batchResults = await Promise.all(
-      batch.map(async (customer) => {
-        try {
-          return await syncCustomer(customer);
-        } catch (err) {
-          return { success: false, phone: customer.normalized_phone, error: err.message };
-        }
-      })
-    );
-
-    for (const result of batchResults) {
-      if (result.success) {
-        if (result.action === 'created') results.created++;
-        else if (result.action === 'updated') results.updated++;
-      } else {
-        results.failed++;
-        results.errors.push({ phone: result.phone, error: result.error || result.result });
-      }
-    }
-
-    // Small delay between batches
-    if (i + CONCURRENCY < eligibleCustomers.length) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-  }
-
-  // Limit errors in response to avoid huge payloads
-  if (results.errors.length > 10) {
-    results.errors = results.errors.slice(0, 10);
-    results.errors.push({ note: `... and ${results.failed - 10} more errors` });
-  }
-
-  // Calculate duration and save sync results to app_settings
-  const duration = Math.round((Date.now() - startTime) / 1000);
-  const syncData = {
-    timestamp: new Date().toISOString(),
-    total: results.total,
-    created: results.created,
-    updated: results.updated,
-    failed: results.failed,
-    duration_seconds: duration
-  };
-
-  const { error: updateError } = await supabase
-    .from('app_settings')
-    .update({ whatchimp_last_sync: syncData })
-    .eq('id', 'default');
-
-  if (updateError) {
-    console.warn('Failed to save sync results to app_settings:', updateError.message);
-  }
-
-  return {
-    statusCode: 200,
-    headers,
-    body: JSON.stringify({
-      success: true,
-      summary: {
-        total: results.total,
-        created: results.created,
-        updated: results.updated,
-        failed: results.failed,
-        duplicatesResolved: duplicates.length,
-        duration_seconds: duration
-      },
-      errors: results.errors
-    })
-  };
 }
 
 // Sync single customer by doc or phone
@@ -576,9 +426,6 @@ exports.handler = async (event, context) => {
     const { action } = body;
 
     switch (action) {
-      case 'sync_all':
-        return await syncAllCustomers(headers);
-
       case 'sync_customer':
         return await syncSingleCustomer(body, headers);
 
@@ -597,7 +444,8 @@ exports.handler = async (event, context) => {
           headers,
           body: JSON.stringify({
             error: 'Invalid action',
-            available: ['sync_all', 'sync_customer', 'get_labels', 'list_subscribers', 'get_stats']
+            available: ['sync_customer', 'get_labels', 'list_subscribers', 'get_stats'],
+            note: 'Full sync: use whatchimp-sync-background function'
           })
         };
     }
