@@ -1,4 +1,4 @@
-// netlify/functions/whatchimp-api.js v1.6
+// netlify/functions/whatchimp-api.js v1.8
 // WhatChimp Subscriber Management API
 //
 // ACTIONS:
@@ -6,8 +6,15 @@
 // - sync_customer: Sync single customer by doc or phone
 // - get_labels: List all WhatChimp labels
 // - list_subscribers: List WhatChimp subscribers (paginated)
+// - get_stats: Get sync statistics and label distribution for analytics
 //
 // CHANGELOG:
+// v1.8 (2026-02-03): Save sync results to app_settings
+//   - sync_all now saves results to whatchimp_last_sync JSONB column
+//   - Enables WhatChimp Analytics dashboard to show last sync info
+// v1.7 (2026-02-03): Added get_stats action for analytics dashboard
+//   - Returns label distribution from Supabase RPC function
+//   - Returns last sync statistics
 // v1.6 (2026-02-03): Robust duplicate phone handling
 //   - Deduplicates customers by phone before sync (prevents arbitrary selection)
 //   - Keeps primary customer (highest transaction_count)
@@ -252,6 +259,7 @@ async function syncCustomer(customer) {
 
 // Sync all customers
 async function syncAllCustomers(headers) {
+  const startTime = Date.now();
   const supabase = getSupabaseClient();
 
   // Get all customers with valid phone, excluding blacklisted
@@ -332,6 +340,26 @@ async function syncAllCustomers(headers) {
     results.errors.push({ note: `... and ${results.failed - 10} more errors` });
   }
 
+  // Calculate duration and save sync results to app_settings
+  const duration = Math.round((Date.now() - startTime) / 1000);
+  const syncData = {
+    timestamp: new Date().toISOString(),
+    total: results.total,
+    created: results.created,
+    updated: results.updated,
+    failed: results.failed,
+    duration_seconds: duration
+  };
+
+  const { error: updateError } = await supabase
+    .from('app_settings')
+    .update({ whatchimp_last_sync: syncData })
+    .eq('id', 'default');
+
+  if (updateError) {
+    console.warn('Failed to save sync results to app_settings:', updateError.message);
+  }
+
   return {
     statusCode: 200,
     headers,
@@ -342,7 +370,8 @@ async function syncAllCustomers(headers) {
         created: results.created,
         updated: results.updated,
         failed: results.failed,
-        duplicatesResolved: duplicates.length
+        duplicatesResolved: duplicates.length,
+        duration_seconds: duration
       },
       errors: results.errors
     })
@@ -473,6 +502,52 @@ async function listSubscribers(body, headers) {
   }
 }
 
+// Get sync stats and label distribution for analytics
+async function getStats(headers) {
+  try {
+    const supabase = getSupabaseClient();
+
+    // Get label distribution from RPC function
+    const { data: distribution, error: distError } = await supabase.rpc('get_whatchimp_label_distribution');
+
+    if (distError) {
+      console.error('Failed to get label distribution:', distError);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'Failed to get label distribution', details: distError.message })
+      };
+    }
+
+    // Get last sync info from app_settings (if available)
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('whatchimp_last_sync')
+      .eq('id', 'default')
+      .single();
+
+    const lastSync = settings?.whatchimp_last_sync || null;
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        distribution: distribution || { rfm_segments: {}, risk_levels: {}, total: 0 },
+        lastSync,
+        labelMapping: LABEL_MAP
+      })
+    };
+  } catch (err) {
+    console.error('Failed to get stats:', err);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Failed to get stats', details: err.message })
+    };
+  }
+}
+
 // Main handler
 exports.handler = async (event, context) => {
   const origin = getCorsOrigin(event);
@@ -513,13 +588,16 @@ exports.handler = async (event, context) => {
       case 'list_subscribers':
         return await listSubscribers(body, headers);
 
+      case 'get_stats':
+        return await getStats(headers);
+
       default:
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({
             error: 'Invalid action',
-            available: ['sync_all', 'sync_customer', 'get_labels', 'list_subscribers']
+            available: ['sync_all', 'sync_customer', 'get_labels', 'list_subscribers', 'get_stats']
           })
         };
     }

@@ -1,4 +1,4 @@
-// netlify/functions/whatchimp-sync.js v1.5
+// netlify/functions/whatchimp-sync.js v1.6
 // Scheduled function - runs daily at 10:00 UTC (07:00 BRT)
 // Syncs all customers from Supabase to WhatChimp with labels and saldo
 //
@@ -6,6 +6,9 @@
 // Runs 1 hour after POS customer sync (09:00 UTC)
 //
 // CHANGELOG:
+// v1.6 (2026-02-03): Save sync results to app_settings
+//   - Stores whatchimp_last_sync JSONB with timestamp, totals, duration
+//   - Enables WhatChimp Analytics dashboard to show last sync info
 // v1.5 (2026-02-03): Robust duplicate phone handling
 //   - Deduplicates customers by phone before sync (prevents arbitrary selection)
 //   - Keeps primary customer (highest transaction_count)
@@ -321,6 +324,27 @@ exports.handler = async (event, context) => {
 
     const duration = Math.round((Date.now() - startTime) / 1000);
     console.log(`WhatChimp Sync completed in ${duration}s:`, results);
+
+    // Save sync results to app_settings for analytics dashboard
+    const syncData = {
+      timestamp: new Date().toISOString(),
+      total: results.total,
+      created: results.created,
+      updated: results.updated,
+      failed: results.failed,
+      duration_seconds: duration
+    };
+
+    const { error: updateError } = await supabase
+      .from('app_settings')
+      .update({ whatchimp_last_sync: syncData })
+      .eq('id', 'default');
+
+    if (updateError) {
+      console.warn('Failed to save sync results to app_settings:', updateError.message);
+    } else {
+      console.log('Sync results saved to app_settings.whatchimp_last_sync');
+    }
 
     return {
       statusCode: 200,

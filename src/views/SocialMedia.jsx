@@ -1,8 +1,11 @@
-// SocialMedia.jsx v1.4 - STELLAR CASCADE TRANSITIONS
+// SocialMedia.jsx v1.5 - WHATCHIMP ANALYTICS TAB
 // Social Media Analytics Tab
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.5 (2026-02-03): Added WhatChimp Analytics tab
+//   - New WhatChimp Sync Analytics dashboard
+//   - Shows sync status, label distributions, and customer segments
 // v1.4 (2026-01-27): Stellar Cascade transitions
 //   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
 //   - Content cascades in layered sequence (~250ms total)
@@ -30,6 +33,7 @@ import SocialMediaNavigation from '../components/social/SocialMediaNavigation';
 // Lazy-loaded platform components
 const InstagramAnalytics = lazy(() => import('../components/social/InstagramAnalytics'));
 const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAnalytics'));
+const WhatChimpAnalytics = lazy(() => import('../components/social/WhatChimpAnalytics'));
 const BlacklistManager = lazy(() => import('../components/campaigns/BlacklistManager'));
 const GoogleBusinessAnalytics = lazy(() => import('../components/social/GoogleBusinessAnalytics'));
 
@@ -137,6 +141,13 @@ const SocialMedia = ({ data, onDataChange }) => {
       {activeSection === 'whatsapp' && (
         <Suspense fallback={<LoadingFallback />}>
           <WhatsAppAnalytics />
+        </Suspense>
+      )}
+
+      {/* WhatChimp Sync Analytics Section */}
+      {activeSection === 'whatchimp' && (
+        <Suspense fallback={<LoadingFallback />}>
+          <WhatChimpAnalytics />
         </Suspense>
       )}
 

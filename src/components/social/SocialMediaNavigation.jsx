@@ -1,8 +1,11 @@
-// SocialMediaNavigation.jsx v1.4 - SIDEBAR AWARENESS + NON-STICKY
+// SocialMediaNavigation.jsx v1.5 - WHATCHIMP TAB
 // Tab navigation for Social Media view
 // Design System v4.0 compliant
 //
 // CHANGELOG:
+// v1.5 (2026-02-03): Added WhatChimp tab
+//   - New WhatChimp Sync Analytics tab with cyan/teal theme
+//   - Uses Zap icon for sync/automation concept
 // v1.4 (2026-01-12): Sidebar awareness + non-sticky
 //   - Removed sticky positioning (nav scrolls with content)
 //   - Added sidebar awareness - hides when mobile sidebar is open
@@ -22,7 +25,7 @@
 //   - Same design pattern as CampaignSectionNavigation
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Instagram, Facebook, MessageCircle, ShieldOff, Building2 } from 'lucide-react';
+import { Instagram, Facebook, MessageCircle, ShieldOff, Building2, Zap } from 'lucide-react';
 import { useSidebar } from '../../contexts/SidebarContext';
 
 const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
@@ -54,6 +57,17 @@ const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
       colors: {
         active: 'bg-gradient-to-r from-green-500 to-emerald-500 shadow-green-500/25',
         hover: 'hover:border-green-300 dark:hover:border-green-700 hover:text-green-600 dark:hover:text-green-400'
+      }
+    },
+    {
+      id: 'whatchimp',
+      label: 'WhatChimp',
+      icon: Zap,
+      mobileLabel: 'WC',
+      available: true,
+      colors: {
+        active: 'bg-gradient-to-r from-cyan-500 to-teal-500 shadow-cyan-500/25',
+        hover: 'hover:border-cyan-300 dark:hover:border-cyan-700 hover:text-cyan-600 dark:hover:text-cyan-400'
       }
     },
     {
