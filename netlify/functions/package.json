@@ -2,5 +2,8 @@
   "name": "lavpop-netlify-functions",
   "version": "1.0.0",
   "type": "commonjs",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0"
+  }
 }
