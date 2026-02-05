@@ -328,18 +328,19 @@ export async function fetchDailyRevenue(startDate, endDate) {
 
   console.log(`[fetchDailyRevenue] Fetching ${startStr} to ${endStr}...`);
 
+  // Use materialized view for better performance
   const { data, error } = await client
-    .from('daily_revenue')
+    .from('mv_daily_revenue')
     .select('*')
     .gte('date', startStr)
     .lte('date', endStr)
     .order('date', { ascending: true });
 
   if (error) {
-    throw new Error(`Failed to fetch daily_revenue: ${error.message}`);
+    throw new Error(`Failed to fetch mv_daily_revenue: ${error.message}`);
   }
 
-  console.log(`✓ Loaded daily_revenue: ${data?.length || 0} days`);
+  console.log(`✓ Loaded mv_daily_revenue: ${data?.length || 0} days`);
   return data || [];
 }
 
@@ -358,46 +359,41 @@ async function loadDailyRevenueForInit() {
 // ============== FORMAT HELPERS ==============
 
 /**
- * Format ISO date to DD/MM/YYYY HH:mm:ss for parseBrDate
+ * Format ISO timestamp to Brazilian DD/MM/YYYY HH:mm:ss format.
  *
- * IMPORTANT: Supabase timestamps represent ACTUAL Brazil purchase times,
- * but are stored with +00 offset. We extract the time components directly
- * from the ISO string WITHOUT any timezone conversion, so the displayed
- * time matches the actual purchase time regardless of viewer's location.
+ * Converts UTC timestamp to Brazil timezone (America/Sao_Paulo, UTC-3).
+ * This ensures the displayed time matches when the customer actually visited.
  *
- * Example: "2025-12-07 08:39:03+00" → "07/12/2025 08:39:03"
- * The customer purchased at 08:39 Brazil time, we display 08:39.
+ * Example: "2026-02-02T00:46:00+00" (UTC) → "01/02/2026 21:46:00" (Brazil)
+ * (00:46 UTC = 21:46 Brazil previous day)
+ *
+ * Note: Uses Intl.DateTimeFormat which handles DST correctly,
+ * though Brazil suspended DST in 2019.
  */
 function formatDateForCSV(isoDate) {
   if (!isoDate) return '';
 
   try {
-    // Parse ISO string directly WITHOUT timezone conversion
-    // Supabase format: "2025-12-07 08:39:03+00" or "2025-12-07T08:39:03+00:00"
-    const isoStr = String(isoDate);
-
-    // Extract date and time parts from ISO string directly
-    // This preserves the actual recorded time without browser timezone conversion
-    const match = isoStr.match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
-
-    if (match) {
-      const [, year, month, day, hours, minutes, seconds] = match;
-      return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
-    }
-
-    // Fallback: try parsing as Date (legacy support)
     const date = new Date(isoDate);
     if (isNaN(date.getTime())) return '';
 
-    // Use UTC getters to avoid local timezone conversion
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const year = date.getUTCFullYear();
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+    // Convert UTC to Brazil timezone using Intl API
+    const formatter = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
 
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    const parts = formatter.formatToParts(date);
+    const p = {};
+    parts.forEach(({ type, value }) => p[type] = value);
+
+    return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}:${p.second}`;
   } catch {
     return '';
   }

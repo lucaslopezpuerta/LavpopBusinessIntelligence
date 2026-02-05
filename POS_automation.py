@@ -1,7 +1,11 @@
 """
-Bilavnova POS Automation v3.20
+Bilavnova POS Automation v3.21
 
 CHANGELOG:
+v3.21 (2026-02-04): Fix timezone handling for GitHub Actions
+  - Set TZ=America/Sao_Paulo at script start for consistent behavior
+  - Ensures uploaded data has correct Brazil timestamps regardless of server TZ
+
 v3.20 (2025-12-27): Enhanced diagnostics for login failures
   - Add detailed form state logging at 5s mark (captcha token, errors, form validity)
   - Helps diagnose why login succeeds sometimes and fails other times
@@ -56,6 +60,17 @@ Features:
 - Chrome background processes disabled to prevent login interference
 """
 
+# CRITICAL: Set timezone to Brazil BEFORE any imports
+# This ensures consistent behavior regardless of server timezone (UTC in GitHub Actions)
+import os
+import time as _time_module
+
+os.environ['TZ'] = 'America/Sao_Paulo'
+try:
+    _time_module.tzset()  # Apply the timezone change (Unix only)
+except AttributeError:
+    pass  # Windows doesn't have tzset, but TZ env var is still set for child processes
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -103,7 +118,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.20"
+VERSION = "3.21"
 COOKIE_FILE = "pos_session_cookies.pkl"
 
 logging.basicConfig(

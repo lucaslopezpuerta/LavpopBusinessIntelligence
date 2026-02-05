@@ -127,7 +127,9 @@ function parseBrDate(dateStr) {
 function formatBrDateForSupabase(parsed) {
   if (!parsed) return null;
   const { day, month, year, time } = parsed;
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time}`;
+  // Include Brazil timezone (UTC-3) so PostgreSQL stores correct UTC time
+  // Brazil suspended DST in 2019, so -03:00 is always correct
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time}-03:00`;
 }
 
 function parseBrNumber(value) {

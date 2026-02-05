@@ -1485,13 +1485,16 @@ LEFT JOIN campaigns c ON cr.campaign_id = c.id
 LEFT JOIN transactions t ON cr.transaction_id = t.id
 GROUP BY cr.codigo_cupom, c.name, c.discount_percent, c.service_type;
 
--- Daily revenue summary view - v3.1 (added total_revenue)
+-- Daily revenue summary view - v3.2 (Brazil timezone fix)
+-- v3.2 (2026-02-04): Fixed date grouping to use Brazil timezone
+--   - Uses DATE(data_hora AT TIME ZONE 'America/Sao_Paulo') for correct day boundaries
+--   - Late-night transactions (9-11 PM Brazil) now appear on the correct day
 -- v3.1 (2025-12-21): Added total_revenue = service_revenue + recarga_revenue
 --   - Used by weather impact prediction model for daily cash flow forecasting
 -- v3.0: Initial implementation
 CREATE OR REPLACE VIEW daily_revenue AS
 SELECT
-  DATE(data_hora) as date,
+  DATE(data_hora AT TIME ZONE 'America/Sao_Paulo') as date,
   -- Transaction counts
   COUNT(*) FILTER (WHERE NOT is_recarga) as transactions,
   COUNT(*) FILTER (WHERE is_recarga) as recargas,
@@ -1509,7 +1512,7 @@ SELECT
   COALESCE(SUM(cashback_amount), 0) as cashback_given,
   COUNT(*) FILTER (WHERE usou_cupom) as coupon_uses
 FROM transactions
-GROUP BY DATE(data_hora)
+GROUP BY DATE(data_hora AT TIME ZONE 'America/Sao_Paulo')
 ORDER BY date DESC;
 
 -- Campaign delivery metrics view (v3.15) - Real delivery rates from contact_tracking

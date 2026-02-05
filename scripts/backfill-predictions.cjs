@@ -827,10 +827,10 @@ async function backfillPredictions() {
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // 1. Fetch ALL revenue data at once
+  // 1. Fetch ALL revenue data at once (using materialized view)
   console.log('Fetching all revenue data...');
   const { data: allRevenue, error: revError } = await supabase
-    .from('daily_revenue')
+    .from('mv_daily_revenue')
     .select('date, total_revenue')
     .order('date');
 

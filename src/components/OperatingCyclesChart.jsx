@@ -174,14 +174,20 @@ const OperatingCyclesChart = ({
 
     salesData.forEach(row => {
       const date = parseBrDate(row.Data || row.Data_Hora || row.date || '');
-      if (!date) return;
+      if (!date || !date.brazil) return;
 
-      const dayNum = date.getDate();
+      // Use .brazil property for Brazil timezone-correct day grouping
+      // This ensures late-night transactions (22:00-23:59 Brazil = 01:00-02:59 UTC next day)
+      // are grouped on the correct Brazil calendar day, not the UTC day
+      const dayNum = date.brazil.day;
+      const brazilMonth = date.brazil.month - 1; // .brazil.month is 1-indexed, JS months are 0-indexed
+      const brazilYear = date.brazil.year;
+
       const machineInfo = countMachines(row.Maquina || row.machine || row.Maquinas || '');
       const totalCycles = machineInfo.wash + machineInfo.dry;
 
       // Current Month Data
-      if (date.getMonth() === targetMonth && date.getFullYear() === targetYear) {
+      if (brazilMonth === targetMonth && brazilYear === targetYear) {
         if (dailyMap[dayNum]) {
           dailyMap[dayNum].Lavagens += machineInfo.wash;
           dailyMap[dayNum].Secagens += machineInfo.dry;
@@ -190,7 +196,7 @@ const OperatingCyclesChart = ({
       }
 
       // Same Month Last Year Data (for YoY comparison)
-      if (date.getMonth() === targetMonth && date.getFullYear() === comparisonYear) {
+      if (brazilMonth === targetMonth && brazilYear === comparisonYear) {
         if (lastYearMap[dayNum]) {
           lastYearMap[dayNum].wash += machineInfo.wash;
           lastYearMap[dayNum].dry += machineInfo.dry;

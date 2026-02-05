@@ -1601,9 +1601,9 @@ async function trainRevenueModel(supabase, options = {}) {
     const today = getLocalDate(0);
     const trainingStart = getLocalDate(-trainingDays);
 
-    // Fetch training data
+    // Fetch training data (uses materialized view for performance)
     const { data: revenueData, error: revError } = await supabase
-      .from('daily_revenue')
+      .from('mv_daily_revenue')
       .select('date, total_revenue')
       .gte('date', trainingStart)
       .lte('date', today)
@@ -1724,9 +1724,9 @@ async function evaluatePredictions(supabase) {
   console.log(`Evaluating prediction for ${yesterday}...`);
 
   try {
-    // Get actual revenue for yesterday from daily_revenue view
+    // Get actual revenue for yesterday from materialized view
     const { data: actualData, error: actualError } = await supabase
-      .from('daily_revenue')
+      .from('mv_daily_revenue')
       .select('total_revenue')
       .eq('date', yesterday)
       .single();

@@ -1539,8 +1539,9 @@ async function generatePredictions(supabase) {
   console.log(`Forecast period: ${today} to ${forecastEnd}`);
 
   // Fetch historical revenue data (total_revenue = service + recarga)
+  // Uses mv_daily_revenue materialized view for better performance
   const { data: revenue, error: revError } = await supabase
-    .from('daily_revenue')
+    .from('mv_daily_revenue')
     .select('date, total_revenue')
     .gte('date', trainingStart)
     .lte('date', today)

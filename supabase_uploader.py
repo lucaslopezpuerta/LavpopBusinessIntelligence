@@ -14,15 +14,32 @@ Features:
 Usage:
     from supabase_uploader import upload_sales_csv, upload_customers_csv
     result = upload_sales_csv('path/to/sales.csv')
+
+TIMEZONE HANDLING (Critical for GitHub Actions):
+    - All timestamps are converted to ISO with explicit Brazil timezone offset (-03:00)
+    - The parse_br_date() function appends "-03:00" directly (does NOT rely on TZ env var)
+    - This ensures "04/02/2026 09:24:56" → "2026-02-04T09:24:56-03:00"
+    - PostgreSQL stores as UTC: 2026-02-04T12:24:56Z
+    - Display with AT TIME ZONE 'America/Sao_Paulo' → 09:24:56 (correct!)
 """
 
+# CRITICAL: Set timezone to Brazil BEFORE any datetime-related imports
+# This ensures consistent behavior regardless of server timezone (UTC in GitHub Actions)
 import os
+import time
+
+os.environ['TZ'] = 'America/Sao_Paulo'
+try:
+    time.tzset()  # Apply the timezone change (Unix only)
+except AttributeError:
+    pass  # Windows doesn't have tzset, but TZ env var is still set for child processes
+
+# Now import everything else
 import re
 import csv
 import hashlib
 import logging
-import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 
 from supabase_client import get_supabase_client
@@ -31,6 +48,15 @@ from supabase_client import get_supabase_client
 BATCH_SIZE = 100
 DEFAULT_CASHBACK_RATE = 0.075  # 7.5%
 DEFAULT_CASHBACK_START_DATE = '2024-06-01'
+
+# Log timezone info on module load (helps debug GitHub Actions issues)
+_tz_info = os.environ.get('TZ', 'NOT SET')
+_local_now = datetime.now()
+_utc_now = datetime.now(timezone.utc)
+logging.info(f"[Timezone] TZ env var: {_tz_info}")
+logging.info(f"[Timezone] Local datetime.now(): {_local_now}")
+logging.info(f"[Timezone] UTC datetime.now(): {_utc_now}")
+logging.info(f"[Timezone] UTC offset: {(_local_now - _utc_now.replace(tzinfo=None)).total_seconds() / 3600:.1f} hours")
 
 # Cache for app settings
 _app_settings_cache = None
@@ -116,9 +142,16 @@ def parse_csv_file(filepath: str) -> List[Dict[str, str]]:
 
 def parse_br_date(date_str: str) -> Optional[str]:
     """
-    Parse Brazilian date format to ISO timestamp.
+    Parse Brazilian date format to ISO timestamp with timezone.
     Input: "DD/MM/YYYY HH:MM:SS" or "DD/MM/YYYY"
-    Output: "YYYY-MM-DDTHH:MM:SS"
+    Output: "YYYY-MM-DDTHH:MM:SS-03:00" (Brazil standard time)
+
+    Note: Brazil standard time is UTC-3. During daylight saving (historically Nov-Feb),
+    it was UTC-2, but Brazil suspended DST in 2019. We use -03:00 consistently.
+
+    Example: "01/02/2026 22:30:00" → "2026-02-01T22:30:00-03:00"
+             PostgreSQL converts to UTC: 2026-02-02T01:30:00+00
+             This correctly represents 22:30 Brazil time on Feb 1.
     """
     if not date_str or not date_str.strip():
         return None
@@ -142,7 +175,8 @@ def parse_br_date(date_str: str) -> Optional[str]:
         if len(year) == 2:
             year = '20' + year
 
-        return f"{year}-{month.zfill(2)}-{day.zfill(2)}T{time_part}"
+        # Return with Brazil timezone (UTC-3)
+        return f"{year}-{month.zfill(2)}-{day.zfill(2)}T{time_part}-03:00"
 
     except Exception:
         return None
