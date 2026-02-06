@@ -1,5 +1,5 @@
-// BaseModal.jsx v1.2 - FLASH-FREE ANIMATION
-// Design System v5.1 compliant - Variant D (Glassmorphism)
+// BaseModal.jsx v1.3 - FOCUS & TYPOGRAPHY IMPROVEMENTS
+// Design System v6.4 compliant - Variant D (Glassmorphism)
 //
 // FEATURES:
 // - Platform-aware animations (bottom sheet on mobile, centered on desktop)
@@ -13,6 +13,11 @@
 // - Flash-free mounting (outer container animated)
 //
 // CHANGELOG:
+// v1.3 (2026-02-05): Focus & typography improvements (Design System v6.4)
+//   - Close button: Added focus-visible ring with proper offset
+//   - Title: Uses text-subheading semantic token (18px)
+//   - Subtitle: Uses text-caption semantic pattern (12px)
+//   - Consistent focus pattern with other components
 // v1.2 (2026-02-02): Flash-free animation
 //   - Outer container now animated to prevent any flash before modal animates
 //   - Eliminates brief "small square in center" artifact on mount
@@ -398,7 +403,7 @@ const BaseModal = ({
                     {title && (
                       <h2
                         className={`
-                          text-lg font-semibold truncate
+                          text-subheading font-semibold truncate
                           ${isDark ? 'text-white' : 'text-slate-900'}
                         `}
                       >
@@ -408,7 +413,7 @@ const BaseModal = ({
                     {subtitle && (
                       <p
                         className={`
-                          text-sm truncate
+                          text-caption truncate
                           ${isDark ? 'text-slate-400' : 'text-slate-500'}
                         `}
                       >
@@ -448,10 +453,11 @@ const BaseModal = ({
                       type="button"
                       onClick={onClose}
                       className={`
-                        flex-shrink-0 p-2 rounded-lg transition-colors
+                        flex-shrink-0 p-2 rounded-lg transition-colors cursor-pointer
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2
                         ${isDark
-                          ? 'text-slate-400 hover:text-white hover:bg-white/10'
-                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}
+                          ? 'text-slate-400 hover:text-white hover:bg-white/10 focus-visible:ring-offset-space-dust'
+                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus-visible:ring-offset-white'}
                       `}
                       aria-label="Fechar"
                     >

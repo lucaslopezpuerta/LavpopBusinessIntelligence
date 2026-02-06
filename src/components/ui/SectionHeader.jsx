@@ -1,8 +1,12 @@
-// SectionHeader.jsx v1.4 - SOLID COLOR ICON WELLS
+// SectionHeader.jsx v1.5 - TYPOGRAPHY CONSISTENCY
 // Reusable section header component with icon box and border accent
-// Design System v5.1 compliant
+// Design System v6.4 compliant
 //
 // CHANGELOG:
+// v1.5 (2026-02-05): Typography consistency (Design System v6.4)
+//   - Title now uses text-heading semantic size (20px) for better hierarchy
+//   - Subtitle uses text-caption semantic pattern (12px)
+//   - Updated Design System compliance to v6.4
 // v1.4 (2026-01-29): Yellow→Amber revert for icon wells
 //   - Changed amber color entry: bg from yellow-600/500 to amber-600/500
 //   - Changed amber color entry: border from yellow-700/400 to amber-700/400
@@ -106,12 +110,12 @@ const SectionHeader = ({
       <div>
         <h2
           id={id}
-          className="text-base font-bold text-slate-900 dark:text-white"
+          className="text-heading font-bold text-slate-900 dark:text-white"
         >
           {title}
         </h2>
         {subtitle && (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-caption text-slate-500 dark:text-slate-400">
             {subtitle}
           </p>
         )}

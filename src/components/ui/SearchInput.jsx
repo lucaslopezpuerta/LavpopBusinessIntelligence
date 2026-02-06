@@ -1,8 +1,11 @@
-// SearchInput.jsx v1.2 - TOUCH TARGET FIX
+// SearchInput.jsx v1.3 - FOCUS RING CONSISTENCY
 // Reusable search input with consistent styling and debounced onChange
-// Design System v4.0 compliant
+// Design System v6.4 compliant
 //
 // CHANGELOG:
+// v1.3 (2026-02-05): Focus ring consistency (Design System v6.4)
+//   - Input: Added focus-visible:ring-offset-white/space-dust for accessibility
+//   - Clear button: Already had proper focus ring, verified
 // v1.2 (2026-01-31): Touch target accessibility fix (WCAG 2.5.5)
 //   - Clear button now has minimum 44x44px touch target across all sizes
 //   - Visual icon size unchanged, touch area expanded via padding
@@ -179,7 +182,7 @@ const SearchInput = ({
           text-slate-700 dark:text-slate-200
           placeholder:text-slate-400 dark:placeholder:text-slate-400
           transition-colors duration-200
-          focus:outline-none focus:ring-2 focus:ring-stellar-cyan/50 focus:border-stellar-cyan dark:focus:border-stellar-cyan
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust focus-visible:border-stellar-cyan dark:focus-visible:border-stellar-cyan
           hover:border-slate-300 dark:hover:border-slate-600
           disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-slate-900
         `}

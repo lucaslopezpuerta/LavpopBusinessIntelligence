@@ -385,7 +385,7 @@ const MobileCustomerCard = memo(({
           </p>
         </div>
 
-        <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-400 flex-shrink-0" />
+        <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400 flex-shrink-0" />
       </motion.div>
     </div>
   );

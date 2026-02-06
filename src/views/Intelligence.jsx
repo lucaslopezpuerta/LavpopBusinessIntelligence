@@ -1,8 +1,17 @@
-// Intelligence.jsx v3.22.0 - UI POLISH (KPICard Pattern)
+// Intelligence.jsx v3.23.1 - SYNC BUTTON POSITIONING FIX
 // Refactored with Priority Matrix, auto-refresh, collapsible sections
-// Design System v5.1 compliant - Cosmic Precision
+// Design System v6.4 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v3.23.1 (2026-02-05): Sync button positioning fix
+//   - Fixed header layout: sync button now inline on mobile (was below title)
+//   - Mobile sync button now shows time (was icon-only)
+//   - Removed `flex-col` on mobile for proper inline alignment
+// v3.23.0 (2026-02-05): Refresh overlay & sync button UI (Design System v6.4)
+//   - Added BackgroundRefreshIndicator overlay during refresh
+//   - Redesigned StaleDataIndicator with glassmorphism & motion
+//   - Focus-visible pattern for accessibility
+//   - Consistent refresh UX with analytics screens
 // v3.22.0 (2026-02-01): UI polish - child components updated
 //   - PriorityMatrix v3.6.0: Gradient backgrounds, inner shadow, tracking
 //   - RevenueForecast v3.3.0: Stats card gradients, typography polish
@@ -128,9 +137,11 @@
 // v1.0.0 (2025-11-18): Complete redesign with Tailwind + Nivo
 
 import React, { useMemo, useState, useEffect, Suspense, useCallback, useRef } from 'react';
-import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb, RefreshCw, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb, RefreshCw, Clock, CheckCircle } from 'lucide-react';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useTheme } from '../contexts/ThemeContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 // Business logic
 import { useAppSettings } from '../contexts/AppSettingsContext';
@@ -154,6 +165,8 @@ import { METRIC_TOOLTIPS } from '../constants/metricTooltips';
 import { IntelligenceLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
+import BackgroundRefreshIndicator from '../components/ui/BackgroundRefreshIndicator';
+import { haptics } from '../utils/haptics';
 
 // Lazy-loaded section components (contain charts)
 import {
@@ -166,11 +179,11 @@ import {
 import RevenueForecast from '../components/intelligence/RevenueForecast';
 import PriorityMatrix from '../components/intelligence/PriorityMatrix';
 
-// ==================== STALE DATA INDICATOR ====================
+// ==================== SYNC STATUS BUTTON ====================
 
 const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
-const StaleDataIndicator = ({ lastUpdated, isRefreshing, onRefresh, isMobile }) => {
+const SyncStatusButton = ({ lastUpdated, isRefreshing, onRefresh, isMobile, isDark, prefersReducedMotion }) => {
   const [, forceUpdate] = useState(0);
 
   // Update the "time ago" display every minute
@@ -184,31 +197,97 @@ const StaleDataIndicator = ({ lastUpdated, isRefreshing, onRefresh, isMobile }) 
   const now = Date.now();
   const elapsed = now - lastUpdated;
   const isStale = elapsed > STALE_THRESHOLD_MS;
+  const isFresh = elapsed < 60000; // Less than 1 minute
 
   // Format time ago
   const minutes = Math.floor(elapsed / 60000);
   const timeAgo = minutes < 1 ? 'agora' : minutes < 60 ? `${minutes}min` : `${Math.floor(minutes / 60)}h`;
 
+  const handleClick = () => {
+    haptics.light();
+    onRefresh();
+  };
+
+  // Get icon based on state
+  const getIcon = () => {
+    const size = isMobile ? 'w-3.5 h-3.5' : 'w-4 h-4';
+    if (isRefreshing) {
+      return <RefreshCw className={`${size} animate-spin text-stellar-cyan`} />;
+    }
+    if (isFresh) {
+      return <CheckCircle className={`${size} ${isDark ? 'text-cosmic-green' : 'text-green-500'}`} />;
+    }
+    return <RefreshCw className={`${size} ${isStale ? (isDark ? 'text-amber-400' : 'text-amber-600') : ''}`} />;
+  };
+
+  // Mobile: Compact button with icon + time
+  if (isMobile) {
+    return (
+      <motion.button
+        onClick={handleClick}
+        disabled={isRefreshing}
+        whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        className={`
+          flex items-center gap-1.5 px-2 py-1.5 rounded-lg
+          cursor-pointer transition-colors duration-200
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-1
+          ${isDark ? 'focus-visible:ring-offset-space-dust' : 'focus-visible:ring-offset-white'}
+          ${isStale
+            ? isDark
+              ? 'bg-amber-500/10 text-amber-400'
+              : 'bg-amber-50 text-amber-600'
+            : isDark
+              ? 'text-slate-400'
+              : 'text-slate-500'
+          }
+          disabled:opacity-50 disabled:cursor-not-allowed
+        `}
+        aria-label={isRefreshing ? 'Atualizando dados' : `Última atualização: ${timeAgo}. Toque para sincronizar`}
+      >
+        {getIcon()}
+        <span className="text-[11px] font-medium">
+          {isRefreshing ? 'Sync...' : timeAgo}
+        </span>
+      </motion.button>
+    );
+  }
+
+  // Desktop: Full button with text
   return (
-    <button
-      onClick={onRefresh}
+    <motion.button
+      onClick={handleClick}
       disabled={isRefreshing}
+      whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
+      whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       className={`
         flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
-        transition-all duration-200
+        cursor-pointer transition-colors duration-200
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2
+        ${isDark ? 'focus-visible:ring-offset-space-dust' : 'focus-visible:ring-offset-white'}
         ${isStale
-          ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500 dark:text-white dark:border-amber-400'
-          : 'bg-slate-100 dark:bg-space-dust text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-stellar-cyan/10'
+          ? isDark
+            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20 hover:border-amber-500/40'
+            : 'bg-amber-50/80 text-amber-700 border border-amber-200/60 hover:border-amber-300'
+          : isDark
+            ? 'text-slate-400 border border-transparent hover:text-slate-300 hover:border-stellar-cyan/20'
+            : 'text-slate-500 border border-transparent hover:text-slate-600 hover:border-slate-200'
         }
-        hover:bg-slate-200 dark:hover:bg-space-nebula
         disabled:opacity-50 disabled:cursor-not-allowed
       `}
-      title={isRefreshing ? 'Atualizando...' : 'Clique para atualizar'}
+      title={isRefreshing ? 'Sincronizando...' : 'Clique para sincronizar'}
+      aria-label={isRefreshing ? 'Atualizando dados' : `Última atualização: ${timeAgo}. Clique para sincronizar`}
     >
-      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-      {!isMobile && <Clock className="w-3 h-3" />}
-      <span>{isRefreshing ? 'Atualizando...' : timeAgo}</span>
-    </button>
+      {getIcon()}
+      <span className="flex items-center gap-1">
+        <span>{isRefreshing ? 'Sync...' : timeAgo}</span>
+      </span>
+      {/* Stale indicator dot */}
+      {isStale && !isRefreshing && (
+        <span className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-amber-400' : 'bg-amber-500'} animate-pulse`} />
+      )}
+    </motion.button>
   );
 };
 
@@ -218,6 +297,7 @@ const Intelligence = ({ data, onDataChange }) => {
   const { settings } = useAppSettings();
   const isMobile = useIsMobile();
   const { isDark } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
 
   // State for daily revenue data (preloaded from app init, or fetched on demand)
   const [dailyRevenueData, setDailyRevenueData] = useState(data?.dailyRevenue || null);
@@ -491,7 +571,7 @@ const Intelligence = ({ data, onDataChange }) => {
       <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
         <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 {/* Icon Container - Glassmorphism */}
                 <div
@@ -519,12 +599,14 @@ const Intelligence = ({ data, onDataChange }) => {
                 </div>
               </div>
 
-              {/* Stale Data Indicator */}
-              <StaleDataIndicator
+              {/* Sync Status Button - always inline on right */}
+              <SyncStatusButton
                 lastUpdated={lastUpdated}
                 isRefreshing={isRefreshing}
                 onRefresh={handleRefresh}
                 isMobile={isMobile}
+                isDark={isDark}
+                prefersReducedMotion={prefersReducedMotion}
               />
             </div>
 
@@ -619,6 +701,13 @@ const Intelligence = ({ data, onDataChange }) => {
         </AnimatedSection>
 
       </AnimatedView>
+
+      {/* Refresh overlay (during data sync) */}
+      <BackgroundRefreshIndicator
+        isRefreshing={isRefreshing}
+        variant="overlay"
+        message="Sincronizando dados..."
+      />
     </PullToRefreshWrapper>
   );
 };

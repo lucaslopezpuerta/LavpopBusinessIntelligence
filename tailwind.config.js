@@ -228,6 +228,22 @@ export default {
     'badge-solid', 'badge-pill',
     'badge-success', 'badge-warning', 'badge-error', 'badge-info', 'badge-neutral', 'badge-accent',
     'badge-stellar', 'badge-cosmic',
+
+    // Typography utilities (v6.4)
+    'text-display-lg', 'text-display', 'text-heading', 'text-subheading',
+    'text-body', 'text-body-muted', 'text-caption', 'label-card',
+    'text-data-lg', 'text-data',
+
+    // Interactive utilities (v6.4)
+    'interactive', 'hover-lift', 'hover-lift-scale', 'press-scale',
+    'focus-ring', 'focus-ring-subtle',
+    'transition-micro', 'transition-standard',
+
+    // Elevation shadows (v6.4)
+    'shadow-elevation-1', 'shadow-elevation-2', 'shadow-elevation-3', 'shadow-elevation-4',
+    'shadow-elevation-hover',
+    'dark:shadow-elevation-1-dark', 'dark:shadow-elevation-2-dark',
+    'dark:shadow-elevation-3-dark', 'dark:shadow-elevation-hover-dark',
   ],
 
   theme: {
@@ -387,6 +403,18 @@ export default {
         '2xl': ['1.5rem', { lineHeight: '2rem' }],     // 24px
         '3xl': ['1.875rem', { lineHeight: '2.25rem' }], // 30px
         '4xl': ['2.25rem', { lineHeight: '2.5rem' }],  // 36px
+
+        // Semantic typography tokens (v6.4)
+        'display-lg': ['2.25rem', { lineHeight: '2.5rem', letterSpacing: '-0.02em' }],   // 36px hero headings
+        'display': ['1.875rem', { lineHeight: '2.25rem', letterSpacing: '-0.01em' }],    // 30px page titles
+        'heading': ['1.25rem', { lineHeight: '1.75rem', letterSpacing: '-0.01em' }],     // 20px section titles
+        'subheading': ['1.125rem', { lineHeight: '1.625rem' }],                          // 18px card titles
+        'body': ['0.875rem', { lineHeight: '1.375rem' }],                                // 14px body text
+        'caption': ['0.75rem', { lineHeight: '1rem', letterSpacing: '0.01em' }],         // 12px labels/captions
+
+        // Data display tokens (v6.4) - for KPIs, metrics
+        'data-lg': ['1.5rem', { lineHeight: '2rem', letterSpacing: '-0.02em' }],         // 24px large KPI values
+        'data': ['1rem', { lineHeight: '1.5rem', letterSpacing: '-0.01em' }],            // 16px standard data
       },
 
       spacing: {
@@ -586,6 +614,19 @@ export default {
         'aurora-warm': '0 0 20px rgba(235, 203, 139, 0.4), 0 0 40px rgba(191, 97, 106, 0.2)',
         'cosmic-inner': 'inset 0 0 20px rgba(0, 174, 239, 0.15)',
         'cosmic-inner-strong': 'inset 0 0 30px rgba(0, 174, 239, 0.25)',
+
+        // Elevation system (v6.4) - standardized depth levels
+        'elevation-1': '0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.08)',
+        'elevation-2': '0 2px 4px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.08)',
+        'elevation-3': '0 4px 8px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.08)',
+        'elevation-4': '0 8px 16px rgba(0, 0, 0, 0.04), 0 16px 32px rgba(0, 0, 0, 0.08)',
+        'elevation-hover': '0 8px 24px rgba(0, 0, 0, 0.1), 0 16px 40px rgba(0, 0, 0, 0.08)',
+
+        // Dark mode elevations with cyan glow (v6.4)
+        'elevation-1-dark': '0 1px 2px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3)',
+        'elevation-2-dark': '0 2px 4px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.3), 0 0 12px rgba(0, 174, 239, 0.05)',
+        'elevation-3-dark': '0 4px 8px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 16px rgba(0, 174, 239, 0.08)',
+        'elevation-hover-dark': '0 8px 24px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.25), 0 0 20px rgba(0, 174, 239, 0.12)',
       },
     },
   },

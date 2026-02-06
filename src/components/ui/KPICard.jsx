@@ -1,8 +1,12 @@
-// KPICard.jsx v1.22 - TOOLTIP ACCESSIBILITY
+// KPICard.jsx v1.23 - TYPOGRAPHY CONSISTENCY
 // Unified KPI card component for Intelligence dashboard
-// Design System v6.0 compliant - Tier 1 Essential with enhanced aesthetics
+// Design System v6.4 compliant - Tier 1 Essential with enhanced aesthetics
 //
 // CHANGELOG:
+// v1.23 (2026-02-05): Typography consistency (Design System v6.4)
+//   - Fixed text-[10px] minimum font size violations (now text-xs minimum)
+//   - Added tracking-tight to value typography for consistent number display
+//   - All variants now meet WCAG 2.1 minimum font size requirements
 // v1.22 (2026-01-31): Tooltip accessibility for screen readers
 //   - Added aria-describedby linking clickable cards to tooltip content
 //   - Screen readers now announce tooltip description when focusing card
@@ -270,32 +274,33 @@ const KPICard = ({
     }
   }, [onClick]);
 
-  // Variant-specific styling - Cosmic Precision v6.0
+  // Variant-specific styling - Cosmic Precision v6.4
   // Premium gradient backgrounds with depth, refined typography
+  // v6.4: Fixed text-[10px] minimum font size violations (now text-xs minimum per Design System)
   const variants = {
     default: {
       container: 'p-3 sm:p-5 bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-space-dust dark:via-space-dust dark:to-space-nebula/30',
-      value: 'text-lg sm:text-2xl tabular-nums',
-      label: 'text-[10px] sm:text-xs tracking-wider',
+      value: 'text-lg sm:text-2xl tabular-nums tracking-tight',
+      label: 'text-xs tracking-wider',
       subtitle: 'text-xs',
     },
     hero: {
       container: 'p-4 sm:p-6 bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-space-dust dark:via-space-dust dark:to-space-nebula/30',
-      value: 'text-xl sm:text-3xl lg:text-4xl tabular-nums',
-      label: 'text-[10px] sm:text-sm tracking-wider',
+      value: 'text-xl sm:text-3xl lg:text-4xl tabular-nums tracking-tight',
+      label: 'text-xs sm:text-sm tracking-wider',
       subtitle: 'text-xs sm:text-sm',
     },
     compact: {
       container: 'p-2.5 sm:p-4 bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-space-dust dark:via-space-dust dark:to-space-nebula/30',
-      value: 'text-base sm:text-xl tabular-nums',
-      label: 'text-[10px] sm:text-xs tracking-wider',
+      value: 'text-base sm:text-xl tabular-nums tracking-tight',
+      label: 'text-xs tracking-wider',
       subtitle: 'text-xs',
     },
     gradient: {
-      // Design System v6.0: Vibrant gradients with white text
+      // Design System v6.4: Vibrant gradients with white text
       container: `p-3 sm:p-5 ${colors.solidGradient || colors.bgGradient} shadow-lg`,
-      value: 'text-lg sm:text-2xl tabular-nums',
-      label: 'text-[10px] sm:text-xs tracking-wider',
+      value: 'text-lg sm:text-2xl tabular-nums tracking-tight',
+      label: 'text-xs tracking-wider',
       subtitle: 'text-xs',
     },
   };

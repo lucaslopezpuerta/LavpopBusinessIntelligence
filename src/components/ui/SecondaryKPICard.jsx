@@ -1,9 +1,12 @@
 /**
- * SecondaryKPICard.jsx v3.3 - UNIFIED ICON & TYPOGRAPHY
+ * SecondaryKPICard.jsx v3.4 - FOCUS RING CONSISTENCY
  * Compact KPI card for secondary metrics
- * Design System v6.0 compliant - Aligned with KPICard v1.21 styling
+ * Design System v6.4 compliant - Aligned with KPICard v1.23 styling
  *
  * CHANGELOG:
+ * v3.4 (2026-02-05): Focus ring consistency (Design System v6.4)
+ *   - Added focus-visible:ring-offset-white/space-dust for accessibility
+ *   - Consistent focus pattern across all KPI card variants
  * v3.3 (2026-01-31): Unified icon & typography patterns
  *   - Icon container: rounded-xl (aligned with KPICard/HeroKPICard)
  *   - Maintains consistent styling across all KPI card variants
@@ -184,7 +187,7 @@ const SecondaryKPICard = ({
           : 'bg-gradient-to-br from-white via-white to-slate-50/50 border border-slate-200/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'
         }
         ${isClickable
-          ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2'
+          ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust'
           : ''
         }
         ${className}

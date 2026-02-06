@@ -1,4 +1,4 @@
-// CosmicDropdown.jsx v1.3.0
+// CosmicDropdown.jsx v1.4.0
 // Custom dropdown component with cosmic Design System styling
 // Replaces native <select> elements for consistent theming
 //
@@ -21,6 +21,10 @@
 // />
 //
 // CHANGELOG:
+// v1.4.0 (2026-02-05): Focus visibility improvements (Design System v6.4)
+//   - Updated to focus-visible pattern (shows ring on keyboard, not mouse)
+//   - Added focus ring offset for better visibility
+//   - Consistent stellar-cyan focus ring in both light/dark modes
 // v1.3.0 (2026-01-31): aria-activedescendant for screen readers
 //   - Added aria-activedescendant to button for keyboard navigation
 //   - Added unique IDs to each option for ARIA reference
@@ -211,8 +215,8 @@ const CosmicDropdown = ({
             : isDark
               ? 'border-stellar-cyan/10 hover:border-stellar-cyan/20'
               : 'border-slate-200 hover:border-slate-300'}
-          focus:outline-none focus:ring-2
-          ${isDark ? 'focus:ring-stellar-cyan/40' : 'focus:ring-amber-500/50'}
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+          ${isDark ? 'focus-visible:ring-stellar-cyan/50 focus-visible:ring-offset-space-dust' : 'focus-visible:ring-stellar-cyan/50 focus-visible:ring-offset-white'}
         `}
       >
         <span className="truncate">

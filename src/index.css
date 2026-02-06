@@ -1,4 +1,4 @@
-/* Bilavnova BI - Base Styles v6.5.2 (Animation Performance)
+/* Bilavnova BI - Base Styles v6.5.3 (Performance Hints)
  * Aurora-tinted deep blacks with vibrant semantic colors
  * Minimal CSS with theme variables
  * All component styling moved to Tailwind classes
@@ -8,6 +8,11 @@
  * - Aurora Borealis: Deep teal-black backgrounds for cosmic depth
  *
  * CHANGELOG:
+ * v6.5.3 (2026-02-05): Performance Hints (UI/UX Audit)
+ *   - Added will-change: box-shadow to .animate-orbital-glow
+ *   - Added will-change: transform to .animate-orbit-spin, .refresh-spin-glow
+ *   - Added will-change: transform to .shimmer-effect::after
+ *   - Added will-change: opacity, transform to .content-reveal
  * v6.5.2 (2026-01-31): Animation Performance Fixes
  *   - Removed filter: blur() from content-reveal (paint-triggering)
  *   - Removed filter: blur() from skeleton-fade-out
@@ -546,6 +551,7 @@ body {
 .refresh-spin-glow {
   filter: drop-shadow(0 0 6px rgba(0, 174, 239, 0.4));
   animation: refresh-spin 1s linear infinite;
+  will-change: transform;
 }
 
 /* Skeleton bar wave - for chart loading */
@@ -695,6 +701,7 @@ body {
 
 .content-reveal {
   animation: content-reveal 0.3s ease-out forwards;
+  will-change: opacity, transform;
 }
 
 /* Skeleton fade out before content reveal - compositor-only (v1.1 performance fix) */
@@ -1008,6 +1015,7 @@ body.modal-open:not(.sidebar-open) .bottom-nav-container {
 .animate-orbital-glow {
   animation: orbital-glow 2.5s ease-in-out infinite;
   border-radius: inherit; /* Ensures box-shadow follows element shape */
+  will-change: box-shadow;
 }
 
 /* Orbital ring rotation */
@@ -1018,6 +1026,7 @@ body.modal-open:not(.sidebar-open) .bottom-nav-container {
 
 .animate-orbit-spin {
   animation: orbit-spin 3s linear infinite;
+  will-change: transform;
 }
 
 /* Button shimmer effect */
@@ -1043,6 +1052,7 @@ body.modal-open:not(.sidebar-open) .bottom-nav-container {
   );
   transform: translateX(-100%);
   animation: button-shimmer 2s ease-in-out infinite;
+  will-change: transform;
 }
 
 /* Pulse ring for loading states */
@@ -1503,5 +1513,120 @@ a:focus-visible {
   /* Brand: Cosmic Green (WhatsApp, Success actions) */
   .badge-cosmic {
     @apply bg-cosmic-green text-space-void;
+  }
+
+  /* ============================================
+     SEMANTIC TYPOGRAPHY UTILITIES (v6.4)
+     Consistent text styling across components
+     ============================================ */
+
+  /* Heading hierarchy */
+  .typo-heading {
+    @apply text-heading font-bold text-slate-900 dark:text-white;
+  }
+
+  .typo-subheading {
+    @apply text-subheading font-semibold text-slate-800 dark:text-slate-100;
+  }
+
+  /* Body text variants */
+  .typo-body {
+    @apply text-body text-slate-700 dark:text-slate-300;
+  }
+
+  .typo-body-muted {
+    @apply text-body text-slate-500 dark:text-slate-400;
+  }
+
+  .typo-caption {
+    @apply text-caption text-slate-500 dark:text-slate-400;
+  }
+
+  /* Label patterns (KPI cards, sections) */
+  .label-card {
+    @apply text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+  }
+
+  /* Data display (KPIs, metrics) */
+  .typo-data-lg {
+    @apply font-mono text-data-lg font-bold tabular-nums tracking-tight text-slate-900 dark:text-white;
+  }
+
+  .typo-data {
+    @apply font-mono text-data font-semibold tabular-nums text-slate-900 dark:text-white;
+  }
+
+  /* ============================================
+     INTERACTIVE STATE UTILITIES (v6.4)
+     Standardized hover, focus, active states
+     ============================================ */
+
+  /* Clickable element base - adds cursor and removes tap highlight */
+  .interactive {
+    @apply cursor-pointer select-none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Card hover - subtle lift */
+  .hover-lift {
+    @apply transition-all duration-200 ease-out;
+  }
+  .hover-lift:hover {
+    @apply -translate-y-1;
+  }
+
+  /* Card hover with scale - more pronounced */
+  .hover-lift-scale {
+    @apply transition-all duration-200 ease-out;
+  }
+  .hover-lift-scale:hover {
+    @apply -translate-y-1 scale-[1.01];
+  }
+
+  /* Button/icon press feedback */
+  .press-scale {
+    @apply active:scale-[0.98] transition-transform duration-100;
+  }
+
+  /* ============================================
+     FOCUS RING UTILITIES (v6.4)
+     WCAG 2.1 AA compliant focus indicators
+     ============================================ */
+
+  /* Standard focus ring - for buttons, inputs */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust;
+  }
+
+  /* Subtle focus ring - for list items, cards */
+  .focus-ring-subtle {
+    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stellar-cyan/60 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust;
+  }
+
+  /* ============================================
+     TRANSITION TIMING UTILITIES (v6.4)
+     150-300ms range per UI/UX best practices
+     ============================================ */
+
+  /* Micro-interactions (buttons, toggles) - 150ms */
+  .transition-micro {
+    @apply transition-all duration-150 ease-out;
+  }
+
+  /* Standard interactions (cards, inputs) - 200ms */
+  .transition-standard {
+    @apply transition-all duration-200 ease-out;
+  }
+}
+
+/* Reduced motion support for new utilities */
+@media (prefers-reduced-motion: reduce) {
+  .hover-lift,
+  .hover-lift-scale,
+  .press-scale,
+  .transition-micro,
+  .transition-standard {
+    transition: none !important;
+    transform: none !important;
   }
 }

@@ -1,9 +1,12 @@
 /**
- * HeroKPICard.jsx v4.2 - UNIFIED TYPOGRAPHY
+ * HeroKPICard.jsx v4.3 - FOCUS RING CONSISTENCY
  * Primary KPI card for hero metrics (Revenue, Cycles, etc.)
- * Design System v6.0 compliant - Aligned with KPICard v1.21 styling
+ * Design System v6.4 compliant - Aligned with KPICard v1.23 styling
  *
  * CHANGELOG:
+ * v4.3 (2026-02-05): Focus ring consistency (Design System v6.4)
+ *   - Added focus-visible:ring-offset-white/space-dust for accessibility
+ *   - Consistent focus pattern across all KPI card variants
  * v4.2 (2026-01-31): Unified typography with KPICard/SecondaryKPICard
  *   - Font: Changed from Orbitron to Inter (default) for consistency
  *   - All KPI cards now use the same font family
@@ -233,7 +236,7 @@ const HeroKPICard = ({
           : ''
         }
         ${isClickable
-          ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2'
+          ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust'
           : ''
         }
         ${className}

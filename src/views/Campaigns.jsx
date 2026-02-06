@@ -1,8 +1,12 @@
-// Campaigns.jsx v2.8.0 - STELLAR CASCADE TRANSITIONS
+// Campaigns.jsx v2.9.0 - REFRESH OVERLAY
 // Customer Messaging & Campaign Management Tab
-// Design System v3.2 compliant
+// Design System v6.4 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v2.9.0 (2026-02-05): Refresh overlay (Design System v6.4)
+//   - Added BackgroundRefreshIndicator overlay during data sync
+//   - Added isRefreshing state with async refresh wrapper
+//   - Consistent refresh UX across all main views
 // v2.8.0 (2026-01-27): Stellar Cascade transitions
 //   - Added AnimatedView, AnimatedHeader, AnimatedSection wrappers
 //   - Content cascades in layered sequence (~250ms total)
@@ -61,12 +65,13 @@
 //   - Automation rules for win-back and welcome series
 //   - Message template library (Meta-compliant)
 
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
   MessageSquare,
   Plus
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import BackgroundRefreshIndicator from '../components/ui/BackgroundRefreshIndicator';
 
 // Campaign-specific components
 import CampaignList from '../components/campaigns/CampaignList';
@@ -120,6 +125,19 @@ const Campaigns = ({ data, onDataChange }) => {
   const [selectedAudience, setSelectedAudience] = useState(null);
   // Pre-selection for wizard (when "Usar este template" is clicked in Messages tab)
   const [initialTemplate, setInitialTemplate] = useState(null);
+  // Refresh state for overlay indicator
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Wrap onDataChange to track refresh state
+  const handleRefresh = useCallback(async () => {
+    if (!onDataChange || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await onDataChange();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [onDataChange, isRefreshing]);
 
   // Calculate customer metrics for audience targeting
   const customerMetrics = useMemo(() => {
@@ -194,7 +212,7 @@ const Campaigns = ({ data, onDataChange }) => {
   }
 
   return (
-    <PullToRefreshWrapper onRefresh={onDataChange}>
+    <PullToRefreshWrapper onRefresh={handleRefresh}>
       <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
         <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
@@ -301,6 +319,12 @@ const Campaigns = ({ data, onDataChange }) => {
         </Suspense>
       )}
 
+        {/* Refresh overlay (during data sync) */}
+        <BackgroundRefreshIndicator
+          isRefreshing={isRefreshing}
+          variant="overlay"
+          message="Sincronizando dados..."
+        />
       </AnimatedView>
     </PullToRefreshWrapper>
   );

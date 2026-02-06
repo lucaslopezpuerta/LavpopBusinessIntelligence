@@ -1,8 +1,11 @@
-// WhatChimpAnalytics.jsx v1.6
+// WhatChimpAnalytics.jsx v1.7 - USE BACKGROUND REFRESH INDICATOR
 // WhatChimp Sync Analytics Dashboard
-// Design System v5.1 compliant - Cosmic Precision
+// Design System v6.4 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v1.7 (2026-02-05): Use BackgroundRefreshIndicator component
+//   - Replaced inline loading overlay with reusable component
+//   - Uses new 'overlay' variant for consistent refresh UX
 // v1.6 (2026-02-04): Add help modal
 //   - Help button explains WhatChimp sync flow
 //   - Documents automatic daily sync and manual sync
@@ -55,6 +58,7 @@ import KPICard, { KPIGrid } from '../ui/KPICard';
 import { formatNumber } from '../../utils/numberUtils';
 import { haptics } from '../../utils/haptics';
 import BaseModal from '../ui/BaseModal';
+import BackgroundRefreshIndicator from '../ui/BackgroundRefreshIndicator';
 
 // ==================== CONSTANTS ====================
 
@@ -778,19 +782,12 @@ const WhatChimpAnalytics = () => {
         </div>
       </BaseModal>
 
-      {/* Syncing overlay */}
       {/* Loading overlay (for stats refresh only) */}
-      {isLoading && !isSyncing && data.distribution?.total > 0 && (
-        <div className="fixed inset-0 bg-black/10 dark:bg-black/30 flex items-center justify-center z-40 pointer-events-none">
-          <div className={`
-            px-4 py-3 rounded-xl flex items-center gap-3
-            ${isDark ? 'bg-space-dust border border-stellar-cyan/20' : 'bg-white border border-slate-200'}
-          `}>
-            <RefreshCw className="w-5 h-5 text-cyan-500 animate-spin" />
-            <span className={isDark ? 'text-white' : 'text-slate-900'}>Atualizando...</span>
-          </div>
-        </div>
-      )}
+      <BackgroundRefreshIndicator
+        isRefreshing={isLoading && !isSyncing && data.distribution?.total > 0}
+        variant="overlay"
+        message="Atualizando..."
+      />
     </div>
   );
 };

@@ -379,7 +379,7 @@ const MyComponent = () => {
 - `prediction_accuracy` - Rolling 30-day MAE/MAPE metrics
 - `instagram_metrics_with_growth` - Instagram with day-over-day growth
 
-Migrations are in `supabase/migrations/` (51 files, latest 037).
+Migrations are in `supabase/migrations/` (63 files, latest 061).
 
 ## Netlify Functions
 
@@ -399,41 +399,6 @@ API functions:
 - Uses Selenium for browser automation
 - Uploads data to Supabase via `supabase_uploader.py`
 - Dependencies in `requirements.txt`
-
-## Brand Colors
-
-### Cosmic Precision Color System (v5.1)
-
-**Space Colors (Dark Mode Backgrounds):**
-| Token | Hex | Tailwind | Usage |
-|-------|-----|----------|-------|
-| Space Void | `#050816` | `bg-space-void` | Page background (deepest) |
-| Space Nebula | `#0a0f1e` | `bg-space-nebula` | Fixed elements (sidebar, topbar) |
-| Space Dust | `#1a1f35` | `bg-space-dust` | Cards, modals, elevated surfaces |
-| Space Light | `#f8fafc` | `bg-space-light` | Light mode page background |
-
-**Stellar Colors (Accents):**
-| Token | Hex | Tailwind | Usage |
-|-------|-----|----------|-------|
-| Stellar Blue | `#2d388a` | `text-stellar-blue` | Gradient start, deep accents |
-| Stellar Cyan | `#00aeef` | `text-stellar-cyan` | Active states, links, focus |
-| Cosmic Green | `#00d68f` | `text-cosmic-green` | Success, WhatsApp, positive |
-
-**Semantic Accent Colors (for Variant B widgets):**
-| Category | Accent | Components |
-|----------|--------|------------|
-| Acquisition/New | `purple` | AcquisitionCard, NewCustomers |
-| Retention/Success | `emerald` | RetentionCard, HealthMetrics |
-| Revenue/Financial | `teal` | RevenueCard, ProfitMetrics |
-| Operations/Cycles | `cyan` | OperatingCyclesChart |
-| Warning/Attention | `amber` | FrequencyDegradationAlert |
-| Risk/Critical | `red` | ChurnHistogram, AtRiskTable |
-
-**Legacy Colors (deprecated, use Cosmic instead):**
-```css
---lavpop-blue: #1a5a8e;   /* Use stellar-blue */
---lavpop-green: #55b03b;  /* Use emerald-500 */
-```
 
 ## Code Style
 
@@ -497,3 +462,31 @@ Components include version headers for tracking changes:
 // v2.1 (2026-01-20): Feature addition
 // v2.0 (2026-01-15): Major refactor
 ```
+
+## Gotchas & Common Mistakes
+
+### Timezone Handling (Critical)
+
+All date operations must account for Brazil timezone (America/Sao_Paulo):
+
+**Database:** All SQL date extraction MUST use `AT TIME ZONE`:
+```sql
+-- Correct
+DATE(data_hora AT TIME ZONE 'America/Sao_Paulo')
+
+-- Wrong - will offset dates incorrectly
+DATE(data_hora)
+```
+
+**Frontend:** Use `dateUtils.js` functions that handle timezone internally:
+```javascript
+import { parseBrDate, isToday } from './utils/dateUtils';
+
+// parseBrDate returns .brazil property with preserved Brazil time
+const date = parseBrDate('23/01/2026 14:30:00');
+date.brazil.hour  // 14 (Brazil time, not UTC)
+```
+
+**Python automation:** Scripts must set `TZ=America/Sao_Paulo` before imports.
+
+See migrations 059-061 for the comprehensive timezone fix.

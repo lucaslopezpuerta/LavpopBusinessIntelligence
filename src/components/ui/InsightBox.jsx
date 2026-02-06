@@ -1,8 +1,12 @@
-// InsightBox.jsx v1.3
+// InsightBox.jsx v1.4 - FOCUS & INTERACTIVE IMPROVEMENTS
 // Actionable insight box for Intelligence sections
-// Design System v3.0 compliant
+// Design System v6.4 compliant
 //
 // CHANGELOG:
+// v1.4 (2026-02-05): Focus & interactive improvements (Design System v6.4)
+//   - Updated to focus-visible pattern (better keyboard accessibility)
+//   - Added cursor-pointer for clickable items
+//   - Added ring offset for proper focus separation
 // v1.3 (2025-12-15): Clickable insights support
 //   - Added onClick prop for clickable insights
 //   - Added hover state styling when clickable
@@ -84,7 +88,7 @@ const InsightItem = ({ type, title, text, message, action, onClick, customerCoun
     <div
       className={`
         ${style.bg} border rounded-xl p-3 sm:p-4 ${className}
-        ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200' : ''}
+        ${isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust' : ''}
       `}
       role={isClickable ? 'button' : 'alert'}
       tabIndex={isClickable ? 0 : undefined}
@@ -107,7 +111,7 @@ const InsightItem = ({ type, title, text, message, action, onClick, customerCoun
           </p>
           {action && !isClickable && (
             <button
-              className={`mt-2 text-xs sm:text-sm font-medium ${style.icon} hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current rounded`}
+              className={`mt-2 text-xs sm:text-sm font-medium ${style.icon} hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-current focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust rounded`}
             >
               {action}
             </button>

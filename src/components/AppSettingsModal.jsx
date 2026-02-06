@@ -412,7 +412,7 @@ const AutomationTab = ({ settings, onChange }) => {
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     {option.desc}
                   </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-400 italic">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 italic">
                     {option.detail}
                   </span>
                 </button>
@@ -483,7 +483,7 @@ const AppearanceTab = ({ theme, setTheme }) => {
           })}
         </div>
 
-        <p className="text-xs text-slate-400 dark:text-slate-400">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           O tema também pode ser alterado pelo botão na barra superior.
         </p>
       </section>
@@ -516,7 +516,7 @@ const AppearanceTab = ({ theme, setTheme }) => {
                   <span className={`text-sm font-medium ${isActive ? 'text-stellar-cyan' : 'text-slate-700 dark:text-slate-300'}`}>
                     {option.label}
                   </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-400">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {option.desc}
                   </span>
                 </button>

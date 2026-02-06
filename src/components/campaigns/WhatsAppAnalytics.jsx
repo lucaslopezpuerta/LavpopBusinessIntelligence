@@ -1,8 +1,11 @@
-// WhatsAppAnalytics.jsx v4.1 - DESIGN ENHANCEMENTS
+// WhatsAppAnalytics.jsx v4.2 - REFRESH OVERLAY
 // WhatsApp Business API Analytics Dashboard
-// Design System v5.1 compliant
+// Design System v6.4 compliant
 //
 // CHANGELOG:
+// v4.2 (2026-02-05): Refresh overlay (Design System v6.4)
+//   - Added BackgroundRefreshIndicator overlay during sync
+//   - Consistent refresh UX across all analytics screens
 // v4.1 (2026-01-29): Design enhancements
 //   - Micro-interactions: active:scale-[0.98] on filter/sort buttons
 //   - Visual hierarchy: divider above Engajamento section
@@ -192,6 +195,7 @@ import {
 // UI Components
 import KPICard, { KPIGrid } from '../ui/KPICard';
 import SectionCard from '../ui/SectionCard';
+import BackgroundRefreshIndicator from '../ui/BackgroundRefreshIndicator';
 
 // Services
 import { api } from '../../utils/apiService';
@@ -1487,6 +1491,13 @@ const WhatsAppAnalytics = () => {
           )}
         </>
       )}
+
+      {/* Refresh overlay (during sync only) */}
+      <BackgroundRefreshIndicator
+        isRefreshing={isSyncing}
+        variant="overlay"
+        message="Atualizando WhatsApp..."
+      />
     </div>
   );
 };

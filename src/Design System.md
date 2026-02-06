@@ -1,9 +1,18 @@
-# Bilavnova Design System v6.3
+# Bilavnova Design System v6.4
 
 > **Theme:** Aurora Void - Deep aurora-tinted backgrounds with vibrant accents
-> **Last Updated:** January 30, 2026
+> **Last Updated:** February 5, 2026
 > **Inspiration:** [Bilavnova Logo Gradient](src/assets/Logo%20Files/), Aurora Borealis, Deep Space
 > **Dark Mode:** Fully functional via Tailwind safelist + useTheme pattern
+
+### v6.4 Changes (2026-02-05) - Typography & Interaction Utilities
+- **Semantic Typography Tokens:** Added `text-heading`, `text-subheading`, `text-body`, `text-caption`, `text-data-lg`, `text-data` to tailwind.config.js
+- **Typography Utility Classes:** Added `.typo-heading`, `.typo-body`, `.label-card`, `.typo-data-lg` etc. for consistent text styling
+- **Interactive Utilities:** Added `.interactive`, `.hover-lift`, `.hover-lift-scale`, `.press-scale`, `.focus-ring`, `.transition-micro`, `.transition-standard`
+- **Elevation Shadow System:** Added `shadow-elevation-1` through `shadow-elevation-4`, `shadow-elevation-hover`, plus dark mode variants with cyan glow
+- **Component Updates:** Button.jsx v1.6, KPICard.jsx v1.23, SectionHeader.jsx v1.5, CosmicDropdown.jsx v1.4.0
+- **Accessibility:** Fixed `text-[10px]` violations in KPICard (now text-xs minimum), improved focus-visible patterns
+- **Reduced Motion:** All new utilities respect `prefers-reduced-motion`
 
 ### v6.3 Changes (2026-01-30) - Aurora Void
 - **Aurora-Tinted Deep Blacks:** Replaced GitHub-derived neutrals with deeper, aurora-coherent backgrounds
@@ -216,6 +225,51 @@ For progressive urgency indicators (e.g., days since last visit), use this escal
 | Body | `text-slate-600` | `text-slate-300` |
 | Muted | `text-slate-500` | `text-slate-400` |
 | Subtle | `text-slate-400` | `text-slate-500` |
+
+#### 1.2.1 Semantic Typography Utilities (v6.4)
+
+Pre-built utility classes that combine font size, weight, and color for consistent text styling:
+
+| Utility | Size | Weight | Use For |
+|---------|------|--------|---------|
+| `.typo-heading` | 20px | bold | Section titles |
+| `.typo-subheading` | 18px | semibold | Card titles |
+| `.typo-body` | 14px | normal | Body text |
+| `.typo-body-muted` | 14px | normal | Secondary text |
+| `.typo-caption` | 12px | normal | Labels, captions |
+| `.label-card` | 12px | semibold | KPI labels (uppercase, tracking-wider) |
+| `.typo-data-lg` | 24px | bold | Large KPI values (tabular-nums) |
+| `.typo-data` | 16px | semibold | Data values (tabular-nums) |
+
+**Usage:**
+```jsx
+<h2 className="typo-heading">Section Title</h2>
+<p className="typo-body-muted">Secondary description</p>
+<span className="typo-data-lg">R$ 1.234,56</span>
+```
+
+#### 1.2.2 Interactive Utilities (v6.4)
+
+Standardized utilities for hover, focus, and active states:
+
+| Utility | Effect |
+|---------|--------|
+| `.interactive` | cursor-pointer + tap highlight removal |
+| `.hover-lift` | -translate-y-1 on hover |
+| `.hover-lift-scale` | -translate-y-1 + scale(1.01) on hover |
+| `.press-scale` | scale(0.98) on active |
+| `.focus-ring` | 2px stellar-cyan focus ring with offset |
+| `.focus-ring-subtle` | 1px stellar-cyan/60 focus ring |
+| `.transition-micro` | 150ms all ease-out (buttons, toggles) |
+| `.transition-standard` | 200ms all ease-out (cards, inputs) |
+
+**Usage:**
+```jsx
+<button className="interactive press-scale focus-ring">Click me</button>
+<div className="hover-lift transition-standard">Card content</div>
+```
+
+> **Note:** All interactive utilities respect `prefers-reduced-motion` and are automatically disabled when users prefer reduced motion.
 
 ### 1.3 Spacing & Layout
 

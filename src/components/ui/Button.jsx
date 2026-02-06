@@ -1,8 +1,11 @@
-// Button.jsx v1.5 - FOCUS RING OFFSET FIX
+// Button.jsx v1.6 - CURSOR POINTER FIX
 // Reusable button component with Framer Motion animations
-// Design System v6.0 compliant - Tier 1 Essential
+// Design System v6.4 compliant - Tier 1 Essential
 //
 // CHANGELOG:
+// v1.6 (2026-02-05): Cursor pointer standardization
+//   - Added cursor-pointer to base classes for better UX feedback
+//   - Added cursor-pointer to IconButton for consistency
 // v1.5 (2026-01-31): Focus ring offset accessibility fix
 //   - Added focus-visible:ring-offset-white for light mode
 //   - Changed dark:focus-visible:ring-offset-slate-900 to space-dust for consistency
@@ -107,7 +110,7 @@ const Button = ({
     lg: 'w-5 h-5',
   };
 
-  const baseClasses = 'inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none';
+  const baseClasses = 'inline-flex items-center justify-center font-medium cursor-pointer transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none';
 
   return (
     <motion.button
@@ -178,7 +181,7 @@ export const IconButton = ({
 
   return (
     <motion.button
-      className={`inline-flex items-center justify-center rounded-xl transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust ${sizes[size]} ${variants[variant] || variants.ghost} ${className}`}
+      className={`inline-flex items-center justify-center rounded-xl cursor-pointer transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-space-dust ${sizes[size]} ${variants[variant] || variants.ghost} ${className}`}
       onClick={handleClick}
       disabled={disabled}
       whileHover={prefersReducedMotion ? undefined : INTERACTIVE.ICON_HOVER}

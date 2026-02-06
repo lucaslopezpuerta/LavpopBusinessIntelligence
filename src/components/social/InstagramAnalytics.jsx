@@ -1,7 +1,11 @@
-// InstagramAnalytics.jsx v3.9 - MODE-AWARE BADGE COLORS
+// InstagramAnalytics.jsx v3.10 - REFRESH OVERLAY
 // Instagram Business Analytics Dashboard
+// Design System v6.4 compliant
 //
 // CHANGELOG:
+// v3.10 (2026-02-05): Refresh overlay (Design System v6.4)
+//   - Added BackgroundRefreshIndicator overlay during sync
+//   - Consistent refresh UX across social analytics screens
 // v3.9 (2026-01-29): Mode-aware badge colors for better light mode contrast
 //   - Summary stat badges now use amber-50/amber-800 in light mode
 //   - Dark mode retains solid amber-500 with white text
@@ -86,6 +90,7 @@ import {
 
 import { api } from '../../utils/apiService';
 import KPICard, { KPIGrid as DesignSystemKPIGrid } from '../ui/KPICard';
+import BackgroundRefreshIndicator from '../ui/BackgroundRefreshIndicator';
 
 // ==================== UTILITIES ====================
 
@@ -930,6 +935,13 @@ const InstagramAnalytics = () => {
         </div>
         <CommentsSection comments={comments} isLoading={isLoading} />
       </div>
+
+      {/* Refresh overlay (during sync only) */}
+      <BackgroundRefreshIndicator
+        isRefreshing={isSyncing}
+        variant="overlay"
+        message="Atualizando Instagram..."
+      />
     </div>
   );
 };

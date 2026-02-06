@@ -1,8 +1,11 @@
-// GoogleBusinessAnalytics.jsx v1.3 - MODE-AWARE BADGE COLORS
+// GoogleBusinessAnalytics.jsx v1.4 - REFRESH OVERLAY
 // Google Business Profile Analytics Dashboard
-// Design System v4.0 compliant - Google-branded design
+// Design System v6.4 compliant - Google-branded design
 //
 // CHANGELOG:
+// v1.4 (2026-02-05): Refresh overlay (Design System v6.4)
+//   - Added BackgroundRefreshIndicator overlay during sync
+//   - Consistent refresh UX across social analytics screens
 // v1.3 (2026-01-29): Mode-aware badge colors for better light mode contrast
 //   - Summary stat badges now use amber-50/amber-800 in light mode
 //   - Dark mode retains solid amber-500 with white text
@@ -62,6 +65,7 @@ import {
 } from 'recharts';
 
 import { api } from '../../utils/apiService';
+import BackgroundRefreshIndicator from '../ui/BackgroundRefreshIndicator';
 
 // ==================== UTILITIES ====================
 
@@ -1013,6 +1017,13 @@ const GoogleBusinessAnalytics = () => {
         reviews={reviews}
         isLoading={isLoading}
         onReply={handleReplyToReview}
+      />
+
+      {/* Refresh overlay (during sync only) */}
+      <BackgroundRefreshIndicator
+        isRefreshing={isSyncing}
+        variant="overlay"
+        message="Atualizando Google..."
       />
     </div>
   );

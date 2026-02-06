@@ -1,6 +1,6 @@
-// BottomNavBar.jsx v4.3 - FLOATING PILL NAVIGATION
+// BottomNavBar.jsx v4.4 - TYPOGRAPHY ACCESSIBILITY
 // Modern floating bottom nav with animated pill indicator
-// Inspired by BuildUI animated tabs pattern
+// Design System v6.4 compliant - Inspired by BuildUI animated tabs pattern
 //
 // ARCHITECTURE:
 // - Controlled component: receives activeTab, fires onMoreClick
@@ -22,6 +22,9 @@
 // - Landscape mode: compact height
 //
 // CHANGELOG:
+// v4.4 (2026-02-05): Typography accessibility (Design System v6.4)
+//   - Label: Changed from text-[10px] to text-xs (12px minimum per WCAG)
+//   - Maintains compact visual appearance while meeting accessibility standards
 // v4.3 (2026-02-02): Coordinated sidebar animation
 //   - Added isMobileSidebarOpen prop for Framer Motion animation
 //   - Spring physics match MobileDrawer for fluid coordination
@@ -155,8 +158,8 @@ const NavItem = memo(({
         />
       </motion.div>
 
-      {/* Label */}
-      <span className={`relative z-10 text-[10px] font-medium transition-colors duration-200 ${
+      {/* Label - text-xs (12px) per WCAG accessibility minimum */}
+      <span className={`relative z-10 text-xs font-medium transition-colors duration-200 ${
         isActive
           ? 'text-stellar-cyan'
           : isDark ? 'text-slate-400' : 'text-slate-500'
