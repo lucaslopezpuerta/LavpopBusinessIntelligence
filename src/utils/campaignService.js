@@ -108,7 +108,7 @@ import {
   getPhoneValidationError,
   getCampaignRecipients
 } from './phoneUtils';
-import { api } from './apiService';
+import { api, getHeaders } from './apiService';
 import {
   CampaignError,
   ErrorType,
@@ -192,7 +192,7 @@ export async function sendWhatsAppMessage(phone, message, options = {}) {
     try {
       const response = await fetch(TWILIO_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify(payload)
       });
 
@@ -299,7 +299,7 @@ export async function sendBulkWhatsApp(recipients, message, options = {}) {
 
     const response = await fetch(TWILIO_FUNCTION_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify(payload)
     });
 
@@ -347,7 +347,7 @@ export async function checkMessageStatus(messageSid) {
   try {
     const response = await fetch(TWILIO_FUNCTION_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify({
         action: 'check_status',
         messageSid

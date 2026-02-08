@@ -78,6 +78,17 @@ function getCorsOrigin(event) {
   return 'https://www.bilavnova.com';
 }
 
+// Validate API key from request header
+function validateApiKey(event) {
+  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
+  const API_SECRET = process.env.API_SECRET_KEY;
+  if (!API_SECRET) {
+    console.error('SECURITY: API_SECRET_KEY not configured. All requests denied.');
+    return false;
+  }
+  return apiKey === API_SECRET;
+}
+
 // Initialize Supabase client
 function getSupabaseClient() {
   const url = process.env.SUPABASE_URL;
@@ -93,13 +104,22 @@ exports.handler = async (event, context) => {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': corsOrigin,
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key',
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
+  }
+
+  // API key authentication
+  if (!validateApiKey(event)) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
   // Rate limit check (strict: 20 requests/minute for message sending)
@@ -173,7 +193,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal server error', details: error.message })
+      body: JSON.stringify({ error: 'Internal server error' })
     };
   }
 };
@@ -948,7 +968,7 @@ async function storeEngagement(body, headers) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Failed to store engagement data', details: error.message })
+      body: JSON.stringify({ error: 'Failed to store engagement data', details: undefined })
     };
   }
 }
@@ -1036,7 +1056,7 @@ async function storeCosts(body, headers) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Failed to store cost data', details: error.message })
+      body: JSON.stringify({ error: 'Failed to store cost data', details: undefined })
     };
   }
 }
@@ -1060,7 +1080,7 @@ async function clearCosts(body, headers) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'Failed to clear costs', details: error.message })
+        body: JSON.stringify({ error: 'Failed to clear costs', details: undefined })
       };
     }
 
@@ -1074,7 +1094,7 @@ async function clearCosts(body, headers) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Failed to clear costs', details: error.message })
+      body: JSON.stringify({ error: 'Failed to clear costs', details: undefined })
     };
   }
 }
@@ -1185,7 +1205,7 @@ async function getStoredData(body, headers) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Failed to get stored data', details: error.message })
+      body: JSON.stringify({ error: 'Failed to get stored data', details: undefined })
     };
   }
 }

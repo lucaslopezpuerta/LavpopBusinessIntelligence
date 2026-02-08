@@ -67,3 +67,5 @@ downloads/
 pos_session_cookies.pkl
 error*.png
 pos_automation.log
+# MCP config (contains secrets)
+.mcp.json

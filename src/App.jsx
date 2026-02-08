@@ -213,6 +213,7 @@ const SocialMedia = lazy(() => import('./views/SocialMedia'));
 const Weather = lazy(() => import('./views/Weather'));
 const Operations = lazy(() => import('./views/Operations'));
 const Intelligence = lazy(() => import('./views/Intelligence'));
+const Insights = lazy(() => import('./views/Insights'));
 const DataUploadView = lazy(() => import('./views/DataUploadView'));
 
 // Format date in Brazilian format (DD/MM/YYYY HH:mm)
@@ -256,6 +257,7 @@ const VIEW_SKELETONS = {
   social: SocialMediaLoadingSkeleton,
   weather: WeatherLoadingSkeleton,
   intelligence: IntelligenceLoadingSkeleton,
+  insights: DashboardLoadingSkeleton,
   operations: OperationsLoadingSkeleton,
   // Upload view uses generic fallback (simple form)
   upload: null
@@ -496,8 +498,9 @@ function AppContent() {
         '5': 'social',
         '6': 'weather',
         '7': 'intelligence',
-        '8': 'operations',
-        '9': 'upload',
+        '8': 'insights',
+        '9': 'operations',
+        '0': 'upload',
       };
 
       const tabId = shortcuts[e.key];
@@ -536,6 +539,7 @@ function AppContent() {
     social: SocialMedia,
     weather: Weather,
     intelligence: Intelligence,
+    insights: Insights,
     operations: Operations,
     upload: DataUploadView
   };

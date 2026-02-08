@@ -93,7 +93,7 @@
 // v3.x: Previous implementations
 
 import { useRef, useEffect, useCallback, memo, useState } from 'react';
-import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2, CloudSun, X, Wrench, ChevronDown } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, Settings, MessageSquare, Upload, Search, Pin, PinOff, Share2, CloudSun, X, Wrench, ChevronDown, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import FocusTrap from 'focus-trap-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
@@ -137,6 +137,7 @@ const navigationGroups = [
     items: [
       { id: 'weather', label: 'Clima', icon: CloudSun, path: '/weather' },
       { id: 'intelligence', label: 'Planejamento', icon: TrendingUp, path: '/intelligence' },
+      { id: 'insights', label: 'Insights', icon: Sparkles, path: '/insights' },
       { id: 'operations', label: 'Operações', icon: Wrench, path: '/operations' },
     ]
   }

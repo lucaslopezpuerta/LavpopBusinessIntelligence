@@ -1798,6 +1798,16 @@ function getCorsOrigin(event) {
   return 'https://www.bilavnova.com';
 }
 
+function validateApiKey(event) {
+  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
+  const API_SECRET = process.env.API_SECRET_KEY;
+  if (!API_SECRET) {
+    console.error('SECURITY: API_SECRET_KEY not configured. All requests denied.');
+    return false;
+  }
+  return apiKey === API_SECRET;
+}
+
 // ============== NETLIFY HANDLER ==============
 
 exports.handler = async (event, context) => {
@@ -1808,12 +1818,20 @@ exports.handler = async (event, context) => {
   const corsHeaders = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': corsOrigin,
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key'
   };
 
   // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' };
+  }
+
+  if (!validateApiKey(event)) {
+    return {
+      statusCode: 401,
+      headers: corsHeaders,
+      body: JSON.stringify({ success: false, error: 'Unauthorized' })
+    };
   }
 
   try {
@@ -1849,7 +1867,7 @@ exports.handler = async (event, context) => {
       headers: errorHeaders,
       body: JSON.stringify({
         success: false,
-        error: error.message,
+        error: 'Prediction service temporarily unavailable',
         timestamp: new Date().toISOString()
       })
     };

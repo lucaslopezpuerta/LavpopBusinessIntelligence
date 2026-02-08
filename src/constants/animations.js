@@ -187,6 +187,13 @@ export const TWEEN = {
     type: 'tween',
     duration: 0.8,
     ease: 'easeOut'
+  },
+
+  // Small progress bars / confidence meters (snappier than CHART)
+  PROGRESS: {
+    type: 'tween',
+    duration: 0.45,
+    ease: 'easeOut'
   }
 };
 

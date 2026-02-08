@@ -20,17 +20,35 @@ function getCorsOrigin(event) {
   return 'https://www.bilavnova.com';
 }
 
+function validateApiKey(event) {
+  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
+  const API_SECRET = process.env.API_SECRET_KEY;
+  if (!API_SECRET) {
+    console.error('SECURITY: API_SECRET_KEY not configured. All requests denied.');
+    return false;
+  }
+  return apiKey === API_SECRET;
+}
+
 exports.handler = async (event, context) => {
   const corsOrigin = getCorsOrigin(event);
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': corsOrigin,
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key',
     'Access-Control-Allow-Methods': 'GET, OPTIONS'
   };
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
+  }
+
+  if (!validateApiKey(event)) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
   if (event.httpMethod !== 'GET') {

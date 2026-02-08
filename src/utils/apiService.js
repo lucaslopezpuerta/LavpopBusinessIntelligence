@@ -133,7 +133,7 @@ let lastCheck = 0;
 const CHECK_INTERVAL = 60000; // Re-check every minute
 
 // Build headers with API key for authentication
-function getHeaders() {
+export function getHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (API_KEY) {
     headers['X-Api-Key'] = API_KEY;
@@ -733,7 +733,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=sync`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -750,7 +750,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=backfill&from=${from}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -822,7 +822,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=sync-templates`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -839,7 +839,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=profile`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         const data = await response.json();
         return data.profile || null;
@@ -870,7 +870,7 @@ export const api = {
 
         const response = await fetch(getNetlifyFunctionUrl('twilio-whatsapp'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getHeaders(),
           body: JSON.stringify(body)
         });
         const data = await response.json();
@@ -970,7 +970,7 @@ export const api = {
       try {
         const response = await fetch(getNetlifyFunctionUrl('twilio-whatsapp'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getHeaders(),
           body: JSON.stringify({
             action: 'get_stored_data',
             dateFrom,
@@ -1049,7 +1049,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=dashboard`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1065,7 +1065,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=profile`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1081,7 +1081,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=insights`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1098,7 +1098,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=media&limit=${limit}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1115,7 +1115,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=media-insights&mediaId=${mediaId}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1132,7 +1132,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=comments&limit=${limit}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1148,7 +1148,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=messages-count`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1172,7 +1172,7 @@ export const api = {
         const daysParam = days === null ? 'all' : days;
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=history&days=${daysParam}&_t=${cacheBuster}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         const result = await response.json();
         return result;
@@ -1190,7 +1190,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=sync`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1206,7 +1206,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('instagram-analytics')}?action=status`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1227,7 +1227,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=dashboard`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1243,7 +1243,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=profile`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1263,7 +1263,7 @@ export const api = {
         if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
         const response = await fetch(url, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1281,7 +1281,7 @@ export const api = {
       try {
         const response = await fetch(getNetlifyFunctionUrl('google-business-analytics'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getHeaders(),
           body: JSON.stringify({
             action: 'reply',
             reviewId,
@@ -1305,7 +1305,7 @@ export const api = {
         const cacheBuster = Date.now();
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=history&days=${daysParam}&_t=${cacheBuster}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1322,7 +1322,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=sync`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1338,7 +1338,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=status`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1357,7 +1357,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=oauth-init`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1374,7 +1374,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=oauth-status`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1390,7 +1390,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=accounts`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {
@@ -1407,7 +1407,7 @@ export const api = {
       try {
         const response = await fetch(`${getNetlifyFunctionUrl('google-business-analytics')}?action=locations&accountId=${accountId}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: getHeaders()
         });
         return await response.json();
       } catch (error) {

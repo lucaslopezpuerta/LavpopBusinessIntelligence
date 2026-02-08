@@ -507,21 +507,40 @@ function getCorsOrigin(event) {
   return 'https://www.bilavnova.com';
 }
 
+// Validate API key from request header
+function validateApiKey(event) {
+  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
+  const API_SECRET = process.env.API_SECRET_KEY;
+  if (!API_SECRET) {
+    console.error('SECURITY: API_SECRET_KEY not configured. All requests denied.');
+    return false;
+  }
+  return apiKey === API_SECRET;
+}
+
 /**
  * Main handler
  */
 exports.handler = async (event, context) => {
+  // Allow internal calls from campaign-scheduler (no event headers)
+  const isScheduledCall = event.httpMethod === undefined;
+
   const corsOrigin = getCorsOrigin(event);
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': corsOrigin,
-    'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
+  }
+
+  // API key authentication (skip for scheduled/internal calls)
+  if (!isScheduledCall && !validateApiKey(event)) {
+    return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
   // Parse query parameters
@@ -684,114 +703,6 @@ exports.handler = async (event, context) => {
         };
       }
 
-      case 'debug-templates': {
-        // Debug endpoint to see raw template analytics response
-        const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
-        const WABA_ID = process.env.META_WABA_ID;
-
-        if (!ACCESS_TOKEN || !WABA_ID) {
-          return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing credentials' }) };
-        }
-
-        // Get templates first
-        const templates = await fetchMessageTemplates(WABA_ID, ACCESS_TOKEN);
-        const templateIds = templates.map(t => t.id);
-
-        // Fetch analytics with raw response
-        const now = Math.floor(Date.now() / 1000);
-        const threeDaysAgo = now - (3 * 24 * 60 * 60);
-        const templateIdsParam = JSON.stringify(templateIds);
-        const fields = `template_analytics.start(${threeDaysAgo}).end(${now}).granularity(${TEMPLATE_GRANULARITY}).template_ids(${templateIdsParam}).metrics(["SENT","DELIVERED","READ"])`;
-        const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${WABA_ID}?fields=${encodeURIComponent(fields)}&access_token=${ACCESS_TOKEN}`;
-
-        const response = await fetch(url);
-        const rawData = await response.json();
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            templateCount: templates.length,
-            templateIds: templateIds,
-            rawResponse: rawData,
-            hasTemplateAnalytics: !!rawData.template_analytics
-          }, null, 2)
-        };
-      }
-
-      case 'diagnose': {
-        // Diagnostic endpoint to debug sync issues
-        const supabase = getSupabase();
-        const diagnostics = {
-          timestamp: new Date().toISOString(),
-          environment: {
-            hasMetaAccessToken: !!process.env.META_ACCESS_TOKEN,
-            hasWabaId: !!process.env.META_WABA_ID,
-            wabaId: process.env.META_WABA_ID || 'NOT_SET'
-          },
-          appSettings: null,
-          latestData: null,
-          metaApiTest: null
-        };
-
-        // Check app_settings
-        try {
-          const { data: settings, error: settingsError } = await supabase
-            .from('app_settings')
-            .select('id, waba_last_sync, waba_template_last_sync')
-            .eq('id', 'default')
-            .single();
-
-          if (settingsError) {
-            diagnostics.appSettings = { error: settingsError.message, code: settingsError.code };
-          } else {
-            diagnostics.appSettings = settings;
-          }
-        } catch (e) {
-          diagnostics.appSettings = { error: e.message };
-        }
-
-        // Check latest data
-        try {
-          const { data: latestMsg } = await supabase
-            .from('waba_message_analytics')
-            .select('bucket_date, updated_at')
-            .order('bucket_date', { ascending: false })
-            .limit(1)
-            .single();
-
-          diagnostics.latestData = latestMsg || { message: 'No data found' };
-        } catch (e) {
-          diagnostics.latestData = { error: e.message };
-        }
-
-        // Test Meta API connectivity
-        if (process.env.META_ACCESS_TOKEN && process.env.META_WABA_ID) {
-          try {
-            const testUrl = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${process.env.META_WABA_ID}?fields=id,name&access_token=${process.env.META_ACCESS_TOKEN}`;
-            const response = await fetch(testUrl);
-            const data = await response.json();
-
-            if (response.ok) {
-              diagnostics.metaApiTest = { success: true, wabaName: data.name };
-            } else {
-              const errorInfo = parseMetaError(data);
-              diagnostics.metaApiTest = { success: false, error: errorInfo.message, code: errorInfo.code };
-            }
-          } catch (e) {
-            diagnostics.metaApiTest = { success: false, error: e.message };
-          }
-        } else {
-          diagnostics.metaApiTest = { skipped: true, reason: 'Missing credentials' };
-        }
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify(diagnostics, null, 2)
-        };
-      }
-
       default:
         return {
           statusCode: 400,
@@ -805,8 +716,7 @@ exports.handler = async (event, context) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: error.message,
-        details: error.code ? { code: error.code } : undefined
+        error: 'WhatsApp analytics temporarily unavailable'
       })
     };
   }

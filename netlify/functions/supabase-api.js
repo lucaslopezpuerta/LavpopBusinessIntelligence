@@ -700,13 +700,35 @@ async function createCampaign(supabase, campaignData, headers) {
   };
 }
 
+const CAMPAIGN_UPDATABLE_FIELDS = [
+  'name', 'template_id', 'audience', 'audience_count', 'status',
+  'sends', 'delivered', 'message_body', 'contact_method',
+  'target_segments', 'discount_percent', 'coupon_code',
+  'service_type', 'last_sent_at'
+];
+
 async function updateCampaign(supabase, id, updates, headers) {
+  // Whitelist allowed fields to prevent mass assignment
+  const sanitized = {};
+  for (const key of CAMPAIGN_UPDATABLE_FIELDS) {
+    if (key in updates) {
+      sanitized[key] = updates[key];
+    }
+  }
+
+  if (Object.keys(sanitized).length === 0) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'No valid fields to update' })
+    };
+  }
+
+  sanitized.updated_at = new Date().toISOString();
+
   const { data, error } = await supabase
     .from('campaigns')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString()
-    })
+    .update(sanitized)
     .eq('id', id)
     .select()
     .single();

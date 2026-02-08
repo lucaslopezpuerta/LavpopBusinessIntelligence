@@ -26,7 +26,7 @@
 // v1.0 (2025-12-08): Initial implementation
 
 import { normalizePhone } from './phoneUtils';
-import { api } from './apiService';
+import { api, getHeaders } from './apiService';
 
 const TWILIO_FUNCTION_URL = '/.netlify/functions/twilio-whatsapp';
 const BLACKLIST_SYNC_KEY = 'lavpop_blacklist_last_sync';
@@ -184,7 +184,7 @@ export async function syncWithTwilio(options = {}) {
     while (hasMore) {
       const response = await fetch(TWILIO_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           action: 'fetch_messages',
           dateSentAfter: startDate,

@@ -67,9 +67,19 @@ function getCorsOrigin(event) {
 function getCorsHeaders(event) {
   return {
     'Access-Control-Allow-Origin': getCorsOrigin(event),
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   };
+}
+
+function validateApiKey(event) {
+  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
+  const API_SECRET = process.env.API_SECRET_KEY;
+  if (!API_SECRET) {
+    console.error('SECURITY: API_SECRET_KEY not configured. All requests denied.');
+    return false;
+  }
+  return apiKey === API_SECRET;
 }
 
 // ==================== SUPABASE CLIENT ====================
@@ -459,7 +469,7 @@ async function syncMetricsToDatabase(accessToken, locationName, locationId, days
       gbp_location_id: locationId,
       updated_at: new Date().toISOString()
     })
-    .eq('id', 1);
+    .eq('id', 'default');
 
   console.log(`GBP: Synced ${dailyRecords.length} daily records`);
   return { synced: dailyRecords.length };
@@ -523,9 +533,18 @@ exports.handler = async (event, context) => {
     return { statusCode: 204, headers: corsHeaders, body: '' };
   }
 
+  // Auth check - skip for OAuth callback (user is redirected by Google)
+  const params = event.queryStringParameters || {};
+  const action = params.action || 'dashboard';
+  if (action !== 'oauth-callback' && !validateApiKey(event)) {
+    return {
+      statusCode: 401,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
+  }
+
   try {
-    const params = event.queryStringParameters || {};
-    const action = params.action || 'dashboard';
     const locationId = process.env.GBP_LOCATION_ID;
 
     console.log(`GBP Analytics: action=${action}`);
@@ -726,7 +745,7 @@ exports.handler = async (event, context) => {
           supabase
             .from('app_settings')
             .select('gbp_last_sync')
-            .eq('id', 1)
+            .eq('id', 'default')
             .single()
         ]);
 
@@ -918,7 +937,7 @@ exports.handler = async (event, context) => {
         const supabase = getSupabase();
 
         const [settingsResult, tokensResult, metricsResult] = await Promise.all([
-          supabase.from('app_settings').select('gbp_last_sync, gbp_location_id').eq('id', 1).single(),
+          supabase.from('app_settings').select('gbp_last_sync, gbp_location_id').eq('id', 'default').single(),
           supabase.from('google_oauth_tokens').select('expires_at, updated_at').eq('id', 'gbp_default').single(),
           supabase.from('google_business_daily_metrics').select('bucket_date').order('bucket_date', { ascending: false }).limit(1)
         ]);
@@ -984,12 +1003,12 @@ exports.handler = async (event, context) => {
     console.error('GBP Analytics error:', error);
 
     // Check for OAuth-related errors
-    if (error.message.includes('OAuth not configured') || error.message.includes('Token refresh failed')) {
+    if (error.message?.includes('OAuth not configured') || error.message?.includes('Token refresh failed')) {
       return {
         statusCode: 401,
         headers: corsHeaders,
         body: JSON.stringify({
-          error: error.message,
+          error: 'Google Business authentication required',
           oauthRequired: true,
           oauthInitUrl: '/.netlify/functions/google-business-analytics?action=oauth-init'
         })
@@ -999,7 +1018,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({ error: 'Google Business analytics temporarily unavailable' })
     };
   }
 };

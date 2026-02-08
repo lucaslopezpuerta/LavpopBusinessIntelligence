@@ -59,6 +59,7 @@ import { formatNumber } from '../../utils/numberUtils';
 import { haptics } from '../../utils/haptics';
 import BaseModal from '../ui/BaseModal';
 import BackgroundRefreshIndicator from '../ui/BackgroundRefreshIndicator';
+import { getHeaders } from '../../utils/apiService';
 
 // ==================== CONSTANTS ====================
 
@@ -440,7 +441,7 @@ const WhatChimpAnalytics = () => {
     try {
       const response = await fetch('/.netlify/functions/whatchimp-api', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ action: 'get_stats' })
       });
 

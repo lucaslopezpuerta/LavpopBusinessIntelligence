@@ -21,9 +21,6 @@ const LOCATION = 'caxias%20do%20sul';
 const UNIT_GROUP = 'metric';
 const BUSINESS_TIMEZONE = 'America/Sao_Paulo';
 
-// Fallback API key (from existing WeatherWidget_API.jsx)
-const DEFAULT_API_KEY = 'FTYV4SM9NMMTJKVFLEGRCGWJ9';
-
 // ============== SUPABASE CLIENT ==============
 
 function getSupabase() {
@@ -110,7 +107,10 @@ function computeComfortCategory(temp, humidity, precipitation, feelsLike = null)
  * Returns data for the specified date range
  */
 async function fetchWeatherData(startDate, endDate) {
-  const apiKey = process.env.VISUAL_CROSSING_API_KEY || DEFAULT_API_KEY;
+  const apiKey = process.env.VISUAL_CROSSING_API_KEY;
+  if (!apiKey) {
+    throw new Error('VISUAL_CROSSING_API_KEY environment variable not configured');
+  }
 
   const url = new URL(`${VISUAL_CROSSING_BASE}/${LOCATION}/${startDate}/${endDate}`);
   url.searchParams.set('unitGroup', UNIT_GROUP);

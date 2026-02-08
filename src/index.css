@@ -687,6 +687,29 @@ body {
 .skeleton-bar-wave:nth-child(11) { animation-delay: 800ms; }
 .skeleton-bar-wave:nth-child(12) { animation-delay: 880ms; }
 
+/* AI badge shimmer - subtle purple glow for AI-generated content */
+.ai-badge-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-badge-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(167, 139, 250, 0.2) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: cosmic-shimmer 3s ease-in-out 3;
+  will-change: transform;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
 /* Content reveal transition - compositor-only (v1.1 performance fix) */
 @keyframes content-reveal {
   0% {
@@ -778,7 +801,8 @@ body {
   .skeleton-cosmic,
   .skeleton-hero-shimmer,
   .skeleton-stagger,
-  .skeleton-bar-wave {
+  .skeleton-bar-wave,
+  .ai-badge-shimmer::after {
     animation: none;
     opacity: 1;
     transform: none;

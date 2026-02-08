@@ -66,7 +66,7 @@ const NAV_ITEMS = [
 ];
 
 // Routes accessible via "More" drawer
-const MORE_ROUTES = ['social', 'weather', 'intelligence', 'operations', 'upload'];
+const MORE_ROUTES = ['social', 'weather', 'intelligence', 'insights', 'operations', 'upload'];
 
 // Module-level flag for one-time entrance animation
 let hasPlayedEntrance = false;

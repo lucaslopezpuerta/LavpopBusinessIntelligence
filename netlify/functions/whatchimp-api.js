@@ -52,13 +52,27 @@ const { createClient } = require('@supabase/supabase-js');
 const ALLOWED_ORIGINS = [
   'https://bilavnova.com',
   'https://www.bilavnova.com',
-  'http://localhost:5173',
-  'capacitor://localhost'
+  'https://localhost',           // Capacitor Android
+  'capacitor://localhost',       // Capacitor iOS
+  'http://localhost:5173',       // Local dev (Vite)
+  'http://localhost:5174',       // Local dev alt port
+  'http://localhost:8888'        // Netlify dev
 ];
 
 function getCorsOrigin(event) {
   const origin = event.headers.origin || event.headers.Origin || '';
   return ALLOWED_ORIGINS.includes(origin) ? origin : 'https://www.bilavnova.com';
+}
+
+// Validate API key from request header
+function validateApiKey(event) {
+  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
+  const API_SECRET = process.env.API_SECRET_KEY;
+  if (!API_SECRET) {
+    console.error('SECURITY: API_SECRET_KEY not configured. All requests denied.');
+    return false;
+  }
+  return apiKey === API_SECRET;
 }
 
 // WhatChimp Label ID mapping (verified via API)
@@ -404,13 +418,22 @@ exports.handler = async (event, context) => {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key',
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers, body: '' };
+  }
+
+  // API key authentication
+  if (!validateApiKey(event)) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Unauthorized' })
+    };
   }
 
   if (event.httpMethod !== 'POST') {

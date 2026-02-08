@@ -114,7 +114,12 @@ export default function useRevenuePrediction(options = {}) {
       // Use relative URL for Netlify function
       // Add cache-busting param to bypass browser HTTP cache
       const cacheBuster = `?_t=${Date.now()}`;
-      const response = await fetch(`/.netlify/functions/revenue-predict${cacheBuster}`);
+      const apiKey = import.meta.env.VITE_API_KEY;
+      const response = await fetch(`/.netlify/functions/revenue-predict${cacheBuster}`, {
+        headers: {
+          ...(apiKey && { 'X-Api-Key': apiKey })
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

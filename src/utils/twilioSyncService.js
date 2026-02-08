@@ -25,7 +25,7 @@
 //    - Costs: twilio_daily_costs (aggregated by day)
 // 4. UI reads from Supabase (fast, cached)
 
-import { api } from './apiService';
+import { api, getHeaders } from './apiService';
 import { normalizePhone } from './phoneUtils';
 
 const TWILIO_FUNCTION_URL = '/.netlify/functions/twilio-whatsapp';
@@ -119,7 +119,7 @@ export async function syncEngagementAndCosts(options = {}) {
     while (hasMore) {
       const response = await fetch(TWILIO_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           action: 'fetch_messages',
           dateSentAfter: startDate,
@@ -174,7 +174,7 @@ export async function syncEngagementAndCosts(options = {}) {
     if (allInboundMessages.length > 0) {
       const storeResponse = await fetch(TWILIO_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           action: 'store_engagement',
           engagements: allInboundMessages
@@ -197,7 +197,7 @@ export async function syncEngagementAndCosts(options = {}) {
     if (Object.keys(costByDay).length > 0) {
       const costResponse = await fetch(TWILIO_FUNCTION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           action: 'store_costs',
           costsByDay: costByDay,

@@ -247,7 +247,7 @@ exports.handler = async (event, context) => {
       console.error('Failed to fetch customers:', error);
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: 'Failed to fetch customers', details: error.message })
+        body: JSON.stringify({ error: 'Failed to fetch customers' })
       };
     }
 

@@ -705,20 +705,39 @@ function getCorsOrigin(event) {
   return 'https://www.bilavnova.com';
 }
 
+// Validate API key from request header
+function validateApiKey(event) {
+  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
+  const API_SECRET = process.env.API_SECRET_KEY;
+  if (!API_SECRET) {
+    console.error('SECURITY: API_SECRET_KEY not configured. All requests denied.');
+    return false;
+  }
+  return apiKey === API_SECRET;
+}
+
 // ==================== MAIN HANDLER ====================
 
 exports.handler = async (event, context) => {
+  // Allow internal calls from campaign-scheduler (no event headers)
+  const isScheduledCall = event.httpMethod === undefined;
+
   const corsOrigin = getCorsOrigin(event);
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': corsOrigin,
-    'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Api-Key',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
+  }
+
+  // API key authentication (skip for scheduled/internal calls)
+  if (!isScheduledCall && !validateApiKey(event)) {
+    return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
   const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
@@ -905,8 +924,7 @@ exports.handler = async (event, context) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: error.message || 'Failed to fetch Instagram analytics',
-        action
+        error: 'Instagram analytics temporarily unavailable'
       })
     };
   }

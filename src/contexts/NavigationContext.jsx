@@ -37,6 +37,7 @@ const ROUTE_TO_TAB = {
   '/clima': 'weather',
   '/intelligence': 'intelligence',
   '/inteligencia': 'intelligence',
+  '/insights': 'insights',
   '/operations': 'operations',
   '/operacoes': 'operations',
   '/upload': 'upload',
@@ -52,6 +53,7 @@ const TAB_TO_ROUTE = {
   social: '/social',
   weather: '/weather',
   intelligence: '/intelligence',
+  insights: '/insights',
   operations: '/operations',
   upload: '/upload',
 };
