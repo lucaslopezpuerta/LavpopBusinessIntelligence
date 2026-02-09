@@ -84,6 +84,9 @@ import { CampaignsLoadingSkeleton } from '../components/ui/Skeleton';
 // Lazy-loaded heavy components (60KB + 50KB savings)
 const AutomationRules = lazy(() => import('../components/campaigns/AutomationRules'));
 const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
+const CouponEffectiveness = lazy(() => import('../components/campaigns/CouponEffectiveness'));
+const AutomationPerformance = lazy(() => import('../components/campaigns/AutomationPerformance'));
+const SegmentCampaignMatrix = lazy(() => import('../components/campaigns/SegmentCampaignMatrix'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback = () => (
@@ -265,18 +268,39 @@ const Campaigns = ({ data, onDataChange }) => {
 
       {/* Campaign Analytics Dashboard - Only visible on Overview tab */}
       {activeSection === 'overview' && (
-        <CampaignDashboard
-          audienceSegments={audienceSegments}
-        />
+        <>
+          <CampaignDashboard
+            audienceSegments={audienceSegments}
+          />
+          {/* Coupon Effectiveness Analytics */}
+          <div className="mt-6">
+            <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+              <CouponEffectiveness />
+            </Suspense>
+          </div>
+          {/* RFM Segment × Campaign Response Matrix */}
+          <div className="mt-6">
+            <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+              <SegmentCampaignMatrix />
+            </Suspense>
+          </div>
+        </>
       )}
 
       {/* Automation Rules Section */}
       {activeSection === 'automations' && (
-        <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
-          <AutomationRules
-            audienceSegments={audienceSegments}
-          />
-        </Suspense>
+        <>
+          <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+            <AutomationRules
+              audienceSegments={audienceSegments}
+            />
+          </Suspense>
+          <div className="mt-6">
+            <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+              <AutomationPerformance />
+            </Suspense>
+          </div>
+        </>
       )}
 
       {/* Audience Selector Section */}

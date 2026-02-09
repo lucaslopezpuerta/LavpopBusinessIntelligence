@@ -23,7 +23,7 @@
 //   - Platform sub-tab navigation
 //   - Facebook placeholder for future expansion
 
-import { useState, lazy, Suspense } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import { Share2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -36,6 +36,8 @@ const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAna
 const WhatChimpAnalytics = lazy(() => import('../components/social/WhatChimpAnalytics'));
 const BlacklistManager = lazy(() => import('../components/campaigns/BlacklistManager'));
 const GoogleBusinessAnalytics = lazy(() => import('../components/social/GoogleBusinessAnalytics'));
+const InstagramGrowthAnalytics = lazy(() => import('../components/social/InstagramGrowthAnalytics'));
+const TemplatePerformance = lazy(() => import('../components/campaigns/TemplatePerformance'));
 
 // Pull-to-refresh wrapper
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
@@ -86,6 +88,9 @@ const SocialMedia = ({ data, onDataChange }) => {
   const { isDark } = useTheme();
 
   const [activeSection, setActiveSection] = useState('instagram');
+  // Shared date filter for WhatsApp tab (synced from WhatsAppAnalytics → TemplatePerformance)
+  const [waDateFilter, setWaDateFilter] = useState('30d');
+  const handleWaDateFilterChange = useCallback((filter) => setWaDateFilter(filter), []);
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
@@ -132,16 +137,30 @@ const SocialMedia = ({ data, onDataChange }) => {
 
       {/* Instagram Analytics Section */}
       {activeSection === 'instagram' && (
-        <Suspense fallback={<LoadingFallback />}>
-          <InstagramAnalytics />
-        </Suspense>
+        <>
+          <Suspense fallback={<LoadingFallback />}>
+            <InstagramAnalytics />
+          </Suspense>
+          <div className="mt-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <InstagramGrowthAnalytics />
+            </Suspense>
+          </div>
+        </>
       )}
 
       {/* WhatsApp Business Analytics Section */}
       {activeSection === 'whatsapp' && (
-        <Suspense fallback={<LoadingFallback />}>
-          <WhatsAppAnalytics />
-        </Suspense>
+        <>
+          <Suspense fallback={<LoadingFallback />}>
+            <WhatsAppAnalytics onDateFilterChange={handleWaDateFilterChange} />
+          </Suspense>
+          <div className="mt-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <TemplatePerformance dateFilter={waDateFilter} />
+            </Suspense>
+          </div>
+        </>
       )}
 
       {/* WhatChimp Sync Analytics Section */}

@@ -141,6 +141,20 @@ export const LazyGrowthTrendsSection = lazy(() =>
   import('../components/intelligence/GrowthTrendsSection')
 );
 
+export const LazyModelHealthDashboard = lazy(() =>
+  import('../components/intelligence/ModelHealthDashboard')
+);
+
+// Campaign sections
+export const LazyCouponEffectiveness = lazy(() =>
+  import('../components/campaigns/CouponEffectiveness')
+);
+
+// Social media sections
+export const LazyInstagramGrowthAnalytics = lazy(() =>
+  import('../components/social/InstagramGrowthAnalytics')
+);
+
 // Drilldown charts
 export const LazyFinancialDrilldown = lazy(() =>
   import('../components/drilldowns/FinancialDrilldown')

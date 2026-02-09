@@ -1,8 +1,13 @@
-// Insights.jsx v1.3 - ANIMATION POLISH
+// Insights.jsx v1.4 - VISUAL ENHANCEMENT
 // Full-page AI-powered recommendations and business insights
 // Design System v6.4 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v1.4 (2026-02-09): Visual enhancement pass
+//   - Header icon: orbital glow animation in dark mode
+//   - Loading state: cosmic shimmer bg + skeleton card placeholders
+//   - Help modal icons: glassmorphic containers with radial accent glow
+//   - Help modal layers: subtle bottom border dividers
 // v1.3 (2026-02-07): Animation polish pass
 //   - "Calculando insights..." state: pulsing Sparkles icon
 // v1.2 (2026-02-07): Help button touch target fix
@@ -74,7 +79,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
         <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              {/* Icon Container - Glassmorphism */}
+              {/* Icon Container - Glassmorphism with orbital glow */}
               <div
                 className={`
                   w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
@@ -102,7 +107,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
                     }}
                     className={`
                       flex items-center justify-center min-w-[44px] min-h-[44px] -m-2 rounded-lg
-                      transition-all duration-200 cursor-pointer
+                      transition-colors duration-200 cursor-pointer
                       ${isDark
                         ? 'text-slate-500 hover:text-slate-300'
                         : 'text-slate-400 hover:text-slate-600'}
@@ -136,23 +141,43 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
           </AnimatedSection>
         ) : (
           <AnimatedSection ariaLabel="Carregando recomendações">
-            <div className={`rounded-2xl border p-8 text-center ${isDark ? 'bg-space-dust/60 border-stellar-cyan/10 text-slate-500' : 'bg-white border-slate-200 text-slate-400'}`}>
-              <motion.div
-                className="inline-block mb-2"
-                animate={prefersReducedMotion ? {} : {
-                  scale: [1, 1.05, 1],
-                  opacity: [0.4, 0.7, 0.4]
-                }}
-                transition={prefersReducedMotion ? {} : {
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: 'easeInOut'
-                }}
-              >
-                <Sparkles className="w-8 h-8" />
-              </motion.div>
-              <p className="text-sm font-medium">Calculando insights...</p>
-              <p className="text-xs mt-1 opacity-70">Analisando dados de clientes e vendas</p>
+            <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-space-dust/60 border-stellar-cyan/10 text-slate-500' : 'bg-white border-slate-200 text-slate-400'}`}>
+              {/* Pulsing header */}
+              <div className="p-6 pb-4 text-center">
+                <motion.div
+                  className="inline-block mb-2"
+                  animate={prefersReducedMotion ? {} : {
+                    scale: [1, 1.05, 1],
+                    opacity: [0.4, 0.7, 0.4]
+                  }}
+                  transition={prefersReducedMotion ? {} : {
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: 'easeInOut'
+                  }}
+                >
+                  <Sparkles className="w-8 h-8" />
+                </motion.div>
+                <p className="text-sm font-medium">Calculando insights...</p>
+                <p className="text-xs mt-1 opacity-70">Analisando dados de clientes e vendas</p>
+              </div>
+              {/* Skeleton card placeholders */}
+              <div className="px-4 pb-4 space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`skeleton-cosmic rounded-xl p-3.5 ${i > 0 ? `skeleton-stagger-${i + 1}` : ''}`}
+                  >
+                    <div className="flex gap-2.5">
+                      <div className={`w-8 h-8 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-200/60'}`} />
+                      <div className="flex-1 space-y-2">
+                        <div className={`h-3.5 rounded w-3/4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-200/60'}`} />
+                        <div className={`h-3 rounded w-full ${isDark ? 'bg-slate-700/30' : 'bg-slate-200/40'}`} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </AnimatedSection>
         )}
@@ -169,12 +194,18 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
         >
           <div className="px-4 sm:px-6 py-4 space-y-5">
             {/* Layer 1: Rules */}
-            <div className="flex gap-3">
+            <div className={`flex gap-3 pb-5 border-b ${isDark ? 'border-stellar-cyan/5' : 'border-slate-100'}`}>
               <div className={`
-                flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
-                ${isDark ? 'bg-cyan-900/30' : 'bg-cyan-50'}
+                relative flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden
+                ${isDark
+                  ? 'bg-gradient-to-br from-white/5 to-white/10 border border-white/10'
+                  : 'bg-gradient-to-br from-cyan-500 to-cyan-600'}
               `}>
-                <Target className="w-5 h-5 text-cyan-500" />
+                {isDark && (
+                  <div className="absolute inset-0 opacity-25 pointer-events-none"
+                    style={{ background: 'radial-gradient(circle at center, #00aeef, transparent 70%)' }} />
+                )}
+                <Target className={`relative z-10 w-5 h-5 ${isDark ? 'text-stellar-cyan' : 'text-white'}`} />
               </div>
               <div>
                 <h4 className={`font-medium text-sm mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -189,12 +220,18 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
             </div>
 
             {/* Layer 2: Metrics */}
-            <div className="flex gap-3">
+            <div className={`flex gap-3 pb-5 border-b ${isDark ? 'border-stellar-cyan/5' : 'border-slate-100'}`}>
               <div className={`
-                flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
-                ${isDark ? 'bg-purple-900/30' : 'bg-purple-50'}
+                relative flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden
+                ${isDark
+                  ? 'bg-gradient-to-br from-white/5 to-white/10 border border-white/10'
+                  : 'bg-gradient-to-br from-purple-500 to-purple-600'}
               `}>
-                <TrendingUp className="w-5 h-5 text-purple-500" />
+                {isDark && (
+                  <div className="absolute inset-0 opacity-25 pointer-events-none"
+                    style={{ background: 'radial-gradient(circle at center, #a855f7, transparent 70%)' }} />
+                )}
+                <TrendingUp className={`relative z-10 w-5 h-5 ${isDark ? 'text-purple-400' : 'text-white'}`} />
               </div>
               <div>
                 <h4 className={`font-medium text-sm mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -211,10 +248,16 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
             {/* Layer 3: AI */}
             <div className="flex gap-3">
               <div className={`
-                flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center
-                ${isDark ? 'bg-amber-900/30' : 'bg-amber-50'}
+                relative flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden
+                ${isDark
+                  ? 'bg-gradient-to-br from-white/5 to-white/10 border border-white/10'
+                  : 'bg-gradient-to-br from-amber-500 to-amber-600'}
               `}>
-                <Brain className="w-5 h-5 text-amber-500" />
+                {isDark && (
+                  <div className="absolute inset-0 opacity-25 pointer-events-none"
+                    style={{ background: 'radial-gradient(circle at center, #f59e0b, transparent 70%)' }} />
+                )}
+                <Brain className={`relative z-10 w-5 h-5 ${isDark ? 'text-amber-400' : 'text-white'}`} />
               </div>
               <div>
                 <h4 className={`font-medium text-sm mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>

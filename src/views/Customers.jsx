@@ -109,6 +109,7 @@ const CustomerSegmentModal = lazy(() => import('../components/modals/CustomerSeg
 const FirstVisitConversionCard = lazy(() => import('../components/FirstVisitConversionCard'));
 const FrequencyDegradationAlert = lazy(() => import('../components/FrequencyDegradationAlert'));
 import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, LazyVisitHeatmap, LazyAcquisitionCard, ChartLoadingFallback } from '../utils/lazyCharts';
+const CohortRetentionChart = lazy(() => import('../components/customers/CohortRetentionChart'));
 import { useContactTracking } from '../hooks/useContactTracking';
 import { api } from '../utils/apiService';
 import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
@@ -612,7 +613,17 @@ const Customers = ({ data, onDataChange }) => {
         </AnimatedSection>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            SECTION 5: DEEP DIVE ANALYTICS
+            SECTION 5: COHORT RETENTION
+            "Of customers acquired in Month X, what % returned?"
+            ═══════════════════════════════════════════════════════════════════ */}
+        <AnimatedSection ariaLabel="Retenção por Coorte">
+          <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+            <CohortRetentionChart />
+          </Suspense>
+        </AnimatedSection>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION 6: DEEP DIVE ANALYTICS
             "Customer segmentation for power users"
             ═══════════════════════════════════════════════════════════════════ */}
         <AnimatedSection ariaLabel="Análise Detalhada">

@@ -711,10 +711,10 @@ async function shouldSyncWabaTemplateAnalytics(supabase) {
 async function runWabaTemplateSync() {
   try {
     const now = Math.floor(Date.now() / 1000);
-    const threeDaysAgo = now - (3 * 24 * 60 * 60);
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
 
-    console.log('Syncing WABA template analytics (last 3 days)...');
-    const results = await syncWabaTemplateAnalytics(threeDaysAgo, now);
+    console.log('Syncing WABA template analytics (last 30 days)...');
+    const results = await syncWabaTemplateAnalytics(thirtyDaysAgo, now);
 
     return {
       success: true,

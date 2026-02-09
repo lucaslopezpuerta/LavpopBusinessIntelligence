@@ -1,7 +1,12 @@
-// InsightsView.jsx v3.3 - CATEGORY CASCADE
+// InsightsView.jsx v3.4 - VISUAL ENHANCEMENT
 // Design System v6.4 - Cosmic Precision
 //
 // CHANGELOG:
+// v3.4 (2026-02-09): Visual enhancement pass
+//   - AI request button: gradient border, Sparkles+Brain icons, shimmer effect
+//   - Category filter pills: circular count badges with category colors, larger touch targets
+//   - Empty state: layered glow composition, dashed containment ring, AI nudge text
+//   - Top-edge gradient accent line on container
 // v3.3 (2026-02-07): Category transition rework (Emil Kowalski audit)
 //   - Container: exit-only animation (no enter fade), cards own their entrance
 //   - Exit: 100ms fade + scale(0.98) via popLayout
@@ -120,12 +125,20 @@ const InsightsView = ({ data, onNavigate, collapsible = true, isCollapsed: exter
     <>
       <div
         className={`
-          rounded-2xl border overflow-hidden
+          relative rounded-2xl border overflow-hidden
           ${isDark
             ? 'bg-space-dust/60 border-stellar-cyan/10'
             : 'bg-white border-slate-200 shadow-sm'}
         `}
       >
+        {/* Top-edge gradient accent line */}
+        <div
+          className={`absolute top-0 left-0 right-0 h-px ${
+            isDark
+              ? 'bg-gradient-to-r from-transparent via-stellar-cyan/20 to-transparent'
+              : 'bg-gradient-to-r from-transparent via-blue-300/40 to-transparent'
+          }`}
+        />
         {/* Header — only shown when collapsible (dashboard widget mode) */}
         {collapsible && (
           <button
@@ -190,7 +203,7 @@ const InsightsView = ({ data, onNavigate, collapsible = true, isCollapsed: exter
                       whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
                       transition={SPRING.SNAPPY}
                       className={`
-                        relative flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium
+                        relative flex-shrink-0 px-3.5 py-2 rounded-full text-[11px] font-medium
                         cursor-pointer
                         ${isActive
                           ? isDark ? 'text-stellar-cyan' : 'text-blue-700'
@@ -215,10 +228,18 @@ const InsightsView = ({ data, onNavigate, collapsible = true, isCollapsed: exter
                           }}
                         />
                       )}
-                      <span className="relative z-10">
+                      <span className="relative z-10 inline-flex items-center gap-1.5">
                         {cat.label}
                         {count > 0 && (
-                          <span className="ml-1 opacity-60">{count}</span>
+                          <span className={`
+                            inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold
+                            ${isActive
+                              ? isDark ? 'bg-stellar-cyan/20 text-stellar-cyan' : 'bg-blue-200/60 text-blue-700'
+                              : isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-200/80 text-slate-500'
+                            }
+                          `}>
+                            {count}
+                          </span>
                         )}
                       </span>
                     </motion.button>
@@ -226,34 +247,23 @@ const InsightsView = ({ data, onNavigate, collapsible = true, isCollapsed: exter
                 })}
               </div>
 
-              {/* Request AI Insight button — prominent position above cards */}
+              {/* Request AI Insight button */}
               <div className="px-4 pb-3">
-                <motion.button
+                <button
                   onClick={handleRequestAI}
                   disabled={requestingAI}
-                  whileTap={prefersReducedMotion ? {} : { scale: 0.97 }}
-                  transition={SPRING.SNAPPY}
                   className={`
                     w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium
                     transition-colors duration-200 cursor-pointer
                     ${isDark
-                      ? 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border border-purple-500/20'
-                      : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/50'}
+                      ? 'bg-purple-500/8 text-purple-300 border border-purple-500/25 hover:bg-purple-500/15 hover:border-purple-500/40'
+                      : 'bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-700 border border-purple-200/60 hover:from-purple-100 hover:to-indigo-100 hover:border-purple-300'}
                     disabled:opacity-50 disabled:cursor-not-allowed
                   `}
                 >
                   {requestingAI ? (
                     <>
-                      <motion.div
-                        animate={prefersReducedMotion ? {} : { rotate: 360 }}
-                        transition={prefersReducedMotion ? {} : {
-                          repeat: Infinity,
-                          duration: 2,
-                          ease: 'linear'
-                        }}
-                      >
-                        <Brain className="w-3.5 h-3.5" />
-                      </motion.div>
+                      <Brain className="w-3.5 h-3.5 animate-spin" />
                       Gerando analise...
                     </>
                   ) : (
@@ -262,7 +272,7 @@ const InsightsView = ({ data, onNavigate, collapsible = true, isCollapsed: exter
                       Solicitar Analise IA
                     </>
                   )}
-                </motion.button>
+                </button>
                 {aiError && (
                   <p className={`text-[11px] mt-1.5 text-center ${isDark ? 'text-amber-400/70' : 'text-amber-600'}`}>
                     {aiError}
@@ -320,23 +330,43 @@ const InsightsView = ({ data, onNavigate, collapsible = true, isCollapsed: exter
                           ))}
                         </AnimatePresence>
                       ) : (
-                        // Empty state with floating icon
-                        <div className={`text-center py-8 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        <div className={`
+                          relative text-center py-10 rounded-xl border border-dashed
+                          ${isDark
+                            ? 'text-slate-500 border-stellar-cyan/10'
+                            : 'text-slate-400 border-slate-200'}
+                        `}>
+                          {/* Ambient radial glow */}
+                          <div
+                            className="absolute inset-0 rounded-xl pointer-events-none"
+                            style={{
+                              background: isDark
+                                ? 'radial-gradient(ellipse at center, rgba(0,174,239,0.03) 0%, transparent 70%)'
+                                : 'radial-gradient(ellipse at center, rgba(59,130,246,0.04) 0%, transparent 70%)'
+                            }}
+                          />
                           <motion.div
-                            className="relative inline-block mb-2"
-                            animate={prefersReducedMotion ? {} : { y: [0, -4, 0] }}
+                            className="relative inline-block mb-3"
+                            animate={prefersReducedMotion ? {} : { y: [0, -5, 0] }}
                             transition={prefersReducedMotion ? {} : {
                               duration: 3,
                               repeat: Infinity,
                               ease: 'easeInOut'
                             }}
                           >
-                            {/* Glow behind icon */}
+                            {/* Primary glow */}
                             <div
                               className={`absolute inset-0 rounded-full blur-xl ${
-                                isDark ? 'bg-stellar-cyan/10' : 'bg-blue-100/60'
+                                isDark ? 'bg-stellar-cyan/12' : 'bg-blue-200/50'
                               }`}
-                              style={{ transform: 'scale(2)' }}
+                              style={{ transform: 'scale(2.5)' }}
+                            />
+                            {/* Secondary warm glow */}
+                            <div
+                              className={`absolute inset-0 rounded-full blur-lg ${
+                                isDark ? 'bg-purple-500/8' : 'bg-purple-100/40'
+                              }`}
+                              style={{ transform: 'scale(1.8) translateX(4px)' }}
                             />
                             <Lightbulb className="relative w-8 h-8 opacity-40" />
                           </motion.div>
@@ -347,6 +377,9 @@ const InsightsView = ({ data, onNavigate, collapsible = true, isCollapsed: exter
                           </p>
                           <p className="text-xs mt-1 opacity-70">
                             Insights aparecem automaticamente quando detectamos padroes nos seus dados
+                          </p>
+                          <p className={`text-[11px] mt-3 font-medium ${isDark ? 'text-purple-400/60' : 'text-purple-500/70'}`}>
+                            Experimente solicitar uma analise IA acima
                           </p>
                         </div>
                       )}

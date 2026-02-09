@@ -176,6 +176,7 @@ import ToastContainer from './components/ui/ToastContainer';
 import LoginPage from './components/auth/LoginPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { loadAllData } from './utils/supabaseLoader';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import './utils/apiService'; // Register migration utilities on window
 import IconSidebar from './components/IconSidebar';
 // Backdrop removed - IconSidebar has its own backdrop in MobileDrawer
@@ -554,6 +555,9 @@ function AppContent() {
   const handleRefresh = useCallback(() => {
     loadData({ skipCache: true, silent: false });
   }, [loadData]);
+
+  // Global keyboard shortcuts (Ctrl+1-7 navigation, Ctrl+R refresh)
+  useKeyboardShortcuts({ onNavigate: navigateTo, onRefresh: handleRefresh });
 
   // Refresh after user action (e.g., campaign sent)
   const refreshAfterAction = useCallback(async () => {

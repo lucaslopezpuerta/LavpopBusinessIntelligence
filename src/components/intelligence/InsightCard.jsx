@@ -1,7 +1,16 @@
-// InsightCard.jsx v2.3 - CATEGORY CASCADE
+// InsightCard.jsx v2.5 - VISUAL ENHANCEMENT
 // Design System v6.4 - Variant A (Solid cards) with category colors
 //
 // CHANGELOG:
+// v2.5 (2026-02-09): Visual enhancement pass
+//   - Priority-tiered gradient backgrounds (subtle category wash for priority >= 9)
+//   - Confidence meter: taller bar (h-1.5), text labels (Baixa/Média/Alta) replace raw %
+//   - Action button: category-colored border accent with hover brightening
+//   - "Urgente" badge for critical cards (priority >= 9)
+//   - AI cards: faint purple radial glow behind icon container
+// v2.4 (2026-02-07): Motion perf fixes
+//   - Removed permanent will-change:transform (Framer auto-promotes during animation)
+//   - Dismiss button: transition-all → transition-colors (prevents CSS/Framer transform fight)
 // v2.3 (2026-02-07): Enhanced card entrance for category cascade
 //   - Entrance: opacity + y:10 + scale:0.97 → 1 (materializing effect)
 // v2.2 (2026-02-07): Emil Kowalski animation audit
@@ -31,7 +40,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  X, Clock, ChevronRight, Sparkles,
+  X, Clock, ChevronRight, Sparkles, Flame,
   Target, Crown, UserPlus, Trophy,
   ShieldAlert, TrendingDown, RefreshCw, AlertTriangle,
   Brain, Lightbulb
@@ -101,6 +110,29 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r},${g},${b},${alpha})`;
 };
 
+// Confidence label mapping
+const getConfidenceLabel = (confidence) =>
+  confidence > 0.7 ? 'Alta' : confidence > 0.4 ? 'Média' : 'Baixa';
+
+// Priority background gradient — subtle category wash for high-priority cards
+const getPriorityBackground = (isHighPriority, aiGenerated, accentHex, isDark) => {
+  if (aiGenerated) {
+    return {
+      background: isDark
+        ? `linear-gradient(135deg, rgba(167,139,250,0.04) 0%, transparent 60%)`
+        : `linear-gradient(135deg, rgba(167,139,250,0.06) 0%, transparent 60%)`
+    };
+  }
+  if (isHighPriority) {
+    return {
+      background: isDark
+        ? `linear-gradient(135deg, ${hexToRgba(accentHex, 0.04)} 0%, transparent 60%)`
+        : `linear-gradient(135deg, ${hexToRgba(accentHex, 0.06)} 0%, transparent 60%)`
+    };
+  }
+  return {};
+};
+
 // Hover target factory — returns a whileHover object (not variant)
 const createHoverTarget = (accentHex, isDark) => ({
   y: -2,
@@ -128,6 +160,7 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
   } = recommendation;
 
   const colors = CATEGORY_COLORS[category] || CATEGORY_COLORS.campaign;
+  const isHighPriority = priority >= 9;
 
   // Resolve Lucide icon component from string name
   const IconComponent = (typeof icon === 'string' && ICON_MAP[icon]) || Lightbulb;
@@ -138,6 +171,12 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
       ? undefined
       : createHoverTarget(colors.accent, isDark),
     [prefersReducedMotion, colors.accent, isDark]
+  );
+
+  // Priority-tiered gradient background
+  const priorityBg = useMemo(() =>
+    getPriorityBackground(isHighPriority, aiGenerated, colors.accent, isDark),
+    [isHighPriority, aiGenerated, colors.accent, isDark]
   );
 
   const handleAction = () => {
@@ -154,7 +193,6 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
     onSnooze?.(recommendation);
   };
 
-  const isHighPriority = priority >= 9;
   const borderClass = isHighPriority ? colors.borderStrong : colors.border;
 
   // Confidence bar glow color (dark mode only)
@@ -165,7 +203,6 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
   return (
     <motion.div
       ref={ref}
-      style={{ willChange: 'transform' }}
       layout={prefersReducedMotion ? false : 'position'}
       initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1, transition: { ...SPRING.QUICK, delay: animationDelay } }}
@@ -183,6 +220,7 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
           : 'bg-white border-slate-200 shadow-sm'}
         ${compact ? 'p-3' : 'p-3.5 sm:p-4'}
       `}
+      style={priorityBg}
     >
       {/* Header row: Icon + Title + AI Badge + Dismiss */}
       <div className="flex items-start gap-2.5">
@@ -208,6 +246,16 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
             <h3 className={`font-semibold leading-tight ${compact ? 'text-xs' : 'text-sm'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {title}
             </h3>
+            {/* Priority badge for critical cards */}
+            {isHighPriority && !aiGenerated && (
+              <span className={`
+                inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0
+                ${isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'}
+              `}>
+                <Flame className="w-2.5 h-2.5" />
+                Urgente
+              </span>
+            )}
             {/* AI Badge with shimmer */}
             {aiGenerated && (
               <span className={`
@@ -241,28 +289,44 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
             </div>
           )}
 
-          {/* Confidence meter — animated bar fill on mount */}
+          {/* Confidence meter — animated bar fill with text label */}
           {!compact && aiConfidence != null && aiConfidence > 0 && (
-            <div className="mt-1.5 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2">
               <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                 Confianca
               </span>
-              <div className={`flex-1 max-w-[80px] h-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+              <div className={`relative flex-1 max-w-[88px] h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700/80' : 'bg-slate-200'}`}>
                 <motion.div
                   className={`h-full rounded-full ${
                     aiConfidence > 0.7 ? 'bg-cosmic-green' :
                     aiConfidence > 0.4 ? 'bg-amber-400' : 'bg-red-400'
                   }`}
-                  initial={prefersReducedMotion ? false : { width: 0 }}
-                  animate={{ width: `${Math.round(aiConfidence * 100)}%` }}
+                  initial={prefersReducedMotion ? false : { scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
                   transition={prefersReducedMotion ? { duration: 0 } : TWEEN.PROGRESS}
                   style={{
+                    width: `${Math.round(aiConfidence * 100)}%`,
+                    transformOrigin: 'left',
                     boxShadow: isDark ? `0 0 6px ${confidenceGlow}` : 'none'
                   }}
                 />
+                {/* Segment tick marks */}
+                {[25, 50, 75].map(tick => (
+                  <div
+                    key={tick}
+                    className={`absolute top-0 bottom-0 w-px ${isDark ? 'bg-slate-600/50' : 'bg-slate-300/60'}`}
+                    style={{ left: `${tick}%` }}
+                  />
+                ))}
               </div>
-              <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                {Math.round(aiConfidence * 100)}%
+              <span className={`text-[10px] font-medium min-w-[30px] ${
+                aiConfidence > 0.7
+                  ? isDark ? 'text-cosmic-green' : 'text-emerald-600'
+                  : aiConfidence > 0.4
+                    ? isDark ? 'text-amber-400' : 'text-amber-600'
+                    : isDark ? 'text-red-400' : 'text-red-600'
+              }`}>
+                {getConfidenceLabel(aiConfidence)}
               </span>
             </div>
           )}
@@ -275,7 +339,7 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
           transition={SPRING.SNAPPY}
           className={`
             flex-shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px] -m-2 rounded-lg
-            transition-all duration-200 cursor-pointer
+            transition-colors duration-200 cursor-pointer
             sm:opacity-0 sm:group-hover:opacity-100
             ${isDark ? 'hover:bg-white/5 text-slate-500' : 'hover:bg-slate-100 text-slate-400'}
           `}
@@ -297,10 +361,10 @@ const InsightCard = React.forwardRef(({ recommendation, onAction, onDismiss, onS
               transition={SPRING.SNAPPY}
               className={`
                 inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium
-                transition-colors duration-200 cursor-pointer
+                transition-colors duration-200 cursor-pointer border
                 ${isDark
-                  ? 'bg-stellar-cyan/15 text-stellar-cyan hover:bg-stellar-cyan/25'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}
+                  ? 'bg-stellar-cyan/10 text-stellar-cyan border-stellar-cyan/20 hover:bg-stellar-cyan/20 hover:border-stellar-cyan/35'
+                  : 'bg-blue-50 text-blue-700 border-blue-200/60 hover:bg-blue-100 hover:border-blue-300'}
               `}
             >
               {actionLabel}

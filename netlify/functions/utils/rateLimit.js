@@ -1,10 +1,13 @@
 // netlify/functions/utils/rateLimit.js
 // Rate limiting utility for serverless functions using Supabase
 //
+// Version: 2.0 (2026-02-07)
+// - Atomic rate limiting via check_rate_limit() RPC (fixes TOCTOU race)
+// - Single DB round-trip per check (INSERT ON CONFLICT with row lock)
+//
 // Version: 1.0 (2025-12-26)
 // - Sliding window rate limiting with Supabase storage
 // - Per-IP tracking with configurable limits
-// - Automatic cleanup of expired entries
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -71,78 +74,26 @@ async function checkRateLimit(event, endpoint = 'default', limitType = 'default'
   const { windowMs, maxRequests } = config;
 
   const clientIP = getClientIP(event);
-  const windowStart = Date.now() - windowMs;
   const key = `${endpoint}:${clientIP}`;
 
   try {
-    // Use Supabase RPC or table for rate limiting
-    // First, try to get existing rate limit record
-    const { data: existing, error: fetchError } = await supabase
-      .from('rate_limits')
-      .select('request_count, window_start')
-      .eq('key', key)
-      .single();
+    // Atomic rate limit check — single DB round-trip with row-level lock
+    const { data, error } = await supabase.rpc('check_rate_limit', {
+      p_key: key,
+      p_window_ms: windowMs,
+      p_max_requests: maxRequests
+    });
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      // PGRST116 = no rows returned, which is fine
-      console.error('[RateLimit] Fetch error:', fetchError);
+    if (error) {
+      console.error('[RateLimit] RPC error:', error);
       return { allowed: true, remaining: maxRequests, resetIn: 0 };
     }
 
-    const now = Date.now();
-
-    // Check if window has expired
-    if (!existing || existing.window_start < windowStart) {
-      // Start new window
-      const { error: upsertError } = await supabase
-        .from('rate_limits')
-        .upsert({
-          key,
-          request_count: 1,
-          window_start: now,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'key' });
-
-      if (upsertError) {
-        console.error('[RateLimit] Upsert error:', upsertError);
-      }
-
-      return {
-        allowed: true,
-        remaining: maxRequests - 1,
-        resetIn: windowMs
-      };
-    }
-
-    // Check if limit exceeded
-    if (existing.request_count >= maxRequests) {
-      const resetIn = existing.window_start + windowMs - now;
-      return {
-        allowed: false,
-        remaining: 0,
-        resetIn: Math.max(0, resetIn)
-      };
-    }
-
-    // Increment counter
-    const { error: updateError } = await supabase
-      .from('rate_limits')
-      .update({
-        request_count: existing.request_count + 1,
-        updated_at: new Date().toISOString()
-      })
-      .eq('key', key);
-
-    if (updateError) {
-      console.error('[RateLimit] Update error:', updateError);
-    }
-
     return {
-      allowed: true,
-      remaining: maxRequests - existing.request_count - 1,
-      resetIn: existing.window_start + windowMs - now
+      allowed: data.allowed,
+      remaining: data.remaining,
+      resetIn: data.reset_in
     };
-
   } catch (error) {
     console.error('[RateLimit] Error:', error);
     // Fail open - allow request if rate limiting fails

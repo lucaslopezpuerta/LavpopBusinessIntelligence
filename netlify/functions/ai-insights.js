@@ -346,9 +346,9 @@ Responda em JSON:
       };
     }
 
-    // Calculate cost (GPT-4-turbo pricing)
-    const inputCost = (usage.prompt_tokens || 0) * 0.00001;
-    const outputCost = (usage.completion_tokens || 0) * 0.00003;
+    // Calculate cost (GPT-4o pricing: $2.50/1M input, $10/1M output)
+    const inputCost = (usage.prompt_tokens || 0) * 0.0000025;
+    const outputCost = (usage.completion_tokens || 0) * 0.00001;
     const totalCost = inputCost + outputCost;
 
     // Build recommendation object
@@ -365,7 +365,7 @@ Responda em JSON:
       action_data: { insightType },
       priority: parsed.priority || 7,
       ai_generated: true,
-      ai_model: 'gpt-4-turbo',
+      ai_model: 'gpt-4o',
       ai_confidence: aiConfidence,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       fingerprint,

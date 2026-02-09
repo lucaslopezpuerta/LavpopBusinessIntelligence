@@ -163,7 +163,6 @@ import {
   ArrowRight,
   Loader2,
   Eye,
-  FileText,
   ExternalLink,
   Phone,
   Shield,
@@ -653,111 +652,9 @@ const DeliveryFunnel = ({ summary, isLoading }) => {
   );
 };
 
-// ==================== TEMPLATE ANALYTICS TABLE ====================
-
-// Format template name: "lavpop_winback_desconto_hx123..." -> "Winback Desconto"
-const formatTemplateName = (name) => {
-  if (!name) return 'N/A';
-  // Remove "lavpop_" prefix and hash suffix (e.g., "_hx123abc...")
-  const cleaned = name
-    .replace(/^lavpop_/, '')
-    .replace(/_hx[a-f0-9]+$/i, '')
-    .replace(/_/g, ' ');
-  // Capitalize each word
-  return cleaned
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
-const TemplateAnalyticsTable = ({ templates, isLoading }) => {
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!templates || templates.length === 0) {
-    return (
-      <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-        <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
-        <p>Nenhum template com dados no período</p>
-      </div>
-    );
-  }
-
-  // Color-code rates
-  const getRateColor = (rate, type) => {
-    if (type === 'delivery') {
-      if (rate >= 95) return 'text-emerald-600 dark:text-emerald-400';
-      if (rate >= 90) return 'text-amber-600 dark:text-amber-400';
-      return 'text-red-600 dark:text-red-400';
-    }
-    // Read rate
-    if (rate >= 50) return 'text-emerald-600 dark:text-emerald-400';
-    if (rate >= 30) return 'text-amber-600 dark:text-amber-400';
-    return 'text-slate-500 dark:text-slate-400';
-  };
-
-  return (
-    <div className="-mx-2 sm:mx-0">
-      <table className="w-full text-sm table-fixed">
-        <thead>
-          <tr className="border-b border-slate-200 dark:border-slate-700 text-xs sm:text-sm">
-            <th className="text-left py-3 px-2 font-medium text-slate-500 dark:text-slate-400">Template</th>
-            <th className="text-center py-3 px-1.5 sm:px-3 font-medium text-slate-500 dark:text-slate-400 w-12 sm:w-[72px]">Env.</th>
-            <th className="hidden sm:table-cell text-center py-3 px-3 font-medium text-slate-500 dark:text-slate-400 sm:w-[72px]">Entreg.</th>
-            <th className="hidden sm:table-cell text-center py-3 px-3 font-medium text-slate-500 dark:text-slate-400 sm:w-[72px]">Lidas</th>
-            <th className="text-center py-3 px-1.5 sm:px-3 font-medium text-slate-500 dark:text-slate-400 w-14 sm:w-[72px]">Ent.</th>
-            <th className="text-center py-3 px-1.5 sm:px-3 font-medium text-slate-500 dark:text-slate-400 w-14 sm:w-[72px]">Leit.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {templates.map((template, idx) => (
-            <tr
-              key={template.templateId || idx}
-              className="border-b border-slate-100 dark:border-stellar-cyan/5 hover:bg-slate-50 dark:hover:bg-space-dust/50 transition-colors"
-            >
-              <td className="py-3 px-2">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                  <span className="font-medium text-slate-900 dark:text-white truncate text-sm" title={template.templateName}>
-                    {formatTemplateName(template.templateName)}
-                  </span>
-                  <span className="self-start flex-shrink-0 px-1.5 py-0.5 text-xs font-semibold rounded bg-fuchsia-600 dark:bg-fuchsia-500 text-white uppercase">
-                    {template.category === 'MARKETING' ? 'MKT' : template.category === 'UTILITY' ? 'UTIL' : template.category || 'N/A'}
-                  </span>
-                </div>
-              </td>
-              <td className="text-center py-3 px-1.5 sm:px-3 text-slate-900 dark:text-white font-semibold tabular-nums text-sm">
-                {formatNumber(template.sent)}
-              </td>
-              <td className="hidden sm:table-cell text-center py-3 px-3 text-slate-700 dark:text-slate-300 tabular-nums text-sm">
-                {formatNumber(template.delivered)}
-              </td>
-              <td className="hidden sm:table-cell text-center py-3 px-3 text-slate-700 dark:text-slate-300 tabular-nums text-sm">
-                {formatNumber(template.readCount)}
-              </td>
-              <td className={`text-center py-3 px-1.5 sm:px-3 font-semibold tabular-nums text-sm ${getRateColor(template.deliveryRate, 'delivery')}`}>
-                {formatPercent(template.deliveryRate)}
-              </td>
-              <td className={`text-center py-3 px-1.5 sm:px-3 font-semibold tabular-nums text-sm ${getRateColor(template.readRate, 'read')}`}>
-                {formatPercent(template.readRate)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
 // ==================== MAIN COMPONENT ====================
 
-const WhatsAppAnalytics = () => {
+const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
   const [dateFilter, setDateFilter] = useState('30d');
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -785,6 +682,11 @@ const WhatsAppAnalytics = () => {
   const [inboundPage, setInboundPage] = useState(1);
   const [inboundPageSize, setInboundPageSize] = useState(10);
   const INBOUND_PAGE_SIZE_OPTIONS = [5, 10, 25];
+
+  // Notify parent of date filter changes (for sibling components like TemplatePerformance)
+  useEffect(() => {
+    notifyParent?.(dateFilter);
+  }, [dateFilter, notifyParent]);
 
   // Fetch profile and status (once on mount)
   const fetchProfileAndStatus = useCallback(async () => {
@@ -1120,29 +1022,16 @@ const WhatsAppAnalytics = () => {
         </SectionCard>
       )}
 
-      {/* Funnel + Template Table Row */}
+      {/* Delivery Funnel */}
       {(hasData || isLoading) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Delivery Funnel */}
-          <SectionCard
-            title="Funil de Entrega"
-            subtitle="Enviadas → Entregues"
-            icon={Send}
-            color="teal"
-          >
-            <DeliveryFunnel summary={messageSummary} isLoading={isLoading} />
-          </SectionCard>
-
-          {/* Template Analytics Table */}
-          <SectionCard
-            title="Métricas por Template"
-            subtitle="Desempenho por template"
-            icon={FileText}
-            color="emerald"
-          >
-            <TemplateAnalyticsTable templates={templateData.templates} isLoading={isLoading} />
-          </SectionCard>
-        </div>
+        <SectionCard
+          title="Funil de Entrega"
+          subtitle="Enviadas → Entregues"
+          icon={Send}
+          color="teal"
+        >
+          <DeliveryFunnel summary={messageSummary} isLoading={isLoading} />
+        </SectionCard>
       )}
 
       {/* v3.25: Engagement & Cost Section */}

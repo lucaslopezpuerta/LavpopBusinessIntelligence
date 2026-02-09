@@ -32,12 +32,13 @@
 // v1.2 (2025-12-24): Added upload history tab
 // v1.1 (2025-12-13): Pass onDataChange for auto-refresh after upload
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, Clock } from 'lucide-react';
+import { Upload, Clock, Shield } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import DataUpload from '../components/DataUpload';
 import UploadHistoryTab from '../components/UploadHistoryTab';
+const DataQualityPanel = lazy(() => import('../components/ui/DataQualityPanel'));
 
 // Tab configuration for cleaner rendering
 const TABS = [
@@ -52,6 +53,12 @@ const TABS = [
     label: 'Histórico',
     icon: Clock,
     description: 'Ver uploads anteriores'
+  },
+  {
+    id: 'quality',
+    label: 'Qualidade',
+    icon: Shield,
+    description: 'Monitorar qualidade dos dados'
   }
 ];
 
@@ -219,7 +226,7 @@ const DataUploadView = ({ onDataChange }) => {
       {/* Tab Content with transitions */}
       <div className="relative min-h-[400px]">
         <AnimatePresence mode="wait">
-          {activeTab === 'upload' ? (
+          {activeTab === 'upload' && (
             <motion.div
               key="upload"
               id="tabpanel-upload"
@@ -232,7 +239,8 @@ const DataUploadView = ({ onDataChange }) => {
             >
               <DataUpload onDataChange={handleDataChange} hideHeader />
             </motion.div>
-          ) : (
+          )}
+          {activeTab === 'history' && (
             <motion.div
               key="history"
               id="tabpanel-history"
@@ -244,6 +252,22 @@ const DataUploadView = ({ onDataChange }) => {
               transition={{ duration: 0.2 }}
             >
               <UploadHistoryTab refreshTrigger={historyRefresh} />
+            </motion.div>
+          )}
+          {activeTab === 'quality' && (
+            <motion.div
+              key="quality"
+              id="tabpanel-quality"
+              role="tabpanel"
+              aria-labelledby="tab-quality"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+                <DataQualityPanel />
+              </Suspense>
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,7 +1,10 @@
-// useRecommendations.js v1.3 - HIGH SEVERITY FIXES
+// useRecommendations.js v1.4 - CATEGORY COUNT FIX
 // Generates and manages AI-powered recommendations
 //
 // CHANGELOG:
+// v1.4 (2026-02-07): Fix categoryCounts/totalCount including dismissed items
+//   - Shared `active` memo excludes dismissed before counting
+//   - Badge counts now match visible cards after dismiss
 // v1.3 (2026-02-06): High severity fixes from code review
 //   - dismissedIds resets on regeneration (prevents unbounded Set growth)
 // v1.2 (2026-02-06): Race condition fix
@@ -134,21 +137,26 @@ export function useRecommendations(data) {
     }
   }, []);
 
+  // Active recommendations (excludes dismissed)
+  const active = useMemo(() =>
+    recommendations.filter(r => !dismissedIds.has(r.id) && !dismissedIds.has(r.fingerprint)),
+    [recommendations, dismissedIds]
+  );
+
   // Filter by category
   const filtered = useMemo(() => {
-    const active = recommendations.filter(r => !dismissedIds.has(r.id) && !dismissedIds.has(r.fingerprint));
     if (activeCategory === 'all') return active;
     return active.filter(r => r.category === activeCategory);
-  }, [recommendations, activeCategory, dismissedIds]);
+  }, [active, activeCategory]);
 
-  // Category counts
+  // Category counts (from active, not raw — so badges match visible cards)
   const categoryCounts = useMemo(() => {
-    const counts = { all: recommendations.length };
-    for (const rec of recommendations) {
+    const counts = { all: active.length };
+    for (const rec of active) {
       counts[rec.category] = (counts[rec.category] || 0) + 1;
     }
     return counts;
-  }, [recommendations]);
+  }, [active]);
 
   return {
     recommendations: filtered,
@@ -162,7 +170,7 @@ export function useRecommendations(data) {
     activeCategory,
     setActiveCategory,
     categoryCounts,
-    totalCount: recommendations.length
+    totalCount: active.length
   };
 }
 

@@ -138,7 +138,7 @@
 
 import React, { useMemo, useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb, RefreshCw, Clock, CheckCircle } from 'lucide-react';
+import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb, RefreshCw, Clock, CheckCircle, CalendarRange } from 'lucide-react';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useTheme } from '../contexts/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -172,12 +172,16 @@ import { haptics } from '../utils/haptics';
 import {
   LazyProfitabilitySection,
   LazyGrowthTrendsSection,
+  LazyModelHealthDashboard,
   SectionLoadingFallback
 } from '../utils/lazyCharts';
 
 // UX Enhancement components
 import RevenueForecast from '../components/intelligence/RevenueForecast';
 import PriorityMatrix from '../components/intelligence/PriorityMatrix';
+
+// Lazy-loaded modal
+const PeriodComparisonModal = React.lazy(() => import('../components/intelligence/PeriodComparisonModal'));
 
 // ==================== SYNC STATUS BUTTON ====================
 
@@ -306,6 +310,9 @@ const Intelligence = ({ data, onDataChange }) => {
 
   // Collapsible sections state (persists which sections are collapsed)
   const [collapsedSections, setCollapsedSections] = useState({});
+
+  // Period comparison modal
+  const [showComparison, setShowComparison] = useState(false);
 
   // Toggle handler for collapsible sections
   const handleToggleSection = useCallback((sectionId) => {
@@ -599,15 +606,35 @@ const Intelligence = ({ data, onDataChange }) => {
                 </div>
               </div>
 
-              {/* Sync Status Button - always inline on right */}
-              <SyncStatusButton
-                lastUpdated={lastUpdated}
-                isRefreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                isMobile={isMobile}
-                isDark={isDark}
-                prefersReducedMotion={prefersReducedMotion}
-              />
+              <div className="flex items-center gap-2">
+                {/* Period Comparison Button */}
+                <button
+                  onClick={() => { haptics.light(); setShowComparison(true); }}
+                  className={`
+                    flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
+                    cursor-pointer transition-colors duration-200
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2
+                    ${isDark
+                      ? 'text-slate-400 border border-transparent hover:text-slate-300 hover:border-stellar-cyan/20 focus-visible:ring-offset-space-dust'
+                      : 'text-slate-500 border border-transparent hover:text-slate-600 hover:border-slate-200 focus-visible:ring-offset-white'}
+                  `}
+                  title="Comparar períodos"
+                  aria-label="Comparar períodos"
+                >
+                  <CalendarRange className={`${isMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'}`} />
+                  {!isMobile && <span>Comparar</span>}
+                </button>
+
+                {/* Sync Status Button - always inline on right */}
+                <SyncStatusButton
+                  lastUpdated={lastUpdated}
+                  isRefreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  isMobile={isMobile}
+                  isDark={isDark}
+                  prefersReducedMotion={prefersReducedMotion}
+                />
+              </div>
             </div>
 
         </AnimatedHeader>
@@ -673,6 +700,11 @@ const Intelligence = ({ data, onDataChange }) => {
             formatCurrency={formatCurrency}
           />
 
+          {/* ML Model Health - Prediction accuracy, bias, weekly trends */}
+          <Suspense fallback={<SectionLoadingFallback />}>
+            <LazyModelHealthDashboard />
+          </Suspense>
+
           {/* Section 1: Profitability */}
           <Suspense fallback={<SectionLoadingFallback />}>
             <LazyProfitabilitySection
@@ -701,6 +733,18 @@ const Intelligence = ({ data, onDataChange }) => {
         </AnimatedSection>
 
       </AnimatedView>
+
+      {/* Period Comparison Modal */}
+      {showComparison && (
+        <Suspense fallback={null}>
+          <PeriodComparisonModal
+            isOpen={showComparison}
+            onClose={() => setShowComparison(false)}
+            salesData={data.sales}
+            dailyRevenueData={dailyRevenueData}
+          />
+        </Suspense>
+      )}
 
       {/* Refresh overlay (during data sync) */}
       <BackgroundRefreshIndicator
