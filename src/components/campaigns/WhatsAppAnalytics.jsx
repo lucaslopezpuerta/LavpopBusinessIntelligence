@@ -197,7 +197,7 @@ import SectionCard from '../ui/SectionCard';
 import BackgroundRefreshIndicator from '../ui/BackgroundRefreshIndicator';
 
 // Services
-import { api } from '../../utils/apiService';
+import { api, getHeaders } from '../../utils/apiService';
 
 // WhatsApp brand colors
 const COLORS = {
@@ -693,7 +693,7 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
     try {
       const [profileData, statusData] = await Promise.all([
         api.waba.getProfile(),
-        fetch('/.netlify/functions/waba-analytics?action=status').then(r => r.json())
+        fetch('/.netlify/functions/waba-analytics?action=status', { headers: getHeaders() }).then(r => r.json())
       ]);
       setProfile(profileData);
       // Use template sync time as it's more relevant for analytics

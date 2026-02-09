@@ -222,8 +222,12 @@ export async function getLastSyncTimestamp() {
  */
 export async function triggerWeatherSync() {
   try {
+    const apiKey = import.meta.env.VITE_API_KEY;
     const response = await fetch('/.netlify/functions/weather-sync', {
-      method: 'POST'
+      method: 'POST',
+      headers: {
+        ...(apiKey && { 'X-Api-Key': apiKey })
+      }
     });
 
     return await response.json();

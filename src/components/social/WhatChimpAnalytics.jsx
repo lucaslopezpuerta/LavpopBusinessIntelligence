@@ -477,7 +477,7 @@ const WhatChimpAnalytics = () => {
       // Call background function - returns 202 immediately
       const response = await fetch('/.netlify/functions/whatchimp-sync-background', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: getHeaders()
       });
 
       // Background functions return 202 Accepted
