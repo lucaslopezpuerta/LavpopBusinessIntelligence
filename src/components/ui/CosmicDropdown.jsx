@@ -1,4 +1,4 @@
-// CosmicDropdown.jsx v1.4.0
+// CosmicDropdown.jsx v1.5.0
 // Custom dropdown component with cosmic Design System styling
 // Replaces native <select> elements for consistent theming
 //
@@ -21,6 +21,11 @@
 // />
 //
 // CHANGELOG:
+// v1.5.0 (2026-02-10): Glassmorphic surface + horizontal scrollbar fix
+//   - Fixed horizontal scrollbar: overflow-auto → overflow-y-auto
+//   - Trigger button: opaque bg → glassmorphic (bg-space-dust/60 dark, bg-white/80 light)
+//   - Dropdown panel: opaque bg → glassmorphic (bg-space-dust/80 dark, bg-white/90 light)
+//   - Consistent with Variant D glassmorphism across DateRangeSelector, SocialMediaNavigation
 // v1.4.0 (2026-02-05): Focus visibility improvements (Design System v6.4)
 //   - Updated to focus-visible pattern (shows ring on keyboard, not mouse)
 //   - Added focus ring offset for better visibility
@@ -205,8 +210,8 @@ const CosmicDropdown = ({
           flex items-center justify-between gap-2 min-w-[140px]
           transition-all duration-200
           ${isDark
-            ? 'bg-space-dust text-slate-300 hover:bg-space-dust/80'
-            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}
+            ? 'bg-space-dust/60 text-slate-300 hover:bg-space-dust/80'
+            : 'bg-white/80 text-slate-700 hover:bg-white'}
           border
           ${isOpen
             ? isDark
@@ -238,14 +243,14 @@ const CosmicDropdown = ({
             className={`
               absolute z-50 w-full min-w-[160px]
               ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}
-              ${isDark ? 'bg-space-dust' : 'bg-white/95'}
+              ${isDark ? 'bg-space-dust/80' : 'bg-white/90'}
               backdrop-blur-xl
               rounded-xl
               shadow-xl
               border
-              ${isDark ? 'border-stellar-cyan/20' : 'border-stellar-cyan/10'}
+              ${isDark ? 'border-white/[0.08]' : 'border-slate-200/60'}
               py-1
-              max-h-60 overflow-auto
+              max-h-60 overflow-x-hidden overflow-y-auto
             `}
             id={listboxId}
             role="listbox"

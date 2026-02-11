@@ -1,76 +1,39 @@
-// OPERATIONS KPI CARDS V6.9.1 - SKELETON LOADING STATE
+// OPERATIONS KPI CARDS V7.0 - COSMIC GLASSMORPHISM
 // ✅ Math: Absolute pp trend change (not relative %)
 // ✅ Math: Capacity adapts to date window (partial week support)
 // ✅ Math: Service diff hidden for currentWeek (partial vs full unfair)
 // ✅ UX: Progress bar scaled to 50% max (25% = excellent visual)
 // ✅ UX: Subtle threshold legend (footnote style)
-// ✅ UX: Simplified card layout (cleaner, less overload)
+// ✅ UX: Glassmorphic card surfaces with status accent stripe
 // ✅ UX: Comparison label adapts to dateWindow
-// ✅ UX: Skeleton loading matches card layout (prevents layout shift)
-// ✅ Design System: Minimum 12px fonts (no text-[9px] or text-[10px])
+// ✅ UX: Skeleton loading matches glassmorphic layout
+// ✅ Design System v6.4: Variant D glassmorphism via useTheme()
 // ✅ Mobile: Responsive text sizing with sm: breakpoints
-// ✅ Accessibility: Proper color contrast and touch targets
-// ✅ WCAG AA: Mode-aware badges with proper contrast
+// ✅ Accessibility: WCAG AA contrast, solid icon wells, reduced motion
 //
 // CHANGELOG:
+// v7.0 (2026-02-10): Cosmic glassmorphism redesign
+//   - Variant D glassmorphic cards (bg-space-dust/50 dark, bg-white/80 light)
+//   - useTheme() isDark pattern replaces dark: prefix for card surfaces
+//   - Status accent: left stripe + subtle top glow instead of thick border
+//   - Glass skeleton loading state
+//   - Threshold legend with glass backdrop
 // v6.9.1 (2026-01-31): Skeleton loading state
-//   - Replaced simple text loading with 3-card skeleton grid
-//   - Skeleton matches final card layout (prevents CLS)
-//   - Dark/light mode skeleton colors
-// v6.9.0 (2026-01-29): Yellow to amber color migration with mode-aware badges
-//   - Razoavel status: yellow-600/yellow-500 → mode-aware amber styling
-//   - Mode-aware badges: bg-amber-50 text-amber-800 border border-amber-200 (light)
-//                        bg-amber-500 text-white border-amber-400 (dark)
-//   - Border colors: yellow-400/yellow-500 → amber-400/amber-500
+// v6.9.0 (2026-01-29): Yellow to amber color migration
 // v6.8.0 (2026-01-29): Migrated orange colors to yellow
-//   - Razoavel status: orange-600/orange-500 → yellow-600/yellow-500
-//   - Border colors: orange-400/orange-500 → yellow-400/yellow-500
 // v6.7.0 (2026-01-29): Migrated amber colors to orange
-//   - Razoavel status: amber-600/amber-500 → orange-600/orange-500
-//   - Border colors: amber-400/amber-500 → orange-400/orange-500
-// v6.6.0 (2026-01-28): Solid icon backgrounds for WCAG AA compliance
-//   - Icon wells now use solid colors (emerald/teal/amber/red)
-//   - White icons on solid backgrounds for 4.5:1+ contrast
+// v6.6.0 (2026-01-28): Solid icon backgrounds for WCAG AA
 // v6.5.0 (2026-01-27): Accessibility improvements
-//   - Added useReducedMotion hook for prefers-reduced-motion support
-//   - KPICard hover animation conditional on reduced motion preference
-//   - Replaced inline transition with TWEEN.HOVER constant
 // v6.4.0 (2026-01-09): Design System v4.0 Framer Motion compliance
-//   - Added Framer Motion hover animation to KPICard (y: -2)
-//   - Consistent with Design System v4.0 card patterns
 // v6.3.0 (2025-11-30): Fix partial week comparison display
-//   - Added showServiceDiff flag to periodConfig (false for currentWeek)
-//   - Utilization % trend still shown (normalized by activeDays = fair)
-//   - Service count diff hidden for currentWeek (partial vs full week unfair)
-// v6.2.1 (2025-11-30): Legend spacing + mobile overflow fix
-//   - Added bottom margin to container (mb-4 sm:mb-6) for section separation
-//   - Reduced mobile gap (gap-x-2 sm:gap-x-4) to prevent overflow
-//   - Hide percentage values on mobile (show only labels: Excelente, Bom, etc.)
-//   - Added pb-2 for proper internal spacing
-// v6.2.0 (2025-11-30): Legend layout refinement
-//   - Removed intrusive "Metas:" label with Info icon
-//   - Smaller dot indicators (w-2 → w-1.5)
-//   - Subtle footnote style (text-slate-500, pt-2 spacing)
-//   - Removed redundant font scaling (text-xs only, no sm:text-sm)
-// v6.1.0 (2025-11-30): Threshold unification
-//   - Import UTILIZATION_THRESHOLDS from operationsMetrics.js (single source of truth)
-//   - Removed local THRESHOLDS definition
 // v6.0.0 (2025-11-30): Comprehensive audit fixes
-//   - MATH: Trend now shows absolute percentage point change (+5pp)
-//   - MATH: Capacity calculation adapts to activeDays in date window
-//   - UX: Progress bar uses 50% scale (25% fills half = visually "excellent")
-//   - UX: Added threshold legend below progress bar
-//   - UX: Removed redundant insight box (moved to tooltip on hover)
-//   - UX: Comparison label now dynamic based on dateWindow
-//   - DESIGN: All fonts minimum 12px (text-xs), responsive with sm:text-sm
-//   - MOBILE: Better spacing, readable text, touch-friendly
-// v5.0.0 (2025-11-26): Design System alignment
 
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Droplet, Flame, Gauge, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { BUSINESS_PARAMS, UTILIZATION_THRESHOLDS } from '../utils/operationsMetrics';
 import useReducedMotion from '../hooks/useReducedMotion';
+import { useTheme } from '../contexts/ThemeContext';
 import { TWEEN } from '../constants/animations';
 
 // Use shared thresholds from operationsMetrics.js
@@ -110,6 +73,7 @@ const OperationsKPICards = ({
   dateWindow = 'currentWeek'
 }) => {
   const prefersReducedMotion = useReducedMotion();
+  const { isDark } = useTheme();
 
   // Get adaptive labels and comparison text based on date filter
   const periodConfig = useMemo(() => {
@@ -120,8 +84,6 @@ const OperationsKPICards = ({
           previous: 'Semana Passada',
           comparison: 'vs sem. passada',
           showComparison: true,
-          // Service diff hidden: partial week vs full week is unfair
-          // Utilization % still shown (normalized by activeDays)
           showServiceDiff: false,
           days: operationsMetrics?.utilization?.activeDays || 7
         };
@@ -215,9 +177,9 @@ const OperationsKPICards = ({
 
     const calculateTrend = (current, previous) => {
       if (previous === null || previous === undefined) return null;
-      const absoluteChange = current - previous; // Percentage point change
+      const absoluteChange = current - previous;
       return {
-        absolutePP: absoluteChange,  // e.g., 25% - 20% = +5pp
+        absolutePP: absoluteChange,
         direction: absoluteChange > 0 ? 'up' : absoluteChange < 0 ? 'down' : 'stable'
       };
     };
@@ -229,6 +191,7 @@ const OperationsKPICards = ({
     };
   }, [currentData, previousData]);
 
+  // Skeleton loading state
   if (!currentData) {
     return (
       <div className="space-y-4 mb-4 sm:mb-6">
@@ -236,27 +199,27 @@ const OperationsKPICards = ({
           {[1, 2, 3].map(i => (
             <div
               key={i}
-              className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5 border-2 border-slate-200 dark:border-slate-700 animate-pulse"
+              className={`rounded-xl p-4 sm:p-5 animate-pulse ${
+                isDark
+                  ? 'bg-space-dust/50 border border-white/[0.06]'
+                  : 'bg-white/80 border border-slate-200/60'
+              }`}
             >
-              {/* Header skeleton */}
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-slate-200 dark:bg-slate-700" />
+                <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-lg ${isDark ? 'bg-space-elevated/60' : 'bg-slate-200'}`} />
                 <div className="flex-1">
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-1" />
-                  <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16" />
+                  <div className={`h-4 rounded w-24 mb-1 ${isDark ? 'bg-space-elevated/60' : 'bg-slate-200'}`} />
+                  <div className={`h-3 rounded w-16 ${isDark ? 'bg-space-elevated/60' : 'bg-slate-200'}`} />
                 </div>
               </div>
-              {/* Metric skeleton */}
               <div className="mb-3">
-                <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-2" />
-                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32" />
+                <div className={`h-9 rounded w-20 mb-2 ${isDark ? 'bg-space-elevated/60' : 'bg-slate-200'}`} />
+                <div className={`h-3 rounded w-32 ${isDark ? 'bg-space-elevated/60' : 'bg-slate-200'}`} />
               </div>
-              {/* Progress bar skeleton */}
-              <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full mb-6" />
-              {/* Footer skeleton */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full mb-1" />
-                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+              <div className={`h-2.5 rounded-full mb-6 ${isDark ? 'bg-space-elevated/60' : 'bg-slate-200'}`} />
+              <div className={`pt-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-200/60'}`}>
+                <div className={`h-3 rounded w-full mb-1 ${isDark ? 'bg-space-elevated/60' : 'bg-slate-200'}`} />
+                <div className={`h-3 rounded w-3/4 ${isDark ? 'bg-space-elevated/60' : 'bg-slate-200'}`} />
               </div>
             </div>
           ))}
@@ -266,43 +229,46 @@ const OperationsKPICards = ({
   }
 
   // Status determination with threshold-based styling
-  // Uses solid backgrounds for icon wells (WCAG AA compliance)
   const getStatus = (utilization) => {
     if (utilization >= THRESHOLDS.excellent) return {
       label: 'Excelente',
-      colorClass: 'text-emerald-600 dark:text-emerald-400',
-      bgClass: 'bg-emerald-600 dark:bg-emerald-500',
+      colorClass: isDark ? 'text-emerald-400' : 'text-emerald-600',
+      bgClass: isDark ? 'bg-emerald-500' : 'bg-emerald-600',
       iconColorClass: 'text-white',
       gradientFrom: 'from-emerald-500',
       gradientTo: 'to-green-500',
-      borderClass: 'border-emerald-400 dark:border-emerald-500'
+      accentColor: isDark ? '#10b981' : '#059669',
+      glowColor: 'rgba(16, 185, 129, 0.15)',
     };
     if (utilization >= THRESHOLDS.good) return {
       label: 'Bom',
-      colorClass: 'text-teal-600 dark:text-teal-400',
-      bgClass: 'bg-teal-600 dark:bg-teal-500',
+      colorClass: isDark ? 'text-teal-400' : 'text-teal-600',
+      bgClass: isDark ? 'bg-teal-500' : 'bg-teal-600',
       iconColorClass: 'text-white',
       gradientFrom: 'from-teal-500',
       gradientTo: 'to-cyan-500',
-      borderClass: 'border-teal-400 dark:border-teal-500'
+      accentColor: isDark ? '#14b8a6' : '#0d9488',
+      glowColor: 'rgba(20, 184, 166, 0.15)',
     };
     if (utilization >= THRESHOLDS.fair) return {
       label: 'Razoável',
-      colorClass: 'text-amber-600 dark:text-amber-400',
-      bgClass: 'bg-amber-600 dark:bg-amber-500',
+      colorClass: isDark ? 'text-amber-400' : 'text-amber-600',
+      bgClass: isDark ? 'bg-amber-500' : 'bg-amber-600',
       iconColorClass: 'text-white',
       gradientFrom: 'from-amber-500',
       gradientTo: 'to-amber-600',
-      borderClass: 'border-amber-400 dark:border-amber-500'
+      accentColor: isDark ? '#f59e0b' : '#d97706',
+      glowColor: 'rgba(245, 158, 11, 0.15)',
     };
     return {
       label: 'Baixo',
-      colorClass: 'text-red-600 dark:text-red-400',
-      bgClass: 'bg-red-600 dark:bg-red-500',
+      colorClass: isDark ? 'text-red-400' : 'text-red-600',
+      bgClass: isDark ? 'bg-red-500' : 'bg-red-600',
       iconColorClass: 'text-white',
       gradientFrom: 'from-red-500',
       gradientTo: 'to-rose-500',
-      borderClass: 'border-red-400 dark:border-red-500'
+      accentColor: isDark ? '#ef4444' : '#dc2626',
+      glowColor: 'rgba(239, 68, 68, 0.15)',
     };
   };
 
@@ -311,28 +277,27 @@ const OperationsKPICards = ({
     if (!trend) return null;
 
     const pp = trend.absolutePP;
-    if (Math.abs(pp) < 0.5) return null; // Skip if negligible change
+    if (Math.abs(pp) < 0.5) return null;
 
-    const isPositive = pp > 0;
-    const displayText = `${isPositive ? '+' : ''}${pp.toFixed(0)}pp`;
+    const displayText = `${pp > 0 ? '+' : ''}${pp.toFixed(0)}pp`;
 
     if (pp > 2) {
       return {
         Icon: TrendingUp,
-        colorClass: 'text-emerald-600 dark:text-emerald-400',
+        colorClass: isDark ? 'text-emerald-400' : 'text-emerald-600',
         text: displayText
       };
     }
     if (pp < -2) {
       return {
         Icon: TrendingDown,
-        colorClass: 'text-red-600 dark:text-red-400',
+        colorClass: isDark ? 'text-red-400' : 'text-red-600',
         text: displayText
       };
     }
     return {
       Icon: Minus,
-      colorClass: 'text-slate-500 dark:text-slate-400',
+      colorClass: isDark ? 'text-slate-400' : 'text-slate-500',
       text: displayText
     };
   };
@@ -359,7 +324,7 @@ const OperationsKPICards = ({
   const washServices = formatServices(currentData.wash.services, previousData?.wash.services);
   const dryServices = formatServices(currentData.dry.services, previousData?.dry.services);
 
-  // KPI Card Component (simplified, cleaner)
+  // Glassmorphic KPI Card Component
   const KPICard = ({
     title,
     icon: CardIcon,
@@ -370,105 +335,124 @@ const OperationsKPICards = ({
     maxCapacity,
     machineCount
   }) => {
-    // Scale progress to 50% max so 25% = half filled (visually "good")
     const scaledProgress = Math.min((utilization / PROGRESS_BAR_SCALE) * 100, 100);
 
     return (
       <motion.div
         whileHover={prefersReducedMotion ? {} : { y: -2 }}
         transition={prefersReducedMotion ? { duration: 0 } : TWEEN.HOVER}
-        className={`
-          bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5
-          border-2 ${status.borderClass}
-          shadow-sm hover:shadow-md
-          transition-colors duration-200
-        `}
+        className={`relative overflow-hidden rounded-xl p-4 sm:p-5 ${
+          isDark
+            ? 'bg-space-dust/50 border border-white/[0.06] hover:border-white/10'
+            : 'bg-white/80 border border-slate-200/60 hover:border-slate-300 shadow-sm hover:shadow-md'
+        } transition-colors duration-200`}
       >
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`
-            w-10 h-10 sm:w-11 sm:h-11 rounded-lg ${status.bgClass}
-            flex items-center justify-center flex-shrink-0
-          `}>
-            <CardIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${status.iconColorClass}`} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
-              {title}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {machineCount} máquinas
-            </p>
-          </div>
-        </div>
+        {/* Status accent — left stripe */}
+        <div
+          className="absolute left-0 top-0 bottom-0 w-[3px]"
+          style={{ backgroundColor: status.accentColor }}
+        />
 
-        {/* Main Metric */}
-        <div className="mb-3">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className={`text-3xl sm:text-4xl font-bold ${status.colorClass}`}>
-              {utilization.toFixed(0)}%
-            </span>
-            <span className={`text-sm sm:text-base font-semibold ${status.colorClass}`}>
-              {status.label}
-            </span>
+        {/* Subtle top glow from status color */}
+        <div
+          className="absolute top-0 left-0 right-0 h-16 pointer-events-none"
+          style={{
+            background: `linear-gradient(to bottom, ${status.glowColor}, transparent)`
+          }}
+        />
+
+        {/* Card content */}
+        <div className="relative">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`
+              w-10 h-10 sm:w-11 sm:h-11 rounded-lg ${status.bgClass}
+              flex items-center justify-center flex-shrink-0
+            `}>
+              <CardIcon className={`w-5 h-5 sm:w-6 sm:h-6 ${status.iconColorClass}`} />
+            </div>
+            <div className="min-w-0">
+              <h3 className={`text-sm sm:text-base font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {title}
+              </h3>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {machineCount} máquinas
+              </p>
+            </div>
           </div>
 
-          {/* Trend with absolute pp change */}
-          {trend && periodConfig.showComparison && (
-            <div className="flex items-center gap-1.5 mt-1">
-              <trend.Icon className={`w-4 h-4 ${trend.colorClass}`} aria-hidden="true" />
-              <span className={`text-xs sm:text-sm font-medium ${trend.colorClass}`}>
-                {trend.text}
+          {/* Main Metric */}
+          <div className="mb-3">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className={`text-3xl sm:text-4xl font-bold ${status.colorClass}`}>
+                {utilization.toFixed(0)}%
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {periodConfig.comparison}
+              <span className={`text-sm sm:text-base font-semibold ${status.colorClass}`}>
+                {status.label}
               </span>
             </div>
-          )}
-        </div>
 
-        {/* Progress Bar with 50% scale */}
-        <div className="mb-2">
-          <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div
-              className={`h-full bg-gradient-to-r ${status.gradientFrom} ${status.gradientTo} transition-all duration-500 rounded-full`}
-              style={{ width: `${scaledProgress}%` }}
-              role="progressbar"
-              aria-valuenow={utilization}
-              aria-valuemin={0}
-              aria-valuemax={PROGRESS_BAR_SCALE}
-            />
-          </div>
-          {/* Threshold legend - positioned proportionally to 0-50% scale */}
-          <div className="relative w-full h-4 mt-1 text-xs text-slate-500 dark:text-slate-400">
-            <span className="absolute left-0">0%</span>
-            <span className="absolute left-[10%] -translate-x-1/2">5%</span>
-            <span className="absolute left-[20%] -translate-x-1/2 text-amber-600 dark:text-amber-400">10%</span>
-            <span className="absolute left-[30%] -translate-x-1/2 text-teal-600 dark:text-teal-400">15%</span>
-            <span className="absolute left-[40%] -translate-x-1/2 text-emerald-600 dark:text-emerald-400">20%</span>
-            <span className="absolute left-[50%] -translate-x-1/2 text-emerald-600 dark:text-emerald-400">25%+</span>
-            <span className="absolute right-0">50%</span>
-          </div>
-        </div>
-
-        {/* Service Counts - simplified */}
-        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between text-xs sm:text-sm">
-            <span className="text-slate-600 dark:text-slate-400">
-              {periodConfig.current}:
-            </span>
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {services.current} serviços
-              {services.text && periodConfig.showServiceDiff && (
-                <span className={`ml-1.5 ${services.diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  ({services.text})
+            {trend && periodConfig.showComparison && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <trend.Icon className={`w-4 h-4 ${trend.colorClass}`} aria-hidden="true" />
+                <span className={`text-xs sm:text-sm font-medium ${trend.colorClass}`}>
+                  {trend.text}
                 </span>
-              )}
-            </span>
+                <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {periodConfig.comparison}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            <span>Capacidade ({periodConfig.days}d):</span>
-            <span>{maxCapacity} ciclos</span>
+
+          {/* Progress Bar */}
+          <div className="mb-2">
+            <div className={`w-full h-2.5 rounded-full overflow-hidden ${
+              isDark ? 'bg-white/[0.06]' : 'bg-slate-200'
+            }`}>
+              <div
+                className={`h-full bg-gradient-to-r ${status.gradientFrom} ${status.gradientTo} transition-all duration-500 rounded-full`}
+                style={{ width: `${scaledProgress}%` }}
+                role="progressbar"
+                aria-valuenow={utilization}
+                aria-valuemin={0}
+                aria-valuemax={PROGRESS_BAR_SCALE}
+              />
+            </div>
+            {/* Threshold markers */}
+            <div className={`relative w-full h-4 mt-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className="absolute left-0">0%</span>
+              <span className="absolute left-[10%] -translate-x-1/2">5%</span>
+              <span className={`absolute left-[20%] -translate-x-1/2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>10%</span>
+              <span className={`absolute left-[30%] -translate-x-1/2 ${isDark ? 'text-teal-400' : 'text-teal-600'}`}>15%</span>
+              <span className={`absolute left-[40%] -translate-x-1/2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>20%</span>
+              <span className={`absolute left-[50%] -translate-x-1/2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>25%+</span>
+              <span className="absolute right-0">50%</span>
+            </div>
+          </div>
+
+          {/* Service Counts */}
+          <div className={`pt-2 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-200/60'}`}>
+            <div className="flex items-center justify-between text-xs sm:text-sm">
+              <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>
+                {periodConfig.current}:
+              </span>
+              <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {services.current} serviços
+                {services.text && periodConfig.showServiceDiff && (
+                  <span className={`ml-1.5 ${services.diff > 0
+                    ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+                    : (isDark ? 'text-red-400' : 'text-red-600')
+                  }`}>
+                    ({services.text})
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className={`flex items-center justify-between text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span>Capacidade ({periodConfig.days}d):</span>
+              <span>{maxCapacity} ciclos</span>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -520,8 +504,10 @@ const OperationsKPICards = ({
         />
       </div>
 
-      {/* Threshold Legend - Subtle footnote style */}
-      <div className="flex flex-wrap items-center justify-center gap-x-2 sm:gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-2 pb-2">
+      {/* Threshold Legend */}
+      <div className={`flex flex-wrap items-center justify-center gap-x-2 sm:gap-x-4 gap-y-1 text-xs pt-2 pb-2 ${
+        isDark ? 'text-slate-500' : 'text-slate-400'
+      }`}>
         <span className="flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
           <span className="hidden sm:inline">≥25%</span> Excelente

@@ -196,7 +196,8 @@ import {
   SocialMediaLoadingSkeleton,
   WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
-  IntelligenceLoadingSkeleton
+  IntelligenceLoadingSkeleton,
+  InsightsLoadingSkeleton
 } from './components/ui/Skeleton';
 
 // Data freshness configuration
@@ -258,7 +259,7 @@ const VIEW_SKELETONS = {
   social: SocialMediaLoadingSkeleton,
   weather: WeatherLoadingSkeleton,
   intelligence: IntelligenceLoadingSkeleton,
-  insights: DashboardLoadingSkeleton,
+  insights: InsightsLoadingSkeleton,
   operations: OperationsLoadingSkeleton,
   // Upload view uses generic fallback (simple form)
   upload: null

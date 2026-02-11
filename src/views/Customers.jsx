@@ -108,7 +108,7 @@ const CustomerTrendDrilldown = lazy(() => import('../components/drilldowns/Custo
 const CustomerSegmentModal = lazy(() => import('../components/modals/CustomerSegmentModal'));
 const FirstVisitConversionCard = lazy(() => import('../components/FirstVisitConversionCard'));
 const FrequencyDegradationAlert = lazy(() => import('../components/FrequencyDegradationAlert'));
-import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, LazyVisitHeatmap, LazyAcquisitionCard, ChartLoadingFallback } from '../utils/lazyCharts';
+import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, LazyVisitHeatmap, LazyAcquisitionCard, ChartLoadingFallback, AcquisitionCardFallback, HeatmapFallback, HistogramFallback, CohortTableFallback, ScatterPlotFallback } from '../utils/lazyCharts';
 const CohortRetentionChart = lazy(() => import('../components/customers/CohortRetentionChart'));
 import { useContactTracking } from '../hooks/useContactTracking';
 import { api } from '../utils/apiService';
@@ -517,7 +517,7 @@ const Customers = ({ data, onDataChange }) => {
         <AnimatedSection ariaLabel="Aquisição e Padrões de Visita">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Acquisition Card - New customer metrics + daily chart */}
-          <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
+          <Suspense fallback={<AcquisitionCardFallback />}>
             <LazyAcquisitionCard
               data={intelligence.acquisition}
               totalNewCustomers={newClientsCount}
@@ -533,7 +533,7 @@ const Customers = ({ data, onDataChange }) => {
           </Suspense>
 
           {/* Visit Heatmap - Day × Hour patterns */}
-          <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
+          <Suspense fallback={<HeatmapFallback />}>
             <LazyVisitHeatmap
               salesData={data.sales}
               customerMap={customerMap}
@@ -588,7 +588,7 @@ const Customers = ({ data, onDataChange }) => {
               )}
 
               {/* Churn Histogram - Days since last visit distribution */}
-              <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+              <Suspense fallback={<HistogramFallback />}>
                 <LazyChurnHistogram
                   data={intelligence.histogram}
                   contactedIds={contactedIds}
@@ -617,7 +617,7 @@ const Customers = ({ data, onDataChange }) => {
             "Of customers acquired in Month X, what % returned?"
             ═══════════════════════════════════════════════════════════════════ */}
         <AnimatedSection ariaLabel="Retenção por Coorte">
-          <Suspense fallback={<ChartLoadingFallback height="h-64" />}>
+          <Suspense fallback={<CohortTableFallback />}>
             <CohortRetentionChart />
           </Suspense>
         </AnimatedSection>
@@ -628,7 +628,7 @@ const Customers = ({ data, onDataChange }) => {
             ═══════════════════════════════════════════════════════════════════ */}
         <AnimatedSection ariaLabel="Análise Detalhada">
         {/* RFM Scatter Plot - Full width customer segmentation */}
-        <Suspense fallback={<ChartLoadingFallback height="h-[400px]" />}>
+        <Suspense fallback={<ScatterPlotFallback />}>
           <LazyRFMScatterPlot
             data={intelligence.rfm}
             contactedIds={contactedIds}

@@ -61,7 +61,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import KPICardsGrid from '../components/KPICardsGrid';
 import DashboardDateControl from '../components/DashboardDateControl';
-import { LazyOperatingCyclesChart, ChartLoadingFallback } from '../utils/lazyCharts';
+import { LazyOperatingCyclesChart, OperatingCyclesChartFallback } from '../utils/lazyCharts';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
@@ -223,7 +223,7 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
             {/* Row 2: Chart - Full width */}
             <AnimatedSection ariaLabel="Operações">
               <div className="bg-white dark:bg-space-dust rounded-2xl shadow-sm border border-slate-200 dark:border-stellar-cyan/10 p-4">
-                <Suspense fallback={<ChartLoadingFallback height="h-48" />}>
+                <Suspense fallback={<OperatingCyclesChartFallback compact={true} />}>
                   <LazyOperatingCyclesChart salesData={salesData} compact={true} />
                 </Suspense>
               </div>
@@ -246,7 +246,7 @@ const Dashboard = ({ data, viewMode, setViewMode, onDataChange }) => {
             {/* Operations Chart */}
             <AnimatedSection ariaLabel="Operações">
               <div className="bg-white dark:bg-space-dust rounded-2xl shadow-sm border border-slate-200 dark:border-stellar-cyan/10 p-6">
-                <Suspense fallback={<ChartLoadingFallback height="h-96" />}>
+                <Suspense fallback={<OperatingCyclesChartFallback />}>
                   <LazyOperatingCyclesChart salesData={salesData} />
                 </Suspense>
               </div>

@@ -173,7 +173,7 @@ import {
   LazyProfitabilitySection,
   LazyGrowthTrendsSection,
   LazyModelHealthDashboard,
-  SectionLoadingFallback
+  SectionCardFallback
 } from '../utils/lazyCharts';
 
 // UX Enhancement components
@@ -701,12 +701,12 @@ const Intelligence = ({ data, onDataChange }) => {
           />
 
           {/* ML Model Health - Prediction accuracy, bias, weekly trends */}
-          <Suspense fallback={<SectionLoadingFallback />}>
+          <Suspense fallback={<SectionCardFallback />}>
             <LazyModelHealthDashboard />
           </Suspense>
 
           {/* Section 1: Profitability */}
-          <Suspense fallback={<SectionLoadingFallback />}>
+          <Suspense fallback={<SectionCardFallback />}>
             <LazyProfitabilitySection
               profitability={profitability}
               optimizationLevers={optimizationLevers}
@@ -719,7 +719,7 @@ const Intelligence = ({ data, onDataChange }) => {
           </Suspense>
 
           {/* Section 2: Growth & Trends */}
-          <Suspense fallback={<SectionLoadingFallback />}>
+          <Suspense fallback={<SectionCardFallback />}>
             <LazyGrowthTrendsSection
               growthTrends={growthTrends}
               serviceBreakdown={serviceBreakdown}

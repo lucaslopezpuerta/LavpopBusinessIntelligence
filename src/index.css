@@ -705,7 +705,6 @@ body {
   );
   background-size: 200% 100%;
   animation: cosmic-shimmer 3s ease-in-out 3;
-  will-change: transform;
   pointer-events: none;
   border-radius: inherit;
 }

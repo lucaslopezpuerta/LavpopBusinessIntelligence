@@ -1,7 +1,11 @@
-// DateRangeSelector Component v3.7.1 - COSMIC DROPDOWN
+// DateRangeSelector Component v3.8.0 - GLASSMORPHIC SURFACE
 // Unified date filter - consistent with DashboardDateControl
 //
 // CHANGELOG:
+// v3.8.0 (2026-02-10): Glassmorphic redesign
+//   - Variant D glassmorphic container (bg-space-dust/50 dark, bg-white/80 light)
+//   - Removed negative margins on sticky wrapper (integrates with page flow)
+//   - Sticky wrapper uses transparent backdrop instead of opaque strip
 // v3.7.1 (2026-01-17): Removed hover-stellar-glow from container
 // v3.7.0 (2026-01-16): Custom CosmicDropdown integration
 //   - Replaced native <select> with CosmicDropdown component
@@ -74,9 +78,9 @@ const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false
   }
 
   const content = (
-    <div className={`flex items-center justify-between gap-4 ${isDark ? 'bg-space-dust' : 'bg-white'} border ${isDark ? 'border-stellar-cyan/10' : 'border-slate-200'} rounded-xl p-3 shadow-sm transition-all duration-300`}>
+    <div className={`flex items-center justify-between gap-4 ${isDark ? 'bg-space-dust/70 border-white/[0.08]' : 'bg-white/90 border-slate-200/60 shadow-sm'} border rounded-xl p-3 transition-colors duration-200`}>
       {/* Left: Date range display */}
-      <div className={`flex items-center gap-2 text-xs sm:text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+      <div className={`flex items-center gap-2 text-xs sm:text-base ${isDark ? 'text-white' : 'text-slate-600'}`}>
         <Calendar className={`w-4 h-4 ${isDark ? 'text-stellar-gold' : 'text-amber-500'}`} />
         <span className="font-medium">
           {dateWindow.dateRange}
@@ -99,7 +103,7 @@ const DateRangeSelector = ({ value, onChange, dateWindow, excludeAllTime = false
   if (sticky) {
     return (
       <div
-        className={`sticky z-30 -mt-2 mb-6 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 ${isDark ? 'bg-space-void/80' : 'bg-slate-50/80'} backdrop-blur-sm`}
+        className="sticky z-30 -mt-2 mb-6 py-2"
         style={{
           top: 'calc(3.5rem + env(safe-area-inset-top, 0px))'
         }}

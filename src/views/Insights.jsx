@@ -1,8 +1,16 @@
-// Insights.jsx v1.4 - VISUAL ENHANCEMENT
+// Insights.jsx v2.0 - CELESTIAL INTELLIGENCE COMMAND
 // Full-page AI-powered recommendations and business insights
 // Design System v6.4 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v2.0 (2026-02-11): Celestial Intelligence Command redesign
+//   - Ambient orbital glow behind header icon (dark mode, pulsing via motion)
+//   - Help modal icon glows sourced from colorMapping.js (no hardcoded hex)
+//   - All accent colors from semanticColors centralized mapping
+// v1.6 (2026-02-10): Web Interface Guidelines pass
+//   - A11Y: Added type="button" to help button
+// v1.5 (2026-02-10): Audit fixes
+//   - Replaced inline skeleton with shared InsightCardSkeleton
 // v1.4 (2026-02-09): Visual enhancement pass
 //   - Header icon: orbital glow animation in dark mode
 //   - Loading state: cosmic shimmer bg + skeleton card placeholders
@@ -30,14 +38,16 @@ import { Sparkles, HelpCircle, Target, TrendingUp, Brain, SlidersHorizontal, Mou
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useTheme } from '../contexts/ThemeContext';
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
-import { DashboardLoadingSkeleton } from '../components/ui/Skeleton';
+import { InsightsLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 import StaleDataIndicator from '../components/ui/StaleDataIndicator';
 import { useDataRefresh } from '../contexts/DataFreshnessContext';
 import InsightsView from '../components/intelligence/InsightsView';
+import { InsightCardSkeleton } from '../components/intelligence/InsightCard';
 import BaseModal from '../components/ui/BaseModal';
 import { haptics } from '../utils/haptics';
+import { semanticColors, hexToRgba } from '../utils/colorMapping';
 
 const Insights = ({ data, onDataChange, onNavigate }) => {
   const { isDark } = useTheme();
@@ -69,7 +79,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
 
   // Data readiness check
   if (!data?.sales?.length) {
-    return <DashboardLoadingSkeleton />;
+    return <InsightsLoadingSkeleton />;
   }
 
   return (
@@ -79,17 +89,33 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
         <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              {/* Icon Container - Glassmorphism with orbital glow */}
-              <div
-                className={`
-                  w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0
-                  ${isDark
-                    ? 'bg-space-dust/70 border border-stellar-cyan/20'
-                    : 'bg-white border border-stellar-blue/10 shadow-md'}
-                `}
-                style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
-              >
-                <Sparkles className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+              {/* Icon Container - Glassmorphism with ambient orbital glow */}
+              <div className="relative flex-shrink-0">
+                {/* Pulsing orbital glow — dark mode only */}
+                {isDark && !prefersReducedMotion && (
+                  <motion.div
+                    className="absolute inset-0 rounded-xl pointer-events-none"
+                    style={{
+                      background: `radial-gradient(circle, ${hexToRgba(semanticColors.blue.accentColor.dark, 0.4)}, transparent 70%)`,
+                    }}
+                    animate={{
+                      opacity: [0.2, 0.4, 0.2],
+                      scale: [1.5, 1.7, 1.5]
+                    }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                )}
+                <div
+                  className={`
+                    relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center
+                    ${isDark
+                      ? 'bg-space-dust/70 border border-stellar-cyan/20'
+                      : 'bg-white border border-stellar-blue/10 shadow-md'}
+                  `}
+                  style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+                >
+                  <Sparkles className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
+                </div>
               </div>
               {/* Title & Subtitle */}
               <div>
@@ -101,6 +127,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
                     <span className="text-gradient-stellar">INSIGHTS</span>
                   </h1>
                   <button
+                    type="button"
                     onClick={() => {
                       haptics.tick();
                       setShowHelpModal(true);
@@ -162,21 +189,8 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
                 <p className="text-xs mt-1 opacity-70">Analisando dados de clientes e vendas</p>
               </div>
               {/* Skeleton card placeholders */}
-              <div className="px-4 pb-4 space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`skeleton-cosmic rounded-xl p-3.5 ${i > 0 ? `skeleton-stagger-${i + 1}` : ''}`}
-                  >
-                    <div className="flex gap-2.5">
-                      <div className={`w-8 h-8 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-200/60'}`} />
-                      <div className="flex-1 space-y-2">
-                        <div className={`h-3.5 rounded w-3/4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-200/60'}`} />
-                        <div className={`h-3 rounded w-full ${isDark ? 'bg-slate-700/30' : 'bg-slate-200/40'}`} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="px-4 pb-4">
+                <InsightCardSkeleton count={3} />
               </div>
             </div>
           </AnimatedSection>
@@ -203,7 +217,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
               `}>
                 {isDark && (
                   <div className="absolute inset-0 opacity-25 pointer-events-none"
-                    style={{ background: 'radial-gradient(circle at center, #00aeef, transparent 70%)' }} />
+                    style={{ background: `radial-gradient(circle at center, ${semanticColors.blue.accentColor.dark}, transparent 70%)` }} />
                 )}
                 <Target className={`relative z-10 w-5 h-5 ${isDark ? 'text-stellar-cyan' : 'text-white'}`} />
               </div>
@@ -229,7 +243,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
               `}>
                 {isDark && (
                   <div className="absolute inset-0 opacity-25 pointer-events-none"
-                    style={{ background: 'radial-gradient(circle at center, #a855f7, transparent 70%)' }} />
+                    style={{ background: `radial-gradient(circle at center, ${semanticColors.profit.accentColor.dark}, transparent 70%)` }} />
                 )}
                 <TrendingUp className={`relative z-10 w-5 h-5 ${isDark ? 'text-purple-400' : 'text-white'}`} />
               </div>
@@ -255,7 +269,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
               `}>
                 {isDark && (
                   <div className="absolute inset-0 opacity-25 pointer-events-none"
-                    style={{ background: 'radial-gradient(circle at center, #f59e0b, transparent 70%)' }} />
+                    style={{ background: `radial-gradient(circle at center, ${semanticColors.warning.accentColor.dark}, transparent 70%)` }} />
                 )}
                 <Brain className={`relative z-10 w-5 h-5 ${isDark ? 'text-amber-400' : 'text-white'}`} />
               </div>

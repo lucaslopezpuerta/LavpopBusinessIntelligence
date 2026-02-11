@@ -92,7 +92,7 @@ import UtilizationHeatmap from '../components/UtilizationHeatmap';
 import PeakHoursSummary from '../components/PeakHoursSummary';
 import MachinePerformanceTable from '../components/MachinePerformanceTable';
 import DateRangeSelector from '../components/DateRangeSelector';
-import { LazyDayOfWeekChart, ChartLoadingFallback } from '../utils/lazyCharts';
+import { LazyDayOfWeekChart, DayOfWeekChartFallback } from '../utils/lazyCharts';
 import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { getDateWindows } from '../utils/dateWindows';
@@ -249,7 +249,7 @@ const Operations = ({ data, onDataChange }) => {
             />
           </div>
           <div className="col-span-12 lg:col-span-6">
-            <Suspense fallback={<ChartLoadingFallback height="h-80" />}>
+            <Suspense fallback={<DayOfWeekChartFallback />}>
               <LazyDayOfWeekChart
                 dayPatterns={operationsMetrics.dayPatterns}
                 dateFilter={dateFilter}

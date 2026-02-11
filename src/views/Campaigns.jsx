@@ -80,6 +80,7 @@ import MessageComposer from '../components/campaigns/MessageComposer';
 import CampaignSectionNavigation from '../components/campaigns/CampaignSectionNavigation';
 import CampaignDashboard from '../components/campaigns/CampaignDashboard';
 import { CampaignsLoadingSkeleton } from '../components/ui/Skeleton';
+import { SectionCardFallback } from '../utils/lazyCharts';
 
 // Lazy-loaded heavy components (60KB + 50KB savings)
 const AutomationRules = lazy(() => import('../components/campaigns/AutomationRules'));
@@ -274,13 +275,13 @@ const Campaigns = ({ data, onDataChange }) => {
           />
           {/* Coupon Effectiveness Analytics */}
           <div className="mt-6">
-            <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+            <Suspense fallback={<SectionCardFallback />}>
               <CouponEffectiveness />
             </Suspense>
           </div>
           {/* RFM Segment × Campaign Response Matrix */}
           <div className="mt-6">
-            <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+            <Suspense fallback={<SectionCardFallback />}>
               <SegmentCampaignMatrix />
             </Suspense>
           </div>
@@ -290,13 +291,13 @@ const Campaigns = ({ data, onDataChange }) => {
       {/* Automation Rules Section */}
       {activeSection === 'automations' && (
         <>
-          <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+          <Suspense fallback={<SectionCardFallback />}>
             <AutomationRules
               audienceSegments={audienceSegments}
             />
           </Suspense>
           <div className="mt-6">
-            <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+            <Suspense fallback={<SectionCardFallback />}>
               <AutomationPerformance />
             </Suspense>
           </div>

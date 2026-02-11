@@ -1,8 +1,25 @@
-// Skeleton.jsx v3.4 - NEW SKELETON VARIANTS
+// Skeleton.jsx v3.6 - SKELETON AUDIT UPDATE
 // Premium skeleton loading with stellar glow effects
-// Design System v5.1 compliant
+// Design System v6.4 compliant
 //
 // CHANGELOG:
+// v3.6 (2026-02-11): View skeleton audit — fix all page-level mismatches
+//   - SkeletonHeader: Added rightContent prop for custom header buttons
+//   - IntelligenceLoadingSkeleton: Removed Health Score Hero, added PriorityMatrix + 3 CollapsibleSectionSkeletons
+//   - DashboardLoadingSkeleton: Fixed KPI counts (4+4), removed date row, header rightContent
+//   - CustomersLoadingSkeleton: Added CohortRetentionChartSkeleton section
+//   - SocialMediaLoadingSkeleton: Fixed tab count 5→6 (WhatChimp)
+//   - CampaignsLoadingSkeleton: Fixed tab count 6→5
+//   - DirectoryLoadingSkeleton: Added Smart Filter Presets, updated search/filter layout
+//   - OperationsLoadingSkeleton: Fixed KPI count 4→3, added threshold legend
+//   - NEW: CollapsibleSectionSkeleton, CohortRetentionChartSkeleton
+// v3.5 (2026-02-11): InsightsLoadingSkeleton for Celestial Intelligence Command
+//   - Matches Insights.jsx v2.0 + InsightsView.jsx v4.0 layout
+//   - Header with glassmorphism icon + title + help button
+//   - Category filter pills row (6 pills with active ring)
+//   - Summary metrics strip (ativas, urgentes, IA counters)
+//   - Dedicated AI panel (glassmorphic with Brain icon + Gerar button)
+//   - 3x InsightCard skeletons with bottom accent stripe + action buttons
 // v3.4 (2026-01-31): New skeleton variants for complex components
 //   - RFMScatterPlotSkeleton: Scatter chart with quadrants, legend, and distributed dots
 //   - VisitHeatmapSkeleton: Calendar heatmap grid (7x15) with variable cell sizes
@@ -220,36 +237,57 @@ const SkeletonTableRow = ({ columns = 5, staggerBase = 0 }) => (
   </tr>
 );
 
-// Intelligence skeleton - matches Intelligence.jsx full-width layout (v3.12.0)
-// Uses cosmic shimmer with staggered reveal animations
-const IntelligenceLoadingSkeleton = () => (
-  <div className="space-y-6 sm:space-y-8">
-    {/* Header */}
-    <SkeletonHeader />
-
-    {/* Health Score Hero Card */}
-    <div className="p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-space-dust">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl" stagger staggerIndex={0} />
-          <div className="space-y-2">
-            <SkeletonText width="w-24" height="h-3" stagger staggerIndex={1} />
-            <SkeletonText width="w-20" height="h-7" stagger staggerIndex={1} />
-          </div>
-        </div>
-        <div className="flex-1 sm:border-l sm:border-slate-200 dark:sm:border-slate-600 sm:pl-6 space-y-2">
-          <SkeletonText width="w-full max-w-md" height="h-4" stagger staggerIndex={2} />
-          <SkeletonText width="w-3/4 max-w-sm" height="h-3" stagger staggerIndex={2} />
+// CollapsibleSectionSkeleton — for Intelligence view collapsible sections (v3.6)
+// Matches ProfitabilitySection/GrowthTrendsSection/ModelHealthDashboard layout
+const CollapsibleSectionSkeleton = ({ kpiCount = 4, chartHeight = 'h-40', staggerBase = 0 }) => (
+  <div className="bg-white/80 dark:bg-space-dust/40 backdrop-blur-xl rounded-2xl p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+    {/* Header with icon + title + chevron toggle */}
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-3">
+        <Skeleton className="w-10 h-10 rounded-xl" stagger staggerIndex={staggerBase} />
+        <div className="space-y-1.5">
+          <SkeletonText width="w-36" height="h-5" stagger staggerIndex={staggerBase} />
+          <SkeletonText width="w-48" height="h-3" stagger staggerIndex={Math.min(staggerBase + 1, 7)} />
         </div>
       </div>
+      <Skeleton className="w-5 h-5 rounded" stagger staggerIndex={Math.min(staggerBase + 1, 7)} />
     </div>
+    {/* KPI grid */}
+    <div className={`grid grid-cols-2 ${kpiCount >= 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-3 mb-4`}>
+      {[...Array(kpiCount)].map((_, i) => (
+        <div key={i} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+          <SkeletonText width="w-16" height="h-3" className="mb-2" stagger staggerIndex={Math.min(staggerBase + 2, 7)} />
+          <SkeletonText width="w-12" height="h-6" className="mb-1" stagger staggerIndex={Math.min(staggerBase + 2 + i, 7)} />
+          <SkeletonText width="w-10" height="h-3" stagger staggerIndex={Math.min(staggerBase + 3 + i, 7)} />
+        </div>
+      ))}
+    </div>
+    {/* Chart */}
+    <SkeletonChartAnimated height={chartHeight} />
+  </div>
+);
+
+// Intelligence skeleton - matches Intelligence.jsx v3.23.1 layout
+// Header + 2 buttons → 4 KPIs → PriorityMatrix → RevenueForecast → 3 collapsible sections
+const IntelligenceLoadingSkeleton = () => (
+  <div className="space-y-6 sm:space-y-8">
+    {/* Header with Comparar + SyncStatus buttons */}
+    <SkeletonHeader rightContent={
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-8 w-24 rounded-lg" stagger staggerIndex={1} />
+        <Skeleton className="h-8 w-28 rounded-lg" stagger staggerIndex={1} />
+      </div>
+    } />
 
     {/* Quick stats - 4 column KPI grid */}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {[0, 1, 2, 3].map((i) => (
-        <SkeletonCard key={i} staggerIndex={i + 3} />
+        <SkeletonCard key={i} staggerIndex={i + 2} />
       ))}
     </div>
+
+    {/* PriorityMatrix skeleton (reuse existing component) */}
+    <PriorityMatrixSkeleton />
 
     {/* Revenue Forecast */}
     <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
@@ -270,16 +308,17 @@ const IntelligenceLoadingSkeleton = () => (
       </div>
     </div>
 
-    {/* Section skeletons */}
-    <SkeletonSection />
-    <SkeletonSection />
+    {/* Collapsible sections — ModelHealth, Profitability, GrowthTrends */}
+    <CollapsibleSectionSkeleton kpiCount={4} staggerBase={0} />
+    <CollapsibleSectionSkeleton kpiCount={3} staggerBase={2} />
+    <CollapsibleSectionSkeleton kpiCount={4} chartHeight="h-48" staggerBase={4} />
   </div>
 );
 
 // ==================== VIEW-SPECIFIC SKELETONS ====================
 
 // Shared header skeleton component (icon box + title + subtitle)
-const SkeletonHeader = () => (
+const SkeletonHeader = ({ rightContent } = {}) => (
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
     <div className="flex items-center gap-3">
       {/* Glassmorphism icon — matches Cosmic Precision v2.1 */}
@@ -292,8 +331,9 @@ const SkeletonHeader = () => (
         <SkeletonText width="w-44 sm:w-56" height="h-2.5 sm:h-3" stagger staggerIndex={0} />
       </div>
     </div>
-    {/* Right side placeholder for StaleDataIndicator */}
-    <SkeletonText width="w-20" height="h-6" className="rounded-full hidden sm:block" stagger staggerIndex={1} />
+    {rightContent || (
+      <SkeletonText width="w-20" height="h-6" className="rounded-full hidden sm:block" stagger staggerIndex={1} />
+    )}
   </div>
 );
 
@@ -319,40 +359,38 @@ const SkeletonHeroCard = ({ staggerIndex = 0 }) => (
   </div>
 );
 
-// Dashboard skeleton - matches Dashboard.jsx layout
+// Dashboard skeleton - matches Dashboard.jsx v10.4 layout
 // Uses cosmic shimmer with staggered reveal animations
 const DashboardLoadingSkeleton = () => (
   <div className="space-y-6 sm:space-y-8">
-    {/* Header */}
-    <SkeletonHeader />
+    {/* Header with StaleData + DateControl */}
+    <SkeletonHeader rightContent={
+      <div className="flex items-center gap-2">
+        <SkeletonText width="w-20" height="h-6" className="rounded-full" stagger staggerIndex={1} />
+        <Skeleton className="h-9 w-40 rounded-lg" stagger staggerIndex={1} />
+      </div>
+    } />
 
-    {/* Date Control */}
-    <div className="flex items-center gap-3">
-      <Skeleton className="h-10 w-32 rounded-lg" stagger staggerIndex={0} />
-      <Skeleton className="h-10 w-32 rounded-lg" stagger staggerIndex={1} />
-      <Skeleton className="h-6 w-40 rounded-lg" stagger staggerIndex={2} />
-    </div>
-
-    {/* KPI Cards Grid - 3 hero cards */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {[0, 1, 2].map((i) => (
+    {/* Hero KPI Cards - 4 cards */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+      {[0, 1, 2, 3].map((i) => (
         <SkeletonHeroCard key={i} staggerIndex={i} />
       ))}
     </div>
 
-    {/* Secondary KPI cards - 2x3 grid */}
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-      {[0, 1, 2, 3, 4, 5].map((i) => (
+    {/* Secondary KPI cards - 4 cards */}
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {[0, 1, 2, 3].map((i) => (
         <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-3">
-          <SkeletonText width="w-16" height="h-3" className="mb-2" stagger staggerIndex={i} />
-          <SkeletonText width="w-12" height="h-6" className="mb-1" stagger staggerIndex={i} />
-          <SkeletonText width="w-20" height="h-3" stagger staggerIndex={i} />
+          <SkeletonText width="w-16" height="h-3" className="mb-2" stagger staggerIndex={i + 4} />
+          <SkeletonText width="w-12" height="h-6" className="mb-1" stagger staggerIndex={i + 4} />
+          <SkeletonText width="w-20" height="h-3" stagger staggerIndex={Math.min(i + 5, 7)} />
         </div>
       ))}
     </div>
 
     {/* Chart section */}
-    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+    <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-stellar-cyan/10 p-6">
       <div className="flex items-center justify-between mb-4">
         <SkeletonText width="w-40" height="h-5" stagger staggerIndex={6} />
         <SkeletonText width="w-24" height="h-8" className="rounded-lg" stagger staggerIndex={7} />
@@ -621,7 +659,10 @@ const CustomersLoadingSkeleton = () => (
       </div>
     </div>
 
-    {/* Section 5: RFM Scatter Plot - Full Width */}
+    {/* Section 5: Cohort Retention (added v3.6) */}
+    <CohortRetentionChartSkeleton />
+
+    {/* Section 6: RFM Scatter Plot - Full Width */}
     <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -671,9 +712,10 @@ const DirectoryLoadingSkeleton = () => (
     {/* Header with stats */}
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <SkeletonHeader />
-      <div className="flex items-center gap-4">
-        <Skeleton className="h-8 w-32 rounded-lg" stagger staggerIndex={0} />
-        <Skeleton className="h-8 w-28 rounded-lg" stagger staggerIndex={1} />
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-7 w-20 rounded-full" stagger staggerIndex={0} />
+        <Skeleton className="h-7 w-20 rounded-full" stagger staggerIndex={1} />
+        <Skeleton className="h-7 w-24 rounded-full" stagger staggerIndex={1} />
       </div>
     </div>
 
@@ -681,12 +723,19 @@ const DirectoryLoadingSkeleton = () => (
     <div className="bg-white dark:bg-space-dust rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       {/* Filter bar */}
       <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-space-dust/50">
-        <div className="flex flex-wrap items-center gap-3">
-          <Skeleton className="h-10 flex-1 min-w-[200px] max-w-md rounded-lg" stagger staggerIndex={0} />
-          <Skeleton className="h-10 w-32 rounded-lg" stagger staggerIndex={1} />
-          <Skeleton className="h-10 w-32 rounded-lg" stagger staggerIndex={2} />
-          <Skeleton className="h-10 w-28 rounded-lg" stagger staggerIndex={3} />
-          <Skeleton className="h-10 w-10 rounded-lg" stagger staggerIndex={3} />
+        <div className="space-y-3">
+          {/* Search + Filter toggle + Export */}
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 flex-1 min-w-[200px] rounded-xl" stagger staggerIndex={0} />
+            <Skeleton className="h-12 w-28 rounded-xl" stagger staggerIndex={1} />
+            <Skeleton className="h-12 w-28 rounded-xl hidden sm:block" stagger staggerIndex={2} />
+          </div>
+          {/* Smart Filter Presets */}
+          <div className="flex flex-wrap gap-2">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-9 w-24 rounded-xl" stagger staggerIndex={Math.min(2 + i, 7)} />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -748,7 +797,7 @@ const CampaignsLoadingSkeleton = () => (
 
     {/* Section navigation */}
     <div className="flex items-center gap-2 overflow-x-auto pb-2">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
+      {[1, 2, 3, 4, 5].map((i) => (
         <Skeleton key={i} className="h-9 w-28 rounded-lg flex-shrink-0" stagger staggerIndex={i} />
       ))}
     </div>
@@ -900,10 +949,19 @@ const OperationsLoadingSkeleton = () => (
       <Skeleton className="h-6 w-48 rounded-lg ml-auto" stagger staggerIndex={3} />
     </div>
 
-    {/* KPI Cards - 4 column grid */}
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {[0, 1, 2, 3].map((i) => (
+    {/* KPI Cards - 3 cards (Lavadoras, Secadoras, Total) */}
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+      {[0, 1, 2].map((i) => (
         <SkeletonCard key={i} staggerIndex={i} />
+      ))}
+    </div>
+    {/* Threshold legend */}
+    <div className="flex items-center justify-center gap-4 -mt-2">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-1">
+          <Skeleton className="w-2 h-2 rounded-full" />
+          <SkeletonText width="w-10" height="h-3" stagger staggerIndex={Math.min(3 + i, 7)} />
+        </div>
       ))}
     </div>
 
@@ -1071,13 +1129,14 @@ const OperationsLoadingSkeleton = () => (
   </div>
 );
 
-// Social Media skeleton - matches SocialMedia.jsx v1.4 layout
+// Social Media skeleton - matches SocialMedia.jsx v1.5 layout
 // Platform tab navigation + Instagram-like default content
 const SocialMediaLoadingSkeleton = () => {
   // Static tab widths to avoid dynamic Tailwind class purge issues
   const tabClasses = [
     'h-9 sm:h-10 w-20 rounded-lg flex-shrink-0',       // Instagram
     'h-9 sm:h-10 w-24 rounded-lg flex-shrink-0',       // WhatsApp
+    'h-9 sm:h-10 w-24 rounded-lg flex-shrink-0',       // WhatChimp
     'h-9 sm:h-10 w-20 rounded-lg flex-shrink-0',       // Blacklist
     'h-9 sm:h-10 w-32 rounded-lg flex-shrink-0',       // Google Business
     'h-9 sm:h-10 w-24 rounded-lg flex-shrink-0',       // Facebook
@@ -1122,6 +1181,56 @@ const SocialMediaLoadingSkeleton = () => {
     </div>
   );
 };
+
+// CohortRetentionChartSkeleton — matches CohortRetentionChart.jsx v1.0 (v3.6)
+const CohortRetentionChartSkeleton = () => (
+  <div className="bg-white/80 dark:bg-space-dust/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 ring-1 ring-slate-200/80 dark:ring-white/[0.05]">
+    {/* Header */}
+    <div className="flex items-start gap-3 mb-4">
+      <Skeleton className="w-9 h-9 rounded-lg" stagger staggerIndex={0} />
+      <div className="flex-1 space-y-1.5">
+        <SkeletonText width="w-36" height="h-5" stagger staggerIndex={0} />
+        <SkeletonText width="w-52" height="h-3" stagger staggerIndex={1} />
+      </div>
+    </div>
+    {/* Triangular heatmap grid — 6 cohort rows × 7 month cols */}
+    <div className="overflow-x-auto">
+      <div className="min-w-[400px] space-y-1">
+        {/* Column headers */}
+        <div className="grid gap-1" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
+          <div />
+          {['M+0', 'M+1', 'M+2', 'M+3', 'M+4', 'M+5', 'M+6'].map((_, i) => (
+            <SkeletonText key={i} width="w-full" height="h-4" stagger staggerIndex={Math.min(1 + i, 7)} />
+          ))}
+        </div>
+        {/* Cohort rows (triangular — fewer cells per older cohort) */}
+        {[7, 6, 5, 4, 3, 2].map((cols, row) => (
+          <div key={row} className="grid gap-1" style={{ gridTemplateColumns: '80px repeat(7, 1fr)' }}>
+            <SkeletonText width="w-16" height="h-7" stagger staggerIndex={Math.min(2 + row, 7)} />
+            {[...Array(7)].map((_, col) => (
+              <div key={col}>
+                {col < cols ? (
+                  <Skeleton className="h-7 rounded" stagger staggerIndex={Math.min(2 + row, 7)} />
+                ) : (
+                  <div className="h-7" />
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+    {/* Legend */}
+    <div className="flex items-center justify-center gap-3 mt-3">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex items-center gap-1">
+          <Skeleton className="w-3 h-3 rounded" stagger staggerIndex={Math.min(5 + i, 7)} />
+          <SkeletonText width="w-8" height="h-3" stagger staggerIndex={Math.min(5 + i, 7)} />
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 // RFMScatterPlotSkeleton - scatter chart with quadrants (v3.4)
 // Matches RFMScatterPlot.jsx v5.8.1 layout
@@ -1287,6 +1396,150 @@ const VisitHeatmapSkeleton = () => (
   </div>
 );
 
+// InsightsLoadingSkeleton - matches Insights.jsx v2.0 + InsightsView.jsx v4.0 (v3.5)
+// Celestial Intelligence Command: header + category pills + AI panel + priority cards
+const InsightsLoadingSkeleton = () => (
+  <div className="space-y-6 sm:space-y-8">
+    {/* Header — icon + title + help button + StaleDataIndicator */}
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center gap-3">
+        {/* Glassmorphism icon container */}
+        <Skeleton
+          className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex-shrink-0"
+          stagger staggerIndex={0}
+        />
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <SkeletonText width="w-24 sm:w-28" height="h-5 sm:h-6" stagger staggerIndex={0} />
+            {/* Help button placeholder */}
+            <Skeleton className="w-3.5 h-3.5 rounded-full" stagger staggerIndex={0} />
+          </div>
+          <SkeletonText width="w-48 sm:w-60" height="h-2.5 sm:h-3" stagger staggerIndex={0} />
+        </div>
+      </div>
+      {/* StaleDataIndicator placeholder */}
+      <SkeletonText width="w-20" height="h-6" className="rounded-full hidden sm:block" stagger staggerIndex={1} />
+    </div>
+
+    {/* InsightsView container */}
+    <div className="rounded-2xl border overflow-hidden bg-white dark:bg-space-dust/60 border-slate-200 dark:border-stellar-cyan/10">
+      {/* Top-edge accent line */}
+      <div className="h-px bg-gradient-to-r from-transparent via-slate-200/40 dark:via-stellar-cyan/20 to-transparent" />
+
+      {/* Glassmorphic category filter pills */}
+      <div className="flex items-center gap-1.5 px-4 pt-4 pb-3 overflow-x-auto">
+        {[
+          { w: 'w-16', active: true },
+          { w: 'w-24' },
+          { w: 'w-18' },
+          { w: 'w-20' },
+          { w: 'w-24' },
+          { w: 'w-12' },
+        ].map((pill, i) => (
+          <Skeleton
+            key={i}
+            className={`h-9 ${pill.w || 'w-20'} rounded-xl flex-shrink-0 ${
+              pill.active ? 'ring-1 ring-slate-200/50 dark:ring-stellar-cyan/15' : ''
+            }`}
+            stagger
+            staggerIndex={Math.min(1 + i, 7)}
+          />
+        ))}
+      </div>
+
+      {/* Summary metrics strip */}
+      <div className="flex items-center gap-3 px-4 pb-3">
+        <div className="flex items-center gap-1">
+          <Skeleton className="w-1.5 h-1.5 rounded-full" />
+          <SkeletonText width="w-14" height="h-3" stagger staggerIndex={2} />
+        </div>
+        <div className="flex items-center gap-1">
+          <Skeleton className="w-3 h-3 rounded" />
+          <SkeletonText width="w-16" height="h-3" stagger staggerIndex={2} />
+        </div>
+        <div className="flex items-center gap-1">
+          <Skeleton className="w-3 h-3 rounded" />
+          <SkeletonText width="w-10" height="h-3" stagger staggerIndex={3} />
+        </div>
+      </div>
+
+      {/* Dedicated AI Panel — glassmorphic */}
+      <div className="px-4 pb-3">
+        <div className="rounded-xl border overflow-hidden bg-slate-50/80 dark:bg-gradient-to-br dark:from-purple-500/[0.03] dark:via-space-dust dark:to-space-dust border-slate-200/50 dark:border-purple-500/15">
+          <div className="flex items-center gap-3 p-3.5">
+            {/* Brain icon container */}
+            <Skeleton
+              className="w-9 h-9 rounded-xl flex-shrink-0"
+              stagger staggerIndex={3}
+            />
+            {/* Title + status */}
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <SkeletonText width="w-24" height="h-3.5" stagger staggerIndex={3} />
+              <SkeletonText width="w-32" height="h-3" stagger staggerIndex={4} />
+            </div>
+            {/* Gerar button */}
+            <Skeleton
+              className="h-8 w-20 rounded-lg flex-shrink-0"
+              stagger staggerIndex={4}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Insight card skeletons with bottom accent stripes */}
+      <div className="px-4 pb-4 space-y-2">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className={`
+              relative rounded-xl border overflow-hidden p-3.5
+              bg-white dark:bg-space-dust/80
+              border-slate-200 dark:border-stellar-cyan/5
+            `}
+          >
+            {/* Bottom accent stripe placeholder */}
+            <Skeleton
+              className="absolute bottom-0 left-0 right-0 h-[2px]"
+              stagger staggerIndex={Math.min(4 + i, 7)}
+            />
+            {/* Card content */}
+            <div className="flex gap-2.5">
+              {/* Icon container */}
+              <Skeleton
+                className="w-8 h-8 rounded-xl flex-shrink-0 mt-0.5"
+                stagger staggerIndex={Math.min(4 + i, 7)}
+              />
+              <div className="flex-1 space-y-2">
+                {/* Title row with badge */}
+                <div className="flex items-center gap-1.5">
+                  <SkeletonText width="w-3/5" height="h-3.5" stagger staggerIndex={Math.min(5 + i, 7)} />
+                  {i === 0 && (
+                    <Skeleton className="h-4 w-14 rounded-full flex-shrink-0" stagger staggerIndex={5} />
+                  )}
+                </div>
+                {/* Description lines */}
+                <SkeletonText width="w-full" height="h-3" stagger staggerIndex={Math.min(5 + i, 7)} />
+                <SkeletonText width="w-4/5" height="h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
+                {/* Action buttons row */}
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <Skeleton
+                    className="h-7 w-28 rounded-lg"
+                    stagger staggerIndex={Math.min(6 + i, 7)}
+                  />
+                  <Skeleton
+                    className="h-7 w-16 rounded-lg"
+                    stagger staggerIndex={Math.min(6 + i, 7)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 // PriorityMatrixSkeleton - 4-quadrant business scoring (v3.4)
 // Matches PriorityMatrix.jsx v3.5.0 layout
 const PriorityMatrixSkeleton = () => (
@@ -1379,6 +1632,7 @@ export {
   SkeletonHeader,
   SkeletonHeroCard,
   // View-specific skeletons
+  InsightsLoadingSkeleton,
   IntelligenceLoadingSkeleton,
   DashboardLoadingSkeleton,
   CustomersLoadingSkeleton,
@@ -1387,10 +1641,12 @@ export {
   SocialMediaLoadingSkeleton,
   WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
-  // Component-specific skeletons (v3.4)
+  // Component-specific skeletons (v3.4+)
   RFMScatterPlotSkeleton,
   VisitHeatmapSkeleton,
   PriorityMatrixSkeleton,
+  CollapsibleSectionSkeleton,
+  CohortRetentionChartSkeleton,
 };
 
 export default Skeleton;

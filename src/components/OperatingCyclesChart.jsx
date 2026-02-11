@@ -1,66 +1,42 @@
-// OperatingCyclesChart.jsx v5.9 - STAGGERED BAR ANIMATIONS
-// ✅ NEW: Staggered bar entrance animation (left-to-right)
-// ✅ NEW: Animated number counters in stats footer
+// OperatingCyclesChart.jsx v6.0 - DRY REFACTOR + BUG FIXES
+// ✅ Staggered bar entrance animation (left-to-right)
+// ✅ Animated number counters in stats footer
 // ✅ Split by filter (All/Wash Only/Dry Only)
-// ✅ Same month last year comparison (YoY)
-// ✅ Gradient bars for visual depth
+// ✅ Same month last year comparison (YoY) with percentage
+// ✅ Daily average in stats footer
+// ✅ Gradient bars with unique IDs per instance
 // ✅ Compact mode for single-glance dashboard
 // ✅ Mobile responsive adjustments
 // ✅ Design System v5.1 compliant (Cosmic Precision)
 //
 // CHANGELOG:
+// v6.0 (2026-02-11): DRY refactor + bug fixes
+//   - EXTRACTED: FilterButtons & MonthSelector sub-components (~80 lines saved)
+//   - EXTRACTED: FILTER_CONFIG & MONTH_NAMES as module constants
+//   - FIXED: Gradient ID collision when multiple instances on same page (useId)
+//   - FIXED: Stale closure in CustomTooltip (added colors to deps)
+//   - NEW: YoY percentage shown next to trend arrow in stats
+//   - NEW: Daily average displayed in stats footer
+//   - IMPROVED: YAxis tick styling for consistency
+//   - IMPROVED: Accessibility with role="img" and aria-label on chart
 // v5.9 (2026-01-30): Staggered bar animations
-//   - NEW: Bars animate in left-to-right with staggered delay
-//   - NEW: AnimatedNumber component for count-up stats
-//   - Uses CHART_ANIMATION.BAR_STAGGER preset
-//   - Respects useReducedMotion for accessibility
 // v5.8 (2026-01-22): Design System v5.1 compliance
-//   - UPDATED: Title size to text-lg (18px) per Design System
-//   - UPDATED: Icon size to w-5 h-5, color to cyan-600/cyan-400
-//   - UPDATED: Tooltip styling with rounded-xl
-//   - REMOVED: Accent side border (handled by parent container)
-//   - Note: Parent container in Dashboard.jsx uses Variant A styling
 // v5.7 (2025-12-23): Show controls in compact mode
-//   - Chart height increased to 300px in compact mode
-//   - Controls (filters, month selector) now visible in all modes
 // v5.6 (2025-12-23): Fixed compact mode rendering
-//   - Removed conflicting flex-1 from compact chart height
-//   - Removed h-full from wrapper in compact mode (no parent height)
 // v5.5 (2025-12-23): Compact mode for single-glance dashboard
-//   - Added compact prop for reduced height layout
-//   - Compact: h-[300px], simplified header, inline stats
 // v5.4 (2025-12-22): Year-over-year comparison
-//   - CHANGED: Comparison lines now show same month from last year (not previous month)
-//   - Updated legend text from "Mês Ant." to year reference
-//   - More meaningful seasonal comparison for business analysis
 // v5.3 (2025-12-16): Mobile header layout fix
-//   - FIXED: Controls stack below title on mobile to prevent overlap
-//   - Better spacing between filter groups
 // v5.2 (2025-12-16): Mobile 7-day rolling view
-//   - CHANGED: Mobile shows last 7 days (rolling) instead of 10 days
-//   - Better UX at month start (consistent width, no sparse data)
-//   - Updated mobile indicator message
 // v5.1 (2025-12-16): Mobile layout fix
-//   - FIXED: Reduced chart height on mobile (300px vs 400px desktop)
-//   - FIXED: Compact header layout on mobile
-//   - FIXED: Legend moved inline on mobile to reduce wasted space
-//   - FIXED: Removed redundant wrapper when already inside card
 // v5.0 (2025-12-16): Split by filter
-//   - NEW: Filter to show All/Wash Only/Dry Only
-//   - Toggle buttons in header next to month selector
-//   - Dynamic chart rendering based on filter
 // v4.6 (2025-12-01): Design System compliance
-//   - Fixed fontSize: 11 → 12 on XAxis ticks
 // v4.5 (2025-12-01): Date selector tabs
-//   - Added month/year selector tabs in header
-//   - Shows last 4 months for easy navigation
-//   - Uses internal state when props not provided
 // v4.4 (2025-11-30): Accessibility & UX improvements
 // v4.3 (2025-11-30): Chart memoization for performance
 // v4.2 (2025-11-30): Performance improvements
 // v4.1 (2025-11-29): Design System v3.0 compliance
 // v4.0: Previous implementation
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useId } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Line, ComposedChart, Cell } from 'recharts';
 import { WashingMachine, TrendingUp, Calendar, Droplet, Flame, Layers } from 'lucide-react';
@@ -70,6 +46,21 @@ import { useIsMobile } from '../hooks/useMediaQuery';
 import { getChartColors } from '../utils/chartColors';
 import { CHART_ANIMATION } from '../constants/animations';
 import AnimatedNumber from './ui/AnimatedNumber';
+
+// --- Module-level constants ---
+
+const MONTH_NAMES = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+];
+
+const FILTER_CONFIG = [
+  { key: 'all', icon: Layers, label: 'Todos', title: 'Mostrar todos os ciclos', activeText: 'text-slate-700 dark:text-white', hoverText: 'hover:text-slate-900 dark:hover:text-white' },
+  { key: 'wash', icon: Droplet, label: 'Lav', title: 'Apenas lavagens', activeText: 'text-cyan-600 dark:text-cyan-400', hoverText: 'hover:text-cyan-600 dark:hover:text-cyan-400' },
+  { key: 'dry', icon: Flame, label: 'Sec', title: 'Apenas secagens', activeText: 'text-orange-600 dark:text-orange-400', hoverText: 'hover:text-orange-600 dark:hover:text-orange-400' },
+];
+
+// --- Helper functions ---
 
 function countMachines(str) {
   if (!str) return { wash: 0, dry: 0 };
@@ -83,21 +74,73 @@ function countMachines(str) {
 }
 
 function getMonthName(monthIndex) {
-  const months = [
-    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
-  ];
-  return months[monthIndex];
+  return MONTH_NAMES[monthIndex];
 }
+
+// --- Sub-components ---
+
+const FilterButtons = ({ splitBy, onSplitByChange }) => (
+  <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
+    {FILTER_CONFIG.map(({ key, icon: Icon, label, title, activeText, hoverText }) => (
+      <button
+        key={key}
+        onClick={() => onSplitByChange(key)}
+        className={`
+          p-1.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1
+          ${splitBy === key
+            ? `bg-white dark:bg-slate-600 ${activeText} shadow-sm`
+            : `text-slate-500 dark:text-slate-400 ${hoverText}`
+          }
+        `}
+        title={title}
+      >
+        <Icon className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">{label}</span>
+      </button>
+    ))}
+  </div>
+);
+
+const MonthSelector = ({ monthOptions, month, year, onPeriodChange }) => (
+  <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
+    {monthOptions.map((opt) => {
+      const isSelected = opt.month === month && opt.year === year;
+      return (
+        <button
+          key={`${opt.month}-${opt.year}`}
+          onClick={() => onPeriodChange({ month: opt.month, year: opt.year })}
+          className={`
+            px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all
+            ${isSelected
+              ? 'bg-white dark:bg-slate-600 text-stellar-blue dark:text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-600/50'
+            }
+          `}
+          title={opt.fullLabel}
+        >
+          {opt.label}
+        </button>
+      );
+    })}
+  </div>
+);
+
+// --- Main component ---
 
 const OperatingCyclesChart = ({
   salesData,
   month: propMonth = null,
   year: propYear = null,
-  compact = false // Compact mode for single-glance dashboard
+  compact = false
 }) => {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
+
+  // Unique gradient IDs per instance (fixes collision when rendered multiple times)
+  const rawId = useId();
+  const safeId = rawId.replace(/:/g, '_');
+  const washGradientId = `washGradient${safeId}`;
+  const dryGradientId = `dryGradient${safeId}`;
 
   // Reduced motion preference for accessibility
   const prefersReducedMotion = useReducedMotion();
@@ -177,10 +220,8 @@ const OperatingCyclesChart = ({
       if (!date || !date.brazil) return;
 
       // Use .brazil property for Brazil timezone-correct day grouping
-      // This ensures late-night transactions (22:00-23:59 Brazil = 01:00-02:59 UTC next day)
-      // are grouped on the correct Brazil calendar day, not the UTC day
       const dayNum = date.brazil.day;
-      const brazilMonth = date.brazil.month - 1; // .brazil.month is 1-indexed, JS months are 0-indexed
+      const brazilMonth = date.brazil.month - 1;
       const brazilYear = date.brazil.year;
 
       const machineInfo = countMachines(row.Maquina || row.machine || row.Maquinas || '');
@@ -218,19 +259,26 @@ const OperatingCyclesChart = ({
     const totalWash = allData.reduce((sum, d) => sum + d.Lavagens, 0);
     const totalDry = allData.reduce((sum, d) => sum + d.Secagens, 0);
     const totalLastYear = allData.reduce((sum, d) => sum + d.LastYearTotal, 0);
+    const totalCyclesAll = totalWash + totalDry;
+
+    // YoY percentage change
+    const yoyPercent = totalLastYear > 0
+      ? Math.round(((totalCyclesAll - totalLastYear) / totalLastYear) * 100)
+      : null;
+
+    // Daily average (only count days with activity)
+    const activeDays = allData.filter(d => d.Total > 0).length;
+    const avgDaily = activeDays > 0 ? Math.round(totalCyclesAll / activeDays) : 0;
 
     // For mobile: show last 7 days (rolling window)
-    // This prevents sparse charts at month start
     let displayData = allData;
     if (isMobile) {
       const isCurrentMonth = targetMonth === now.getMonth() && targetYear === now.getFullYear();
       if (isCurrentMonth) {
-        // Current month: show from (today - 6) to today (7 days)
         const currentDay = now.getDate();
         const startDay = Math.max(1, currentDay - 6);
         displayData = allData.filter(d => d.dayNum >= startDay && d.dayNum <= currentDay);
       } else {
-        // Past month: show last 7 days of that month
         const lastDay = daysInMonth;
         const startDay = Math.max(1, lastDay - 6);
         displayData = allData.filter(d => d.dayNum >= startDay && d.dayNum <= lastDay);
@@ -240,11 +288,13 @@ const OperatingCyclesChart = ({
     const info = {
       month: getMonthName(targetMonth),
       year: targetYear,
-      comparisonYear: comparisonYear,
+      comparisonYear,
       totalWash,
       totalDry,
-      totalCycles: totalWash + totalDry,
-      totalLastYear
+      totalCycles: totalCyclesAll,
+      totalLastYear,
+      yoyPercent,
+      avgDaily
     };
 
     return { chartData: displayData, periodInfo: info };
@@ -313,7 +363,7 @@ const OperatingCyclesChart = ({
       );
     }
     return null;
-  }, [periodInfo?.comparisonYear, splitBy]);
+  }, [periodInfo?.comparisonYear, splitBy, colors]);
 
   // Memoize renderLabel to prevent recreation on every render
   const renderLabel = useCallback((props) => {
@@ -346,6 +396,12 @@ const OperatingCyclesChart = ({
     );
   }
 
+  // Format YoY percentage for display
+  const yoyLabel = periodInfo.yoyPercent !== null
+    ? `${periodInfo.yoyPercent > 0 ? '+' : ''}${periodInfo.yoyPercent}%`
+    : null;
+  const yoyIsPositive = periodInfo.yoyPercent !== null && periodInfo.yoyPercent >= 0;
+
   return (
     <div className={`transition-all duration-300 flex flex-col ${compact ? '' : 'h-full'}`}>
       {/* Header - Simplified in compact mode */}
@@ -366,147 +422,28 @@ const OperatingCyclesChart = ({
 
           {/* Desktop: Controls inline with title */}
           <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            {/* Split By Filter - icons only on mobile */}
-            <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
-              <button
-                onClick={() => setSplitBy('all')}
-                className={`
-                  p-1.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1
-                  ${splitBy === 'all'
-                    ? 'bg-white dark:bg-slate-600 text-slate-700 dark:text-white shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }
-                `}
-                title="Mostrar todos os ciclos"
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Todos</span>
-              </button>
-              <button
-                onClick={() => setSplitBy('wash')}
-                className={`
-                  p-1.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1
-                  ${splitBy === 'wash'
-                    ? 'bg-white dark:bg-slate-600 text-cyan-600 dark:text-cyan-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400'
-                  }
-                `}
-                title="Apenas lavagens"
-              >
-                <Droplet className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Lav</span>
-              </button>
-              <button
-                onClick={() => setSplitBy('dry')}
-                className={`
-                  p-1.5 sm:px-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1
-                  ${splitBy === 'dry'
-                    ? 'bg-white dark:bg-slate-600 text-orange-600 dark:text-orange-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400'
-                  }
-                `}
-                title="Apenas secagens"
-              >
-                <Flame className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Sec</span>
-              </button>
-            </div>
-
-            {/* Month Selector Tabs - compact on mobile */}
+            <FilterButtons splitBy={splitBy} onSplitByChange={setSplitBy} />
             {propMonth === null && (
-              <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
-                {monthOptions.map((opt) => {
-                  const isSelected = opt.month === month && opt.year === year;
-                  return (
-                    <button
-                      key={`${opt.month}-${opt.year}`}
-                      onClick={() => setSelectedPeriod({ month: opt.month, year: opt.year })}
-                      className={`
-                        px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all
-                        ${isSelected
-                          ? 'bg-white dark:bg-slate-600 text-stellar-blue dark:text-white shadow-sm'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-600/50'
-                        }
-                      `}
-                      title={opt.fullLabel}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <MonthSelector
+                monthOptions={monthOptions}
+                month={month}
+                year={year}
+                onPeriodChange={setSelectedPeriod}
+              />
             )}
           </div>
         </div>
 
         {/* Mobile: Controls row below title */}
         <div className="flex sm:hidden items-center justify-between gap-2 mb-3">
-          {/* Split By Filter */}
-          <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
-            <button
-              onClick={() => setSplitBy('all')}
-              className={`
-                p-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1
-                ${splitBy === 'all'
-                  ? 'bg-white dark:bg-slate-600 text-slate-700 dark:text-white shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }
-              `}
-              title="Mostrar todos os ciclos"
-            >
-              <Layers className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setSplitBy('wash')}
-              className={`
-                p-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1
-                ${splitBy === 'wash'
-                  ? 'bg-white dark:bg-slate-600 text-cyan-600 dark:text-cyan-400 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400'
-                }
-              `}
-              title="Apenas lavagens"
-            >
-              <Droplet className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setSplitBy('dry')}
-              className={`
-                p-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1
-                ${splitBy === 'dry'
-                  ? 'bg-white dark:bg-slate-600 text-orange-600 dark:text-orange-400 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400'
-                }
-              `}
-              title="Apenas secagens"
-            >
-              <Flame className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Month Selector */}
+          <FilterButtons splitBy={splitBy} onSplitByChange={setSplitBy} />
           {propMonth === null && (
-            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-space-dust/80 rounded-lg">
-              {monthOptions.map((opt) => {
-                const isSelected = opt.month === month && opt.year === year;
-                return (
-                  <button
-                    key={`mobile-${opt.month}-${opt.year}`}
-                    onClick={() => setSelectedPeriod({ month: opt.month, year: opt.year })}
-                    className={`
-                      px-2 py-1 rounded-md text-xs font-semibold transition-all
-                      ${isSelected
-                        ? 'bg-white dark:bg-slate-600 text-stellar-blue dark:text-white shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }
-                    `}
-                    title={opt.fullLabel}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
+            <MonthSelector
+              monthOptions={monthOptions}
+              month={month}
+              year={year}
+              onPeriodChange={setSelectedPeriod}
+            />
           )}
         </div>
 
@@ -549,6 +486,8 @@ const OperatingCyclesChart = ({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: 'easeOut' }}
+        role="img"
+        aria-label={`Gráfico de ciclos de operação para ${periodInfo.month} ${periodInfo.year}`}
       >
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
@@ -556,11 +495,11 @@ const OperatingCyclesChart = ({
             margin={{ top: 20, right: 10, bottom: 10, left: 5 }}
           >
             <defs>
-              <linearGradient id="washGradient" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={washGradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={colors.primary} stopOpacity={1} />
                 <stop offset="100%" stopColor={colors.primary} stopOpacity={0.8} />
               </linearGradient>
-              <linearGradient id="dryGradient" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={dryGradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={colors.secondary} stopOpacity={1} />
                 <stop offset="100%" stopColor={colors.secondary} stopOpacity={0.8} />
               </linearGradient>
@@ -584,6 +523,11 @@ const OperatingCyclesChart = ({
             <YAxis
               axisLine={false}
               tickLine={false}
+              tick={{
+                fontSize: 12,
+                fill: colors.tickText,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+              }}
               label={{
                 value: '# Ciclos',
                 angle: -90,
@@ -639,7 +583,7 @@ const OperatingCyclesChart = ({
                 {chartData.map((entry, index) => (
                   <Cell
                     key={`wash-${index}`}
-                    fill="url(#washGradient)"
+                    fill={`url(#${washGradientId})`}
                     style={{
                       animationDelay: prefersReducedMotion ? '0ms' : `${chartAnim.baseDelay + (index * chartAnim.staggerDelay)}ms`
                     }}
@@ -663,7 +607,7 @@ const OperatingCyclesChart = ({
                 {chartData.map((entry, index) => (
                   <Cell
                     key={`dry-${index}`}
-                    fill="url(#dryGradient)"
+                    fill={`url(#${dryGradientId})`}
                     style={{
                       animationDelay: prefersReducedMotion ? '0ms' : `${chartAnim.baseDelay + 50 + (index * chartAnim.staggerDelay)}ms`
                     }}
@@ -688,8 +632,16 @@ const OperatingCyclesChart = ({
         {compact ? (
           /* Compact: Inline stats row */
           <div className="flex items-center justify-center gap-4 text-xs">
-            <span className="font-bold text-slate-900 dark:text-white">
+            <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
               <AnimatedNumber value={periodInfo.totalCycles} /> total
+              {yoyLabel && (
+                <span className={yoyIsPositive ? 'text-emerald-500' : 'text-red-500'}>
+                  {yoyLabel}
+                </span>
+              )}
+            </span>
+            <span className="text-slate-500 dark:text-slate-400">
+              ~{periodInfo.avgDaily}/dia
             </span>
             <span className="flex items-center gap-1">
               <Droplet className="w-3 h-3" style={{ color: colors.primary }} />
@@ -714,7 +666,17 @@ const OperatingCyclesChart = ({
                 ) : periodInfo.totalLastYear > 0 ? (
                   <TrendingUp className="w-3 h-3 text-red-500 rotate-180" />
                 ) : null}
+                {yoyLabel && (
+                  <span className={`text-[10px] font-bold ${yoyIsPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {yoyLabel}
+                  </span>
+                )}
               </div>
+              {periodInfo.avgDaily > 0 && (
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  ~{periodInfo.avgDaily} ciclos/dia
+                </div>
+              )}
             </div>
             <div className={`text-center transition-all duration-200 ${splitBy === 'wash' ? 'sm:scale-110' : splitBy === 'dry' ? 'opacity-50' : ''}`}>
               <div className="text-xl sm:text-2xl font-bold" style={{ color: colors.primary }}>

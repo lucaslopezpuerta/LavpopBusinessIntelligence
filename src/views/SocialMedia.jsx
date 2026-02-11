@@ -50,7 +50,7 @@ const LoadingFallback = () => (
     {/* KPI Grid skeleton */}
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+        <div key={i} className="bg-white dark:bg-space-dust/40 rounded-xl border border-slate-200 dark:border-stellar-cyan/5 p-4">
           <Skeleton className="h-3 w-16 rounded mb-2" stagger staggerIndex={i} />
           <Skeleton className="h-7 w-20 rounded mb-1" stagger staggerIndex={i} />
           <Skeleton className="h-3 w-12 rounded" stagger staggerIndex={i} />
@@ -58,7 +58,7 @@ const LoadingFallback = () => (
       ))}
     </div>
     {/* Chart skeleton */}
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+    <div className="bg-white dark:bg-space-dust/40 rounded-xl border border-slate-200 dark:border-stellar-cyan/5 p-6">
       <Skeleton className="h-5 w-40 rounded mb-4" stagger staggerIndex={4} />
       <SkeletonChartAnimated height="h-64" />
     </div>

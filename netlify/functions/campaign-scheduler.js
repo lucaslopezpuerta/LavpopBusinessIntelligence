@@ -2032,11 +2032,10 @@ async function processPriorityQueue(supabase) {
     const blacklistedPhones = new Set((blacklist || []).map(b => b.phone));
 
     // 2. Check eligibility using unified RPC (respects cooldowns)
+    // Global cooldown (5 days) is hardcoded in SQL function
     const { data: eligibilityResults, error: eligError } = await supabase.rpc('check_customers_eligibility', {
       p_customer_ids: customerIds,
-      p_campaign_type: null,  // Check global cooldown only
-      p_min_days_global: 7,
-      p_min_days_same_type: 30
+      p_campaign_type: null  // Check global cooldown only
     });
 
     if (eligError) {
@@ -2427,14 +2426,16 @@ async function findAutomationTargets(supabase, rule) {
       break;
 
     case 'first_purchase':
-      // New customers (transaction_count = 1) registered in last X days
-      // Also verify risk_level = 'New Customer' for consistency
-      // v3.2: ONE-TIME ONLY - check welcome_sent_at is null
+      // New customers on their first visit, registered in last X days
+      // Uses visit_count (distinct visit days) instead of transaction_count
+      // because one visit can use multiple machines (each creates a transaction)
+      // Uses rfm_segment = 'Novato' instead of risk_level = 'New Customer'
+      // v3.3: Fixed race condition where multi-machine visits were missed
       query = query
-        .eq('transaction_count', 1)
-        .eq('risk_level', 'New Customer')
-        .is('welcome_sent_at', null) // v3.2: Only send once per customer
-        .gte('last_visit', new Date(Date.now() - trigger_value * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+        .eq('visit_count', 1)
+        .eq('rfm_segment', 'Novato')
+        .is('welcome_sent_at', null) // One-time enforcement
+        .gte('data_cadastro', new Date(Date.now() - trigger_value * 24 * 60 * 60 * 1000).toISOString());
       break;
 
     case 'wallet_balance':

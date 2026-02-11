@@ -1,4 +1,4 @@
-// colorMapping.js v3.3 - BILAVNOVA PRECISION PALETTE
+// colorMapping.js v3.4 - BILAVNOVA PRECISION PALETTE
 // Unified semantic color mapping for Intelligence components
 // Design System v6.2 compliant - Brand-aligned with vibrant semantic colors
 //
@@ -11,6 +11,10 @@
 // - Special: cosmic-purple (#A855F7) - Tailwind purple-500
 //
 // CHANGELOG:
+// v3.4 (2026-02-11): Insight category color exports
+//   - insightCategoryMap: maps insight categories → semantic color keys
+//   - insightCategoryText: isDark-aware text classes per category
+//   - hexToRgba: shared hex→rgba utility (moved from InsightCard)
 // v3.3 (2026-02-02): KPICard icon glow colors
 //   - Added accentColor to semantic colors for dark mode icon glow
 //   - revenue, cost, profit, positive, negative, neutral, warning, blue
@@ -740,6 +744,45 @@ export const comfortCategoryColors = {
  */
 export const getComfortCategoryColor = (category) => {
   return comfortCategoryColors[category] || comfortCategoryColors.ameno;
+};
+
+/**
+ * Convert hex color to rgba string
+ * @param {string} hex - Hex color string (e.g. '#ff0000')
+ * @param {number} alpha - Alpha value (0-1)
+ * @returns {string} rgba string
+ */
+export const hexToRgba = (hex, alpha) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
+
+/**
+ * Maps insight recommendation categories to semantic color keys
+ * Used by InsightCard and InsightsView for centralized color resolution
+ */
+export const insightCategoryMap = {
+  campaign: 'blue',
+  churn: 'cost',
+  alert: 'warning',
+  celebration: 'positive',
+  ai_insight: 'profit',
+  operational: 'neutral',
+};
+
+/**
+ * isDark-aware text classes per insight category
+ * Components use useTheme() + isDark (not dark: prefix) for Variant D compliance
+ */
+export const insightCategoryText = {
+  campaign:    { light: 'text-blue-600',   dark: 'text-stellar-cyan' },
+  churn:       { light: 'text-red-600',    dark: 'text-red-400' },
+  alert:       { light: 'text-amber-600',  dark: 'text-amber-400' },
+  celebration: { light: 'text-green-600',  dark: 'text-cosmic-green' },
+  ai_insight:  { light: 'text-purple-600', dark: 'text-purple-400' },
+  operational: { light: 'text-slate-600',  dark: 'text-slate-400' },
 };
 
 export default semanticColors;
