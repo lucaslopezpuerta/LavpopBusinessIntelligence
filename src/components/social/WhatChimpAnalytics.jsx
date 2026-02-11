@@ -484,9 +484,15 @@ const WhatChimpAnalytics = () => {
       if (response.status === 202 || response.ok) {
         const totalCustomers = data.lastSync?.total || data.distribution?.total || 0;
         toast.success(
-          `Sincronização iniciada! ${formatNumber(totalCustomers, 0)} clientes serão sincronizados em segundo plano. Atualize em alguns minutos para ver os resultados.`,
+          `Sincronização iniciada! ${formatNumber(totalCustomers, 0)} clientes serão sincronizados em segundo plano. Dados atualizam automaticamente em ~60s.`,
           { duration: 10000 }
         );
+        // Auto-refresh after delay (background job takes ~60s for ~1800 customers)
+        setTimeout(() => {
+          fetchData();
+          setIsSyncing(false);
+        }, 60000);
+        return; // Keep isSyncing=true until timeout
       } else {
         toast.error('Erro ao iniciar sincronização. Tente novamente.');
       }
@@ -496,7 +502,7 @@ const WhatChimpAnalytics = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [data.lastSync?.total, data.distribution?.total, toast]);
+  }, [data.lastSync?.total, data.distribution?.total, toast, fetchData]);
 
   // Initial fetch
   useEffect(() => {

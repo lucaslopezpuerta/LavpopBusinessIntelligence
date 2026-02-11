@@ -146,20 +146,22 @@ export const dashboardGradients = {
  * Data series colors (for multi-series charts)
  */
 export const seriesColors = {
+  // Light mode: Bilavnova Precision v6.2 palette (vibrant 500-level)
   light: [
-    '#1a5a8e',  // lavpop-blue
-    '#10b981',  // emerald-500
-    '#8b5cf6',  // violet-500
-    '#f59e0b',  // amber-500
-    '#ef4444',  // red-500
+    '#00aeef',  // stellar-cyan (brand)
+    '#22C55E',  // cosmic-green (green-500)
+    '#A855F7',  // cosmic-purple (purple-500)
+    '#F59E0B',  // cosmic-amber (amber-500)
+    '#EF4444',  // cosmic-rose (red-500)
     '#06b6d4',  // cyan-500
     '#ec4899',  // pink-500
     '#84cc16',  // lime-500
   ],
+  // Dark mode: Brighter 400-level for contrast on dark backgrounds
   dark: [
-    '#3b82f6',  // blue-500
+    '#38bdf8',  // sky-400 (lighter cyan for dark bg)
     '#4ade80',  // green-400
-    '#a78bfa',  // violet-400
+    '#c084fc',  // purple-400
     '#fbbf24',  // amber-400
     '#f87171',  // red-400
     '#22d3ee',  // cyan-400

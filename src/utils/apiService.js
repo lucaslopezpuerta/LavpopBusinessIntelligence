@@ -180,8 +180,8 @@ export async function isBackendAvailable(forceCheck = false) {
  */
 async function apiRequest(action, data = {}, method = 'POST') {
   const apiUrl = getApiBaseUrl();
-  const url = method === 'GET' && Object.keys(data).length > 0
-    ? `${apiUrl}?action=${action}&${new URLSearchParams(data)}`
+  const url = method === 'GET'
+    ? `${apiUrl}?action=${action}${Object.keys(data).length > 0 ? '&' + new URLSearchParams(data) : ''}`
     : apiUrl;
 
   if (DEBUG_API) {
@@ -762,40 +762,8 @@ export const api = {
     // ==================== TEMPLATE ANALYTICS ====================
 
     /**
-     * Get cached templates list from Meta API
-     */
-    async getTemplates() {
-      try {
-        const result = await apiRequest('waba.getTemplates');
-        return result;
-      } catch (error) {
-        console.error('Failed to fetch WABA templates:', error);
-        return { templates: [], count: 0 };
-      }
-    },
-
-    /**
-     * Get raw per-template analytics data
-     * @param {string} from - Start date (YYYY-MM-DD)
-     * @param {string} to - End date (YYYY-MM-DD)
-     * @param {string} templateId - Optional template ID filter
-     */
-    async getTemplateAnalytics(from = null, to = null, templateId = null) {
-      try {
-        const params = {};
-        if (from) params.from = from;
-        if (to) params.to = to;
-        if (templateId) params.templateId = templateId;
-        const result = await apiRequest('waba.getTemplateAnalytics', params, 'GET');
-        return result;
-      } catch (error) {
-        console.error('Failed to fetch WABA template analytics:', error);
-        return { analytics: [] };
-      }
-    },
-
-    /**
      * Get aggregated template analytics summary with rates
+     * Source: twilio_template_performance view (live Twilio webhook data)
      * @param {string} from - Start date (YYYY-MM-DD)
      * @param {string} to - End date (YYYY-MM-DD)
      */
@@ -812,22 +780,6 @@ export const api = {
           templates: [],
           summary: { totalSent: 0, totalDelivered: 0, totalRead: 0, deliveryRate: 0, readRate: 0, templateCount: 0 }
         };
-      }
-    },
-
-    /**
-     * Trigger manual sync of template analytics (calls waba-analytics function)
-     */
-    async triggerTemplateSync() {
-      try {
-        const response = await fetch(`${getNetlifyFunctionUrl('waba-analytics')}?action=sync-templates`, {
-          method: 'GET',
-          headers: getHeaders()
-        });
-        return await response.json();
-      } catch (error) {
-        console.error('Failed to trigger WABA template sync:', error);
-        return { success: false, error: error.message };
       }
     },
 

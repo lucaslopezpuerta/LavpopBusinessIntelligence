@@ -208,6 +208,10 @@ export default {
     'shadow-bilavnova-glow', 'hover:shadow-bilavnova-glow',
     // Space elevated (v6.0)
     'bg-space-elevated', 'dark:bg-space-elevated',
+    // Social Media Navigation glassmorphism (v2.0)
+    'bg-space-elevated/60', 'bg-space-elevated/80',
+    'hover:bg-space-elevated/60',
+    'bg-space-dust/30', 'bg-white/80',
     'bg-space-mist', 'bg-space-cloud',
     // Funnel stage borders (v4.2)
     'bg-stellar-cyan/15', 'border-stellar-cyan/40',

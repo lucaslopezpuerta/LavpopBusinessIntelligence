@@ -408,12 +408,6 @@ exports.handler = async (event, context) => {
       case 'waba.getMessages':
         return await getWabaMessages(supabase, params, headers);
 
-      case 'waba.getTemplates':
-        return await getWabaTemplates(supabase, headers);
-
-      case 'waba.getTemplateAnalytics':
-        return await getWabaTemplateAnalytics(supabase, params, headers);
-
       case 'waba.getTemplateAnalyticsSummary':
         return await getWabaTemplateAnalyticsSummary(supabase, params, headers);
 
@@ -444,7 +438,7 @@ exports.handler = async (event, context) => {
               'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics', 'webhook_events.getEngagementStats',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
               'waba.getSummary', 'waba.getDailyMetrics', 'waba.getConversations', 'waba.getMessages',
-              'waba.getTemplates', 'waba.getTemplateAnalytics', 'waba.getTemplateAnalyticsSummary'
+              'waba.getTemplateAnalyticsSummary'
             ]
           })
         };
@@ -2985,83 +2979,9 @@ async function getWabaMessages(supabase, params, headers) {
 /**
  * Get cached WABA templates list
  */
-async function getWabaTemplates(supabase, headers) {
-  console.log('[API] waba.getTemplates');
-
-  try {
-    const { data, error } = await supabase
-      .from('waba_templates')
-      .select('*')
-      .order('name');
-
-    if (error) throw error;
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        templates: data || [],
-        count: data?.length || 0
-      })
-    };
-  } catch (error) {
-    console.error('[API] waba.getTemplates error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Failed to fetch WABA templates' })
-    };
-  }
-}
-
 /**
- * Get WABA template analytics (raw daily data)
- * @param {Object} params - Query params (from, to, templateId)
- */
-async function getWabaTemplateAnalytics(supabase, params, headers) {
-  console.log('[API] waba.getTemplateAnalytics', params);
-
-  try {
-    let query = supabase
-      .from('waba_template_analytics_view')
-      .select('*');
-
-    // Filter by date range
-    if (params.from) {
-      query = query.gte('bucket_date', params.from);
-    }
-    if (params.to) {
-      query = query.lte('bucket_date', params.to);
-    }
-
-    // Filter by template ID
-    if (params.templateId) {
-      query = query.eq('template_id', params.templateId);
-    }
-
-    const { data, error } = await query.order('bucket_date', { ascending: false });
-
-    if (error) throw error;
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        analytics: data || []
-      })
-    };
-  } catch (error) {
-    console.error('[API] waba.getTemplateAnalytics error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Failed to fetch WABA template analytics' })
-    };
-  }
-}
-
-/**
- * Get WABA template analytics summary (aggregated by template)
+ * Get template analytics summary (aggregated by template)
+ * Data source: twilio_template_performance view (from Twilio webhook read receipts)
  * @param {Object} params - Query params (from, to)
  */
 async function getWabaTemplateAnalyticsSummary(supabase, params, headers) {
@@ -3070,7 +2990,7 @@ async function getWabaTemplateAnalyticsSummary(supabase, params, headers) {
   try {
     // First get the raw data from view
     let query = supabase
-      .from('waba_template_analytics_view')
+      .from('twilio_template_performance')
       .select('template_id, template_name, local_template_id, category, status, sent, delivered, read_count, bucket_date');
 
     // Filter by date range

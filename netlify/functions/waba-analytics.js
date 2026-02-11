@@ -1,14 +1,17 @@
 // netlify/functions/waba-analytics.js
 // WhatsApp Business API Analytics - Meta Graph API integration
 //
+// v2.0 (2026-02-09): Remove Meta template analytics (replaced by Twilio webhook data)
+//   - Removed: syncTemplateAnalytics(), fetchAllTemplateAnalytics(), fetchMessageTemplates()
+//   - Removed: ensureInsightsEnabled(), normalizeTemplateData(), normalizeTemplateAnalyticsData()
+//   - Removed: sync-templates and enable-insights action handlers
+//   - Removed: syncWabaTemplateAnalytics export (campaign-scheduler no longer calls it)
+//   - Removed: waba_template_last_sync from status response
+//   - Template read/delivery metrics now come from twilio_template_performance view
+//     (SQL view on webhook_events + automation_rules — see migration 065)
+//   - Stale Meta objects dropped: waba_templates, waba_template_analytics, waba_template_analytics_view
+//
 // v1.6 (2026-02-09): Fix critical Meta API parameter bugs + protect existing data
-//   - Fix: metrics → metric_types (correct Meta parameter name)
-//   - Fix: Template IDs unquoted [id1,id2] not JSON-stringified ["id1","id2"]
-//   - Fix: use_waba_timezone=true with YYYY-MM-DD dates (avoids UTC midnight offset)
-//   - Fix: Template name prefix matching for Twilio-suffixed names (e.g. lavpop_winback_desconto_hx...)
-//   - Add: ensureInsightsEnabled() — confirms template analytics on WABA (one-time, irreversible)
-//   - Add: enable-insights action for manual trigger
-//   - Protect: Skip upsert for zero-value rows to preserve existing good data
 //
 // v1.5 (2026-02-09): Fix template analytics data gap
 //   - Widened sync window from 3 days to 30 days (Meta has processing delays)
@@ -46,11 +49,8 @@ const { createClient } = require('@supabase/supabase-js');
 const GRAPH_API_VERSION = 'v24.0';
 const GRAPH_API_BASE = 'https://graph.facebook.com';
 
-// Granularity for analytics endpoints (Meta API is inconsistent!)
-// Message analytics: HALF_HOUR, DAY, MONTH
-// Template analytics: HALF_HOUR, DAILY, MONTHLY
+// Granularity for message analytics endpoint
 const MSG_GRANULARITY = 'DAY';
-const TEMPLATE_GRANULARITY = 'DAILY';
 
 // Business timezone for date bucket alignment
 const BUSINESS_TIMEZONE = 'America/Sao_Paulo';
@@ -132,69 +132,6 @@ function parseMetaError(errorData) {
 }
 
 
-/**
- * Ensure template analytics are enabled on the WABA.
- * Per Meta docs: "You must confirm template analytics on your WhatsApp Business Account
- * before you can get template analytics. Once confirmed, template analytics cannot be disabled."
- *
- * Caches the confirmation in app_settings.waba_insights_enabled so we only call once.
- */
-async function ensureInsightsEnabled(wabaId, accessToken) {
-  const supabase = getSupabase();
-
-  // Check if already confirmed
-  const { data: settings } = await supabase
-    .from('app_settings')
-    .select('waba_insights_enabled')
-    .eq('id', 'default')
-    .single();
-
-  if (settings?.waba_insights_enabled) {
-    console.log('Template insights already enabled on WABA (cached).');
-    return { alreadyEnabled: true };
-  }
-
-  // POST to enable insights
-  const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${wabaId}?is_enabled_for_insights=true&access_token=${accessToken}`;
-  console.log('Enabling template insights on WABA...');
-
-  const response = await fetchWithRetry(url, { method: 'POST' });
-  const data = await response.json();
-
-  if (!response.ok) {
-    const errorInfo = parseMetaError(data);
-    throw new Error(`Failed to enable insights: ${errorInfo.message} (code: ${errorInfo.code})`);
-  }
-
-  console.log('Template insights enabled successfully:', JSON.stringify(data));
-
-  // Cache the confirmation
-  const { error: updateError } = await supabase
-    .from('app_settings')
-    .update({ waba_insights_enabled: true })
-    .eq('id', 'default');
-
-  if (updateError) {
-    console.warn('Failed to cache insights enabled flag:', updateError.message);
-  }
-
-  return { enabled: true, response: data };
-}
-
-/**
- * Convert epoch seconds to YYYY-MM-DD string in business timezone.
- * Used for template_analytics start/end parameters with use_waba_timezone=true.
- */
-function epochToDateString(epochSeconds) {
-  const date = new Date(epochSeconds * 1000);
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: BUSINESS_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  return formatter.format(date); // Returns YYYY-MM-DD
-}
 
 /**
  * Fetch message analytics (sent, delivered)
@@ -347,271 +284,6 @@ async function fetchPhoneNumbers(wabaId, accessToken) {
   return data.data || [];
 }
 
-// ==================== TEMPLATE ANALYTICS (READ metrics) ====================
-
-/**
- * Mapping from Meta template names to local template IDs (messageTemplates.js)
- * Used to link Meta API templates with our local configuration
- */
-const META_TO_LOCAL_TEMPLATE = {
-  'lavpop_winback_desconto': 'winback_discount',
-  'lavpop_winback_lavagem': 'winback_wash_only',
-  'lavpop_winback_secagem': 'winback_dry_only',
-  'lavpop_winback_urgente': 'winback_critical',
-  'lavpop_boasvindas': 'welcome_new',
-  'lavpop_saldo_carteira': 'wallet_reminder',
-  'lavpop_promocao': 'promo_general',
-  'lavpop_promo_secagem': 'promo_secagem',
-  'lavpop_complete_secagem': 'upsell_secagem',
-  'lavpop_pos_visita': 'post_visit_thanks'
-};
-
-/**
- * Fetch message templates from Meta API
- * GET /{WABA_ID}/message_templates
- */
-async function fetchMessageTemplates(wabaId, accessToken) {
-  const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${wabaId}/message_templates?access_token=${accessToken}`;
-
-  const response = await fetchWithRetry(url);
-  const data = await response.json();
-
-  if (!response.ok) {
-    const errorInfo = parseMetaError(data);
-    throw new Error(`Meta API error fetching templates: ${errorInfo.message} (code: ${errorInfo.code})`);
-  }
-
-  return data.data || [];
-}
-
-/**
- * Fetch per-template analytics (sent, delivered, READ) for ALL templates at once
- * Uses WABA-level template_analytics endpoint (not per-template)
- * GET /{WABA_ID}?fields=template_analytics.start().end().granularity(DAILY).metric_types(["SENT","DELIVERED","READ"]).template_ids([...])&use_waba_timezone=true
- *
- * @param {string[]} templateIds - Array of template IDs to fetch analytics for
- * @param {string} startDate - Start date in YYYY-MM-DD format (used with use_waba_timezone)
- * @param {string} endDate - End date in YYYY-MM-DD format (used with use_waba_timezone)
- * @param {string} wabaId - WhatsApp Business Account ID
- * @param {string} accessToken - Meta access token
- * @returns {Object|null} Template analytics data or null on error
- */
-async function fetchAllTemplateAnalytics(templateIds, startDate, endDate, wabaId, accessToken) {
-  // Template IDs must be unquoted numbers: [id1,id2] NOT ["id1","id2"]
-  const templateIdsParam = `[${templateIds.join(',')}]`;
-  // Use metric_types (not metrics) per Meta docs; use YYYY-MM-DD dates with use_waba_timezone
-  const fields = `template_analytics.start(${startDate}).end(${endDate}).granularity(${TEMPLATE_GRANULARITY}).metric_types(["SENT","DELIVERED","READ"]).template_ids(${templateIdsParam})`;
-  const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${wabaId}?fields=${encodeURIComponent(fields)}&use_waba_timezone=true&access_token=${accessToken}`;
-
-  console.log('Template analytics request URL:', url.replace(accessToken, 'TOKEN_HIDDEN'));
-
-  const response = await fetchWithRetry(url);
-  const data = await response.json();
-
-  // Structured diagnostic logging
-  const hasTemplateAnalytics = !!data.template_analytics;
-  const dataWrapper = data.template_analytics?.data || [];
-  const dataPoints = dataWrapper[0]?.data_points || [];
-  const nonZeroPoints = dataPoints.filter(dp => (dp.sent || 0) + (dp.delivered || 0) + (dp.read || 0) > 0);
-
-  console.log('Template analytics response diagnostics:', JSON.stringify({
-    hasTemplateAnalytics,
-    topLevelKeys: Object.keys(data),
-    dataWrapperLength: dataWrapper.length,
-    dataPointsCount: dataPoints.length,
-    nonZeroPointsCount: nonZeroPoints.length,
-    samplePoint: dataPoints[0] || null,
-    granularity: dataWrapper[0]?.granularity || null,
-    productType: dataWrapper[0]?.product_type || null
-  }));
-
-  // Log first non-zero point for debugging
-  if (nonZeroPoints.length > 0) {
-    console.log('First non-zero data point:', JSON.stringify(nonZeroPoints[0]));
-  } else if (dataPoints.length > 0) {
-    console.warn('WARNING: All template data points are zeros. First point:', JSON.stringify(dataPoints[0]));
-  }
-
-  if (!response.ok) {
-    const errorInfo = parseMetaError(data);
-    console.warn(`Template analytics error: ${errorInfo.message} (code: ${errorInfo.code})`);
-    return null;
-  }
-
-  return data.template_analytics || null;
-}
-
-/**
- * Get local template ID using prefix matching.
- * Meta returns Twilio-suffixed names (e.g. "lavpop_winback_desconto_hx58267edb...")
- * but our mapping uses short names (e.g. "lavpop_winback_desconto").
- */
-function getLocalTemplateId(metaTemplateName) {
-  if (!metaTemplateName) return null;
-  // Try exact match first
-  if (META_TO_LOCAL_TEMPLATE[metaTemplateName]) {
-    return META_TO_LOCAL_TEMPLATE[metaTemplateName];
-  }
-  // Fall back to prefix matching for Twilio-suffixed names
-  for (const [metaName, localId] of Object.entries(META_TO_LOCAL_TEMPLATE)) {
-    if (metaTemplateName.startsWith(metaName)) return localId;
-  }
-  return null;
-}
-
-/**
- * Normalize template data for database
- */
-function normalizeTemplateData(templates, wabaId) {
-  return templates.map(t => ({
-    id: t.id,
-    waba_id: wabaId,
-    name: t.name,
-    status: t.status || 'APPROVED',
-    category: t.category || null,
-    language: t.language || 'pt_BR',
-    local_template_id: getLocalTemplateId(t.name)
-  }));
-}
-
-/**
- * Normalize template analytics data for database
- * Handles the template_analytics response format from WABA endpoint
- *
- * With use_waba_timezone=true, data_point.start is still an epoch but aligned
- * to the WABA's timezone (São Paulo). We still convert via epochToLocalDate()
- * for consistency, but the alignment should now be correct without day-shift issues.
- */
-function normalizeTemplateAnalyticsData(analyticsData, wabaId) {
-  if (!analyticsData) return [];
-
-  // v24.0: data is an array with one element containing data_points
-  const dataWrapper = analyticsData.data || [];
-  if (dataWrapper.length === 0) return [];
-
-  // Get the actual data points from the first element
-  const dataPoints = dataWrapper[0]?.data_points || [];
-  if (dataPoints.length === 0) return [];
-
-  return dataPoints.map(dataPoint => {
-    // start can be epoch (number) or date string depending on API version
-    let bucketDate;
-    if (typeof dataPoint.start === 'string' && dataPoint.start.includes('-')) {
-      // Already YYYY-MM-DD
-      bucketDate = dataPoint.start;
-    } else if (dataPoint.start) {
-      bucketDate = epochToLocalDate(dataPoint.start);
-    } else {
-      bucketDate = new Date().toISOString().split('T')[0];
-    }
-
-    return {
-      template_id: dataPoint.template_id || dataPoint.hsm_id,
-      waba_id: wabaId,
-      bucket_date: bucketDate,
-      sent: dataPoint.sent || 0,
-      delivered: dataPoint.delivered || 0,
-      read_count: dataPoint.read || 0
-    };
-  });
-}
-
-/**
- * Sync templates and per-template analytics from Meta API
- */
-async function syncTemplateAnalytics(startEpoch, endEpoch) {
-  const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
-  const WABA_ID = process.env.META_WABA_ID;
-
-  if (!ACCESS_TOKEN || !WABA_ID) {
-    throw new Error('Meta API credentials not configured (META_ACCESS_TOKEN, META_WABA_ID required)');
-  }
-
-  const supabase = getSupabase();
-  const results = {
-    templates: { fetched: 0, upserted: 0 },
-    analytics: { templatesProcessed: 0, rowsUpserted: 0, errors: [] }
-  };
-
-  // Step 0: Ensure insights are enabled on the WABA
-  try {
-    await ensureInsightsEnabled(WABA_ID, ACCESS_TOKEN);
-  } catch (err) {
-    console.warn('Could not confirm insights enabled:', err.message);
-    // Continue anyway — insights may already be enabled
-  }
-
-  // Step 1: Fetch and cache templates
-  console.log('Fetching message templates from Meta API...');
-  const templates = await fetchMessageTemplates(WABA_ID, ACCESS_TOKEN);
-  results.templates.fetched = templates.length;
-
-  if (templates.length > 0) {
-    const templateRows = normalizeTemplateData(templates, WABA_ID);
-    const { data, error } = await supabase.rpc('upsert_waba_templates', {
-      p_data: templateRows
-    });
-
-    if (error) throw error;
-    results.templates.upserted = data || templateRows.length;
-    console.log(`Cached ${results.templates.upserted} templates to database`);
-  }
-
-  // Step 2: Fetch per-template analytics (batch request via WABA endpoint)
-  let allAnalyticsRows = [];
-
-  if (templates.length > 0) {
-    try {
-      const templateIds = templates.map(t => t.id);
-      // Convert epoch seconds to YYYY-MM-DD for use_waba_timezone mode
-      const startDate = epochToDateString(startEpoch);
-      const endDate = epochToDateString(endEpoch);
-      const analytics = await fetchAllTemplateAnalytics(templateIds, startDate, endDate, WABA_ID, ACCESS_TOKEN);
-
-      if (analytics) {
-        allAnalyticsRows = normalizeTemplateAnalyticsData(analytics, WABA_ID);
-        const templatesWithData = new Set(allAnalyticsRows.map(r => r.template_id));
-        results.analytics.templatesProcessed = templatesWithData.size;
-      }
-    } catch (err) {
-      console.warn(`Failed to fetch template analytics: ${err.message}`);
-      results.analytics.errors.push({ error: err.message });
-    }
-  }
-
-  // Step 3: Upsert all analytics rows (only non-zero to preserve existing good data)
-  if (allAnalyticsRows.length > 0) {
-    const validRows = allAnalyticsRows.filter(r =>
-      r.template_id && (r.sent > 0 || r.delivered > 0 || r.read_count > 0)
-    );
-    console.log(`Template analytics: ${allAnalyticsRows.length} total rows, ${validRows.length} non-zero rows to upsert`);
-
-    if (validRows.length > 0) {
-      const { data, error } = await supabase.rpc('upsert_waba_template_analytics', {
-        p_data: validRows
-      });
-
-      if (error) {
-        console.error('Template analytics upsert error:', error.message);
-        results.analytics.errors.push({ error: error.message });
-      } else {
-        results.analytics.rowsUpserted = data || validRows.length;
-      }
-    }
-  }
-
-  // Update last sync timestamp
-  const { error: updateError } = await supabase
-    .from('app_settings')
-    .update({ waba_template_last_sync: new Date().toISOString() })
-    .eq('id', 'default');
-
-  if (updateError) {
-    console.error('Failed to update waba_template_last_sync:', updateError.message);
-  }
-
-  return results;
-}
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -727,7 +399,7 @@ exports.handler = async (event, context) => {
 
         const { data: settings } = await supabase
           .from('app_settings')
-          .select('waba_last_sync, waba_template_last_sync')
+          .select('waba_last_sync')
           .eq('id', 'default')
           .single();
 
@@ -735,23 +407,12 @@ exports.handler = async (event, context) => {
           .from('waba_message_analytics')
           .select('*', { count: 'exact', head: true });
 
-        const { count: templateCount } = await supabase
-          .from('waba_templates')
-          .select('*', { count: 'exact', head: true });
-
-        const { count: templateAnalyticsCount } = await supabase
-          .from('waba_template_analytics')
-          .select('*', { count: 'exact', head: true });
-
         return {
           statusCode: 200,
           headers,
           body: JSON.stringify({
             lastSync: settings?.waba_last_sync,
-            lastTemplateSync: settings?.waba_template_last_sync,
-            messageRecords: msgCount,
-            templates: templateCount,
-            templateAnalyticsRecords: templateAnalyticsCount
+            messageRecords: msgCount
           })
         };
       }
@@ -793,65 +454,6 @@ exports.handler = async (event, context) => {
         };
       }
 
-      case 'enable-insights': {
-        // Enable template analytics on the WABA (one-time, irreversible)
-        const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
-        const WABA_ID = process.env.META_WABA_ID;
-
-        if (!ACCESS_TOKEN || !WABA_ID) {
-          return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ error: 'Meta API credentials not configured' })
-          };
-        }
-
-        const result = await ensureInsightsEnabled(WABA_ID, ACCESS_TOKEN);
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({ success: true, ...result })
-        };
-      }
-
-      case 'sync-templates': {
-        // Sync templates and per-template analytics
-        // Use 30-day window (vs 3-day for message analytics) because Meta's
-        // template_analytics endpoint has longer data processing delays
-        const now = Math.floor(Date.now() / 1000);
-        const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
-
-        const start = params.start ? Number(params.start) : thirtyDaysAgo;
-        const end = params.end ? Number(params.end) : now;
-
-        // Validate timestamps
-        if (!Number.isFinite(start) || !Number.isFinite(end)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Invalid start or end timestamp' })
-          };
-        }
-
-        console.log(`Syncing WABA templates from ${new Date(start * 1000).toISOString()} to ${new Date(end * 1000).toISOString()}`);
-
-        const results = await syncTemplateAnalytics(start, end);
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: true,
-            period: {
-              start: new Date(start * 1000).toISOString(),
-              end: new Date(end * 1000).toISOString()
-            },
-            results
-          })
-        };
-      }
-
       default:
         return {
           statusCode: 400,
@@ -875,4 +477,3 @@ exports.handler = async (event, context) => {
  * Exported for use by campaign-scheduler.js
  */
 exports.syncWabaAnalytics = syncAnalytics;
-exports.syncWabaTemplateAnalytics = syncTemplateAnalytics;

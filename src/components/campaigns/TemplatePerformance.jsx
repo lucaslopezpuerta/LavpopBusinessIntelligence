@@ -3,7 +3,7 @@
 // Design System v6.4 compliant - Cosmic Precision
 //
 // DATA SOURCE:
-// - waba_template_analytics_view (per-template per-day metrics)
+// - twilio_template_performance (per-template per-day metrics from Twilio webhooks)
 //
 // FEATURES:
 // - Summary KPI cards (total templates, avg read rate, best read rate, total sent)
@@ -15,7 +15,7 @@
 //
 // CHANGELOG:
 // v1.0 (2026-02-09): Initial implementation
-//   - Fetches from waba_template_analytics_view
+//   - Fetches from twilio_template_performance
 //   - Groups rows by template_name, aggregates sent/delivered/read
 //   - KPI summary row with 4 cards
 //   - Best template highlight card with green glow
@@ -25,7 +25,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MessageSquare, Award, Send, Eye, CheckCheck, Info, TrendingUp, BarChart3 } from 'lucide-react';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { LineChart, Line } from 'recharts';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -153,18 +153,16 @@ const ReadRateSparkline = ({ data, tier, isDark }) => {
 
   return (
     <div className="w-20 h-8 flex-shrink-0">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-          <Line
-            type="monotone"
-            dataKey="readRate"
-            stroke={strokeColor}
-            strokeWidth={1.5}
-            dot={false}
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      <LineChart width={80} height={32} data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+        <Line
+          type="monotone"
+          dataKey="readRate"
+          stroke={strokeColor}
+          strokeWidth={1.5}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </LineChart>
     </div>
   );
 };
@@ -354,7 +352,7 @@ const TemplateCard = ({ template, isBest, isDark }) => {
 // Main component
 // ---------------------------------------------------------------------------
 
-const TemplatePerformance = ({ className = '', dateFilter = 'all' }) => {
+const TemplatePerformance = ({ className = '', dateFilter = 'all', refreshKey = 0 }) => {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -363,7 +361,7 @@ const TemplatePerformance = ({ className = '', dateFilter = 'all' }) => {
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [usingFallback, setUsingFallback] = useState(false);
+  // usingFallback is derived from processedData (not a separate state)
 
   // -----------------------------------------------------------------------
   // Data fetching
@@ -383,7 +381,7 @@ const TemplatePerformance = ({ className = '', dateFilter = 'all' }) => {
       // Always fetch all data — date filtering happens client-side with fallback
       // (Template analytics has sparse data; server-side filter may return empty)
       const { data, error: fetchError } = await client
-        .from('waba_template_analytics_view')
+        .from('twilio_template_performance')
         .select('*')
         .order('bucket_date', { ascending: false })
         .limit(500);
@@ -401,14 +399,14 @@ const TemplatePerformance = ({ className = '', dateFilter = 'all' }) => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, refreshKey]);
 
   // -----------------------------------------------------------------------
   // Derived data: group by template_name, aggregate metrics, compute trends
   // -----------------------------------------------------------------------
 
-  const templates = useMemo(() => {
-    if (!rawData.length) return [];
+  const processedData = useMemo(() => {
+    if (!rawData.length) return { templates: [], isFallback: false };
 
     // Client-side date filtering with fallback to all data
     let filteredData = rawData;
@@ -432,9 +430,6 @@ const TemplatePerformance = ({ className = '', dateFilter = 'all' }) => {
         }
       }
     }
-
-    // Update fallback state (deferred to avoid render-during-render)
-    setTimeout(() => setUsingFallback(isFallback), 0);
 
     // Group rows by template_name
     const grouped = {};
@@ -513,8 +508,11 @@ const TemplatePerformance = ({ className = '', dateFilter = 'all' }) => {
       return b.totalSent - a.totalSent;
     });
 
-    return result;
+    return { templates: result, isFallback };
   }, [rawData, dateFilter]);
+
+  const templates = processedData.templates;
+  const usingFallback = processedData.isFallback;
 
   /** Best template: highest read rate among those with enough delivered messages */
   const bestTemplate = useMemo(() => {
@@ -881,7 +879,7 @@ const TemplatePerformance = ({ className = '', dateFilter = 'all' }) => {
       >
         <Info className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" aria-hidden="true" />
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Dados da view waba_template_analytics &bull; Taxa de leitura = lidas / entregues &bull; Minimo {MIN_DELIVERED_FOR_BEST} entregas para destaque
+          Dados da view twilio_template_performance &bull; Taxa de leitura = lidas / entregues &bull; Minimo {MIN_DELIVERED_FOR_BEST} entregas para destaque
         </p>
       </div>
     </div>

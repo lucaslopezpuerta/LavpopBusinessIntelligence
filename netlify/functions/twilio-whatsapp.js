@@ -1112,8 +1112,8 @@ async function getStoredData(body, headers) {
   try {
     const supabase = getSupabaseClient();
 
-    // Build date filter
-    const fromDate = dateFrom || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // Build date filter — null dateFrom means "all data" (no lower bound)
+    const fromDate = dateFrom || null;
     const toDate = dateTo || new Date().toISOString().split('T')[0];
 
     // Fetch inbound messages from twilio_inbound_messages (NEW in v1.9)

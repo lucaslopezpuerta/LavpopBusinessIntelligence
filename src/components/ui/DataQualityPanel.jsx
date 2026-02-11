@@ -519,7 +519,7 @@ const DataQualityPanel = ({ className = '' }) => {
         // 3. App settings for sync timestamps
         client
           .from('app_settings')
-          .select('instagram_last_sync, waba_template_last_sync, revenue_model_last_trained')
+          .select('instagram_last_sync, waba_last_sync, revenue_model_last_trained')
           .eq('id', 'default')
           .single(),
 
@@ -636,7 +636,7 @@ const DataQualityPanel = ({ className = '' }) => {
     {
       name: 'WhatsApp',
       icon: MessageSquare,
-      lastSync: settings?.waba_template_last_sync
+      lastSync: settings?.waba_last_sync
     },
     {
       name: 'Modelo ML',

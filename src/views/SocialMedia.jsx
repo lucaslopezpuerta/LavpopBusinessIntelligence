@@ -88,9 +88,15 @@ const SocialMedia = ({ data, onDataChange }) => {
   const { isDark } = useTheme();
 
   const [activeSection, setActiveSection] = useState('instagram');
-  // Shared date filter for WhatsApp tab (synced from WhatsAppAnalytics → TemplatePerformance)
+  // Shared state for WhatsApp tab (synced from WhatsAppAnalytics → TemplatePerformance)
   const [waDateFilter, setWaDateFilter] = useState('30d');
+  const [waRefreshKey, setWaRefreshKey] = useState(0);
   const handleWaDateFilterChange = useCallback((filter) => setWaDateFilter(filter), []);
+  const handleWaSyncComplete = useCallback(() => setWaRefreshKey(k => k + 1), []);
+
+  // Shared state for Instagram tab (synced from InstagramAnalytics → InstagramGrowthAnalytics)
+  const [igRefreshKey, setIgRefreshKey] = useState(0);
+  const handleIgSyncComplete = useCallback(() => setIgRefreshKey(k => k + 1), []);
 
   return (
     <PullToRefreshWrapper onRefresh={onDataChange}>
@@ -139,11 +145,11 @@ const SocialMedia = ({ data, onDataChange }) => {
       {activeSection === 'instagram' && (
         <>
           <Suspense fallback={<LoadingFallback />}>
-            <InstagramAnalytics />
+            <InstagramAnalytics onSyncComplete={handleIgSyncComplete} />
           </Suspense>
           <div className="mt-6">
             <Suspense fallback={<LoadingFallback />}>
-              <InstagramGrowthAnalytics />
+              <InstagramGrowthAnalytics refreshKey={igRefreshKey} />
             </Suspense>
           </div>
         </>
@@ -153,11 +159,11 @@ const SocialMedia = ({ data, onDataChange }) => {
       {activeSection === 'whatsapp' && (
         <>
           <Suspense fallback={<LoadingFallback />}>
-            <WhatsAppAnalytics onDateFilterChange={handleWaDateFilterChange} />
+            <WhatsAppAnalytics onDateFilterChange={handleWaDateFilterChange} onSyncComplete={handleWaSyncComplete} />
           </Suspense>
           <div className="mt-6">
             <Suspense fallback={<LoadingFallback />}>
-              <TemplatePerformance dateFilter={waDateFilter} />
+              <TemplatePerformance dateFilter={waDateFilter} refreshKey={waRefreshKey} />
             </Suspense>
           </div>
         </>

@@ -88,6 +88,7 @@ import {
   ComposedChart
 } from 'recharts';
 
+import { useTheme } from '../../contexts/ThemeContext';
 import { api } from '../../utils/apiService';
 import KPICard, { KPIGrid as DesignSystemKPIGrid } from '../ui/KPICard';
 import BackgroundRefreshIndicator from '../ui/BackgroundRefreshIndicator';
@@ -120,6 +121,19 @@ const formatNumber = (value) => {
   if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
   return new Intl.NumberFormat('pt-BR').format(value || 0);
 };
+
+// Exact format for tooltips and zoomed Y-axes (no K/M rounding)
+const formatExact = (value) => new Intl.NumberFormat('pt-BR').format(value || 0);
+
+// Dark-mode aware tooltip style
+const tooltipStyle = (isDark) => ({
+  backgroundColor: isDark ? '#1a1f35' : 'white',
+  border: `1px solid ${isDark ? 'rgba(0,174,239,0.2)' : '#e2e8f0'}`,
+  borderRadius: '8px',
+  padding: '8px',
+  fontSize: '11px',
+  color: isDark ? '#fff' : '#0f172a'
+});
 
 const formatTimeAgo = (timestamp) => {
   if (!timestamp) return '';
@@ -432,7 +446,7 @@ const ChartCard = ({ title, subtitle, icon: Icon, iconColor = 'text-slate-400', 
   </div>
 );
 
-const MainChart = ({ data, isLoading }) => {
+const MainChart = ({ data, isLoading, isDark }) => {
   const chartData = useMemo(() => {
     if (!data?.length) return [];
     return [...data]
@@ -478,8 +492,8 @@ const MainChart = ({ data, isLoading }) => {
           <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} width={40} tickFormatter={formatNumber} />
           <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} width={35} tickFormatter={formatNumber} />
           <Tooltip
-            contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px', fontSize: '11px' }}
-            formatter={(value, name) => [formatNumber(value), name === 'reach' ? 'Alcance' : name === 'views' ? 'Views' : 'Interações']}
+            contentStyle={tooltipStyle(isDark)}
+            formatter={(value, name) => [formatExact(value), name === 'reach' ? 'Alcance' : name === 'views' ? 'Views' : 'Interações']}
             labelFormatter={(label) => `Data: ${label}`}
           />
           <Area yAxisId="left" type="monotone" dataKey="reach" stroke="#a855f7" strokeWidth={2} fill="url(#reachFill)" />
@@ -491,7 +505,7 @@ const MainChart = ({ data, isLoading }) => {
   );
 };
 
-const FollowerChart = ({ data, isLoading }) => {
+const FollowerChart = ({ data, isLoading, isDark }) => {
   const chartData = useMemo(() => {
     if (!data?.length) return [];
     return [...data]
@@ -529,10 +543,10 @@ const FollowerChart = ({ data, isLoading }) => {
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} width={40} tickFormatter={formatNumber} domain={['dataMin - 10', 'dataMax + 10']} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} width={50} tickFormatter={formatExact} domain={['dataMin - 10', 'dataMax + 10']} />
             <Tooltip
-              contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px', fontSize: '10px' }}
-              formatter={(value) => [formatNumber(value), 'Seguidores']}
+              contentStyle={tooltipStyle(isDark)}
+              formatter={(value) => [formatExact(value), 'Seguidores']}
             />
             <Area type="monotone" dataKey="followers" stroke="#ec4899" strokeWidth={2} fill="url(#followerFill)" />
           </AreaChart>
@@ -542,7 +556,7 @@ const FollowerChart = ({ data, isLoading }) => {
   );
 };
 
-const EngagementChart = ({ data, isLoading }) => {
+const EngagementChart = ({ data, isLoading, isDark }) => {
   const chartData = useMemo(() => {
     if (!data?.length) return [];
     return [...data]
@@ -583,8 +597,9 @@ const EngagementChart = ({ data, isLoading }) => {
               <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} width={30} />
               <Tooltip
-                contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px', fontSize: '10px' }}
-                formatter={(value) => [formatNumber(value), 'Interações']}
+                contentStyle={tooltipStyle(isDark)}
+                cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}
+                formatter={(value) => [formatExact(value), 'Interações']}
               />
               <Bar dataKey="total" fill="#f97316" radius={[3, 3, 0, 0]} />
             </BarChart>
@@ -608,7 +623,7 @@ const EngagementChart = ({ data, isLoading }) => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8' }} width={30} />
-            <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '10px' }} />
+            <Tooltip contentStyle={tooltipStyle(isDark)} cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }} />
             <Bar dataKey="likes" stackId="a" fill="#ec4899" name="Curtidas" />
             <Bar dataKey="comments" stackId="a" fill="#3b82f6" name="Comentários" />
             <Bar dataKey="shares" stackId="a" fill="#a855f7" name="Compartilh." />
@@ -772,7 +787,8 @@ const CommentsSection = ({ comments, isLoading }) => {
 
 // ==================== MAIN COMPONENT ====================
 
-const InstagramAnalytics = () => {
+const InstagramAnalytics = ({ onSyncComplete }) => {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -858,6 +874,7 @@ const InstagramAnalytics = () => {
     try {
       await api.instagram.triggerSync();
       await Promise.all([fetchData(), fetchHistory(historyDays)]);
+      onSyncComplete?.();
     } catch (err) {
       console.error('Refresh error:', err);
     } finally {
@@ -903,7 +920,7 @@ const InstagramAnalytics = () => {
         iconColor="text-purple-500"
         iconBg="bg-gradient-to-br from-purple-500/20 to-violet-500/20 dark:from-purple-500/30 dark:to-violet-500/30"
       >
-        <MainChart data={historyData} isLoading={isLoadingHistory} />
+        <MainChart data={historyData} isLoading={isLoadingHistory} isDark={isDark} />
       </ChartCard>
 
       {/* Secondary Charts - Side by side */}
@@ -915,7 +932,7 @@ const InstagramAnalytics = () => {
           iconColor="text-pink-500"
           iconBg="bg-gradient-to-br from-pink-500/20 to-rose-500/20 dark:from-pink-500/30 dark:to-rose-500/30"
         >
-          <FollowerChart data={historyData} isLoading={isLoadingHistory} />
+          <FollowerChart data={historyData} isLoading={isLoadingHistory} isDark={isDark} />
         </ChartCard>
         <ChartCard
           title="Engajamento"
@@ -924,7 +941,7 @@ const InstagramAnalytics = () => {
           iconColor="text-orange-500"
           iconBg="bg-gradient-to-br from-orange-500/20 to-amber-500/20 dark:from-orange-500/30 dark:to-amber-500/30"
         >
-          <EngagementChart data={historyData} isLoading={isLoadingHistory} />
+          <EngagementChart data={historyData} isLoading={isLoadingHistory} isDark={isDark} />
         </ChartCard>
       </div>
 

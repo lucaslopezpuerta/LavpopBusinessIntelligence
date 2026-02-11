@@ -52,11 +52,9 @@
 //   - Enables follower growth charts and engagement trends
 //   - Uses syncInstagramAnalytics from instagram-analytics.js
 //
-// v2.12 (2025-12-18): WABA template analytics sync
-//   - Added automatic sync of per-template analytics every 4 hours
-//   - Includes READ metrics (only available at template level)
-//   - Caches template metadata from Meta API
-//   - Uses syncWabaTemplateAnalytics from waba-analytics.js
+// v2.12 (2025-12-18): WABA template analytics sync (REMOVED in v2.13)
+//   - Template analytics now served by twilio_template_performance SQL view
+//   - Meta template sync removed — Twilio webhooks provide live data
 //
 // v2.11 (2025-12-17): WABA analytics sync
 //   - Added automatic sync of WhatsApp Business analytics every 4 hours
@@ -165,7 +163,7 @@
 // - SUPABASE_SERVICE_KEY: Your Supabase service role key
 
 const { createClient } = require('@supabase/supabase-js');
-const { syncWabaAnalytics, syncWabaTemplateAnalytics } = require('./waba-analytics');
+const { syncWabaAnalytics } = require('./waba-analytics');
 const { syncInstagramAnalytics } = require('./instagram-analytics');
 const { isHoliday, isHolidayEve } = require('./lib/brazilHolidays');
 
@@ -370,14 +368,6 @@ exports.handler = async (event, context) => {
       console.log('Skipping WABA analytics sync (not due yet or not configured)');
     }
 
-    // v2.12: Sync WABA template analytics every 4 hours (includes READ metrics)
-    let wabaTemplateResults = { skipped: true };
-    if (await shouldSyncWabaTemplateAnalytics(supabase)) {
-      wabaTemplateResults = await runWabaTemplateSync();
-    } else {
-      console.log('Skipping WABA template sync (not due yet or not configured)');
-    }
-
     // v2.13: Sync Instagram analytics every 4 hours
     let instagramResults = { skipped: true };
     if (await shouldSyncInstagramAnalytics(supabase)) {
@@ -413,13 +403,12 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
       body: JSON.stringify({
-        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}${wabaResults.skipped ? '' : ', WABA synced'}${wabaTemplateResults.skipped ? '' : ', templates synced'}${instagramResults.skipped ? '' : ', Instagram synced'}${twilioResults.skipped ? '' : ', Twilio synced'}${blacklistResults.skipped ? '' : ', blacklist synced'}${modelTrainingResults.skipped ? '' : ', model trained'}`,
+        message: `Processed ${results.length} campaigns, ${priorityResults.sent} manual inclusions, ${automationResults.processed} automation rules${returnResults.skipped ? '' : `, ${returnResults.returns_detected} returns detected`}${wabaResults.skipped ? '' : ', WABA synced'}${instagramResults.skipped ? '' : ', Instagram synced'}${twilioResults.skipped ? '' : ', Twilio synced'}${blacklistResults.skipped ? '' : ', blacklist synced'}${modelTrainingResults.skipped ? '' : ', model trained'}`,
         campaigns: results,
         priorityQueue: priorityResults,
         automation: automationResults,
         returns: returnResults,
         waba: wabaResults,
-        wabaTemplates: wabaTemplateResults,
         instagram: instagramResults,
         twilio: twilioResults,
         blacklist: blacklistResults,
@@ -674,61 +663,6 @@ async function runWabaSync() {
  * @param {Object} supabase - Supabase client
  * @returns {Promise<boolean>} True if it's time to sync template analytics
  */
-async function shouldSyncWabaTemplateAnalytics(supabase) {
-  try {
-    // Check if META_WABA_ID is configured
-    if (!process.env.META_WABA_ID || !process.env.META_ACCESS_TOKEN) {
-      return false;
-    }
-
-    // Get last template sync time from app_settings
-    const { data: settings } = await supabase
-      .from('app_settings')
-      .select('waba_template_last_sync')
-      .eq('id', 'default')
-      .single();
-
-    if (!settings?.waba_template_last_sync) {
-      // Never synced, should sync
-      return true;
-    }
-
-    // Check if 4 hours have passed
-    const lastSync = new Date(settings.waba_template_last_sync);
-    const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
-
-    return hoursSinceSync >= 4;
-  } catch (error) {
-    console.warn('Error checking WABA template sync status:', error.message);
-    return false;
-  }
-}
-
-/**
- * Sync WABA template analytics from Meta API
- * Fetches templates and per-template metrics (including READ)
- */
-async function runWabaTemplateSync() {
-  try {
-    const now = Math.floor(Date.now() / 1000);
-    const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
-
-    console.log('Syncing WABA template analytics (last 30 days)...');
-    const results = await syncWabaTemplateAnalytics(thirtyDaysAgo, now);
-
-    return {
-      success: true,
-      templates: results.templates,
-      analytics: results.analytics
-    };
-  } catch (error) {
-    console.error('WABA template sync error:', error.message);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
 
 /**
  * Check if Instagram analytics sync should run

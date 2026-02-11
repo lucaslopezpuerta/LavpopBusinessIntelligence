@@ -52,15 +52,7 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { getSupabaseClient } from '../../utils/supabaseClient';
-import { getChartColors } from '../../utils/chartColors';
-
-// ==================== CONSTANTS ====================
-
-const METRIC_COLORS = {
-  followers: '#8B5CF6', // purple
-  reach: '#3B82F6',     // blue
-  interactions: '#10B981' // green
-};
+import { getChartColors, getSeriesColors } from '../../utils/chartColors';
 
 const RANGE_OPTIONS = [
   { id: 7, label: '7 dias' },
@@ -169,6 +161,7 @@ const MiniSparkline = ({ data, dataKey, color, height = 32 }) => {
     <div className="w-full" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+          <YAxis domain={['dataMin', 'dataMax']} hide />
           <Line
             type="monotone"
             dataKey={dataKey}
@@ -256,7 +249,7 @@ const CustomChartTooltip = ({ active, payload, label, isDark }) => {
                 <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>{entry.name}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold tabular-nums">{formatCompact(entry.value)}</span>
+                <span className="font-semibold tabular-nums">{formatBrNumber(entry.value)}</span>
                 {growthVal !== undefined && growthVal !== null && (
                   <span className={`text-xs font-medium ${
                     growthVal > 0 ? 'text-emerald-500' : growthVal < 0 ? 'text-red-500' : 'text-slate-400'
@@ -325,10 +318,20 @@ const LoadingSkeleton = () => (
 
 // ==================== MAIN COMPONENT ====================
 
-const InstagramGrowthAnalytics = () => {
+const InstagramGrowthAnalytics = ({ refreshKey = 0 }) => {
   const { isDark } = useTheme();
   const isMobile = useIsMobile();
   const chartColors = useMemo(() => getChartColors(isDark), [isDark]);
+  const seriesColors = useMemo(() => getSeriesColors(isDark), [isDark]);
+
+  // Semantic mapping: series index → Instagram metric
+  // [0] brand/blue, [1] green, [2] purple, [3] amber
+  const metricColors = useMemo(() => ({
+    followers: seriesColors[2], // purple
+    reach: seriesColors[0],     // brand blue/cyan
+    interactions: seriesColors[1], // green
+    views: seriesColors[3],     // amber
+  }), [seriesColors]);
 
   // State
   const [rawData, setRawData] = useState([]);
@@ -371,7 +374,7 @@ const InstagramGrowthAnalytics = () => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, refreshKey]);
 
   // ==================== FILTERED DATA ====================
 
@@ -442,6 +445,7 @@ const InstagramGrowthAnalytics = () => {
       followers: d.followers || 0,
       reach: d.reach || 0,
       interactions: d.total_interactions || 0,
+      views: d.views || 0,
       // Growth percentages for tooltip
       followers_growth: d.followers_growth_pct ?? null,
       reach_growth: d.prev_reach
@@ -449,6 +453,9 @@ const InstagramGrowthAnalytics = () => {
         : null,
       interactions_growth: d.prev_interactions
         ? ((d.interactions_change || 0) / d.prev_interactions) * 100
+        : null,
+      views_growth: d.prev_views
+        ? ((d.views_change || 0) / d.prev_views) * 100
         : null
     }));
   }, [filteredData]);
@@ -508,7 +515,7 @@ const InstagramGrowthAnalytics = () => {
           value={latestMetrics?.followers}
           growthPct={latestMetrics?.followersGrowthPct}
           icon={Users}
-          color={METRIC_COLORS.followers}
+          color={metricColors.followers}
           sparklineData={sparklineData.followers}
           sparklineKey="value"
         />
@@ -517,7 +524,7 @@ const InstagramGrowthAnalytics = () => {
           value={latestMetrics?.reach}
           growthPct={latestMetrics?.reachGrowthPct}
           icon={Eye}
-          color={METRIC_COLORS.reach}
+          color={metricColors.reach}
           sparklineData={sparklineData.reach}
           sparklineKey="value"
         />
@@ -526,7 +533,7 @@ const InstagramGrowthAnalytics = () => {
           value={latestMetrics?.interactions}
           growthPct={latestMetrics?.interactionsGrowthPct}
           icon={Activity}
-          color={METRIC_COLORS.interactions}
+          color={metricColors.interactions}
           sparklineData={sparklineData.interactions}
           sparklineKey="value"
         />
@@ -535,7 +542,7 @@ const InstagramGrowthAnalytics = () => {
           value={latestMetrics?.views}
           growthPct={latestMetrics?.viewsGrowthPct}
           icon={Play}
-          color="#F59E0B"
+          color={metricColors.views}
           sparklineData={sparklineData.views}
           sparklineKey="value"
         />
@@ -550,22 +557,26 @@ const InstagramGrowthAnalytics = () => {
               Tendencia de Metricas
             </h4>
             <p className="text-xs text-slate-400 mt-0.5">
-              {rangeDays} dias - Seguidores, Alcance e Engajamento
+              {rangeDays} dias - Seguidores, Alcance, Engajamento e Visualizacoes
             </p>
           </div>
           {/* Legend */}
           <div className="hidden sm:flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: METRIC_COLORS.followers }} />
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: metricColors.followers }} />
               <span className="text-slate-500 dark:text-slate-400">Seguidores</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: METRIC_COLORS.reach }} />
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: metricColors.reach }} />
               <span className="text-slate-500 dark:text-slate-400">Alcance</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: METRIC_COLORS.interactions }} />
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: metricColors.interactions }} />
               <span className="text-slate-500 dark:text-slate-400">Engajamento</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: metricColors.views }} />
+              <span className="text-slate-500 dark:text-slate-400">Visualizacoes</span>
             </span>
           </div>
         </div>
@@ -573,16 +584,20 @@ const InstagramGrowthAnalytics = () => {
         {/* Mobile legend */}
         <div className="flex sm:hidden items-center gap-2 text-xs mb-3">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: METRIC_COLORS.followers }} />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: metricColors.followers }} />
             Seg.
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: METRIC_COLORS.reach }} />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: metricColors.reach }} />
             Alcance
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: METRIC_COLORS.interactions }} />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: metricColors.interactions }} />
             Engaj.
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: metricColors.views }} />
+            Views
           </span>
         </div>
 
@@ -593,16 +608,20 @@ const InstagramGrowthAnalytics = () => {
               <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="igGrowthFollowers" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={METRIC_COLORS.followers} stopOpacity={0.2} />
-                    <stop offset="100%" stopColor={METRIC_COLORS.followers} stopOpacity={0} />
+                    <stop offset="0%" stopColor={metricColors.followers} stopOpacity={0.2} />
+                    <stop offset="100%" stopColor={metricColors.followers} stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="igGrowthReach" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={METRIC_COLORS.reach} stopOpacity={0.15} />
-                    <stop offset="100%" stopColor={METRIC_COLORS.reach} stopOpacity={0} />
+                    <stop offset="0%" stopColor={metricColors.reach} stopOpacity={0.15} />
+                    <stop offset="100%" stopColor={metricColors.reach} stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="igGrowthInteractions" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={METRIC_COLORS.interactions} stopOpacity={0.15} />
-                    <stop offset="100%" stopColor={METRIC_COLORS.interactions} stopOpacity={0} />
+                    <stop offset="0%" stopColor={metricColors.interactions} stopOpacity={0.15} />
+                    <stop offset="100%" stopColor={metricColors.interactions} stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="igGrowthViews" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={metricColors.views} stopOpacity={0.15} />
+                    <stop offset="100%" stopColor={metricColors.views} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -615,25 +634,39 @@ const InstagramGrowthAnalytics = () => {
                   dataKey="date"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: isMobile ? 9 : 10, fill: chartColors.tickText }}
-                  interval={isMobile ? 'preserveStartEnd' : Math.max(0, Math.floor(chartData.length / 8))}
+                  tick={{ fontSize: isMobile ? 9 : 12, fill: chartColors.tickText }}
+                  interval={isMobile ? 'preserveStartEnd' : 0}
                 />
                 <YAxis
                   yAxisId="left"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 9, fill: chartColors.tickText }}
-                  width={isMobile ? 35 : 45}
+                  tick={{ fontSize: isMobile ? 9 : 12, fill: chartColors.tickText }}
+                  width={isMobile ? 35 : 50}
                   tickFormatter={formatCompact}
+                  domain={[dataMin => Math.floor(dataMin * 0.99), dataMax => Math.ceil(dataMax * 1.01)]}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 9, fill: chartColors.tickText }}
-                  width={isMobile ? 30 : 40}
+                  tick={{ fontSize: isMobile ? 9 : 12, fill: chartColors.tickText }}
+                  width={isMobile ? 30 : 45}
                   tickFormatter={formatCompact}
+                  domain={[dataMin => Math.floor(dataMin * 0.9), dataMax => Math.ceil(dataMax * 1.1)]}
+                />
+                <YAxis
+                  yAxisId="interactions"
+                  orientation="right"
+                  hide
+                  domain={[0, dataMax => Math.ceil(dataMax * 1.2)]}
+                />
+                <YAxis
+                  yAxisId="views"
+                  orientation="right"
+                  hide
+                  domain={[dataMin => Math.floor(dataMin * 0.9), dataMax => Math.ceil(dataMax * 1.1)]}
                 />
                 <Tooltip
                   content={<CustomChartTooltip isDark={isDark} />}
@@ -644,7 +677,7 @@ const InstagramGrowthAnalytics = () => {
                   type="monotone"
                   dataKey="followers"
                   name="Seguidores"
-                  stroke={METRIC_COLORS.followers}
+                  stroke={metricColors.followers}
                   strokeWidth={2}
                   fill="url(#igGrowthFollowers)"
                   dot={false}
@@ -655,20 +688,31 @@ const InstagramGrowthAnalytics = () => {
                   type="monotone"
                   dataKey="reach"
                   name="Alcance"
-                  stroke={METRIC_COLORS.reach}
+                  stroke={metricColors.reach}
                   strokeWidth={2}
                   fill="url(#igGrowthReach)"
                   dot={false}
                   activeDot={{ r: 4, strokeWidth: 2, fill: isDark ? '#1a1f35' : '#fff' }}
                 />
                 <Area
-                  yAxisId="right"
+                  yAxisId="interactions"
                   type="monotone"
                   dataKey="interactions"
                   name="Engajamento"
-                  stroke={METRIC_COLORS.interactions}
+                  stroke={metricColors.interactions}
                   strokeWidth={2}
                   fill="url(#igGrowthInteractions)"
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, fill: isDark ? '#1a1f35' : '#fff' }}
+                />
+                <Area
+                  yAxisId="views"
+                  type="monotone"
+                  dataKey="views"
+                  name="Visualizacoes"
+                  stroke={metricColors.views}
+                  strokeWidth={2}
+                  fill="url(#igGrowthViews)"
                   dot={false}
                   activeDot={{ r: 4, strokeWidth: 2, fill: isDark ? '#1a1f35' : '#fff' }}
                 />

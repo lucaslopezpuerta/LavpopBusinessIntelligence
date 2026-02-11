@@ -654,7 +654,7 @@ const DeliveryFunnel = ({ summary, isLoading }) => {
 
 // ==================== MAIN COMPONENT ====================
 
-const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
+const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent, onSyncComplete }) => {
   const [dateFilter, setDateFilter] = useState('30d');
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -696,8 +696,7 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
         fetch('/.netlify/functions/waba-analytics?action=status', { headers: getHeaders() }).then(r => r.json())
       ]);
       setProfile(profileData);
-      // Use template sync time as it's more relevant for analytics
-      setLastSync(statusData?.lastTemplateSync || statusData?.lastSync || null);
+      setLastSync(statusData?.lastSync || null);
     } catch (err) {
       console.error('Failed to fetch WABA profile/status:', err);
     }
@@ -712,6 +711,7 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
       const { from, to } = getDateRange(dateFilter);
 
       // Fetch message data and template analytics
+      // Twilio webhook data is live — no fallback needed (unlike stale Meta data)
       const [dailyRes, messagesRes, templateRes] = await Promise.all([
         api.waba.getDailyMetrics(from, to),
         api.waba.getMessages(from, to),
@@ -739,8 +739,8 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
     setEngagementLoading(true);
     try {
       const { from, to } = getDateRange(dateFilter);
-      // For 'all' filter (from is null), use 90 days as default
-      const dateFrom = from || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      // For 'all' filter (from is null), pass null to let backend return all cached data
+      const dateFrom = from || null;
       const dateTo = to || new Date().toISOString().split('T')[0];
 
       // First try to read from database (fast, cached)
@@ -751,11 +751,13 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
         setEngagementData(result);
       } else {
         // Database empty - fall back to direct API for first-time load
-        const directResult = await api.twilio.getEngagementAndCosts({ dateSentAfter: dateFrom, pageSize: 200 });
+        // Twilio API requires a date, so default to 90 days for the live API call
+        const apiDateFrom = dateFrom || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const directResult = await api.twilio.getEngagementAndCosts({ dateSentAfter: apiDateFrom, pageSize: 200 });
         setEngagementData(directResult);
 
         // Trigger async sync to populate database for next time (non-blocking)
-        api.twilio.triggerSync({ dateSentAfter: dateFrom, force: true }).catch(console.error);
+        api.twilio.triggerSync({ dateSentAfter: apiDateFrom, force: true }).catch(console.error);
       }
     } catch (err) {
       console.error('Failed to fetch Twilio engagement data:', err);
@@ -784,17 +786,16 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
       const { from } = getDateRange(dateFilter);
       const dateSentAfter = from || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Sync WABA analytics, templates, and Twilio engagement/costs in parallel
-      // Use allSettled so one failure doesn't block the others (e.g., WABA 500 shouldn't block Twilio)
+      // Sync WABA message analytics and Twilio engagement/costs in parallel
+      // Use allSettled so one failure doesn't block the other
       const syncResults = await Promise.allSettled([
         api.waba.triggerSync(),
-        api.waba.triggerTemplateSync(),
         api.twilio.triggerSync({ dateSentAfter, force: true })
       ]);
 
       // Log any sync failures for debugging
       syncResults.forEach((result, index) => {
-        const syncNames = ['WABA', 'WABA Templates', 'Twilio'];
+        const syncNames = ['WABA', 'Twilio'];
         if (result.status === 'rejected') {
           console.warn(`${syncNames[index]} sync failed:`, result.reason);
         }
@@ -806,6 +807,9 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
         fetchEngagementData(),
         fetchProfileAndStatus()
       ]);
+
+      // Notify parent so sibling components (e.g. TemplatePerformance) can re-fetch
+      onSyncComplete?.();
     } catch (err) {
       console.error('Sync failed:', err);
     } finally {
@@ -814,16 +818,16 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent }) => {
   };
 
   // Calculate KPIs from message data + template summary
+  // Twilio webhook data is live — read rate comes directly from the filtered period
   const kpis = useMemo(() => {
     return {
       totalSent: messageSummary?.totalSent || 0,
       totalDelivered: messageSummary?.totalDelivered || 0,
       deliveryRate: messageSummary?.deliveryRate || 0,
-      // Read rate from template analytics (only available at template level)
       readRate: templateData.summary?.readRate || 0,
       totalRead: templateData.summary?.totalRead || 0
     };
-  }, [messageSummary, templateData.summary]);
+  }, [messageSummary, templateData]);
 
   // v3.25: Calculate engagement KPIs from Twilio data
   const engagementKpis = useMemo(() => {
