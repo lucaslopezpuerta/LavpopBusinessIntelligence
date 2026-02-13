@@ -89,6 +89,7 @@ import {
 } from 'lucide-react';
 import { getBrazilNow } from '../../utils/dateUtils';
 import SectionCard from '../ui/SectionCard';
+import { SectionLoadingState } from '../ui/Skeleton';
 import { isValidBrazilianMobile } from '../../utils/phoneUtils';
 import { getAutomationRules, saveAutomationRules, getCampaignPerformance } from '../../utils/campaignService';
 import { haptics } from '../../utils/haptics';
@@ -855,10 +856,7 @@ const AutomationRules = ({ audienceSegments }) => {
         color="purple"
         id="automation-rules"
       >
-        <div className="flex flex-col items-center justify-center py-16">
-          <Loader2 className="w-10 h-10 text-purple-500 animate-spin mb-4" />
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Carregando automações...</p>
-        </div>
+        <SectionLoadingState message="Carregando automações..." size="lg" />
       </SectionCard>
     );
   }

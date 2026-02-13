@@ -16,6 +16,12 @@ import { parseBrDate, isWithinRange, daysBetween, getBrazilDateParts } from './d
 import { toNum, sum, avg } from './numberUtils';
 import { normalizeDoc, countMachines } from './csvLoader';
 
+/** Extract YYYY-MM-DD from a date's .brazil property (timezone-safe) */
+const brazilDateKey = (date) => {
+  const b = date.brazil || {};
+  return `${b.year}-${String(b.month).padStart(2, '0')}-${String(b.day).padStart(2, '0')}`;
+};
+
 /**
  * Calculate correlation between two arrays
  */
@@ -132,7 +138,7 @@ export const groupSalesByDate = (sales) => {
   const grouped = {};
   
   sales.forEach(sale => {
-    const dateKey = sale.date.toISOString().split('T')[0];
+    const dateKey = brazilDateKey(sale.date);
     if (!grouped[dateKey]) {
       grouped[dateKey] = {
         date: sale.date,
@@ -244,8 +250,8 @@ export const calculateCustomerMetrics = (salesData, customerDoc) => {
   // Calculate visit frequency (excluding same-day visits)
   let uniqueVisitDays = 1;
   for (let i = 1; i < customerSales.length; i++) {
-    const prevDate = customerSales[i - 1].date.toISOString().split('T')[0];
-    const currDate = customerSales[i].date.toISOString().split('T')[0];
+    const prevDate = brazilDateKey(customerSales[i - 1].date);
+    const currDate = brazilDateKey(customerSales[i].date);
     if (prevDate !== currDate) {
       uniqueVisitDays++;
     }

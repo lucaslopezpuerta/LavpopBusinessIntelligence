@@ -50,22 +50,30 @@ export const formatPhone = (phone) => {
   return phone;
 };
 
-// Format date for display: 09/02 12:04
+// Format date for display: 09/02 12:04 (always Brazil timezone)
 export const formatDateTime = (dateStr) => {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${day}/${month} ${hours}:${minutes}`;
+  if (isNaN(d.getTime())) return '-';
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(d);
+  const p = {};
+  parts.forEach(({ type, value }) => p[type] = value);
+  return `${p.day}/${p.month} ${p.hour}:${p.minute}`;
 };
 
-// Format time only: 12:04
+// Format time only: 12:04 (always Brazil timezone)
 export const formatTime = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(d);
 };
 
 // Format currency

@@ -19,7 +19,8 @@
 // v2.0 (2026-02-06): Smart modal actions + AI fix
 // v1.0 (2026-02-06): Initial implementation
 
-import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useMemo, Suspense } from 'react';
+import lazyRetry from '../../utils/lazyRetry';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lightbulb, ChevronDown, ChevronUp, Sparkles, Brain, Flame } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -31,7 +32,8 @@ import { useInsightActions } from '../../hooks/useInsightActions';
 import { requestLLMInsight } from '../../utils/recommendationEngine';
 import { semanticColors, hexToRgba } from '../../utils/colorMapping';
 
-const CustomerSegmentModal = lazy(() => import('../modals/CustomerSegmentModal'));
+import { ModalLoadingFallback } from '../ui/Skeleton';
+const CustomerSegmentModal = lazyRetry(() => import('../modals/CustomerSegmentModal'));
 
 const CATEGORIES = [
   { key: 'all', label: 'Todos' },
@@ -525,7 +527,7 @@ const InsightsView = ({ data, onNavigate, collapsible = true, isCollapsed: exter
 
       {/* Smart Action Modal */}
       {segmentModal && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerSegmentModal
             isOpen={!!segmentModal}
             onClose={closeSegmentModal}

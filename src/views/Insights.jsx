@@ -41,8 +41,6 @@ import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import { InsightsLoadingSkeleton } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
-import StaleDataIndicator from '../components/ui/StaleDataIndicator';
-import { useDataRefresh } from '../contexts/DataFreshnessContext';
 import InsightsView from '../components/intelligence/InsightsView';
 import { InsightCardSkeleton } from '../components/intelligence/InsightCard';
 import BaseModal from '../components/ui/BaseModal';
@@ -52,7 +50,6 @@ import { semanticColors, hexToRgba } from '../utils/colorMapping';
 const Insights = ({ data, onDataChange, onNavigate }) => {
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
-  const { lastRefreshed, refreshing, triggerRefresh } = useDataRefresh();
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   const salesData = data?.sales || [];
@@ -121,7 +118,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
               <div>
                 <div className="flex items-center gap-1.5">
                   <h1
-                    className="text-lg sm:text-xl font-bold tracking-wider"
+                    className="text-xl sm:text-2xl font-bold tracking-wider"
                     style={{ fontFamily: "'Orbitron', sans-serif" }}
                   >
                     <span className="text-gradient-stellar">INSIGHTS</span>
@@ -144,16 +141,11 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
                     <HelpCircle className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`hidden sm:block text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   Recomendações inteligentes para o seu negócio
                 </p>
               </div>
             </div>
-            <StaleDataIndicator
-              lastUpdated={lastRefreshed}
-              isRefreshing={refreshing}
-              onRefresh={() => triggerRefresh({ reason: 'manual' })}
-            />
           </div>
         </AnimatedHeader>
 

@@ -88,7 +88,8 @@
 // v4.1 (2025-12-16): Full-width layout
 // v4.0 (2025-12-16): Intelligence Hub Redesign
 
-import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, Suspense } from 'react';
+import lazyRetry from '../utils/lazyRetry';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 import { Users as UsersIcon, UserPlus, Crown, Sparkles, AlertTriangle, Mail, UserX, TrendingDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -100,29 +101,24 @@ import AtRiskCustomersTable from '../components/AtRiskCustomersTable';
 import { formatNumber } from '../utils/formatters';
 import { isValidBrazilianMobile } from '../utils/phoneUtils';
 
-// Lazy-load heavy modals and components
-const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
-const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
-const KPIDetailModal = lazy(() => import('../components/modals/KPIDetailModal'));
-const CustomerTrendDrilldown = lazy(() => import('../components/drilldowns/CustomerTrendDrilldown'));
-const CustomerSegmentModal = lazy(() => import('../components/modals/CustomerSegmentModal'));
-const FirstVisitConversionCard = lazy(() => import('../components/FirstVisitConversionCard'));
-const FrequencyDegradationAlert = lazy(() => import('../components/FrequencyDegradationAlert'));
+// Lazy-load heavy modals and components (with retry for chunk load resilience)
+const CustomerProfileModal = lazyRetry(() => import('../components/CustomerProfileModal'));
+const NewCampaignModal = lazyRetry(() => import('../components/campaigns/NewCampaignModal'));
+const KPIDetailModal = lazyRetry(() => import('../components/modals/KPIDetailModal'));
+const CustomerTrendDrilldown = lazyRetry(() => import('../components/drilldowns/CustomerTrendDrilldown'));
+const CustomerSegmentModal = lazyRetry(() => import('../components/modals/CustomerSegmentModal'));
+const FirstVisitConversionCard = lazyRetry(() => import('../components/FirstVisitConversionCard'));
+const FrequencyDegradationAlert = lazyRetry(() => import('../components/FrequencyDegradationAlert'));
 import { LazyRFMScatterPlot, LazyChurnHistogram, LazyNewClientsChart, LazyVisitHeatmap, LazyAcquisitionCard, ChartLoadingFallback, AcquisitionCardFallback, HeatmapFallback, HistogramFallback, CohortTableFallback, ScatterPlotFallback } from '../utils/lazyCharts';
-const CohortRetentionChart = lazy(() => import('../components/customers/CohortRetentionChart'));
+const CohortRetentionChart = lazyRetry(() => import('../components/customers/CohortRetentionChart'));
 import { useContactTracking } from '../hooks/useContactTracking';
 import { api } from '../utils/apiService';
-import { CustomersLoadingSkeleton } from '../components/ui/Skeleton';
-import StaleDataIndicator from '../components/ui/StaleDataIndicator';
+import { CustomersLoadingSkeleton, ModalLoadingFallback } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
-import { useDataRefresh } from '../contexts/DataFreshnessContext';
 
 const Customers = ({ data, onDataChange }) => {
   // Theme context for Cosmic Precision styling
   const { isDark } = useTheme();
-  // Data freshness for stale indicator
-  const { lastRefreshed, refreshing, triggerRefresh } = useDataRefresh();
-
   // State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedKPI, setSelectedKPI] = useState(null); // For KPI drilldown modal
@@ -469,12 +465,12 @@ const Customers = ({ data, onDataChange }) => {
             {/* Title & Subtitle */}
             <div>
               <h1
-                className="text-lg sm:text-xl font-bold tracking-wider"
+                className="text-xl sm:text-2xl font-bold tracking-wider"
                 style={{ fontFamily: "'Orbitron', sans-serif" }}
               >
                 <span className="text-gradient-stellar">CLIENTES</span>
               </h1>
-              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`hidden sm:block text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Inteligência e análise comportamental
               </p>
             </div>
@@ -483,11 +479,6 @@ const Customers = ({ data, onDataChange }) => {
           {/* Header Pills */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2">
-              <StaleDataIndicator
-                lastUpdated={lastRefreshed}
-                isRefreshing={refreshing}
-                onRefresh={() => triggerRefresh({ reason: 'manual' })}
-              />
               <HealthPill
                 healthRate={metrics.healthRate}
                 activeCount={metrics.activeCount}
@@ -642,7 +633,7 @@ const Customers = ({ data, onDataChange }) => {
 
         {/* KPI Drilldown Modal */}
       {selectedKPI && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <KPIDetailModal
             isOpen={!!selectedKPI}
             onClose={() => setSelectedKPI(null)}
@@ -661,7 +652,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Customer Profile Modal */}
       {selectedCustomer && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerProfileModal
             customer={selectedCustomer}
             sales={data.sales}
@@ -672,7 +663,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* New Campaign Modal - for creating campaigns from chart insights */}
       {campaignModalOpen && audienceSegments && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <NewCampaignModal
             isOpen={campaignModalOpen}
             onClose={() => {
@@ -687,7 +678,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Retention Re-engage Modal - for overdue customers from RetentionCard */}
       {retentionModalOpen && retentionModalCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerSegmentModal
             isOpen={retentionModalOpen}
             onClose={() => {
@@ -711,7 +702,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Health At-Risk Modal - for at-risk customers from HealthPill */}
       {healthAtRiskModalOpen && atRiskCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerSegmentModal
             isOpen={healthAtRiskModalOpen}
             onClose={() => setHealthAtRiskModalOpen(false)}
@@ -731,7 +722,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Welcome Modal - for new customers without welcome campaign */}
       {welcomeModalOpen && welcomeModalCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerSegmentModal
             isOpen={welcomeModalOpen}
             onClose={() => {
@@ -754,7 +745,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Lost Customers Modal - first-time visitors who didn't return */}
       {lostCustomersModalOpen && lostCustomersModalData.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerSegmentModal
             isOpen={lostCustomersModalOpen}
             onClose={() => {
@@ -777,7 +768,7 @@ const Customers = ({ data, onDataChange }) => {
 
       {/* Frequency Degradation Modal - customers with slipping visit patterns */}
       {degradationModalOpen && degradationModalCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerSegmentModal
             isOpen={degradationModalOpen}
             onClose={() => {

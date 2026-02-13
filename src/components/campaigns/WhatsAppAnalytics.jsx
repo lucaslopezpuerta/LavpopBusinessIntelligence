@@ -194,10 +194,12 @@ import {
 // UI Components
 import KPICard, { KPIGrid } from '../ui/KPICard';
 import SectionCard from '../ui/SectionCard';
+import { SectionLoadingState } from '../ui/Skeleton';
 import BackgroundRefreshIndicator from '../ui/BackgroundRefreshIndicator';
 
 // Services
 import { api, getHeaders } from '../../utils/apiService';
+import { toBrazilDateString } from '../../utils/dateUtils';
 
 // WhatsApp brand colors
 const COLORS = {
@@ -235,15 +237,15 @@ const formatDate = (dateStr) => {
 // Returns null for 'from' when 'all' is selected to fetch all available data
 const getDateRange = (filter) => {
   const now = new Date();
-  const to = now.toISOString().split('T')[0];
+  const to = toBrazilDateString(now);
 
   let from;
   switch (filter) {
     case '7d':
-      from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      from = toBrazilDateString(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
       break;
     case '30d':
-      from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      from = toBrazilDateString(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
       break;
     case 'all':
     default:
@@ -492,7 +494,7 @@ const MessageTrendChart = ({ data, isLoading }) => {
   if (isLoading) {
     return (
       <div className="h-[300px] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-slate-500 dark:text-slate-400 animate-spin" />
+        <SectionLoadingState message="Carregando analytics..." />
       </div>
     );
   }
@@ -741,7 +743,7 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent, onSyncComplete })
       const { from, to } = getDateRange(dateFilter);
       // For 'all' filter (from is null), pass null to let backend return all cached data
       const dateFrom = from || null;
-      const dateTo = to || new Date().toISOString().split('T')[0];
+      const dateTo = to || toBrazilDateString();
 
       // First try to read from database (fast, cached)
       let result = await api.twilio.getStoredEngagementAndCosts(dateFrom, dateTo);
@@ -752,7 +754,7 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent, onSyncComplete })
       } else {
         // Database empty - fall back to direct API for first-time load
         // Twilio API requires a date, so default to 90 days for the live API call
-        const apiDateFrom = dateFrom || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const apiDateFrom = dateFrom || toBrazilDateString(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
         const directResult = await api.twilio.getEngagementAndCosts({ dateSentAfter: apiDateFrom, pageSize: 200 });
         setEngagementData(directResult);
 
@@ -784,7 +786,7 @@ const WhatsAppAnalytics = ({ onDateFilterChange: notifyParent, onSyncComplete })
     try {
       // Get date range for Twilio sync
       const { from } = getDateRange(dateFilter);
-      const dateSentAfter = from || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const dateSentAfter = from || toBrazilDateString(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
 
       // Sync WABA message analytics and Twilio engagement/costs in parallel
       // Use allSettled so one failure doesn't block the other

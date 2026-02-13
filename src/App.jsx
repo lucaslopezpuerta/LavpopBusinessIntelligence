@@ -151,15 +151,14 @@
 // v5.0 (2025-11-23): Error boundaries + code splitting
 // v4.2 (2025-11-21): Reload button added
 
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Upload, Clock, Code } from 'lucide-react';
 
 // Build timestamp injected by Vite at build time
 const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : null;
-import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
+import { MotionConfig } from 'framer-motion';
 import { useReducedMotion } from './hooks/useReducedMotion';
-import { PAGE_TRANSITION, PAGE_TRANSITION_REDUCED } from './constants/animations';
 
 // Loading and Error screens
 import LoadingScreen from './components/ui/LoadingScreen';
@@ -167,7 +166,7 @@ import ErrorScreen from './components/ui/ErrorScreen';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
-import { DataFreshnessProvider } from './contexts/DataFreshnessContext';
+import { DataFreshnessProvider, useDataRefresh } from './contexts/DataFreshnessContext';
 import { RealtimeSyncProvider } from './contexts/RealtimeSyncContext';
 import { AppSettingsProvider } from './contexts/AppSettingsContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -187,7 +186,8 @@ import BackgroundRefreshIndicator from './components/ui/BackgroundRefreshIndicat
 import ErrorBoundary from './components/ErrorBoundary';
 import AppSettingsModal from './components/AppSettingsModal';
 // ExportModal lazy-loaded to save ~170KB (jsPDF, papaparse, jspdf-autotable)
-const ExportModal = lazy(() => import('./components/ExportModal'));
+import lazyRetry from './utils/lazyRetry';
+const ExportModal = lazyRetry(() => import('./components/ExportModal'));
 import {
   DashboardLoadingSkeleton,
   CustomersLoadingSkeleton,
@@ -197,7 +197,8 @@ import {
   WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
   IntelligenceLoadingSkeleton,
-  InsightsLoadingSkeleton
+  InsightsLoadingSkeleton,
+  ModalLoadingFallback
 } from './components/ui/Skeleton';
 
 // Data freshness configuration
@@ -206,17 +207,16 @@ const STALE_TIME = 15 * 60 * 1000;        // 15 minutes - data considered stale 
 const REFRESH_INTERVAL = 30 * 60 * 1000;  // 30 minutes - auto-refresh interval (fallback only)
 const MIN_REFRESH_GAP = 60 * 1000;        // 60 seconds - minimum between refreshes
 
-// Lazy load tab components for code splitting
-const Dashboard = lazy(() => import('./views/Dashboard'));
-const Customers = lazy(() => import('./views/Customers'));
-const Directory = lazy(() => import('./views/Directory'));
-const Campaigns = lazy(() => import('./views/Campaigns'));
-const SocialMedia = lazy(() => import('./views/SocialMedia'));
-const Weather = lazy(() => import('./views/Weather'));
-const Operations = lazy(() => import('./views/Operations'));
-const Intelligence = lazy(() => import('./views/Intelligence'));
-const Insights = lazy(() => import('./views/Insights'));
-const DataUploadView = lazy(() => import('./views/DataUploadView'));
+const Dashboard = lazyRetry(() => import('./views/Dashboard'));
+const Customers = lazyRetry(() => import('./views/Customers'));
+const Directory = lazyRetry(() => import('./views/Directory'));
+const Campaigns = lazyRetry(() => import('./views/Campaigns'));
+const SocialMedia = lazyRetry(() => import('./views/SocialMedia'));
+const Weather = lazyRetry(() => import('./views/Weather'));
+const Operations = lazyRetry(() => import('./views/Operations'));
+const Intelligence = lazyRetry(() => import('./views/Intelligence'));
+const Insights = lazyRetry(() => import('./views/Insights'));
+const DataUploadView = lazyRetry(() => import('./views/DataUploadView'));
 
 // Format date in Brazilian format (DD/MM/YYYY HH:mm)
 const formatBrDate = (isoDate) => {
@@ -284,20 +284,31 @@ const getLoadingFallback = (tabId) => {
   return SkeletonComponent ? <SkeletonComponent /> : <GenericLoadingFallback />;
 };
 
+/**
+ * ViewErrorBoundary — lightweight per-view error boundary.
+ * Keyed by activeTab so it auto-resets on navigation.
+ * Shows the view's loading skeleton as fallback instead of a blank screen.
+ */
+class ViewErrorBoundary extends React.Component {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error, info) {
+    console.error('[ViewErrorBoundary] Caught:', error, info?.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || null;
+    }
+    return this.props.children;
+  }
+}
+
 function AppContent() {
   const { activeTab, navigateTo } = useNavigation();
   const { isPinned, toggleMobileSidebar, isMobileOpen } = useSidebar();
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
-  // Fast fade-only page transition - content stagger handles the entrance feel
-  // Removed blur/scale for snappier 180ms total (vs previous 450ms)
-  const pageVariants = prefersReducedMotion
-    ? { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 1 } }
-    : {
-        initial: { opacity: 0 },
-        animate: { opacity: 1, transition: { duration: 0.1, ease: 'easeOut' } },
-        exit: { opacity: 0, transition: { duration: 0.08, ease: 'easeIn' } }
-      };
+  const { registerRefreshCallback, markFresh } = useDataRefresh();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -379,6 +390,7 @@ function AppContent() {
 
       setData(loadedData);
       setLastRefreshed(Date.now());
+      markFresh();
 
       // Brief pause at 100% so user sees completed state before transition
       if (isInitial) {
@@ -393,7 +405,7 @@ function AppContent() {
       setRefreshing(false);
       refreshingRef.current = false;
     }
-  }, []);
+  }, [markFresh]);
 
   // Remove the HTML initial loader when React mounts
   useEffect(() => {
@@ -406,6 +418,11 @@ function AppContent() {
   useEffect(() => {
     loadData({ isInitial: true });
   }, [loadData]);
+
+  // Wire DataFreshnessContext so StaleDataIndicator works across all views
+  useEffect(() => {
+    registerRefreshCallback(() => loadData({ skipCache: true, silent: true }));
+  }, [registerRefreshCallback, loadData]);
 
   // Visibility-based refresh: refresh when tab becomes visible (if stale)
   useEffect(() => {
@@ -611,8 +628,6 @@ function AppContent() {
         <div className={`min-h-screen flex flex-col transition-[padding] duration-300 pb-bottom-nav ${isPinned ? 'lg:pl-[240px]' : 'lg:pl-16'} relative z-10`}>
           {/* Top Bar */}
           <MinimalTopBar
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
             onOpenExport={() => setShowExport(true)}
           />
 
@@ -625,31 +640,26 @@ function AppContent() {
           {/* Main Content - Full width with edge-to-edge support */}
           {/* pb-24 on mobile for bottom nav clearance (64px nav + 16px breathing room) */}
           <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 pb-24 lg:pb-6">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={activeTab}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-              >
-                <Suspense fallback={getLoadingFallback(activeTab)}>
-                  {/* Defensive check: show skeleton if data is missing/invalid */}
-                  {/* Exception: 'upload' view doesn't need data - it's a standalone form */}
-                  {(activeTab !== 'upload' && (!data || !data.sales || data.sales.length === 0)) ? (
-                    getLoadingFallback(activeTab)
-                  ) : (
-                    <ActiveComponent
-                      data={data}
-                      onNavigate={handleTabChange}
-                      viewMode={viewMode}
-                      setViewMode={setViewMode}
-                      onDataChange={refreshAfterAction}
-                    />
-                  )}
-                </Suspense>
-              </motion.div>
-            </AnimatePresence>
+                {/* Per-view error boundary: key={activeTab} resets it on navigation,
+                    preventing errors in one view from blanking subsequent views.
+                    Views use AnimatedView (Stellar Cascade) for entrance animations. */}
+                <ViewErrorBoundary key={activeTab} fallback={getLoadingFallback(activeTab)}>
+                  <Suspense fallback={getLoadingFallback(activeTab)}>
+                    {/* Defensive check: show skeleton if data is missing/invalid */}
+                    {/* Exception: 'upload' view doesn't need data - it's a standalone form */}
+                    {(activeTab !== 'upload' && (!data || !data.sales || data.sales.length === 0)) ? (
+                      getLoadingFallback(activeTab)
+                    ) : (
+                      <ActiveComponent
+                        data={data}
+                        onNavigate={handleTabChange}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                        onDataChange={refreshAfterAction}
+                      />
+                    )}
+                  </Suspense>
+                </ViewErrorBoundary>
           </main>
 
         {/* Footer */}
@@ -700,7 +710,7 @@ function AppContent() {
 
         {/* Export Modal - Lazy-loaded to reduce initial bundle */}
         {showExport && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ModalLoadingFallback />}>
             <ExportModal
               isOpen={showExport}
               onClose={() => setShowExport(false)}

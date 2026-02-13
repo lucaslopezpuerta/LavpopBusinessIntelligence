@@ -69,6 +69,7 @@
 //   const blacklist = await api.blacklist.getAll();
 
 import { isNative, isCapacitorAvailable, getPlatform } from './platform';
+import { toBrazilDateString } from './dateUtils';
 
 // Production URL for native apps (they can't use relative paths)
 // Note: Using non-www to avoid redirect issues with CORS preflight
@@ -852,7 +853,7 @@ export const api = {
       try {
         const body = {
           action: 'fetch_messages',
-          dateSentAfter: options.dateSentAfter || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          dateSentAfter: options.dateSentAfter || toBrazilDateString(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
           pageSize: options.pageSize || 100
         };
         if (options.dateSentBefore) body.dateSentBefore = options.dateSentBefore;

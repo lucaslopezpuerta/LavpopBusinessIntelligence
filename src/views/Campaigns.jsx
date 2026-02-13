@@ -65,13 +65,13 @@
 //   - Automation rules for win-back and welcome series
 //   - Message template library (Meta-compliant)
 
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, Suspense } from 'react';
+import lazyRetry from '../utils/lazyRetry';
 import {
   MessageSquare,
   Plus
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import BackgroundRefreshIndicator from '../components/ui/BackgroundRefreshIndicator';
 
 // Campaign-specific components
 import CampaignList from '../components/campaigns/CampaignList';
@@ -82,22 +82,15 @@ import CampaignDashboard from '../components/campaigns/CampaignDashboard';
 import { CampaignsLoadingSkeleton } from '../components/ui/Skeleton';
 import { SectionCardFallback } from '../utils/lazyCharts';
 
-// Lazy-loaded heavy components (60KB + 50KB savings)
-const AutomationRules = lazy(() => import('../components/campaigns/AutomationRules'));
-const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignModal'));
-const CouponEffectiveness = lazy(() => import('../components/campaigns/CouponEffectiveness'));
-const AutomationPerformance = lazy(() => import('../components/campaigns/AutomationPerformance'));
-const SegmentCampaignMatrix = lazy(() => import('../components/campaigns/SegmentCampaignMatrix'));
-const MessageFlowMonitor = lazy(() => import('../components/campaigns/MessageFlowMonitor'));
+// Lazy-loaded heavy components with retry (60KB + 50KB savings)
+const AutomationRules = lazyRetry(() => import('../components/campaigns/AutomationRules'));
+const NewCampaignModal = lazyRetry(() => import('../components/campaigns/NewCampaignModal'));
+const CouponEffectiveness = lazyRetry(() => import('../components/campaigns/CouponEffectiveness'));
+const AutomationPerformance = lazyRetry(() => import('../components/campaigns/AutomationPerformance'));
+const SegmentCampaignMatrix = lazyRetry(() => import('../components/campaigns/SegmentCampaignMatrix'));
+const MessageFlowMonitor = lazyRetry(() => import('../components/campaigns/MessageFlowMonitor'));
 
-// Loading fallback for lazy components
-const ModalLoadingFallback = () => (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl">
-      <div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-    </div>
-  </div>
-);
+import { ModalLoadingFallback } from '../components/ui/Skeleton';
 
 // Business logic
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
@@ -124,7 +117,6 @@ const formatPercent = (value) => {
 const Campaigns = ({ data, onDataChange }) => {
   // Theme context for Cosmic Precision styling
   const { isDark } = useTheme();
-
   const [activeSection, setActiveSection] = useState('overview');
   const [showNewCampaign, setShowNewCampaign] = useState(false);
   const [selectedAudience, setSelectedAudience] = useState(null);
@@ -221,8 +213,8 @@ const Campaigns = ({ data, onDataChange }) => {
       <AnimatedView>
         {/* Header - Cosmic Precision Design v2.1 */}
         <AnimatedHeader className="flex flex-col gap-3 sm:gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {/* Icon Container - Glassmorphism */}
             <div
               className={`
@@ -236,26 +228,27 @@ const Campaigns = ({ data, onDataChange }) => {
               <MessageSquare className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-stellar-cyan' : 'text-stellar-blue'}`} />
             </div>
             {/* Title & Subtitle */}
-            <div>
+            <div className="min-w-0">
               <h1
-                className="text-lg sm:text-xl font-bold tracking-wider"
+                className="text-xl sm:text-2xl font-bold tracking-wider"
                 style={{ fontFamily: "'Orbitron', sans-serif" }}
               >
                 <span className="text-gradient-stellar">CAMPANHAS</span>
               </h1>
-              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`hidden sm:block text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Mensagens, automações e ROI de campanhas
               </p>
             </div>
           </div>
 
-          {/* Create Campaign Button */}
+          {/* New Campaign — icon-only on mobile, full button on desktop */}
           <button
             onClick={() => setShowNewCampaign(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/25 transition-all active:scale-[0.98]"
+            className="flex items-center justify-center gap-2 flex-shrink-0 min-h-[44px] min-w-[44px] p-2.5 sm:px-4 sm:py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/25 transition-all active:scale-[0.98]"
+            aria-label="Nova Campanha"
           >
-            <Plus className="w-4 h-4" />
-            <span>Nova Campanha</span>
+            <Plus className="w-5 h-5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Nova Campanha</span>
           </button>
         </div>
 
@@ -352,12 +345,6 @@ const Campaigns = ({ data, onDataChange }) => {
         </Suspense>
       )}
 
-        {/* Refresh overlay (during data sync) */}
-        <BackgroundRefreshIndicator
-          isRefreshing={isRefreshing}
-          variant="overlay"
-          message="Sincronizando dados..."
-        />
       </AnimatedView>
     </PullToRefreshWrapper>
   );

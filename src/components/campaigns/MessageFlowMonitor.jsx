@@ -1,24 +1,27 @@
-// MessageFlowMonitor.jsx v2.1 - MESSAGE FLOW MONITOR (POLISHED)
+// MessageFlowMonitor.jsx v4.0 - MOBILE FILTER BOTTOM SHEET
 // Unified message tracking view: KPIs + filters + paginated card list + detail modal
 // Design System v6.4 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v4.0 (2026-02-13): Mobile filter bottom sheet redesign
+//   - Replaced inline expandable filters with BaseModal bottom sheet on mobile
+//   - Added active filter chips row with individual dismiss
+//   - Fixed CosmicDropdown clipping (now renders in modal portal, not overflow-hidden container)
+//   - Reduced mobile vertical space consumption (~250px → ~80px for filters)
+//   - Added "Aplicar" button pattern with temp state (batch filter apply)
+//   - Fixed text-[10px] → text-xs on filter badge
+//   - Desktop layout unchanged
+// v3.0 (2026-02-13): Mobile UX overhaul
+//   - Fixed text-[10px] violations → text-xs minimum (Design System compliance)
+//   - Hide per-page selector on mobile, abbreviate pagination text
+//   - Enlarge loading spinner with label during page transitions
+//   - PullToRefreshWrapper integration for pull-to-refresh gesture
+//   - Move rule dropdown into expandable filter section on mobile
+//   - Limit pagination buttons to 3 on mobile (5 on desktop)
+//   - EmptyState size="sm" for inline usage
+//   - Pass messages array + onNavigate to detail modal for prev/next navigation
 // v2.1 (2026-02-12): Mobile filter layout fix
-//   - Compact FilterPill/SortPill: removed min-h-[44px], tighter padding on mobile
-//   - Date pills + filter toggle on same row (was 3 stacked rows)
-//   - Inline filter row labels on mobile (was stacked flex-col)
-//   - Reduced vertical spacing (space-y-1.5) in mobile filter rows
-//   - Truncated mobile labels (Camp. vs Campanha, Limpar vs Limpar filtros)
 // v2.0 (2026-02-12): Full polish pass
-//   - Framer Motion animations with stagger cascades & reduced motion support
-//   - Server-side KPI endpoint (single lightweight request, ~40x payload reduction)
-//   - Campaign type filter (Campanha pill row)
-//   - Mobile: animated filter expand/collapse, horizontal-scroll pill rows
-//   - Toast integration for KPI errors, realtime updates, filter reset
-//   - "Limpar filtros" clear-all button
-//   - KPICard isRefreshing shimmer during KPI fetch
-//   - AnimatePresence page crossfade with blur overlay
-//   - Pagination button micro-interactions (whileTap scale)
 // v1.0 (2026-02-12): Initial implementation
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -41,8 +44,11 @@ import { useToast } from '../../contexts/ToastContext';
 import { api } from '../../utils/apiService';
 import { haptics } from '../../utils/haptics';
 import useReducedMotion from '../../hooks/useReducedMotion';
+import { useIsMobile } from '../../hooks/useMediaQuery';
+import PullToRefreshWrapper from '../ui/PullToRefreshWrapper';
 import KPICard, { KPIGrid } from '../ui/KPICard';
 import EmptyState from '../ui/EmptyState';
+import BaseModal from '../ui/BaseModal';
 import CosmicDropdown from '../ui/CosmicDropdown';
 import MessageFlowCard from './MessageFlowCard';
 import MessageFlowDetailModal from './MessageFlowDetailModal';
@@ -174,26 +180,6 @@ const bannerVariantsReduced = {
   exit: { opacity: 0 },
 };
 
-const filterExpandVariants = {
-  hidden: { height: 0, opacity: 0 },
-  visible: {
-    height: 'auto',
-    opacity: 1,
-    transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] },
-  },
-  exit: {
-    height: 0,
-    opacity: 0,
-    transition: { duration: 0.2, ease: [0.4, 0, 1, 1] },
-  },
-};
-
-const filterExpandVariantsReduced = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-  exit: { opacity: 0 },
-};
-
 const pageTransitionVariants = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.2 } },
@@ -235,11 +221,177 @@ const SortPill = ({ active, direction, onClick, children, isDark }) => (
   </button>
 );
 
+// ==================== ACTIVE FILTER CHIPS (MOBILE) ====================
+
+const ActiveFilterChips = ({ deliveryFilter, typeFilter, campaignTypeFilter, ruleFilter, automationRules, onRemove, isDark }) => {
+  const chips = [];
+
+  if (deliveryFilter !== 'all') {
+    const label = DELIVERY_FILTERS.find(f => f.value === deliveryFilter)?.label;
+    chips.push({ id: 'delivery', label: `Status: ${label}` });
+  }
+  if (typeFilter !== 'all') {
+    const label = TYPE_FILTERS.find(f => f.value === typeFilter)?.label;
+    chips.push({ id: 'type', label: `Tipo: ${label}` });
+  }
+  if (campaignTypeFilter !== 'all') {
+    const label = CAMPAIGN_TYPE_FILTERS.find(f => f.value === campaignTypeFilter)?.label;
+    chips.push({ id: 'campaignType', label: label });
+  }
+  if (ruleFilter) {
+    const rule = automationRules.find(r => r.id === ruleFilter);
+    chips.push({ id: 'rule', label: `Regra: ${rule?.name || '...'}` });
+  }
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+      {chips.map(chip => (
+        <button
+          key={chip.id}
+          type="button"
+          onClick={() => { haptics.tick(); onRemove(chip.id); }}
+          className={`
+            flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors flex-shrink-0
+            ${isDark
+              ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30'
+              : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+            }
+          `}
+        >
+          <span className="truncate max-w-[120px]">{chip.label}</span>
+          <X className="w-3 h-3 flex-shrink-0" />
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// ==================== MOBILE FILTER SHEET ====================
+
+const MobileFilterSheet = ({ isOpen, onClose, tempFilters, onTempChange, onApply, onClear, automationRules, ruleOptions, tempFilterCount, isDark }) => (
+  <BaseModal
+    isOpen={isOpen}
+    onClose={onClose}
+    size="large"
+    maxWidth="md"
+    title="Filtros"
+    icon={SlidersHorizontal}
+    iconColor="purple"
+    solidIconColors
+    showDragHandle={true}
+    footer={
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => { haptics.tick(); onClear(); }}
+          disabled={tempFilterCount === 0}
+          className={`
+            flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors
+            disabled:opacity-40 disabled:cursor-not-allowed
+            ${isDark
+              ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }
+          `}
+        >
+          Limpar tudo
+        </button>
+        <button
+          type="button"
+          onClick={onApply}
+          className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+        >
+          Aplicar{tempFilterCount > 0 ? ` (${tempFilterCount})` : ''}
+        </button>
+      </div>
+    }
+  >
+    <div className="space-y-3">
+      {/* Status */}
+      <div className="space-y-1.5">
+        <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Status</span>
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+          {DELIVERY_FILTERS.map(df => (
+            <FilterPill key={df.value} active={tempFilters.delivery === df.value} onClick={() => onTempChange('delivery', df.value)} isDark={isDark}>
+              {df.label}
+            </FilterPill>
+          ))}
+        </div>
+      </div>
+
+      {/* Type */}
+      <div className="space-y-1.5">
+        <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Tipo</span>
+        <div className="flex items-center gap-1.5">
+          {TYPE_FILTERS.map(tf => (
+            <FilterPill key={tf.value} active={tempFilters.type === tf.value} onClick={() => onTempChange('type', tf.value)} isDark={isDark}>
+              {tf.label}
+            </FilterPill>
+          ))}
+        </div>
+      </div>
+
+      {/* Campaign type */}
+      <div className="space-y-1.5">
+        <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Campanha</span>
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+          {CAMPAIGN_TYPE_FILTERS.map(cf => (
+            <FilterPill key={cf.value} active={tempFilters.campaignType === cf.value} onClick={() => onTempChange('campaignType', cf.value)} isDark={isDark}>
+              {cf.label}
+            </FilterPill>
+          ))}
+        </div>
+      </div>
+
+      {/* Rule dropdown */}
+      {automationRules.length > 0 && (
+        <div className="space-y-1.5">
+          <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Regra</span>
+          <CosmicDropdown
+            options={ruleOptions}
+            value={tempFilters.rule || ''}
+            onChange={(val) => onTempChange('rule', val || null)}
+            placeholder="Todas as regras"
+          />
+        </div>
+      )}
+
+      {/* Sort */}
+      <div className={`space-y-1.5 pt-2 border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
+        <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ordenar</span>
+        <div className="flex items-center gap-1.5">
+          {SORT_OPTIONS.map(so => (
+            <SortPill
+              key={so.value}
+              active={tempFilters.sortBy === so.value}
+              direction={tempFilters.sortOrder}
+              onClick={() => {
+                if (tempFilters.sortBy === so.value) {
+                  onTempChange('sortOrder', tempFilters.sortOrder === 'asc' ? 'desc' : 'asc');
+                } else {
+                  onTempChange('sortBy', so.value);
+                  onTempChange('sortOrder', 'desc');
+                }
+              }}
+              isDark={isDark}
+            >
+              {so.label}
+            </SortPill>
+          ))}
+        </div>
+      </div>
+    </div>
+  </BaseModal>
+);
+
 // ==================== MAIN COMPONENT ====================
 
 const MessageFlowMonitor = () => {
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const toast = useToast();
 
   // Data state
@@ -256,7 +408,6 @@ const MessageFlowMonitor = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [campaignTypeFilter, setCampaignTypeFilter] = useState('all');
   const [ruleFilter, setRuleFilter] = useState(null);
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Sort state
   const [sortBy, setSortBy] = useState('contacted_at');
@@ -268,6 +419,12 @@ const MessageFlowMonitor = () => {
 
   // Detail modal state
   const [selectedMessage, setSelectedMessage] = useState(null);
+
+  // Mobile filter bottom sheet state
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState({
+    delivery: 'all', type: 'all', campaignType: 'all', rule: null, sortBy: 'contacted_at', sortOrder: 'desc',
+  });
 
   // Automation rules for dropdown
   const [automationRules, setAutomationRules] = useState([]);
@@ -287,7 +444,6 @@ const MessageFlowMonitor = () => {
   const cardListV = prefersReducedMotion ? cardListContainerVariantsReduced : cardListContainerVariants;
   const cardV = prefersReducedMotion ? cardItemVariantsReduced : cardItemVariants;
   const bannerV = prefersReducedMotion ? bannerVariantsReduced : bannerVariants;
-  const filterV = prefersReducedMotion ? filterExpandVariantsReduced : filterExpandVariants;
 
   // Debounce search
   useEffect(() => {
@@ -405,13 +561,12 @@ const MessageFlowMonitor = () => {
     }
   };
 
-  // Refresh handler for toast action
-  const handleRefresh = useCallback(() => {
+  // Refresh handler for toast action & pull-to-refresh
+  const handleRefresh = useCallback(async () => {
     setCurrentPage(1);
     setSortBy('contacted_at');
     setSortOrder('desc');
-    fetchData();
-    fetchKPIs();
+    await Promise.all([fetchData(), fetchKPIs()]);
   }, [fetchData, fetchKPIs]);
 
   // Show toast for new messages instead of inline banner
@@ -461,6 +616,62 @@ const MessageFlowMonitor = () => {
     }))
   ], [automationRules]);
 
+  // Temp filter count (for sheet "Aplicar" badge)
+  const tempFilterCount = useMemo(() => {
+    let count = 0;
+    if (tempFilters.delivery !== 'all') count++;
+    if (tempFilters.type !== 'all') count++;
+    if (tempFilters.campaignType !== 'all') count++;
+    if (tempFilters.rule) count++;
+    return count;
+  }, [tempFilters]);
+
+  // Temp filter change handler
+  const handleTempChange = useCallback((field, value) => {
+    setTempFilters(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Open filter sheet: sync temp state from live filters
+  const openFilterSheet = useCallback(() => {
+    setTempFilters({
+      delivery: deliveryFilter,
+      type: typeFilter,
+      campaignType: campaignTypeFilter,
+      rule: ruleFilter,
+      sortBy,
+      sortOrder,
+    });
+    haptics.tick();
+    setFilterSheetOpen(true);
+  }, [deliveryFilter, typeFilter, campaignTypeFilter, ruleFilter, sortBy, sortOrder]);
+
+  // Apply temp filters to live state
+  const applyTempFilters = useCallback(() => {
+    setDeliveryFilter(tempFilters.delivery);
+    setTypeFilter(tempFilters.type);
+    setCampaignTypeFilter(tempFilters.campaignType);
+    setRuleFilter(tempFilters.rule);
+    setSortBy(tempFilters.sortBy);
+    setSortOrder(tempFilters.sortOrder);
+    haptics.medium();
+    setFilterSheetOpen(false);
+    toast.success('Filtros aplicados');
+  }, [tempFilters, toast]);
+
+  // Clear temp filters
+  const clearTempFilters = useCallback(() => {
+    setTempFilters({ delivery: 'all', type: 'all', campaignType: 'all', rule: null, sortBy: 'contacted_at', sortOrder: 'desc' });
+    haptics.tick();
+  }, []);
+
+  // Remove individual active filter chip
+  const removeFilter = useCallback((field) => {
+    if (field === 'delivery') setDeliveryFilter('all');
+    else if (field === 'type') setTypeFilter('all');
+    else if (field === 'campaignType') setCampaignTypeFilter('all');
+    else if (field === 'rule') setRuleFilter(null);
+  }, []);
+
   // KPI values
   const deliveryRate = kpis.sent > 0 ? ((kpis.delivered / kpis.sent) * 100).toFixed(1) : '0.0';
   const readRate = kpis.delivered > 0 ? ((kpis.read / kpis.delivered) * 100).toFixed(1) : '0.0';
@@ -470,7 +681,7 @@ const MessageFlowMonitor = () => {
     <div className="space-y-1.5 sm:space-y-2.5">
       {/* Status row */}
       <div className="flex items-center gap-1.5 sm:gap-2.5">
-        <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider shrink-0 w-12 sm:w-16 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <span className={`text-xs font-semibold uppercase tracking-wider shrink-0 w-10 sm:w-16 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
           Status
         </span>
         <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-hide sm:overflow-visible sm:flex-wrap flex-1 min-w-0">
@@ -489,7 +700,7 @@ const MessageFlowMonitor = () => {
 
       {/* Type + Rule row */}
       <div className="flex items-center gap-1.5 sm:gap-2.5">
-        <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider shrink-0 w-12 sm:w-16 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <span className={`text-xs font-semibold uppercase tracking-wider shrink-0 w-10 sm:w-16 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
           Tipo
         </span>
         <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-hide sm:overflow-visible sm:flex-wrap flex-1 min-w-0">
@@ -508,7 +719,7 @@ const MessageFlowMonitor = () => {
 
       {/* Campaign type row */}
       <div className="flex items-center gap-1.5 sm:gap-2.5">
-        <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider shrink-0 w-12 sm:w-16 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <span className={`text-xs font-semibold uppercase tracking-wider shrink-0 w-10 sm:w-16 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
           Camp.
           <span className="hidden sm:inline">anha</span>
         </span>
@@ -526,9 +737,27 @@ const MessageFlowMonitor = () => {
         </div>
       </div>
 
+      {/* Rule row — mobile only (desktop has inline dropdown) */}
+      {automationRules.length > 0 && (
+        <div className="sm:hidden flex items-center gap-1.5">
+          <span className={`text-xs font-semibold uppercase tracking-wider shrink-0 w-10 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            Regra
+          </span>
+          <div className="flex-1 min-w-0">
+            <CosmicDropdown
+              options={ruleOptions}
+              value={ruleFilter || ''}
+              onChange={(val) => setRuleFilter(val || null)}
+              placeholder="Todas"
+              size="sm"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Sort row */}
       <div className={`flex items-center gap-1.5 sm:gap-2.5 pt-1.5 sm:pt-2 border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
-        <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider shrink-0 w-12 sm:w-16 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+        <span className={`text-xs font-semibold uppercase tracking-wider shrink-0 w-10 sm:w-16 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
           Ordem
         </span>
         <div className="flex items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
@@ -571,8 +800,9 @@ const MessageFlowMonitor = () => {
   }
 
   return (
+    <PullToRefreshWrapper onRefresh={handleRefresh}>
     <motion.div
-      className="space-y-4 sm:space-y-5"
+      className="space-y-4 sm:space-y-5 overflow-x-hidden"
       variants={containerV}
       initial="hidden"
       animate="visible"
@@ -627,101 +857,93 @@ const MessageFlowMonitor = () => {
       {/* Filter Bar */}
       <motion.div
         variants={sectionV}
-        className={`rounded-xl border p-3 sm:p-4 space-y-3 ${
+        className={`rounded-xl border p-3 sm:p-4 space-y-2.5 sm:space-y-3 ${
           isDark ? 'bg-space-dust border-stellar-cyan/10' : 'bg-white border-slate-200'
         }`}
       >
-        {/* Row 1: Search + Rule dropdown + Date range + Mobile toggle */}
-        <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
-          {/* Search + Rule dropdown row on mobile */}
-          <div className="flex items-center gap-2 flex-1 sm:max-w-none">
-            <div className="relative flex-1 sm:max-w-sm">
-              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar..."
-                className={`
-                  w-full pl-9 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border transition-colors
-                  ${isDark
-                    ? 'bg-space-nebula border-stellar-cyan/10 text-slate-200 placeholder-slate-500 focus:border-stellar-cyan/30'
-                    : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-purple-300'
-                  }
-                  focus:outline-none focus:ring-1 focus:ring-purple-500/20
-                `}
+        {/* Row 1: Search + Rule dropdown (desktop) */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative flex-1 sm:max-w-sm">
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar..."
+              className={`
+                w-full pl-9 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl border transition-colors
+                ${isDark
+                  ? 'bg-space-nebula border-stellar-cyan/10 text-slate-200 placeholder-slate-500 focus:border-stellar-cyan/30'
+                  : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:border-purple-300'
+                }
+                focus:outline-none focus:ring-1 focus:ring-purple-500/20
+              `}
+            />
+          </div>
+
+          {/* Rule dropdown — desktop only */}
+          {automationRules.length > 0 && (
+            <div className="hidden sm:block w-48 flex-shrink-0">
+              <CosmicDropdown
+                options={ruleOptions}
+                value={ruleFilter || ''}
+                onChange={(val) => setRuleFilter(val || null)}
+                placeholder="Todas as regras"
+                size="sm"
               />
             </div>
-
-            {/* Rule dropdown — beside search on both mobile and desktop */}
-            {automationRules.length > 0 && (
-              <div className="w-36 sm:w-48 flex-shrink-0">
-                <CosmicDropdown
-                  options={ruleOptions}
-                  value={ruleFilter || ''}
-                  onChange={(val) => setRuleFilter(val || null)}
-                  placeholder="Todas as regras"
-                  size="sm"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Date pills + mobile filter toggle — same row on mobile */}
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1 sm:gap-1.5 flex-1 overflow-x-auto scrollbar-hide">
-              {DATE_FILTERS.map(df => (
-                <FilterPill
-                  key={df.value}
-                  active={dateFilter === df.value}
-                  onClick={() => setDateFilter(df.value)}
-                  isDark={isDark}
-                >
-                  {df.label}
-                </FilterPill>
-              ))}
-            </div>
-
-            {/* Mobile: filter toggle — sits right of date pills */}
-            <button
-              type="button"
-              onClick={() => setFiltersExpanded(!filtersExpanded)}
-              className={`sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors flex-shrink-0 ${
-                isDark
-                  ? 'bg-space-nebula border-stellar-cyan/10 text-slate-300'
-                  : 'bg-slate-50 border-slate-200 text-slate-600'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Filtros
-              {activeFilterCount > 0 && (
-                <span className="bg-purple-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
+          )}
         </div>
 
-        {/* Mobile: animated filter expand/collapse */}
-        <div className="sm:hidden">
-          <AnimatePresence initial={false}>
-            {filtersExpanded && (
-              <motion.div
-                key="mobile-filters"
-                variants={filterV}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="overflow-hidden"
+        {/* Row 2: Date pills + Filter button (mobile) */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-1 overflow-x-auto scrollbar-hide">
+            {DATE_FILTERS.map(df => (
+              <FilterPill
+                key={df.value}
+                active={dateFilter === df.value}
+                onClick={() => setDateFilter(df.value)}
+                isDark={isDark}
               >
-                {renderFilterRows()}
-              </motion.div>
+                {df.label}
+              </FilterPill>
+            ))}
+          </div>
+
+          {/* Mobile: open filter sheet */}
+          <button
+            type="button"
+            onClick={openFilterSheet}
+            className={`sm:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors flex-shrink-0 ${
+              isDark
+                ? 'bg-space-nebula border-stellar-cyan/10 text-slate-300 hover:bg-space-nebula/80'
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="bg-purple-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold leading-none">
+                {activeFilterCount}
+              </span>
             )}
-          </AnimatePresence>
+          </button>
         </div>
 
-        {/* Desktop: always visible */}
+        {/* Mobile: Active filter chips */}
+        <div className="sm:hidden">
+          <ActiveFilterChips
+            deliveryFilter={deliveryFilter}
+            typeFilter={typeFilter}
+            campaignTypeFilter={campaignTypeFilter}
+            ruleFilter={ruleFilter}
+            automationRules={automationRules}
+            onRemove={removeFilter}
+            isDark={isDark}
+          />
+        </div>
+
+        {/* Desktop: always visible filter rows */}
         <div className="hidden sm:block">
           {renderFilterRows()}
         </div>
@@ -762,6 +984,7 @@ const MessageFlowMonitor = () => {
                 ? 'Tente ajustar os filtros para ver mais resultados.'
                 : 'Ainda não há mensagens registradas no período selecionado.'
               }
+              size="sm"
             />
           </motion.div>
         ) : (
@@ -801,7 +1024,12 @@ const MessageFlowMonitor = () => {
                     isDark ? 'bg-space-void/40' : 'bg-white/50'
                   } backdrop-blur-[2px]`}
                 >
-                  <RefreshCw className="w-5 h-5 text-purple-500 animate-spin" />
+                  <div className="flex flex-col items-center gap-2">
+                    <RefreshCw className="w-7 h-7 sm:w-8 sm:h-8 text-purple-500 animate-spin" />
+                    <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Carregando...
+                    </span>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -814,7 +1042,8 @@ const MessageFlowMonitor = () => {
         <motion.div variants={sectionV} className="flex items-center justify-between pt-2">
           {/* Info */}
           <span className={`text-xs sm:text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            Mostrando {startItem}-{endItem} de {totalCount.toLocaleString('pt-BR')}
+            <span className="sm:hidden">{startItem}-{endItem}/{totalCount.toLocaleString('pt-BR')}</span>
+            <span className="hidden sm:inline">Mostrando {startItem}-{endItem} de {totalCount.toLocaleString('pt-BR')}</span>
           </span>
 
           {/* Page controls */}
@@ -831,12 +1060,13 @@ const MessageFlowMonitor = () => {
               <ChevronLeft className="w-4 h-4" />
             </motion.button>
 
-            {/* Page numbers - show max 5 */}
+            {/* Page numbers - 3 on mobile, 5 on desktop */}
             {(() => {
               const pages = [];
-              let start = Math.max(1, currentPage - 2);
-              let end = Math.min(totalPages, start + 4);
-              if (end - start < 4) start = Math.max(1, end - 4);
+              const maxButtons = isMobile ? 3 : 5;
+              let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+              let end = Math.min(totalPages, start + maxButtons - 1);
+              if (end - start < maxButtons - 1) start = Math.max(1, end - (maxButtons - 1));
 
               for (let i = start; i <= end; i++) {
                 pages.push(
@@ -873,8 +1103,8 @@ const MessageFlowMonitor = () => {
             </motion.button>
           </div>
 
-          {/* Per-page selector */}
-          <div className="flex items-center gap-1">
+          {/* Per-page selector — desktop only */}
+          <div className="hidden sm:flex items-center gap-1">
             {PER_PAGE_OPTIONS.map(opt => (
               <button
                 key={opt}
@@ -894,14 +1124,33 @@ const MessageFlowMonitor = () => {
         </motion.div>
       )}
 
+      {/* Mobile Filter Bottom Sheet */}
+      {isMobile && (
+        <MobileFilterSheet
+          isOpen={filterSheetOpen}
+          onClose={() => setFilterSheetOpen(false)}
+          tempFilters={tempFilters}
+          onTempChange={handleTempChange}
+          onApply={applyTempFilters}
+          onClear={clearTempFilters}
+          automationRules={automationRules}
+          ruleOptions={ruleOptions}
+          tempFilterCount={tempFilterCount}
+          isDark={isDark}
+        />
+      )}
+
       {/* Detail Modal */}
       {selectedMessage && (
         <MessageFlowDetailModal
           message={selectedMessage}
           onClose={() => setSelectedMessage(null)}
+          messages={messages}
+          onNavigate={setSelectedMessage}
         />
       )}
     </motion.div>
+    </PullToRefreshWrapper>
   );
 };
 

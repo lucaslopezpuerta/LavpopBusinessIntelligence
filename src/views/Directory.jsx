@@ -73,7 +73,8 @@
 //   - Enhanced search with instant filtering
 //   - CustomerProfileModal integration
 
-import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import lazyRetry from '../utils/lazyRetry';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -96,15 +97,15 @@ import {
 import { calculateCustomerMetrics } from '../utils/customerMetrics';
 import CustomerCard from '../components/CustomerCard';
 import { useContactTracking } from '../hooks/useContactTracking';
-import { DirectoryLoadingSkeleton } from '../components/ui/Skeleton';
+import { DirectoryLoadingSkeleton, ModalLoadingFallback } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import CosmicDropdown from '../components/ui/CosmicDropdown';
 import { useTheme } from '../contexts/ThemeContext';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
 import useReducedMotion from '../hooks/useReducedMotion';
 
-// Lazy-load heavy modals
-const CustomerProfileModal = lazy(() => import('../components/CustomerProfileModal'));
+// Lazy-load heavy modals (with retry for chunk load resilience)
+const CustomerProfileModal = lazyRetry(() => import('../components/CustomerProfileModal'));
 
 // Animation variants for filter panel
 const filterPanelVariants = {
@@ -254,7 +255,6 @@ const Directory = ({ data, onDataChange }) => {
   // Theme for reliable dark mode
   const { isDark } = useTheme();
   const prefersReducedMotion = useReducedMotion();
-
   // Navigation for FAB
   const navigate = useNavigate();
 
@@ -499,18 +499,18 @@ const Directory = ({ data, onDataChange }) => {
             {/* Title & Subtitle */}
             <div>
               <h1
-                className="text-lg sm:text-xl font-bold tracking-wider"
+                className="text-xl sm:text-2xl font-bold tracking-wider"
                 style={{ fontFamily: "'Orbitron', sans-serif" }}
               >
                 <span className="text-gradient-stellar">DIRETÓRIO</span>
               </h1>
-              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`hidden sm:block text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Navegue e gerencie sua base de clientes
               </p>
             </div>
           </div>
 
-          {/* Stats Pills */}
+          {/* Stats Pills & Refresh */}
           <div className="flex items-center gap-2 flex-wrap">
             <StatsPill
               icon={UsersIcon}
@@ -1028,7 +1028,7 @@ const Directory = ({ data, onDataChange }) => {
 
         {/* Customer Profile Modal */}
       {selectedCustomer && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className={`${isDark ? 'bg-space-dust' : 'bg-white'} rounded-2xl p-8 shadow-xl`}><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerProfileModal
             customer={selectedCustomer}
             sales={data.sales}

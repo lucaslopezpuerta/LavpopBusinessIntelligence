@@ -97,17 +97,12 @@ import { calculateBusinessMetrics } from '../utils/businessMetrics';
 import { calculateOperationsMetrics } from '../utils/operationsMetrics';
 import { getDateWindows } from '../utils/dateWindows';
 import { OperationsLoadingSkeleton } from '../components/ui/Skeleton';
-import StaleDataIndicator from '../components/ui/StaleDataIndicator';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
-import { useDataRefresh } from '../contexts/DataFreshnessContext';
 
 const Operations = ({ data, onDataChange }) => {
   // Theme context for Cosmic Precision styling
   const { isDark } = useTheme();
-  // Data freshness for stale indicator
-  const { lastRefreshed, refreshing, triggerRefresh } = useDataRefresh();
-
   // Centralized date filter - single source of truth
   // Default to lastWeek for complete data (currentWeek is partial)
   const [dateFilter, setDateFilter] = useState('lastWeek');
@@ -183,21 +178,16 @@ const Operations = ({ data, onDataChange }) => {
             {/* Title & Subtitle */}
             <div>
               <h1
-                className="text-lg sm:text-xl font-bold tracking-wider"
+                className="text-xl sm:text-2xl font-bold tracking-wider"
                 style={{ fontFamily: "'Orbitron', sans-serif" }}
               >
                 <span className="text-gradient-stellar">OPERAÇÕES</span>
               </h1>
-              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`hidden sm:block text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Eficiência e análise operacional
               </p>
             </div>
           </div>
-          <StaleDataIndicator
-            lastUpdated={lastRefreshed}
-            isRefreshing={refreshing}
-            onRefresh={() => triggerRefresh({ reason: 'manual' })}
-          />
         </div>
 
         </AnimatedHeader>

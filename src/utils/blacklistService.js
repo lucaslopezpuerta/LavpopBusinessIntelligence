@@ -27,6 +27,7 @@
 
 import { normalizePhone } from './phoneUtils';
 import { api, getHeaders } from './apiService';
+import { toBrazilDateString } from './dateUtils';
 
 const TWILIO_FUNCTION_URL = '/.netlify/functions/twilio-whatsapp';
 const BLACKLIST_SYNC_KEY = 'lavpop_blacklist_last_sync';
@@ -164,7 +165,7 @@ export async function syncWithTwilio(options = {}) {
   // Default to last sync time or 30 days ago
   const lastSync = getLastSyncTime();
   const startDate = dateSentAfter || lastSync ||
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    toBrazilDateString(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
 
   const results = {
     success: false,

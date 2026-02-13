@@ -1,13 +1,17 @@
-// WeatherWidget_API.jsx v5.2 - COSMIC DESIGN SYSTEM
+// WeatherWidget_API.jsx v5.3 - COSMIC DESIGN SYSTEM
 // Weather widget for header and dashboard integration
 // Design System v5.1 compliant - Variant D (Glassmorphism Cosmic)
 //
 // FEATURES:
-// - Compact mode: Icon + Temp + Humidity for header
+// - Compact mode: Temp + Humidity for header (no condition icon)
 // - Full mode: Glassmorphism card with location for banner
 // - Auto-refresh every 30 minutes
 //
 // CHANGELOG:
+// v5.3 (2026-02-13): Compact mode simplification + typography fixes
+//   - Removed weather condition icon from compact mode (Temp + Humidity only)
+//   - Fixed text-[11px] → text-xs in loading state and full mode
+//   - Fixed text-[10px] → text-xs in full mode humidity
 // v5.2 (2026-01-18): Cosmic Design System overhaul
 //   - Dark mode: space-dust background, stellar-cyan borders
 //   - Icon backgrounds use stellar-cyan tints
@@ -85,7 +89,7 @@ const WeatherWidget = ({ compact = false, showLocation = false }) => {
         rounded-lg flex items-center gap-2 h-9
       `}>
         <Loader className={`w-3.5 h-3.5 ${compact ? 'text-slate-400 dark:text-stellar-cyan/60' : 'text-white'} animate-spin`} />
-        <div className={`text-[11px] font-medium ${compact ? 'text-slate-600 dark:text-slate-300' : 'text-white/90'}`}>
+        <div className={`text-xs font-medium ${compact ? 'text-slate-600 dark:text-slate-300' : 'text-white/90'}`}>
           {showLocation && compact ? 'Caxias do Sul...' : 'Clima...'}
         </div>
       </div>
@@ -114,23 +118,17 @@ const WeatherWidget = ({ compact = false, showLocation = false }) => {
         "
         title={`${weather.conditions} • ${weather.temp}°C • ${weather.humidity}% umidade • Sensação: ${weather.feelsLike}°C`}
       >
-        {/* Full metrics on all screen sizes */}
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded bg-stellar-cyan/10 dark:bg-stellar-cyan/20 flex items-center justify-center shrink-0">
-            <Icon className="w-3 h-3 text-stellar-cyan" />
-          </div>
-          <div className="flex items-center gap-0.5">
-            <Thermometer className="w-2.5 h-2.5 text-orange-500 dark:text-orange-400" />
-            <span className="text-xs font-bold text-slate-700 dark:text-white">
-              {weather.temp}°
-            </span>
-          </div>
-          <div className="flex items-center gap-0.5">
-            <Droplets className="w-2.5 h-2.5 text-stellar-cyan" />
-            <span className="text-xs font-bold text-slate-700 dark:text-white">
-              {weather.humidity}%
-            </span>
-          </div>
+        <div className="flex items-center gap-0.5">
+          <Thermometer className="w-2.5 h-2.5 text-orange-500 dark:text-orange-400" />
+          <span className="text-xs font-bold text-slate-700 dark:text-white">
+            {weather.temp}°
+          </span>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <Droplets className="w-2.5 h-2.5 text-stellar-cyan" />
+          <span className="text-xs font-bold text-slate-700 dark:text-white">
+            {weather.humidity}%
+          </span>
         </div>
       </div>
     );
@@ -163,10 +161,10 @@ const WeatherWidget = ({ compact = false, showLocation = false }) => {
           CLIMA CAXIAS
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-white/90">
+          <span className="text-xs font-semibold text-white/90">
             {weather.feelsLike}°C
           </span>
-          <span className="text-[10px] text-white/80">
+          <span className="text-xs text-white/80">
             💧 {weather.humidity}%
           </span>
         </div>

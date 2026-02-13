@@ -47,6 +47,7 @@ import { getCampaignContacts, getCampaignPerformance } from '../../utils/campaig
 import { haptics } from '../../utils/haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import BaseModal from '../ui/BaseModal';
+import { SectionLoadingState } from '../ui/Skeleton';
 
 // Pagination config
 const CONTACTS_PER_PAGE = 20;
@@ -594,10 +595,7 @@ const CampaignDetailsModal = ({ campaign, onClose, formatCurrency, formatPercent
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-2 sm:p-3">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-5 h-5 text-purple-500 animate-spin" />
-              <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">Carregando...</span>
-            </div>
+            <SectionLoadingState message="Carregando contatos..." />
           ) : paginatedContacts.length > 0 ? (
             <div className="space-y-1.5">
               {paginatedContacts.map((contact) => {

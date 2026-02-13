@@ -27,6 +27,7 @@
 
 import { api, getHeaders } from './apiService';
 import { normalizePhone } from './phoneUtils';
+import { toBrazilDateString } from './dateUtils';
 
 const TWILIO_FUNCTION_URL = '/.netlify/functions/twilio-whatsapp';
 
@@ -42,7 +43,7 @@ function parseTwilioDate(dateStr) {
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return null;
-    return date.toISOString().split('T')[0];
+    return toBrazilDateString(date);
   } catch {
     return null;
   }
@@ -99,7 +100,7 @@ export async function syncEngagementAndCosts(options = {}) {
 
   // Default to last sync time or 30 days ago
   const startDate = dateSentAfter || lastSync?.split('T')[0] ||
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    toBrazilDateString(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
 
   const results = {
     success: false,

@@ -69,7 +69,7 @@ export const formatDate = (date, options = {}) => {
     ...options,
   };
 
-  return dateObj.toLocaleDateString('pt-BR', defaultOptions);
+  return dateObj.toLocaleDateString('pt-BR', { ...defaultOptions, timeZone: 'America/Sao_Paulo' });
 };
 
 /**

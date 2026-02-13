@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { toBrazilDateString } from '../../utils/dateUtils';
 import { getSupabaseClient } from '../../utils/supabaseClient';
 import { getChartColors, getSeriesColors } from '../../utils/chartColors';
 
@@ -384,7 +385,7 @@ const InstagramGrowthAnalytics = ({ refreshKey = 0 }) => {
     // Apply date range filter
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - rangeDays);
-    const cutoffStr = cutoffDate.toISOString().split('T')[0];
+    const cutoffStr = toBrazilDateString(cutoffDate);
 
     return rawData.filter(d => d.bucket_date >= cutoffStr);
   }, [rawData, rangeDays]);

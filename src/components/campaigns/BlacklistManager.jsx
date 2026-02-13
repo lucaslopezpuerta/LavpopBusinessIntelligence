@@ -133,6 +133,7 @@ import {
   Cell
 } from 'recharts';
 import SectionCard from '../ui/SectionCard';
+import { SectionLoadingState } from '../ui/Skeleton';
 import InsightBox from '../ui/InsightBox';
 import KPICard from '../ui/KPICard';
 import {
@@ -717,10 +718,7 @@ const BlacklistManager = ({ customerData }) => {
       <div className="space-y-6">
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-            <span className="ml-3 text-slate-500 dark:text-slate-400">Carregando blacklist...</span>
-          </div>
+          <SectionLoadingState message="Carregando blacklist..." />
         )}
 
         {/* Stats Dashboard Header */}

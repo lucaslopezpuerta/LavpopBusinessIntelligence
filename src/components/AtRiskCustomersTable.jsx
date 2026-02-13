@@ -138,7 +138,9 @@
 // v8.5 (2025-12-08): Campaign context tracking
 // v8.4 (2025-12-03): Phone validation for WhatsApp
 
-import React, { useState, useMemo, useRef, useCallback, useEffect, lazy, Suspense, memo } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect, Suspense, memo } from 'react';
+import lazyRetry from '../utils/lazyRetry';
+import { ModalLoadingFallback } from './ui/Skeleton';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { Phone, MessageCircle, CheckCircle, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Users, Ban, EyeOff, Eye, Search, X, Send, List, LayoutGrid } from 'lucide-react';
 import { HapticCheckbox } from './ui/HapticCheckbox';
@@ -148,9 +150,9 @@ import { useSwipeToAction } from '../hooks/useSwipeToAction';
 // Note: ArrowUpDown removed in v9.10 - replaced by clickable column headers with chevrons
 import { RISK_LABELS, DAY_THRESHOLDS } from '../utils/customerMetrics';
 
-// Lazy-load heavy modals
-const CustomerProfileModal = lazy(() => import('./CustomerProfileModal'));
-const CustomerSegmentModal = lazy(() => import('./modals/CustomerSegmentModal'));
+// Lazy-load heavy modals (with retry for chunk load resilience)
+const CustomerProfileModal = lazyRetry(() => import('./CustomerProfileModal'));
+const CustomerSegmentModal = lazyRetry(() => import('./modals/CustomerSegmentModal'));
 import { formatCurrency } from '../utils/formatters';
 import { useContactTracking } from '../hooks/useContactTracking';
 import { useBlacklist } from '../hooks/useBlacklist';
@@ -1400,7 +1402,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
       {/* Customer Profile Modal */}
       {selectedCustomer && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerProfileModal
             customer={selectedCustomer}
             sales={salesData}
@@ -1411,7 +1413,7 @@ const AtRiskCustomersTable = ({ customerMetrics, salesData, className = '' }) =>
 
       {/* Segment Modal for batch actions */}
       {segmentModalOpen && selectedCustomers.length > 0 && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" /></div></div>}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <CustomerSegmentModal
             isOpen={segmentModalOpen}
             onClose={() => {

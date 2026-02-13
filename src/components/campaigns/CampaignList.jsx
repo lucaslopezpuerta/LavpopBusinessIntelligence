@@ -66,6 +66,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Target, Calendar, Users, Search, MessageSquare, TrendingUp, RefreshCw, Eye, CheckCircle2, BookOpen, AlertCircle, ArrowRight, Send, Bot, User, AlertTriangle } from 'lucide-react';
 import SectionCard from '../ui/SectionCard';
+import { SectionLoadingState } from '../ui/Skeleton';
 import ProgressBar from '../ui/ProgressBar';
 import { getCampaignPerformance } from '../../utils/campaignService';
 import CampaignDetailsModal from './CampaignDetailsModal';
@@ -350,10 +351,7 @@ const CampaignList = ({ formatCurrency, formatPercent }) => {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center py-8">
-            <RefreshCw className="w-6 h-6 text-purple-500 animate-spin" />
-            <span className="ml-2 text-slate-600 dark:text-slate-400">Carregando campanhas...</span>
-          </div>
+          <SectionLoadingState message="Carregando campanhas..." />
         )}
 
         {/* Campaign Cards */}

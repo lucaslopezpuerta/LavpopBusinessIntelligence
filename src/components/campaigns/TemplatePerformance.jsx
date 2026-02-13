@@ -30,6 +30,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getSupabaseClient } from '../../utils/supabaseClient';
+import { toBrazilDateString } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Constants & Formatters
@@ -416,8 +417,8 @@ const TemplatePerformance = ({ className = '', dateFilter = 'all', refreshKey = 
       const now = new Date();
       const days = dateFilter === '7d' ? 7 : dateFilter === '30d' ? 30 : 0;
       if (days > 0) {
-        const fromDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
-          .toISOString().split('T')[0];
+        const fromDate = toBrazilDateString(
+          new Date(now.getTime() - days * 24 * 60 * 60 * 1000));
         const dateFiltered = rawData.filter(r => r.bucket_date >= fromDate);
         // Only use filtered data if it has non-zero metrics
         const hasNonZero = dateFiltered.some(r =>

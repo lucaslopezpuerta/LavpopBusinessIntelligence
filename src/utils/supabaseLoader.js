@@ -51,6 +51,7 @@
 import Papa from 'papaparse';
 import { normalizeCpf } from './cpfUtils';
 import { getSupabaseClient } from './supabaseClient';
+import { toBrazilDateString } from './dateUtils';
 import { getCachedData, setCachedData } from './dataCache';
 
 // Use shared Supabase client to avoid multiple GoTrueClient instances
@@ -323,8 +324,8 @@ export async function fetchDailyRevenue(startDate, endDate) {
     throw new Error('Supabase not configured');
   }
 
-  const startStr = startDate.toISOString().split('T')[0];
-  const endStr = endDate.toISOString().split('T')[0];
+  const startStr = toBrazilDateString(startDate);
+  const endStr = toBrazilDateString(endDate);
 
   console.log(`[fetchDailyRevenue] Fetching ${startStr} to ${endStr}...`);
 

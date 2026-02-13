@@ -1,4 +1,4 @@
-// MinimalTopBar.jsx v6.0 - STELLAR COMMAND BRIDGE
+// MinimalTopBar.jsx v6.1 - STELLAR COMMAND BRIDGE
 // Prominent brand presence with full utility
 // Design System v5.1 compliant
 //
@@ -8,6 +8,11 @@
 // - Mobile: Saturn icon (40px / 56px = 71%)
 //
 // CHANGELOG:
+// v6.1 (2026-02-13): Declutter mobile topbar
+//   - Hid BrazilClockMobile, NotificationBell, ThemeToggle on mobile (< lg)
+//   - Added theme toggle action to QuickActions dropdown for mobile access
+//   - Mobile topbar reduced from 7 items to 3 (Weather, StaleData, QuickActions)
+//   - Fixed text-[11px] → text-xs in BrazilClockMobile
 // v6.0 (2026-01-31): Brand-forward redesign
 //   - NEW: Prominent BilavnovaFullLogo on desktop (h-11, 44px)
 //   - NEW: Large BilavnovaIcon on mobile (h-10, 40px)
@@ -25,7 +30,7 @@
 // v4.x-v1.x: Previous implementations
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, FileDown, RefreshCw, Bell, MoreHorizontal, LogOut } from 'lucide-react';
+import { MapPin, FileDown, Bell, MoreHorizontal, LogOut, Clock, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WeatherWidget from './WeatherWidget_API';
 import ThemeToggle from './ThemeToggle';
@@ -34,7 +39,9 @@ import { BilavnovaIcon, BilavnovaFullLogo } from './ui/BilavnovaLogo';
 import { haptics } from '../utils/haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useDataRefresh } from '../contexts/DataFreshnessContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import StaleDataIndicator from './ui/StaleDataIndicator';
 
 // Hook to detect touch/mobile device
 const useIsTouchDevice = () => {
@@ -50,6 +57,96 @@ const useIsTouchDevice = () => {
   }, []);
 
   return isTouch;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BrazilClock - Live Brazilian time (America/Sao_Paulo)
+// Desktop: "QUI 13:42" inside VitalsConsole
+// Mobile: Compact "13:42" next to brand logo
+// ═══════════════════════════════════════════════════════════════════════════
+const WEEKDAYS_PT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+
+const TIME_FMT = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false
+});
+
+const WEEKDAY_FMT = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo',
+  weekday: 'short'
+});
+
+const useBrazilTime = () => {
+  const [time, setTime] = useState(() => ({
+    display: TIME_FMT.format(new Date()),
+    weekday: WEEKDAY_FMT.format(new Date()).replace('.', '').toUpperCase()
+  }));
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      setTime({
+        display: TIME_FMT.format(now),
+        weekday: WEEKDAY_FMT.format(now).replace('.', '').toUpperCase()
+      });
+    };
+
+    // Sync to next minute boundary for clean transitions
+    const msUntilNextMinute = (60 - new Date().getSeconds()) * 1000;
+    const initialTimeout = setTimeout(() => {
+      update();
+      // Then update every 60s
+      const interval = setInterval(update, 60_000);
+      // Store for cleanup
+      intervalRef.current = interval;
+    }, msUntilNextMinute);
+
+    const intervalRef = { current: null };
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  return time;
+};
+
+const BrazilClockDesktop = ({ isDark }) => {
+  const { display, weekday } = useBrazilTime();
+
+  return (
+    <div className="flex items-center gap-1.5 px-2">
+      <Clock className="w-3.5 h-3.5 text-stellar-cyan" />
+      <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        {weekday}
+      </span>
+      <span className={`text-xs font-bold font-mono tabular-nums tracking-wide ${
+        isDark ? 'text-slate-200' : 'text-slate-700'
+      }`}>
+        {display}
+      </span>
+    </div>
+  );
+};
+
+const BrazilClockMobile = ({ isDark }) => {
+  const { display } = useBrazilTime();
+
+  return (
+    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg ${
+      isDark ? 'bg-stellar-cyan/5' : 'bg-slate-100/60'
+    }`}>
+      <Clock className={`w-3 h-3 ${isDark ? 'text-stellar-cyan/60' : 'text-slate-400'}`} />
+      <span className={`text-xs font-bold font-mono tabular-nums tracking-wide ${
+        isDark ? 'text-slate-300' : 'text-slate-600'
+      }`}>
+        {display}
+      </span>
+    </div>
+  );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -155,6 +252,12 @@ const VitalsConsole = ({ isDark, prefersReducedMotion }) => (
     {/* Vertical divider */}
     <div className={`w-px h-5 ${isDark ? 'bg-stellar-cyan/20' : 'bg-slate-300/60'}`} />
 
+    {/* Brazil time */}
+    <BrazilClockDesktop isDark={isDark} />
+
+    {/* Vertical divider */}
+    <div className={`w-px h-5 ${isDark ? 'bg-stellar-cyan/20' : 'bg-slate-300/60'}`} />
+
     {/* Realtime indicator */}
     <RealtimeStatusIndicator />
   </motion.div>
@@ -239,13 +342,13 @@ const ActionItem = ({ icon: Icon, label, onClick, loading, shortcut, isDark }) =
 // ═══════════════════════════════════════════════════════════════════════════
 // QuickActions - Streamlined dropdown
 // ═══════════════════════════════════════════════════════════════════════════
-const QuickActions = ({ onOpenExport, onRefresh, refreshing, prefersReducedMotion }) => {
+const QuickActions = ({ onOpenExport, prefersReducedMotion }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const closeTimeoutRef = useRef(null);
   const isTouch = useIsTouchDevice();
   const { signOut } = useAuth();
-  const { isDark } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -358,14 +461,6 @@ const QuickActions = ({ onOpenExport, onRefresh, refreshing, prefersReducedMotio
               shortcut="E"
               isDark={isDark}
             />
-            <ActionItem
-              icon={RefreshCw}
-              label="Sincronizar"
-              onClick={() => { onRefresh?.(); setIsOpen(false); }}
-              loading={refreshing}
-              shortcut="R"
-              isDark={isDark}
-            />
 
             {/* Divider */}
             <div className={`my-2 mx-3 h-px ${isDark ? 'divider-cosmic' : 'bg-slate-200'}`} />
@@ -374,6 +469,12 @@ const QuickActions = ({ onOpenExport, onRefresh, refreshing, prefersReducedMotio
               icon={Bell}
               label="Alertas"
               onClick={() => setIsOpen(false)}
+              isDark={isDark}
+            />
+            <ActionItem
+              icon={isDark ? Sun : Moon}
+              label={isDark ? 'Modo claro' : 'Modo escuro'}
+              onClick={() => { toggleTheme(); haptics.medium(); setIsOpen(false); }}
               isDark={isDark}
             />
 
@@ -502,8 +603,9 @@ const CommandPalette = ({ prefersReducedMotion }) => {
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT: MinimalTopBar (Stellar Command Bridge)
 // ═══════════════════════════════════════════════════════════════════════════
-const MinimalTopBar = ({ refreshing, onRefresh, onOpenExport }) => {
+const MinimalTopBar = ({ onOpenExport }) => {
   const { isDark } = useTheme();
+  const { lastRefreshed, refreshing: contextRefreshing, triggerRefresh } = useDataRefresh();
   const prefersReducedMotion = useReducedMotion();
   const [unreadNotifications] = useState(0); // TODO: Connect to notification system
 
@@ -530,9 +632,11 @@ const MinimalTopBar = ({ refreshing, onRefresh, onOpenExport }) => {
       />
 
       {/* Main content */}
-      <div className="relative h-14 lg:h-[60px] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-4">
-        {/* LEFT: Brand Logo (prominent sizing) */}
-        <BrandLogo isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
+      <div className="relative h-14 lg:h-[60px] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 lg:gap-4">
+        {/* LEFT: Brand Logo */}
+        <div className="flex items-center gap-2 min-w-0 flex-shrink">
+          <BrandLogo isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
+        </div>
 
         {/* CENTER: VitalsConsole (desktop only) */}
         <VitalsConsole isDark={isDark} prefersReducedMotion={prefersReducedMotion} />
@@ -544,24 +648,34 @@ const MinimalTopBar = ({ refreshing, onRefresh, onOpenExport }) => {
             <WeatherWidget compact />
           </div>
 
-          {/* Notification Bell */}
-          <NotificationBell
-            unreadCount={unreadNotifications}
-            onClick={() => {/* TODO: Open notification panel */}}
-            isDark={isDark}
+          {/* Data Freshness Indicator */}
+          <StaleDataIndicator
+            lastUpdated={lastRefreshed}
+            isRefreshing={contextRefreshing}
+            onRefresh={() => triggerRefresh({ reason: 'manual' })}
             prefersReducedMotion={prefersReducedMotion}
           />
+
+          {/* Notification Bell - desktop only (non-functional on mobile, accessible via QuickActions "Alertas") */}
+          <div className="hidden lg:flex">
+            <NotificationBell
+              unreadCount={unreadNotifications}
+              onClick={() => {/* TODO: Open notification panel */}}
+              isDark={isDark}
+              prefersReducedMotion={prefersReducedMotion}
+            />
+          </div>
 
           {/* Quick Actions */}
           <QuickActions
             onOpenExport={onOpenExport}
-            onRefresh={onRefresh}
-            refreshing={refreshing}
             prefersReducedMotion={prefersReducedMotion}
           />
 
-          {/* Theme Toggle - now visible on all screens */}
-          <ThemeToggle className="no-print" />
+          {/* Theme Toggle - desktop only (accessible via QuickActions on mobile) */}
+          <div className="hidden lg:block">
+            <ThemeToggle className="no-print" />
+          </div>
 
           {/* Keyboard Hints - desktop only */}
           <div className="hidden lg:block">

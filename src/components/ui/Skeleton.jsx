@@ -795,10 +795,10 @@ const CampaignsLoadingSkeleton = () => (
       <Skeleton className="h-10 w-36 rounded-xl" stagger staggerIndex={0} />
     </div>
 
-    {/* Section navigation */}
+    {/* Section navigation — 6 tabs: Visão Geral, Automações, Audiência, Mensagens, Histórico, Monitor */}
     <div className="flex items-center gap-2 overflow-x-auto pb-2">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Skeleton key={i} className="h-9 w-28 rounded-lg flex-shrink-0" stagger staggerIndex={i} />
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <Skeleton key={i} className="h-10 w-10 sm:h-9 sm:w-28 rounded-lg flex-shrink-0" stagger staggerIndex={Math.min(i, 7)} />
       ))}
     </div>
 
@@ -825,21 +825,6 @@ const CampaignsLoadingSkeleton = () => (
       </div>
     </div>
 
-    {/* Insights row */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <SkeletonCircle size="w-8 h-8" className="rounded-lg" stagger staggerIndex={6 + i} />
-            <div className="flex-1 space-y-2">
-              <SkeletonText width="w-24" height="h-4" stagger staggerIndex={6 + i} />
-              <SkeletonText width="w-full" height="h-3" stagger staggerIndex={7} />
-              <SkeletonText width="w-3/4" height="h-3" stagger staggerIndex={7} />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
   </div>
 );
 
@@ -1620,86 +1605,161 @@ const PriorityMatrixSkeleton = () => (
   </div>
 );
 
-// MessageFlowLoadingSkeleton - matches MessageFlowMonitor layout (v1.0)
-// KPI strip (4 cards) + filter bar + message cards (5) + pagination
+// MessageFlowLoadingSkeleton - matches MessageFlowMonitor v3.0 layout
+// KPI strip (4 cards) + filter bar (search + date pills + toggle) + message cards (5) + pagination
 const MessageFlowLoadingSkeleton = () => (
-  <div className="space-y-4 sm:space-y-6">
+  <div className="space-y-4 sm:space-y-5">
     {/* KPI strip - 4 cards */}
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+        <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-stellar-cyan/10 p-3 sm:p-4">
           <SkeletonText width="w-16" height="h-3" className="mb-2" stagger staggerIndex={i} />
           <SkeletonText width="w-12" height="h-6" className="mb-1" stagger staggerIndex={i} />
-          <SkeletonText width="w-20" height="h-3" stagger staggerIndex={i + 1} />
+          <SkeletonText width="w-20" height="h-3" stagger staggerIndex={Math.min(i + 1, 7)} />
         </div>
       ))}
     </div>
 
-    {/* Filter bar */}
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-10 flex-1 max-w-xs rounded-xl" stagger staggerIndex={2} />
-        <div className="flex gap-1.5">
+    {/* Filter bar — search + date pills + toggle on mobile, + expanded rows on desktop */}
+    <div className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-stellar-cyan/10 p-3 sm:p-4 space-y-3">
+      {/* Row 1: Search input + Date pills + Filter toggle */}
+      <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
+        <Skeleton className="h-9 sm:h-10 w-full sm:max-w-sm rounded-xl" stagger staggerIndex={2} />
+        <div className="flex items-center gap-1.5">
+          {/* Date pills: 7d, 30d, 90d, Tudo */}
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-8 w-12 rounded-lg" stagger staggerIndex={3} />
+            <Skeleton key={i} className="h-7 sm:h-8 w-10 sm:w-12 rounded-full flex-shrink-0" stagger staggerIndex={3} />
           ))}
+          {/* Mobile filter toggle */}
+          <Skeleton className="sm:hidden h-7 w-16 rounded-lg flex-shrink-0" stagger staggerIndex={3} />
         </div>
       </div>
-      <div className="flex items-center gap-1.5 overflow-x-auto">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-7 w-20 rounded-full flex-shrink-0" stagger staggerIndex={3 + i} />
-        ))}
+      {/* Desktop-only: Status + Type + Campaign rows */}
+      <div className="hidden sm:block space-y-2.5">
+        {/* Status row */}
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="h-3 w-16 rounded" stagger staggerIndex={4} />
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-8 w-20 rounded-full flex-shrink-0" stagger staggerIndex={4} />
+            ))}
+          </div>
+        </div>
+        {/* Type row */}
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="h-3 w-16 rounded" stagger staggerIndex={5} />
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-8 w-20 rounded-full flex-shrink-0" stagger staggerIndex={5} />
+            ))}
+          </div>
+        </div>
+        {/* Sort row */}
+        <div className="flex items-center gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+          <Skeleton className="h-3 w-16 rounded" stagger staggerIndex={6} />
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-8 w-16 rounded-lg flex-shrink-0" stagger staggerIndex={6} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
 
-    {/* Message cards */}
+    {/* Message cards — mobile: compact rows; desktop: 4-column layout */}
     {[0, 1, 2, 3, 4].map((i) => (
-      <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-          {/* Identity */}
-          <div className="flex items-center gap-3 sm:w-1/4">
-            <SkeletonCircle size="w-9 h-9" stagger staggerIndex={4 + i} />
-            <div className="space-y-1.5">
-              <SkeletonText width="w-24" height="h-4" stagger staggerIndex={4 + i} />
-              <SkeletonText width="w-28" height="h-3" stagger staggerIndex={5 + i} />
-            </div>
+      <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-stellar-cyan/10 p-3 sm:p-4">
+        {/* Mobile layout */}
+        <div className="sm:hidden space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <SkeletonText width="w-28" height="h-4" stagger staggerIndex={Math.min(4 + i, 7)} />
+            <Skeleton className="h-4 w-12 rounded flex-shrink-0" stagger staggerIndex={Math.min(5 + i, 7)} />
+            <Skeleton className="h-4 w-16 rounded flex-shrink-0" stagger staggerIndex={Math.min(5 + i, 7)} />
           </div>
-          {/* Campaign context */}
-          <div className="space-y-1.5 sm:w-1/4">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-5 w-14 rounded" stagger staggerIndex={5 + i} />
-              <SkeletonText width="w-24" height="h-3" stagger staggerIndex={5 + i} />
-            </div>
-            <SkeletonText width="w-32" height="h-3" stagger staggerIndex={6 + i} />
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-4 w-12 rounded" stagger staggerIndex={Math.min(5 + i, 7)} />
+            <SkeletonText width="w-20" height="h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
+            <SkeletonText width="w-16" height="h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
           </div>
-          {/* Delivery timeline */}
-          <div className="flex items-center gap-2 sm:w-1/4">
+          <div className="flex items-center gap-1">
             {[0, 1, 2].map((j) => (
-              <div key={j} className="flex items-center gap-1">
-                <SkeletonCircle size="w-3 h-3" stagger staggerIndex={6 + i} />
-                <SkeletonText width="w-10" height="h-3" stagger staggerIndex={6 + i} />
+              <div key={j} className="flex items-center gap-0.5">
+                <SkeletonCircle size="w-2 h-2" stagger staggerIndex={Math.min(6 + i, 7)} />
+                <SkeletonText width="w-8" height="h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
               </div>
             ))}
           </div>
-          {/* Outcome */}
-          <div className="sm:w-1/4 sm:text-right">
-            <Skeleton className="h-5 w-20 rounded-full ml-auto" stagger staggerIndex={7 + i} />
+        </div>
+        {/* Desktop layout */}
+        <div className="hidden sm:flex sm:items-center gap-4">
+          <div className="flex items-center gap-2.5 w-[22%] min-w-0">
+            <SkeletonCircle size="w-9 h-9" stagger staggerIndex={Math.min(4 + i, 7)} />
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <SkeletonText width="w-24" height="h-4" stagger staggerIndex={Math.min(4 + i, 7)} />
+              <SkeletonText width="w-28" height="h-3" stagger staggerIndex={Math.min(5 + i, 7)} />
+            </div>
+          </div>
+          <div className="w-[28%] space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-14 rounded" stagger staggerIndex={Math.min(5 + i, 7)} />
+              <SkeletonText width="w-24" height="h-3" stagger staggerIndex={Math.min(5 + i, 7)} />
+            </div>
+            <SkeletonText width="w-32" height="h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
+          </div>
+          <div className="flex items-center gap-2 w-[28%]">
+            {[0, 1, 2].map((j) => (
+              <div key={j} className="flex items-center gap-1">
+                <SkeletonCircle size="w-3 h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
+                <SkeletonText width="w-10" height="h-3" stagger staggerIndex={Math.min(6 + i, 7)} />
+              </div>
+            ))}
+          </div>
+          <div className="w-[22%] text-right">
+            <Skeleton className="h-6 w-20 rounded-full ml-auto" stagger staggerIndex={7} />
           </div>
         </div>
       </div>
     ))}
 
     {/* Pagination */}
-    <div className="flex items-center justify-between">
-      <SkeletonText width="w-32" height="h-4" stagger staggerIndex={7} />
-      <div className="flex items-center gap-1">
-        {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-8 w-8 rounded-lg" stagger staggerIndex={8} />
+    <div className="flex items-center justify-between pt-2">
+      <SkeletonText width="w-24 sm:w-40" height="h-4" stagger staggerIndex={7} />
+      <div className="flex items-center gap-0.5">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className={`h-10 w-10 sm:h-8 sm:w-8 rounded ${i === 0 || i === 4 ? '' : 'hidden sm:block'}`} stagger staggerIndex={7} />
         ))}
       </div>
     </div>
   </div>
 );
+
+// ModalLoadingFallback — shared fullscreen overlay spinner for lazy-loaded modals
+const ModalLoadingFallback = () => (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl">
+      <div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin mx-auto" />
+    </div>
+  </div>
+);
+
+// InlineLoadingFallback — inline spinner for lazy-loaded sections (non-modal)
+const InlineLoadingFallback = () => (
+  <div className="flex justify-center py-12">
+    <div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
+// SectionLoadingState — consistent loading state for sub-component sections
+// Replaces ad-hoc Loader2/RefreshCw spinners with unified design
+const SectionLoadingState = ({ message = 'Carregando...', size = 'md' }) => {
+  const sizes = { sm: 'w-5 h-5', md: 'w-7 h-7', lg: 'w-9 h-9' };
+  return (
+    <div className="flex flex-col items-center justify-center py-12 gap-3">
+      <div className={`${sizes[size]} border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin`} />
+      <p className="text-xs text-slate-400 dark:text-slate-500">{message}</p>
+    </div>
+  );
+};
 
 export {
   Skeleton,
@@ -1729,6 +1789,9 @@ export {
   PriorityMatrixSkeleton,
   CollapsibleSectionSkeleton,
   CohortRetentionChartSkeleton,
+  ModalLoadingFallback,
+  InlineLoadingFallback,
+  SectionLoadingState,
 };
 
 export default Skeleton;

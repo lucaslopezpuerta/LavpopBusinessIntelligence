@@ -16,6 +16,7 @@
 
 import getSupabaseClient from './supabaseClient';
 import { getFrequencyDegradation, getRetentionMetrics, getFirstVisitConversion } from './customerMetrics';
+import { toBrazilDateString } from './dateUtils';
 
 // Maps recommendation actionType to navigation tab IDs
 export const ACTION_TO_TAB = {
@@ -290,7 +291,7 @@ export async function requestLLMInsight(insightType) {
 
 export async function generateRecommendations(data) {
   const recommendations = [];
-  const today = new Date().toISOString().split('T')[0];
+  const today = toBrazilDateString();
 
   // Layer 1: Rule-based checks
   for (const rule of RULE_CHECKS) {

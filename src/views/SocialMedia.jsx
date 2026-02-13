@@ -23,21 +23,22 @@
 //   - Platform sub-tab navigation
 //   - Facebook placeholder for future expansion
 
-import { useState, useCallback, lazy, Suspense } from 'react';
+import { useState, useCallback, Suspense } from 'react';
+import lazyRetry from '../utils/lazyRetry';
 import { Share2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // Navigation component
 import SocialMediaNavigation from '../components/social/SocialMediaNavigation';
 
-// Lazy-loaded platform components
-const InstagramAnalytics = lazy(() => import('../components/social/InstagramAnalytics'));
-const WhatsAppAnalytics = lazy(() => import('../components/campaigns/WhatsAppAnalytics'));
-const WhatChimpAnalytics = lazy(() => import('../components/social/WhatChimpAnalytics'));
-const BlacklistManager = lazy(() => import('../components/campaigns/BlacklistManager'));
-const GoogleBusinessAnalytics = lazy(() => import('../components/social/GoogleBusinessAnalytics'));
-const InstagramGrowthAnalytics = lazy(() => import('../components/social/InstagramGrowthAnalytics'));
-const TemplatePerformance = lazy(() => import('../components/campaigns/TemplatePerformance'));
+// Lazy-loaded platform components (with retry for chunk load resilience)
+const InstagramAnalytics = lazyRetry(() => import('../components/social/InstagramAnalytics'));
+const WhatsAppAnalytics = lazyRetry(() => import('../components/campaigns/WhatsAppAnalytics'));
+const WhatChimpAnalytics = lazyRetry(() => import('../components/social/WhatChimpAnalytics'));
+const BlacklistManager = lazyRetry(() => import('../components/campaigns/BlacklistManager'));
+const GoogleBusinessAnalytics = lazyRetry(() => import('../components/social/GoogleBusinessAnalytics'));
+const InstagramGrowthAnalytics = lazyRetry(() => import('../components/social/InstagramGrowthAnalytics'));
+const TemplatePerformance = lazyRetry(() => import('../components/campaigns/TemplatePerformance'));
 
 // Pull-to-refresh wrapper
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
@@ -86,7 +87,6 @@ const ComingSoonPlaceholder = ({ platform }) => (
 const SocialMedia = ({ data, onDataChange }) => {
   // Theme context for Cosmic Precision styling
   const { isDark } = useTheme();
-
   const [activeSection, setActiveSection] = useState('instagram');
   // Shared state for WhatsApp tab (synced from WhatsAppAnalytics → TemplatePerformance)
   const [waDateFilter, setWaDateFilter] = useState('30d');
@@ -120,12 +120,12 @@ const SocialMedia = ({ data, onDataChange }) => {
             {/* Title & Subtitle */}
             <div>
               <h1
-                className="text-lg sm:text-xl font-bold tracking-wider"
+                className="text-xl sm:text-2xl font-bold tracking-wider"
                 style={{ fontFamily: "'Orbitron', sans-serif" }}
               >
                 <span className="text-gradient-stellar">REDES SOCIAIS</span>
               </h1>
-              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`hidden sm:block text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Analytics e desempenho das suas redes sociais
               </p>
             </div>

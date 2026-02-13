@@ -32,13 +32,15 @@
 // v1.2 (2025-12-24): Added upload history tab
 // v1.1 (2025-12-13): Pass onDataChange for auto-refresh after upload
 
-import React, { useState, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useRef, Suspense } from 'react';
+import lazyRetry from '../utils/lazyRetry';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Clock, Shield } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import DataUpload from '../components/DataUpload';
 import UploadHistoryTab from '../components/UploadHistoryTab';
-const DataQualityPanel = lazy(() => import('../components/ui/DataQualityPanel'));
+import { InlineLoadingFallback } from '../components/ui/Skeleton';
+const DataQualityPanel = lazyRetry(() => import('../components/ui/DataQualityPanel'));
 
 // Tab configuration for cleaner rendering
 const TABS = [
@@ -140,12 +142,12 @@ const DataUploadView = ({ onDataChange }) => {
             {/* Title & Subtitle */}
             <div>
               <h1
-                className="text-lg sm:text-xl font-bold tracking-wider"
+                className="text-xl sm:text-2xl font-bold tracking-wider"
                 style={{ fontFamily: "'Orbitron', sans-serif" }}
               >
                 <span className="text-gradient-stellar">UPLOAD DE DADOS</span>
               </h1>
-              <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`hidden sm:block text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Importar dados de vendas e clientes
               </p>
             </div>
@@ -265,7 +267,7 @@ const DataUploadView = ({ onDataChange }) => {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <Suspense fallback={<div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-stellar-cyan border-t-transparent rounded-full animate-spin" /></div>}>
+              <Suspense fallback={<InlineLoadingFallback />}>
                 <DataQualityPanel />
               </Suspense>
             </motion.div>

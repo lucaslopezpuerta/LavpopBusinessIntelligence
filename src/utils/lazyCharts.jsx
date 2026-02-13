@@ -13,7 +13,8 @@
 // v1.0 (2025-12-14): Initial implementation
 
 // @refresh reset
-import React, { lazy, Suspense } from 'react';
+import React, { Suspense } from 'react';
+import lazyRetry from './lazyRetry';
 
 // Chart loading fallback component
 export const ChartLoadingFallback = ({ height = 'h-64', className = '' }) => (
@@ -315,61 +316,61 @@ export const LazyChartWrapper = ({
 // These can be used directly in views with LazyChartWrapper
 
 // Dashboard charts
-export const LazyOperatingCyclesChart = lazy(() =>
+export const LazyOperatingCyclesChart = lazyRetry(() =>
   import('../components/OperatingCyclesChart')
 );
 
 // Customer charts
-export const LazyRFMScatterPlot = lazy(() =>
+export const LazyRFMScatterPlot = lazyRetry(() =>
   import('../components/RFMScatterPlot')
 );
 
-export const LazyChurnHistogram = lazy(() =>
+export const LazyChurnHistogram = lazyRetry(() =>
   import('../components/ChurnHistogram')
 );
 
-export const LazyNewClientsChart = lazy(() =>
+export const LazyNewClientsChart = lazyRetry(() =>
   import('../components/NewClientsChart')
 );
 
-export const LazyVisitHeatmap = lazy(() =>
+export const LazyVisitHeatmap = lazyRetry(() =>
   import('../components/VisitHeatmap')
 );
 
-export const LazyAcquisitionCard = lazy(() =>
+export const LazyAcquisitionCard = lazyRetry(() =>
   import('../components/AcquisitionCard')
 );
 
 // Operations charts
-export const LazyDayOfWeekChart = lazy(() =>
+export const LazyDayOfWeekChart = lazyRetry(() =>
   import('../components/DayOfWeekChart')
 );
 
 // Intelligence sections (these include charts)
 // Note: WeatherImpactSection moved to Weather tab as WeatherImpactAnalytics
-export const LazyProfitabilitySection = lazy(() =>
+export const LazyProfitabilitySection = lazyRetry(() =>
   import('../components/intelligence/ProfitabilitySection')
 );
 
-export const LazyGrowthTrendsSection = lazy(() =>
+export const LazyGrowthTrendsSection = lazyRetry(() =>
   import('../components/intelligence/GrowthTrendsSection')
 );
 
-export const LazyModelHealthDashboard = lazy(() =>
+export const LazyModelHealthDashboard = lazyRetry(() =>
   import('../components/intelligence/ModelHealthDashboard')
 );
 
 // Campaign sections
-export const LazyCouponEffectiveness = lazy(() =>
+export const LazyCouponEffectiveness = lazyRetry(() =>
   import('../components/campaigns/CouponEffectiveness')
 );
 
 // Social media sections
-export const LazyInstagramGrowthAnalytics = lazy(() =>
+export const LazyInstagramGrowthAnalytics = lazyRetry(() =>
   import('../components/social/InstagramGrowthAnalytics')
 );
 
 // Drilldown charts
-export const LazyFinancialDrilldown = lazy(() =>
+export const LazyFinancialDrilldown = lazyRetry(() =>
   import('../components/drilldowns/FinancialDrilldown')
 );

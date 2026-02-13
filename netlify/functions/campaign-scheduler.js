@@ -2045,7 +2045,7 @@ async function processPriorityQueue(supabase) {
 
     const eligibleIds = new Set(
       (eligibilityResults || [])
-        .filter(e => e.is_eligible)
+        .filter(e => e.is_contactable)
         .map(e => e.customer_id)
     );
 
@@ -2454,9 +2454,10 @@ async function findAutomationTargets(supabase, rule) {
     case 'hours_after_visit':
       // Customers who visited in the last X hours
       // v3.2: ONE-TIME ONLY - check post_visit_sent_at is null
-      const hoursAgo = new Date();
+      const hoursAgo = getBrazilNow();
       hoursAgo.setHours(hoursAgo.getHours() - trigger_value);
-      const targetDate = hoursAgo.toISOString().split('T')[0];
+      const y = hoursAgo.getFullYear(), mo = hoursAgo.getMonth() + 1, dy = hoursAgo.getDate();
+      const targetDate = `${y}-${String(mo).padStart(2, '0')}-${String(dy).padStart(2, '0')}`;
       // For simplicity, treat as "visited yesterday" for 24h rule
       query = query
         .eq('last_visit', targetDate)
@@ -2484,14 +2485,14 @@ async function findAutomationTargets(supabase, rule) {
       query = query
         .gte('days_since_last_visit', 7) // Only target customers who haven't visited in 7+ days
         .is('last_weather_campaign_date', null) // Respect 14-day weather cooldown
-        .or(`last_weather_campaign_date.lt.${new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}`);
+        .or(`last_weather_campaign_date.lt.${getLocalDate(-14)}`);
       break;
 
     case 'registration_anniversary':
       // Target customers whose registration anniversary is today (±window_days)
       // trigger_value.window_days defines the acceptable window (default ±3 days)
       const windowDays = trigger_value?.window_days || 3;
-      const today = new Date();
+      const today = getBrazilNow();
       const currentMonth = today.getMonth() + 1; // 1-indexed
       const currentDay = today.getDate();
 
@@ -2577,14 +2578,14 @@ async function findAutomationTargets(supabase, rule) {
     // Filter to only eligible customers
     const eligibleIds = new Set(
       (eligibilityResults || [])
-        .filter(r => r.is_eligible === true)
+        .filter(r => r.is_contactable === true)
         .map(r => r.customer_id)
     );
 
     const filtered = customers.filter(c => eligibleIds.has(c.doc));
 
     // Log ineligible reasons for debugging
-    const ineligible = (eligibilityResults || []).filter(r => !r.is_eligible);
+    const ineligible = (eligibilityResults || []).filter(r => !r.is_contactable);
     if (ineligible.length > 0) {
       console.log(`Rule ${ruleId}: ${ineligible.length} customers ineligible:`,
         ineligible.slice(0, 3).map(r => ({ id: r.customer_id, reason: r.reason }))
@@ -2857,7 +2858,7 @@ async function updateOneTimeTracking(supabase, rule, target) {
     if (template === 'weather_promo') {
       const { error } = await supabase
         .from('customers')
-        .update({ last_weather_campaign_date: new Date().toISOString().split('T')[0] })
+        .update({ last_weather_campaign_date: getBrazilDateString() })
         .eq('doc', target.doc);
 
       if (error) {
@@ -2867,7 +2868,7 @@ async function updateOneTimeTracking(supabase, rule, target) {
 
     // Anniversary: update last_anniversary_year
     if (template === 'registration_anniversary' && target.data_cadastro) {
-      const registrationDate = new Date(target.data_cadastro);
+      const registrationDate = new Date(target.data_cadastro + 'T12:00:00-03:00');
       const yearsAsCustomer = Math.floor((Date.now() - registrationDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
 
       const { error } = await supabase
@@ -2968,7 +2969,7 @@ function buildContentVariables(rule, target) {
       // Calculate years from data_cadastro
       let yearsText = '1 ano';
       if (target.data_cadastro) {
-        const regDate = new Date(target.data_cadastro);
+        const regDate = new Date(target.data_cadastro + 'T12:00:00-03:00');
         const years = Math.floor((Date.now() - regDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
         yearsText = years === 1 ? '1 ano' : `${years} anos`;
       }
@@ -3040,7 +3041,7 @@ function normalizePhone(phone) {
  * Format expiration date as DD/MM
  */
 function formatExpirationDate(daysFromNow) {
-  const date = new Date();
+  const date = getBrazilNow();
   date.setDate(date.getDate() + daysFromNow);
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
 }

@@ -19,6 +19,7 @@
 //   - Reduced motion support, responsive layout
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { toBrazilDateString } from '../../utils/dateUtils';
 import { motion } from 'framer-motion';
 import {
   Database,
@@ -498,7 +499,7 @@ const DataQualityPanel = ({ className = '' }) => {
       const now = new Date();
       const thirtyDaysAgo = new Date(now);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+      const thirtyDaysAgoStr = toBrazilDateString(thirtyDaysAgo);
 
       // Run all queries in parallel
       const [uploadsRes, revenueRes, settingsRes, latestTxRes] = await Promise.allSettled([
@@ -596,7 +597,7 @@ const DataQualityPanel = ({ className = '' }) => {
     for (let i = 30; i >= 1; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = toBrazilDateString(d);
       const dayOfWeek = getDayOfWeek(dateStr);
 
       // Skip Sundays (day 0) — laundromat is closed

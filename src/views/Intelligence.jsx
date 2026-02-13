@@ -137,11 +137,11 @@
 // v1.0.0 (2025-11-18): Complete redesign with Tailwind + Nivo
 
 import React, { useMemo, useState, useEffect, Suspense, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb, RefreshCw, Clock, CheckCircle, CalendarRange } from 'lucide-react';
+import lazyRetry from '../utils/lazyRetry';
+import { Calendar, TrendingUp, Zap, DollarSign, Lightbulb, CalendarRange } from 'lucide-react';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { useTheme } from '../contexts/ThemeContext';
-import { useReducedMotion } from '../hooks/useReducedMotion';
+
 
 // Business logic
 import { useAppSettings } from '../contexts/AppSettingsContext';
@@ -162,11 +162,10 @@ import { getBrazilDateParts } from '../utils/dateUtils';
 // UI components
 import KPICard, { KPIGrid } from '../components/ui/KPICard';
 import { METRIC_TOOLTIPS } from '../constants/metricTooltips';
-import { IntelligenceLoadingSkeleton } from '../components/ui/Skeleton';
+import { IntelligenceLoadingSkeleton, ModalLoadingFallback } from '../components/ui/Skeleton';
 import PullToRefreshWrapper from '../components/ui/PullToRefreshWrapper';
 import { AnimatedView, AnimatedHeader, AnimatedSection } from '../components/ui/AnimatedView';
-import BackgroundRefreshIndicator from '../components/ui/BackgroundRefreshIndicator';
-import { haptics } from '../utils/haptics';
+import StaleDataIndicator from '../components/ui/StaleDataIndicator';
 
 // Lazy-loaded section components (contain charts)
 import {
@@ -180,120 +179,8 @@ import {
 import RevenueForecast from '../components/intelligence/RevenueForecast';
 import PriorityMatrix from '../components/intelligence/PriorityMatrix';
 
-// Lazy-loaded modal
-const PeriodComparisonModal = React.lazy(() => import('../components/intelligence/PeriodComparisonModal'));
-
-// ==================== SYNC STATUS BUTTON ====================
-
-const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
-
-const SyncStatusButton = ({ lastUpdated, isRefreshing, onRefresh, isMobile, isDark, prefersReducedMotion }) => {
-  const [, forceUpdate] = useState(0);
-
-  // Update the "time ago" display every minute
-  useEffect(() => {
-    const interval = setInterval(() => forceUpdate(n => n + 1), 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  if (!lastUpdated) return null;
-
-  const now = Date.now();
-  const elapsed = now - lastUpdated;
-  const isStale = elapsed > STALE_THRESHOLD_MS;
-  const isFresh = elapsed < 60000; // Less than 1 minute
-
-  // Format time ago
-  const minutes = Math.floor(elapsed / 60000);
-  const timeAgo = minutes < 1 ? 'agora' : minutes < 60 ? `${minutes}min` : `${Math.floor(minutes / 60)}h`;
-
-  const handleClick = () => {
-    haptics.light();
-    onRefresh();
-  };
-
-  // Get icon based on state
-  const getIcon = () => {
-    const size = isMobile ? 'w-3.5 h-3.5' : 'w-4 h-4';
-    if (isRefreshing) {
-      return <RefreshCw className={`${size} animate-spin text-stellar-cyan`} />;
-    }
-    if (isFresh) {
-      return <CheckCircle className={`${size} ${isDark ? 'text-cosmic-green' : 'text-green-500'}`} />;
-    }
-    return <RefreshCw className={`${size} ${isStale ? (isDark ? 'text-amber-400' : 'text-amber-600') : ''}`} />;
-  };
-
-  // Mobile: Compact button with icon + time
-  if (isMobile) {
-    return (
-      <motion.button
-        onClick={handleClick}
-        disabled={isRefreshing}
-        whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-        className={`
-          flex items-center gap-1.5 px-2 py-1.5 rounded-lg
-          cursor-pointer transition-colors duration-200
-          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-1
-          ${isDark ? 'focus-visible:ring-offset-space-dust' : 'focus-visible:ring-offset-white'}
-          ${isStale
-            ? isDark
-              ? 'bg-amber-500/10 text-amber-400'
-              : 'bg-amber-50 text-amber-600'
-            : isDark
-              ? 'text-slate-400'
-              : 'text-slate-500'
-          }
-          disabled:opacity-50 disabled:cursor-not-allowed
-        `}
-        aria-label={isRefreshing ? 'Atualizando dados' : `Última atualização: ${timeAgo}. Toque para sincronizar`}
-      >
-        {getIcon()}
-        <span className="text-[11px] font-medium">
-          {isRefreshing ? 'Sync...' : timeAgo}
-        </span>
-      </motion.button>
-    );
-  }
-
-  // Desktop: Full button with text
-  return (
-    <motion.button
-      onClick={handleClick}
-      disabled={isRefreshing}
-      whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
-      whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className={`
-        flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
-        cursor-pointer transition-colors duration-200
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2
-        ${isDark ? 'focus-visible:ring-offset-space-dust' : 'focus-visible:ring-offset-white'}
-        ${isStale
-          ? isDark
-            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20 hover:border-amber-500/40'
-            : 'bg-amber-50/80 text-amber-700 border border-amber-200/60 hover:border-amber-300'
-          : isDark
-            ? 'text-slate-400 border border-transparent hover:text-slate-300 hover:border-stellar-cyan/20'
-            : 'text-slate-500 border border-transparent hover:text-slate-600 hover:border-slate-200'
-        }
-        disabled:opacity-50 disabled:cursor-not-allowed
-      `}
-      title={isRefreshing ? 'Sincronizando...' : 'Clique para sincronizar'}
-      aria-label={isRefreshing ? 'Atualizando dados' : `Última atualização: ${timeAgo}. Clique para sincronizar`}
-    >
-      {getIcon()}
-      <span className="flex items-center gap-1">
-        <span>{isRefreshing ? 'Sync...' : timeAgo}</span>
-      </span>
-      {/* Stale indicator dot */}
-      {isStale && !isRefreshing && (
-        <span className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-amber-400' : 'bg-amber-500'} animate-pulse`} />
-      )}
-    </motion.button>
-  );
-};
+// Lazy-loaded modal (with retry for chunk load resilience)
+const PeriodComparisonModal = lazyRetry(() => import('../components/intelligence/PeriodComparisonModal'));
 
 // ==================== MAIN COMPONENT ====================
 
@@ -301,8 +188,6 @@ const Intelligence = ({ data, onDataChange }) => {
   const { settings } = useAppSettings();
   const isMobile = useIsMobile();
   const { isDark } = useTheme();
-  const prefersReducedMotion = useReducedMotion();
-
   // State for daily revenue data (preloaded from app init, or fetched on demand)
   const [dailyRevenueData, setDailyRevenueData] = useState(data?.dailyRevenue || null);
   const [lastUpdated, setLastUpdated] = useState(data?.dailyRevenue ? Date.now() : null);
@@ -595,12 +480,12 @@ const Intelligence = ({ data, onDataChange }) => {
                 {/* Title & Subtitle */}
                 <div>
                   <h1
-                    className="text-lg sm:text-xl font-bold tracking-wider"
+                    className="text-xl sm:text-2xl font-bold tracking-wider"
                     style={{ fontFamily: "'Orbitron', sans-serif" }}
                   >
                     <span className="text-gradient-stellar">PLANEJAMENTO</span>
                   </h1>
-                  <p className={`text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <p className={`hidden sm:block text-xs tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     Análise estratégica de negócio
                   </p>
                 </div>
@@ -625,14 +510,11 @@ const Intelligence = ({ data, onDataChange }) => {
                   {!isMobile && <span>Comparar</span>}
                 </button>
 
-                {/* Sync Status Button - always inline on right */}
-                <SyncStatusButton
+                {/* Local data freshness (dailyRevenue has separate lifecycle) */}
+                <StaleDataIndicator
                   lastUpdated={lastUpdated}
                   isRefreshing={isRefreshing}
                   onRefresh={handleRefresh}
-                  isMobile={isMobile}
-                  isDark={isDark}
-                  prefersReducedMotion={prefersReducedMotion}
                 />
               </div>
             </div>
@@ -736,7 +618,7 @@ const Intelligence = ({ data, onDataChange }) => {
 
       {/* Period Comparison Modal */}
       {showComparison && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ModalLoadingFallback />}>
           <PeriodComparisonModal
             isOpen={showComparison}
             onClose={() => setShowComparison(false)}
@@ -746,12 +628,6 @@ const Intelligence = ({ data, onDataChange }) => {
         </Suspense>
       )}
 
-      {/* Refresh overlay (during data sync) */}
-      <BackgroundRefreshIndicator
-        isRefreshing={isRefreshing}
-        variant="overlay"
-        message="Sincronizando dados..."
-      />
     </PullToRefreshWrapper>
   );
 };
