@@ -1,4 +1,4 @@
-// SegmentCampaignMatrix.jsx v1.0 - RFM Segment x Campaign Response Heatmap
+// SegmentCampaignMatrix.jsx v3.1 - COSMIC PRECISION POLISH
 // Shows campaign return rates by customer segment and discount level
 // Design System v6.4 compliant - Cosmic Precision
 //
@@ -14,10 +14,34 @@
 // - Low-N cells (N<5) are dimmed with hatched pattern
 // - Row totals showing overall segment response rate
 // - Natural language insight summary in Portuguese
-// - Horizontally scrollable on mobile
+// - CSS-only hover (row highlighting, cell brightness)
+// - Mobile card layout (replaces table on small screens)
+// - Best segment row accent (emerald left border)
 // - Loading skeleton, returns null on empty data
 //
 // CHANGELOG:
+// v3.1 (2026-02-12): Cosmic Precision visual polish
+//   - Header: gradient icon box (purple→indigo) with drop-shadow, tracking-tight title
+//   - Badge: gradient pill with textShadow matching HealthPill pattern
+//   - Table headers: subtle gradient background + uppercase labels
+//   - Heatmap cells: glassmorphic inset highlight + ring on confident cells
+//   - Row totals: gradient emphasis (stellar-cyan gradient)
+//   - Insights: layered shadow cards replacing Bootstrap-style alerts
+//   - Legend: pill-grouped items with ring-bordered color swatches
+//   - Mobile cards: inset highlight + tracking-tight metrics
+//   - Fixed text-[10px] → text-xs throughout (12px minimum per design system)
+// v3.0 (2026-02-12): Coherence refactoring
+//   - Stripped all framer-motion (parent AnimatedSection handles entrance)
+//   - Simplified hover to CSS-only (matches CouponEffectiveness pattern)
+//   - Removed bestCell overlay, keyboard nav, developer footer
+//   - Aligned table styling with sibling components (bg-slate-100 headers, ring-1)
+//   - HeatmapCell simplified from 16 props to 3
+// v2.0 (2026-02-12): Interactive heatmap with 5 UX improvements
+//   - Hover: row+column highlighting with cross-reference ring
+//   - Mobile: card-based layout per segment with 3-col discount grid
+//   - Animations: Framer Motion entrance with staggered cell reveal
+//   - Accessibility: aria-labels, keyboard nav, scope attrs, improved contrast
+//   - Polish: best segment row accent, best cell gradient, legend repositioned
 // v1.0 (2026-02-09): Initial implementation
 //   - Fetches contact_tracking, campaigns, customers from Supabase
 //   - Builds segment x discount_bucket matrix in JS
@@ -47,7 +71,7 @@ const SEGMENTS = [
 ];
 
 const DISCOUNT_BUCKETS = [
-  { key: '0', label: '0%', min: 0, max: 0 },
+  { key: '0', label: 'Sem desconto', min: 0, max: 0 },
   { key: '5', label: '5%', min: 1, max: 5 },
   { key: '10', label: '10%', min: 6, max: 10 },
   { key: '15', label: '15%', min: 11, max: 15 },
@@ -58,31 +82,31 @@ const DISCOUNT_BUCKETS = [
 /** Minimum sample size for statistical confidence */
 const MIN_SAMPLE_SIZE = 5;
 
-/** Segment badge colors for row labels */
+/** Segment badge colors for row labels — solid gradient pills */
 const SEGMENT_BADGE_COLORS = {
   amber: {
-    dark: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/25',
-    light: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+    dark: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/20',
+    light: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/25'
   },
   emerald: {
-    dark: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/25',
-    light: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+    dark: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm shadow-emerald-500/20',
+    light: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm shadow-emerald-500/25'
   },
   blue: {
-    dark: 'bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/25',
-    light: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+    dark: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm shadow-blue-500/20',
+    light: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm shadow-blue-500/25'
   },
   purple: {
-    dark: 'bg-purple-500/15 text-purple-300 ring-1 ring-purple-500/25',
-    light: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200'
+    dark: 'bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-sm shadow-purple-500/20',
+    light: 'bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-sm shadow-purple-500/25'
   },
   orange: {
-    dark: 'bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/25',
-    light: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200'
+    dark: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-sm shadow-orange-500/20',
+    light: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-sm shadow-orange-500/25'
   },
   red: {
-    dark: 'bg-red-500/15 text-red-300 ring-1 ring-red-500/25',
-    light: 'bg-red-50 text-red-700 ring-1 ring-red-200'
+    dark: 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-sm shadow-red-500/20',
+    light: 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-sm shadow-red-500/25'
   }
 };
 
@@ -119,12 +143,12 @@ function getHeatmapStyle(returnRate, contacts, isDark) {
     };
   }
 
-  // Insufficient data
+  // Insufficient data — improved contrast (a11y)
   if (contacts < MIN_SAMPLE_SIZE) {
     return {
       bg: isDark ? 'bg-slate-700/30' : 'bg-slate-100/80',
-      text: isDark ? 'text-slate-400' : 'text-slate-500',
-      subText: isDark ? 'text-slate-500' : 'text-slate-400',
+      text: isDark ? 'text-slate-300' : 'text-slate-600',
+      subText: isDark ? 'text-slate-400' : 'text-slate-500',
       dimmed: true
     };
   }
@@ -132,44 +156,44 @@ function getHeatmapStyle(returnRate, contacts, isDark) {
   // High return rate (>40%)
   if (returnRate > 40) {
     return {
-      bg: isDark ? 'bg-emerald-500/25' : 'bg-emerald-100',
-      text: isDark ? 'text-emerald-300' : 'text-emerald-800',
-      subText: isDark ? 'text-emerald-400/70' : 'text-emerald-600/70'
+      bg: isDark ? 'bg-emerald-500/50' : 'bg-emerald-200',
+      text: isDark ? 'text-emerald-100' : 'text-emerald-900',
+      subText: isDark ? 'text-emerald-200/80' : 'text-emerald-700'
     };
   }
 
   // Medium-high return rate (30-40%)
   if (returnRate > 30) {
     return {
-      bg: isDark ? 'bg-emerald-500/15' : 'bg-emerald-50',
-      text: isDark ? 'text-emerald-300/90' : 'text-emerald-700',
-      subText: isDark ? 'text-emerald-400/60' : 'text-emerald-600/60'
+      bg: isDark ? 'bg-emerald-600/35' : 'bg-emerald-100',
+      text: isDark ? 'text-emerald-100' : 'text-emerald-800',
+      subText: isDark ? 'text-emerald-200/70' : 'text-emerald-600'
     };
   }
 
   // Medium return rate (20-30%)
   if (returnRate > 20) {
     return {
-      bg: isDark ? 'bg-amber-500/15' : 'bg-amber-50',
-      text: isDark ? 'text-amber-300' : 'text-amber-700',
-      subText: isDark ? 'text-amber-400/70' : 'text-amber-600/70'
+      bg: isDark ? 'bg-amber-500/40' : 'bg-amber-200',
+      text: isDark ? 'text-amber-100' : 'text-amber-900',
+      subText: isDark ? 'text-amber-200/80' : 'text-amber-700'
     };
   }
 
   // Low return rate (10-20%)
   if (returnRate > 10) {
     return {
-      bg: isDark ? 'bg-orange-500/15' : 'bg-orange-50',
-      text: isDark ? 'text-orange-300' : 'text-orange-700',
-      subText: isDark ? 'text-orange-400/70' : 'text-orange-600/70'
+      bg: isDark ? 'bg-orange-500/40' : 'bg-orange-200',
+      text: isDark ? 'text-orange-100' : 'text-orange-900',
+      subText: isDark ? 'text-orange-200/80' : 'text-orange-700'
     };
   }
 
   // Very low return rate (0-10%)
   return {
-    bg: isDark ? 'bg-red-500/15' : 'bg-red-50',
-    text: isDark ? 'text-red-300' : 'text-red-700',
-    subText: isDark ? 'text-red-400/70' : 'text-red-600/70'
+    bg: isDark ? 'bg-red-500/40' : 'bg-red-200',
+    text: isDark ? 'text-red-100' : 'text-red-900',
+    subText: isDark ? 'text-red-200/80' : 'text-red-700'
   };
 }
 
@@ -214,7 +238,7 @@ const LoadingSkeleton = ({ isDark }) => (
   </div>
 );
 
-/** Individual heatmap cell */
+/** Individual heatmap cell — CSS-only hover */
 const HeatmapCell = ({ returnRate, contacts, isDark }) => {
   const style = getHeatmapStyle(returnRate, contacts, isDark);
 
@@ -222,11 +246,21 @@ const HeatmapCell = ({ returnRate, contacts, isDark }) => {
     <td className="p-0.5 sm:p-1">
       <div
         className={`
-          relative rounded-lg px-2 py-2 sm:py-2.5 text-center min-w-[56px] sm:min-w-[64px]
+          relative rounded-lg px-2 py-2.5 text-center min-w-[56px] sm:min-w-[64px]
           ${style.bg}
           ${style.dimmed ? 'opacity-60' : ''}
-          transition-colors duration-200
+          ${contacts > 0 ? 'hover:brightness-110' : ''}
+          ${contacts >= MIN_SAMPLE_SIZE
+            ? (isDark
+                ? 'ring-1 ring-white/[0.06] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
+                : 'ring-1 ring-black/[0.04] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]')
+            : ''}
+          transition-all duration-150 cursor-default
         `}
+        role="gridcell"
+        aria-label={contacts === 0
+          ? 'sem dados'
+          : `${returnRate.toFixed(1)}% retorno, ${contacts} contatos`}
       >
         {/* Hatched pattern overlay for insufficient data */}
         {style.dimmed && (
@@ -245,10 +279,10 @@ const HeatmapCell = ({ returnRate, contacts, isDark }) => {
           <span className={`text-xs ${style.text}`}>--</span>
         ) : (
           <>
-            <span className={`text-xs sm:text-sm font-bold tabular-nums block ${style.text}`}>
+            <span className={`text-xs sm:text-sm font-bold tabular-nums tracking-tight block relative ${style.text}`}>
               {returnRate.toFixed(1)}%
             </span>
-            <span className={`text-[10px] sm:text-xs tabular-nums block mt-0.5 ${style.subText}`}>
+            <span className={`text-xs tabular-nums block mt-0.5 relative ${style.subText}`}>
               N={NUMBER_FMT.format(contacts)}
             </span>
           </>
@@ -279,20 +313,103 @@ const RowTotalCell = ({ returnRate, contacts, isDark }) => {
     <td className="p-0.5 sm:p-1">
       <div
         className={`
-          rounded-lg px-2 py-2 sm:py-2.5 text-center min-w-[56px] sm:min-w-[64px]
+          rounded-lg px-2 py-2.5 text-center min-w-[56px] sm:min-w-[64px]
           ${isDark
-            ? 'bg-stellar-cyan/10 ring-1 ring-stellar-cyan/20'
-            : 'bg-sky-50 ring-1 ring-sky-200/60'}
+            ? 'bg-gradient-to-br from-stellar-cyan/15 to-stellar-cyan/5 ring-1 ring-stellar-cyan/20 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.1)]'
+            : 'bg-gradient-to-br from-sky-50 to-blue-50 ring-1 ring-sky-200/60 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
         `}
       >
-        <span className={`text-xs sm:text-sm font-bold tabular-nums block ${isDark ? 'text-stellar-cyan' : 'text-sky-700'}`}>
+        <span className={`text-xs sm:text-sm font-bold tabular-nums tracking-tight block ${isDark ? 'text-stellar-cyan' : 'text-sky-700'}`}>
           {returnRate.toFixed(1)}%
         </span>
-        <span className={`text-[10px] sm:text-xs tabular-nums block mt-0.5 ${isDark ? 'text-stellar-cyan/60' : 'text-sky-500/70'}`}>
+        <span className={`text-xs tabular-nums block mt-0.5 ${isDark ? 'text-stellar-cyan/60' : 'text-sky-500/70'}`}>
           N={NUMBER_FMT.format(contacts)}
         </span>
       </div>
     </td>
+  );
+};
+
+/** Mobile card for a single segment's discount breakdown */
+const SegmentCard = ({ segment, discountData, total, isDark, bestSegKey }) => {
+  const badgeColor = SEGMENT_BADGE_COLORS[segment.color] || SEGMENT_BADGE_COLORS.blue;
+
+  // Find best discount for this segment
+  const bestBucket = discountData
+    .filter(d => d.contacts >= MIN_SAMPLE_SIZE)
+    .sort((a, b) => b.returnRate - a.returnRate)[0];
+
+  const isTopSegment = segment.key === bestSegKey;
+
+  return (
+    <div
+      className={`
+        p-4 rounded-xl
+        ${isTopSegment ? 'border-l-[3px] border-l-emerald-500' : ''}
+        ${isDark
+          ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 ring-1 ring-white/[0.08] shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
+          : 'bg-gradient-to-br from-white via-white to-slate-50/50 ring-1 ring-slate-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
+        shadow-sm
+      `}
+    >
+      {/* Segment header */}
+      <div className="flex items-center justify-between mb-3">
+        <span
+          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${isDark ? badgeColor.dark : badgeColor.light}`}
+          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}
+        >
+          {segment.label}
+        </span>
+        <div className="text-right">
+          <span className={`text-sm font-bold tabular-nums tracking-tight ${isDark ? 'text-stellar-cyan' : 'text-sky-700'}`}>
+            {total.contacts > 0 ? `${total.returnRate.toFixed(1)}%` : '--'}
+          </span>
+          <span className={`text-xs block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            {total.contacts > 0 ? `${NUMBER_FMT.format(total.contacts)} contatos` : 'sem dados'}
+          </span>
+        </div>
+      </div>
+
+      {/* Discount breakdown grid */}
+      <div className="grid grid-cols-3 gap-2">
+        {discountData.map(d => {
+          const cellStyle = getHeatmapStyle(d.returnRate, d.contacts, isDark);
+          const isBest = bestBucket && d.bucketKey === bestBucket.bucketKey;
+          return (
+            <div
+              key={d.bucketKey}
+              className={`
+                rounded-lg px-2 py-2 text-center
+                ${cellStyle.bg}
+                ${d.contacts < MIN_SAMPLE_SIZE && d.contacts > 0 ? 'opacity-60' : ''}
+                ${isBest ? (isDark ? 'ring-1 ring-stellar-cyan/30' : 'ring-1 ring-indigo-300') : ''}
+                ${d.contacts >= MIN_SAMPLE_SIZE
+                  ? (isDark
+                      ? 'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
+                      : 'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]')
+                  : ''}
+              `}
+            >
+              <p className={`text-xs font-medium ${isDark ? 'text-white' : 'text-slate-600'} mb-0.5`}>
+                {d.bucketLabel}
+              </p>
+              {d.contacts === 0 ? (
+                <span className={`text-xs ${cellStyle.text}`}>--</span>
+              ) : (
+                <>
+                  <span className={`text-xs font-bold tabular-nums tracking-tight block ${cellStyle.text}`}>
+                    {d.returnRate.toFixed(1)}%
+                  </span>
+                  <span className={`text-xs tabular-nums block ${cellStyle.subText}`}>
+                    N={NUMBER_FMT.format(d.contacts)}
+                  </span>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
@@ -307,12 +424,29 @@ const RowTotalCell = ({ returnRate, contacts, isDark }) => {
 function generateInsights(matrix, segmentTotals) {
   const insights = [];
 
-  // 1. Find the best segment x discount combination (highest return rate with N >= MIN_SAMPLE_SIZE)
+  // Buckets with actual discounts (exclude "sem desconto" campaigns)
+  const discountBuckets = DISCOUNT_BUCKETS.filter(b => b.key !== '0');
+
+  // Helper: find best bucket for a segment within a set of buckets
+  const findBest = (segKey, buckets) => {
+    let best = null;
+    let bestRate = -1;
+    for (const bucket of buckets) {
+      const cell = matrix[segKey]?.[bucket.key];
+      if (cell && cell.contacts >= MIN_SAMPLE_SIZE && cell.returnRate > bestRate) {
+        bestRate = cell.returnRate;
+        best = { discount: bucket.label, bucketKey: bucket.key, ...cell };
+      }
+    }
+    return best;
+  };
+
+  // 1. Best segment x discount combination (only actual discounts)
   let bestCombo = null;
   let bestRate = -1;
 
   for (const seg of SEGMENTS) {
-    for (const bucket of DISCOUNT_BUCKETS) {
+    for (const bucket of discountBuckets) {
       const cell = matrix[seg.key]?.[bucket.key];
       if (cell && cell.contacts >= MIN_SAMPLE_SIZE && cell.returnRate > bestRate) {
         bestRate = cell.returnRate;
@@ -325,38 +459,45 @@ function generateInsights(matrix, segmentTotals) {
     insights.push({
       type: 'success',
       title: 'Melhor Combinacao',
-      message: `Clientes "${bestCombo.segment}" com desconto de ${bestCombo.discount} tem a melhor taxa de retorno: ${bestCombo.returnRate.toFixed(1)}% (${NUMBER_FMT.format(bestCombo.returned)}/${NUMBER_FMT.format(bestCombo.contacts)} retornaram).`
+      message: `Clientes "${bestCombo.segment}" com ${bestCombo.discount} de desconto têm a melhor taxa de retorno: ${bestCombo.returnRate.toFixed(1)}% (${NUMBER_FMT.format(bestCombo.returned)}/${NUMBER_FMT.format(bestCombo.contacts)} retornaram).`
     });
   }
 
-  // 2. Per-segment best discount (for VIP and Inativo specifically)
-  for (const seg of ['VIP', 'Inativo']) {
+  // 2. Per-segment insights (VIP + at-risk segments)
+  for (const seg of ['VIP', 'Esfriando', 'Inativo']) {
     const segData = SEGMENTS.find(s => s.key === seg);
     if (!segData) continue;
 
-    let segBest = null;
-    let segBestRate = -1;
+    if (seg === 'VIP') {
+      // Check if VIPs return naturally (sem desconto)
+      const noDiscountCell = matrix.VIP?.['0'];
+      const hasNaturalReturn = noDiscountCell && noDiscountCell.contacts >= MIN_SAMPLE_SIZE && noDiscountCell.returnRate > 0;
 
-    for (const bucket of DISCOUNT_BUCKETS) {
-      const cell = matrix[seg]?.[bucket.key];
-      if (cell && cell.contacts >= MIN_SAMPLE_SIZE && cell.returnRate > segBestRate) {
-        segBestRate = cell.returnRate;
-        segBest = { discount: bucket.label, ...cell };
-      }
-    }
-
-    if (segBest) {
-      if (seg === 'VIP') {
+      if (hasNaturalReturn) {
         insights.push({
           type: 'info',
           title: 'VIPs',
-          message: `VIPs respondem melhor ao desconto de ${segBest.discount} com ${segBest.returnRate.toFixed(1)}% de retorno.`
+          message: `VIPs retornam naturalmente sem necessidade de desconto (${noDiscountCell.returnRate.toFixed(1)}% de retorno com ${NUMBER_FMT.format(noDiscountCell.contacts)} contatos), indicando alta fidelidade.`
         });
       } else {
+        // Fallback: find best actual discount for VIPs
+        const segBest = findBest('VIP', discountBuckets);
+        if (segBest) {
+          insights.push({
+            type: 'info',
+            title: 'VIPs',
+            message: `VIPs respondem melhor com ${segBest.discount} de desconto (${segBest.returnRate.toFixed(1)}% de retorno).`
+          });
+        }
+      }
+    } else {
+      // At-risk segments: only look at actual discounts
+      const segBest = findBest(seg, discountBuckets);
+      if (segBest) {
         insights.push({
           type: 'warning',
-          title: 'Inativos',
-          message: `Inativos precisam de pelo menos ${segBest.discount} de desconto para retornar (${segBest.returnRate.toFixed(1)}% de taxa).`
+          title: segData.label,
+          message: `${segData.label === 'Inativo' ? 'Inativos precisam' : 'Clientes esfriando precisam'} de pelo menos ${segBest.discount} de desconto para retornar (${segBest.returnRate.toFixed(1)}% de taxa).`
         });
       }
     }
@@ -386,7 +527,7 @@ function generateInsights(matrix, segmentTotals) {
     insights.push({
       type: 'default',
       title: 'Dados Insuficientes',
-      message: `${lowDataSegments.map(s => `"${s.label}"`).join(', ')} ${lowDataSegments.length === 1 ? 'tem' : 'tem'} menos de ${MIN_SAMPLE_SIZE} contatos - envie mais campanhas para dados confiaveis.`
+      message: `${lowDataSegments.map(s => `"${s.label}"`).join(', ')} ${lowDataSegments.length === 1 ? 'tem' : 'têm'} menos de ${MIN_SAMPLE_SIZE} contatos - envie mais campanhas para dados confiaveis.`
     });
   }
 
@@ -451,13 +592,17 @@ const InsightItem = ({ type, title, message, isDark }) => {
   return (
     <div
       className={`
-        ${style.bg} border border-l-[3px] ${style.borderAccent} rounded-xl p-3 sm:p-4
+        ${style.bg} border-l-[3px] ${style.borderAccent} rounded-xl p-3 sm:p-4
+        ${isDark
+          ? 'ring-1 ring-white/[0.08] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]'
+          : 'ring-1 ring-slate-200/60 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
+        shadow-sm
       `}
       role="alert"
     >
       <div className="flex items-start gap-2.5 sm:gap-3">
         <div className={`flex-shrink-0 mt-0.5 ${style.icon}`}>
-          <Icon className="w-4 h-4" aria-hidden="true" />
+          <Icon className="w-4 h-4" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))' }} aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
           {title && (
@@ -473,6 +618,37 @@ const InsightItem = ({ type, title, message, isDark }) => {
     </div>
   );
 };
+
+// ---------------------------------------------------------------------------
+// Legend renderer (shared between mobile and desktop)
+// ---------------------------------------------------------------------------
+
+const LegendItems = ({ items, isDark }) => (
+  <>
+    {items.map(item => (
+      <div
+        key={item.label}
+        className="inline-flex items-center gap-1.5"
+        role="listitem"
+      >
+        <div
+          className={`
+            w-2.5 h-2.5 rounded-sm ${item.bg} ${item.hatched ? 'opacity-50' : ''}
+            ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-black/[0.06]'}
+          `}
+          style={item.hatched ? {
+            backgroundImage: isDark
+              ? 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(148,163,184,0.3) 2px, rgba(148,163,184,0.3) 3px)'
+              : 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(100,116,139,0.15) 2px, rgba(100,116,139,0.15) 3px)'
+          } : undefined}
+        />
+        <span className={`text-xs tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {item.label}
+        </span>
+      </div>
+    ))}
+  </>
+);
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -509,7 +685,7 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
       const [contactsRes, campaignsRes, customersRes] = await Promise.all([
         client
           .from('contact_tracking')
-          .select('customer_doc, campaign_id, returned, revenue_generated, risk_level')
+          .select('customer_id, campaign_id, returned_at, return_revenue, risk_level')
           .not('campaign_id', 'is', null)
           .order('created_at', { ascending: false })
           .limit(5000),
@@ -519,7 +695,7 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
           .order('created_at', { ascending: false }),
         client
           .from('customers')
-          .select('documento, rfm_segment, risk_level')
+          .select('doc, rfm_segment, risk_level')
           .not('rfm_segment', 'is', null)
       ]);
 
@@ -546,16 +722,16 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
   // Data processing
   // -----------------------------------------------------------------------
 
-  const { matrix, segmentTotals, totalContacts, insights } = useMemo(() => {
+  const { matrix, segmentTotals, totalContacts, bestSegKey, insights } = useMemo(() => {
     if (!contacts.length || !campaigns.length || !customers.length) {
-      return { matrix: {}, segmentTotals: [], totalContacts: 0, insights: [] };
+      return { matrix: {}, segmentTotals: [], totalContacts: 0, bestSegKey: null, insights: [] };
     }
 
     // 1. Build lookup maps
     const customerSegmentMap = new Map();
     for (const c of customers) {
-      if (c.documento && c.rfm_segment) {
-        customerSegmentMap.set(c.documento, c.rfm_segment);
+      if (c.doc && c.rfm_segment) {
+        customerSegmentMap.set(c.doc, c.rfm_segment);
       }
     }
 
@@ -583,7 +759,7 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
 
     // 3. Populate matrix
     for (const contact of contacts) {
-      const segment = customerSegmentMap.get(contact.customer_doc);
+      const segment = customerSegmentMap.get(contact.customer_id);
       if (!segment || !matrixData[segment]) continue;
 
       const discount = campaignDiscountMap.get(contact.campaign_id);
@@ -597,7 +773,7 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
       segTotals[segment].contacts++;
       total++;
 
-      if (contact.returned) {
+      if (contact.returned_at != null) {
         cell.returned++;
         segTotals[segment].returned++;
       }
@@ -623,16 +799,32 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
       label: seg.label
     }));
 
-    // 6. Generate insights
+    // 6. Best segment (for row accent)
+    const topSeg = [...segTotalsArray]
+      .filter(s => s.contacts >= MIN_SAMPLE_SIZE)
+      .sort((a, b) => b.returnRate - a.returnRate)[0]?.key || null;
+
+    // 7. Generate insights
     const insightsData = generateInsights(matrixData, segTotalsArray);
 
     return {
       matrix: matrixData,
       segmentTotals: segTotalsArray,
       totalContacts: total,
+      bestSegKey: topSeg,
       insights: insightsData
     };
   }, [contacts, campaigns, customers]);
+
+  // Legend items — use stronger/opaque colors so tiny swatches are distinguishable
+  const legendItems = useMemo(() => [
+    { label: '>40%', bg: isDark ? 'bg-emerald-500' : 'bg-emerald-500' },
+    { label: '30-40%', bg: isDark ? 'bg-emerald-700' : 'bg-emerald-300' },
+    { label: '20-30%', bg: isDark ? 'bg-amber-500' : 'bg-amber-400' },
+    { label: '10-20%', bg: isDark ? 'bg-orange-500' : 'bg-orange-400' },
+    { label: '<10%', bg: isDark ? 'bg-red-500' : 'bg-red-400' },
+    { label: 'N<5', bg: isDark ? 'bg-slate-600' : 'bg-slate-300', hatched: true }
+  ], [isDark]);
 
   // -----------------------------------------------------------------------
   // Render guards
@@ -664,11 +856,15 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
       {/* ----------------------------------------------------------------- */}
       <div className="flex items-start justify-between gap-3 mb-5">
         <div className="flex items-start gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500 dark:bg-indigo-600 flex items-center justify-center shadow-sm shrink-0">
-            <LayoutGrid className="w-5 h-5 text-white" aria-hidden="true" />
+          <div className={`
+            w-10 h-10 rounded-xl shrink-0 flex items-center justify-center
+            bg-gradient-to-br from-purple-500 to-indigo-600
+            shadow-md shadow-purple-500/25 dark:shadow-purple-400/20
+          `}>
+            <LayoutGrid className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <h3 className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold text-slate-800 dark:text-white`}>
+            <h3 className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold tracking-tight text-slate-900 dark:text-white`}>
               Matriz Segmento x Campanha
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
@@ -680,177 +876,215 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
         {/* Total contacts badge */}
         <div
           className={`
-            flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0
-            backdrop-blur-sm ring-1
-            bg-indigo-600 dark:bg-indigo-500 ring-indigo-700 dark:ring-indigo-400
+            inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0
+            bg-gradient-to-r from-purple-500 to-indigo-500
+            shadow-md shadow-purple-500/20
           `}
         >
-          <Users className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-          <span className="text-xs font-medium text-white whitespace-nowrap">
+          <Users className="w-3.5 h-3.5 text-white" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }} aria-hidden="true" />
+          <span
+            className="text-xs font-bold text-white tabular-nums whitespace-nowrap"
+            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}
+          >
             {NUMBER_FMT.format(totalContacts)}
           </span>
         </div>
       </div>
 
       {/* ----------------------------------------------------------------- */}
-      {/* HEATMAP TABLE                                                     */}
+      {/* HEATMAP (Desktop: table, Mobile: cards)                           */}
       {/* ----------------------------------------------------------------- */}
       <div className="mb-5">
-        <p className="text-xs font-medium tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-          Heatmap de Retorno (%)
-        </p>
+        {/* Section label + desktop legend */}
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {isMobile ? 'Retorno por Segmento' : 'Heatmap de Retorno (%)'}
+          </p>
 
-        <div
-          className={`
-            rounded-xl overflow-hidden
-            ${isDark
-              ? 'ring-1 ring-white/[0.06]'
-              : 'ring-1 ring-slate-200'}
-          `}
-        >
-          <div className={`overflow-x-auto ${isMobile ? '-mx-1' : ''}`}>
-            <table className="w-full border-collapse" role="grid" aria-label="Matriz de retorno por segmento e desconto">
-              {/* Column Headers */}
-              <thead>
-                <tr className={isDark ? 'bg-space-nebula' : 'bg-slate-50'}>
-                  {/* Segment label column */}
-                  <th
-                    className={`
-                      text-left px-3 py-2.5 text-xs font-semibold tracking-wider
-                      ${isDark ? 'text-slate-400' : 'text-slate-500'}
-                      sticky left-0 z-10
-                      ${isDark ? 'bg-space-nebula' : 'bg-slate-50'}
-                    `}
-                  >
-                    Segmento
-                  </th>
+          {/* Desktop inline legend */}
+          {!isMobile && (
+            <div className="flex items-center gap-3" role="list" aria-label="Legenda de cores">
+              <LegendItems items={legendItems} isDark={isDark} />
+            </div>
+          )}
+        </div>
 
-                  {/* Discount bucket columns */}
-                  {DISCOUNT_BUCKETS.map(bucket => (
+        {isMobile ? (
+          /* ============================================================= */
+          /* MOBILE: Card-based layout                                     */
+          /* ============================================================= */
+          <div className="space-y-3">
+            {SEGMENTS.map(seg => {
+              const rowTotal = segmentTotals.find(s => s.key === seg.key) || { contacts: 0, returned: 0, returnRate: 0 };
+              const discountData = DISCOUNT_BUCKETS.map(bucket => ({
+                bucketKey: bucket.key,
+                bucketLabel: bucket.label,
+                ...(matrix[seg.key]?.[bucket.key] || { contacts: 0, returned: 0, returnRate: 0 })
+              }));
+              return (
+                <SegmentCard
+                  key={seg.key}
+                  segment={seg}
+                  discountData={discountData}
+                  total={rowTotal}
+                  isDark={isDark}
+                  bestSegKey={bestSegKey}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          /* ============================================================= */
+          /* DESKTOP: Heatmap table                                        */
+          /* ============================================================= */
+          <div
+            className={`
+              rounded-xl overflow-hidden
+              ${isDark
+                ? 'ring-1 ring-white/[0.06]'
+                : 'ring-1 ring-slate-200/60'}
+            `}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse" role="grid" aria-label="Matriz de retorno por segmento e desconto">
+                {/* Column Headers */}
+                <thead>
+                  <tr className={`
+                    ${isDark
+                      ? 'bg-space-nebula border-b border-white/[0.06]'
+                      : 'bg-slate-100 border-b border-slate-200/60'}
+                  `}>
+                    {/* Segment label column */}
                     <th
-                      key={bucket.key}
+                      scope="col"
                       className={`
-                        text-center px-1 py-2.5 text-xs font-semibold tracking-wider
+                        text-center px-3 py-2.5 text-xs font-semibold uppercase tracking-wider
                         ${isDark ? 'text-slate-400' : 'text-slate-500'}
+                        sticky left-0 z-10
+                        ${isDark ? 'bg-space-nebula' : 'bg-slate-100'}
                       `}
                     >
-                      {bucket.label}
+                      Segmento
                     </th>
-                  ))}
 
-                  {/* Row total column */}
-                  <th
-                    className={`
-                      text-center px-1 py-2.5 text-xs font-bold tracking-wider
-                      ${isDark ? 'text-stellar-cyan' : 'text-sky-600'}
-                    `}
-                  >
-                    Total
-                  </th>
-                </tr>
-              </thead>
-
-              {/* Data Rows */}
-              <tbody>
-                {SEGMENTS.map((seg, rowIdx) => {
-                  const rowTotal = segmentTotals.find(s => s.key === seg.key) || { contacts: 0, returned: 0, returnRate: 0 };
-                  const badgeColor = SEGMENT_BADGE_COLORS[seg.color] || SEGMENT_BADGE_COLORS.blue;
-                  const isEven = rowIdx % 2 === 0;
-
-                  return (
-                    <tr
-                      key={seg.key}
-                      className={`
-                        ${isEven
-                          ? (isDark ? 'bg-space-dust/20' : 'bg-white')
-                          : (isDark ? 'bg-space-dust/40' : 'bg-slate-50/60')}
-                      `}
-                    >
-                      {/* Segment label (sticky on mobile) */}
-                      <td
+                    {/* Discount bucket columns */}
+                    {DISCOUNT_BUCKETS.map(bucket => (
+                      <th
+                        key={bucket.key}
+                        scope="col"
                         className={`
-                          px-2 sm:px-3 py-1.5
-                          sticky left-0 z-10
-                          ${isEven
-                            ? (isDark ? 'bg-space-dust/20' : 'bg-white')
-                            : (isDark ? 'bg-space-dust/40' : 'bg-slate-50/60')}
+                          text-center px-1 py-2.5 text-xs font-semibold uppercase tracking-wider
+                          ${isDark ? 'text-slate-400' : 'text-slate-500'}
                         `}
                       >
-                        <span
+                        {bucket.label}
+                      </th>
+                    ))}
+
+                    {/* Row total column */}
+                    <th
+                      scope="col"
+                      className={`
+                        text-center px-1 py-2.5 text-xs font-bold uppercase tracking-wider
+                        ${isDark ? 'text-stellar-cyan' : 'text-sky-600'}
+                      `}
+                    >
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+
+                {/* Data Rows */}
+                <tbody>
+                  {SEGMENTS.map((seg, rowIdx) => {
+                    const rowTotal = segmentTotals.find(s => s.key === seg.key) || { contacts: 0, returned: 0, returnRate: 0 };
+                    const badgeColor = SEGMENT_BADGE_COLORS[seg.color] || SEGMENT_BADGE_COLORS.blue;
+                    const isOdd = rowIdx % 2 !== 0;
+                    const isBestRow = seg.key === bestSegKey;
+
+                    // Alternating row bg (matching CouponEffectiveness pattern)
+                    const rowBg = isOdd
+                      ? (isDark ? 'bg-space-dust/20' : 'bg-slate-50/50')
+                      : '';
+
+                    return (
+                      <tr
+                        key={seg.key}
+                        className={`
+                          ${rowBg}
+                          ${isBestRow ? 'border-l-[3px] border-l-emerald-500' : 'border-l-[3px] border-l-transparent'}
+                          ${isDark ? 'hover:bg-space-dust/50' : 'hover:bg-slate-50'}
+                          transition-colors duration-150
+                        `}
+                      >
+                        {/* Segment label (sticky on scroll) */}
+                        <th
+                          scope="row"
                           className={`
-                            inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap
-                            ${isDark ? badgeColor.dark : badgeColor.light}
+                            px-2 sm:px-3 py-1.5
+                            sticky left-0 z-10 text-center font-normal
+                            ${rowBg}
+                            ${isDark ? 'hover:bg-space-dust/50' : 'hover:bg-slate-50'}
                           `}
                         >
-                          {seg.label}
-                        </span>
-                      </td>
+                          <span
+                            className={`
+                              inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap
+                              ${isDark ? badgeColor.dark : badgeColor.light}
+                            `}
+                            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}
+                          >
+                            {seg.label}
+                          </span>
+                        </th>
 
-                      {/* Heatmap cells */}
-                      {DISCOUNT_BUCKETS.map(bucket => {
-                        const cell = matrix[seg.key]?.[bucket.key] || { contacts: 0, returned: 0, returnRate: 0 };
-                        return (
-                          <HeatmapCell
-                            key={bucket.key}
-                            returnRate={cell.returnRate}
-                            contacts={cell.contacts}
-                            isDark={isDark}
-                          />
-                        );
-                      })}
+                        {/* Heatmap cells */}
+                        {DISCOUNT_BUCKETS.map(bucket => {
+                          const cell = matrix[seg.key]?.[bucket.key] || { contacts: 0, returned: 0, returnRate: 0 };
+                          return (
+                            <HeatmapCell
+                              key={bucket.key}
+                              returnRate={cell.returnRate}
+                              contacts={cell.contacts}
+                              isDark={isDark}
+                            />
+                          );
+                        })}
 
-                      {/* Row total */}
-                      <RowTotalCell
-                        returnRate={rowTotal.returnRate}
-                        contacts={rowTotal.contacts}
-                        isDark={isDark}
-                      />
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="flex flex-wrap items-center gap-3 mt-3">
-          <span className={`text-[10px] sm:text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            Legenda:
-          </span>
-          {[
-            { label: '>40%', bg: isDark ? 'bg-emerald-500/25' : 'bg-emerald-100' },
-            { label: '30-40%', bg: isDark ? 'bg-emerald-500/15' : 'bg-emerald-50' },
-            { label: '20-30%', bg: isDark ? 'bg-amber-500/15' : 'bg-amber-50' },
-            { label: '10-20%', bg: isDark ? 'bg-orange-500/15' : 'bg-orange-50' },
-            { label: '<10%', bg: isDark ? 'bg-red-500/15' : 'bg-red-50' },
-            { label: 'N<5', bg: isDark ? 'bg-slate-700/30' : 'bg-slate-100/80', hatched: true }
-          ].map(item => (
-            <div key={item.label} className="flex items-center gap-1.5">
-              <div
-                className={`w-4 h-4 rounded ${item.bg} ${item.hatched ? 'opacity-60' : ''}`}
-                style={item.hatched ? {
-                  backgroundImage: isDark
-                    ? 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(148,163,184,0.3) 2px, rgba(148,163,184,0.3) 3px)'
-                    : 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(100,116,139,0.15) 2px, rgba(100,116,139,0.15) 3px)'
-                } : undefined}
-              />
-              <span className={`text-[10px] sm:text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                {item.label}
-              </span>
+                        {/* Row total */}
+                        <RowTotalCell
+                          returnRate={rowTotal.returnRate}
+                          contacts={rowTotal.contacts}
+                          isDark={isDark}
+                        />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* Mobile legend (below cards) */}
+        {isMobile && (
+          <div className="flex flex-wrap items-center gap-2.5 mt-3" role="list" aria-label="Legenda de cores">
+            <span className={`text-xs font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              Legenda:
+            </span>
+            <LegendItems items={legendItems} isDark={isDark} />
+          </div>
+        )}
       </div>
 
       {/* ----------------------------------------------------------------- */}
       {/* INSIGHTS                                                          */}
       {/* ----------------------------------------------------------------- */}
       {insights.length > 0 && (
-        <div className="mb-4">
+        <div aria-live="polite">
           <div className="flex items-center gap-2 mb-3">
-            <Lightbulb className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} aria-hidden="true" />
-            <p className="text-xs font-medium tracking-wider text-slate-500 dark:text-slate-400">
+            <Lightbulb className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))' }} aria-hidden="true" />
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Insights
             </p>
           </div>
@@ -867,21 +1101,6 @@ const SegmentCampaignMatrix = ({ className = '' }) => {
           </div>
         </div>
       )}
-
-      {/* ----------------------------------------------------------------- */}
-      {/* FOOTER                                                            */}
-      {/* ----------------------------------------------------------------- */}
-      <div
-        className={`
-          flex items-center gap-1.5 pt-3
-          border-t ${isDark ? 'border-white/[0.05]' : 'border-slate-200/50'}
-        `}
-      >
-        <Info className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" aria-hidden="true" />
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Dados cruzados: contact_tracking x campaigns x customers &bull; Ultimos 5.000 contatos
-        </p>
-      </div>
     </div>
   );
 };

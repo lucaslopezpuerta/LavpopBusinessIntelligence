@@ -22,7 +22,8 @@
 //   - Graceful error handling
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Ticket, Award, DollarSign, Users, Hash, Info, TrendingUp } from 'lucide-react';
+import { Ticket, Award, DollarSign, Hash, Info, TrendingUp } from 'lucide-react';
+import KPICard, { KPIGrid } from '../ui/KPICard';
 import {
   BarChart,
   Bar,
@@ -127,7 +128,7 @@ const ChartTooltip = ({ active, payload, isDark }) => {
           : 'bg-white/95 border border-slate-200 text-slate-800'}
       `}
     >
-      <p className="font-semibold mb-1">{item.codigo_cupom}</p>
+      <p className="font-semibold mb-1">{item.coupon_code}</p>
       <p>Desconto: {item.discount_percent}%</p>
       <p>Ticket Medio: {CURRENCY_FMT.format(item.avg_ticket)}</p>
       <p>Resgates: {NUMBER_FMT.format(item.redemptions)}</p>
@@ -149,7 +150,7 @@ const CouponCard = ({ coupon, isBest, isDark }) => (
   >
     <div className="flex items-center justify-between mb-2">
       <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">
-        {coupon.codigo_cupom}
+        {coupon.coupon_code}
       </span>
       {isBest && (
         <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -238,7 +239,7 @@ const CouponEffectiveness = ({ className = '' }) => {
 
       if (fetchError) throw fetchError;
 
-      setCoupons(data || []);
+      setCoupons((data || []).filter(c => c.redemptions > 0));
     } catch (err) {
       console.error('[CouponEffectiveness] Fetch error:', err);
       setError(err.message || 'Erro ao carregar dados de cupons');
@@ -289,7 +290,7 @@ const CouponEffectiveness = ({ className = '' }) => {
     return coupons
       .filter((c) => c.discount_percent != null && c.avg_ticket != null)
       .map((c) => ({
-        codigo_cupom: c.codigo_cupom,
+        coupon_code: c.coupon_code,
         discount_percent: Number(c.discount_percent),
         avg_ticket: Number(c.avg_ticket),
         redemptions: Number(c.redemptions) || 0
@@ -298,7 +299,7 @@ const CouponEffectiveness = ({ className = '' }) => {
   }, [coupons]);
 
   /** Best coupon code for row highlighting */
-  const bestCouponCode = summary?.bestCoupon?.codigo_cupom;
+  const bestCouponCode = summary?.bestCoupon?.coupon_code;
 
   // -----------------------------------------------------------------------
   // Render guards
@@ -312,18 +313,6 @@ const CouponEffectiveness = ({ className = '' }) => {
   // -----------------------------------------------------------------------
   // Style helpers
   // -----------------------------------------------------------------------
-
-  const statCardClass = `
-    p-4 rounded-xl
-    ${isDark
-      ? 'bg-gradient-to-br from-space-dust via-space-dust to-space-nebula/30 shadow-[inset_0_1px_0_0_rgba(0,174,239,0.05)]'
-      : 'bg-gradient-to-br from-white via-white to-slate-50/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}
-    ring-1 ${isDark ? 'ring-white/[0.08]' : 'ring-slate-200'}
-    shadow-sm
-  `;
-
-  const labelClass = `${isDesktop ? 'text-sm' : 'text-xs'} tracking-wider text-slate-500 dark:text-slate-400 mb-1`;
-  const valueClass = `${isDesktop ? 'text-xl' : 'text-lg'} font-bold tabular-nums text-slate-900 dark:text-white`;
 
   // Chart colors
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
@@ -352,8 +341,12 @@ const CouponEffectiveness = ({ className = '' }) => {
       <div className="flex items-start justify-between gap-3 mb-5">
         {/* Left: Icon Badge + Title */}
         <div className="flex items-start gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-purple-500 dark:bg-purple-600 flex items-center justify-center shadow-sm shrink-0">
-            <Ticket className="w-5 h-5 text-white" aria-hidden="true" />
+          <div className={`
+            w-10 h-10 rounded-xl shrink-0 flex items-center justify-center
+            bg-gradient-to-br from-purple-500 to-indigo-600
+            shadow-md shadow-purple-500/25 dark:shadow-purple-400/20
+          `}>
+            <Ticket className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }} aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <h3 className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold text-slate-800 dark:text-white`}>
@@ -383,54 +376,48 @@ const CouponEffectiveness = ({ className = '' }) => {
       {/* ----------------------------------------------------------------- */}
       {/* KPI CARDS                                                         */}
       {/* ----------------------------------------------------------------- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        {/* Total Redemptions */}
-        <div className={statCardClass}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <Hash className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" aria-hidden="true" />
-            <p className={labelClass}>Resgates</p>
-          </div>
-          <p className={valueClass}>
-            {NUMBER_FMT.format(summary.totalRedemptions)}
-          </p>
-        </div>
-
-        {/* Total Revenue */}
-        <div className={statCardClass}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <DollarSign className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" aria-hidden="true" />
-            <p className={labelClass}>Receita Total</p>
-          </div>
-          <p className={valueClass}>
-            {CURRENCY_SHORT_FMT.format(summary.totalRevenue)}
-          </p>
-        </div>
-
-        {/* Best Coupon */}
-        <div className={statCardClass}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <Award className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" aria-hidden="true" />
-            <p className={labelClass}>Melhor Cupom</p>
-          </div>
-          <p className={`${isDesktop ? 'text-lg' : 'text-base'} font-bold tabular-nums text-slate-900 dark:text-white font-mono truncate`}>
-            {summary.bestCoupon?.codigo_cupom || '--'}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {CURRENCY_FMT.format(summary.bestCoupon?.total_revenue || 0)}
-          </p>
-        </div>
-
-        {/* Avg Ticket */}
-        <div className={statCardClass}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <TrendingUp className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" aria-hidden="true" />
-            <p className={labelClass}>Ticket Medio</p>
-          </div>
-          <p className={valueClass}>
-            {CURRENCY_FMT.format(summary.avgTicket)}
-          </p>
-        </div>
-      </div>
+      <KPIGrid columns={4}>
+        <KPICard
+          label="Resgates"
+          mobileLabel="Resgates"
+          value={NUMBER_FMT.format(summary.totalRedemptions)}
+          subtitle={`${summary.totalCustomers} clientes`}
+          mobileSubtitle={`${summary.totalCustomers} clientes`}
+          icon={Hash}
+          color="purple"
+          variant="default"
+        />
+        <KPICard
+          label="Receita Total"
+          mobileLabel="Receita"
+          value={CURRENCY_SHORT_FMT.format(summary.totalRevenue)}
+          subtitle="de cupons resgatados"
+          mobileSubtitle="recuperada"
+          icon={DollarSign}
+          color="revenue"
+          variant="default"
+        />
+        <KPICard
+          label="Melhor Cupom"
+          mobileLabel="Melhor"
+          value={summary.bestCoupon?.coupon_code || '--'}
+          subtitle={CURRENCY_FMT.format(summary.bestCoupon?.total_revenue || 0)}
+          mobileSubtitle={CURRENCY_SHORT_FMT.format(summary.bestCoupon?.total_revenue || 0)}
+          icon={Award}
+          color="warning"
+          variant="default"
+        />
+        <KPICard
+          label="Ticket Medio"
+          mobileLabel="Ticket"
+          value={CURRENCY_FMT.format(summary.avgTicket)}
+          subtitle="por resgate"
+          mobileSubtitle="medio"
+          icon={TrendingUp}
+          color="blue"
+          variant="default"
+        />
+      </KPIGrid>
 
       {/* ----------------------------------------------------------------- */}
       {/* BAR CHART: Discount % vs Avg Ticket                               */}
@@ -459,7 +446,7 @@ const CouponEffectiveness = ({ className = '' }) => {
                   vertical={false}
                 />
                 <XAxis
-                  dataKey="codigo_cupom"
+                  dataKey="coupon_code"
                   tick={{ fontSize: 10, fill: axisColor }}
                   axisLine={{ stroke: gridColor }}
                   tickLine={false}
@@ -518,9 +505,9 @@ const CouponEffectiveness = ({ className = '' }) => {
           <div className="space-y-3">
             {coupons.map((coupon) => (
               <CouponCard
-                key={coupon.codigo_cupom}
+                key={coupon.campaign_id || coupon.coupon_code}
                 coupon={coupon}
-                isBest={coupon.codigo_cupom === bestCouponCode}
+                isBest={coupon.coupon_code === bestCouponCode}
                 isDark={isDark}
               />
             ))}
@@ -569,12 +556,12 @@ const CouponEffectiveness = ({ className = '' }) => {
                 </thead>
                 <tbody>
                   {coupons.map((coupon, idx) => {
-                    const isBest = coupon.codigo_cupom === bestCouponCode;
+                    const isBest = coupon.coupon_code === bestCouponCode;
                     const isEven = idx % 2 === 0;
 
                     return (
                       <tr
-                        key={coupon.codigo_cupom}
+                        key={coupon.campaign_id || coupon.coupon_code}
                         className={`
                           ${isBest ? 'border-l-[3px] border-l-emerald-500' : 'border-l-[3px] border-l-transparent'}
                           ${isEven
@@ -587,7 +574,7 @@ const CouponEffectiveness = ({ className = '' }) => {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                              {coupon.codigo_cupom}
+                              {coupon.coupon_code}
                             </span>
                             {isBest && (
                               <Award className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" aria-hidden="true" />

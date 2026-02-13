@@ -93,7 +93,7 @@ const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
   useEffect(() => {
     const scrollEl = scrollRef.current;
     if (scrollEl) {
-      scrollEl.addEventListener('scroll', checkScroll);
+      scrollEl.addEventListener('scroll', checkScroll, { passive: true });
       checkScroll();
       window.addEventListener('resize', checkScroll);
       return () => {
@@ -170,6 +170,8 @@ const SocialMediaNavigation = ({ activeSection, onSectionChange }) => {
                     relative flex items-center justify-center
                     w-10 h-10 sm:w-auto sm:h-auto sm:gap-2 sm:px-5 sm:py-2.5
                     rounded-xl text-sm font-medium whitespace-nowrap
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2
+                    ${isDark ? 'focus-visible:ring-offset-space-dust' : 'focus-visible:ring-offset-white'}
                     ${!section.available
                       ? isDark
                         ? 'bg-space-dust/30 text-slate-600 cursor-not-allowed opacity-50'

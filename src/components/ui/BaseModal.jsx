@@ -1,4 +1,4 @@
-// BaseModal.jsx v1.3 - FOCUS & TYPOGRAPHY IMPROVEMENTS
+// BaseModal.jsx v1.4 - CONTENT PADDING CONSISTENCY
 // Design System v6.4 compliant - Variant D (Glassmorphism)
 //
 // FEATURES:
@@ -13,6 +13,11 @@
 // - Flash-free mounting (outer container animated)
 //
 // CHANGELOG:
+// v1.4 (2026-02-12): Content padding consistency
+//   - Default content padding px-4 sm:px-6 pt-4 on <main> for consistent rhythm
+//   - Responsive bottom padding pb-4 sm:pb-6
+//   - Header, content, and footer now share horizontal padding rhythm
+//   - Use contentClassName="p-0" to opt out (existing consumers already do this)
 // v1.3 (2026-02-05): Focus & typography improvements (Design System v6.4)
 //   - Close button: Added focus-visible ring with proper offset
 //   - Title: Uses text-subheading semantic token (18px)
@@ -472,7 +477,8 @@ const BaseModal = ({
             <main
               className={`
                 flex-1 overflow-y-auto overscroll-contain
-                ${footer ? 'pb-4' : isMobile ? 'pb-safe' : 'pb-4'}
+                px-4 sm:px-6 pt-4
+                ${footer ? 'pb-4 sm:pb-6' : isMobile ? 'pb-safe' : 'pb-4 sm:pb-6'}
                 ${contentClassName}
               `}
             >

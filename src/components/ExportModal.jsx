@@ -467,7 +467,7 @@ const ExportModal = ({ isOpen, onClose, activeView, data }) => {
       iconColor="blue"
       footer={footer}
     >
-      <div className="p-4 space-y-4">
+      <div className="space-y-4">
         {/* Tab selector: Global vs View-specific */}
         <div className={`flex gap-2 p-1 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
           <button

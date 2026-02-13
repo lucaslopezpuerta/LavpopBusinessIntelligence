@@ -1,82 +1,74 @@
-// CampaignSectionNavigation.jsx v2.8 - SIDEBAR AWARENESS
+// CampaignSectionNavigation.jsx v3.0 - FRAMER MOTION LAYOUT ANIMATION
 // Tab navigation for Campaigns view
-// Design System v4.0 compliant
+// Design System v6.4 compliant - Variant D (Glassmorphism)
 //
 // CHANGELOG:
+// v3.0 (2026-02-12): Framer Motion layoutId for smooth tab sliding
+//   - Active indicator uses motion.div with layoutId="campaign-nav-active"
+//   - Per-tab colors via semanticColors from colorMapping.js (no hardcoded hex)
+//   - useTheme() hook replaces Tailwind dark: prefix (Variant D pattern)
+//   - Icon-only on mobile, icon+label on desktop
+//   - Spring physics for snappy, natural tab sliding
+//   - Fixed checkScroll useCallback + useEffect dependency
+//   - Fixed showRightFade initial state (false, not true)
+//   - Removed static bg/border nav wrapper (clean py-2 sm:py-3)
+//   - Fade indicators use inline isDark styles (#020910/#ECEFF4)
 // v2.8 (2026-01-12): Sidebar awareness
 //   - Added useSidebar hook to detect mobile drawer state
 //   - Returns null when mobile sidebar is open to prevent z-index conflicts
 //   - Same pattern as SocialMediaNavigation v1.4
 // v2.7 (2026-01-09): Active state enhancement
-//   - Added scale-[1.02] transform on active tab for premium feel
-//   - Enhanced visual feedback with scale + shadow combination
 // v2.6 (2026-01-09): Robust click handler
-//   - Added preventDefault and stopPropagation to click handler
-//   - Guard check for onSectionChange callback existence
-//   - Ensures click events are not captured by parent elements
 // v2.5 (2026-01-09): Fix button click handling
-//   - Added relative z-20 to scrollable container (above fade indicators z-10)
-//   - Added explicit type="button" to prevent form submission behavior
-//   - Removed sticky positioning to fix z-index conflicts
-//   - Navigation now scrolls with content
 // v2.3 (2025-12-19): Moved Blacklist to Social Media view
-//   - Removed 'blacklist' tab (now in SocialMediaNavigation)
-//   - Blacklist logically belongs with WhatsApp messaging
 // v2.2 (2025-12-18): Moved WhatsApp to Social Media view
-//   - Removed 'whatsapp' tab (now in SocialMediaNavigation)
-// v2.1 (2025-12-17): Added WhatsApp analytics tab
-//   - New 'whatsapp' section for WABA analytics
-//   - Shows conversation costs and delivery metrics
 // v2.0 (2025-12-11): Design System v4.0 mobile improvements
-//   - Active tab uses gradient styling with shadow
-//   - Improved touch targets (min 44px height)
-//   - Better visual hierarchy with icon-only on small mobile
-//   - Scroll fade indicators on edges
-//   - Smoother transitions
 // v1.1 (2025-12-08): Added Blacklist section
 
-import React, { useRef, useState, useEffect } from 'react';
-import { Target, Zap, Users, MessageSquare, History } from 'lucide-react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { motion, LayoutGroup } from 'framer-motion';
+import { Target, Zap, Users, MessageSquare, History, Activity } from 'lucide-react';
 import { useSidebar } from '../../contexts/SidebarContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import { semanticColors, hexToRgba } from '../../utils/colorMapping';
 
 const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
-  // Get sidebar state to hide nav when mobile sidebar is open
   const { isMobileOpen } = useSidebar();
+  const { isDark } = useTheme();
   const scrollRef = useRef(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
-  const [showRightFade, setShowRightFade] = useState(true);
+  const [showRightFade, setShowRightFade] = useState(false);
 
   const sections = [
-    { id: 'overview', label: 'Visão Geral', icon: Target, mobileLabel: 'Geral' },
-    { id: 'automations', label: 'Automações', icon: Zap, mobileLabel: 'Auto' },
-    { id: 'audience', label: 'Audiência', icon: Users, mobileLabel: 'Público' },
-    { id: 'templates', label: 'Mensagens', icon: MessageSquare, mobileLabel: 'Msgs' },
-    { id: 'history', label: 'Histórico', icon: History, mobileLabel: 'Hist' }
+    { id: 'overview', label: 'Visão Geral', icon: Target, colorKey: 'blue' },
+    { id: 'automations', label: 'Automações', icon: Zap, colorKey: 'revenue' },
+    { id: 'audience', label: 'Audiência', icon: Users, colorKey: 'profit' },
+    { id: 'templates', label: 'Mensagens', icon: MessageSquare, colorKey: 'cyan' },
+    { id: 'history', label: 'Histórico', icon: History, colorKey: 'warning' },
+    { id: 'monitor', label: 'Monitor', icon: Activity, colorKey: 'cost' }
   ];
 
   // Check scroll position for fade indicators
-  const checkScroll = () => {
+  const checkScroll = useCallback(() => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
       setShowLeftFade(scrollLeft > 8);
       setShowRightFade(scrollLeft < scrollWidth - clientWidth - 8);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const scrollEl = scrollRef.current;
     if (scrollEl) {
-      scrollEl.addEventListener('scroll', checkScroll);
-      // Initial check
+      scrollEl.addEventListener('scroll', checkScroll, { passive: true });
       checkScroll();
-      // Check on resize
       window.addEventListener('resize', checkScroll);
       return () => {
         scrollEl.removeEventListener('scroll', checkScroll);
         window.removeEventListener('resize', checkScroll);
       };
     }
-  }, []);
+  }, [checkScroll]);
 
   // Scroll active tab into view on mount/change
   useEffect(() => {
@@ -88,68 +80,101 @@ const CampaignSectionNavigation = ({ activeSection, onSectionChange }) => {
     }
   }, [activeSection]);
 
-  // Hide nav when mobile sidebar is open to prevent z-index conflicts
+  // Hide nav when mobile sidebar is open (z-40 would overlap with sidebar z-40)
   if (isMobileOpen) {
     return null;
   }
 
   return (
     <nav
-      className="-mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-2 sm:py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800"
+      className="py-2 sm:py-3"
       aria-label="Navegação de seções de campanhas"
     >
       <div className="relative">
         {/* Left fade indicator */}
         <div
-          className={`absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-50 dark:from-slate-900 to-transparent z-10 pointer-events-none transition-opacity duration-200 ${showLeftFade ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none transition-opacity duration-200 ${showLeftFade ? 'opacity-100' : 'opacity-0'}`}
+          style={{
+            background: isDark
+              ? 'linear-gradient(to right, #020910, transparent)'
+              : 'linear-gradient(to right, #ECEFF4, transparent)'
+          }}
         />
 
         {/* Right fade indicator */}
         <div
-          className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-50 dark:from-slate-900 to-transparent z-10 pointer-events-none transition-opacity duration-200 ${showRightFade ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none transition-opacity duration-200 ${showRightFade ? 'opacity-100' : 'opacity-0'}`}
+          style={{
+            background: isDark
+              ? 'linear-gradient(to left, #020910, transparent)'
+              : 'linear-gradient(to left, #ECEFF4, transparent)'
+          }}
         />
 
-        {/* Scrollable container - z-20 ensures buttons are above fade indicators */}
-        <div
-          ref={scrollRef}
-          className="relative z-20 flex gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
-        >
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
+        {/* Scrollable container */}
+        <LayoutGroup>
+          <div
+            ref={scrollRef}
+            className="relative z-20 flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide scroll-smooth"
+          >
+            {sections.map((section) => {
+              const Icon = section.icon;
+              const isActive = activeSection === section.id;
+              const colors = semanticColors[section.colorKey];
 
-            const handleClick = (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (onSectionChange) {
-                onSectionChange(section.id);
-              }
-            };
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onSectionChange) {
+                      onSectionChange(section.id);
+                    }
+                  }}
+                  className={`
+                    relative flex items-center justify-center
+                    w-10 h-10 sm:w-auto sm:h-auto sm:gap-2 sm:px-5 sm:py-2.5
+                    rounded-xl text-sm font-medium whitespace-nowrap
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stellar-cyan focus-visible:ring-offset-2
+                    ${isDark ? 'focus-visible:ring-offset-space-dust' : 'focus-visible:ring-offset-white'}
+                    ${isActive
+                      ? 'text-white'
+                      : isDark
+                        ? 'bg-space-dust/50 text-slate-300 border border-white/[0.06] hover:bg-space-elevated/60 hover:text-white hover:border-white/10 transition-colors duration-150'
+                        : 'bg-white/80 text-slate-600 border border-slate-200/60 hover:bg-white hover:text-slate-900 hover:border-slate-300 transition-colors duration-150'
+                    }
+                  `}
+                  aria-label={section.label}
+                  aria-current={isActive ? 'true' : undefined}
+                >
+                  {/* Animated active background — slides between tabs */}
+                  {isActive && (
+                    <motion.div
+                      layoutId="campaign-nav-active"
+                      className={`absolute inset-0 rounded-xl bg-gradient-to-r ${colors.gradient}`}
+                      style={{
+                        boxShadow: `0 10px 15px -3px ${hexToRgba(colors.accentColor[isDark ? 'dark' : 'light'], 0.25)}`,
+                      }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 500,
+                        damping: 35,
+                      }}
+                    />
+                  )}
 
-            return (
-              <button
-                type="button"
-                key={section.id}
-                onClick={handleClick}
-                className={`
-                  flex items-center justify-center gap-1.5 sm:gap-2
-                  min-w-[44px] sm:min-w-0 px-3 sm:px-4 py-2.5 sm:py-2
-                  rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap
-                  transition-all duration-200
-                  ${isActive
-                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/25 scale-[1.02]'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:text-purple-600 dark:hover:text-purple-400'
-                  }
-                `}
-                aria-current={isActive ? 'true' : undefined}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0 hidden sm:block" aria-hidden="true" />
-                <span className="hidden sm:inline">{section.label}</span>
-                <span className="sm:hidden">{section.mobileLabel}</span>
-              </button>
-            );
-          })}
-        </div>
+                  {/* Content — layered above animated background */}
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden sm:inline">{section.label}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </LayoutGroup>
       </div>
     </nav>
   );

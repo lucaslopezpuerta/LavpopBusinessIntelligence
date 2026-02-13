@@ -1620,6 +1620,87 @@ const PriorityMatrixSkeleton = () => (
   </div>
 );
 
+// MessageFlowLoadingSkeleton - matches MessageFlowMonitor layout (v1.0)
+// KPI strip (4 cards) + filter bar + message cards (5) + pagination
+const MessageFlowLoadingSkeleton = () => (
+  <div className="space-y-4 sm:space-y-6">
+    {/* KPI strip - 4 cards */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4">
+          <SkeletonText width="w-16" height="h-3" className="mb-2" stagger staggerIndex={i} />
+          <SkeletonText width="w-12" height="h-6" className="mb-1" stagger staggerIndex={i} />
+          <SkeletonText width="w-20" height="h-3" stagger staggerIndex={i + 1} />
+        </div>
+      ))}
+    </div>
+
+    {/* Filter bar */}
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-10 flex-1 max-w-xs rounded-xl" stagger staggerIndex={2} />
+        <div className="flex gap-1.5">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-8 w-12 rounded-lg" stagger staggerIndex={3} />
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 overflow-x-auto">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-7 w-20 rounded-full flex-shrink-0" stagger staggerIndex={3 + i} />
+        ))}
+      </div>
+    </div>
+
+    {/* Message cards */}
+    {[0, 1, 2, 3, 4].map((i) => (
+      <div key={i} className="bg-white dark:bg-space-dust rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          {/* Identity */}
+          <div className="flex items-center gap-3 sm:w-1/4">
+            <SkeletonCircle size="w-9 h-9" stagger staggerIndex={4 + i} />
+            <div className="space-y-1.5">
+              <SkeletonText width="w-24" height="h-4" stagger staggerIndex={4 + i} />
+              <SkeletonText width="w-28" height="h-3" stagger staggerIndex={5 + i} />
+            </div>
+          </div>
+          {/* Campaign context */}
+          <div className="space-y-1.5 sm:w-1/4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-14 rounded" stagger staggerIndex={5 + i} />
+              <SkeletonText width="w-24" height="h-3" stagger staggerIndex={5 + i} />
+            </div>
+            <SkeletonText width="w-32" height="h-3" stagger staggerIndex={6 + i} />
+          </div>
+          {/* Delivery timeline */}
+          <div className="flex items-center gap-2 sm:w-1/4">
+            {[0, 1, 2].map((j) => (
+              <div key={j} className="flex items-center gap-1">
+                <SkeletonCircle size="w-3 h-3" stagger staggerIndex={6 + i} />
+                <SkeletonText width="w-10" height="h-3" stagger staggerIndex={6 + i} />
+              </div>
+            ))}
+          </div>
+          {/* Outcome */}
+          <div className="sm:w-1/4 sm:text-right">
+            <Skeleton className="h-5 w-20 rounded-full ml-auto" stagger staggerIndex={7 + i} />
+          </div>
+        </div>
+      </div>
+    ))}
+
+    {/* Pagination */}
+    <div className="flex items-center justify-between">
+      <SkeletonText width="w-32" height="h-4" stagger staggerIndex={7} />
+      <div className="flex items-center gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-8 w-8 rounded-lg" stagger staggerIndex={8} />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 export {
   Skeleton,
   SkeletonText,
@@ -1641,6 +1722,7 @@ export {
   SocialMediaLoadingSkeleton,
   WeatherLoadingSkeleton,
   OperationsLoadingSkeleton,
+  MessageFlowLoadingSkeleton,
   // Component-specific skeletons (v3.4+)
   RFMScatterPlotSkeleton,
   VisitHeatmapSkeleton,

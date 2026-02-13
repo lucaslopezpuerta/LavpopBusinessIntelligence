@@ -442,6 +442,44 @@ export const api = {
     async getWelcomeHistory() {
       const result = await apiRequest('contacts.getWelcomeHistory');
       return result.contacts || [];
+    },
+
+    /**
+     * Get message flow data with server-side JOIN, pagination, and filters
+     * Used by MessageFlowMonitor for unified message tracking
+     *
+     * @param {object} params - Filter parameters
+     * @param {string} [params.from_date] - ISO date string for date filter
+     * @param {string} [params.search] - Search term (customer_name or phone)
+     * @param {string} [params.delivery_status] - Filter: all/pending/sent/delivered/read/failed
+     * @param {string} [params.type_filter] - Filter: all/automation/manual
+     * @param {string} [params.campaign_type] - Filter: winback/welcome/wallet/post_visit/manual/promo
+     * @param {string} [params.rule_id] - Specific automation rule ID
+     * @param {number} [params.limit] - Page size (default 15)
+     * @param {number} [params.offset] - Pagination offset
+     * @param {string} [params.sort_by] - Sort column (contacted_at/customer_name/delivery_status)
+     * @param {string} [params.sort_order] - Sort direction (asc/desc)
+     * @returns {Promise<{messages: Array, total_count: number}>}
+     */
+    async getMessageFlow(params = {}) {
+      const result = await apiRequest('contacts.getMessageFlow', params);
+      return {
+        messages: result.messages || [],
+        total_count: result.total_count || 0
+      };
+    },
+
+    /**
+     * Get lightweight KPI aggregation for message flow monitor
+     * Selects only 3 columns (delivery_status, status, return_revenue) for fast aggregation
+     *
+     * @param {object} params - Filter parameters
+     * @param {string} [params.from_date] - ISO date string for date filter
+     * @param {string} [params.campaign_type] - Filter by campaign type
+     * @returns {Promise<{sent: number, delivered: number, read: number, failed: number, returned: number, revenue: number}>}
+     */
+    async getMessageFlowKPIs(params = {}) {
+      return await apiRequest('contacts.getMessageFlowKPIs', params);
     }
   },
 

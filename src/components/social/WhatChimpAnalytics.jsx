@@ -658,7 +658,7 @@ const WhatChimpAnalytics = () => {
           </div>
         }
       >
-        <div className="px-4 sm:px-6 py-4">
+        <div>
           <p className={`text-sm mb-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
             Esta ação irá sincronizar <strong>TODOS os {formatNumber(data.distribution?.total || stats.total, 0)} clientes</strong> com o WhatChimp.
           </p>
@@ -697,7 +697,7 @@ const WhatChimpAnalytics = () => {
         size="small"
         maxWidth="md"
       >
-        <div className="px-4 sm:px-6 py-4 space-y-5">
+        <div className="space-y-5">
           {/* Automatic Sync */}
           <div className="flex gap-3">
             <div className={`

@@ -88,6 +88,7 @@ const NewCampaignModal = lazy(() => import('../components/campaigns/NewCampaignM
 const CouponEffectiveness = lazy(() => import('../components/campaigns/CouponEffectiveness'));
 const AutomationPerformance = lazy(() => import('../components/campaigns/AutomationPerformance'));
 const SegmentCampaignMatrix = lazy(() => import('../components/campaigns/SegmentCampaignMatrix'));
+const MessageFlowMonitor = lazy(() => import('../components/campaigns/MessageFlowMonitor'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback = () => (
@@ -328,6 +329,13 @@ const Campaigns = ({ data, onDataChange }) => {
             formatCurrency={formatCurrency}
             formatPercent={formatPercent}
           />
+        )}
+
+        {/* Message Flow Monitor Section */}
+        {activeSection === 'monitor' && (
+          <Suspense fallback={<SectionCardFallback />}>
+            <MessageFlowMonitor />
+          </Suspense>
         )}
         </AnimatedSection>
 

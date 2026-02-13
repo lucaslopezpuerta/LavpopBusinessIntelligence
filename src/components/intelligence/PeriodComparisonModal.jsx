@@ -692,7 +692,7 @@ const PeriodComparisonModal = ({ isOpen, onClose, salesData = [], dailyRevenueDa
       maxWidth="2xl"
       ariaLabel="Analise comparativa de periodos"
     >
-      <div className="px-4 sm:px-6 pt-4 pb-6 space-y-5">
+      <div className="space-y-5">
         {/* Preset pills */}
         <PresetPills
           activePreset={activePreset}

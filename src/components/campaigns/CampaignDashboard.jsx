@@ -1,8 +1,14 @@
-// CampaignDashboard.jsx v3.17 - MODE-AWARE WARNING BADGES
+// CampaignDashboard.jsx v3.18 - GLASSMORPHIC CONTAINER
 // Unified Campaign Analytics Dashboard
-// Design System v5.1 compliant
+// Design System v6.4 compliant - Cosmic Precision
 //
 // CHANGELOG:
+// v3.18 (2026-02-12): Glassmorphic container (Cosmic Precision v6.4)
+//   - Replaced outer SectionCard with glassmorphic container matching siblings
+//   - Container: bg-space-dust/40, backdrop-blur-xl, ring-1, layered shadows
+//   - Header: gradient icon box (purple→indigo) with drop-shadow
+//   - Matches CouponEffectiveness and SegmentCampaignMatrix container pattern
+//   - Inner SectionCard for "Campanhas Recentes" unchanged
 // v3.17 (2026-01-29): Mode-aware warning badges
 //   - Replaced bg-yellow-600 dark:bg-yellow-500 with mode-aware amber badges
 //   - Warning badges now use bg-amber-50 text-amber-800 border-amber-200 in light mode
@@ -158,11 +164,14 @@ import KPICard, { KPIGrid } from '../ui/KPICard';
 import SectionCard from '../ui/SectionCard';
 import ProgressBar from '../ui/ProgressBar';
 
+// Contexts & Hooks
+import { useTheme } from '../../contexts/ThemeContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+
 // Services
 import { getDashboardMetrics } from '../../utils/campaignService';
 
 // Sub-components
-import DiscountComparisonCard from './DiscountComparisonCard';
 import CampaignFunnel from './CampaignFunnel';
 
 // ==================== HELPER FUNCTIONS ====================
@@ -466,6 +475,9 @@ const RecentCampaignsTable = ({ campaigns, isLoading }) => {
 // ==================== MAIN COMPONENT ====================
 
 const CampaignDashboard = ({ audienceSegments, className = '' }) => {
+  const { isDark } = useTheme();
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+
   const [metrics, setMetrics] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -597,21 +609,39 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
   }
 
   return (
-    <SectionCard
-      title="Análise de Campanhas"
-      subtitle={metrics ? `${summary.totalCampaigns || 0} campanhas${timeRange ? ` nos últimos ${timeRange} dias` : ''}` : 'Carregando...'}
-      icon={Target}
-      color="purple"
-      id="campaign-dashboard"
-      className={className}
-      action={
-        lastSync && (
-          <span className="text-slate-400 text-xs" title="Última atualização">
-            {formatTimeAgo(lastSync)}
-          </span>
-        )
-      }
+    <div
+      className={`
+        ${isDark ? 'bg-space-dust/40' : 'bg-white/80'}
+        backdrop-blur-xl rounded-2xl p-5
+        ${isDark
+          ? 'ring-1 ring-white/[0.05] shadow-[0_0_20px_-5px_rgba(0,174,239,0.12),inset_0_1px_1px_rgba(255,255,255,0.10)]'
+          : 'ring-1 ring-slate-200/80 shadow-[0_8px_32px_-12px_rgba(100,116,139,0.15),inset_0_1px_0_rgba(255,255,255,0.8)]'}
+        overflow-hidden
+        ${className}
+      `}
     >
+      {/* Header — Gradient icon box matching sibling components */}
+      <div className="flex items-start justify-between gap-3 mb-5">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className={`
+            w-10 h-10 rounded-xl shrink-0 flex items-center justify-center
+            bg-gradient-to-br from-purple-500 to-indigo-600
+            shadow-md shadow-purple-500/25 dark:shadow-purple-400/20
+          `}>
+            <Target className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }} aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h3 className={`${isDesktop ? 'text-base' : 'text-sm'} font-bold tracking-tight text-slate-900 dark:text-white`}>
+              Análise de Campanhas
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              {summary.totalCampaigns || 0} campanhas{timeRange ? ` nos últimos ${timeRange} dias` : ''}
+              {lastSync && ` · ${formatTimeAgo(lastSync)}`}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-6">
         {/* Time Range Filter */}
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -727,16 +757,8 @@ const CampaignDashboard = ({ audienceSegments, className = '' }) => {
           isLoading={isLoading}
         />
 
-        {/* A/B Testing Section */}
-        <DiscountComparisonCard
-          discountData={metrics?.discountComparison || []}
-          serviceData={metrics?.serviceComparison || []}
-          bestDiscount={metrics?.bestDiscount}
-          bestService={metrics?.bestService}
-          isLoading={isLoading}
-        />
       </div>
-    </SectionCard>
+    </div>
   );
 };
 

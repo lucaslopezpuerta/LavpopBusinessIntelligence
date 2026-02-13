@@ -206,7 +206,7 @@ const Insights = ({ data, onDataChange, onNavigate }) => {
           size="small"
           maxWidth="md"
         >
-          <div className="px-4 sm:px-6 py-4 space-y-5">
+          <div className="space-y-5">
             {/* Layer 1: Rules */}
             <div className={`flex gap-3 pb-5 border-b ${isDark ? 'border-stellar-cyan/5' : 'border-slate-100'}`}>
               <div className={`

@@ -368,6 +368,12 @@ exports.handler = async (event, context) => {
       case 'contacts.getWelcomeHistory':  // All historical welcome/post_visit contacts for conversion analysis
         return await getWelcomeContactHistory(supabase, headers);
 
+      case 'contacts.getMessageFlow':  // Message flow monitor with server-side JOIN + pagination
+        return await getMessageFlow(supabase, body, headers);
+
+      case 'contacts.getMessageFlowKPIs':  // Lightweight KPI aggregation for message flow
+        return await getMessageFlowKPIs(supabase, body, headers);
+
       // ==================== CONTACT ELIGIBILITY ====================
       case 'eligibility.check':
         return await checkCustomerEligibility(supabase, data, headers);
@@ -433,7 +439,7 @@ exports.handler = async (event, context) => {
               'campaign_performance.getAll', 'campaign_performance.get',
               'contact_tracking.getAll', 'contact_tracking.create', 'contact_tracking.update',
               'contact_tracking.record', 'contact_tracking.markReturned',
-              'contacts.getAll', 'contacts.create', 'contacts.clear',  // v2.7: Backend-only checkmarks
+              'contacts.getAll', 'contacts.create', 'contacts.clear', 'contacts.getMessageFlow', 'contacts.getMessageFlowKPIs',
               'eligibility.check', 'eligibility.checkBatch',
               'webhook_events.getDeliveryStats', 'webhook_events.getAll', 'webhook_events.getCampaignDeliveryMetrics', 'webhook_events.getEngagementStats',
               'rpc.expire_old_contacts', 'rpc.mark_customer_returned',
@@ -1811,6 +1817,162 @@ async function getContactTracking(supabase, params, headers) {
     // Return both keys for compatibility: contact_tracking (legacy) and contacts (v2.7+)
     body: JSON.stringify({ contact_tracking: data || [], contacts: data || [] })
   };
+}
+
+// ==================== MESSAGE FLOW MONITOR ====================
+// Server-side JOIN of contact_tracking + automation_rules with pagination, search, and filters
+async function getMessageFlow(supabase, params, headers) {
+  try {
+    const limit = parseInt(params.limit) || 15;
+    const offset = parseInt(params.offset) || 0;
+    const sortBy = params.sort_by || 'contacted_at';
+    const sortOrder = params.sort_order || 'desc';
+
+    // Use Supabase query builder with server-side pagination
+    let query = supabase
+      .from('contact_tracking')
+      .select('*', { count: 'exact' })
+      .order(sortBy, { ascending: sortOrder === 'asc' })
+      .range(offset, offset + limit - 1);
+
+    // Apply filters
+    if (params.from_date) query = query.gte('contacted_at', params.from_date);
+    if (params.search) {
+      query = query.or(`customer_name.ilike.%${params.search}%,phone.like.%${params.search}%`);
+    }
+    if (params.delivery_status && params.delivery_status !== 'all') {
+      if (params.delivery_status === 'failed') {
+        query = query.in('delivery_status', ['failed', 'undelivered']);
+      } else {
+        query = query.eq('delivery_status', params.delivery_status);
+      }
+    }
+    if (params.type_filter === 'automation') {
+      query = query.like('campaign_id', 'AUTO_%');
+    } else if (params.type_filter === 'manual') {
+      query = query.not('campaign_id', 'like', 'AUTO_%');
+    }
+    if (params.campaign_type && params.campaign_type !== 'all') {
+      query = query.eq('campaign_type', params.campaign_type);
+    }
+    if (params.rule_id) {
+      query = query.eq('campaign_id', `AUTO_${params.rule_id}`);
+    }
+
+    const { data: messages, count, error } = await query;
+    if (error) {
+      console.error('getMessageFlow query error:', error);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: error.message || 'Query failed' })
+      };
+    }
+
+    // Client-side enrichment with automation rule details
+    if (messages?.length > 0) {
+      const autoIds = [...new Set(
+        messages
+          .filter(m => m.campaign_id?.startsWith('AUTO_'))
+          .map(m => m.campaign_id.replace('AUTO_', ''))
+      )];
+
+      let rulesMap = {};
+      if (autoIds.length > 0) {
+        const { data: rules } = await supabase
+          .from('automation_rules')
+          .select('id, name, trigger_type, trigger_value, cooldown_days, coupon_code, discount_percent, action_template, send_window_start, send_window_end, send_days')
+          .in('id', autoIds);
+
+        if (rules) {
+          rules.forEach(r => { rulesMap[r.id] = r; });
+        }
+      }
+
+      const enriched = messages.map(msg => {
+        const ruleId = msg.campaign_id?.replace('AUTO_', '');
+        const rule = rulesMap[ruleId];
+        return {
+          ...msg,
+          rule_name: rule?.name || null,
+          trigger_type: rule?.trigger_type || null,
+          trigger_value: rule?.trigger_value || null,
+          rule_cooldown_days: rule?.cooldown_days || null,
+          rule_coupon_code: rule?.coupon_code || null,
+          rule_discount_percent: rule?.discount_percent || null,
+          action_template: rule?.action_template || null,
+          send_window_start: rule?.send_window_start || null,
+          send_window_end: rule?.send_window_end || null,
+          rule_send_days: rule?.send_days || null,
+        };
+      });
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ messages: enriched, total_count: count || enriched.length })
+      };
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ messages: messages || [], total_count: count || 0 })
+    };
+  } catch (err) {
+    console.error('getMessageFlow error:', err);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: err.message || 'Internal error in getMessageFlow' })
+    };
+  }
+}
+
+// Lightweight KPI aggregation for message flow monitor
+// Selects only 3 columns instead of full rows for ~40x payload reduction
+async function getMessageFlowKPIs(supabase, params, headers) {
+  try {
+    let query = supabase
+      .from('contact_tracking')
+      .select('delivery_status, status, return_revenue', { count: 'exact' });
+
+    if (params.from_date) query = query.gte('contacted_at', params.from_date);
+    if (params.campaign_type && params.campaign_type !== 'all') {
+      query = query.eq('campaign_type', params.campaign_type);
+    }
+
+    const { data, count, error } = await query;
+    if (error) {
+      console.error('getMessageFlowKPIs query error:', error);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: error.message || 'KPI query failed' })
+      };
+    }
+
+    const rows = data || [];
+    const sent = count || rows.length;
+    const delivered = rows.filter(r => ['delivered', 'read'].includes(r.delivery_status)).length;
+    const read = rows.filter(r => r.delivery_status === 'read').length;
+    const failed = rows.filter(r => ['failed', 'undelivered'].includes(r.delivery_status)).length;
+    const returned = rows.filter(r => r.status === 'returned').length;
+    const revenue = rows.reduce((sum, r) => sum + (r.return_revenue || 0), 0);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ sent, delivered, read, failed, returned, revenue })
+    };
+  } catch (err) {
+    console.error('getMessageFlowKPIs error:', err);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: err.message || 'Internal error in getMessageFlowKPIs' })
+    };
+  }
 }
 
 async function createContactTracking(supabase, data, headers) {
