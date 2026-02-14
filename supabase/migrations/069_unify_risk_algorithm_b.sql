@@ -1,33 +1,30 @@
-# Unify Risk Algorithm (Algorithm B) + Fix Eligible Counts
+-- Migration: 069_unify_risk_algorithm_b.sql
+-- Date: 2026-02-14
+-- Purpose: Unify risk_level computation on Algorithm B (exponential decay + segment bonus)
+--
+-- BACKGROUND:
+-- The DB had two risk calculation functions:
+--   1. calculate_risk_level() — simple ratio thresholds (Algorithm A, from Migration 002)
+--   2. calculate_customer_risk() — exponential decay + segment bonus (Algorithm B, from add_risk_level_column.sql)
+--
+-- The triggers called Algorithm A, but the frontend (customerMetrics.js v3.8.0) and
+-- refresh_customer_metrics() used Algorithm B. This caused eligible count mismatches
+-- in AutomationRules.jsx vs campaign-scheduler.js.
+--
+-- CHANGES:
+--   1. Updated calculate_customer_risk() with v3.8.0 segment bonuses (VIP=1.4, Frequente=1.2)
+--   2. Added time-based new customer likelihood (70/50/30/15/5 instead of flat 50)
+--   3. Updated calculate_customer_risk_on_insert() trigger to use Algorithm B
+--   4. Updated update_customer_after_transaction() trigger to use Algorithm B
+--   5. Backfilled all customers via refresh_customer_metrics()
+--   6. Dropped old calculate_risk_level() function
+--
+-- RESULT:
+-- DB risk_level now uses same algorithm as frontend. "Monitor" category added.
+-- Campaign scheduler targeting (risk_level IN ('At Risk', 'Churning')) unchanged.
 
-## Context
+-- ==================== 1. UPDATE RISK FUNCTION (Algorithm B v3.8.0) ====================
 
-The "elegíveis" counts in AutomationRules.jsx don't match the campaign-scheduler because:
-
-1. **Risk algorithm divergence**: DB triggers call `calculate_risk_level()` (simple ratios), but the frontend uses exponential decay + segment bonus. The scheduler queries DB `risk_level`, so counts mismatch.
-2. **Wallet data source**: Frontend uses CSV `walletBalance ≥ 10`, scheduler uses DB `saldo_carteira ≥ 20`.
-
-**Key discovery**: The DB already has `calculate_customer_risk()` implementing Algorithm B (exponential decay + segment bonus) in `add_risk_level_column.sql`. It's used by `refresh_customer_metrics()` but NOT by the triggers. The triggers still call the old `calculate_risk_level()` from migration 002.
-
-**Goal**: Wire the triggers to use Algorithm B, update the segment bonuses to match frontend v3.8.0, backfill all customers, then pipe DB values to the frontend.
-
----
-
-## Part 1: DB Migration via Supabase MCP
-
-### Step 1: Update `calculate_customer_risk()` segment bonuses
-
-The existing function in `add_risk_level_column.sql` has outdated bonuses. Update to match `customerMetrics.js` v3.8.0:
-
-```sql
--- Current (outdated):     VIP=1.2, Frequente=1.1
--- Frontend v3.8.0:        VIP=1.4, Frequente=1.2
--- Also add time-based new customer likelihood (70/50/30/15/5)
-```
-
-Full replacement:
-
-```sql
 CREATE OR REPLACE FUNCTION calculate_customer_risk(
   p_days_since_last_visit INTEGER,
   p_transaction_count INTEGER,
@@ -100,13 +97,9 @@ BEGIN
   RETURN QUERY SELECT v_risk_level, ROUND(v_likelihood)::INTEGER;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
-```
 
-### Step 2: Update `calculate_customer_risk_on_insert()` trigger
+-- ==================== 2. UPDATE INSERT/UPDATE TRIGGER ====================
 
-Switch from `calculate_risk_level()` to `calculate_customer_risk()`. This trigger fires BEFORE INSERT/UPDATE on customers, so `NEW.rfm_segment` is available.
-
-```sql
 CREATE OR REPLACE FUNCTION calculate_customer_risk_on_insert()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -129,13 +122,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-```
 
-### Step 3: Update `update_customer_after_transaction()` trigger
+-- ==================== 3. UPDATE TRANSACTION TRIGGER ====================
 
-Switch from `calculate_risk_level()` to `calculate_customer_risk()`. Needs to fetch `rfm_segment` from the customer row.
-
-```sql
 CREATE OR REPLACE FUNCTION update_customer_after_transaction()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -165,7 +154,7 @@ BEGIN
     v_tx_date
   );
 
-  -- Calculate risk using Algorithm B
+  -- Calculate risk using Algorithm B (exponential decay + segment bonus)
   SELECT * INTO v_risk FROM calculate_customer_risk(
     v_days_since,
     COALESCE((SELECT transaction_count FROM customers WHERE doc = v_customer_id), 0) + 1,
@@ -209,129 +198,19 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-```
 
-### Step 4: Backfill all customers
+-- ==================== 4. BACKFILL ====================
 
-```sql
 SELECT refresh_customer_metrics();
-```
 
-### Step 5: Verify
+-- ==================== 5. DROP OLD FUNCTION ====================
 
-```sql
--- Check distribution matches frontend expectations
-SELECT risk_level, COUNT(*), ROUND(AVG(return_likelihood)) as avg_likelihood
-FROM customers
-WHERE risk_level IS NOT NULL
-GROUP BY risk_level
-ORDER BY COUNT(*) DESC;
-
--- Winback eligible count (should now match frontend closely)
-SELECT COUNT(*) FROM customers
-WHERE days_since_last_visit BETWEEN 30 AND 90
-  AND risk_level IN ('At Risk', 'Churning')
-  AND telefone IS NOT NULL;
-
--- Wallet eligible count
-SELECT COUNT(*) FROM customers
-WHERE saldo_carteira >= 20
-  AND telefone IS NOT NULL;
-```
-
-### Step 6: Optionally drop old function
-
-```sql
 DROP FUNCTION IF EXISTS calculate_risk_level(INTEGER, NUMERIC, INTEGER);
-```
 
----
+-- ==================== VERIFICATION ====================
 
-## Part 2: Frontend — Pipe DB Values for Eligible Counts
-
-### Step 7: Add `risk_level` and `saldo_carteira` to Supabase select
-
-**File:** `src/utils/supabaseLoader.js` (~line 246)
-
-```diff
-    welcome_sent_at,
--   post_visit_sent_at
-+   post_visit_sent_at,
-+   risk_level,
-+   saldo_carteira
-```
-
-Add to transform (~line 290):
-```javascript
-dbRiskLevel: row.risk_level || null,
-dbWalletBalance: row.saldo_carteira || 0,
-```
-
-### Step 8: Pass through customerMetrics
-
-**File:** `src/utils/customerMetrics.js`
-
-In rfmMap builder (~line 265):
-```javascript
-dbRiskLevel: row.dbRiskLevel || null,
-dbWalletBalance: row.dbWalletBalance || 0,
-```
-
-In RFM merge (~line 444):
-```javascript
-customer.dbRiskLevel = rfmInfo.dbRiskLevel;
-customer.dbWalletBalance = rfmInfo.dbWalletBalance;
-```
-
-### Step 9: Update `getAffectedCount` to use DB values
-
-**File:** `src/components/campaigns/AutomationRules.jsx` (~line 824)
-
-```javascript
-case 'days_since_visit': {
-  const minDays = rule.trigger.value;
-  return withValidPhone(
-    audienceSegments.all?.filter(c =>
-      c.daysSinceLastVisit >= minDays &&
-      c.daysSinceLastVisit <= MAX_WINBACK_DAYS &&
-      ['At Risk', 'Churning'].includes(c.dbRiskLevel)
-    )
-  ).length;
-}
-case 'wallet_balance':
-  return withValidPhone(
-    audienceSegments.all?.filter(c =>
-      (c.dbWalletBalance || 0) >= rule.trigger.value
-    )
-  ).length;
-```
-
-Also update `winback_45` shortDesc to include day range.
-
-### Step 10: Build verification
-
-```bash
-npm run build
-```
-
----
-
-## Files Modified
-
-| File | Changes |
-|------|---------|
-| **Supabase (via MCP)** | Steps 1-6: Update function + triggers + backfill |
-| `src/utils/supabaseLoader.js` | Add `risk_level`, `saldo_carteira` to select + transform |
-| `src/utils/customerMetrics.js` | Pass `dbRiskLevel`, `dbWalletBalance` through pipeline |
-| `src/components/campaigns/AutomationRules.jsx` | Use DB values in `getAffectedCount` |
-| `supabase/migrations/069_unify_risk_algorithm_b.sql` | Save migration for version control |
-
----
-
-## Expected Outcome
-
-After unification:
-- DB `risk_level` uses Algorithm B (exponential decay + segment bonus) — **same as frontend**
-- `dbRiskLevel` values will closely match frontend-computed `riskLevel` (minor timing differences possible)
-- Eligible counts in AutomationRules will match campaign-scheduler targeting
-- Campaign-scheduler continues querying `risk_level IN ('At Risk', 'Churning')` — same values, just computed with better algorithm
+-- SELECT risk_level, COUNT(*), ROUND(AVG(return_likelihood)) as avg_likelihood
+-- FROM customers
+-- WHERE risk_level IS NOT NULL
+-- GROUP BY risk_level
+-- ORDER BY count DESC;

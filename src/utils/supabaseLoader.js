@@ -60,7 +60,7 @@ const getSupabase = getSupabaseClient;
 // ============== CACHE CONFIGURATION ==============
 const CACHE_KEY_SALES = 'supabase_transactions';
 const CACHE_KEY_CUSTOMERS = 'supabase_customers';
-const CACHE_KEY_RFM = 'supabase_rfm';
+const CACHE_KEY_RFM = 'supabase_rfm_v2'; // v2: added risk_level, saldo_carteira columns
 const CACHE_KEY_DAILY_REVENUE = 'supabase_daily_revenue';
 const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours (data updates 1-2x daily, realtime fills gaps)
 
@@ -254,7 +254,12 @@ async function loadRFMFromSupabase() {
     days_since_last_visit,
     transaction_count,
     total_spent,
-    recent_monetary_90d
+    recent_monetary_90d,
+    welcome_sent_at,
+    post_visit_sent_at,
+    risk_level,
+    saldo_carteira,
+    visit_count
   `;
 
   while (hasMore) {
@@ -292,6 +297,11 @@ async function loadRFMFromSupabase() {
     'client name': row.nome || '',
     'phone number': row.telefone || '',
     lastContactDate: '', // TODO: Get from contact_tracking if needed
+    welcomeSentAt: row.welcome_sent_at || null,
+    postVisitSentAt: row.post_visit_sent_at || null,
+    dbRiskLevel: row.risk_level || null,
+    dbWalletBalance: row.saldo_carteira || 0,
+    dbVisitCount: row.visit_count || 0,
 
     // Additional RFM data for debugging/display
     r_score: row.r_score,

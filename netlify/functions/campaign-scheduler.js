@@ -2317,8 +2317,9 @@ async function processAutomationRule(supabase, rule, blacklistedPhones) {
       }
     }
 
-    // Send messages (limit to 20 per rule execution to avoid timeouts)
-    const maxPerExecution = 20;
+    // Send messages (v3.7: increased from 20 to 40 for faster backlog recovery)
+    // 40 messages × 100ms delay = 4s, well within Netlify's 10s function timeout
+    const maxPerExecution = 40;
     const toSend = eligibleTargets.slice(0, maxPerExecution);
 
     for (const target of toSend) {
@@ -2420,9 +2421,13 @@ async function findAutomationTargets(supabase, rule) {
       // exponential decay algorithm as customerMetrics.js
       //
       // The trigger_value (e.g., 30 or 45 days) is now just a minimum safeguard
+      // v3.7: Cap at 90 days — customers inactive longer are unlikely to return
+      const maxWinbackDays = 90;
       query = query
         .gte('days_since_last_visit', trigger_value)
+        .lte('days_since_last_visit', maxWinbackDays)
         .in('risk_level', ['At Risk', 'Churning']);
+      console.log(`Rule ${ruleId}: Winback window ${trigger_value}-${maxWinbackDays} days`);
       break;
 
     case 'first_purchase':
@@ -2452,16 +2457,17 @@ async function findAutomationTargets(supabase, rule) {
       break;
 
     case 'hours_after_visit':
-      // Customers who visited in the last X hours
-      // v3.2: ONE-TIME ONLY - check post_visit_sent_at is null
-      const hoursAgo = getBrazilNow();
-      hoursAgo.setHours(hoursAgo.getHours() - trigger_value);
-      const y = hoursAgo.getFullYear(), mo = hoursAgo.getMonth() + 1, dy = hoursAgo.getDate();
-      const targetDate = `${y}-${String(mo).padStart(2, '0')}-${String(dy).padStart(2, '0')}`;
-      // For simplicity, treat as "visited yesterday" for 24h rule
+      // v3.7: Use 2-day window instead of exact date match
+      // Previously used single-date match which caused 82% miss rate —
+      // if the scheduler missed a cycle or timing didn't align, customers
+      // fell through the crack. Now targets yesterday AND day-before-yesterday
+      // giving a 48h delivery window. post_visit_sent_at ensures one-time only.
+      const yesterday = getLocalDate(-1);
+      const dayBefore = getLocalDate(-2);
       query = query
-        .eq('last_visit', targetDate)
-        .is('post_visit_sent_at', null); // v3.2: Only send once per customer
+        .in('last_visit', [yesterday, dayBefore])
+        .is('post_visit_sent_at', null);
+      console.log(`Rule ${ruleId}: Post-visit targeting visits on ${yesterday} and ${dayBefore}`);
       break;
 
     // =====================================================
@@ -2525,7 +2531,10 @@ async function findAutomationTargets(supabase, rule) {
       return [];
   }
 
-  const { data: customers, error } = await query.limit(200);
+  // v3.7: Sort by days_since_last_visit ASC so most-recoverable customers are prioritized
+  const { data: customers, error } = await query
+    .order('days_since_last_visit', { ascending: true })
+    .limit(200);
 
   if (error) {
     console.error('Error finding automation targets:', error);

@@ -1,8 +1,14 @@
-// AutomationRules.jsx v6.7 - MODE-AWARE AMBER BADGES
+// AutomationRules.jsx v6.9 - DB-ALIGNED ELIGIBLE COUNTS
 // Automation rules configuration for campaigns
 // Design System v4.0 compliant - Mobile-first redesign
 //
 // CHANGELOG:
+// v6.9 (2026-02-14): Use DB risk_level + saldo_carteira for eligible counts
+//   - Winback: filter by dbRiskLevel (Algorithm B, matches scheduler after DB unification)
+//   - Wallet: filter by dbWalletBalance >= trigger_value (matches scheduler saldo_carteira query)
+// v6.8 (2026-02-14): Align eligible counts with campaign-scheduler query logic
+//   - Winback: filter by days_since_last_visit between trigger_value and 90 (matches scheduler cap)
+//   - Post-visit: show yesterday + day-before visitors (matches scheduler 2-day window)
 // v6.7 (2026-01-29): Mode-aware amber badges for better light mode visibility
 //   - StatusPill "Limite atingido": now uses bg-amber-50 text-amber-800 border in light, solid amber in dark
 //   - Dialog icon well: kept solid bg-amber-600 dark:bg-amber-500 for proper icon contrast
@@ -132,7 +138,7 @@ const AUTOMATION_RULES = [
   {
     id: 'winback_30',
     name: 'Win-back 30 dias',
-    shortDesc: 'Reengaja clientes inativos há 30 dias',
+    shortDesc: 'Reengaja clientes inativos há 30-90 dias',
     icon: AlertTriangle,
     color: 'amber',
     gradient: 'from-amber-500 to-orange-500',
@@ -170,7 +176,7 @@ const AUTOMATION_RULES = [
   {
     id: 'winback_45',
     name: 'Win-back Urgente',
-    shortDesc: 'Última chance para clientes prestes a churnar',
+    shortDesc: 'Reengaja clientes inativos há 45-90 dias',
     icon: AlertTriangle,
     color: 'red',
     gradient: 'from-red-500 to-rose-500',
@@ -817,20 +823,48 @@ const AutomationRules = ({ audienceSegments }) => {
     return customers.filter(c => isValidBrazilianMobile(c.phone));
   };
 
+  // v6.8: Align eligible counts with actual campaign-scheduler query logic
   const getAffectedCount = (rule) => {
     if (!audienceSegments) return 0;
 
+    const MAX_WINBACK_DAYS = 90; // Must match campaign-scheduler.js maxWinbackDays
+
     switch (rule.trigger.type) {
-      case 'days_since_visit':
-        if (rule.trigger.value === 30) return withValidPhone(audienceSegments.atRisk).length;
-        if (rule.trigger.value === 45) return withValidPhone(audienceSegments.atRisk?.filter(c => c.daysSinceLastVisit >= 45)).length;
-        return 0;
+      case 'days_since_visit': {
+        const minDays = rule.trigger.value;
+        // Use DB risk_level (matches scheduler query) — Algorithm B exponential decay
+        return withValidPhone(
+          audienceSegments.all?.filter(c =>
+            c.daysSinceLastVisit >= minDays &&
+            c.daysSinceLastVisit <= MAX_WINBACK_DAYS &&
+            ['At Risk', 'Churning'].includes(c.dbRiskLevel)
+          )
+        ).length;
+      }
       case 'first_purchase':
-        return withValidPhone(audienceSegments.newCustomers).length;
+        // Scheduler: visit_count=1, rfm_segment='Novato', welcome_sent_at IS NULL
+        return withValidPhone(
+          audienceSegments.all?.filter(c =>
+            c.dbVisitCount === 1 &&
+            c.segment === 'Novato' &&
+            !c.welcomeSentAt
+          )
+        ).length;
       case 'wallet_balance':
-        return withValidPhone(audienceSegments.withWallet).length;
+        // Use DB saldo_carteira (matches scheduler) with rule's trigger_value threshold
+        return withValidPhone(
+          audienceSegments.all?.filter(c =>
+            (c.dbWalletBalance || 0) >= rule.trigger.value
+          )
+        ).length;
       case 'hours_after_visit':
-        return withValidPhone(audienceSegments.all?.filter(c => c.daysSinceLastVisit === 0)).length;
+        // Scheduler: last_visit IN (yesterday, day-before) AND post_visit_sent_at IS NULL
+        return withValidPhone(
+          audienceSegments.all?.filter(c =>
+            (c.daysSinceLastVisit === 1 || c.daysSinceLastVisit === 2) &&
+            !c.postVisitSentAt
+          )
+        ).length;
       default:
         return 0;
     }

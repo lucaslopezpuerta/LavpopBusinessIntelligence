@@ -1,11 +1,11 @@
-// AutomationPerformance.jsx v1.0 - Automation Rule Performance Analytics
+// AutomationPerformance.jsx v1.1 - Automation Rule Performance Analytics
 // Per-rule delivery, return rates, revenue recovered, timeline
 // Design System v6.4 compliant - Cosmic Precision
 //
 // DATA SOURCES:
 // - automation_rules (rule config: name, trigger_type, enabled, coupon, discount)
-// - automation_sends (per-send records: rule_id, customer_id, status, sent_at)
-// - contact_tracking (return tracking: campaign_type, returned, revenue_generated)
+// - automation_sends (per-send records: rule_id, customer_id, sent_at) - used for timeline only
+// - contact_tracking (delivery + return tracking: campaign_id, delivery_status, returned, revenue)
 //
 // FEATURES:
 // - Summary KPI cards (total sends, overall return rate, revenue recovered, active rules)
@@ -18,6 +18,10 @@
 // - Skeleton loading state, null on empty data
 //
 // CHANGELOG:
+// v1.1 (2026-02-14): Fix zero metrics - 3 join bugs
+//   - Fix: delivery rate now uses contact_tracking.delivery_status (webhooks update this, not automation_sends)
+//   - Fix: campaign_id join uses 'AUTO_' + rule.id prefix (matches contact_tracking convention)
+//   - Fix: removed broken trigger_type -> campaign_type matching (incompatible value domains)
 // v1.0 (2026-02-09): Initial implementation
 //   - Fetches automation_rules, automation_sends (90d), contact_tracking (90d)
 //   - Client-side join: groups sends by rule_id, matches contacts by campaign_type
@@ -524,7 +528,7 @@ const AutomationPerformance = ({ className = '' }) => {
         // 3. Contact tracking for automation campaigns (return rates)
         client
           .from('contact_tracking')
-          .select('campaign_id, customer_id, returned_at, return_revenue, campaign_type')
+          .select('campaign_id, customer_id, returned_at, return_revenue, campaign_type, delivery_status')
           .not('campaign_type', 'is', null)
           .gte('created_at', cutoff)
       ]);
@@ -563,17 +567,8 @@ const AutomationPerformance = ({ className = '' }) => {
       sendsByRule[send.rule_id].push(send);
     }
 
-    // Index contacts by campaign_type for matching
-    // automation_rules trigger_type maps to contact_tracking campaign_type
-    const contactsByType = {};
-    for (const contact of contacts) {
-      const type = contact.campaign_type;
-      if (!type) continue;
-      if (!contactsByType[type]) contactsByType[type] = [];
-      contactsByType[type].push(contact);
-    }
-
-    // Also index contacts by campaign_id for direct matching
+    // Index contacts by campaign_id for matching
+    // contact_tracking uses 'AUTO_' + rule.id as campaign_id (e.g. 'AUTO_winback_30')
     const contactsByCampaign = {};
     for (const contact of contacts) {
       const cid = contact.campaign_id;
@@ -586,30 +581,20 @@ const AutomationPerformance = ({ className = '' }) => {
       const ruleSends = sendsByRule[rule.id] || [];
       const totalSends = ruleSends.length;
 
-      // Count by status
-      const delivered = ruleSends.filter(
-        (s) => s.status === 'delivered' || s.status === 'read'
-      ).length;
-      const failed = ruleSends.filter((s) => s.status === 'failed').length;
-      const deliveryRate = totalSends > 0 ? (delivered / totalSends) * 100 : 0;
-
-      // Match contacts: by campaign_type matching trigger_type, or by campaign_id matching rule.id
-      const matchedContacts = [
-        ...(contactsByType[rule.trigger_type] || []),
-        ...(contactsByCampaign[rule.id] || [])
-      ];
-
-      // Deduplicate by customer_id
-      const uniqueContacts = new Map();
-      for (const c of matchedContacts) {
-        const key = c.customer_id;
-        if (key && !uniqueContacts.has(key)) {
-          uniqueContacts.set(key, c);
-        }
-      }
-
-      const contactList = [...uniqueContacts.values()];
+      // Match contacts via campaign_id = 'AUTO_' + rule.id
+      const contactList = contactsByCampaign['AUTO_' + rule.id] || [];
       const contactedCount = contactList.length;
+
+      // Delivery stats from contact_tracking (webhooks update delivery_status here, not in automation_sends)
+      const delivered = contactList.filter(
+        (c) => c.delivery_status === 'delivered' || c.delivery_status === 'read'
+      ).length;
+      const failed = contactList.filter(
+        (c) => c.delivery_status === 'failed' || c.delivery_status === 'undelivered'
+      ).length;
+      const deliveryRate = contactedCount > 0 ? (delivered / contactedCount) * 100 : 0;
+
+      // Return rate & revenue
       const returnedCount = contactList.filter((c) => c.returned_at != null).length;
       const revenueRecovered = contactList.reduce(
         (sum, c) => sum + (Number(c.return_revenue) || 0),

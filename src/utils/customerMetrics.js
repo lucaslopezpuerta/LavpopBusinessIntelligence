@@ -268,7 +268,12 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
           phone: validatedPhone,           // Normalized and validated
           rawPhone: rawPhone,              // Original for debugging
           hasValidPhone: !!validatedPhone, // Flag for filtering
-          lastContactDate: row.col5 || row.lastContactDate || null
+          lastContactDate: row.col5 || row.lastContactDate || null,
+          welcomeSentAt: row.welcomeSentAt || null,
+          postVisitSentAt: row.postVisitSentAt || null,
+          dbRiskLevel: row.dbRiskLevel || null,
+          dbWalletBalance: row.dbWalletBalance || 0,
+          dbVisitCount: row.dbVisitCount || 0
         };
       }
     });
@@ -439,6 +444,11 @@ export function calculateCustomerMetrics(salesData, rfmData = [], customerData =
       customer.rawPhone = rfmInfo.rawPhone;
       customer.hasValidPhone = rfmInfo.hasValidPhone;
       customer.lastContactDate = rfmInfo.lastContactDate;
+      customer.welcomeSentAt = rfmInfo.welcomeSentAt;
+      customer.postVisitSentAt = rfmInfo.postVisitSentAt;
+      customer.dbRiskLevel = rfmInfo.dbRiskLevel;
+      customer.dbWalletBalance = rfmInfo.dbWalletBalance;
+      customer.dbVisitCount = rfmInfo.dbVisitCount;
     } else {
       customer.segment = 'Unclassified';
     }
